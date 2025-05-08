@@ -310,8 +310,9 @@
 
 /* --- ACTIONS SUR MESSAGES --- */
 .message-actions {
-    position: relative;
+    position: absolute;
     display: flex;
+    z-index: 1000;
     gap: 10px;
 }
 

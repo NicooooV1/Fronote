@@ -14,7 +14,7 @@ $messageClasses = [];
 $messageClasses[] = isCurrentUser($message['expediteur_id'], $message['expediteur_type'], $user) ? 'self' : '';
 
 // Vérification de l'existence de l'importance et définition d'une valeur par défaut
-$importance = isset($message['importance']) ? $message['importance'] : 'normal';
+$importance = isset($message['status']) ? $message['status'] : 'normal';
 $messageClasses[] = $importance;
 
 $messageClasses[] = isset($message['est_lu']) && $message['est_lu'] ? 'read' : '';
@@ -63,7 +63,7 @@ $messageClasses = array_filter($messageClasses);
             <?php endif; ?>
         </div>
         
-        <?php if (isset($canReply) && $canReply): ?>
+        <?php if (isset($canReply) && $canReply && !isCurrentUser($message['expediteur_id'], $message['expediteur_type'], $user)): ?>
         <div class="message-actions">
             <?php if (isset($message['est_lu']) && $message['est_lu']): ?>
                 <button class="btn-icon mark-unread-btn" data-message-id="<?= (int)$message['id'] ?>">

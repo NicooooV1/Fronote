@@ -216,8 +216,8 @@ function loadParticipants() {
  */
 function setupRealTimeUpdates() {
     // Vérifier les mises à jour toutes les 5 secondes
-    const updateInterval = setInterval(checkForUpdates, 5000);
-    
+    const updateInterval = setInterval(checkForUpdates, 3000);
+        
     function checkForUpdates() {
         const convId = new URLSearchParams(window.location.search).get('id');
         if (!convId) return;
