@@ -30,7 +30,7 @@ $accuseReception = isset($_POST['accuse_reception']) && $_POST['accuse_reception
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if (empty($destinataires)) {
-            throw new Exception("Veuillez sélectionner au moins un destinataire");
+            throw new Exception("Veuillez sélectionner au moins un destinataire reconnu par la fonction de recherche.");
         }
         
         if (empty($titre)) {
