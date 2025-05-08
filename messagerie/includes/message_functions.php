@@ -309,37 +309,63 @@ function deleteConversation($convId, $userId, $userType) {
 function restoreConversation($convId, $userId, $userType) {
     global $pdo;
     
-    // Vérifier si le participant existe déjà avec is_deleted = 0
-    $checkStmt = $pdo->prepare("
-        SELECT COUNT(*) FROM conversation_participants 
-        WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND is_deleted = 0
-    ");
-    $checkStmt->execute([$convId, $userId, $userType]);
-    $exists = $checkStmt->fetchColumn() > 0;
+    $pdo->beginTransaction();
     
-    if ($exists) {
-        // Si déjà actif, ne rien faire
+    try {
+        // Vérifier si le participant existe déjà avec is_deleted = 0
+        $checkStmt = $pdo->prepare("
+            SELECT COUNT(*) FROM conversation_participants 
+            WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND is_deleted = 0
+        ");
+        $checkStmt->execute([$convId, $userId, $userType]);
+        $exists = $checkStmt->fetchColumn() > 0;
+        
+        if ($exists) {
+            // Si déjà actif, ne rien faire
+            $pdo->commit();
+            return true;
+        }
+        
+        // Récupérer l'ID de l'entrée existante avec is_deleted = 1
+        $getIdStmt = $pdo->prepare("
+            SELECT id FROM conversation_participants 
+            WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND is_deleted = 1
+            ORDER BY id ASC LIMIT 1
+        ");
+        $getIdStmt->execute([$convId, $userId, $userType]);
+        $recordId = $getIdStmt->fetchColumn();
+        
+        if ($recordId) {
+            // Si une entrée supprimée existe, la mettre à jour
+            $updateStmt = $pdo->prepare("
+                UPDATE conversation_participants 
+                SET is_deleted = 0, is_archived = 0 
+                WHERE id = ?
+            ");
+            $updateStmt->execute([$recordId]);
+            
+            // Supprimer les autres entrées pour éviter les doublons
+            $deleteOthersStmt = $pdo->prepare("
+                DELETE FROM conversation_participants 
+                WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND id != ?
+            ");
+            $deleteOthersStmt->execute([$convId, $userId, $userType, $recordId]);
+        } else {
+            // Si aucune entrée n'existe, en créer une nouvelle
+            $insertStmt = $pdo->prepare("
+                INSERT INTO conversation_participants 
+                (conversation_id, user_id, user_type, joined_at, is_deleted, is_archived)
+                VALUES (?, ?, ?, NOW(), 0, 0)
+            ");
+            $insertStmt->execute([$convId, $userId, $userType]);
+        }
+        
+        $pdo->commit();
         return true;
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        throw $e;
     }
-    
-    // Sinon, mettre à jour le statut existant
-    $stmt = $pdo->prepare("
-        UPDATE conversation_participants 
-        SET is_deleted = 0, is_archived = 0 
-        WHERE conversation_id = ? AND user_id = ? AND user_type = ?
-    ");
-    $stmt->execute([$convId, $userId, $userType]);
-    
-    // Pour éviter les doublons, s'assurer qu'il n'y a qu'une entrée active par utilisateur
-    $cleanupStmt = $pdo->prepare("
-        DELETE cp1 FROM conversation_participants cp1
-        JOIN conversation_participants cp2 ON cp1.conversation_id = cp2.conversation_id 
-            AND cp1.user_id = cp2.user_id AND cp1.user_type = cp2.user_type
-        WHERE cp1.conversation_id = ? AND cp1.id > cp2.id AND cp1.is_deleted = 0 AND cp2.is_deleted = 0
-    ");
-    $cleanupStmt->execute([$convId]);
-    
-    return $stmt->rowCount() > 0;
 }
 
 /**
@@ -439,6 +465,8 @@ function getMessages($convId, $userId, $userType) {
                m.sender_id as expediteur_id, 
                m.sender_type as expediteur_type,
                m.body as contenu,
+               m.status as status,
+               m.created_at as date_envoi,
                COALESCE(m.status, 'normal') as status,
                m.created_at as date_envoi
         FROM messages m

@@ -19,11 +19,11 @@ elseif ($currentFolder === 'corbeille'):
     <label class="checkbox-container">
         <input type="checkbox" id="select-all-conversations">
         <span class="checkmark"></span>
-        Tout sélectionner
+        <strong>Tout sélectionner</strong>
     </label>
     
     <button id="delete-selected" class="btn warning" disabled>
-        <i class="fas fa-trash-alt"></i> Supprimer les éléments sélectionnés
+        <i class="fas fa-trash-alt"></i> Supprimer les éléments sélectionnés (0)
     </button>
 </div>
 

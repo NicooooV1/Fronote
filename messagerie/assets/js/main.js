@@ -158,14 +158,9 @@ function setupBulkDelete() {
         // Mettre à jour le bouton de suppression
         document.querySelectorAll('.conversation-checkbox').forEach(checkbox => {
             checkbox.addEventListener('change', function() {
+                // Toggle la classe 'selected' sur l'élément parent
+                this.closest('.conversation-item').classList.toggle('selected', this.checked);
                 updateDeleteButton();
-                
-                // Vérifier si toutes les cases sont cochées
-                const allChecked = Array.from(
-                    document.querySelectorAll('.conversation-checkbox')
-                ).every(cb => cb.checked);
-                
-                selectAllCheckbox.checked = allChecked;
             });
         });
         
@@ -186,6 +181,7 @@ function setupBulkDelete() {
     function updateDeleteButton() {
         const selectedCount = document.querySelectorAll('.conversation-checkbox:checked').length;
         deleteButton.disabled = selectedCount === 0;
+        // Mettre à jour le texte du bouton avec le nombre d'éléments sélectionnés
         deleteButton.innerHTML = `<i class="fas fa-trash-alt"></i> Supprimer les éléments sélectionnés (${selectedCount})`;
     }
 }
