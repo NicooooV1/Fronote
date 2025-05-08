@@ -5,25 +5,62 @@
 // Auto-refresh pour les nouveaux messages toutes les 30 secondes
 let autoRefreshInterval;
 
+// Gestion de la suppression en masse
 document.addEventListener('DOMContentLoaded', function() {
-    // Démarrer l'auto-refresh
-    startAutoRefresh();
+    const selectAllCheckbox = document.getElementById('select-all-conversations');
+    const deleteButton = document.getElementById('delete-selected');
     
-    // Gestion des menus d'actions rapides
-    setupQuickActions();
+    if (selectAllCheckbox && deleteButton) {
+        // Sélectionner/désélectionner tous
+        selectAllCheckbox.addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.conversation-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            
+            updateDeleteButton();
+        });
+        
+        // Mettre à jour le bouton de suppression
+        document.querySelectorAll('.conversation-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                updateDeleteButton();
+                
+                // Vérifier si toutes les cases sont cochées
+                const allChecked = Array.from(
+                    document.querySelectorAll('.conversation-checkbox')
+                ).every(cb => cb.checked);
+                
+                selectAllCheckbox.checked = allChecked;
+            });
+        });
+        
+        // Action de suppression
+        deleteButton.addEventListener('click', function() {
+            const selectedIds = Array.from(
+                document.querySelectorAll('.conversation-checkbox:checked')
+            ).map(cb => parseInt(cb.value));
+            
+            if (selectedIds.length === 0) return;
+            
+            if (confirm(`Êtes-vous sûr de vouloir supprimer définitivement ${selectedIds.length} conversation(s) ?`)) {
+                deleteMultipleConversations(selectedIds);
+            }
+        });
+    }
     
-    // Gestion des formulaires pour éviter les soumissions multiples
-    setupFormSubmission();
-    
-    // Gestion des pièces jointes
-    setupFileUploads();
+    function updateDeleteButton() {
+        const selectedCount = document.querySelectorAll('.conversation-checkbox:checked').length;
+        deleteButton.disabled = selectedCount === 0;
+        deleteButton.innerHTML = `<i class="fas fa-trash-alt"></i> Supprimer les éléments sélectionnés (${selectedCount})`;
+    }
 });
 
 /**
  * Démarrer l'auto-refresh pour les nouveaux messages
  */
+// Réduire l'intervalle à 3 secondes pour plus de réactivité
 function startAutoRefresh() {
-    // Vérifier toutes les 30 secondes pour les nouveaux messages
     autoRefreshInterval = setInterval(function() {
         // Vérifier s'il n'y a pas de menu ouvert avant de recharger
         const activeMenus = document.querySelectorAll('.quick-actions-menu.active, .message-actions-menu.active');
@@ -34,7 +71,7 @@ function startAutoRefresh() {
         if (activeMenus.length === 0 && activeModals.length === 0 && !textareaActive) {
             location.reload();
         }
-    }, 30000);
+    }, 3000); // 3 secondes au lieu de 30
 }
 
 /**

@@ -305,6 +305,7 @@ function deleteConversation($convId, $userId, $userType) {
  * @param string $userType Type de l'utilisateur
  * @return bool True si succès
  */
+// Dans includes/message_functions.php
 function restoreConversation($convId, $userId, $userType) {
     global $pdo;
     
@@ -328,6 +329,15 @@ function restoreConversation($convId, $userId, $userType) {
         WHERE conversation_id = ? AND user_id = ? AND user_type = ?
     ");
     $stmt->execute([$convId, $userId, $userType]);
+    
+    // Pour éviter les doublons, s'assurer qu'il n'y a qu'une entrée active par utilisateur
+    $cleanupStmt = $pdo->prepare("
+        DELETE cp1 FROM conversation_participants cp1
+        JOIN conversation_participants cp2 ON cp1.conversation_id = cp2.conversation_id 
+            AND cp1.user_id = cp2.user_id AND cp1.user_type = cp2.user_type
+        WHERE cp1.conversation_id = ? AND cp1.id > cp2.id AND cp1.is_deleted = 0 AND cp2.is_deleted = 0
+    ");
+    $cleanupStmt->execute([$convId]);
     
     return $stmt->rowCount() > 0;
 }
@@ -481,8 +491,8 @@ function getMessages($convId, $userId, $userType) {
  */
 function addMessage($convId, $senderId, $senderType, $content, $importance = 'normal', 
                    $estAnnonce = false, $notificationObligatoire = false, 
-                   $accuseReception = false, $parentMessageId = null, 
-                   $typeMessage = 'standard', $filesData = []) {
+                   $accuseReception = false, // Maintenu pour compatibilité mais ignoré
+                   $parentMessageId = null, $typeMessage = 'standard', $filesData = []) {
     global $pdo;
     
     // Vérifier que l'expéditeur est participant à la conversation

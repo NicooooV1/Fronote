@@ -180,17 +180,22 @@
     max-width: 90%; /* Plus large pour les annonces */
 }
 
-/* Nouvelles bordures pour les niveaux d'importance - seulement en bas */
+/* Ajouter pour souligner les types de messages */
+.conversation-meta .type {
+    text-decoration: underline;
+}
+
+/* Couleurs pour les différents types de messages */
 .message.normal {
-    border-bottom: 4px solid #28a745; /* Vert - seulement en bas */
+    border-left: 4px solid #28a745; /* Vert */
 }
 
 .message.important {
-    border-bottom: 4px solid #ffc107; /* Orange - seulement en bas */
+    border-left: 4px solid #ffc107; /* Orange */
 }
 
-.message.urgent {
-    border-bottom: 4px solid #dc3545; /* Rouge - seulement en bas */
+.message.urgent, .message.annonce {
+    border-left: 4px solid #dc3545; /* Rouge */
 }
 
 /* Bordures grises pour les messages lus (sauf urgent) */

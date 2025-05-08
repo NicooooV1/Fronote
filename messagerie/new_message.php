@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $importance,
             false, // Est annonce
             false, // Notification obligatoire
-            $accuseReception, // Accusé de réception
+            false, // Accusé de réception - toujours désactivé
             null, // Parent message ID
             'standard', // Type message
             $filesData
