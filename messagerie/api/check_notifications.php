@@ -1,68 +1,52 @@
 <?php
-/**
- * check_notifications.php
- * Renvoie en JSON le nombre de notifications non lues pour l’utilisateur connecté.
- */
-
-// 1. Désactivation de l’affichage HTML des erreurs PHP
+// 1. désactiver l’output HTML des erreurs
 ini_set('display_errors', 0);
 ini_set('display_startup_errors', 0);
-
-// 2. Définition de l’en-tête JSON
 header('Content-Type: application/json; charset=utf-8');
+session_start();
 
-// 3. Démarrage de la session (vérifier que c’est bien le bon chemin)
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+// 2. authentification basique
+if (empty($_SESSION['user_id']) || empty($_SESSION['user_type'])) {
+  echo json_encode([
+    'has_errors' => true,
+    'error'      => 'Utilisateur non authentifié.'
+  ]);
+  exit;
 }
 
-// 4. Vérification basique de l’authentification
-if (empty($_SESSION['user_id'])) {
-    // on renvoie quand même du JSON pour éviter le 500
-    echo json_encode([
-        'has_errors' => true,
-        'error'      => 'Utilisateur non authentifié.'
-    ]);
-    exit;
-}
+// 3. connexion PDO (ton config.php doit définir DSN, DB_USER, DB_PASS)
+require_once __DIR__ . '/config.php';
+$pdo = new PDO(DSN, DB_USER, DB_PASS, [
+  PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+  PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+]);
 
 try {
-    // 5. Connexion à la base de données
-    // Attention au chemin vers ton fichier de config
-    require_once __DIR__ . '/config.php'; 
-    $pdo = new PDO(DSN, DB_USER, DB_PASS, [
-        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    ]);
+  // 4. compter les notifications non lues dans message_notifications
+  $stmt = $pdo->prepare("
+    SELECT COUNT(*) AS new_notifications
+      FROM message_notifications
+     WHERE user_id   = :uid
+       AND user_type = :utype
+       AND is_read   = 0
+  ");
+  $stmt->execute([
+    'uid'   => (int)$_SESSION['user_id'],
+    'utype' => $_SESSION['user_type'],
+  ]);
+  $row = $stmt->fetch();
+  $count = isset($row['new_notifications']) ? (int)$row['new_notifications'] : 0;
 
-    // 6. Requête pour compter les notifications non lues
-    $stmt = $pdo->prepare("
-        SELECT COUNT(*) AS new_notifications
-        FROM notifications
-        WHERE user_id = :uid
-          AND is_read = 0
-    ");
-    $stmt->execute([
-        'uid' => (int) $_SESSION['user_id']
-    ]);
-    $row = $stmt->fetch();
-
-    // 7. Construction et envoi de la réponse JSON
-    $count = isset($row['new_notifications']) ? (int) $row['new_notifications'] : 0;
-    echo json_encode([
-        'has_errors'        => false,
-        'new_notifications' => $count
-    ]);
-    exit;
+  // 5. renvoyer le JSON
+  echo json_encode([
+    'has_errors'        => false,
+    'new_notifications' => $count
+  ]);
 }
 catch (Throwable $e) {
-    // 8. Journalisation interne de l’erreur
-    error_log('[check_notifications.php] Erreur : ' . $e->getMessage());
-
-    // 9. Réponse JSON d’erreur (pas de HTML)
-    echo json_encode([
-        'has_errors' => true,
-        'error'      => 'Impossible de récupérer les notifications.'
-    ]);
-    exit;
+  error_log('[check_notifications] '.$e->getMessage());
+  echo json_encode([
+    'has_errors' => true,
+    'error'      => 'Impossible de récupérer les notifications.'
+  ]);
 }
