@@ -206,11 +206,13 @@
     border-bottom: 4px solid #adb5bd; /* Gris - seulement en bas */
 }
 
+/* CORRIGÉ: Espacement amélioré dans l'en-tête du message */
 .message-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 8px;
+    margin-bottom: 12px; /* Augmenté pour plus d'espace vertical */
+    gap: 20px; /* Ajout d'espace entre le nom et les métadonnées */
 }
 
 .sender {
@@ -229,13 +231,20 @@
     color: #6c757d;
 }
 
+/* CORRIGÉ: Amélioration de l'affichage des métadonnées */
 .message-meta {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 15px; /* Augmenté pour plus d'espace entre les éléments */
     font-size: 12px;
     color: #6c757d;
     margin-left: auto; /* Force l'alignement à droite */
+    white-space: nowrap; /* Évite le retour à la ligne */
+}
+
+/* CORRIGÉ: S'assurer qu'il n'y a pas de soulignement */
+.message-meta .date {
+    text-decoration: none;
 }
 
 .importance-tag {
@@ -310,7 +319,7 @@
 
 /* --- ACTIONS SUR MESSAGES --- */
 .message-actions {
-    position: absolute;
+    position: relative;
     display: flex;
     z-index: 1000;
     gap: 10px;
@@ -333,6 +342,7 @@
     color: #212529;
 }
 
+/* CORRIGÉ: Amélioration z-index et positionnement des menus */
 .message-actions-menu {
     position: absolute;
     right: 0;
@@ -342,7 +352,7 @@
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     padding: 8px 0;
     min-width: 150px;
-    z-index: 1000; /* Augmenté pour rester au-dessus */
+    z-index: 10000; /* Augmenté significativement */
     display: none;
 }
 
@@ -443,7 +453,7 @@ textarea:focus {
 .modal {
     display: none;
     position: fixed;
-    z-index: 1000;
+    z-index: 10001; /* Augmenté pour être au-dessus de tout */
     left: 0;
     top: 0;
     width: 100%;

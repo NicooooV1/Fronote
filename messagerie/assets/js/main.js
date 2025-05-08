@@ -1,8 +1,8 @@
 /**
- * /assets/js/main.js - Scripts principaux
+ * /assets/js/main.js - Scripts principaux améliorés
  */
 
-// Auto-refresh pour les nouveaux messages toutes les 3 secondes
+// Auto-refresh pour les nouveaux messages toutes les 60 secondes
 let autoRefreshInterval;
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -18,15 +18,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // Gestion des pièces jointes
     setupFileUploads();
     
-    // Initialisation des fonctionnalités de suppression en masse
-    setupBulkDelete();
+    // Initialisation des fonctionnalités d'action en masse
+    setupBulkActions();
 });
 
 /**
  * Démarrer l'auto-refresh pour les nouveaux messages
  */
 function startAutoRefresh() {
-    // Vérifier toutes les 3 secondes pour les nouveaux messages (plus réactif)
+    // Vérifier toutes les 60 secondes pour les nouveaux messages
     autoRefreshInterval = setInterval(function() {
         // Vérifier s'il n'y a pas de menu ouvert avant de recharger
         const activeMenus = document.querySelectorAll('.quick-actions-menu.active, .message-actions-menu.active');
@@ -37,7 +37,7 @@ function startAutoRefresh() {
         if (activeMenus.length === 0 && activeModals.length === 0 && !textareaActive) {
             location.reload();
         }
-    }, 60000); // 3 secondes au lieu de 30 pour une meilleure réactivité
+    }, 60000);
 }
 
 /**
@@ -80,6 +80,40 @@ function toggleQuickActions(id) {
     
     // Empêcher la propagation du clic pour éviter la navigation
     event.stopPropagation();
+}
+
+/**
+ * Marque une conversation comme lue
+ * @param {number} convId - ID de la conversation
+ */
+function markConversationAsRead(convId) {
+    fetch(`api/mark_conversation.php?id=${convId}&action=mark_read`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert('Erreur: ' + data.error);
+            }
+        })
+        .catch(error => console.error('Erreur:', error));
+}
+
+/**
+ * Marque une conversation comme non lue
+ * @param {number} convId - ID de la conversation
+ */
+function markConversationAsUnread(convId) {
+    fetch(`api/mark_conversation.php?id=${convId}&action=mark_unread`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert('Erreur: ' + data.error);
+            }
+        })
+        .catch(error => console.error('Erreur:', error));
 }
 
 /**
@@ -138,51 +172,138 @@ function setupFileUploads() {
 }
 
 /**
- * Fonctionnalité de suppression en masse pour la corbeille
+ * Configuration des actions en masse
  */
-function setupBulkDelete() {
+function setupBulkActions() {
     const selectAllCheckbox = document.getElementById('select-all-conversations');
-    const deleteButton = document.getElementById('delete-selected');
+    const actionButtons = document.querySelectorAll('.bulk-action-btn');
     
-    if (selectAllCheckbox && deleteButton) {
+    if (selectAllCheckbox && actionButtons.length > 0) {
         // Sélectionner/désélectionner tous
         selectAllCheckbox.addEventListener('change', function() {
             const checkboxes = document.querySelectorAll('.conversation-checkbox');
             checkboxes.forEach(checkbox => {
                 checkbox.checked = this.checked;
+                
+                // Mettre à jour la classe 'selected' sur l'élément parent
+                const conversationItem = checkbox.closest('.conversation-item');
+                if (conversationItem) {
+                    conversationItem.classList.toggle('selected', checkbox.checked);
+                }
             });
             
-            updateDeleteButton();
+            updateActionButtons();
         });
         
-        // Mettre à jour le bouton de suppression
+        // Mettre à jour les boutons d'action lorsqu'une case est cochée/décochée
         document.querySelectorAll('.conversation-checkbox').forEach(checkbox => {
             checkbox.addEventListener('change', function() {
-                // Toggle la classe 'selected' sur l'élément parent
-                this.closest('.conversation-item').classList.toggle('selected', this.checked);
-                updateDeleteButton();
+                // Mettre à jour la classe 'selected' sur l'élément parent
+                const conversationItem = this.closest('.conversation-item');
+                if (conversationItem) {
+                    conversationItem.classList.toggle('selected', this.checked);
+                }
+                
+                updateActionButtons();
             });
         });
         
-        // Action de suppression
-        deleteButton.addEventListener('click', function() {
-            const selectedIds = Array.from(
-                document.querySelectorAll('.conversation-checkbox:checked')
-            ).map(cb => parseInt(cb.value));
-            
-            if (selectedIds.length === 0) return;
-            
-            if (confirm(`Êtes-vous sûr de vouloir supprimer définitivement ${selectedIds.length} conversation(s) ?`)) {
-                deleteMultipleConversations(selectedIds);
-            }
+        // Configurer les clics sur les boutons d'action
+        actionButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const action = this.dataset.action;
+                const selectedIds = Array.from(
+                    document.querySelectorAll('.conversation-checkbox:checked')
+                ).map(cb => parseInt(cb.value, 10));
+                
+                if (selectedIds.length === 0) return;
+                
+                // Message de confirmation personnalisé selon l'action
+                let confirmMessage = '';
+                switch(action) {
+                    case 'delete':
+                        confirmMessage = `Êtes-vous sûr de vouloir supprimer ${selectedIds.length} conversation(s) ?`;
+                        break;
+                    case 'delete_permanently':
+                        confirmMessage = `Êtes-vous sûr de vouloir supprimer définitivement ${selectedIds.length} conversation(s) ? Cette action est irréversible.`;
+                        break;
+                    case 'archive':
+                        confirmMessage = `Êtes-vous sûr de vouloir archiver ${selectedIds.length} conversation(s) ?`;
+                        break;
+                    case 'restore':
+                        confirmMessage = `Êtes-vous sûr de vouloir restaurer ${selectedIds.length} conversation(s) ?`;
+                        break;
+                    case 'mark_read':
+                        confirmMessage = `Marquer ${selectedIds.length} conversation(s) comme lues ?`;
+                        break;
+                    case 'mark_unread':
+                        confirmMessage = `Marquer ${selectedIds.length} conversation(s) comme non lues ?`;
+                        break;
+                    default:
+                        confirmMessage = `Effectuer l'action "${action}" sur ${selectedIds.length} conversation(s) ?`;
+                }
+                
+                if (confirm(confirmMessage)) {
+                    performBulkAction(action, selectedIds);
+                }
+            });
         });
     }
     
-    function updateDeleteButton() {
+    /**
+     * Met à jour l'état des boutons d'action en fonction de la sélection
+     */
+    function updateActionButtons() {
         const selectedCount = document.querySelectorAll('.conversation-checkbox:checked').length;
-        deleteButton.disabled = selectedCount === 0;
-        // Mettre à jour le texte du bouton avec le nombre d'éléments sélectionnés
-        deleteButton.innerHTML = `<i class="fas fa-trash-alt"></i> Supprimer les éléments sélectionnés (${selectedCount})`;
+        
+        // Mettre à jour tous les boutons d'action
+        actionButtons.forEach(button => {
+            button.disabled = selectedCount === 0;
+            
+            // Mettre à jour le texte du bouton avec le nombre d'éléments sélectionnés
+            const actionText = button.dataset.actionText || 'Appliquer';
+            const icon = button.dataset.icon ? `<i class="fas fa-${button.dataset.icon}"></i> ` : '';
+            button.innerHTML = `${icon}${actionText} (${selectedCount})`;
+        });
+    }
+    
+    /**
+     * Exécute une action en masse sur plusieurs conversations
+     * @param {string} action - Action à effectuer
+     * @param {Array} convIds - Tableau des IDs de conversations
+     */
+    function performBulkAction(action, convIds) {
+        // Préparer les données pour l'envoi
+        const data = {
+            action: action,
+            ids: convIds
+        };
+        
+        // Envoyer la requête
+        fetch('api/bulk_actions.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Afficher un message de succès
+                alert(`Action réussie sur ${data.count} conversation(s)`);
+                
+                // Recharger la page
+                window.location.reload();
+            } else {
+                console.error('Erreur:', data.error);
+                alert('Erreur lors de l\'action: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Une erreur est survenue lors de l\'exécution de l\'action.');
+        });
     }
 }
 
@@ -229,41 +350,4 @@ function ajax(url, options = {}) {
             }
             return response.json();
         });
-}
-
-/**
- * Supprimer plusieurs conversations
- * @param {Array} convIds - Tableau des IDs de conversations
- */
-function deleteMultipleConversations(convIds) {
-    if (!convIds || convIds.length === 0) {
-        alert('Aucune conversation sélectionnée');
-        return;
-    }
-    
-    // Préparer les données pour l'envoi
-    const data = {
-        ids: convIds
-    };
-    
-    // Envoyer la requête
-    fetch('api/delete_multiple.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert(`${data.count} conversation(s) supprimée(s) avec succès`);
-            // Recharger la page
-            window.location.reload();
-        } else {
-            console.error('Erreur:', data.error);
-            alert('Erreur lors de la suppression: ' + data.error);
-        }
-    })
-    .catch(error => console.error('Erreur:', error));
 }

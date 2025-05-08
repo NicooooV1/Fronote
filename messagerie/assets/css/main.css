@@ -1,4 +1,4 @@
-/* /assets/css/main.css - Styles principaux repris exactement depuis les fichiers originaux */
+/* /assets/css/main.css - Styles principaux corrigés */
 
 /* --- RESET ET STYLES DE BASE --- */
 * {
@@ -208,6 +208,7 @@ main h2 {
     transition: background-color 0.2s;
     border: 1px solid #e9ecef;
     position: relative;
+    z-index: 1;
 }
 
 .conversation-item:hover {
@@ -261,6 +262,33 @@ main h2 {
     justify-content: space-between;
     color: #6c757d;
     font-size: 12px;
+    gap: 15px; /* Augmenté pour plus d'espacement */
+}
+
+/* CORRECTION: Retirer le soulignement */
+.conversation-meta .type,
+.conversation-meta .date,
+.conversation-meta .message-status {
+    text-decoration: none;
+    font-weight: normal;
+}
+
+/* Pour garder le statut du message visible */
+.conversation-meta .message-status {
+    font-weight: bold;
+}
+
+/* Styles pour les statuts de messages dans la liste */
+.conversation-meta .message-status.important {
+    color: #ffc107;
+}
+
+.conversation-meta .message-status.urgent {
+    color: #dc3545;
+}
+
+.conversation-meta .message-status.annonce {
+    color: #28a745;
 }
 
 /* --- ÉTATS VIDES --- */
@@ -278,12 +306,8 @@ main h2 {
 
 /* --- MENU D'ACTIONS RAPIDES --- */
 .quick-actions {
-    position: absolute;
-    right: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    display: flex;
-    align-items: center;
+    position: relative;
+    z-index: 1001; /* Supérieur à celui de l'élément parent */
 }
 
 .quick-actions-btn {
@@ -304,7 +328,7 @@ main h2 {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     padding: 5px 0;
     min-width: 160px;
-    z-index: 1000; /* Augmentation pour rester au-dessus */
+    z-index: 10000; /* Augmenté significativement pour s'assurer qu'il reste au-dessus */
     display: none;
 }
 
@@ -585,11 +609,6 @@ main h2 {
     margin-bottom: 20px;
 }
 
-/* --- TYPES DE MESSAGES --- */
-.conversation-meta .type {
-    text-decoration: underline;
-}
-
 /* --- ACTIONS EN MASSE --- */
 .bulk-actions {
     background-color: #f0f8ff; /* Bleu très clair pour attirer l'attention */
@@ -614,29 +633,41 @@ main h2 {
     width: 20px;
 }
 
-#delete-selected {
-    padding: 10px 15px;
-    background-color: #f56565;
+.bulk-action-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.bulk-action-btn {
+    padding: 8px 12px;
+    background-color: #e9ecef;
     border: none;
-    color: white;
+    color: #495057;
     font-weight: 600;
     transition: all 0.2s;
     border-radius: 4px;
 }
 
-#delete-selected:hover:not(:disabled) {
-    background-color: #e53e3e;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+.bulk-action-btn:hover:not(:disabled) {
+    background-color: #dee2e6;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
-#delete-selected:disabled {
-    background-color: #cbd5e0;
-    color: #718096;
+.bulk-action-btn:disabled {
+    background-color: #f8f9fa;
+    color: #adb5bd;
     cursor: not-allowed;
+    box-shadow: none;
 }
 
-.bulk-actions button {
-    margin-left: auto;
+.bulk-action-btn.warning {
+    background-color: #f56565;
+    color: white;
+}
+
+.bulk-action-btn.warning:hover:not(:disabled) {
+    background-color: #e53e3e;
 }
 
 .conversation-selector {
@@ -655,7 +686,6 @@ main h2 {
     background-color: #ebf8ff;
     border-left: 3px solid #3182ce;
 }
-
 
 /* Adaptation du style pour la sélection des conversations */
 .conversation-item .checkbox-container {
@@ -694,5 +724,16 @@ main h2 {
     .form-actions {
         width: 100%;
         justify-content: space-between;
+    }
+    
+    .bulk-actions {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .bulk-action-buttons {
+        width: 100%;
+        flex-wrap: wrap;
     }
 }
