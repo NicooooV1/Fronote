@@ -180,12 +180,7 @@
     max-width: 90%; /* Plus large pour les annonces */
 }
 
-/* Ajouter pour souligner les types de messages */
-.conversation-meta .type {
-    text-decoration: underline;
-}
-
-/* Couleurs pour les différents types de messages */
+/* Couleurs selon l'importance */
 .message.normal {
     border-left: 4px solid #28a745; /* Vert */
 }
@@ -194,16 +189,20 @@
     border-left: 4px solid #ffc107; /* Orange */
 }
 
-.message.urgent, .message.annonce {
+.message.urgent {
     border-left: 4px solid #dc3545; /* Rouge */
 }
 
-/* Bordures grises pour les messages lus (sauf urgent) */
+/* Bordures grises pour les messages lus */
 .message.normal.read {
     border-bottom: 4px solid #adb5bd; /* Gris - seulement en bas */
 }
 
 .message.important.read {
+    border-bottom: 4px solid #adb5bd; /* Gris - seulement en bas */
+}
+
+.message.urgent.read {
     border-bottom: 4px solid #adb5bd; /* Gris - seulement en bas */
 }
 
@@ -310,6 +309,12 @@
 }
 
 /* --- ACTIONS SUR MESSAGES --- */
+.message-actions {
+    position: relative;
+    display: flex;
+    gap: 10px;
+}
+
 .btn-icon {
     background: none;
     border: none;
@@ -317,14 +322,14 @@
     cursor: pointer;
     padding: 5px;
     transition: color 0.2s;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
 }
 
 .btn-icon:hover {
     color: #212529;
-}
-
-.message-actions {
-    position: relative;
 }
 
 .message-actions-menu {
@@ -336,8 +341,8 @@
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     padding: 8px 0;
     min-width: 150px;
+    z-index: 1000; /* Augmenté pour rester au-dessus */
     display: none;
-    z-index: 100;
 }
 
 .message-actions-menu.active {
@@ -354,6 +359,12 @@
 
 .message-actions-menu a:hover {
     background-color: #f8f9fa;
+}
+
+/* Augmentation de la précision des sélecteurs pour éviter les conflits */
+.message-footer .message-actions .btn-icon {
+    font-size: 12px;
+    padding: 3px 6px;
 }
 
 /* --- ZONE DE RÉPONSE --- */

@@ -12,7 +12,9 @@ if (empty($convs)):
 </div>
 <?php 
 // Affichage spécifique pour la corbeille
-<?php if ($currentFolder === 'corbeille'): ?>
+elseif ($currentFolder === 'corbeille'): 
+?>
+<!-- Ajout des actions en masse pour la corbeille -->
 <div class="bulk-actions">
     <label class="checkbox-container">
         <input type="checkbox" id="select-all-conversations">
@@ -32,6 +34,11 @@ if (empty($convs)):
             <input type="checkbox" class="conversation-checkbox" value="<?= (int)$c['id'] ?>">
             <span class="checkmark"></span>
         </label>
+        
+        <a href="conversation.php?id=<?= (int)$c['id'] ?>" class="conversation-content">
+            <div class="conversation-icon <?= $c['type'] === 'annonce' ? 'annonce' : '' ?>">
+                <i class="fas fa-<?= getConversationIcon($c['type']) ?>"></i>
+            </div>
             <div class="conversation-header">
                 <h3><?= htmlspecialchars($c['titre'] ?: 'Conversation #'.$c['id']) ?></h3>
             </div>

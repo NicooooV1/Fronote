@@ -2,65 +2,31 @@
  * /assets/js/main.js - Scripts principaux
  */
 
-// Auto-refresh pour les nouveaux messages toutes les 30 secondes
+// Auto-refresh pour les nouveaux messages toutes les 3 secondes
 let autoRefreshInterval;
 
-// Gestion de la suppression en masse
 document.addEventListener('DOMContentLoaded', function() {
-    const selectAllCheckbox = document.getElementById('select-all-conversations');
-    const deleteButton = document.getElementById('delete-selected');
+    // Démarrer l'auto-refresh
+    startAutoRefresh();
     
-    if (selectAllCheckbox && deleteButton) {
-        // Sélectionner/désélectionner tous
-        selectAllCheckbox.addEventListener('change', function() {
-            const checkboxes = document.querySelectorAll('.conversation-checkbox');
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = this.checked;
-            });
-            
-            updateDeleteButton();
-        });
-        
-        // Mettre à jour le bouton de suppression
-        document.querySelectorAll('.conversation-checkbox').forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                updateDeleteButton();
-                
-                // Vérifier si toutes les cases sont cochées
-                const allChecked = Array.from(
-                    document.querySelectorAll('.conversation-checkbox')
-                ).every(cb => cb.checked);
-                
-                selectAllCheckbox.checked = allChecked;
-            });
-        });
-        
-        // Action de suppression
-        deleteButton.addEventListener('click', function() {
-            const selectedIds = Array.from(
-                document.querySelectorAll('.conversation-checkbox:checked')
-            ).map(cb => parseInt(cb.value));
-            
-            if (selectedIds.length === 0) return;
-            
-            if (confirm(`Êtes-vous sûr de vouloir supprimer définitivement ${selectedIds.length} conversation(s) ?`)) {
-                deleteMultipleConversations(selectedIds);
-            }
-        });
-    }
+    // Gestion des menus d'actions rapides
+    setupQuickActions();
     
-    function updateDeleteButton() {
-        const selectedCount = document.querySelectorAll('.conversation-checkbox:checked').length;
-        deleteButton.disabled = selectedCount === 0;
-        deleteButton.innerHTML = `<i class="fas fa-trash-alt"></i> Supprimer les éléments sélectionnés (${selectedCount})`;
-    }
+    // Gestion des formulaires pour éviter les soumissions multiples
+    setupFormSubmission();
+    
+    // Gestion des pièces jointes
+    setupFileUploads();
+    
+    // Initialisation des fonctionnalités de suppression en masse
+    setupBulkDelete();
 });
 
 /**
  * Démarrer l'auto-refresh pour les nouveaux messages
  */
-// Réduire l'intervalle à 3 secondes pour plus de réactivité
 function startAutoRefresh() {
+    // Vérifier toutes les 3 secondes pour les nouveaux messages (plus réactif)
     autoRefreshInterval = setInterval(function() {
         // Vérifier s'il n'y a pas de menu ouvert avant de recharger
         const activeMenus = document.querySelectorAll('.quick-actions-menu.active, .message-actions-menu.active');
@@ -71,7 +37,7 @@ function startAutoRefresh() {
         if (activeMenus.length === 0 && activeModals.length === 0 && !textareaActive) {
             location.reload();
         }
-    }, 3000); // 3 secondes au lieu de 30
+    }, 3000); // 3 secondes au lieu de 30 pour une meilleure réactivité
 }
 
 /**
@@ -172,6 +138,59 @@ function setupFileUploads() {
 }
 
 /**
+ * Fonctionnalité de suppression en masse pour la corbeille
+ */
+function setupBulkDelete() {
+    const selectAllCheckbox = document.getElementById('select-all-conversations');
+    const deleteButton = document.getElementById('delete-selected');
+    
+    if (selectAllCheckbox && deleteButton) {
+        // Sélectionner/désélectionner tous
+        selectAllCheckbox.addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.conversation-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            
+            updateDeleteButton();
+        });
+        
+        // Mettre à jour le bouton de suppression
+        document.querySelectorAll('.conversation-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                updateDeleteButton();
+                
+                // Vérifier si toutes les cases sont cochées
+                const allChecked = Array.from(
+                    document.querySelectorAll('.conversation-checkbox')
+                ).every(cb => cb.checked);
+                
+                selectAllCheckbox.checked = allChecked;
+            });
+        });
+        
+        // Action de suppression
+        deleteButton.addEventListener('click', function() {
+            const selectedIds = Array.from(
+                document.querySelectorAll('.conversation-checkbox:checked')
+            ).map(cb => parseInt(cb.value));
+            
+            if (selectedIds.length === 0) return;
+            
+            if (confirm(`Êtes-vous sûr de vouloir supprimer définitivement ${selectedIds.length} conversation(s) ?`)) {
+                deleteMultipleConversations(selectedIds);
+            }
+        });
+    }
+    
+    function updateDeleteButton() {
+        const selectedCount = document.querySelectorAll('.conversation-checkbox:checked').length;
+        deleteButton.disabled = selectedCount === 0;
+        deleteButton.innerHTML = `<i class="fas fa-trash-alt"></i> Supprimer les éléments sélectionnés (${selectedCount})`;
+    }
+}
+
+/**
  * Formater la taille des fichiers
  * @param {number} bytes - Taille en octets
  * @returns {string} Taille formatée avec unité
@@ -214,4 +233,41 @@ function ajax(url, options = {}) {
             }
             return response.json();
         });
+}
+
+/**
+ * Supprimer plusieurs conversations
+ * @param {Array} convIds - Tableau des IDs de conversations
+ */
+function deleteMultipleConversations(convIds) {
+    if (!convIds || convIds.length === 0) {
+        alert('Aucune conversation sélectionnée');
+        return;
+    }
+    
+    // Préparer les données pour l'envoi
+    const data = {
+        ids: convIds
+    };
+    
+    // Envoyer la requête
+    fetch('api/delete_multiple.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`${data.count} conversation(s) supprimée(s) avec succès`);
+            // Recharger la page
+            window.location.reload();
+        } else {
+            console.error('Erreur:', data.error);
+            alert('Erreur lors de la suppression: ' + data.error);
+        }
+    })
+    .catch(error => console.error('Erreur:', error));
 }
