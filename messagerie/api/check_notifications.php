@@ -1,47 +1,48 @@
 <?php
-/**
- * /api/check_notifications.php - Vérification des notifications
- */
+// Désactivation de l’affichage des erreurs PHP au format HTML
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
 
- require_once __DIR__ . '/../config/config.php';
- require_once __DIR__ . '/../config/constants.php';
- require_once __DIR__ . '/../includes/functions.php';
- require_once __DIR__ . '/../includes/message_functions.php';
- require_once __DIR__ . '/../includes/auth.php';
+// Forcer l’en-tête JSON
+header('Content-Type: application/json; charset=utf-8');
 
-// Vérifier l'authentification
-$user = checkAuth();
-if (!$user) {
-    header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'error' => 'Non authentifié']);
-    exit;
-}
+// Démarrage de la session pour récupérer l’ID utilisateur
+session_start();
 
 try {
-    // Récupérer les notifications non lues
-    $notifications = getUnreadNotifications($user['id'], $user['type']);
-    $count = count($notifications);
-    
-    // Préparer la dernière notification (pour les notifications du navigateur)
-    $latest = null;
-    if ($count > 0) {
-        $latest = [
-            'id' => $notifications[0]['id'],
-            'conversation_id' => $notifications[0]['conversation_id'],
-            'expediteur_nom' => $notifications[0]['expediteur_nom'],
-            'contenu' => substr(strip_tags($notifications[0]['contenu']), 0, 100)
-        ];
-    }
-    
-    // Réponse
-    header('Content-Type: application/json');
-    echo json_encode([
-        'success' => true,
-        'count' => $count,
-        'latest' => $latest
+    // Connexion à la base (à adapter selon ta config)
+    require_once __DIR__ . '/config.php'; // définit DSN, DB_USER, DB_PASS
+    $pdo = new PDO(DSN, DB_USER, DB_PASS, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);
-    
-} catch (Exception $e) {
-    header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+
+    // Récupérer le nombre de notifications non lues pour l’utilisateur courant
+    $stmt = $pdo->prepare('
+        SELECT COUNT(*) AS new_notifications
+        FROM notifications
+        WHERE user_id = :uid
+          AND is_read = 0
+    ');
+    $stmt->execute(['uid' => $_SESSION['user_id']]);
+    $row = $stmt->fetch();
+    $count = isset($row['new_notifications']) ? (int)$row['new_notifications'] : 0;
+
+    // Réponse JSON
+    echo json_encode([
+        'has_errors'         => false,
+        'new_notifications'  => $count
+    ]);
+    exit;
+}
+catch (Exception $e) {
+    // Log interne de l’erreur
+    error_log('Erreur check_notifications.php : '.$e->getMessage());
+
+    // Réponse JSON d’erreur
+    echo json_encode([
+        'has_errors' => true,
+        'error'      => 'Une erreur est survenue lors de la récupération des notifications.'
+    ]);
+    exit;
 }
