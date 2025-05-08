@@ -37,7 +37,7 @@ function startAutoRefresh() {
         if (activeMenus.length === 0 && activeModals.length === 0 && !textareaActive) {
             location.reload();
         }
-    }, 3000); // 3 secondes au lieu de 30 pour une meilleure réactivité
+    }, 60000); // 3 secondes au lieu de 30 pour une meilleure réactivité
 }
 
 /**
