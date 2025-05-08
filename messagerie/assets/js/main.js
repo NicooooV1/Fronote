@@ -282,71 +282,101 @@ function setupBulkActions() {
                 }
             });
         });
+        
+        // Exécuter une première fois pour initialiser l'état des boutons
+        updateActionButtons();
+    }
+}
+
+/**
+ * Met à jour l'état des boutons d'action en fonction de la sélection
+ */
+function updateActionButtons() {
+    const selectedConvs = document.querySelectorAll('.conversation-checkbox:checked');
+    const selectedCount = selectedConvs.length;
+    
+    // Si aucune sélection, désactiver tous les boutons et sortir
+    if (selectedCount === 0) {
+        document.querySelectorAll('.bulk-action-btn').forEach(btn => {
+            btn.disabled = true;
+            const actionText = btn.dataset.actionText || 'Appliquer';
+            const icon = btn.dataset.icon ? `<i class="fas fa-${btn.dataset.icon}"></i> ` : '';
+            btn.innerHTML = `${icon}${actionText} (0)`;
+        });
+        return;
     }
     
-    /**
-     * Met à jour l'état des boutons d'action en fonction de la sélection
-     */
-    function updateActionButtons() {
-        const selectedConvs = document.querySelectorAll('.conversation-checkbox:checked');
-        const selectedCount = selectedConvs.length;
-        const allRead = Array.from(selectedConvs).every(cb => cb.closest('.conversation-item').getAttribute('data-is-read') === '1');
-        const allUnread = Array.from(selectedConvs).every(cb => cb.closest('.conversation-item').getAttribute('data-is-read') === '0');
-        
-        // Mettre à jour tous les boutons d'action
-        const btnRead = document.querySelector('button[data-action="mark_read"]');
-        const btnUnread = document.querySelector('button[data-action="mark_unread"]');
-        
-        if (btnRead) btnRead.hidden = allRead;
-        if (btnUnread) btnUnread.hidden = allUnread;
-        
-        // Mettre à jour le texte des boutons
-        actionButtons.forEach(button => {
-            button.disabled = selectedCount === 0;
+    // Déterminer si toutes les conversations sont lues, non lues, ou mixtes
+    const readStates = Array.from(selectedConvs).map(cb => 
+        cb.closest('.conversation-item').getAttribute('data-is-read') === '1'
+    );
+    
+    const allRead = readStates.every(state => state === true);
+    const allUnread = readStates.every(state => state === false);
+    const mixed = !allRead && !allUnread;
+    
+    // Mettre à jour la visibilité des boutons de lecture
+    const btnMarkRead = document.querySelector('button[data-action="mark_read"]');
+    const btnMarkUnread = document.querySelector('button[data-action="mark_unread"]');
+    
+    if (btnMarkRead) {
+        btnMarkRead.hidden = allRead;
+        btnMarkRead.disabled = false;
+    }
+    
+    if (btnMarkUnread) {
+        btnMarkUnread.hidden = allUnread;
+        btnMarkUnread.disabled = false;
+    }
+    
+    // Mettre à jour le texte de tous les boutons d'action
+    document.querySelectorAll('.bulk-action-btn').forEach(button => {
+        if (button.hidden !== true) {
+            button.disabled = false;
             const actionText = button.dataset.actionText || 'Appliquer';
             const icon = button.dataset.icon ? `<i class="fas fa-${button.dataset.icon}"></i> ` : '';
             button.innerHTML = `${icon}${actionText} (${selectedCount})`;
-        });
-    }
+        }
+    });
+}
+
+/**
+ * Exécute une action en masse sur plusieurs conversations
+ * @param {string} action - Action à effectuer
+ * @param {Array} convIds - Tableau des IDs de conversations
+ */
+function performBulkAction(action, convIds) {
+    // Préparer les données pour l'envoi
+    const data = {
+        action: action,
+        ids: convIds
+    };
     
-    /**
-     * Exécute une action en masse sur plusieurs conversations
-     * @param {string} action - Action à effectuer
-     * @param {Array} convIds - Tableau des IDs de conversations
-     */
-    function performBulkAction(action, convIds) {
-        // Préparer les données pour l'envoi
-        const data = {
-            action: action,
-            ids: convIds
-        };
-        
-        // Envoyer la requête
-        fetch('api/bulk_actions.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Afficher un message de succès
-                alert(`Action réussie sur ${data.count} conversation(s)`);
-                
-                // Recharger la page
-                window.location.reload();
-            } else {
-                console.error('Erreur:', data.error);
-                alert('Erreur lors de l\'action: ' + data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Erreur:', error);
-            alert('Une erreur est survenue lors de l\'exécution de l\'action.');
-        });
-    }
+    // Envoyer la requête
+    fetch('api/bulk_actions.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Afficher un message de succès
+            alert(`Action réussie sur ${data.count} conversation(s)`);
+            
+            // Recharger la page
+            window.location.reload();
+        } else {
+            console.error('Erreur:', data.error);
+            alert('Erreur lors de l\'action: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Une erreur est survenue lors de l\'exécution de l\'action.');
+    });
 }
 
 /**

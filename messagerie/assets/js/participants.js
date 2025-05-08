@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialiser la recherche de destinataires
     initRecipientSearch();
+    
+    // Rendre les sections pliables
+    initCollapsibleSections();
 });
 
 /**
@@ -32,11 +35,58 @@ function initRecipientSelector() {
 function initRecipientSearch() {
     const searchInput = document.getElementById('search-recipients');
     if (searchInput) {
-        searchInput.addEventListener('keyup', filterRecipients);
+        // Recherche en temps réel avec un debounce de 300ms
+        let timeoutId;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                filterRecipients();
+            }, 300);
+        });
         
         // Focus sur le champ de recherche au chargement
         searchInput.focus();
     }
+}
+
+/**
+ * Initialise les sections pliables pour les catégories
+ */
+function initCollapsibleSections() {
+    const categories = document.querySelectorAll('.recipient-category');
+    
+    categories.forEach(category => {
+        const title = category.querySelector('.category-title');
+        const itemsContainer = category.querySelector('.recipient-items');
+        
+        if (title && itemsContainer) {
+            // Ajouter un indicateur si non présent
+            if (!title.querySelector('i')) {
+                title.innerHTML += ' <i class="fas fa-chevron-down"></i>';
+            }
+            title.style.cursor = 'pointer';
+            
+            title.addEventListener('click', function(e) {
+                // Ne pas déclencher si on clique sur les liens de sélection multiple
+                if (e.target.tagName === 'A' || e.target.closest('a') !== null) {
+                    return;
+                }
+                
+                const isExpanded = itemsContainer.style.display !== 'none';
+                
+                // Inverser l'état
+                if (isExpanded) {
+                    itemsContainer.style.display = 'none';
+                    title.querySelector('i').className = 'fas fa-chevron-right';
+                    title.classList.add('collapsed');
+                } else {
+                    itemsContainer.style.display = 'block';
+                    title.querySelector('i').className = 'fas fa-chevron-down';
+                    title.classList.remove('collapsed');
+                }
+            });
+        }
+    });
 }
 
 /**
@@ -48,21 +98,40 @@ function filterRecipients() {
     
     const searchTerm = searchInput.value.toLowerCase();
     const recipientItems = document.querySelectorAll('.recipient-item');
+    let hasVisibleItems = false;
     
+    // Pour chaque élément, vérifier s'il correspond à la recherche
     recipientItems.forEach(item => {
         const label = item.querySelector('label');
         if (!label) return;
         
         const text = label.textContent.toLowerCase();
-        if (text.includes(searchTerm)) {
-            item.style.display = 'flex';
-        } else {
-            item.style.display = 'none';
+        const matchesSearch = text.includes(searchTerm);
+        
+        // Afficher/masquer l'élément
+        item.style.display = matchesSearch ? 'flex' : 'none';
+        
+        if (matchesSearch) {
+            hasVisibleItems = true;
         }
     });
     
-    // Afficher/masquer les catégories en fonction des éléments visibles
+    // Mettre à jour l'état de visibilité des catégories
+    updateCategoriesVisibility();
+    
+    // Afficher un message si aucun résultat
+    const noResults = document.getElementById('no-results-message');
+    if (noResults) {
+        noResults.style.display = hasVisibleItems ? 'none' : 'block';
+    }
+}
+
+/**
+ * Met à jour la visibilité des catégories en fonction des éléments visibles
+ */
+function updateCategoriesVisibility() {
     const categories = document.querySelectorAll('.recipient-category');
+    
     categories.forEach(category => {
         const visibleItems = category.querySelectorAll('.recipient-item[style="display: flex;"]').length;
         category.style.display = visibleItems > 0 ? 'block' : 'none';
@@ -80,11 +149,16 @@ function updateSelectedRecipients() {
     
     const checkboxes = document.querySelectorAll('input[name="destinataires[]"]:checked');
     
+    if (checkboxes.length === 0) {
+        container.innerHTML = '<div class="empty-state-message">Aucun destinataire sélectionné</div>';
+        return;
+    }
+    
     checkboxes.forEach(checkbox => {
         const label = checkbox.nextElementSibling;
         if (!label) return;
         
-        const text = label.textContent;
+        const text = label.textContent.trim();
         const value = checkbox.value;
         
         const tag = document.createElement('div');
@@ -111,6 +185,41 @@ function removeRecipient(value) {
 }
 
 /**
+ * Sélectionne tous les destinataires dans une catégorie
+ * @param {string} categoryId - ID de la catégorie
+ */
+function selectAllInCategory(categoryId) {
+    const category = document.getElementById(categoryId);
+    if (!category) return;
+    
+    const checkboxes = category.querySelectorAll('input[name="destinataires[]"]');
+    checkboxes.forEach(checkbox => {
+        // Ne sélectionner que les éléments visibles (pas ceux filtrés)
+        if (checkbox.closest('.recipient-item').style.display !== 'none') {
+            checkbox.checked = true;
+        }
+    });
+    
+    updateSelectedRecipients();
+}
+
+/**
+ * Désélectionne tous les destinataires dans une catégorie
+ * @param {string} categoryId - ID de la catégorie
+ */
+function deselectAllInCategory(categoryId) {
+    const category = document.getElementById(categoryId);
+    if (!category) return;
+    
+    const checkboxes = category.querySelectorAll('input[name="destinataires[]"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    
+    updateSelectedRecipients();
+}
+
+/**
  * Bascule l'affichage des options de cible
  */
 function toggleTargetOptions() {
@@ -127,43 +236,4 @@ function toggleTargetOptions() {
     if (cible.value === 'classes') {
         targetClasses.style.display = 'block';
     }
-}
-
-/**
- * Charge les participants disponibles selon le type sélectionné
- */
-function loadParticipants() {
-    const type = document.getElementById('participant_type').value;
-    const select = document.getElementById('participant_id');
-    const convId = new URLSearchParams(window.location.search).get('id');
-    
-    if (!type || !select || !convId) return;
-    
-    // Vider la liste actuelle
-    select.innerHTML = '<option value="">Chargement...</option>';
-    
-    // Faire une requête AJAX pour récupérer les participants
-    fetch(`get_participants.php?type=${type}&conv_id=${convId}`)
-        .then(response => response.json())
-        .then(data => {
-            select.innerHTML = '';
-            
-            if (data.length === 0) {
-                select.innerHTML = '<option value="">Aucun participant disponible</option>';
-                return;
-            }
-            
-            select.innerHTML = '<option value="">Sélectionner un participant</option>';
-            
-            data.forEach(participant => {
-                const option = document.createElement('option');
-                option.value = participant.id;
-                option.textContent = participant.nom_complet;
-                select.appendChild(option);
-            });
-        })
-        .catch(error => {
-            select.innerHTML = '<option value="">Erreur lors du chargement</option>';
-            console.error('Erreur:', error);
-        });
 }

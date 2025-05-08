@@ -41,7 +41,7 @@ $messageClasses = array_filter($messageClasses);
     </div>
     
     <div class="message-content">
-        <?= nl2br(htmlspecialchars($message['contenu'])) ?>
+        <?= linkify(nl2br(htmlspecialchars($message['contenu']))) ?>
         
         <?php if (!empty($message['pieces_jointes'])): ?>
         <div class="attachments">

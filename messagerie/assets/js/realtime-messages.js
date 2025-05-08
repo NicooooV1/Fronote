@@ -1,7 +1,7 @@
 /**
  * realtime-messages.js - Système d'actualisation en temps réel des messages
  * 
- * Ce script fournit une solution plus robuste pour l'actualisation automatique
+ * Ce script fournit une solution robuste pour l'actualisation automatique
  * des messages dans une conversation sans nécessiter de rafraîchissement de page.
  */
 
@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function startRealtimeUpdates() {
         console.log("Démarrage de la vérification périodique des messages...");
         
-        // Assurer qu'un seul intervalle est actif        
+        // Assurer qu'un seul intervalle est actif
         if (updateInterval) {
             clearInterval(updateInterval);
         }
@@ -334,7 +334,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <span class="date">${formattedDate}</span>
                 </div>
             </div>
-            <div class="message-content">${nl2br(escapeHTML(message.body || message.contenu))}</div>
+            <div class="message-content">${linkify(nl2br(escapeHTML(message.body || message.contenu)))}</div>
         `;
         
         // Ajouter les pièces jointes s'il y en a
@@ -449,6 +449,19 @@ document.addEventListener('DOMContentLoaded', function() {
         return text.replace(/\n/g, '<br>');
     }
     
+    // Transforme les URLs en liens cliquables
+    function linkify(text) {
+        if (!text) return '';
+        const pattern = '~(https?://|ftp://|www\.)[-a-z0-9+&@#/%?=~_|!:,.;]*[-a-z0-9+&@#/%=~_|]~i';
+        return text.replace(new RegExp(pattern, 'gi'), function(match) {
+            let url = match;
+            if (match.indexOf('http') !== 0 && match.indexOf('ftp') !== 0) {
+                url = 'http://' + match;
+            }
+            return `<a href="${url}" target="_blank" rel="noopener noreferrer">${match}</a>`;
+        });
+    }
+    
     // Renvoie le libellé du type de participant
     function getParticipantType(type) {
         const types = {
@@ -461,43 +474,37 @@ document.addEventListener('DOMContentLoaded', function() {
         return types[type] || type;
     }
     
-/**
- * Vérifier les notifications générales sans planter si la réponse contient du HTML.
- */
-function checkForNotifications() {
-    if (!isPollingActive) return;
-    
-    fetch('api/check_notifications.php')
-        // on récupère toujours du texte brut pour éviter les erreurs de parsing JSON
-        .then(response => response.text())
-        .then(text => {
-            let data;
-            try {
-                data = JSON.parse(text);
-            } catch (e) {
-                console.error('Réponse non-JSON reçue pour les notifications :', text);
-                return; // on sort sans tenter de traiter un JSON invalide
-            }
-
-            // Structure attendue : { has_errors: bool, new_notifications: number, … }
-            if (data.has_errors) {
-                console.warn('API notifications a renvoyé une erreur :', data.error);
-                return;
-            }
-
-            // Mise à jour du compteur (ta fonction existante)
-            updateNotificationBadge(data.new_notifications);
-
-            // Si on n'est pas sur la page de conversation et qu'il y a de nouvelles notif
-            if (!isConversationPage && data.new_notifications > 0) {
-                showDesktopNotification(data);
-            }
-        })
-        .catch(err => {
-            console.error('Erreur réseau lors de la vérification des notifications :', err);
-        });
-}
-
+    // Vérification des notifications (pour toutes les pages)
+    function checkForNotifications() {
+        if (!isPollingActive) return;
+        
+        fetch('api/check_notifications.php')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Erreur HTTP ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Mettre à jour le compteur de notifications
+                    updateNotificationBadge(data.count);
+                    
+                    // Si sur la page d'index, actualiser la liste des conversations
+                    if (isIndexPage && data.count > 0) {
+                        refreshConversationList();
+                    }
+                    
+                    // Si nouvelle notification et pas sur la page de conversation
+                    if (data.latest && !isConversationPage && data.count > 0) {
+                        showDesktopNotification(data);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error("Erreur lors de la vérification des notifications:", error);
+            });
+    }
     
     // Actualiser la liste des conversations (pour la page d'index)
     function refreshConversationList() {

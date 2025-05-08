@@ -30,7 +30,7 @@ $accuseReception = isset($_POST['accuse_reception']) && $_POST['accuse_reception
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if (empty($destinataires)) {
-            throw new Exception("Veuillez sélectionner au moins un destinataire reconnu par la fonction de recherche.");
+            throw new Exception("Veuillez sélectionner au moins un destinataire.");
         }
         
         if (empty($titre)) {
@@ -191,23 +191,35 @@ function getRecipientTypeLabel($type) {
                 <label for="destinataires">Destinataires</label>
                 <div class="multiselect-container">
                     <div class="search-box">
-                        <input type="text" id="search-recipients" placeholder="Rechercher des destinataires..." onkeyup="filterRecipients()">
+                        <input type="text" id="search-recipients" placeholder="Rechercher des destinataires..." aria-label="Rechercher des destinataires">
                     </div>
                     
                     <div class="recipient-list">
+                        <div id="no-results-message" style="display: none; text-align: center; padding: 15px; color: #6c757d;">
+                            Aucun résultat pour cette recherche
+                        </div>
+                        
                         <?php foreach ($destinataires_disponibles as $type => $liste): ?>
                         <?php if (!empty($liste)): ?>
-                        <div class="recipient-category" data-type="<?= $type ?>">
-                            <div class="category-title"><?= getRecipientTypeLabel($type) ?></div>
-                            <?php foreach ($liste as $dest): ?>
-                            <div class="recipient-item">
-                                <input type="checkbox" name="destinataires[]" id="dest_<?= $type ?>_<?= $dest['id'] ?>" 
-                                       value="<?= $type ?>_<?= $dest['id'] ?>" 
-                                       onchange="updateSelectedRecipients()"
-                                       <?= in_array($type.'_'.$dest['id'], $destinataires) ? 'checked' : '' ?>>
-                                <label for="dest_<?= $type ?>_<?= $dest['id'] ?>"><?= htmlspecialchars($dest['nom_complet']) ?></label>
+                        <div class="recipient-category" id="category-<?= $type ?>" data-type="<?= $type ?>">
+                            <div class="category-title">
+                                <?= getRecipientTypeLabel($type) ?> 
+                                <span class="category-count">(<?= count($liste) ?>)</span>
+                                <div class="category-actions">
+                                    <a href="javascript:void(0)" onclick="selectAllInCategory('category-<?= $type ?>')">Tout sélectionner</a>
+                                    <a href="javascript:void(0)" onclick="deselectAllInCategory('category-<?= $type ?>')">Tout désélectionner</a>
+                                </div>
                             </div>
-                            <?php endforeach; ?>
+                            <div class="recipient-items">
+                                <?php foreach ($liste as $dest): ?>
+                                <div class="recipient-item">
+                                    <input type="checkbox" name="destinataires[]" id="dest_<?= $type ?>_<?= $dest['id'] ?>" 
+                                           value="<?= $type ?>_<?= $dest['id'] ?>" 
+                                           <?= in_array($type.'_'.$dest['id'], $destinataires) ? 'checked' : '' ?>>
+                                    <label for="dest_<?= $type ?>_<?= $dest['id'] ?>"><?= htmlspecialchars($dest['nom_complet']) ?></label>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
                         </div>
                         <?php endif; ?>
                         <?php endforeach; ?>
@@ -277,9 +289,6 @@ function getRecipientTypeLabel($type) {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Réappliquer les sélections
-    updateSelectedRecipients();
-    
     // Validation de la longueur du message
     const textarea = document.getElementById('contenu');
     const charCounter = document.getElementById('char-counter');

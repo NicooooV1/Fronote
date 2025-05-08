@@ -87,6 +87,40 @@ function getConversations($userId, $userType, $dossier = 'reception') {
 }
 
 /**
+ * Retourne le libellé d'un statut de message
+ * @param string $status Statut du message
+ * @return string Libellé du statut
+ */
+function getMessageStatusLabel($status) {
+    $statuses = [
+        'normal' => 'Message normal',
+        'important' => 'Message important',
+        'urgent' => 'Message urgent',
+        'annonce' => 'Annonce'
+    ];
+    return $statuses[$status] ?? 'Message normal';
+}
+
+/**
+ * Transforme les URLs en liens cliquables
+ * @param string $text Texte à transformer
+ * @return string Texte avec liens cliquables
+ */
+function linkify($text) {
+    // Modèle pour capturer les URLs http, https, ftp et les URLs commençant par www
+    $pattern = '~(https?://|ftp://|www\.)[-a-z0-9+&@#/%?=~_|!:,.;]*[-a-z0-9+&@#/%=~_|]~i';
+    
+    return preg_replace_callback($pattern, function($matches) {
+        $url = $matches[0];
+        // Si l'URL ne commence pas par http:// ou https://, ajouter http://
+        if (!preg_match('~^https?://~i', $url)) {
+            $url = 'http://' . $url;
+        }
+        return '<a href="' . htmlspecialchars($url) . '" target="_blank" rel="noopener noreferrer">' . htmlspecialchars($matches[0]) . '</a>';
+    }, $text);
+}
+
+/**
  * Crée une nouvelle conversation
  * @param string $titre Titre de la conversation
  * @param string $type Type de conversation (individuelle, groupe, information, etc.)

@@ -119,7 +119,7 @@ if (empty($convs)):
                     <i class="fas fa-trash-alt"></i> Supprimer définitivement
                 </button>
                 <?php else: ?>
-                <!-- Actions pour les autres dossiers -->
+                <!-- Actions pour les autres dossiers - Afficher Lus/Non lus de manière conditionnelle -->
                 <?php if ($c['non_lus'] > 0): ?>
                 <button type="button" onclick="markConversationAsRead(<?= (int)$c['id'] ?>)">
                     <i class="fas fa-envelope-open"></i> Marquer comme lu
