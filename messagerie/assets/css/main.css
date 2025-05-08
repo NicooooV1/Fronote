@@ -740,11 +740,9 @@ main h2 {
 /* Correction de l'alignement des cases à cocher */
 .recipient-item {
     display: flex;
-    align-items: center; /* Centre vertical */
-    padding: 5px 0;
-    margin-bottom: 5px;
-    border-radius: 3px;
-    transition: background-color 0.2s;
+    align-items: center;
+    gap: 0.5em;
+    padding: 6px 0;
 }
 
 .recipient-item:hover {
@@ -752,13 +750,14 @@ main h2 {
 }
 
 .recipient-item input[type="checkbox"] {
-    margin-right: 8px;
+    margin: 0;
+    vertical-align: middle;
 }
 
 .recipient-item label {
-    cursor: pointer;
-    margin-bottom: 0; /* Supprime la marge par défaut */
-    flex-grow: 1;
+    margin: 0;
+    vertical-align: middle;
+    font-size: 14px;
 }
 
 /* Styles pour les tags de destinataires sélectionnés */

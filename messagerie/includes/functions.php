@@ -146,6 +146,23 @@ function getMessageStatusLabel($status) {
 }
 
 /**
+ * Transforme les URLs en liens cliquables
+ * @param string $text Texte à traiter
+ * @return string Texte avec liens cliquables
+ */
+function linkify($text) {
+    // Expression régulière pour détecter les URL
+    $pattern = '~(https?://[^\s<]+)~i';
+    
+    // Remplacer les URLs par des liens HTML
+    return preg_replace(
+        $pattern,
+        '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
+        $text
+    );
+}
+
+/**
  * Vérifie si la session utilisateur est valide
  * Redirige vers la page de login si non authentifié
  * @return array Données de l'utilisateur

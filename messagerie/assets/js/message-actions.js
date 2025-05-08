@@ -26,6 +26,11 @@ function initMessageReadMarking() {
     const markUnreadBtns = document.querySelectorAll('.mark-unread-btn');
     
     markReadBtns.forEach(btn => {
+        const message = btn.closest('.message');
+        if (message && message.classList.contains('read')) {
+            btn.style.display = 'none';
+        }
+        
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             const messageId = this.dataset.messageId;
@@ -34,6 +39,11 @@ function initMessageReadMarking() {
     });
     
     markUnreadBtns.forEach(btn => {
+        const message = btn.closest('.message');
+        if (message && !message.classList.contains('read')) {
+            btn.style.display = 'none';
+        }
+        
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             const messageId = this.dataset.messageId;

@@ -212,12 +212,13 @@ function getRecipientTypeLabel($type) {
                             </div>
                             <div class="recipient-items">
                                 <?php foreach ($liste as $dest): ?>
-                                <div class="recipient-item">
-                                    <input type="checkbox" name="destinataires[]" id="dest_<?= $type ?>_<?= $dest['id'] ?>" 
-                                           value="<?= $type ?>_<?= $dest['id'] ?>" 
-                                           <?= in_array($type.'_'.$dest['id'], $destinataires) ? 'checked' : '' ?>>
-                                    <label for="dest_<?= $type ?>_<?= $dest['id'] ?>"><?= htmlspecialchars($dest['nom_complet']) ?></label>
-                                </div>
+                                    <div class="recipient-item">
+                                        <input type="checkbox" name="destinataires[]" id="dest_<?= $type ?>_<?= $dest['id'] ?>" 
+                                            value="<?= $type ?>_<?= $dest['id'] ?>" 
+                                            onchange="updateSelectedRecipients()"
+                                            <?= in_array($type.'_'.$dest['id'], $destinataires) ? 'checked' : '' ?>>
+                                        <label for="dest_<?= $type ?>_<?= $dest['id'] ?>"><?= htmlspecialchars($dest['nom_complet']) ?></label>
+                                    </div>
                                 <?php endforeach; ?>
                             </div>
                         </div>

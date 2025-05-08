@@ -31,7 +31,12 @@ $messageClasses = array_filter($messageClasses);
             <span class="sender-type"><?= getParticipantType($message['expediteur_type']) ?></span>
         </div>
         <div class="message-meta">
-            <?php if ($importance !== 'normal'): ?>
+            <?php 
+            // Afficher le statut correct - MODIFIÉ pour prioritiser le type annonce
+            $statusClass = '';
+            $statusLabel = '';
+            
+            if ($importance !== 'normal'): ?>
             <span class="importance-tag <?= htmlspecialchars($importance) ?>">
                 <?= htmlspecialchars($importance) ?>
             </span>
@@ -41,7 +46,7 @@ $messageClasses = array_filter($messageClasses);
     </div>
     
     <div class="message-content">
-        <?= linkify(nl2br(htmlspecialchars($message['contenu']))) ?>
+        <?= nl2br(linkify(htmlspecialchars($message['contenu']))) ?>
         
         <?php if (!empty($message['pieces_jointes'])): ?>
         <div class="attachments">
@@ -65,14 +70,16 @@ $messageClasses = array_filter($messageClasses);
         
         <?php if (isset($canReply) && $canReply && !isCurrentUser($message['expediteur_id'], $message['expediteur_type'], $user)): ?>
         <div class="message-actions">
-            <?php if (isset($message['est_lu']) && $message['est_lu']): ?>
-                <button class="btn-icon mark-unread-btn" data-message-id="<?= (int)$message['id'] ?>">
-                    <i class="fas fa-envelope"></i> Marquer comme non lu
-                </button>
-            <?php else: ?>
-                <button class="btn-icon mark-read-btn" data-message-id="<?= (int)$message['id'] ?>">
-                    <i class="fas fa-envelope-open"></i> Marquer comme lu
-                </button>
+            <?php if (!isset($isConversationView) || !$isConversationView): ?>
+                <?php if (isset($message['est_lu']) && $message['est_lu']): ?>
+                    <button class="btn-icon mark-unread-btn" data-message-id="<?= (int)$message['id'] ?>">
+                        <i class="fas fa-envelope"></i> Marquer comme non lu
+                    </button>
+                <?php else: ?>
+                    <button class="btn-icon mark-read-btn" data-message-id="<?= (int)$message['id'] ?>">
+                        <i class="fas fa-envelope-open"></i> Marquer comme lu
+                    </button>
+                <?php endif; ?>
             <?php endif; ?>
             
             <button class="btn-icon" onclick="replyToMessage(<?= (int)$message['id'] ?>, '<?= htmlspecialchars(addslashes($message['expediteur_nom'])) ?>')">

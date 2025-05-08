@@ -1,3 +1,5 @@
+/* /assets/css/message_form.css - Styles pour les formulaires de message */
+
 /* --- CONTENU DE LA CONVERSATION --- */
 .content {
     flex-grow: 1;
@@ -567,4 +569,66 @@ textarea:focus {
         padding: 8px 12px;
         font-size: 12px;
     }
+}
+
+/* Styles pour les groupes de destinataires */
+.recipient-category {
+    margin-bottom: 15px;
+}
+
+.category-title {
+    font-weight: bold;
+    color: #495057;
+    padding: 5px 0;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.recipient-list {
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+.search-box {
+    margin-bottom: 15px;
+}
+
+#search-recipients {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+}
+
+.selected-recipients {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 10px;
+}
+
+.recipient-tag {
+    background-color: #e1f8f2;
+    color: #009b72;
+    padding: 5px 10px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+}
+
+.remove-tag {
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* Scroll container pour les listes de destinataires */
+.scroll-container {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 5px;
 }

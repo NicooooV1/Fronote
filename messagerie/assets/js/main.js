@@ -295,48 +295,27 @@ function updateActionButtons() {
     const selectedConvs = document.querySelectorAll('.conversation-checkbox:checked');
     const selectedCount = selectedConvs.length;
     
-    // Si aucune sélection, désactiver tous les boutons et sortir
-    if (selectedCount === 0) {
-        document.querySelectorAll('.bulk-action-btn').forEach(btn => {
-            btn.disabled = true;
-            const actionText = btn.dataset.actionText || 'Appliquer';
-            const icon = btn.dataset.icon ? `<i class="fas fa-${btn.dataset.icon}"></i> ` : '';
-            btn.innerHTML = `${icon}${actionText} (0)`;
-        });
-        return;
-    }
-    
-    // Déterminer si toutes les conversations sont lues, non lues, ou mixtes
-    const readStates = Array.from(selectedConvs).map(cb => 
-        cb.closest('.conversation-item').getAttribute('data-is-read') === '1'
-    );
-    
-    const allRead = readStates.every(state => state === true);
-    const allUnread = readStates.every(state => state === false);
+    // Vérifier si tous les messages sélectionnés sont lus ou non lus
+    const allRead = Array.from(selectedConvs).every(cb => 
+        cb.closest('.conversation-item').getAttribute('data-is-read') === '1');
+    const allUnread = Array.from(selectedConvs).every(cb => 
+        cb.closest('.conversation-item').getAttribute('data-is-read') === '0');
     const mixed = !allRead && !allUnread;
     
-    // Mettre à jour la visibilité des boutons de lecture
+    // Référence aux boutons
     const btnMarkRead = document.querySelector('button[data-action="mark_read"]');
     const btnMarkUnread = document.querySelector('button[data-action="mark_unread"]');
     
-    if (btnMarkRead) {
-        btnMarkRead.hidden = allRead;
-        btnMarkRead.disabled = false;
-    }
+    // Mise à jour de la visibilité des boutons
+    if (btnMarkRead) btnMarkRead.hidden = allRead;
+    if (btnMarkUnread) btnMarkUnread.hidden = allUnread;
     
-    if (btnMarkUnread) {
-        btnMarkUnread.hidden = allUnread;
-        btnMarkUnread.disabled = false;
-    }
-    
-    // Mettre à jour le texte de tous les boutons d'action
+    // Mettre à jour le texte des boutons
     document.querySelectorAll('.bulk-action-btn').forEach(button => {
-        if (button.hidden !== true) {
-            button.disabled = false;
-            const actionText = button.dataset.actionText || 'Appliquer';
-            const icon = button.dataset.icon ? `<i class="fas fa-${button.dataset.icon}"></i> ` : '';
-            button.innerHTML = `${icon}${actionText} (${selectedCount})`;
-        }
+        button.disabled = selectedCount === 0;
+        const actionText = button.dataset.actionText || 'Appliquer';
+        const icon = button.dataset.icon ? `<i class="fas fa-${button.dataset.icon}"></i> ` : '';
+        button.innerHTML = `${icon}${actionText} (${selectedCount})`;
     });
 }
 

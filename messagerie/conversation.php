@@ -236,6 +236,10 @@ include 'templates/header.php';
     
     <main class="conversation-main">
         <div class="messages-container">
+            <?php 
+            // Définir cette variable pour indiquer qu'on est dans la vue conversation
+                $isConversationView = true; 
+            ?>
             <?php foreach ($messages as $message): ?>
                 <?php include 'templates/message-item.php'; ?>
             <?php endforeach; ?>
