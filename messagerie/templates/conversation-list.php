@@ -70,7 +70,13 @@ if (empty($convs)):
             <div class="conversation-header">
                 <h3><?= htmlspecialchars($c['titre'] ?: 'Conversation #'.$c['id']) ?></h3>
                 <?php if ($c['non_lus'] > 0): ?>
-                <span class="badge"><?= (int)$c['non_lus'] ?> nouveau(x)</span>
+                <span class="badge">
+                    <?php if ((int)$c['non_lus'] === 1): ?>
+                        1 NOUVEAU
+                    <?php else: ?>
+                        <?= (int)$c['non_lus'] ?> NOUVEAUX
+                    <?php endif; ?>
+                </span>
                 <?php endif; ?>
             </div>
             <div class="conversation-meta">

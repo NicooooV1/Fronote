@@ -38,8 +38,7 @@ $unreadCount = count($unreadNotifications);
     <link rel="stylesheet" href="<?= $baseUrl ?>assets/css/message-form.css">
     <?php endif; ?>
     
-    <!-- Scripts communs -->
-    <script src="<?= $baseUrl ?>assets/js/main.js"></script>
+    <!-- Suppression de l'inclusion de main.js ici pour éviter la duplication -->
 </head>
 <body>
     <div class="container">

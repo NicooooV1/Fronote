@@ -5,6 +5,9 @@
  * des messages dans une conversation sans nécessiter de rafraîchissement de page.
  */
 
+// Marquer la présence du système avancé pour éviter les conflits avec le système simple
+window.hasAdvancedRefresh = true;
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log("Initialisation du système d'actualisation en temps réel...");
     
@@ -236,7 +239,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.appendChild(indicator);
         }
         
-        indicator.textContent = `${count} nouveau(x) message(s)`;
+        indicator.textContent = count === 1 ? "1 nouveau message" : `${count} nouveaux messages`;
         indicator.style.display = 'block';
         
         // Animation de pulsation

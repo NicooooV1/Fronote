@@ -26,6 +26,12 @@ document.addEventListener('DOMContentLoaded', function() {
  * Démarrer l'auto-refresh pour les nouveaux messages
  */
 function startAutoRefresh() {
+    // Vérifier si le système d'actualisation avancé est déjà chargé
+    if (window.hasAdvancedRefresh) {
+        console.log("Système d'actualisation avancé détecté, désactivation du système simple");
+        return; // Ne pas initialiser le système simple si le système avancé est présent
+    }
+    
     // Vérifier toutes les 60 secondes pour les nouveaux messages
     autoRefreshInterval = setInterval(function() {
         // Vérifier s'il n'y a pas de menu ouvert avant de recharger
@@ -258,21 +264,17 @@ function setupBulkActions() {
         const selectedCount = selectedConvs.length;
         const allRead = Array.from(selectedConvs).every(cb => cb.closest('.conversation-item').getAttribute('data-is-read') === '1');
         const allUnread = Array.from(selectedConvs).every(cb => cb.closest('.conversation-item').getAttribute('data-is-read') === '0');
-        const mixed = !allRead && !allUnread;
         
         // Mettre à jour tous les boutons d'action
+        const btnRead = document.querySelector('button[data-action="mark_read"]');
+        const btnUnread = document.querySelector('button[data-action="mark_unread"]');
+        
+        if (btnRead) btnRead.hidden = allRead;
+        if (btnUnread) btnUnread.hidden = allUnread;
+        
+        // Mettre à jour le texte des boutons
         actionButtons.forEach(button => {
             button.disabled = selectedCount === 0;
-            
-            // Gérer les boutons spécifiques de marquage
-            if (button.dataset.action === 'mark_read') {
-                button.hidden = allRead;
-            }
-            if (button.dataset.action === 'mark_unread') {
-                button.hidden = allUnread;
-            }
-            
-            // Mettre à jour le texte du bouton avec le nombre d'éléments sélectionnés
             const actionText = button.dataset.actionText || 'Appliquer';
             const icon = button.dataset.icon ? `<i class="fas fa-${button.dataset.icon}"></i> ` : '';
             button.innerHTML = `${icon}${actionText} (${selectedCount})`;
