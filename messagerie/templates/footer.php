@@ -5,6 +5,10 @@
 ?>
     </div><!-- Fin du .container -->
     
+    <!-- Scripts communs -->
+    <script src="<?= $baseUrl ?>assets/js/main.js"></script>
+    <script src="<?= $baseUrl ?>assets/js/realtime-messages.js"></script>
+    
     <!-- Scripts spécifiques à certaines pages -->
     <?php if ($currentPage === 'index'): ?>
     <script>

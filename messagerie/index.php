@@ -76,6 +76,13 @@ $folders = [
 $canSendAnnouncement = in_array($user['type'], ['vie_scolaire', 'administrateur']);
 $isProfesseur = ($user['type'] === 'professeur');
 
+// Si c'est une requête AJAX, renvoyer seulement le contenu partiel
+if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
+    // Inclure uniquement le template de la liste des conversations
+    include 'templates/conversation-list.php';
+    exit;
+}
+
 // Inclure l'en-tête
 include 'templates/header.php';
 ?>
