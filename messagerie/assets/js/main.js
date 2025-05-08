@@ -254,11 +254,23 @@ function setupBulkActions() {
      * Met à jour l'état des boutons d'action en fonction de la sélection
      */
     function updateActionButtons() {
-        const selectedCount = document.querySelectorAll('.conversation-checkbox:checked').length;
+        const selectedConvs = document.querySelectorAll('.conversation-checkbox:checked');
+        const selectedCount = selectedConvs.length;
+        const allRead = Array.from(selectedConvs).every(cb => cb.closest('.conversation-item').getAttribute('data-is-read') === '1');
+        const allUnread = Array.from(selectedConvs).every(cb => cb.closest('.conversation-item').getAttribute('data-is-read') === '0');
+        const mixed = !allRead && !allUnread;
         
         // Mettre à jour tous les boutons d'action
         actionButtons.forEach(button => {
             button.disabled = selectedCount === 0;
+            
+            // Gérer les boutons spécifiques de marquage
+            if (button.dataset.action === 'mark_read') {
+                button.hidden = allRead;
+            }
+            if (button.dataset.action === 'mark_unread') {
+                button.hidden = allUnread;
+            }
             
             // Mettre à jour le texte du bouton avec le nombre d'éléments sélectionnés
             const actionText = button.dataset.actionText || 'Appliquer';

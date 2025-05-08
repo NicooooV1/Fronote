@@ -25,6 +25,7 @@ function getConversations($userId, $userType, $dossier = 'reception') {
                CASE WHEN EXISTS (SELECT 1 FROM messages WHERE conversation_id = c.id AND status = 'annonce') THEN 'annonce' ELSE 'standard' END as type,
                c.created_at as date_creation, 
                c.updated_at as dernier_message,
+               (SELECT status FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as status,
                COUNT(CASE WHEN (cp.last_read_at IS NULL OR m.created_at > cp.last_read_at) AND m.sender_id != ? AND m.sender_type != ? THEN 1 END) as non_lus
         FROM conversations c
         JOIN conversation_participants cp ON c.id = cp.conversation_id
@@ -531,6 +532,12 @@ function addMessage($convId, $senderId, $senderType, $content, $importance = 'no
     $checkParticipant->execute([$convId, $senderId, $senderType]);
     if (!$checkParticipant->fetch()) {
         throw new Exception("Vous n'êtes pas autorisé à envoyer des messages dans cette conversation");
+    }
+    
+    // Vérification de la longueur maximale
+    $maxLength = 10000;
+    if (mb_strlen($content) > $maxLength) {
+        throw new Exception("Votre message est trop long (maximum $maxLength caractères)");
     }
     
     $pdo->beginTransaction();

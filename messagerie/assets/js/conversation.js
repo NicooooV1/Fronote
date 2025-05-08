@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Actualisation en temps réel pour les modifications de conversation
     setupRealTimeUpdates();
+    
+    // Validation du formulaire de message
+    setupMessageValidation();
 });
 
 /**
@@ -71,15 +74,59 @@ function initConversationActions() {
             }
         });
     });
-    
-    // Empêcher la soumission multiple du formulaire
+}
+
+/**
+ * Configure la validation du formulaire de message
+ */
+function setupMessageValidation() {
     const messageForm = document.getElementById('messageForm');
-    if (messageForm) {
+    const textArea = document.querySelector('textarea[name="contenu"]');
+    
+    if (messageForm && textArea) {
+        // Créer un compteur de caractères
+        const counter = document.createElement('div');
+        counter.id = 'char-counter';
+        counter.className = 'text-muted small mt-1';
+        counter.style.fontSize = '12px';
+        counter.style.color = '#6c757d';
+        counter.style.marginTop = '5px';
+        textArea.parentNode.insertBefore(counter, textArea.nextSibling);
+        
+        // Mettre à jour le compteur en temps réel
+        textArea.addEventListener('input', function() {
+            const maxLength = 10000;
+            const currentLength = this.value.length;
+            const remaining = maxLength - currentLength;
+            
+            counter.textContent = `${currentLength}/${maxLength} caractères`;
+            
+            // Visualisation du dépassement
+            if (currentLength > maxLength) {
+                counter.style.color = '#dc3545';
+                document.querySelector('button[type="submit"]').disabled = true;
+            } else {
+                counter.style.color = '#6c757d';
+                document.querySelector('button[type="submit"]').disabled = false;
+            }
+        });
+        
+        // Déclencher l'événement d'entrée pour mettre à jour le compteur immédiatement
+        const inputEvent = new Event('input');
+        textArea.dispatchEvent(inputEvent);
+        
+        // Validation à la soumission
         messageForm.addEventListener('submit', function(e) {
-            // Désactiver le bouton d'envoi après soumission
-            const submitButton = this.querySelector('button[type="submit"]');
-            submitButton.disabled = true;
-            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
+            const maxLength = 10000;
+            if (textArea.value.length > maxLength) {
+                e.preventDefault();
+                alert(`Votre message est trop long (maximum ${maxLength} caractères)`);
+            } else {
+                // Désactiver le bouton d'envoi après soumission
+                const submitButton = this.querySelector('button[type="submit"]');
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
+            }
         });
     }
 }
@@ -215,8 +262,8 @@ function loadParticipants() {
  * Configure les mises à jour en temps réel pour la conversation
  */
 function setupRealTimeUpdates() {
-    // Vérifier les mises à jour toutes les 5 secondes
-    const updateInterval = setInterval(checkForUpdates, 60000);
+    // Vérifier les mises à jour toutes les 10 secondes
+    const updateInterval = setInterval(checkForUpdates, 10000);
 
     function checkForUpdates() {
         const convId = new URLSearchParams(window.location.search).get('id');
@@ -230,8 +277,8 @@ function setupRealTimeUpdates() {
             .then(response => response.json())
             .then(data => {
                 if (data.hasUpdates) {
-                    // Si des mises à jour sont disponibles, actualiser la page
-                    location.reload();
+                    // Au lieu de recharger toute la page, charger uniquement les nouveaux messages
+                    fetchNewMessages(convId, lastMessageTimestamp);
                 }
                 
                 // Si un utilisateur a été promu/rétrogradé, actualiser la liste des participants
@@ -240,6 +287,66 @@ function setupRealTimeUpdates() {
                 }
             })
             .catch(error => console.error('Erreur lors de la vérification des mises à jour:', error));
+    }
+    
+    function fetchNewMessages(convId, lastTimestamp) {
+        fetch(`api/get_new_messages.php?conv_id=${convId}&last_timestamp=${lastTimestamp}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.messages && data.messages.length > 0) {
+                    const messagesContainer = document.querySelector('.messages-container');
+                    
+                    // Ajouter chaque nouveau message
+                    data.messages.forEach(message => {
+                        // Création simplifiée - dans la réalité, il faudrait reproduire la structure complète HTML
+                        // d'un message comme dans templates/message-item.php
+                        const messageDiv = document.createElement('div');
+                        
+                        // Déterminer les classes du message
+                        let messageClasses = 'message';
+                        if (message.is_self) messageClasses += ' self';
+                        if (message.est_lu) messageClasses += ' read';
+                        if (message.status) messageClasses += ' ' + message.status;
+                        
+                        messageDiv.className = messageClasses;
+                        messageDiv.setAttribute('data-id', message.id);
+                        messageDiv.setAttribute('data-timestamp', message.timestamp);
+                        
+                        // Contenu du message (simplifié)
+                        messageDiv.innerHTML = `
+                            <div class="message-header">
+                                <div class="sender">
+                                    <strong>${message.expediteur_nom}</strong>
+                                    <span class="sender-type">${message.sender_type}</span>
+                                </div>
+                                <div class="message-meta">
+                                    ${message.status !== 'normal' ? 
+                                        `<span class="importance-tag ${message.status}">${message.status}</span>` : ''}
+                                    <span class="date">${formatTimestamp(message.timestamp)}</span>
+                                </div>
+                            </div>
+                            <div class="message-content">${message.body.replace(/\n/g, '<br>')}</div>
+                            <div class="message-footer">
+                                <div class="message-status">
+                                    ${message.est_lu ? 
+                                        '<div class="message-read"><i class="fas fa-check"></i> Vu</div>' : ''}
+                                </div>
+                            </div>
+                        `;
+                        
+                        messagesContainer.appendChild(messageDiv);
+                    });
+                    
+                    // Faire défiler vers le bas pour montrer les nouveaux messages
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }
+            })
+            .catch(error => console.error('Erreur lors de la récupération des nouveaux messages:', error));
+    }
+    
+    function formatTimestamp(timestamp) {
+        const date = new Date(timestamp * 1000);
+        return date.toLocaleString();
     }
     
     function refreshParticipantsList(convId) {

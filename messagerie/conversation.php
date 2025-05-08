@@ -36,6 +36,7 @@ if (!$convId) {
 
 $error = '';
 $success = '';
+$messageContent = ''; // Pour conserver le contenu du message en cas d'erreur
 
 try {
     // Vérifier l'accès à la conversation
@@ -60,38 +61,46 @@ try {
         switch ($_POST['action']) {
             case 'send_message':
                 if (!empty($_POST['contenu'])) {
-                    // Vérifier si l'utilisateur peut répondre à une annonce
-                    if (!$canReply) {
-                        throw new Exception("Vous n'êtes pas autorisé à répondre à cette annonce");
+                    // Conserver le contenu du message en cas d'erreur
+                    $messageContent = $_POST['contenu'];
+                    
+                    try {
+                        // Vérifier si l'utilisateur peut répondre à une annonce
+                        if (!$canReply) {
+                            throw new Exception("Vous n'êtes pas autorisé à répondre à cette annonce");
+                        }
+                        
+                        $filesData = isset($_FILES['attachments']) ? $_FILES['attachments'] : [];
+                        $importance = 'normal'; // Importance par défaut
+                        
+                        // Seuls certains utilisateurs peuvent définir une importance
+                        if (canSetMessageImportance($user['type']) && isset($_POST['importance'])) {
+                            $importance = $_POST['importance'];
+                        }
+                        
+                        $parentMessageId = isset($_POST['parent_message_id']) && !empty($_POST['parent_message_id']) ? 
+                                          (int)$_POST['parent_message_id'] : null;
+                        
+                        addMessage(
+                            $convId, 
+                            $user['id'], 
+                            $user['type'], 
+                            $_POST['contenu'],
+                            $importance,
+                            false, // Est annonce
+                            false, // Notification obligatoire
+                            false, // Accusé de réception
+                            $parentMessageId, // Message parent
+                            'standard',
+                            $filesData
+                        );
+                        
+                        // Redirection pour éviter les soumissions multiples
+                        redirect("conversation.php?id=$convId");
+                    } catch (Exception $e) {
+                        $error = $e->getMessage();
+                        // Ne pas rediriger en cas d'erreur pour conserver le formulaire
                     }
-                    
-                    $filesData = isset($_FILES['attachments']) ? $_FILES['attachments'] : [];
-                    $importance = 'normal'; // Importance par défaut
-                    
-                    // Seuls certains utilisateurs peuvent définir une importance
-                    if (canSetMessageImportance($user['type']) && isset($_POST['importance'])) {
-                        $importance = $_POST['importance'];
-                    }
-                    
-                    $parentMessageId = isset($_POST['parent_message_id']) && !empty($_POST['parent_message_id']) ? 
-                                      (int)$_POST['parent_message_id'] : null;
-                    
-                    addMessage(
-                        $convId, 
-                        $user['id'], 
-                        $user['type'], 
-                        $_POST['contenu'],
-                        $importance,
-                        false, // Est annonce
-                        false, // Notification obligatoire
-                        false, // Accusé de réception
-                        $parentMessageId, // Message parent
-                        'standard',
-                        $filesData
-                    );
-                    
-                    // Redirection pour éviter les soumissions multiples
-                    redirect("conversation.php?id=$convId");
                 }
                 break;
                 
@@ -192,7 +201,11 @@ include 'templates/header.php';
 <div class="content conversation-page">
     <?php if (isset($error) && !empty($error)): ?>
     <div class="alert error"><?= htmlspecialchars($error) ?></div>
-    <?php elseif (isset($conversation)): ?>
+    <?php elseif (isset($success) && !empty($success)): ?>
+    <div class="alert success"><?= htmlspecialchars($success) ?></div>
+    <?php endif; ?>
+    
+    <?php if (isset($conversation)): ?>
     
     <aside class="conversation-sidebar">
         <div class="conversation-info">
@@ -262,7 +275,7 @@ include 'templates/header.php';
                 </div>
                 <?php endif; ?>
                 
-                <textarea name="contenu" rows="4" placeholder="Envoyer un message..." required></textarea>
+                <textarea name="contenu" rows="4" placeholder="Envoyer un message..." required><?= htmlspecialchars($messageContent) ?></textarea>
                 
                 <div class="form-footer">
                     <div class="file-upload">

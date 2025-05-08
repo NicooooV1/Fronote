@@ -19,15 +19,16 @@ $pageTitle = 'Nouveau message';
 $error = '';
 $success = '';
 
+// Variables pour conserver les données du formulaire en cas d'erreur
+$destinataires = isset($_POST['destinataires']) ? $_POST['destinataires'] : [];
+$titre = isset($_POST['titre']) ? trim($_POST['titre']) : '';
+$contenu = isset($_POST['contenu']) ? trim($_POST['contenu']) : '';
+$importance = isset($_POST['importance']) ? $_POST['importance'] : 'normal';
+$accuseReception = isset($_POST['accuse_reception']) && $_POST['accuse_reception'] === 'on';
+
 // Traitement du formulaire d'envoi
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        $destinataires = isset($_POST['destinataires']) ? $_POST['destinataires'] : [];
-        $titre = isset($_POST['titre']) ? trim($_POST['titre']) : '';
-        $contenu = isset($_POST['contenu']) ? trim($_POST['contenu']) : '';
-        $importance = isset($_POST['importance']) ? $_POST['importance'] : 'normal';
-        $accuseReception = isset($_POST['accuse_reception']) && $_POST['accuse_reception'] === 'on';
-        
         if (empty($destinataires)) {
             throw new Exception("Veuillez sélectionner au moins un destinataire");
         }
@@ -38,6 +39,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if (empty($contenu)) {
             throw new Exception("Le message ne peut pas être vide");
+        }
+        
+        // Vérifier la longueur maximale du message
+        $maxLength = 10000;
+        if (mb_strlen($contenu) > $maxLength) {
+            throw new Exception("Votre message est trop long (maximum $maxLength caractères)");
         }
         
         // Traitement des destinataires
@@ -91,8 +98,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $success = "Votre message a été envoyé avec succès";
         
+        // Réinitialiser les variables pour un nouveau message
+        $destinataires = [];
+        $titre = '';
+        $contenu = '';
+        $importance = 'normal';
+        $accuseReception = false;
+        
     } catch (Exception $e) {
         $error = $e->getMessage();
+        // Ne pas réinitialiser les variables pour conserver les données saisies
     }
 }
 
@@ -188,7 +203,8 @@ function getRecipientTypeLabel($type) {
                             <div class="recipient-item">
                                 <input type="checkbox" name="destinataires[]" id="dest_<?= $type ?>_<?= $dest['id'] ?>" 
                                        value="<?= $type ?>_<?= $dest['id'] ?>" 
-                                       onchange="updateSelectedRecipients()">
+                                       onchange="updateSelectedRecipients()"
+                                       <?= in_array($type.'_'.$dest['id'], $destinataires) ? 'checked' : '' ?>>
                                 <label for="dest_<?= $type ?>_<?= $dest['id'] ?>"><?= htmlspecialchars($dest['nom_complet']) ?></label>
                             </div>
                             <?php endforeach; ?>
@@ -205,12 +221,13 @@ function getRecipientTypeLabel($type) {
             
             <div class="form-group">
                 <label for="titre">Titre</label>
-                <input type="text" name="titre" id="titre" required>
+                <input type="text" name="titre" id="titre" value="<?= htmlspecialchars($titre) ?>" required>
             </div>
             
             <div class="form-group">
                 <label for="contenu">Message</label>
-                <textarea name="contenu" id="contenu" required></textarea>
+                <textarea name="contenu" id="contenu" required><?= htmlspecialchars($contenu) ?></textarea>
+                <div id="char-counter" class="text-muted small"></div>
             </div>
             
             <div class="options-group">
@@ -218,9 +235,9 @@ function getRecipientTypeLabel($type) {
                 <div class="form-group" style="margin-bottom: 0;">
                     <label for="importance">Importance</label>
                     <select name="importance" id="importance">
-                        <option value="normal">Normal</option>
-                        <option value="important">Important</option>
-                        <option value="urgent">Urgent</option>
+                        <option value="normal" <?= $importance === 'normal' ? 'selected' : '' ?>>Normal</option>
+                        <option value="important" <?= $importance === 'important' ? 'selected' : '' ?>>Important</option>
+                        <option value="urgent" <?= $importance === 'urgent' ? 'selected' : '' ?>>Urgent</option>
                     </select>
                 </div>
                 <?php endif; ?>
@@ -228,7 +245,7 @@ function getRecipientTypeLabel($type) {
                 <?php if ($user['type'] !== 'eleve'): ?>
                 <div class="form-group" style="margin-bottom: 0;">
                     <label class="checkbox-container">
-                        <input type="checkbox" name="accuse_reception" id="accuse_reception">
+                        <input type="checkbox" name="accuse_reception" id="accuse_reception" <?= $accuseReception ? 'checked' : '' ?>>
                         <span class="checkmark"></span>
                         Accusé de réception
                     </label>
@@ -257,6 +274,40 @@ function getRecipientTypeLabel($type) {
     </div>
     <?php endif; ?>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Réappliquer les sélections
+    updateSelectedRecipients();
+    
+    // Validation de la longueur du message
+    const textarea = document.getElementById('contenu');
+    const charCounter = document.getElementById('char-counter');
+    const maxLength = 10000;
+    
+    if (textarea && charCounter) {
+        // Fonction de mise à jour du compteur
+        function updateCounter() {
+            const currentLength = textarea.value.length;
+            charCounter.textContent = `${currentLength}/${maxLength} caractères`;
+            
+            if (currentLength > maxLength) {
+                charCounter.style.color = '#dc3545';
+                document.querySelector('button[type="submit"]').disabled = true;
+            } else {
+                charCounter.style.color = '#6c757d';
+                document.querySelector('button[type="submit"]').disabled = false;
+            }
+        }
+        
+        // Mettre à jour le compteur au chargement
+        updateCounter();
+        
+        // Mettre à jour le compteur lors de la saisie
+        textarea.addEventListener('input', updateCounter);
+    }
+});
+</script>
 
 <?php
 // Inclure le pied de page

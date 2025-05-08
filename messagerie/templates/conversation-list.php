@@ -57,7 +57,7 @@ if (empty($convs)):
 
 <div class="conversation-list">
     <?php foreach ($convs as $c): ?>
-    <div class="conversation-item <?= $c['non_lus'] > 0 ? 'unread' : '' ?> <?= $c['type'] === 'annonce' ? 'annonce' : '' ?>">
+    <div class="conversation-item <?= $c['non_lus'] > 0 ? 'unread' : '' ?> <?= $c['type'] === 'annonce' ? 'annonce' : '' ?>" data-is-read="<?= $c['non_lus'] == 0 ? '1' : '0' ?>">
         <label class="checkbox-container conversation-selector">
             <input type="checkbox" class="conversation-checkbox" value="<?= (int)$c['id'] ?>">
             <span class="checkmark"></span>
