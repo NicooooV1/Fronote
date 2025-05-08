@@ -24,8 +24,5 @@
     <?php if (in_array($currentPage, ['new_message', 'new_announcement', 'class_message'])): ?>
     <script src="<?= $baseUrl ?>assets/js/participants.js"></script>
     <?php endif; ?>
-    
-    <!-- Notifications -->
-    <script src="<?= $baseUrl ?>assets/js/notifications.js"></script>
 </body>
 </html>

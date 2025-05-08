@@ -140,7 +140,7 @@ function getMessageStatusLabel($status) {
         'normal' => 'Message normal',
         'important' => 'Message important',
         'urgent' => 'Message urgent',
-        'annonce' => 'Annonce importante'
+        'annonce' => 'Annonce'
     ];
     return $statuses[$status] ?? 'Message normal';
 }

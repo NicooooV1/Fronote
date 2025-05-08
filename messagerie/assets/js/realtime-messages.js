@@ -75,11 +75,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function checkForNewMessages() {
         if (!isPollingActive || !convId) return;
         
-        console.log(`Vérification des nouveaux messages depuis ${lastTimestamp}...`);
-        
         // Éviter les requêtes si l'utilisateur est en train de rédiger
-        if (document.querySelector('textarea:focus')) {
-            console.log("L'utilisateur est en train d'écrire, vérification reportée");
+        if (document.querySelector('textarea:focus') || document.querySelector('.modal[style*="display: block"]')) {
+            console.log("L'utilisateur est actif, vérification reportée");
             return;
         }
         
@@ -92,8 +90,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 return response.json();
             })
             .then(data => {
-                console.log("Réponse de l'API de conversation:", data);
-                
                 // Réinitialiser le compteur de tentatives
                 retryCount = 0;
                 
@@ -132,8 +128,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Récupérer et afficher les nouveaux messages
     function fetchAndDisplayNewMessages() {
-        console.log("Récupération des nouveaux messages...");
-        
         fetch(`api/get_new_messages.php?conv_id=${convId}&last_timestamp=${lastTimestamp}`)
             .then(response => {
                 if (!response.ok) {
@@ -149,7 +143,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Ajouter chaque nouveau message
                     const newMessages = data.messages;
-                    console.log(`Ajout de ${newMessages.length} nouveaux messages`);
                     
                     newMessages.forEach(message => {
                         appendMessageToDOM(message, messagesContainer);
@@ -179,16 +172,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Actualiser la liste des participants
     function refreshParticipantsList() {
-        console.log("Actualisation de la liste des participants...");
-        
         fetch(`api/get_participants_list.php?conv_id=${convId}`)
             .then(response => response.text())
             .then(html => {
                 const participantsList = document.querySelector('.participants-list');
                 if (participantsList) {
                     participantsList.innerHTML = html;
-                    
-                    // Réinitialiser les gestionnaires d'événements pour les boutons
                     setupParticipantButtons();
                 }
             })
@@ -196,16 +185,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error("Erreur lors de l'actualisation des participants:", error);
             });
     }
-    
-    // Fonctions auxiliaires
+
+    // Configurer les gestionnaires d'événements pour les boutons de participants
+    function setupParticipantButtons() {
+        document.querySelectorAll('.participants-list .action-btn').forEach(btn => {
+            const action = btn.getAttribute('onclick');
+            if (action) {
+                const funcName = action.split('(')[0];
+                const params = action.substring(action.indexOf('(') + 1, action.lastIndexOf(')'));
+                
+                // Supprimer l'attribut onclick et ajouter un event listener
+                btn.removeAttribute('onclick');
+                btn.addEventListener('click', function() {
+                    // Exécuter la fonction en utilisant window[funcName]
+                    if (typeof window[funcName] === 'function') {
+                        window[funcName](...params.split(',').map(p => parseInt(p.trim(), 10)));
+                    }
+                });
+            }
+        });
+    }
     
     // Vérifier si l'élément est défilé jusqu'en bas
     function isScrolledToBottom(element) {
+        if (!element) return true;
         return Math.abs(element.scrollHeight - element.scrollTop - element.clientHeight) < 20;
     }
     
     // Faire défiler l'élément jusqu'en bas
     function scrollToBottom(element) {
+        if (!element) return;
         element.scrollTop = element.scrollHeight;
     }
     
@@ -262,7 +271,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Jouer un son de notification
     function playNotificationSound() {
-        // Création d'un son de notification discret
         try {
             // Créer un oscillateur avec l'API Web Audio
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -453,17 +461,9 @@ document.addEventListener('DOMContentLoaded', function() {
         return types[type] || type;
     }
     
-    // Configurer les gestionnaires d'événements pour les boutons de participants
-    function setupParticipantButtons() {
-        // Fonction délibérément vide car les gestionnaires sont configurés ailleurs
-        // Mais vous pourriez l'implémenter ici si nécessaire
-    }
-    
     // Vérification des notifications (pour toutes les pages)
     function checkForNotifications() {
         if (!isPollingActive) return;
-        
-        console.log("Vérification des notifications...");
         
         fetch('api/check_notifications.php')
             .then(response => {
@@ -473,8 +473,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 return response.json();
             })
             .then(data => {
-                console.log("Réponse de l'API de notifications:", data);
-                
                 if (data.success) {
                     // Mettre à jour le compteur de notifications
                     updateNotificationBadge(data.count);
@@ -502,8 +500,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Récupérer le dossier courant depuis l'URL
         const currentFolder = new URLSearchParams(window.location.search).get('folder') || 'reception';
-        
-        console.log(`Actualisation de la liste des conversations (dossier: ${currentFolder})...`);
         
         // Obtenir un fragment HTML pour la liste des conversations
         fetch(`index.php?folder=${currentFolder}&ajax=1`)
@@ -621,13 +617,26 @@ document.addEventListener('DOMContentLoaded', function() {
         if (typeof window.toggleQuickActions === 'function') {
             // Réinitialiser les écouteurs d'événements existants
             document.querySelectorAll('.quick-actions-btn').forEach(btn => {
-                const id = btn.getAttribute('onclick').match(/\d+/)[0];
-                btn.onclick = function(e) {
-                    window.toggleQuickActions(id);
-                    e.stopPropagation();
-                };
+                const onclick = btn.getAttribute('onclick');
+                if (onclick) {
+                    const id = onclick.match(/\d+/)[0];
+                    btn.onclick = function(e) {
+                        window.toggleQuickActions(id);
+                        e.stopPropagation();
+                        return false;
+                    };
+                }
             });
         }
+        
+        // Fermeture du menu sur clic hors menu
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('.quick-actions')) {
+                document.querySelectorAll('.quick-actions-menu.active').forEach(menu => {
+                    menu.classList.remove('active');
+                });
+            }
+        });
     }
     
     function setupBulkActions() {

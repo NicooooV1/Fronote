@@ -65,6 +65,22 @@ function setupQuickActions() {
             });
         }
     });
+    
+    // S'assurer que tous les boutons de quick-actions ont le bon event listener
+    document.querySelectorAll('.quick-actions-btn').forEach(btn => {
+        const onclick = btn.getAttribute('onclick');
+        if (onclick) {
+            const idMatch = onclick.match(/\d+/);
+            if (idMatch) {
+                const id = idMatch[0];
+                btn.onclick = function(e) {
+                    toggleQuickActions(id);
+                    e.stopPropagation();
+                    return false;
+                };
+            }
+        }
+    });
 }
 
 /**
@@ -73,6 +89,7 @@ function setupQuickActions() {
  */
 function toggleQuickActions(id) {
     const menu = document.getElementById('quick-actions-' + id);
+    if (!menu) return;
     
     // Fermer tous les autres menus
     document.querySelectorAll('.quick-actions-menu').forEach(item => {
@@ -84,8 +101,19 @@ function toggleQuickActions(id) {
     // Basculer l'état du menu actuel
     menu.classList.toggle('active');
     
+    // Mettre la conversation parente en avant-plan pendant que le menu est ouvert
+    const conversationItem = menu.closest('.conversation-item');
+    if (conversationItem) {
+        if (menu.classList.contains('active')) {
+            conversationItem.classList.add('active');
+        } else {
+            conversationItem.classList.remove('active');
+        }
+    }
+    
     // Empêcher la propagation du clic pour éviter la navigation
     event.stopPropagation();
+    return false;
 }
 
 /**

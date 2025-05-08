@@ -81,25 +81,24 @@ if (empty($convs)):
             </div>
             <div class="conversation-meta">
                 <?php 
-                // Afficher le statut correct
-                if (isset($c['status'])):
-                    $statusClass = '';
-                    switch ($c['status']) {
-                        case 'important':
-                            $statusClass = 'important';
-                            break;
-                        case 'urgent':
-                            $statusClass = 'urgent';
-                            break;
-                        case 'annonce':
-                            $statusClass = 'annonce';
-                            break;
-                    }
+                // Afficher le statut correct - MODIFIÉ pour prioritiser le type annonce
+                $statusClass = '';
+                $statusLabel = '';
+                
+                if ($c['type'] === 'annonce') {
+                    // Si c'est une annonce, on affiche "Annonce" peu importe le statut
+                    $statusClass = 'annonce';
+                    $statusLabel = 'Annonce';
+                } elseif (isset($c['status'])) {
+                    // Sinon on utilise le statut normal
+                    $statusClass = $c['status'];
+                    $statusLabel = getMessageStatusLabel($c['status']);
+                } else {
+                    // Si pas de statut, on utilise le type
+                    $statusLabel = getConversationType($c['type']);
+                }
                 ?>
-                <span class="message-status <?= $statusClass ?>"><?= htmlspecialchars(getMessageStatusLabel($c['status'])) ?></span>
-                <?php else: ?>
-                <span class="type"><?= htmlspecialchars(getConversationType($c['type'])) ?></span>
-                <?php endif; ?>
+                <span class="message-status <?= $statusClass ?>"><?= htmlspecialchars($statusLabel) ?></span>
                 <span class="date"><?= formatDate($c['dernier_message']) ?></span>
             </div>
         </a>

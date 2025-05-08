@@ -195,6 +195,7 @@ main h2 {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    position: relative; /* Pour le contexte de z-index */
 }
 
 .conversation-item {
@@ -208,11 +209,16 @@ main h2 {
     transition: background-color 0.2s;
     border: 1px solid #e9ecef;
     position: relative;
-    z-index: 1;
+    z-index: 1; /* Base z-index */
 }
 
 .conversation-item:hover {
     background-color: #f8f9fa;
+    z-index: 10; /* Élevé lors du survol pour s'assurer que son menu reste au dessus */
+}
+
+.conversation-item.active {
+    z-index: 11; /* Encore plus élevé si actif */
 }
 
 .conversation-item.unread {
@@ -307,7 +313,7 @@ main h2 {
 /* --- MENU D'ACTIONS RAPIDES --- */
 .quick-actions {
     position: relative;
-    z-index: 1001; /* Supérieur à celui de l'élément parent */
+    z-index: 20; /* Augmenté pour être au-dessus de tout élément conversation-item */
 }
 
 .quick-actions-btn {
@@ -328,7 +334,7 @@ main h2 {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     padding: 5px 0;
     min-width: 160px;
-    z-index: 10000; /* Augmenté significativement pour s'assurer qu'il reste au-dessus */
+    z-index: 100; /* Plus élevé que le conteneur mais cohérent */
     display: none;
 }
 

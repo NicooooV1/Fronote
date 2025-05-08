@@ -5,10 +5,10 @@
 
 // Liste des dossiers pour le menu
 $folders = [
+    'information' => 'Informations',
     'reception' => 'Boîte de réception',
     'envoyes' => 'Messages envoyés',
     'archives' => 'Archives',
-    'information' => 'Informations',
     'corbeille' => 'Corbeille'
 ];
 
