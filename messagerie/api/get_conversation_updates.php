@@ -1,13 +1,14 @@
 <?php
 /**
  * /api/get_conversation_updates.php - Vérification des mises à jour d'une conversation
+ * Optimisé pour l'actualisation en temps réel des messages
  */
 
- require_once __DIR__ . '/../config/config.php';
- require_once __DIR__ . '/../config/constants.php';
- require_once __DIR__ . '/../includes/functions.php';
- require_once __DIR__ . '/../includes/message_functions.php';
- require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../config/constants.php';
+require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/message_functions.php';
+require_once __DIR__ . '/../includes/auth.php';
 
 // Vérifier l'authentification
 $user = checkAuth();
@@ -37,7 +38,7 @@ try {
         throw new Exception("Vous n'êtes pas autorisé à accéder à cette conversation");
     }
     
-    // Vérifier s'il y a de nouveaux messages
+    // Vérifier s'il y a de nouveaux messages après le timestamp donné
     $newMessagesStmt = $pdo->prepare("
         SELECT COUNT(*) as count FROM messages
         WHERE conversation_id = ? AND UNIX_TIMESTAMP(created_at) > ?
@@ -45,21 +46,54 @@ try {
     $newMessagesStmt->execute([$convId, $lastTimestamp]);
     $newMessagesCount = $newMessagesStmt->fetchColumn();
     
-    // Vérifier si les participants ont changé (promus, rétrogradés, etc.)
+    // Vérifier si les participants ont changé
     $participantsChangedStmt = $pdo->prepare("
-        SELECT COUNT(*) as count FROM conversation_participants
-        WHERE conversation_id = ? AND UNIX_TIMESTAMP(joined_at) > ?
+        SELECT MAX(UNIX_TIMESTAMP(updated_at)) as last_update 
+        FROM conversation_participants
+        WHERE conversation_id = ?
     ");
-    $participantsChangedStmt->execute([$convId, $lastTimestamp]);
-    $participantsChangedCount = $participantsChangedStmt->fetchColumn();
+    $participantsChangedStmt->execute([$convId]);
+    $lastParticipantUpdate = $participantsChangedStmt->fetchColumn() ?: 0;
+    $participantsChanged = $lastParticipantUpdate > $lastTimestamp;
+    
+    // Récupérer la liste des expéditeurs des nouveaux messages
+    $sendersInfo = [];
+    if ($newMessagesCount > 0) {
+        $sendersStmt = $pdo->prepare("
+            SELECT DISTINCT 
+                m.sender_id,
+                m.sender_type,
+                CASE 
+                    WHEN m.sender_type = 'eleve' THEN 
+                        (SELECT CONCAT(e.prenom, ' ', e.nom) FROM eleves e WHERE e.id = m.sender_id)
+                    WHEN m.sender_type = 'parent' THEN 
+                        (SELECT CONCAT(p.prenom, ' ', p.nom) FROM parents p WHERE p.id = m.sender_id)
+                    WHEN m.sender_type = 'professeur' THEN 
+                        (SELECT CONCAT(p.prenom, ' ', p.nom) FROM professeurs p WHERE p.id = m.sender_id)
+                    WHEN m.sender_type = 'vie_scolaire' THEN 
+                        (SELECT CONCAT(v.prenom, ' ', v.nom) FROM vie_scolaire v WHERE v.id = m.sender_id)
+                    WHEN m.sender_type = 'administrateur' THEN 
+                        (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = m.sender_id)
+                    ELSE 'Inconnu'
+                END as sender_name
+            FROM messages m
+            WHERE m.conversation_id = ? AND UNIX_TIMESTAMP(m.created_at) > ?
+            ORDER BY m.created_at DESC
+            LIMIT 3
+        ");
+        $sendersStmt->execute([$convId, $lastTimestamp]);
+        $sendersInfo = $sendersStmt->fetchAll(PDO::FETCH_ASSOC);
+    }
     
     // Réponse
     header('Content-Type: application/json');
     echo json_encode([
         'success' => true,
         'hasUpdates' => $newMessagesCount > 0,
-        'participantsChanged' => $participantsChangedCount > 0,
-        'updateCount' => $newMessagesCount
+        'updateCount' => $newMessagesCount,
+        'participantsChanged' => $participantsChanged,
+        'senders' => $sendersInfo,
+        'timestamp' => time() // Timestamp actuel pour les futures requêtes
     ]);
     
 } catch (Exception $e) {

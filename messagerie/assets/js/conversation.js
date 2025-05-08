@@ -132,6 +132,381 @@ function setupMessageValidation() {
 }
 
 /**
+ * Configure les mises à jour en temps réel pour la conversation
+ * Implémentation prioritaire utilisant l'approche Long polling / AJAX poll
+ */
+function setupRealTimeUpdates() {
+    // Variables pour la gestion des mises à jour
+    const convId = new URLSearchParams(window.location.search).get('id');
+    const refreshInterval = 10000; // 10 secondes entre chaque vérification
+    let lastTimestamp = 0;
+    let isCheckingForUpdates = false; // Flag pour éviter les requêtes concurrentes
+    
+    // Initialiser le timestamp de départ avec le dernier message
+    const lastMessage = document.querySelector('.message:last-child');
+    if (lastMessage) {
+        lastTimestamp = parseInt(lastMessage.getAttribute('data-timestamp') || '0', 10);
+    }
+    
+    // Ne pas continuer si on n'est pas sur une page de conversation
+    if (!convId) return;
+    
+    // Fonction de vérification des mises à jour
+    function checkForUpdates() {
+        // Éviter les requêtes concurrentes
+        if (isCheckingForUpdates) return;
+        
+        // Vérifier si l'utilisateur a le focus sur l'onglet et n'est pas en train d'écrire
+        const textareaActive = document.querySelector('textarea:focus');
+        const modalOpen = document.querySelector('.modal[style*="display: block"]');
+        
+        if (textareaActive || modalOpen) {
+            // L'utilisateur est en train d'écrire ou un modal est ouvert, on reporte la vérification
+            setTimeout(checkForUpdates, refreshInterval);
+            return;
+        }
+        
+        isCheckingForUpdates = true;
+        
+        // Requête de vérification
+        fetch(`api/get_conversation_updates.php?conv_id=${convId}&last_timestamp=${lastTimestamp}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.hasUpdates) {
+                    // Si des mises à jour sont disponibles, les récupérer
+                    fetchNewMessages();
+                }
+                
+                // Vérifier les changements de participants
+                if (data.success && data.participantsChanged) {
+                    refreshParticipantsList();
+                }
+                
+                isCheckingForUpdates = false;
+                
+                // Programmer la prochaine vérification
+                setTimeout(checkForUpdates, refreshInterval);
+            })
+            .catch(error => {
+                console.error('Erreur lors de la vérification des mises à jour:', error);
+                isCheckingForUpdates = false;
+                
+                // Réessayer après un délai en cas d'erreur
+                setTimeout(checkForUpdates, refreshInterval);
+            });
+    }
+    
+    /**
+     * Récupère et ajoute les nouveaux messages à la conversation
+     */
+    function fetchNewMessages() {
+        fetch(`api/get_new_messages.php?conv_id=${convId}&last_timestamp=${lastTimestamp}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.messages && data.messages.length > 0) {
+                    // Mettre à jour la référence du dernier timestamp
+                    const messages = data.messages;
+                    const messagesContainer = document.querySelector('.messages-container');
+                    
+                    // On était déjà en bas avant les nouveaux messages?
+                    const wasAtBottom = isScrolledToBottom(messagesContainer);
+                    
+                    // Ajouter chaque nouveau message
+                    messages.forEach(message => {
+                        appendMessageToDOM(message, messagesContainer);
+                        
+                        // Mise à jour du lastTimestamp avec le plus récent
+                        if (message.timestamp > lastTimestamp) {
+                            lastTimestamp = message.timestamp;
+                        }
+                    });
+                    
+                    // Faire défiler vers le bas si l'utilisateur était déjà en bas
+                    if (wasAtBottom) {
+                        scrollToBottom(messagesContainer);
+                    } else {
+                        // Sinon, indiquer qu'il y a de nouveaux messages
+                        showNewMessagesIndicator(messages.length);
+                    }
+                    
+                    // Lecture audio pour notification (optionnelle)
+                    playNotificationSound();
+                }
+            })
+            .catch(error => {
+                console.error('Erreur lors de la récupération des nouveaux messages:', error);
+            });
+    }
+    
+    /**
+     * Vérifie si l'élément est défilé jusqu'en bas
+     * @param {HTMLElement} element - Élément conteneur à vérifier
+     * @returns {boolean} True si l'élément est défilé jusqu'en bas
+     */
+    function isScrolledToBottom(element) {
+        return element.scrollHeight - element.scrollTop - element.clientHeight < 20;
+    }
+    
+    /**
+     * Fait défiler l'élément jusqu'en bas
+     * @param {HTMLElement} element - Élément à faire défiler
+     */
+    function scrollToBottom(element) {
+        element.scrollTop = element.scrollHeight;
+    }
+    
+    /**
+     * Affiche un indicateur de nouveaux messages
+     * @param {number} count - Nombre de nouveaux messages
+     */
+    function showNewMessagesIndicator(count) {
+        // Créer ou mettre à jour un indicateur flottant
+        let indicator = document.getElementById('new-messages-indicator');
+        
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'new-messages-indicator';
+            indicator.style.position = 'fixed';
+            indicator.style.bottom = '100px';
+            indicator.style.right = '20px';
+            indicator.style.backgroundColor = '#009b72';
+            indicator.style.color = 'white';
+            indicator.style.padding = '10px 15px';
+            indicator.style.borderRadius = '20px';
+            indicator.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+            indicator.style.cursor = 'pointer';
+            indicator.style.zIndex = '1000';
+            
+            indicator.addEventListener('click', function() {
+                const messagesContainer = document.querySelector('.messages-container');
+                scrollToBottom(messagesContainer);
+                this.style.display = 'none';
+            });
+            
+            document.body.appendChild(indicator);
+        }
+        
+        indicator.textContent = `${count} nouveau(x) message(s)`;
+        indicator.style.display = 'block';
+        
+        // Masquer après un délai si non cliqué
+        setTimeout(() => {
+            if (indicator) indicator.style.display = 'none';
+        }, 5000);
+    }
+    
+    /**
+     * Joue un son de notification (optionnel)
+     */
+    function playNotificationSound() {
+        // On pourrait implémenter un son de notification ici
+        // Par exemple:
+        // const audio = new Audio('/assets/sounds/notification.mp3');
+        // audio.play();
+    }
+    
+    /**
+     * Ajoute un message au DOM
+     * @param {Object} message - Objet message à ajouter
+     * @param {HTMLElement} container - Conteneur où ajouter le message
+     */
+    function appendMessageToDOM(message, container) {
+        // Créer un nouvel élément div pour le message
+        const messageElement = document.createElement('div');
+        
+        // Déterminer les classes du message
+        let classes = ['message'];
+        if (message.is_self) classes.push('self');
+        if (message.est_lu) classes.push('read');
+        if (message.status) classes.push(message.status);
+        
+        messageElement.className = classes.join(' ');
+        messageElement.setAttribute('data-id', message.id);
+        messageElement.setAttribute('data-timestamp', message.timestamp);
+        
+        // Formater la date lisible
+        const messageDate = new Date(message.timestamp * 1000);
+        const formattedDate = formatMessageDate(messageDate);
+        
+        // Construction du HTML du message
+        let messageHTML = `
+            <div class="message-header">
+                <div class="sender">
+                    <strong>${escapeHTML(message.expediteur_nom)}</strong>
+                    <span class="sender-type">${getParticipantType(message.sender_type)}</span>
+                </div>
+                <div class="message-meta">
+        `;
+        
+        // Ajouter le tag d'importance si non standard
+        if (message.status && message.status !== 'normal') {
+            messageHTML += `<span class="importance-tag ${message.status}">${message.status}</span>`;
+        }
+        
+        messageHTML += `
+                    <span class="date">${formattedDate}</span>
+                </div>
+            </div>
+            <div class="message-content">${nl2br(escapeHTML(message.body))}</div>
+            <div class="message-footer">
+                <div class="message-status">
+                    ${message.est_lu ? '<div class="message-read"><i class="fas fa-check"></i> Vu</div>' : ''}
+                </div>
+        `;
+        
+        // Ajouter les actions si ce n'est pas un message de l'utilisateur courant
+        if (!message.is_self) {
+            messageHTML += `
+                <div class="message-actions">
+                    ${message.est_lu ? 
+                        `<button class="btn-icon mark-unread-btn" data-message-id="${message.id}">
+                            <i class="fas fa-envelope"></i> Marquer comme non lu
+                        </button>` : 
+                        `<button class="btn-icon mark-read-btn" data-message-id="${message.id}">
+                            <i class="fas fa-envelope-open"></i> Marquer comme lu
+                        </button>`
+                    }
+                    <button class="btn-icon" onclick="replyToMessage(${message.id}, '${escapeHTML(message.expediteur_nom)}')">
+                        <i class="fas fa-reply"></i> Répondre
+                    </button>
+                </div>
+            `;
+        }
+        
+        messageHTML += `
+            </div>
+        `;
+        
+        // Définir le HTML du message
+        messageElement.innerHTML = messageHTML;
+        
+        // Ajouter l'événement pour les boutons
+        setTimeout(() => {
+            const readBtn = messageElement.querySelector('.mark-read-btn');
+            const unreadBtn = messageElement.querySelector('.mark-unread-btn');
+            
+            if (readBtn) {
+                readBtn.addEventListener('click', function() {
+                    const messageId = this.getAttribute('data-message-id');
+                    markMessageAsRead(messageId);
+                });
+            }
+            
+            if (unreadBtn) {
+                unreadBtn.addEventListener('click', function() {
+                    const messageId = this.getAttribute('data-message-id');
+                    markMessageAsUnread(messageId);
+                });
+            }
+        }, 100);
+        
+        // Ajouter le message au conteneur
+        container.appendChild(messageElement);
+    }
+    
+    /**
+     * Formatage de la date d'un message
+     * @param {Date} date - Date à formater
+     * @returns {string} Date formatée
+     */
+    function formatMessageDate(date) {
+        const now = new Date();
+        const diffMs = now - date;
+        const diffSecs = Math.floor(diffMs / 1000);
+        const diffMins = Math.floor(diffSecs / 60);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
+        
+        if (diffSecs < 60) {
+            return "À l'instant";
+        } else if (diffMins < 60) {
+            return `Il y a ${diffMins} minute${diffMins > 1 ? 's' : ''}`;
+        } else if (diffHours < 24) {
+            return `Il y a ${diffHours} heure${diffHours > 1 ? 's' : ''}`;
+        } else if (diffDays < 2) {
+            return `Hier à ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        } else {
+            return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth()+1).toString().padStart(2, '0')}/${date.getFullYear()} à ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        }
+    }
+    
+    /**
+     * Échappe les caractères HTML
+     * @param {string} text - Texte à échapper
+     * @returns {string} Texte échappé
+     */
+    function escapeHTML(text) {
+        if (!text) return '';
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+    
+    /**
+     * Convertit les retours à la ligne en <br>
+     * @param {string} text - Texte à convertir
+     * @returns {string} Texte avec des <br>
+     */
+    function nl2br(text) {
+        if (!text) return '';
+        return text.replace(/\n/g, '<br>');
+    }
+    
+    /**
+     * Renvoie le libellé du type de participant
+     * @param {string} type - Type de participant
+     * @returns {string} Libellé formaté
+     */
+    function getParticipantType(type) {
+        const types = {
+            'eleve': 'Élève',
+            'parent': 'Parent',
+            'professeur': 'Professeur',
+            'vie_scolaire': 'Vie scolaire',
+            'administrateur': 'Administrateur'
+        };
+        return types[type] || type;
+    }
+    
+    /**
+     * Actualise la liste des participants
+     */
+    function refreshParticipantsList() {
+        fetch(`api/get_participants_list.php?conv_id=${convId}`)
+            .then(response => response.text())
+            .then(html => {
+                const participantsList = document.querySelector('.participants-list');
+                if (participantsList) {
+                    participantsList.innerHTML = html;
+                }
+            })
+            .catch(error => console.error('Erreur lors de l\'actualisation des participants:', error));
+    }
+    
+    // Démarrer la vérification des mises à jour
+    setTimeout(checkForUpdates, refreshInterval);
+    
+    // Arrêter les mises à jour lorsque l'utilisateur quitte la page
+    window.addEventListener('beforeunload', () => {
+        isCheckingForUpdates = true; // Empêcher de nouvelles requêtes
+    });
+    
+    // Gestion du scroll - si l'utilisateur fait défiler vers le bas, masquer l'indicateur
+    const messagesContainer = document.querySelector('.messages-container');
+    if (messagesContainer) {
+        messagesContainer.addEventListener('scroll', function() {
+            if (isScrolledToBottom(this)) {
+                const indicator = document.getElementById('new-messages-indicator');
+                if (indicator) indicator.style.display = 'none';
+            }
+        });
+    }
+}
+
+/**
  * Affiche le modal d'ajout de participants
  */
 function showAddParticipantModal() {
@@ -259,112 +634,91 @@ function loadParticipants() {
 }
 
 /**
- * Configure les mises à jour en temps réel pour la conversation
+ * Marque un message comme lu
+ * @param {number} messageId - ID du message
  */
-function setupRealTimeUpdates() {
-    // Vérifier les mises à jour toutes les 10 secondes
-    const updateInterval = setInterval(checkForUpdates, 10000);
+function markMessageAsRead(messageId) {
+    fetch(`api/mark_message.php?id=${messageId}&action=mark_read`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Mettre à jour l'interface utilisateur
+                const message = document.querySelector(`.message[data-id="${messageId}"]`);
+                if (message) {
+                    message.classList.add('read');
+                    
+                    // Mettre à jour l'indicateur de lecture
+                    const readIndicator = message.querySelector('.message-read');
+                    if (!readIndicator) {
+                        const footer = message.querySelector('.message-footer .message-status');
+                        if (footer) {
+                            const readStatus = document.createElement('div');
+                            readStatus.className = 'message-read';
+                            readStatus.innerHTML = '<i class="fas fa-check"></i> Vu';
+                            footer.appendChild(readStatus);
+                        }
+                    }
+                    
+                    // Remplacer le bouton
+                    const readBtn = message.querySelector('.mark-read-btn');
+                    if (readBtn) {
+                        const unreadBtn = document.createElement('button');
+                        unreadBtn.className = 'btn-icon mark-unread-btn';
+                        unreadBtn.setAttribute('data-message-id', messageId);
+                        unreadBtn.innerHTML = '<i class="fas fa-envelope"></i> Marquer comme non lu';
+                        unreadBtn.addEventListener('click', function() {
+                            markMessageAsUnread(messageId);
+                        });
+                        
+                        readBtn.parentNode.replaceChild(unreadBtn, readBtn);
+                    }
+                }
+            } else {
+                console.error('Erreur:', data.error);
+            }
+        })
+        .catch(error => console.error('Erreur:', error));
+}
 
-    function checkForUpdates() {
-        const convId = new URLSearchParams(window.location.search).get('id');
-        if (!convId) return;
-        
-        // Récupérer l'horodatage du dernier message affiché
-        const lastMessage = document.querySelector('.message:last-child');
-        const lastMessageTimestamp = lastMessage ? lastMessage.getAttribute('data-timestamp') || 0 : 0;
-        
-        fetch(`api/get_conversation_updates.php?conv_id=${convId}&last_timestamp=${lastMessageTimestamp}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.hasUpdates) {
-                    // Au lieu de recharger toute la page, charger uniquement les nouveaux messages
-                    fetchNewMessages(convId, lastMessageTimestamp);
-                }
-                
-                // Si un utilisateur a été promu/rétrogradé, actualiser la liste des participants
-                if (data.participantsChanged) {
-                    refreshParticipantsList(convId);
-                }
-            })
-            .catch(error => console.error('Erreur lors de la vérification des mises à jour:', error));
-    }
-    
-    function fetchNewMessages(convId, lastTimestamp) {
-        fetch(`api/get_new_messages.php?conv_id=${convId}&last_timestamp=${lastTimestamp}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.messages && data.messages.length > 0) {
-                    const messagesContainer = document.querySelector('.messages-container');
+/**
+ * Marque un message comme non lu
+ * @param {number} messageId - ID du message
+ */
+function markMessageAsUnread(messageId) {
+    fetch(`api/mark_message.php?id=${messageId}&action=mark_unread`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Mettre à jour l'interface utilisateur
+                const message = document.querySelector(`.message[data-id="${messageId}"]`);
+                if (message) {
+                    message.classList.remove('read');
                     
-                    // Ajouter chaque nouveau message
-                    data.messages.forEach(message => {
-                        // Création simplifiée - dans la réalité, il faudrait reproduire la structure complète HTML
-                        // d'un message comme dans templates/message-item.php
-                        const messageDiv = document.createElement('div');
-                        
-                        // Déterminer les classes du message
-                        let messageClasses = 'message';
-                        if (message.is_self) messageClasses += ' self';
-                        if (message.est_lu) messageClasses += ' read';
-                        if (message.status) messageClasses += ' ' + message.status;
-                        
-                        messageDiv.className = messageClasses;
-                        messageDiv.setAttribute('data-id', message.id);
-                        messageDiv.setAttribute('data-timestamp', message.timestamp);
-                        
-                        // Contenu du message (simplifié)
-                        messageDiv.innerHTML = `
-                            <div class="message-header">
-                                <div class="sender">
-                                    <strong>${message.expediteur_nom}</strong>
-                                    <span class="sender-type">${message.sender_type}</span>
-                                </div>
-                                <div class="message-meta">
-                                    ${message.status !== 'normal' ? 
-                                        `<span class="importance-tag ${message.status}">${message.status}</span>` : ''}
-                                    <span class="date">${formatTimestamp(message.timestamp)}</span>
-                                </div>
-                            </div>
-                            <div class="message-content">${message.body.replace(/\n/g, '<br>')}</div>
-                            <div class="message-footer">
-                                <div class="message-status">
-                                    ${message.est_lu ? 
-                                        '<div class="message-read"><i class="fas fa-check"></i> Vu</div>' : ''}
-                                </div>
-                            </div>
-                        `;
-                        
-                        messagesContainer.appendChild(messageDiv);
-                    });
+                    // Supprimer l'indicateur de lecture
+                    const readIndicator = message.querySelector('.message-read');
+                    if (readIndicator) {
+                        readIndicator.remove();
+                    }
                     
-                    // Faire défiler vers le bas pour montrer les nouveaux messages
-                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    // Remplacer le bouton
+                    const unreadBtn = message.querySelector('.mark-unread-btn');
+                    if (unreadBtn) {
+                        const readBtn = document.createElement('button');
+                        readBtn.className = 'btn-icon mark-read-btn';
+                        readBtn.setAttribute('data-message-id', messageId);
+                        readBtn.innerHTML = '<i class="fas fa-envelope-open"></i> Marquer comme lu';
+                        readBtn.addEventListener('click', function() {
+                            markMessageAsRead(messageId);
+                        });
+                        
+                        unreadBtn.parentNode.replaceChild(readBtn, unreadBtn);
+                    }
                 }
-            })
-            .catch(error => console.error('Erreur lors de la récupération des nouveaux messages:', error));
-    }
-    
-    function formatTimestamp(timestamp) {
-        const date = new Date(timestamp * 1000);
-        return date.toLocaleString();
-    }
-    
-    function refreshParticipantsList(convId) {
-        fetch(`api/get_participants_list.php?conv_id=${convId}`)
-            .then(response => response.text())
-            .then(html => {
-                const participantsList = document.querySelector('.participants-list');
-                if (participantsList) {
-                    participantsList.innerHTML = html;
-                }
-            })
-            .catch(error => console.error('Erreur lors de l\'actualisation des participants:', error));
-    }
-    
-    // Arrêter les mises à jour lorsque l'utilisateur quitte la page
-    window.addEventListener('beforeunload', () => {
-        clearInterval(updateInterval);
-    });
+            } else {
+                console.error('Erreur:', data.error);
+            }
+        })
+        .catch(error => console.error('Erreur:', error));
 }
 
 // Gestion des pièces jointes
