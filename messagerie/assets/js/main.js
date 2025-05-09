@@ -215,10 +215,18 @@ function updateBulkActionButtons() {
     // Référence aux boutons
     const btnMarkRead = document.querySelector('button[data-action="mark_read"]');
     const btnMarkUnread = document.querySelector('button[data-action="mark_unread"]');
+    const allButtons = document.querySelectorAll('.bulk-action-btn');
+    
+    // Mettre à jour le texte de tous les boutons avec le nombre sélectionné correct
+    allButtons.forEach(button => {
+        const actionText = button.dataset.actionText || 'Appliquer';
+        const icon = button.dataset.icon ? `<i class="fas fa-${button.dataset.icon}"></i> ` : '';
+        button.innerHTML = `${icon}${actionText} (${selectedCount})`;
+    });
     
     // Masquer les boutons par défaut si rien n'est sélectionné
     if (selectedCount === 0) {
-        document.querySelectorAll('.bulk-action-btn').forEach(button => {
+        allButtons.forEach(button => {
             button.disabled = true;
             button.style.display = 'none';
         });
@@ -253,13 +261,8 @@ function updateBulkActionButtons() {
     
     // Afficher les autres boutons d'action
     document.querySelectorAll('.bulk-action-btn:not([data-action="mark_read"]):not([data-action="mark_unread"])').forEach(button => {
-        button.disabled = selectedCount === 0;
+        button.disabled = false;
         button.style.display = 'inline-flex';
-        
-        // Mettre à jour le texte des boutons avec le nombre sélectionné
-        const actionText = button.dataset.actionText || 'Appliquer';
-        const icon = button.dataset.icon ? `<i class="fas fa-${button.dataset.icon}"></i> ` : '';
-        button.innerHTML = `${icon}${actionText} (${selectedCount})`;
     });
 }
 
