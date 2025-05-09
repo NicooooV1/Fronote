@@ -81,8 +81,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Requête à l'API
-        fetch(`api/get_conversation_updates.php?conv_id=${convId}&last_timestamp=${lastTimestamp}`)
+        // Requête à l'API avec un timestamp pour éviter la mise en cache
+        fetch(`api/get_conversation_updates.php?conv_id=${convId}&last_timestamp=${lastTimestamp}&_=${Date.now()}`)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erreur HTTP ${response.status}`);
@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Récupérer et afficher les nouveaux messages
     function fetchAndDisplayNewMessages() {
-        fetch(`api/get_new_messages.php?conv_id=${convId}&last_timestamp=${lastTimestamp}`)
+        fetch(`api/get_new_messages.php?conv_id=${convId}&last_timestamp=${lastTimestamp}&_=${Date.now()}`)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erreur HTTP ${response.status}`);
@@ -172,7 +172,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Actualiser la liste des participants
     function refreshParticipantsList() {
-        fetch(`api/get_participants_list.php?conv_id=${convId}`)
+        fetch(`api/get_participants_list.php?conv_id=${convId}&_=${Date.now()}`)
             .then(response => response.text())
             .then(html => {
                 const participantsList = document.querySelector('.participants-list');
@@ -452,13 +452,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Transforme les URLs en liens cliquables
     function linkify(text) {
         if (!text) return '';
-        const pattern = '~(https?://|ftp://|www\.)[-a-z0-9+&@#/%?=~_|!:,.;]*[-a-z0-9+&@#/%=~_|]~i';
-        return text.replace(new RegExp(pattern, 'gi'), function(match) {
-            let url = match;
-            if (match.indexOf('http') !== 0 && match.indexOf('ftp') !== 0) {
-                url = 'http://' + match;
-            }
-            return `<a href="${url}" target="_blank" rel="noopener noreferrer">${match}</a>`;
+        const urlPattern = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
+        return text.replace(urlPattern, function(url) {
+            return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
         });
     }
     
@@ -478,7 +474,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function checkForNotifications() {
         if (!isPollingActive) return;
         
-        fetch('api/check_notifications.php')
+        fetch('api/check_notifications.php?_=' + Date.now())
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erreur HTTP ${response.status}`);
@@ -515,7 +511,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const currentFolder = new URLSearchParams(window.location.search).get('folder') || 'reception';
         
         // Obtenir un fragment HTML pour la liste des conversations
-        fetch(`index.php?folder=${currentFolder}&ajax=1`)
+        fetch(`index.php?folder=${currentFolder}&ajax=1&_=${Date.now()}`)
             .then(response => response.text())
             .then(html => {
                 // Créer un DOM temporaire pour extraire la liste des conversations
