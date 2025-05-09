@@ -11,7 +11,10 @@
 
 // Classes CSS pour le message
 $messageClasses = [];
-$messageClasses[] = isCurrentUser($message['expediteur_id'], $message['expediteur_type'], $user) ? 'self' : '';
+$isSelf = isCurrentUser($message['expediteur_id'], $message['expediteur_type'], $user);
+if ($isSelf) {
+    $messageClasses[] = 'self';
+}
 
 // Vérification de l'existence de l'importance et définition d'une valeur par défaut
 $importance = isset($message['status']) ? $message['status'] : 'normal';
@@ -61,14 +64,14 @@ $messageClasses = array_filter($messageClasses);
     
     <div class="message-footer">
         <div class="message-status">
-            <?php if (isset($message['est_lu']) && ($message['est_lu'] === 1 || $message['est_lu'] === true)): ?>
+            <?php if ($isSelf && isset($message['est_lu']) && ($message['est_lu'] === 1 || $message['est_lu'] === true)): ?>
                 <div class="message-read">
                     <i class="fas fa-check"></i> Vu
                 </div>
             <?php endif; ?>
         </div>
         
-        <?php if (isset($canReply) && $canReply && !isCurrentUser($message['expediteur_id'], $message['expediteur_type'], $user)): ?>
+        <?php if (isset($canReply) && $canReply && !$isSelf): ?>
         <div class="message-actions">
             <?php if (!isset($isConversationView) || !$isConversationView): ?>
                 <?php if (isset($message['est_lu']) && $message['est_lu']): ?>

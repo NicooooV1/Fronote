@@ -575,13 +575,37 @@ textarea:focus {
         max-height: 200px;
     }
     
+/* --- MESSAGES --- */
     .message {
-        max-width: 95%;
+        display: flex;
+        flex-direction: column;
+        max-width: 80%;
+        padding: 12px 15px;
+        border-radius: 8px;
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        width: fit-content; /* Adapté à la longueur du message */
+        min-width: 200px; /* Taille minimale */
+        margin-bottom: 10px; /* Ajout d'espace entre les messages */
+        align-self: flex-start; /* Par défaut, les messages reçus sont à gauche */
     }
-    
-    .messages-container {
-        height: calc(100vh - 260px); /* Adapter pour l'affichage mobile */
-    }
+
+.message.self {
+    align-self: flex-end; /* Messages envoyés à droite */
+    background-color: #e1f8f2;
+    border-color: #d1e7e2;
+}
+
+/* Container de messages scrollable */
+.messages-container {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    height: calc(100% - 70px); /* Hauteur totale moins la zone de réponse */
+    display: flex;
+    flex-direction: column;
+}
     
     #new-messages-indicator {
         bottom: 70px;

@@ -13,6 +13,7 @@
     <?php if ($currentPage === 'conversation'): ?>
     <script src="<?= $baseUrl ?>assets/js/conversation.js"></script>
     <script src="<?= $baseUrl ?>assets/js/message-actions.js"></script>
+    <script src="<?= $baseUrl ?>assets/js/fix-conversation.js"></script>
     <?php endif; ?>
     
     <?php if (in_array($currentPage, ['new_message', 'new_announcement', 'class_message'])): ?>
