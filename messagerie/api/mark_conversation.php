@@ -43,13 +43,12 @@ try {
         $messagesStmt = $pdo->prepare("
             SELECT m.id 
             FROM messages m
-            LEFT JOIN conversation_participants cp ON m.conversation_id = cp.conversation_id
+            JOIN message_notifications n ON m.id = n.message_id
             WHERE m.conversation_id = ? 
-            AND cp.user_id = ? AND cp.user_type = ?
-            AND (cp.last_read_at IS NULL OR m.created_at > cp.last_read_at)
-            AND m.sender_id != ? AND m.sender_type != ?
+            AND n.user_id = ? AND n.user_type = ?
+            AND n.is_read = 0
         ");
-        $messagesStmt->execute([$convId, $user['id'], $user['type'], $user['id'], $user['type']]);
+        $messagesStmt->execute([$convId, $user['id'], $user['type']]);
         $messages = $messagesStmt->fetchAll(PDO::FETCH_COLUMN);
         
         // Marquer chaque message comme lu
@@ -57,23 +56,15 @@ try {
             markMessageAsRead($messageId, $user['id'], $user['type']);
         }
         
-        // Mettre à jour la date de dernière lecture
+        // Mettre à jour la date de dernière lecture et réinitialiser le compteur
         $updateStmt = $pdo->prepare("
             UPDATE conversation_participants 
-            SET last_read_at = NOW() 
+            SET last_read_at = NOW(), unread_count = 0
             WHERE conversation_id = ? AND user_id = ? AND user_type = ?
         ");
         $updateStmt->execute([$convId, $user['id'], $user['type']]);
         
     } else { // mark_unread
-        // Réinitialiser la date de dernière lecture
-        $updateStmt = $pdo->prepare("
-            UPDATE conversation_participants 
-            SET last_read_at = NULL
-            WHERE conversation_id = ? AND user_id = ? AND user_type = ?
-        ");
-        $updateStmt->execute([$convId, $user['id'], $user['type']]);
-        
         // Récupérer le dernier message de la conversation
         $lastMessageStmt = $pdo->prepare("
             SELECT id FROM messages 
@@ -86,27 +77,15 @@ try {
         
         if ($lastMessageId) {
             // Marquer comme non lu
-            $updNotif = $pdo->prepare("
-                UPDATE message_notifications 
-                SET is_read = 0 
-                WHERE message_id = ? AND user_id = ? AND user_type = ?
-            ");
-            $updNotif->execute([$lastMessageId, $user['id'], $user['type']]);
+            markMessageAsUnread($lastMessageId, $user['id'], $user['type']);
             
-            // Si notification n'existe pas, la créer
-            $checkNotif = $pdo->prepare("
-                SELECT id FROM message_notifications 
-                WHERE message_id = ? AND user_id = ? AND user_type = ?
+            // Réinitialiser la date de dernière lecture et mettre le compteur à 1
+            $updateStmt = $pdo->prepare("
+                UPDATE conversation_participants 
+                SET last_read_at = NULL, unread_count = 1
+                WHERE conversation_id = ? AND user_id = ? AND user_type = ?
             ");
-            $checkNotif->execute([$lastMessageId, $user['id'], $user['type']]);
-            
-            if (!$checkNotif->fetch()) {
-                $createNotif = $pdo->prepare("
-                    INSERT INTO message_notifications (user_id, user_type, message_id, notification_type, is_read) 
-                    VALUES (?, ?, ?, 'unread', 0)
-                ");
-                $createNotif->execute([$user['id'], $user['type'], $lastMessageId]);
-            }
+            $updateStmt->execute([$convId, $user['id'], $user['type']]);
         }
     }
     
