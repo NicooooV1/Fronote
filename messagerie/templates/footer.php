@@ -7,15 +7,9 @@
     
     <!-- Scripts communs -->
     <script src="<?= $baseUrl ?>assets/js/main.js"></script>
-    <script src="<?= $baseUrl ?>assets/js/realtime-messages.js"></script>
+    <script src="<?= $baseUrl ?>assets/js/lightweight-realtime.js"></script>
     
     <!-- Scripts spécifiques à certaines pages -->
-    <?php if ($currentPage === 'index'): ?>
-    <script>
-        // Code spécifique à la page d'index si nécessaire
-    </script>
-    <?php endif; ?>
-    
     <?php if ($currentPage === 'conversation'): ?>
     <script src="<?= $baseUrl ?>assets/js/conversation.js"></script>
     <script src="<?= $baseUrl ?>assets/js/message-actions.js"></script>
