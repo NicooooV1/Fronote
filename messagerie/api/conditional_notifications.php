@@ -3,6 +3,18 @@
  * /api/conditional_notifications.php - Vérification des notifications avec ETag
  */
 
+// Désactiver l'affichage des erreurs pour éviter de corrompre le JSON
+ini_set('display_errors', 0);
+error_reporting(0);
+
+// Définir les en-têtes CORS si nécessaire
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET');
+header('Access-Control-Allow-Headers: If-None-Match');
+
+// Toujours répondre en JSON
+header('Content-Type: application/json');
+
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/constants.php';
 require_once __DIR__ . '/../includes/functions.php';
@@ -12,7 +24,6 @@ require_once __DIR__ . '/../includes/auth.php';
 // Vérifier l'authentification
 $user = checkAuth();
 if (!$user) {
-    header('Content-Type: application/json');
     echo json_encode(['success' => false, 'error' => 'Non authentifié']);
     exit;
 }
@@ -47,7 +58,6 @@ try {
     header('Cache-Control: private, must-revalidate');
     
     // Renvoyer les données
-    header('Content-Type: application/json');
     echo json_encode([
         'success' => true,
         'count' => $count,
@@ -55,6 +65,5 @@ try {
     ]);
     
 } catch (Exception $e) {
-    header('Content-Type: application/json');
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 }

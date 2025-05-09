@@ -3,35 +3,34 @@
  * /api/conditional_messages.php - API pour récupérer les nouveaux messages avec ETag
  */
 
+// Désactiver l'affichage des erreurs pour éviter de corrompre le JSON
+ini_set('display_errors', 0);
+error_reporting(0);
+
+// Définir les en-têtes CORS si nécessaire
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET');
+header('Access-Control-Allow-Headers: If-None-Match');
+
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/constants.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/message_functions.php';
 require_once __DIR__ . '/../includes/auth.php';
 
+// Toujours répondre en JSON
+header('Content-Type: application/json');
+
 // Vérifier l'authentification
 $user = checkAuth();
 if (!$user) {
-    header('Content-Type: application/json');
     echo json_encode(['success' => false, 'error' => 'Non authentifié']);
     exit;
 }
 
 $convId = isset($_GET['conv_id']) ? (int)$_GET['conv_id'] : 0;
 
-// Ajouter après la récupération du convId
-$lastId = isset($_GET['last_id']) ? (int)$_GET['last_id'] : 0;
-
-// Modifier la requête SQL
-$stmt = $pdo->prepare("
-    SELECT m.*, ... 
-    WHERE m.conversation_id = ? AND m.id > ?
-    ORDER BY m.created_at ASC
-");
-$stmt->execute([/* autres paramètres */, $convId, $lastId]);
-
 if (!$convId) {
-    header('Content-Type: application/json');
     echo json_encode(['success' => false, 'error' => 'ID de conversation invalide']);
     exit;
 }
@@ -126,7 +125,6 @@ try {
     header('Cache-Control: private, must-revalidate');
     
     // Renvoyer les messages
-    header('Content-Type: application/json');
     echo json_encode([
         'success' => true,
         'messages' => $messages,
@@ -134,6 +132,5 @@ try {
     ]);
     
 } catch (Exception $e) {
-    header('Content-Type: application/json');
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 }

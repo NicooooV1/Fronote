@@ -3,31 +3,9 @@
  * Basée sur le polling AJAX optimisé avec ETag
  */
 
-// Au début du script
-window.addEventListener('online', function() {
-    console.log('Connexion réseau rétablie, reprise des vérifications');
-    isActive = true;
-    currentInterval = CONFIG.baseInterval;
-    
-    // Reset des ETags pour forcer une vérification complète
-    messageEtag = null;
-    notificationEtag = null;
-    
-    // Vérifier immédiatement
-    if (isConversationPage) {
-        pollMessages();
-    }
-    pollNotifications();
-});
-
-window.addEventListener('offline', function() {
-    console.log('Connexion réseau perdue, pause des vérifications');
-    isActive = false;
-    clearTimeout(messageTimer);
-    clearTimeout(notificationTimer);
-});
-
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Initialisation du système de messagerie instantanée légère');
+    
     // Configuration
     const CONFIG = {
         // Intervalle de base pour le polling (en ms)
@@ -55,13 +33,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const isIndexPage = pageUrl.includes('index.php') || pageUrl.endsWith('/') || pageUrl.endsWith('/messagerie/');
     
     // Récupérer l'ID de conversation si on est sur la page de conversation
-    const convId = isConversationPage ? new URLSearchParams(window.location.search).get('id') : null;
+    const urlParams = new URLSearchParams(window.location.search);
+    const convId = isConversationPage ? urlParams.get('id') : null;
     
     /**
      * Fonction de polling pour les messages
      */
     async function pollMessages() {
-        if (!isActive || !convId) return;
+        if (!isActive || !convId) {
+            scheduleNextPoll();
+            return;
+        }
         
         try {
             // Éviter les requêtes si l'utilisateur est en train d'écrire
@@ -91,47 +73,59 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Vérifier si la réponse est OK
             if (!response.ok) {
-                throw new Error(`Erreur réseau: ${response.status}`);
+                throw new Error(`Erreur réseau: ${response.status} ${response.statusText}`);
             }
             
-            // Réinitialiser le compteur d'erreurs et l'intervalle
-            retryCount = 0;
-            currentInterval = CONFIG.baseInterval;
+            // Récupérer le texte de la réponse d'abord pour vérifier s'il est bien au format JSON
+            const responseText = await response.text();
             
-            // Récupérer l'ETag
-            messageEtag = response.headers.get('ETag');
-            
-            // Traiter la réponse
-            const data = await response.json();
-            
-            if (data.success && data.messages && data.messages.length > 0) {
-                // Détecter si on était en bas de la conversation
-                const messagesContainer = document.querySelector('.messages-container');
-                const wasAtBottom = isScrolledToBottom(messagesContainer);
+            try {
+                // Tenter de parser le JSON
+                const data = JSON.parse(responseText);
                 
-                // Mémoriser les IDs des messages déjà affichés
-                const existingMessageIds = new Set(
-                    Array.from(document.querySelectorAll('.message'))
-                    .map(el => el.getAttribute('data-id'))
-                );
+                // Réinitialiser le compteur d'erreurs et l'intervalle si on a réussi à parser le JSON
+                retryCount = 0;
+                currentInterval = CONFIG.baseInterval;
                 
-                // Ajouter uniquement les nouveaux messages
-                let hasNewMessages = false;
+                // Récupérer l'ETag
+                messageEtag = response.headers.get('ETag');
                 
-                data.messages.forEach(message => {
-                    if (!existingMessageIds.has(message.id)) {
-                        appendMessageToDOM(message, messagesContainer);
-                        hasNewMessages = true;
+                if (data.success && data.messages && Array.isArray(data.messages) && data.messages.length > 0) {
+                    // Détecter si on était en bas de la conversation
+                    const messagesContainer = document.querySelector('.messages-container');
+                    const wasAtBottom = isScrolledToBottom(messagesContainer);
+                    
+                    // Mémoriser les IDs des messages déjà affichés
+                    const existingMessageIds = new Set(
+                        Array.from(document.querySelectorAll('.message'))
+                        .map(el => el.getAttribute('data-id'))
+                        .filter(id => id) // Filtrer les éléments null ou undefined
+                    );
+                    
+                    // Ajouter uniquement les nouveaux messages
+                    let hasNewMessages = false;
+                    let newMessagesCount = 0;
+                    
+                    data.messages.forEach(message => {
+                        if (message && message.id && !existingMessageIds.has(message.id.toString())) {
+                            appendMessageToDOM(message, messagesContainer);
+                            hasNewMessages = true;
+                            newMessagesCount++;
+                        }
+                    });
+                    
+                    // Faire défiler vers le bas si on était déjà en bas
+                    if (hasNewMessages && wasAtBottom) {
+                        scrollToBottom(messagesContainer);
+                    } else if (hasNewMessages) {
+                        // Sinon, indiquer qu'il y a de nouveaux messages
+                        showNewMessagesIndicator(newMessagesCount);
                     }
-                });
-                
-                // Faire défiler vers le bas si on était déjà en bas
-                if (hasNewMessages && wasAtBottom) {
-                    scrollToBottom(messagesContainer);
-                } else if (hasNewMessages) {
-                    // Sinon, indiquer qu'il y a de nouveaux messages
-                    showNewMessagesIndicator(data.messages.length);
                 }
+            } catch (jsonError) {
+                console.error('Erreur de parsing JSON:', jsonError);
+                console.warn('Réponse reçue du serveur:', responseText.substring(0, 200) + (responseText.length > 200 ? '...' : ''));
+                throw new Error('Réponse non-JSON reçue du serveur');
             }
             
             // Planifier la prochaine vérification
@@ -140,15 +134,17 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error('Erreur lors du polling des messages:', error);
             
-            // Gestion des erreurs
+            // Augmenter le compteur de tentatives
             retryCount++;
+            
+            // Si nous atteignons le maximum de tentatives, augmenter l'intervalle
             if (retryCount >= CONFIG.maxRetries) {
-                // Augmenter l'intervalle en cas d'erreurs répétées
                 currentInterval = Math.min(currentInterval * CONFIG.backoffFactor, CONFIG.maxInterval);
+                console.log(`Augmentation de l'intervalle à ${currentInterval}ms après ${retryCount} tentatives échouées`);
                 retryCount = 0;
             }
             
-            // Réessayer
+            // Planifier la prochaine vérification
             scheduleNextPoll();
         }
     }
@@ -157,7 +153,10 @@ document.addEventListener('DOMContentLoaded', function() {
      * Fonction de polling pour les notifications
      */
     async function pollNotifications() {
-        if (!isActive) return;
+        if (!isActive) {
+            scheduleNextNotificationPoll();
+            return;
+        }
         
         try {
             const headers = {};
@@ -177,28 +176,36 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Vérifier si la réponse est OK
             if (!response.ok) {
-                throw new Error(`Erreur réseau: ${response.status}`);
+                throw new Error(`Erreur réseau: ${response.status} ${response.statusText}`);
             }
             
-            // Récupérer l'ETag
-            notificationEtag = response.headers.get('ETag');
-            
-            // Traiter la réponse
-            const data = await response.json();
-            
-            if (data.success) {
-                // Mettre à jour le badge de notification
-                updateNotificationBadge(data.count);
+            try {
+                // Récupérer le texte de la réponse
+                const responseText = await response.text();
                 
-                // Si sur la page d'index, actualiser la liste des conversations
-                if (isIndexPage && data.count > 0) {
-                    refreshConversationList();
-                }
+                // Tenter de parser le JSON
+                const data = JSON.parse(responseText);
                 
-                // Si nouvelle notification et pas sur la page de conversation
-                if (data.latest_notification && !isConversationPage && data.count > 0) {
-                    showDesktopNotification(data);
+                // Récupérer l'ETag
+                notificationEtag = response.headers.get('ETag');
+                
+                if (data.success) {
+                    // Mettre à jour le badge de notification
+                    updateNotificationBadge(data.count || 0);
+                    
+                    // Si sur la page d'index, actualiser la liste des conversations
+                    if (isIndexPage && (data.count > 0)) {
+                        refreshConversationList();
+                    }
+                    
+                    // Si nouvelle notification et pas sur la page de conversation
+                    if (data.latest_notification && !isConversationPage && (data.count > 0)) {
+                        showDesktopNotification(data);
+                    }
                 }
+            } catch (jsonError) {
+                console.error('Erreur de parsing JSON pour les notifications:', jsonError);
+                throw new Error('Réponse non-JSON reçue du serveur pour les notifications');
             }
             
             // Planifier la prochaine vérification
@@ -338,11 +345,16 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!isIndexPage) return;
         
         // Récupérer le dossier courant
-        const currentFolder = new URLSearchParams(window.location.search).get('folder') || 'reception';
+        const folder = new URLSearchParams(window.location.search).get('folder') || 'reception';
         
         // Actualiser la liste
-        fetch(`index.php?folder=${currentFolder}&ajax=1&_=${Date.now()}`)
-            .then(response => response.text())
+        fetch(`index.php?folder=${folder}&ajax=1&_=${Date.now()}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Erreur lors de la récupération des conversations: ${response.status}`);
+                }
+                return response.text();
+            })
             .then(html => {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, 'text/html');
@@ -395,22 +407,39 @@ document.addEventListener('DOMContentLoaded', function() {
         if (Notification.permission !== "granted") return;
         
         const title = "Nouvelle notification";
+        let expediteurNom = "Expéditeur";
+        let count = 0;
+        
+        // Récupérer le nombre de notifications
+        if (data && typeof data.count === 'number') {
+            count = data.count;
+        }
+        
+        // Récupérer l'expéditeur
+        if (data && data.latest_notification && data.latest_notification.expediteur_nom) {
+            expediteurNom = data.latest_notification.expediteur_nom;
+        }
+        
         const options = {
-            body: data.count === 1 
-                ? `Nouveau message de ${data.latest_notification.expediteur_nom || 'Expéditeur'}`
-                : `${data.count} nouveaux messages non lus`,
-            icon: '/assets/images/icon-notification.png'
+            body: count === 1 
+                ? `Nouveau message de ${expediteurNom}`
+                : `${count} nouveaux messages non lus`,
+            icon: '/assets/images/icon-notification.png' // Remplacer par le bon chemin
         };
         
-        const notification = new Notification(title, options);
-        
-        // Rediriger vers la conversation au clic
-        notification.onclick = function() {
-            window.focus();
-            if (data.latest_notification && data.latest_notification.conversation_id) {
-                window.location.href = `conversation.php?id=${data.latest_notification.conversation_id}`;
-            }
-        };
+        try {
+            const notification = new Notification(title, options);
+            
+            // Rediriger vers la conversation au clic
+            notification.onclick = function() {
+                window.focus();
+                if (data.latest_notification && data.latest_notification.conversation_id) {
+                    window.location.href = `conversation.php?id=${data.latest_notification.conversation_id}`;
+                }
+            };
+        } catch (e) {
+            console.error('Erreur lors de la création de la notification:', e);
+        }
     }
     
     /**
@@ -419,6 +448,14 @@ document.addEventListener('DOMContentLoaded', function() {
      * @param {HTMLElement} container Conteneur où ajouter le message
      */
     function appendMessageToDOM(message, container) {
+        if (!container) return;
+        
+        // Vérifier si le message est valide
+        if (!message || !message.id) {
+            console.warn('Message invalide, impossible de l\'ajouter au DOM', message);
+            return;
+        }
+        
         // Vérifier si le message n'est pas déjà affiché
         if (document.querySelector(`.message[data-id="${message.id}"]`)) {
             return;
@@ -429,24 +466,46 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Déterminer les classes du message
         let classes = ['message'];
-        if (message.is_self == 1) classes.push('self');
-        if (message.est_lu == 1) classes.push('read');
-        if (message.status) classes.push(message.status);
+        
+        if (message.is_self == 1 || message.is_self === true) {
+            classes.push('self');
+        }
+        
+        if (message.est_lu == 1 || message.est_lu === true) {
+            classes.push('read');
+        }
+        
+        if (message.status) {
+            classes.push(message.status);
+        }
         
         messageElement.className = classes.join(' ');
         messageElement.setAttribute('data-id', message.id);
-        messageElement.setAttribute('data-timestamp', message.timestamp);
+        messageElement.setAttribute('data-timestamp', message.timestamp || Date.now()/1000);
+        
+        // S'assurer que les propriétés nécessaires existent
+        const expediteurNom = message.expediteur_nom || 'Inconnu';
+        const senderType = message.sender_type || 'inconnu';
+        const messageBody = message.body || message.contenu || '';
+        const isRead = message.est_lu == 1 || message.est_lu === true;
+        const isSelf = message.is_self == 1 || message.is_self === true;
         
         // Formater la date
-        const messageDate = new Date(message.timestamp * 1000);
-        const formattedDate = formatMessageDate(messageDate);
+        let formattedDate = 'Date inconnue';
+        if (message.timestamp) {
+            const messageDate = new Date(message.timestamp * 1000);
+            formattedDate = formatMessageDate(messageDate);
+        } else if (message.created_at) {
+            const messageDate = new Date(message.created_at);
+            formattedDate = formatMessageDate(messageDate);
+        }
         
         // Construire le HTML du message
         let messageHTML = `
             <div class="message-header">
                 <div class="sender">
-                    <strong>${escapeHTML(message.expediteur_nom)}</strong>
-                    <span class="sender-type">${getParticipantType(message.sender_type)}</span>
+                    <strong>${escapeHTML(expediteurNom)}</strong>
+                    <span class="sender-type">${getParticipantType(senderType)}</span>
                 </div>
                 <div class="message-meta">
         `;
@@ -460,7 +519,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <span class="date">${formattedDate}</span>
                 </div>
             </div>
-            <div class="message-content">${linkify(nl2br(escapeHTML(message.body || message.contenu)))}</div>
+            <div class="message-content">${linkify(nl2br(escapeHTML(messageBody)))}</div>
         `;
         
         // Ajouter les pièces jointes s'il y en a
@@ -468,11 +527,13 @@ document.addEventListener('DOMContentLoaded', function() {
             messageHTML += '<div class="attachments">';
             
             message.pieces_jointes.forEach(attachment => {
-                messageHTML += `
-                    <a href="${escapeHTML(attachment.chemin)}" class="attachment" target="_blank">
-                        <i class="fas fa-paperclip"></i> ${escapeHTML(attachment.nom_fichier)}
-                    </a>
-                `;
+                if (attachment && attachment.chemin && attachment.nom_fichier) {
+                    messageHTML += `
+                        <a href="${escapeHTML(attachment.chemin)}" class="attachment" target="_blank">
+                            <i class="fas fa-paperclip"></i> ${escapeHTML(attachment.nom_fichier)}
+                        </a>
+                    `;
+                }
             });
             
             messageHTML += '</div>';
@@ -482,15 +543,15 @@ document.addEventListener('DOMContentLoaded', function() {
         messageHTML += `
             <div class="message-footer">
                 <div class="message-status">
-                    ${message.est_lu == 1 ? '<div class="message-read"><i class="fas fa-check"></i> Vu</div>' : ''}
+                    ${isRead ? '<div class="message-read"><i class="fas fa-check"></i> Vu</div>' : ''}
                 </div>
         `;
         
         // Ajouter les actions si ce n'est pas un message de l'utilisateur
-        if (!message.is_self) {
+        if (!isSelf) {
             messageHTML += `
                 <div class="message-actions">
-                    ${message.est_lu ? 
+                    ${isRead ? 
                         `<button class="btn-icon mark-unread-btn" data-message-id="${message.id}">
                             <i class="fas fa-envelope"></i> Marquer comme non lu
                         </button>` : 
@@ -498,7 +559,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <i class="fas fa-envelope-open"></i> Marquer comme lu
                         </button>`
                     }
-                    <button class="btn-icon" onclick="replyToMessage(${message.id}, '${escapeHTML(message.expediteur_nom)}')">
+                    <button class="btn-icon" onclick="replyToMessage(${message.id}, '${escapeHTML(expediteurNom)}')">
                         <i class="fas fa-reply"></i> Répondre
                     </button>
                 </div>
@@ -542,6 +603,10 @@ document.addEventListener('DOMContentLoaded', function() {
      * @returns {string} Date formatée
      */
     function formatMessageDate(date) {
+        if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+            return "Date inconnue";
+        }
+        
         const now = new Date();
         const diffMs = now - date;
         const diffSecs = Math.floor(diffMs / 1000);
@@ -717,6 +782,7 @@ document.addEventListener('DOMContentLoaded', function() {
             isActive = !document.hidden;
             
             if (isActive) {
+                console.log('Page visible, reprise des vérifications');
                 // Réinitialiser l'intervalle et vérifier immédiatement
                 currentInterval = CONFIG.baseInterval;
                 
@@ -726,6 +792,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 pollNotifications();
             } else {
+                console.log('Page masquée, pause des vérifications');
                 // Arrêter les vérifications en cours
                 clearTimeout(messageTimer);
                 clearTimeout(notificationTimer);
@@ -734,6 +801,30 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Lors de la sortie de la page
         window.addEventListener('beforeunload', function() {
+            isActive = false;
+            clearTimeout(messageTimer);
+            clearTimeout(notificationTimer);
+        });
+        
+        // Gestion des reconnexions réseau
+        window.addEventListener('online', function() {
+            console.log('Connexion réseau rétablie, reprise des vérifications');
+            isActive = true;
+            currentInterval = CONFIG.baseInterval;
+            
+            // Reset des ETags pour forcer une vérification complète
+            messageEtag = null;
+            notificationEtag = null;
+            
+            // Vérifier immédiatement
+            if (isConversationPage) {
+                pollMessages();
+            }
+            pollNotifications();
+        });
+        
+        window.addEventListener('offline', function() {
+            console.log('Connexion réseau perdue, pause des vérifications');
             isActive = false;
             clearTimeout(messageTimer);
             clearTimeout(notificationTimer);
@@ -748,9 +839,12 @@ document.addEventListener('DOMContentLoaded', function() {
     setupVisibilityHandlers();
     
     // Démarrer les vérifications si nécessaire
-    if (isConversationPage) {
+    if (isConversationPage && convId) {
+        console.log('Page de conversation détectée, démarrage du polling des messages');
         pollMessages();
     }
+    
+    console.log('Démarrage du polling des notifications');
     pollNotifications();
     
     // Indiquer que ce système est actif
