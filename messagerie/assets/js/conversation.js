@@ -11,6 +11,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Validation du formulaire de message
     setupMessageValidation();
+    
+    // Initialisation de l'envoi AJAX
+    setupAjaxMessageSending();
 });
 
 /**
@@ -114,20 +117,6 @@ function setupMessageValidation() {
         // Déclencher l'événement d'entrée pour mettre à jour le compteur immédiatement
         const inputEvent = new Event('input');
         textArea.dispatchEvent(inputEvent);
-        
-        // Validation à la soumission
-        messageForm.addEventListener('submit', function(e) {
-            const maxLength = 10000;
-            if (textArea.value.length > maxLength) {
-                e.preventDefault();
-                alert(`Votre message est trop long (maximum ${maxLength} caractères)`);
-            } else {
-                // Désactiver le bouton d'envoi après soumission
-                const submitButton = this.querySelector('button[type="submit"]');
-                submitButton.disabled = true;
-                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
-            }
-        });
     }
 }
 
@@ -317,7 +306,7 @@ function setupRealTimeUpdates() {
         // Déterminer les classes du message
         let classes = ['message'];
         if (message.is_self) classes.push('self');
-        if (message.est_lu) classes.push('read');
+        if (message.est_lu === 1 || message.est_lu === true) classes.push('read');
         if (message.status) classes.push(message.status);
         
         messageElement.className = classes.join(' ');
@@ -347,10 +336,10 @@ function setupRealTimeUpdates() {
                     <span class="date">${formattedDate}</span>
                 </div>
             </div>
-            <div class="message-content">${nl2br(escapeHTML(message.body))}</div>
+            <div class="message-content">${nl2br(escapeHTML(message.body || message.contenu))}</div>
             <div class="message-footer">
                 <div class="message-status">
-                    ${message.est_lu ? '<div class="message-read"><i class="fas fa-check"></i> Vu</div>' : ''}
+                    ${(message.est_lu === 1 || message.est_lu === true) ? '<div class="message-read"><i class="fas fa-check"></i> Vu</div>' : ''}
                 </div>
         `;
         
@@ -358,7 +347,7 @@ function setupRealTimeUpdates() {
         if (!message.is_self) {
             messageHTML += `
                 <div class="message-actions">
-                    ${message.est_lu ? 
+                    ${(message.est_lu === 1 || message.est_lu === true) ? 
                         `<button class="btn-icon mark-unread-btn" data-message-id="${message.id}">
                             <i class="fas fa-envelope"></i> Marquer comme non lu
                         </button>` : 
@@ -504,6 +493,90 @@ function setupRealTimeUpdates() {
             }
         });
     }
+}
+
+/**
+ * Envoie un message via AJAX
+ */
+function setupAjaxMessageSending() {
+    const form = document.getElementById('messageForm');
+    if (!form) return;
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault(); // Empêcher la soumission normale
+        
+        // Vérifier le contenu du message
+        const textarea = form.querySelector('textarea[name="contenu"]');
+        const messageContent = textarea.value.trim();
+        if (messageContent === '') {
+            alert('Le message ne peut pas être vide');
+            return;
+        }
+        
+        // Récupérer l'ID de conversation de l'URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const convId = urlParams.get('id');
+        
+        // Créer un objet FormData pour l'envoi des données, y compris les fichiers
+        const formData = new FormData(form);
+        formData.append('conversation_id', convId);
+        
+        // Afficher un indicateur de chargement
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalBtnText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
+        
+        // Envoyer la requête AJAX
+        fetch('api/send_message.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Vider le formulaire
+                textarea.value = '';
+                
+                // Vider l'aperçu des pièces jointes
+                const fileList = document.getElementById('file-list');
+                if (fileList) fileList.innerHTML = '';
+                
+                // Réinitialiser l'input de fichiers
+                const fileInput = document.getElementById('attachments');
+                if (fileInput) fileInput.value = '';
+                
+                // Mettre à jour l'interface utilisateur
+                if (data.message) {
+                    // Ajouter le nouveau message à la conversation
+                    const messagesContainer = document.querySelector('.messages-container');
+                    if (messagesContainer) {
+                        appendMessageToDOM(data.message, messagesContainer);
+                        scrollToBottom(messagesContainer);
+                    }
+                }
+                
+                // Réinitialiser le formulaire de réponse si c'est une réponse
+                const replyInterface = document.getElementById('reply-interface');
+                if (replyInterface && replyInterface.style.display !== 'none') {
+                    document.getElementById('parent-message-id').value = '';
+                    replyInterface.style.display = 'none';
+                }
+            } else {
+                // Afficher l'erreur
+                alert('Erreur lors de l\'envoi du message: ' + (data.error || 'Erreur inconnue'));
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de l\'envoi du message. Veuillez réessayer.');
+        })
+        .finally(() => {
+            // Réactiver le bouton
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+        });
+    });
 }
 
 /**

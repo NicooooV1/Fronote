@@ -784,6 +784,58 @@ function getMessages($convId, $userId, $userType) {
 }
 
 /**
+ * Récupère un message par son ID
+ * @param int $messageId ID du message
+ * @return array|false Message ou false si non trouvé
+ */
+function getMessageById($messageId) {
+    global $pdo;
+    
+    $sql = "
+        SELECT m.*, 
+               1 as est_lu, /* Le message est considéré comme lu pour son expéditeur */
+               1 as is_self, /* C'est un message de l'utilisateur lui-même */
+               CASE 
+                   WHEN m.sender_type = 'eleve' THEN 
+                       (SELECT CONCAT(e.prenom, ' ', e.nom) FROM eleves e WHERE e.id = m.sender_id)
+                   WHEN m.sender_type = 'parent' THEN 
+                       (SELECT CONCAT(p.prenom, ' ', p.nom) FROM parents p WHERE p.id = m.sender_id)
+                   WHEN m.sender_type = 'professeur' THEN 
+                       (SELECT CONCAT(p.prenom, ' ', p.nom) FROM professeurs p WHERE p.id = m.sender_id)
+                   WHEN m.sender_type = 'vie_scolaire' THEN 
+                       (SELECT CONCAT(v.prenom, ' ', v.nom) FROM vie_scolaire v WHERE v.id = m.sender_id)
+                   WHEN m.sender_type = 'administrateur' THEN 
+                       (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = m.sender_id)
+                   ELSE 'Inconnu'
+               END as expediteur_nom,
+               m.sender_id as expediteur_id, 
+               m.sender_type as expediteur_type,
+               m.body as contenu,
+               m.status as status,
+               m.created_at as date_envoi,
+               UNIX_TIMESTAMP(m.created_at) as timestamp
+        FROM messages m
+        WHERE m.id = ?
+    ";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$messageId]);
+    $message = $stmt->fetch();
+    
+    if ($message) {
+        // Récupérer les pièces jointes
+        $attachmentStmt = $pdo->prepare("
+            SELECT id, message_id, file_name as nom_fichier, file_path as chemin
+            FROM message_attachments 
+            WHERE message_id = ?
+        ");
+        $attachmentStmt->execute([$messageId]);
+        $message['pieces_jointes'] = $attachmentStmt->fetchAll();
+    }
+    
+    return $message;
+}
+
+/**
  * Ajoute un nouveau message
  * @param int $convId ID de la conversation
  * @param int $senderId ID de l'expéditeur

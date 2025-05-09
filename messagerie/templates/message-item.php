@@ -61,10 +61,10 @@ $messageClasses = array_filter($messageClasses);
     
     <div class="message-footer">
         <div class="message-status">
-            <?php if (isset($message['est_lu']) && $message['est_lu']): ?>
-            <div class="message-read">
-                <i class="fas fa-check"></i> Vu
-            </div>
+            <?php if (isset($message['est_lu']) && ($message['est_lu'] === 1 || $message['est_lu'] === true)): ?>
+                <div class="message-read">
+                    <i class="fas fa-check"></i> Vu
+                </div>
             <?php endif; ?>
         </div>
         
