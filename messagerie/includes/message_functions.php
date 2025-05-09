@@ -1084,44 +1084,6 @@ function markMessageAsUnread($messageId, $userId, $userType) {
 }
 
 /**
- * Récupère les notifications non lues d'un utilisateur
- * @param int $userId ID de l'utilisateur
- * @param string $userType Type d'utilisateur
- * @return array Notifications non lues
- */
-function getUnreadNotifications($userId, $userType) {
-    global $pdo;
-    
-    $stmt = $pdo->prepare("
-        SELECT n.*, 
-               m.body as contenu, m.sender_id as expediteur_id, m.sender_type as expediteur_type,
-               c.subject as conversation_titre,
-               CASE 
-                   WHEN m.sender_type = 'eleve' THEN 
-                       (SELECT CONCAT(e.prenom, ' ', e.nom) FROM eleves e WHERE e.id = m.sender_id)
-                   WHEN m.sender_type = 'parent' THEN 
-                       (SELECT CONCAT(p.prenom, ' ', p.nom) FROM parents p WHERE p.id = m.sender_id)
-                   WHEN m.sender_type = 'professeur' THEN 
-                       (SELECT CONCAT(p.prenom, ' ', p.nom) FROM professeurs p WHERE p.id = m.sender_id)
-                   WHEN m.sender_type = 'vie_scolaire' THEN 
-                       (SELECT CONCAT(v.prenom, ' ', v.nom) FROM vie_scolaire v WHERE v.id = m.sender_id)
-                   WHEN m.sender_type = 'administrateur' THEN 
-                       (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = m.sender_id)
-                   ELSE 'Inconnu'
-               END as expediteur_nom,
-               notified_at as date_creation
-        FROM message_notifications n
-        JOIN messages m ON n.message_id = m.id
-        JOIN conversations c ON m.conversation_id = c.id
-        WHERE n.user_id = ? AND n.user_type = ? AND n.is_read = 0
-        ORDER BY n.notified_at DESC
-    ");
-    $stmt->execute([$userId, $userType]);
-    
-    return $stmt->fetchAll();
-}
-
-/**
  * Vérifie si un utilisateur peut répondre à une annonce
  * @param int $userId ID de l'utilisateur
  * @param string $userType Type d'utilisateur
