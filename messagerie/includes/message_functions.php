@@ -261,15 +261,11 @@ function shouldSendNotification($preferences, $notificationType) {
     }
 }
 
-/**
- * Récupère les notifications non lues d'un utilisateur
- * @param int $userId ID de l'utilisateur
- * @param string $userType Type d'utilisateur
- * @param int $limit Nombre maximum de notifications à récupérer
- * @return array Notifications non lues
- */
 function getUnreadNotifications($userId, $userType, $limit = 50) {
     global $pdo;
+    
+    // Assurez-vous que limit est un entier pour éviter les injections SQL
+    $limit = (int)$limit;
     
     $stmt = $pdo->prepare("
         SELECT n.*, 
@@ -296,9 +292,9 @@ function getUnreadNotifications($userId, $userType, $limit = 50) {
         JOIN conversations c ON m.conversation_id = c.id
         WHERE n.user_id = ? AND n.user_type = ? AND n.is_read = 0
         ORDER BY n.notified_at DESC
-        LIMIT ?
-    ");
-    $stmt->execute([$userId, $userType, $limit]);
+        LIMIT " . $limit
+    );
+    $stmt->execute([$userId, $userType]);
     
     return $stmt->fetchAll();
 }
