@@ -95,15 +95,32 @@
     align-items: center !important;
     font-size: 12px !important;
     margin-top: 5px !important;
+    width: 100% !important;
+    visibility: visible !important;
 }
 
-/* Badge Vu */
+/* Assurer que l'indicateur 'Vu' est visible */
 .message-read {
-    font-size: 12px !important;
-    color: #28a745 !important;
-    display: flex !important;
+    display: inline-flex !important;
     align-items: center !important;
     gap: 5px !important;
+    font-size: 12px !important;
+    color: #28a745 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.message-read i {
+    display: inline-block !important;
+    visibility: visible !important;
+}
+
+/* S'assurer que le conteneur ne masque pas l'indicateur */
+.message-status {
+    display: flex !important;
+    align-items: center !important;
+    min-height: 20px !important;
+    visibility: visible !important;
 }
 
 /* Style pour la zone de réponse */

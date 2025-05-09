@@ -41,6 +41,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         };
     }
+    
+    // Forcer l'affichage des indicateurs "Vu"
+    document.querySelectorAll('.message-read').forEach(indicator => {
+        indicator.style.display = 'inline-flex';
+        indicator.style.visibility = 'visible';
+        indicator.style.opacity = '1';
+    });
 });
 
 // S'assurer que ces fonctions sont disponibles globalement

@@ -65,7 +65,7 @@ $messageClasses = array_filter($messageClasses);
     <div class="message-footer">
         <div class="message-status">
             <?php if ($isSelf && isset($message['est_lu']) && ($message['est_lu'] === 1 || $message['est_lu'] === true)): ?>
-                <div class="message-read">
+                <div class="message-read" style="display: inline-flex !important; visibility: visible !important; opacity: 1 !important;">
                     <i class="fas fa-check"></i> Vu
                 </div>
             <?php endif; ?>

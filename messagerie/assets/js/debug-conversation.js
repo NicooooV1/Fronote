@@ -119,12 +119,47 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // 4. Assurer que les indicateurs "Vu" sont visibles
+    function fixReadIndicators() {
+        console.log("Vérification des indicateurs 'Vu'");
+        const readIndicators = document.querySelectorAll('.message-read');
+        readIndicators.forEach(indicator => {
+            indicator.style.display = 'inline-flex';
+            indicator.style.visibility = 'visible';
+            indicator.style.opacity = '1';
+            
+            // Assurer que l'icône est visible
+            const icon = indicator.querySelector('i');
+            if (icon) {
+                icon.style.display = 'inline-block';
+                icon.style.visibility = 'visible';
+                icon.style.opacity = '1';
+            }
+            
+            console.log("Indicateur 'Vu' ajusté:", indicator);
+        });
+        
+        // S'assurer que les conteneurs sont également visibles
+        document.querySelectorAll('.message-status').forEach(status => {
+            status.style.display = 'flex';
+            status.style.visibility = 'visible';
+            status.style.minHeight = '20px';
+        });
+        
+        document.querySelectorAll('.message-footer').forEach(footer => {
+            footer.style.display = 'flex';
+            footer.style.visibility = 'visible';
+        });
+    }
+    
     // Exécuter toutes les corrections
     fixMessageDisplay();
     fixReplyBox();
     fixSendForm();
+    fixReadIndicators();
     
-    // Rappeler la fonction de correction périodiquement au cas où la page change dynamiquement
+    // Rappeler les fonctions de correction périodiquement au cas où la page change dynamiquement
     setInterval(fixMessageDisplay, 2000);
     setInterval(fixReplyBox, 2000);
+    setInterval(fixReadIndicators, 2000);
 });

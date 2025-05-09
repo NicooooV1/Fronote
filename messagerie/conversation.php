@@ -254,7 +254,7 @@ include 'templates/header.php';
     </form>
 </div>
 <?php elseif ($canReply): ?>
-<div class="reply-box" style="display: block !important;">
+<div class="reply-box" style="display: block !important; position: sticky !important; bottom: 0 !important; z-index: 1000 !important;">
     <form method="post" enctype="multipart/form-data" id="messageForm">
         <input type="hidden" name="action" value="send_message">
         <input type="hidden" name="parent_message_id" id="parent-message-id" value="">
