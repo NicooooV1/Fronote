@@ -1,0 +1,190 @@
+/* Corrections pour l'affichage des conversations - priorité maximale */
+
+/* Configuration du conteneur principal */
+.conversation-page {
+    display: flex !important;
+    flex-grow: 1 !important;
+    height: calc(100vh - 60px) !important;
+    overflow: hidden !important;
+}
+
+/* Configuration du conteneur de messages */
+.messages-container {
+    display: flex !important;
+    flex-direction: column !important;
+    flex-grow: 1 !important;
+    padding: 20px !important;
+    overflow-y: auto !important;
+    height: calc(100% - 90px) !important; /* Ajusté pour laisser de la place à la zone de réponse */
+    width: 100% !important;
+}
+
+/* Style de base pour tous les messages */
+.message {
+    display: flex !important;
+    flex-direction: column !important;
+    max-width: 80% !important;
+    width: fit-content !important;
+    min-width: 200px !important;
+    margin-bottom: 15px !important;
+    padding: 12px 15px !important;
+    border-radius: 8px !important;
+    background-color: #f8f9fa !important;
+    border: 1px solid #e9ecef !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    align-self: flex-start !important; /* Par défaut à gauche */
+}
+
+/* Messages envoyés par l'utilisateur */
+.message.self {
+    align-self: flex-end !important; /* Messages envoyés à droite */
+    background-color: #e1f8f2 !important;
+    border-color: #d1e7e2 !important;
+}
+
+/* Messages importants ou urgents */
+.message.important {
+    border-left: 4px solid #ffc107 !important; /* Orange */
+}
+
+.message.urgent {
+    border-left: 4px solid #dc3545 !important; /* Rouge */
+}
+
+.message.normal {
+    border-left: 4px solid #28a745 !important; /* Vert */
+}
+
+/* Style pour les annonces */
+.message.annonce {
+    background-color: #fff8e1 !important;
+    border-color: #ffe082 !important;
+    border-left: 4px solid #ffc107 !important;
+    max-width: 90% !important;
+}
+
+/* Style pour l'en-tête du message */
+.message-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    margin-bottom: 12px !important;
+    gap: 20px !important;
+}
+
+.sender {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+}
+
+.message-meta {
+    display: flex !important;
+    align-items: center !important;
+    gap: 15px !important;
+    font-size: 12px !important;
+    color: #6c757d !important;
+    margin-left: auto !important;
+    white-space: nowrap !important;
+}
+
+/* Style pour le pied du message */
+.message-footer {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-size: 12px !important;
+    margin-top: 5px !important;
+}
+
+/* Badge Vu */
+.message-read {
+    font-size: 12px !important;
+    color: #28a745 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+}
+
+/* Style pour la zone de réponse */
+.reply-box {
+    position: sticky !important;
+    bottom: 0 !important;
+    background-color: #f8f9fa !important;
+    border-top: 1px solid #e9ecef !important;
+    padding: 15px !important;
+    z-index: 1000 !important;
+    display: block !important;
+    width: 100% !important;
+    margin-top: auto !important;
+}
+
+/* Style du formulaire de réponse */
+#messageForm {
+    width: 100% !important;
+}
+
+/* Zone de texte */
+#messageForm textarea {
+    width: 100% !important;
+    padding: 10px 12px !important;
+    border: 1px solid #ced4da !important;
+    border-radius: 4px !important;
+    resize: vertical !important;
+    min-height: 80px !important;
+    max-height: 200px !important;
+    margin-bottom: 10px !important;
+}
+
+/* Bouton d'envoi */
+#messageForm button[type="submit"] {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    padding: 10px 15px !important;
+    background-color: #009b72 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    font-weight: 500 !important;
+}
+
+/* Indicateur de nouveaux messages */
+#new-messages-indicator {
+    position: fixed !important;
+    bottom: 100px !important;
+    right: 20px !important;
+    background-color: #009b72 !important;
+    color: white !important;
+    padding: 10px 15px !important;
+    border-radius: 20px !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2) !important;
+    cursor: pointer !important;
+    z-index: 1000 !important;
+}
+
+/* Interface de réponse (quand on répond à un message spécifique) */
+#reply-interface {
+    margin-bottom: 10px !important;
+}
+
+.reply-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 10px !important;
+    background-color: #f0f3f8 !important;
+    border-radius: 4px !important;
+}
+
+/* Correction pour la zone de conversation principale */
+.conversation-main {
+    flex-grow: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    position: relative !important;
+    height: 100% !important;
+    overflow: hidden !important;
+}

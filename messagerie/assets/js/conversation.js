@@ -496,7 +496,7 @@ function setupRealTimeUpdates() {
 }
 
 /**
- * Envoie un message via AJAX
+ * Envoie un message via AJAX - Version corrigée
  */
 function setupAjaxMessageSending() {
     const form = document.getElementById('messageForm');
@@ -532,7 +532,13 @@ function setupAjaxMessageSending() {
             method: 'POST',
             body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+            // Vérifier si la réponse est ok avant de continuer
+            if (!response.ok) {
+                throw new Error(`Erreur HTTP: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 // Vider le formulaire
@@ -572,7 +578,7 @@ function setupAjaxMessageSending() {
             alert('Erreur lors de l\'envoi du message. Veuillez réessayer.');
         })
         .finally(() => {
-            // Réactiver le bouton
+            // Réactiver le bouton quoi qu'il arrive
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalBtnText;
         });

@@ -245,57 +245,57 @@ include 'templates/header.php';
             <?php endforeach; ?>
         </div>
         
-        <?php if ($isDeleted): ?>
-        <div class="conversation-deleted">
-            <p>Cette conversation a été déplacée dans la corbeille. Vous ne pouvez plus y répondre.</p>
-            <form method="post" action="" id="restoreForm">
-                <input type="hidden" name="action" value="restore_conversation">
-                <button type="submit" class="btn primary">Restaurer la conversation</button>
-            </form>
+<?php if ($isDeleted): ?>
+<div class="conversation-deleted">
+    <p>Cette conversation a été déplacée dans la corbeille. Vous ne pouvez plus y répondre.</p>
+    <form method="post" action="" id="restoreForm">
+        <input type="hidden" name="action" value="restore_conversation">
+        <button type="submit" class="btn primary">Restaurer la conversation</button>
+    </form>
+</div>
+<?php elseif ($canReply): ?>
+<div class="reply-box" style="display: block !important;">
+    <form method="post" enctype="multipart/form-data" id="messageForm">
+        <input type="hidden" name="action" value="send_message">
+        <input type="hidden" name="parent_message_id" id="parent-message-id" value="">
+        
+        <!-- Interface de réponse (cachée par défaut) -->
+        <div id="reply-interface" style="display: none;">
+            <div class="reply-header">
+                <span id="reply-to" class="reply-to"></span>
+                <button type="button" class="btn-icon" onclick="cancelReply()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
         </div>
-        <?php elseif ($canReply): ?>
-        <div class="reply-box">
-            <form method="post" enctype="multipart/form-data" id="messageForm">
-                <input type="hidden" name="action" value="send_message">
-                <input type="hidden" name="parent_message_id" id="parent-message-id" value="">
-                
-                <!-- Interface de réponse (cachée par défaut) -->
-                <div id="reply-interface" style="display: none;">
-                    <div class="reply-header">
-                        <span id="reply-to" class="reply-to"></span>
-                        <button type="button" class="btn-icon" onclick="cancelReply()">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <?php if (canSetMessageImportance($user['type'])): ?>
-                <div class="reply-options">
-                    <select name="importance" class="importance-select">
-                        <option value="normal">Normal</option>
-                        <option value="important">Important</option>
-                        <option value="urgent">Urgent</option>
-                    </select>
-                </div>
-                <?php endif; ?>
-                
-                <textarea name="contenu" rows="4" placeholder="Envoyer un message..." required><?= htmlspecialchars($messageContent) ?></textarea>
-                
-                <div class="form-footer">
-                    <div class="file-upload">
-                        <input type="file" name="attachments[]" id="attachments" multiple>
-                        <label for="attachments">
-                            <i class="fas fa-paperclip"></i> Pièces jointes
-                        </label>
-                        <div id="file-list"></div>
-                    </div>
-                    
-                    <button type="submit" class="btn primary">
-                        <i class="fas fa-paper-plane"></i> Envoyer
-                    </button>
-                </div>
-            </form>
+        
+        <?php if (canSetMessageImportance($user['type'])): ?>
+        <div class="reply-options">
+            <select name="importance" class="importance-select">
+                <option value="normal">Normal</option>
+                <option value="important">Important</option>
+                <option value="urgent">Urgent</option>
+            </select>
         </div>
+        <?php endif; ?>
+        
+        <textarea name="contenu" rows="4" placeholder="Envoyer un message..." required><?= htmlspecialchars($messageContent) ?></textarea>
+        
+        <div class="form-footer">
+            <div class="file-upload">
+                <input type="file" name="attachments[]" id="attachments" multiple>
+                <label for="attachments">
+                    <i class="fas fa-paperclip"></i> Pièces jointes
+                </label>
+                <div id="file-list"></div>
+            </div>
+            
+            <button type="submit" class="btn primary">
+                <i class="fas fa-paper-plane"></i> Envoyer
+            </button>
+        </div>
+    </form>
+</div>
         <?php elseif (!$isDeleted && $conversation['type'] === 'annonce'): ?>
         <div class="conversation-deleted">
             <p>Cette annonce est en lecture seule. Vous ne pouvez pas y répondre.</p>
