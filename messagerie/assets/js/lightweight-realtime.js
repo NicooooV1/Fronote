@@ -102,17 +102,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         .filter(id => id) // Filtrer les éléments null ou undefined
                     );
                     
-                    // Ajouter uniquement les nouveaux messages et mettre à jour les statuts de lecture des messages existants
+                    // Ajouter uniquement les nouveaux messages
                     let hasNewMessages = false;
                     let newMessagesCount = 0;
                     
                     data.messages.forEach(message => {
-                        // Si le message existe déjà, vérifier s'il faut mettre à jour son statut de lecture
-                        if (message && message.id && existingMessageIds.has(message.id.toString())) {
-                            updateMessageReadStatus(message);
-                        } 
-                        // Sinon, ajouter le nouveau message
-                        else if (message && message.id) {
+                        if (message && message.id && !existingMessageIds.has(message.id.toString())) {
                             appendMessageToDOM(message, messagesContainer);
                             hasNewMessages = true;
                             newMessagesCount++;
@@ -151,47 +146,6 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Planifier la prochaine vérification
             scheduleNextPoll();
-        }
-    }
-
-    /**
-     * Met à jour le statut de lecture d'un message existant dans le DOM
-     * @param {Object} message Message avec l'état à jour
-     */
-    function updateMessageReadStatus(message) {
-        if (!message || !message.id) return;
-        
-        const messageElement = document.querySelector(`.message[data-id="${message.id}"]`);
-        if (!messageElement) return;
-        
-        const isSelf = messageElement.classList.contains('self');
-        const isCurrentlyMarkedAsRead = messageElement.classList.contains('read');
-        const shouldBeMarkedAsRead = message.est_lu == 1 || message.est_lu === true;
-        
-        // Si le statut a changé et que c'est un message envoyé par moi-même
-        if (isSelf && shouldBeMarkedAsRead !== isCurrentlyMarkedAsRead) {
-            if (shouldBeMarkedAsRead) {
-                // Marquer comme lu
-                messageElement.classList.add('read');
-                
-                // Ajouter l'indicateur "Vu" si c'est mon message
-                const statusDiv = messageElement.querySelector('.message-status');
-                if (statusDiv && !statusDiv.querySelector('.message-read')) {
-                    const readStatus = document.createElement('div');
-                    readStatus.className = 'message-read';
-                    readStatus.innerHTML = '<i class="fas fa-check"></i> Vu';
-                    statusDiv.appendChild(readStatus);
-                }
-            } else {
-                // Marquer comme non lu
-                messageElement.classList.remove('read');
-                
-                // Supprimer l'indicateur "Vu"
-                const readIndicator = messageElement.querySelector('.message-read');
-                if (readIndicator) {
-                    readIndicator.remove();
-                }
-            }
         }
     }
     
@@ -513,15 +467,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Déterminer les classes du message
         let classes = ['message'];
         
-        // Si c'est moi qui ai envoyé ce message
-        const isSelf = message.is_self == 1 || message.is_self === true;
-        if (isSelf) {
+        if (message.is_self == 1 || message.is_self === true) {
             classes.push('self');
         }
         
-        // Si le message a été lu par le destinataire (pertinent seulement pour mes propres messages)
-        const isRead = message.est_lu == 1 || message.est_lu === true;
-        if (isRead && isSelf) {
+        if (message.est_lu == 1 || message.est_lu === true) {
             classes.push('read');
         }
         
@@ -537,6 +487,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const expediteurNom = message.expediteur_nom || 'Inconnu';
         const senderType = message.sender_type || 'inconnu';
         const messageBody = message.body || message.contenu || '';
+        
+        // Vérification stricte de l'état de lecture
+        const isRead = message.est_lu === 1 || message.est_lu === true;
+        const isSelf = message.is_self == 1 || message.is_self === true;
         
         // Formater la date
         let formattedDate = 'Date inconnue';
@@ -587,18 +541,22 @@ document.addEventListener('DOMContentLoaded', function() {
             messageHTML += '</div>';
         }
         
-        // Ajouter le footer du message avec le "Vu" seulement pour mes propres messages
+        // Ajouter le footer du message
         messageHTML += `
             <div class="message-footer">
                 <div class="message-status">
-                    ${(isRead && isSelf) ? '<div class="message-read"><i class="fas fa-check"></i> Vu</div>' : ''}
+                    ${isRead ? '<div class="message-read"><i class="fas fa-check"></i> Vu</div>' : ''}
                 </div>
         `;
         
         // Ajouter les actions si ce n'est pas un message de l'utilisateur
         if (!isSelf) {
             messageHTML += `
-                <div class="message-actions">
+                <div class="message-actions">`;
+            
+            // N'ajouter les boutons mark-read/unread que dans la liste des conversations, pas sur la page de conversation
+            if (!isConversationPage) {
+                messageHTML += `
                     ${isRead ? 
                         `<button class="btn-icon mark-unread-btn" data-message-id="${message.id}">
                             <i class="fas fa-envelope"></i> Marquer comme non lu
@@ -606,7 +564,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         `<button class="btn-icon mark-read-btn" data-message-id="${message.id}">
                             <i class="fas fa-envelope-open"></i> Marquer comme lu
                         </button>`
-                    }
+                    }`;
+            }
+            
+            messageHTML += `
                     <button class="btn-icon" onclick="replyToMessage(${message.id}, '${escapeHTML(expediteurNom)}')">
                         <i class="fas fa-reply"></i> Répondre
                     </button>
@@ -621,25 +582,27 @@ document.addEventListener('DOMContentLoaded', function() {
         // Définir le HTML du message
         messageElement.innerHTML = messageHTML;
         
-        // Ajouter les gestionnaires d'événements pour les boutons
-        setTimeout(() => {
-            const readBtn = messageElement.querySelector('.mark-read-btn');
-            const unreadBtn = messageElement.querySelector('.mark-unread-btn');
-            
-            if (readBtn) {
-                readBtn.addEventListener('click', function() {
-                    const messageId = this.getAttribute('data-message-id');
-                    markMessageAsRead(messageId);
-                });
-            }
-            
-            if (unreadBtn) {
-                unreadBtn.addEventListener('click', function() {
-                    const messageId = this.getAttribute('data-message-id');
-                    markMessageAsUnread(messageId);
-                });
-            }
-        }, 100);
+        // Ajouter les gestionnaires d'événements pour les boutons seulement si on n'est pas sur la page de conversation
+        if (!isConversationPage) {
+            setTimeout(() => {
+                const readBtn = messageElement.querySelector('.mark-read-btn');
+                const unreadBtn = messageElement.querySelector('.mark-unread-btn');
+                
+                if (readBtn) {
+                    readBtn.addEventListener('click', function() {
+                        const messageId = this.getAttribute('data-message-id');
+                        markMessageAsRead(messageId);
+                    });
+                }
+                
+                if (unreadBtn) {
+                    unreadBtn.addEventListener('click', function() {
+                        const messageId = this.getAttribute('data-message-id');
+                        markMessageAsUnread(messageId);
+                    });
+                }
+            }, 100);
+        }
         
         // Ajouter le message au conteneur
         container.appendChild(messageElement);
@@ -741,13 +704,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Mettre à jour l'interface
                     const message = document.querySelector(`.message[data-id="${messageId}"]`);
                     if (message) {
-                        // La classe 'read' ne devrait être ajoutée que si c'est un message que *j'ai* envoyé
-                        if (message.classList.contains('self')) {
-                            message.classList.add('read');
-                            
-                            // Ajouter l'indicateur "Vu" - seulement pour nos propres messages
+                        message.classList.add('read');
+                        
+                        // Mettre à jour l'indicateur de lecture
+                        const readIndicator = message.querySelector('.message-read');
+                        if (!readIndicator) {
                             const footer = message.querySelector('.message-footer .message-status');
-                            if (footer && !footer.querySelector('.message-read')) {
+                            if (footer) {
                                 const readStatus = document.createElement('div');
                                 readStatus.className = 'message-read';
                                 readStatus.innerHTML = '<i class="fas fa-check"></i> Vu';
@@ -755,25 +718,25 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         }
                         
-                        // Remplacer le bouton
-                        const readBtn = message.querySelector('.mark-read-btn');
-                        if (readBtn) {
-                            const unreadBtn = document.createElement('button');
-                            unreadBtn.className = 'btn-icon mark-unread-btn';
-                            unreadBtn.setAttribute('data-message-id', messageId);
-                            unreadBtn.innerHTML = '<i class="fas fa-envelope"></i> Marquer comme non lu';
-                            unreadBtn.addEventListener('click', function() {
-                                markMessageAsUnread(messageId);
-                            });
-                            
-                            readBtn.parentNode.replaceChild(unreadBtn, readBtn);
+                        // Remplacer le bouton uniquement si on n'est pas sur la page de conversation
+                        if (!isConversationPage) {
+                            const readBtn = message.querySelector('.mark-read-btn');
+                            if (readBtn) {
+                                const unreadBtn = document.createElement('button');
+                                unreadBtn.className = 'btn-icon mark-unread-btn';
+                                unreadBtn.setAttribute('data-message-id', messageId);
+                                unreadBtn.innerHTML = '<i class="fas fa-envelope"></i> Marquer comme non lu';
+                                unreadBtn.addEventListener('click', function() {
+                                    markMessageAsUnread(messageId);
+                                });
+                                
+                                readBtn.parentNode.replaceChild(unreadBtn, readBtn);
+                            }
                         }
                     }
                     
-                    // Forcer une actualisation des messages et notifications
-                    messageEtag = null; // Forcer la prochaine requête à ignorer l'ETag
+                    // Forcer une actualisation des notifications
                     notificationEtag = null;
-                    pollMessages(); // Actualiser immédiatement les messages pour voir le status "Vu"
                     pollNotifications();
                 }
             })
@@ -792,35 +755,33 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Mettre à jour l'interface
                     const message = document.querySelector(`.message[data-id="${messageId}"]`);
                     if (message) {
-                        if (message.classList.contains('self')) {
-                            message.classList.remove('read');
-                            
-                            // Supprimer l'indicateur de lecture si c'est notre propre message
-                            const readIndicator = message.querySelector('.message-read');
-                            if (readIndicator) {
-                                readIndicator.remove();
-                            }
+                        message.classList.remove('read');
+                        
+                        // Supprimer l'indicateur de lecture
+                        const readIndicator = message.querySelector('.message-read');
+                        if (readIndicator) {
+                            readIndicator.remove();
                         }
                         
-                        // Remplacer le bouton
-                        const unreadBtn = message.querySelector('.mark-unread-btn');
-                        if (unreadBtn) {
-                            const readBtn = document.createElement('button');
-                            readBtn.className = 'btn-icon mark-read-btn';
-                            readBtn.setAttribute('data-message-id', messageId);
-                            readBtn.innerHTML = '<i class="fas fa-envelope-open"></i> Marquer comme lu';
-                            readBtn.addEventListener('click', function() {
-                                markMessageAsRead(messageId);
-                            });
-                            
-                            unreadBtn.parentNode.replaceChild(readBtn, unreadBtn);
+                        // Remplacer le bouton uniquement si on n'est pas sur la page de conversation
+                        if (!isConversationPage) {
+                            const unreadBtn = message.querySelector('.mark-unread-btn');
+                            if (unreadBtn) {
+                                const readBtn = document.createElement('button');
+                                readBtn.className = 'btn-icon mark-read-btn';
+                                readBtn.setAttribute('data-message-id', messageId);
+                                readBtn.innerHTML = '<i class="fas fa-envelope-open"></i> Marquer comme lu';
+                                readBtn.addEventListener('click', function() {
+                                    markMessageAsRead(messageId);
+                                });
+                                
+                                unreadBtn.parentNode.replaceChild(readBtn, unreadBtn);
+                            }
                         }
                     }
                     
                     // Forcer une actualisation des notifications
-                    messageEtag = null; // Forcer la prochaine requête à ignorer l'ETag
                     notificationEtag = null;
-                    pollMessages(); // Actualiser immédiatement les messages pour voir le status "Vu"
                     pollNotifications();
                 }
             })
@@ -839,10 +800,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Page visible, reprise des vérifications');
                 // Réinitialiser l'intervalle et vérifier immédiatement
                 currentInterval = CONFIG.baseInterval;
-                
-                // Forcer une actualisation en ignorant les ETags
-                messageEtag = null;
-                notificationEtag = null;
                 
                 // Démarrer immédiatement les vérifications
                 if (isConversationPage) {
