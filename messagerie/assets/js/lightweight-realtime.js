@@ -102,12 +102,17 @@ document.addEventListener('DOMContentLoaded', function() {
                         .filter(id => id) // Filtrer les éléments null ou undefined
                     );
                     
-                    // Ajouter uniquement les nouveaux messages
+                    // Ajouter uniquement les nouveaux messages et mettre à jour les statuts de lecture des messages existants
                     let hasNewMessages = false;
                     let newMessagesCount = 0;
                     
                     data.messages.forEach(message => {
-                        if (message && message.id && !existingMessageIds.has(message.id.toString())) {
+                        // Si le message existe déjà, vérifier s'il faut mettre à jour son statut de lecture
+                        if (message && message.id && existingMessageIds.has(message.id.toString())) {
+                            updateMessageReadStatus(message);
+                        } 
+                        // Sinon, ajouter le nouveau message
+                        else if (message && message.id) {
                             appendMessageToDOM(message, messagesContainer);
                             hasNewMessages = true;
                             newMessagesCount++;
@@ -146,6 +151,47 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Planifier la prochaine vérification
             scheduleNextPoll();
+        }
+    }
+
+    /**
+     * Met à jour le statut de lecture d'un message existant dans le DOM
+     * @param {Object} message Message avec l'état à jour
+     */
+    function updateMessageReadStatus(message) {
+        if (!message || !message.id) return;
+        
+        const messageElement = document.querySelector(`.message[data-id="${message.id}"]`);
+        if (!messageElement) return;
+        
+        const isSelf = messageElement.classList.contains('self');
+        const isCurrentlyMarkedAsRead = messageElement.classList.contains('read');
+        const shouldBeMarkedAsRead = message.est_lu == 1 || message.est_lu === true;
+        
+        // Si le statut a changé et que c'est un message envoyé par moi-même
+        if (isSelf && shouldBeMarkedAsRead !== isCurrentlyMarkedAsRead) {
+            if (shouldBeMarkedAsRead) {
+                // Marquer comme lu
+                messageElement.classList.add('read');
+                
+                // Ajouter l'indicateur "Vu" si c'est mon message
+                const statusDiv = messageElement.querySelector('.message-status');
+                if (statusDiv && !statusDiv.querySelector('.message-read')) {
+                    const readStatus = document.createElement('div');
+                    readStatus.className = 'message-read';
+                    readStatus.innerHTML = '<i class="fas fa-check"></i> Vu';
+                    statusDiv.appendChild(readStatus);
+                }
+            } else {
+                // Marquer comme non lu
+                messageElement.classList.remove('read');
+                
+                // Supprimer l'indicateur "Vu"
+                const readIndicator = messageElement.querySelector('.message-read');
+                if (readIndicator) {
+                    readIndicator.remove();
+                }
+            }
         }
     }
     
@@ -467,11 +513,15 @@ document.addEventListener('DOMContentLoaded', function() {
         // Déterminer les classes du message
         let classes = ['message'];
         
-        if (message.is_self == 1 || message.is_self === true) {
+        // Si c'est moi qui ai envoyé ce message
+        const isSelf = message.is_self == 1 || message.is_self === true;
+        if (isSelf) {
             classes.push('self');
         }
         
-        if (message.est_lu == 1 || message.est_lu === true) {
+        // Si le message a été lu par le destinataire (pertinent seulement pour mes propres messages)
+        const isRead = message.est_lu == 1 || message.est_lu === true;
+        if (isRead && isSelf) {
             classes.push('read');
         }
         
@@ -487,8 +537,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const expediteurNom = message.expediteur_nom || 'Inconnu';
         const senderType = message.sender_type || 'inconnu';
         const messageBody = message.body || message.contenu || '';
-        const isRead = message.est_lu == 1 || message.est_lu === true;
-        const isSelf = message.is_self == 1 || message.is_self === true;
         
         // Formater la date
         let formattedDate = 'Date inconnue';
@@ -539,11 +587,11 @@ document.addEventListener('DOMContentLoaded', function() {
             messageHTML += '</div>';
         }
         
-        // Ajouter le footer du message
+        // Ajouter le footer du message avec le "Vu" seulement pour mes propres messages
         messageHTML += `
             <div class="message-footer">
                 <div class="message-status">
-                    ${isRead ? '<div class="message-read"><i class="fas fa-check"></i> Vu</div>' : ''}
+                    ${(isRead && isSelf) ? '<div class="message-read"><i class="fas fa-check"></i> Vu</div>' : ''}
                 </div>
         `;
         
@@ -693,13 +741,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Mettre à jour l'interface
                     const message = document.querySelector(`.message[data-id="${messageId}"]`);
                     if (message) {
-                        message.classList.add('read');
-                        
-                        // Mettre à jour l'indicateur de lecture
-                        const readIndicator = message.querySelector('.message-read');
-                        if (!readIndicator) {
+                        // La classe 'read' ne devrait être ajoutée que si c'est un message que *j'ai* envoyé
+                        if (message.classList.contains('self')) {
+                            message.classList.add('read');
+                            
+                            // Ajouter l'indicateur "Vu" - seulement pour nos propres messages
                             const footer = message.querySelector('.message-footer .message-status');
-                            if (footer) {
+                            if (footer && !footer.querySelector('.message-read')) {
                                 const readStatus = document.createElement('div');
                                 readStatus.className = 'message-read';
                                 readStatus.innerHTML = '<i class="fas fa-check"></i> Vu';
@@ -722,8 +770,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     }
                     
-                    // Forcer une actualisation des notifications
+                    // Forcer une actualisation des messages et notifications
+                    messageEtag = null; // Forcer la prochaine requête à ignorer l'ETag
                     notificationEtag = null;
+                    pollMessages(); // Actualiser immédiatement les messages pour voir le status "Vu"
                     pollNotifications();
                 }
             })
@@ -742,12 +792,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Mettre à jour l'interface
                     const message = document.querySelector(`.message[data-id="${messageId}"]`);
                     if (message) {
-                        message.classList.remove('read');
-                        
-                        // Supprimer l'indicateur de lecture
-                        const readIndicator = message.querySelector('.message-read');
-                        if (readIndicator) {
-                            readIndicator.remove();
+                        if (message.classList.contains('self')) {
+                            message.classList.remove('read');
+                            
+                            // Supprimer l'indicateur de lecture si c'est notre propre message
+                            const readIndicator = message.querySelector('.message-read');
+                            if (readIndicator) {
+                                readIndicator.remove();
+                            }
                         }
                         
                         // Remplacer le bouton
@@ -766,7 +818,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     
                     // Forcer une actualisation des notifications
+                    messageEtag = null; // Forcer la prochaine requête à ignorer l'ETag
                     notificationEtag = null;
+                    pollMessages(); // Actualiser immédiatement les messages pour voir le status "Vu"
                     pollNotifications();
                 }
             })
@@ -785,6 +839,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Page visible, reprise des vérifications');
                 // Réinitialiser l'intervalle et vérifier immédiatement
                 currentInterval = CONFIG.baseInterval;
+                
+                // Forcer une actualisation en ignorant les ETags
+                messageEtag = null;
+                notificationEtag = null;
                 
                 // Démarrer immédiatement les vérifications
                 if (isConversationPage) {
