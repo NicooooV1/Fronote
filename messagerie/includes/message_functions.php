@@ -87,21 +87,6 @@ function getConversations($userId, $userType, $dossier = 'reception') {
 }
 
 /**
- * Retourne le libellé d'un statut de message
- * @param string $status Statut du message
- * @return string Libellé du statut
- */
-function getMessageStatusLabel($status) {
-    $statuses = [
-        'normal' => 'Message normal',
-        'important' => 'Message important',
-        'urgent' => 'Message urgent',
-        'annonce' => 'Annonce'
-    ];
-    return $statuses[$status] ?? 'Message normal';
-}
-
-/**
  * Crée une nouvelle conversation
  * @param string $titre Titre de la conversation
  * @param string $type Type de conversation (individuelle, groupe, information, etc.)
