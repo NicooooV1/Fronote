@@ -28,10 +28,10 @@ function initNotifications() {
  * Vérifie les nouvelles notifications
  */
 function checkNotifications() {
-    fetch('api/check_notifications.php')
+    fetch('api/notifications.php?action=check')
         .then(response => response.json())
         .then(data => {
-            if (!data.has_errors) {
+            if (data.success) {
                 updateNotificationBadge(data.count);
                 
                 // Si l'utilisateur a activé les notifications du navigateur et qu'il y a de nouvelles notifications
@@ -97,7 +97,7 @@ function initNotificationClicks() {
  * @param {number} notificationId - ID de la notification
  */
 function markNotificationRead(notificationId) {
-    fetch(`api/mark_notification_read.php?id=${notificationId}`)
+    fetch(`api/notifications.php?action=mark_read&id=${notificationId}`)
         .catch(error => console.error('Erreur lors du marquage de la notification:', error));
 }
 
@@ -165,10 +165,10 @@ function requestNotificationPermission() {
  */
 function updateNotificationPreference(preference, value) {
     const formData = new FormData();
-    formData.append('preference', preference);
-    formData.append('value', value ? '1' : '0');
+    formData.append('action', 'update_preferences');
+    formData.append('preferences[' + preference + ']', value ? '1' : '0');
     
-    fetch('api/update_notification_preference.php', {
+    fetch('api/notifications.php', {
         method: 'POST',
         body: formData
     }).catch(error => console.error('Erreur lors de la mise à jour de la préférence:', error));

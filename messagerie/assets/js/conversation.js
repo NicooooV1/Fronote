@@ -158,7 +158,7 @@ function setupRealTimeUpdates() {
         isCheckingForUpdates = true;
         
         // Requête de vérification
-        fetch(`api/get_conversation_updates.php?conv_id=${convId}&last_timestamp=${lastTimestamp}`)
+        fetch(`api/messages.php?conv_id=${convId}&action=check_updates&last_timestamp=${lastTimestamp}`)
             .then(response => response.json())
             .then(data => {
                 if (data.success && data.hasUpdates) {
@@ -182,48 +182,6 @@ function setupRealTimeUpdates() {
                 
                 // Réessayer après un délai en cas d'erreur
                 setTimeout(checkForUpdates, refreshInterval);
-            });
-    }
-    
-    /**
-     * Récupère et ajoute les nouveaux messages à la conversation
-     */
-    function fetchNewMessages() {
-        fetch(`api/get_new_messages.php?conv_id=${convId}&last_timestamp=${lastTimestamp}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.messages && data.messages.length > 0) {
-                    // Mettre à jour la référence du dernier timestamp
-                    const messages = data.messages;
-                    const messagesContainer = document.querySelector('.messages-container');
-                    
-                    // On était déjà en bas avant les nouveaux messages?
-                    const wasAtBottom = isScrolledToBottom(messagesContainer);
-                    
-                    // Ajouter chaque nouveau message
-                    messages.forEach(message => {
-                        appendMessageToDOM(message, messagesContainer);
-                        
-                        // Mise à jour du lastTimestamp avec le plus récent
-                        if (message.timestamp > lastTimestamp) {
-                            lastTimestamp = message.timestamp;
-                        }
-                    });
-                    
-                    // Faire défiler vers le bas si l'utilisateur était déjà en bas
-                    if (wasAtBottom) {
-                        scrollToBottom(messagesContainer);
-                    } else {
-                        // Sinon, indiquer qu'il y a de nouveaux messages
-                        showNewMessagesIndicator(messages.length);
-                    }
-                    
-                    // Lecture audio pour notification (optionnelle)
-                    playNotificationSound();
-                }
-            })
-            .catch(error => {
-                console.error('Erreur lors de la récupération des nouveaux messages:', error);
             });
     }
     
@@ -292,6 +250,48 @@ function setupRealTimeUpdates() {
         // Par exemple:
         // const audio = new Audio('/assets/sounds/notification.mp3');
         // audio.play();
+    }
+    
+    /**
+     * Récupère et ajoute les nouveaux messages à la conversation
+     */
+    function fetchNewMessages() {
+        fetch(`api/messages.php?conv_id=${convId}&action=get_new&last_timestamp=${lastTimestamp}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.messages && data.messages.length > 0) {
+                    // Mettre à jour la référence du dernier timestamp
+                    const messages = data.messages;
+                    const messagesContainer = document.querySelector('.messages-container');
+                    
+                    // On était déjà en bas avant les nouveaux messages?
+                    const wasAtBottom = isScrolledToBottom(messagesContainer);
+                    
+                    // Ajouter chaque nouveau message
+                    messages.forEach(message => {
+                        appendMessageToDOM(message, messagesContainer);
+                        
+                        // Mise à jour du lastTimestamp avec le plus récent
+                        if (message.timestamp > lastTimestamp) {
+                            lastTimestamp = message.timestamp;
+                        }
+                    });
+                    
+                    // Faire défiler vers le bas si l'utilisateur était déjà en bas
+                    if (wasAtBottom) {
+                        scrollToBottom(messagesContainer);
+                    } else {
+                        // Sinon, indiquer qu'il y a de nouveaux messages
+                        showNewMessagesIndicator(messages.length);
+                    }
+                    
+                    // Lecture audio pour notification (optionnelle)
+                    playNotificationSound();
+                }
+            })
+            .catch(error => {
+                console.error('Erreur lors de la récupération des nouveaux messages:', error);
+            });
     }
     
     /**
@@ -464,7 +464,7 @@ function setupRealTimeUpdates() {
      * Actualise la liste des participants
      */
     function refreshParticipantsList() {
-        fetch(`api/get_participants_list.php?conv_id=${convId}`)
+        fetch(`api/participants.php?conv_id=${convId}&action=get_list`)
             .then(response => response.text())
             .then(html => {
                 const participantsList = document.querySelector('.participants-list');
@@ -520,6 +520,7 @@ function setupAjaxMessageSending() {
         // Créer un objet FormData pour l'envoi des données, y compris les fichiers
         const formData = new FormData(form);
         formData.append('conversation_id', convId);
+        formData.append('action', 'send_message');
         
         // Afficher un indicateur de chargement
         const submitBtn = form.querySelector('button[type="submit"]');
@@ -528,7 +529,7 @@ function setupAjaxMessageSending() {
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
         
         // Envoyer la requête AJAX
-        fetch('api/send_message.php', {
+        fetch('api/messages.php', {
             method: 'POST',
             body: formData
         })
@@ -687,7 +688,7 @@ function loadParticipants() {
     select.innerHTML = '<option value="">Chargement...</option>';
     
     // Faire une requête AJAX pour récupérer les participants
-    fetch(`api/get_participants.php?type=${type}&conv_id=${convId}`)
+    fetch(`api/participants.php?type=${type}&conv_id=${convId}`)
         .then(response => response.json())
         .then(data => {
             select.innerHTML = '';
