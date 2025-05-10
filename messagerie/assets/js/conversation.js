@@ -133,6 +133,27 @@ function setupMessageValidation() {
     }
 }
 
+
+/**
+ * Fait défiler un élément jusqu'en bas
+ * @param {HTMLElement} element - Élément à faire défiler jusqu'en bas
+ */
+function scrollToBottom(element) {
+    if (element) {
+        element.scrollTop = element.scrollHeight;
+    }
+}
+
+/**
+ * Vérifie si l'élément est défilé jusqu'en bas
+ * @param {HTMLElement} element - Élément à vérifier
+ * @returns {boolean} True si l'élément est défilé jusqu'en bas
+ */
+function isScrolledToBottom(element) {
+    if (!element) return false;
+    return Math.abs(element.scrollHeight - element.scrollTop - element.clientHeight) < 20;
+}
+
 /**
  * Configure les mises à jour en temps réel pour la conversation
  * Implémentation prioritaire utilisant l'approche Long polling / AJAX poll
@@ -196,23 +217,6 @@ function setupRealTimeUpdates() {
                 // Réessayer après un délai en cas d'erreur
                 setTimeout(checkForUpdates, refreshInterval);
             });
-    }
-    
-    /**
-     * Vérifie si l'élément est défilé jusqu'en bas
-     * @param {HTMLElement} element - Élément conteneur à vérifier
-     * @returns {boolean} True si l'élément est défilé jusqu'en bas
-     */
-    function isScrolledToBottom(element) {
-        return element.scrollHeight - element.scrollTop - element.clientHeight < 20;
-    }
-    
-    /**
-     * Fait défiler l'élément jusqu'en bas
-     * @param {HTMLElement} element - Élément à faire défiler
-     */
-    function scrollToBottom(element) {
-        element.scrollTop = element.scrollHeight;
     }
     
     /**
