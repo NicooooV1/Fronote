@@ -11,6 +11,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialisation des fonctionnalités d'action en masse
     setupBulkActions();
+    
+    // Initialiser les gestionnaires d'erreurs
+    initErrorHandlers();
 });
 
 /**
@@ -142,7 +145,7 @@ function setupFormValidation() {
             const textareaContent = textArea.value.trim();
             if (textareaContent === '') {
                 e.preventDefault();
-                alert('Le message ne peut pas être vide');
+                afficherNotificationErreur('Le message ne peut pas être vide');
             }
         });
     }
@@ -228,7 +231,7 @@ function setupBulkActions() {
                 ).map(cb => parseInt(cb.value, 10));
                 
                 if (selectedIds.length === 0) {
-                    alert('Veuillez sélectionner au moins une conversation');
+                    afficherNotificationErreur('Veuillez sélectionner au moins une conversation');
                     return;
                 }
                 
@@ -326,6 +329,9 @@ function performBulkAction(action, convIds) {
         case 'restore':
             confirmMessage = `Êtes-vous sûr de vouloir restaurer ${convIds.length} conversation(s) ?`;
             break;
+        case 'unarchive':
+            confirmMessage = `Êtes-vous sûr de vouloir désarchiver ${convIds.length} conversation(s) ?`;
+            break;
         case 'mark_read':
             confirmMessage = `Marquer ${convIds.length} conversation(s) comme lues ?`;
             break;
@@ -368,13 +374,15 @@ function performBulkAction(action, convIds) {
         .then(data => {
             if (data.success) {
                 // Afficher un message de succès
-                alert(`Action réussie sur ${data.count} conversation(s)`);
+                afficherNotificationErreur(`Action réussie sur ${data.count} conversation(s)`, 3000);
                 
                 // Recharger la page
-                window.location.reload();
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
             } else {
                 console.error('Erreur:', data.error);
-                alert('Erreur lors de l\'action: ' + data.error);
+                afficherNotificationErreur('Erreur lors de l\'action: ' + data.error);
                 
                 // Restaurer le curseur et réactiver les boutons
                 document.body.style.cursor = 'default';
@@ -388,7 +396,7 @@ function performBulkAction(action, convIds) {
         })
         .catch(error => {
             console.error('Erreur:', error);
-            alert('Une erreur est survenue lors de l\'exécution de l\'action: ' + error.message);
+            afficherNotificationErreur('Une erreur est survenue lors de l\'exécution de l\'action: ' + error.message);
             
             // Restaurer le curseur et réactiver les boutons
             document.body.style.cursor = 'default';
@@ -451,10 +459,13 @@ function markConversationAsRead(convId) {
             if (data.success) {
                 window.location.reload();
             } else {
-                alert('Erreur: ' + data.error);
+                afficherNotificationErreur('Erreur: ' + data.error);
             }
         })
-        .catch(error => console.error('Erreur:', error));
+        .catch(error => {
+            console.error('Erreur:', error);
+            afficherNotificationErreur('Erreur: ' + error.message);
+        });
 }
 
 /**
@@ -473,10 +484,13 @@ function markConversationAsUnread(convId) {
             if (data.success) {
                 window.location.reload();
             } else {
-                alert('Erreur: ' + data.error);
+                afficherNotificationErreur('Erreur: ' + data.error);
             }
         })
-        .catch(error => console.error('Erreur:', error));
+        .catch(error => {
+            console.error('Erreur:', error);
+            afficherNotificationErreur('Erreur: ' + error.message);
+        });
 }
 
 /**
@@ -508,4 +522,106 @@ function formatFileSize(bytes) {
     if (bytes < 1024) return bytes + ' B';
     else if (bytes < 1048576) return Math.round(bytes / 1024) + ' KB';
     else return Math.round(bytes / 1048576 * 10) / 10 + ' MB';
+}
+
+/**
+ * Affiche une notification d'erreur au centre de l'écran
+ * @param {string} message - Message d'erreur à afficher
+ * @param {number} duration - Durée d'affichage en ms (par défaut 5000ms)
+ */
+function afficherNotificationErreur(message, duration = 5000) {
+    // Créer la div de notification si elle n'existe pas
+    let notifContainer = document.getElementById('error-notification-container');
+    
+    if (!notifContainer) {
+        notifContainer = document.createElement('div');
+        notifContainer.id = 'error-notification-container';
+        
+        // Styles pour centrer la notification
+        notifContainer.style.position = 'fixed';
+        notifContainer.style.top = '50%';
+        notifContainer.style.left = '50%';
+        notifContainer.style.transform = 'translate(-50%, -50%)';
+        notifContainer.style.zIndex = '10000';
+        notifContainer.style.width = 'auto';
+        notifContainer.style.maxWidth = '80%';
+        
+        document.body.appendChild(notifContainer);
+    }
+    
+    // Créer la notification
+    const notification = document.createElement('div');
+    notification.className = 'error-notification';
+    
+    // Styles de la notification
+    notification.style.backgroundColor = '#f8d7da';
+    notification.style.color = '#721c24';
+    notification.style.padding = '15px 20px';
+    notification.style.margin = '10px';
+    notification.style.borderRadius = '5px';
+    notification.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.2)';
+    notification.style.display = 'flex';
+    notification.style.justifyContent = 'space-between';
+    notification.style.alignItems = 'center';
+    notification.style.minWidth = '300px';
+    
+    // Créer le contenu de la notification
+    const content = document.createElement('div');
+    content.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+    
+    // Créer le bouton de fermeture
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '&times;';
+    closeBtn.style.background = 'none';
+    closeBtn.style.border = 'none';
+    closeBtn.style.color = '#721c24';
+    closeBtn.style.fontSize = '20px';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.style.marginLeft = '15px';
+    
+    // Ajouter le contenu et le bouton à la notification
+    notification.appendChild(content);
+    notification.appendChild(closeBtn);
+    
+    // Ajouter la notification au conteneur
+    notifContainer.appendChild(notification);
+    
+    // Fermer la notification quand on clique sur le bouton
+    closeBtn.addEventListener('click', function() {
+        notifContainer.removeChild(notification);
+        
+        // Supprimer le conteneur s'il n'y a plus de notifications
+        if (notifContainer.children.length === 0) {
+            document.body.removeChild(notifContainer);
+        }
+    });
+    
+    // Fermer automatiquement après la durée spécifiée
+    setTimeout(function() {
+        if (notification.parentNode === notifContainer) {
+            notifContainer.removeChild(notification);
+            
+            // Supprimer le conteneur s'il n'y a plus de notifications
+            if (notifContainer.children.length === 0) {
+                document.body.removeChild(notifContainer);
+            }
+        }
+    }, duration);
+    
+    return notification;
+}
+
+/**
+ * Ajouter des gestionnaires d'erreurs globaux
+ */
+function initErrorHandlers() {
+    // Intercepter les erreurs non capturées
+    window.addEventListener('error', function(event) {
+        afficherNotificationErreur('Erreur JavaScript: ' + event.message);
+    });
+    
+    // Intercepter les rejets de promesses non capturés
+    window.addEventListener('unhandledrejection', function(event) {
+        afficherNotificationErreur('Erreur asynchrone: ' + event.reason);
+    });
 }

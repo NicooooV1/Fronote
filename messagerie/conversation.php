@@ -32,17 +32,54 @@ $messageContent = ''; // Pour conserver le contenu du message en cas d'erreur
 try {
     // Vérifier l'accès à la conversation
     $conversation = getConversationInfo($convId);
-    $messages = getMessages($convId, $user['id'], $user['type']);
-    $participants = getParticipants($convId);
     
-    // Vérifier si la conversation est dans la corbeille
+    // Initialiser les variables par défaut pour éviter les erreurs
+    $messages = [];
+    $participants = [];
+    $isDeleted = false;
+    $isAdmin = false;
+    $isModerator = false;
+    $canReply = false;
+    
+    // Vérifier si la conversation existe
+    if (!$conversation) {
+        throw new Exception("La conversation n'existe pas");
+    }
+    
+    // Vérifier si l'utilisateur peut accéder à la conversation
     $participantInfo = getParticipantInfo($convId, $user['id'], $user['type']);
+    
+    // Si l'utilisateur n'est pas participant ou la conversation n'existe pas
+    if (!$participantInfo) {
+        throw new Exception("Vous n'êtes pas autorisé à accéder à cette conversation");
+    }
+    
+    // Mettre à jour les variables selon les informations du participant
     $isDeleted = $participantInfo && $participantInfo['is_deleted'] == 1;
     $isAdmin = $participantInfo && $participantInfo['is_admin'] == 1;
     $isModerator = $participantInfo && ($participantInfo['is_moderator'] == 1 || $isAdmin);
     
+    // Récupérer les messages et participants seulement si la conversation n'est pas supprimée
+    // ou si on a besoin de les afficher même si supprimée (comportement à définir)
+    if (!$isDeleted) {
+        $messages = getMessages($convId, $user['id'], $user['type']);
+        $participants = getParticipants($convId);
+    } else {
+        // Pour les conversations dans la corbeille, on peut vouloir quand même
+        // récupérer les messages et participants en lecture seule
+        try {
+            // Utiliser une fonction spéciale pour récupérer les messages même si deleted
+            $messages = getMessagesEvenIfDeleted($convId, $user['id'], $user['type']);
+            $participants = getParticipants($convId);
+        } catch (Exception $e) {
+            // Si erreur, on garde les tableaux vides
+            $messages = [];
+            $participants = [];
+        }
+    }
+    
     // Vérifier si l'utilisateur peut répondre à cette conversation
-    $canReply = canReplyToAnnouncement($user['id'], $user['type'], $convId, $conversation['type']);
+    $canReply = !$isDeleted && canReplyToAnnouncement($user['id'], $user['type'], $convId, $conversation['type']);
     
     // Définir le titre de la page
     $pageTitle = 'Conversation - ' . $conversation['titre'];
@@ -155,11 +192,30 @@ try {
                     $error = $result['message'];
                 }
                 break;
+                
+            case 'unarchive':
+                $result = handleUnarchiveConversation($convId, $user);
+                
+                if ($result['success']) {
+                    redirect($result['redirect']);
+                } else {
+                    $error = $result['message'];
+                }
+                break;
         }
     }
     
 } catch (Exception $e) {
     $error = $e->getMessage();
+    
+    // Initialiser les variables manquantes en cas d'erreur
+    if (!isset($conversation)) $conversation = null;
+    if (!isset($messages)) $messages = [];
+    if (!isset($participants)) $participants = [];
+    if (!isset($isDeleted)) $isDeleted = false;
+    if (!isset($isAdmin)) $isAdmin = false;
+    if (!isset($isModerator)) $isModerator = false;
+    if (!isset($canReply)) $canReply = false;
 }
 
 // Inclure l'en-tête

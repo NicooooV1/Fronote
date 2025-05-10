@@ -759,8 +759,13 @@ function markMessageAsRead(messageId) {
  * @param {number} messageId - ID du message
  */
 function markMessageAsUnread(messageId) {
-    fetch(`api/mark_message.php?id=${messageId}&action=mark_unread`)
-        .then(response => response.json())
+    fetch(`api/messages.php?id=${messageId}&action=mark_unread`) // Correction du chemin API
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erreur réseau: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 // Mettre à jour l'interface utilisateur
@@ -789,10 +794,14 @@ function markMessageAsUnread(messageId) {
                     }
                 }
             } else {
+                afficherNotificationErreur("Erreur: " + (data.error || "Une erreur est survenue"));
                 console.error('Erreur:', data.error);
             }
         })
-        .catch(error => console.error('Erreur:', error));
+        .catch(error => {
+            afficherNotificationErreur("Erreur: " + error.message);
+            console.error('Erreur:', error);
+        });
 }
 
 // Gestion des pièces jointes

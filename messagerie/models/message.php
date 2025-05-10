@@ -83,6 +83,80 @@ function getMessages($convId, $userId, $userType) {
 }
 
 /**
+ * Récupère les messages d'une conversation même si elle est dans la corbeille
+ * @param int $convId
+ * @param int $userId
+ * @param string $userType
+ * @return array
+ */
+function getMessagesEvenIfDeleted($convId, $userId, $userType) {
+    global $pdo;
+    
+    // Ne pas vérifier is_deleted=0 pour les participants
+    $checkParticipant = $pdo->prepare("
+        SELECT id FROM conversation_participants 
+        WHERE conversation_id = ? AND user_id = ? AND user_type = ?
+    ");
+    $checkParticipant->execute([$convId, $userId, $userType]);
+    if (!$checkParticipant->fetch()) {
+        throw new Exception("Vous n'êtes pas autorisé à accéder à cette conversation");
+    }
+    
+    $sql = "
+        SELECT m.*, 
+               CASE 
+                   WHEN cp.last_read_at IS NULL OR m.created_at > cp.last_read_at THEN 0
+                   ELSE 1
+               END as est_lu,
+               CASE 
+                   WHEN m.sender_type = 'eleve' THEN 
+                       (SELECT CONCAT(e.prenom, ' ', e.nom) FROM eleves e WHERE e.id = m.sender_id)
+                   WHEN m.sender_type = 'parent' THEN 
+                       (SELECT CONCAT(p.prenom, ' ', p.nom) FROM parents p WHERE p.id = m.sender_id)
+                   WHEN m.sender_type = 'professeur' THEN 
+                       (SELECT CONCAT(p.prenom, ' ', p.nom) FROM professeurs p WHERE p.id = m.sender_id)
+                   WHEN m.sender_type = 'vie_scolaire' THEN 
+                       (SELECT CONCAT(v.prenom, ' ', v.nom) FROM vie_scolaire v WHERE v.id = m.sender_id)
+                   WHEN m.sender_type = 'administrateur' THEN 
+                       (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = m.sender_id)
+                   ELSE 'Inconnu'
+               END as expediteur_nom,
+               m.sender_id as expediteur_id, 
+               m.sender_type as expediteur_type,
+               m.body as contenu,
+               COALESCE(m.status, 'normal') as status,
+               m.created_at as date_envoi
+        FROM messages m
+        LEFT JOIN conversation_participants cp ON (
+            m.conversation_id = cp.conversation_id AND 
+            cp.user_id = ? AND 
+            cp.user_type = ?
+        )
+        WHERE m.conversation_id = ?
+        ORDER BY m.created_at ASC
+    ";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$userId, $userType, $convId]);
+    $messages = $stmt->fetchAll();
+
+    // Récupérer les pièces jointes pour chaque message
+    $attachmentStmt = $pdo->prepare("
+        SELECT id, message_id, file_name as nom_fichier, file_path as chemin
+        FROM message_attachments 
+        WHERE message_id = ?
+    ");
+    
+    foreach ($messages as &$message) {
+        $attachmentStmt->execute([$message['id']]);
+        $message['pieces_jointes'] = $attachmentStmt->fetchAll();
+        
+        // Ne pas marquer comme lu automatiquement puisque la conversation est dans la corbeille
+    }
+
+    return $messages;
+}
+
+/**
  * Récupère un message par son ID
  * @param int $messageId
  * @return array|false

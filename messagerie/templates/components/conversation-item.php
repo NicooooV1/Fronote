@@ -54,7 +54,16 @@
             <i class="fas fa-ellipsis-v"></i>
         </button>
         <div class="quick-actions-menu" id="quick-actions-<?= (int)$conversation['id'] ?>">
-            <?php if ($currentFolder === 'corbeille'): ?>
+            <?php if ($currentFolder === 'archives'): ?>
+            <!-- Actions pour les archives -->
+            <button type="button" onclick="performBulkAction('unarchive', [<?= (int)$conversation['id'] ?>])">
+                <i class="fas fa-inbox"></i> Désarchiver
+            </button>
+            
+            <button type="button" onclick="performBulkAction('delete', [<?= (int)$conversation['id'] ?>])" class="delete">
+                <i class="fas fa-trash"></i> Supprimer
+            </button>
+            <?php elseif ($currentFolder === 'corbeille'): ?>
             <!-- Actions pour la corbeille -->
             <button type="button" onclick="performBulkAction('restore', [<?= (int)$conversation['id'] ?>])">
                 <i class="fas fa-trash-restore"></i> Restaurer
