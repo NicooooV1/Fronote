@@ -22,24 +22,29 @@ function initFormValidation() {
     
     // Validation du titre
     if (titleInput) {
-        const titleCounter = document.getElementById('title-counter');
+        const titleCounter = document.createElement('div');
+        titleCounter.id = 'title-counter';
+        titleCounter.className = 'text-muted small';
+        titleCounter.style.fontSize = '12px';
+        titleCounter.style.color = '#6c757d';
+        titleCounter.style.marginTop = '5px';
+        
+        titleInput.parentNode.insertBefore(titleCounter, titleInput.nextSibling);
         
         titleInput.addEventListener('input', function() {
             const maxLength = 100;
             const currentLength = this.value.length;
             
-            if (titleCounter) {
-                titleCounter.textContent = `${currentLength}/${maxLength} caractères`;
-                
-                if (currentLength > maxLength) {
-                    titleCounter.style.color = '#dc3545';
-                    document.querySelector('button[type="submit"]').disabled = true;
-                } else {
-                    titleCounter.style.color = '#6c757d';
-                    // Ne pas réactiver le bouton si le contenu est trop long
-                    if (contentTextarea && contentTextarea.value.length <= 10000) {
-                        document.querySelector('button[type="submit"]').disabled = false;
-                    }
+            titleCounter.textContent = `${currentLength}/${maxLength} caractères`;
+            
+            if (currentLength > maxLength) {
+                titleCounter.style.color = '#dc3545';
+                document.querySelector('button[type="submit"]').disabled = true;
+            } else {
+                titleCounter.style.color = '#6c757d';
+                // Ne pas réactiver le bouton si le contenu est trop long
+                if (contentTextarea && contentTextarea.value.length <= 10000) {
+                    document.querySelector('button[type="submit"]').disabled = false;
                 }
             }
         });
@@ -50,24 +55,29 @@ function initFormValidation() {
     
     // Validation du contenu
     if (contentTextarea) {
-        const charCounter = document.getElementById('char-counter');
+        const charCounter = document.createElement('div');
+        charCounter.id = 'char-counter';
+        charCounter.className = 'text-muted small';
+        charCounter.style.fontSize = '12px';
+        charCounter.style.color = '#6c757d';
+        charCounter.style.marginTop = '5px';
+        
+        contentTextarea.parentNode.insertBefore(charCounter, contentTextarea.nextSibling);
         
         contentTextarea.addEventListener('input', function() {
             const maxLength = 10000;
             const currentLength = this.value.length;
             
-            if (charCounter) {
-                charCounter.textContent = `${currentLength}/${maxLength} caractères`;
-                
-                if (currentLength > maxLength) {
-                    charCounter.style.color = '#dc3545';
-                    document.querySelector('button[type="submit"]').disabled = true;
-                } else {
-                    charCounter.style.color = '#6c757d';
-                    // Ne pas réactiver le bouton si le titre est trop long
-                    if (titleInput && titleInput.value.length <= 100) {
-                        document.querySelector('button[type="submit"]').disabled = false;
-                    }
+            charCounter.textContent = `${currentLength}/${maxLength} caractères`;
+            
+            if (currentLength > maxLength) {
+                charCounter.style.color = '#dc3545';
+                document.querySelector('button[type="submit"]').disabled = true;
+            } else {
+                charCounter.style.color = '#6c757d';
+                // Ne pas réactiver le bouton si le titre est trop long
+                if (titleInput && titleInput.value.length <= 100) {
+                    document.querySelector('button[type="submit"]').disabled = false;
                 }
             }
         });
@@ -298,3 +308,57 @@ function removeRecipient(value) {
 function toggleTargetOptions() {
     const cible = document.getElementById('cible');
     if (!cible) return;
+    
+    const targetClasses = document.getElementById('target-classes');
+    if (!targetClasses) return;
+    
+    // Masquer toutes les options
+    targetClasses.style.display = 'none';
+    
+    // Afficher les options correspondant à la cible
+    if (cible.value === 'classes') {
+        targetClasses.style.display = 'block';
+    }
+}
+
+/**
+ * Initialise la gestion des pièces jointes
+ */
+function initFileUpload() {
+    const fileInput = document.getElementById('attachments');
+    
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            const fileList = document.getElementById('file-list');
+            if (!fileList) return;
+            
+            fileList.innerHTML = '';
+            
+            if (this.files.length > 0) {
+                for (let i = 0; i < this.files.length; i++) {
+                    const file = this.files[i];
+                    const fileSize = formatFileSize(file.size);
+                    
+                    const fileInfo = document.createElement('div');
+                    fileInfo.className = 'file-info';
+                    fileInfo.innerHTML = `
+                        <i class="fas fa-file"></i>
+                        <span>${file.name} (${fileSize})</span>
+                    `;
+                    fileList.appendChild(fileInfo);
+                }
+            }
+        });
+    }
+}
+
+/**
+ * Formate la taille d'un fichier
+ * @param {number} bytes Taille en octets
+ * @returns {string} Taille formatée
+ */
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    else if (bytes < 1048576) return Math.round(bytes / 1024) + ' KB';
+    else return Math.round(bytes / 1048576 * 10) / 10 + ' MB';
+}
