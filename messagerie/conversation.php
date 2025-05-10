@@ -244,12 +244,13 @@ include 'templates/header.php';
         <?php endif; ?>
         
         <textarea name="contenu" rows="4" placeholder="Envoyer un message..." required><?= htmlspecialchars($messageContent) ?></textarea>
+        <div id="char-counter" class="text-muted small">0/10000 caractères</div>
         
         <div class="form-footer">
             <div class="file-upload">
                 <input type="file" name="attachments[]" id="attachments" multiple>
                 <label for="attachments">
-                    <i class="fas fa-paperclip"></i> Pièces jointes
+                    <i class="fas fa-paperclip"></i> Sélect. fichiers
                 </label>
                 <div id="file-list"></div>
             </div>
