@@ -77,6 +77,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
                 }
                 $message = "Conversations restaurées";
                 break;
+            case 'unarchive':
+                // Désarchiver les conversations
+                foreach ($convIds as $convId) {
+                    if (unarchiveConversation($convId, $user['id'], $user['type'])) {
+                        $count++;
+                    }
+                }
+    $message = "Conversations désarchivées";
+    break;
                 
             case 'mark_read':
                 // Marquer comme lues
