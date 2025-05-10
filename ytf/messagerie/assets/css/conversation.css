@@ -1,14 +1,18 @@
-/* Styles pour la page de conversation */
+/* --- CONTENU DE LA CONVERSATION --- */
+.content {
+    flex-grow: 1;
+    display: flex;
+}
 
-/* Configuration du conteneur principal */
+/* Conteneur principal - hauteur complète et overflow caché */
 .conversation-page {
     display: flex;
     flex-grow: 1;
-    height: calc(100vh - 60px);
+    height: calc(100vh - 60px); /* Hauteur de la page moins le header */
     overflow: hidden;
 }
 
-/* Sidebar de conversation */
+/* Sidebar de conversation - hauteur complète avec scroll interne */
 .conversation-sidebar {
     width: 250px;
     height: 100%;
@@ -80,6 +84,37 @@
     color: #6c757d;
 }
 
+.participants-list li i {
+    margin-right: 8px;
+    color: #6c757d;
+}
+
+.participants-list li.admin {
+    font-weight: 500;
+}
+
+.participants-list li.left {
+    opacity: 0.5;
+}
+
+.action-btn {
+    margin-left: 5px;
+    color: #6c757d;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px;
+}
+
+.action-btn:hover {
+    color: #009b72;
+}
+
+.action-btn.remove:hover {
+    color: #dc3545;
+}
+
 /* Actions sur la conversation */
 .conversation-actions {
     margin-top: 20px;
@@ -106,7 +141,7 @@
     text-align: center;
 }
 
-/* Zone principale des messages */
+/* Zone principale des messages - configuration flex pour le positionnement des composants */
 .conversation-main {
     flex-grow: 1;
     display: flex;
@@ -121,9 +156,7 @@
     flex: 1;
     padding: 20px;
     overflow-y: auto;
-    height: calc(100% - 70px);
-    display: flex;
-    flex-direction: column;
+    height: calc(100% - 70px); /* Hauteur totale moins la zone de réponse */
 }
 
 /* --- MESSAGES --- */
@@ -131,15 +164,13 @@
     display: flex;
     flex-direction: column;
     max-width: 80%;
-    padding: a12px 15px;
+    padding: 12px 15px;
     border-radius: 8px;
     background-color: #f8f9fa;
     border: 1px solid #e9ecef;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    width: fit-content;
-    min-width: 200px;
-    margin-bottom: 10px;
-    align-self: flex-start;
+    width: fit-content; /* Adapté à la longueur du message */
+    min-width: 200px; /* Taille minimale */
 }
 
 .message.self {
@@ -152,35 +183,48 @@
     background-color: #fff8e1;
     border-color: #ffe082;
     border-left: 4px solid #ffc107;
-    max-width: 90%;
+    max-width: 90%; /* Plus large pour les annonces */
 }
 
 /* Couleurs selon l'importance */
 .message.normal {
-    border-left: 4px solid #28a745;
+    border-left: 4px solid #28a745; /* Vert */
 }
 
 .message.important {
-    border-left: 4px solid #ffc107;
+    border-left: 4px solid #ffc107; /* Orange */
 }
 
 .message.urgent {
-    border-left: 4px solid #dc3545;
+    border-left: 4px solid #dc3545; /* Rouge */
 }
 
-/* En-tête du message */
+/* Bordures grises pour les messages lus */
+.message.normal.read {
+    border-bottom: 4px solid #adb5bd; /* Gris - seulement en bas */
+}
+
+.message.important.read {
+    border-bottom: 4px solid #adb5bd; /* Gris - seulement en bas */
+}
+
+.message.urgent.read {
+    border-bottom: 4px solid #adb5bd; /* Gris - seulement en bas */
+}
+
+/* CORRIGÉ: Espacement amélioré dans l'en-tête du message */
 .message-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 12px;
-    gap: 20px;
+    margin-bottom: 12px; /* Augmenté pour plus d'espace vertical */
+    gap: 20px; /* Ajout d'espace entre le nom et les métadonnées */
 }
 
 .sender {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: flex-start; /* Alignement à gauche */
 }
 
 .sender strong {
@@ -193,14 +237,20 @@
     color: #6c757d;
 }
 
+/* CORRIGÉ: Amélioration de l'affichage des métadonnées */
 .message-meta {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 15px; /* Augmenté pour plus d'espace entre les éléments */
     font-size: 12px;
     color: #6c757d;
-    margin-left: auto;
-    white-space: nowrap;
+    margin-left: auto; /* Force l'alignement à droite */
+    white-space: nowrap; /* Évite le retour à la ligne */
+}
+
+/* CORRIGÉ: S'assurer qu'il n'y a pas de soulignement */
+.message-meta .date {
+    text-decoration: none;
 }
 
 .importance-tag {
@@ -226,7 +276,6 @@
     word-break: break-word;
 }
 
-/* Pied du message */
 .message-footer {
     display: flex;
     justify-content: space-between;
@@ -241,11 +290,11 @@
 }
 
 .message-read {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
     font-size: 12px;
     color: #28a745;
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 
 /* --- PIÈCES JOINTES --- */
@@ -299,7 +348,43 @@
     color: #212529;
 }
 
-/* Barre de réponse */
+/* CORRIGÉ: Amélioration z-index et positionnement des menus */
+.message-actions-menu {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    background-color: white;
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 8px 0;
+    min-width: 150px;
+    z-index: 10000; /* Augmenté significativement */
+    display: none;
+}
+
+.message-actions-menu.active {
+    display: block;
+}
+
+.message-actions-menu a {
+    display: block;
+    padding: 8px 15px;
+    color: #495057;
+    text-decoration: none;
+    transition: background-color 0.2s;
+}
+
+.message-actions-menu a:hover {
+    background-color: #f8f9fa;
+}
+
+/* Augmentation de la précision des sélecteurs pour éviter les conflits */
+.message-footer .message-actions .btn-icon {
+    font-size: 12px;
+    padding: 3px 6px;
+}
+
+/* Barre de réponse fixe en bas */
 .reply-box {
     position: sticky;
     bottom: 0;
@@ -307,9 +392,12 @@
     border-top: 1px solid #e9ecef;
     padding: 15px;
     z-index: 1000;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
     width: 100%;
+    flex-shrink: 0;
 }
 
+/* Message "conversation dans la corbeille" également fixe */
 .conversation-deleted {
     position: sticky;
     bottom: 0;
@@ -320,6 +408,12 @@
     color: #6c757d;
     border-top: 1px solid #e9ecef;
     z-index: 1000;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
+}
+
+.conversation-deleted .btn {
+    margin-top: 10px;
 }
 
 .reply-header {
@@ -332,11 +426,53 @@
     margin-bottom: 10px;
 }
 
+.reply-to {
+    font-weight: 500;
+    color: #495057;
+}
+
+.reply-options {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.importance-select {
+    padding: 6px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+    resize: vertical;
+    min-height: 100px;
+    margin-bottom: 10px;
+}
+
+textarea:focus {
+    border-color: #009b72;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 155, 114, 0.1);
+}
+
+.form-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
 /* --- MODAL --- */
 .modal {
     display: none;
     position: fixed;
-    z-index: 10001;
+    z-index: 10001; /* Augmenté pour être au-dessus de tout */
     left: 0;
     top: 0;
     width: 100%;
@@ -364,6 +500,34 @@
     font-weight: bold;
     color: #aaa;
     cursor: pointer;
+}
+
+.close:hover {
+    color: #555;
+}
+
+.modal h3 {
+    margin-bottom: 20px;
+    color: #212529;
+    font-size: 18px;
+}
+
+.modal .form-group {
+    margin-bottom: 20px;
+}
+
+.modal .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #495057;
+}
+
+.modal .form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
 }
 
 /* Indicateur de nouveaux messages */
@@ -395,7 +559,11 @@
     }
 }
 
-/* Adaptation pour mobile */
+#new-messages-indicator:hover {
+    background-color: #008a65;
+}
+
+/* Adaptation pour les petits écrans */
 @media (max-width: 768px) {
     .conversation-page {
         flex-direction: column;
@@ -405,13 +573,39 @@
     .conversation-sidebar {
         width: 100%;
         max-height: 200px;
-        border-right: none;
-        border-bottom: 1px solid #e9ecef;
     }
     
+/* --- MESSAGES --- */
     .message {
-        max-width: 95%;
+        display: flex;
+        flex-direction: column;
+        max-width: 80%;
+        padding: 12px 15px;
+        border-radius: 8px;
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        width: fit-content; /* Adapté à la longueur du message */
+        min-width: 200px; /* Taille minimale */
+        margin-bottom: 10px; /* Ajout d'espace entre les messages */
+        align-self: flex-start; /* Par défaut, les messages reçus sont à gauche */
     }
+
+.message.self {
+    align-self: flex-end; /* Messages envoyés à droite */
+    background-color: #e1f8f2;
+    border-color: #d1e7e2;
+}
+
+/* Container de messages scrollable */
+.messages-container {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    height: calc(100% - 70px); /* Hauteur totale moins la zone de réponse */
+    display: flex;
+    flex-direction: column;
+}
     
     #new-messages-indicator {
         bottom: 70px;

@@ -1,62 +1,94 @@
 /**
- * /assets/js/main.js - Scripts principaux améliorés
+ * Scripts principaux
  */
 
-// Auto-refresh pour les nouveaux messages toutes les 60 secondes
-let autoRefreshInterval;
-
 document.addEventListener('DOMContentLoaded', function() {
-    // Démarrer l'auto-refresh
-    startAutoRefresh();
+    // Initialiser les actions de conversation
+    initializeActions();
     
-    // Gestion des menus d'actions rapides
-    setupQuickActions();
-    
-    // Gestion des formulaires pour éviter les soumissions multiples
-    setupFormSubmission();
-    
-    // Gestion des pièces jointes
-    setupFileUploads();
+    // Gestion des formulaires
+    setupFormValidation();
     
     // Initialisation des fonctionnalités d'action en masse
     setupBulkActions();
 });
 
 /**
- * Démarrer l'auto-refresh pour les nouveaux messages
+ * Initialise les actions principales
  */
-function startAutoRefresh() {
-    // Vérifier si le système d'actualisation avancé est déjà chargé
-    if (window.hasAdvancedRefresh) {
-        console.log("Système d'actualisation avancé détecté, désactivation du système simple");
-        return; // Ne pas initialiser le système simple si le système avancé est présent
+function initializeActions() {
+    // Gestion du scroll dans les conversations
+    const messagesContainer = document.querySelector('.messages-container');
+    if (messagesContainer) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
     
-    // Vérifier toutes les 60 secondes pour les nouveaux messages
-    autoRefreshInterval = setInterval(function() {
-        // Vérifier s'il n'y a pas de menu ouvert avant de recharger
-        const activeMenus = document.querySelectorAll('.quick-actions-menu.active, .message-actions-menu.active');
-        const activeModals = document.querySelectorAll('.modal[style*="display: block"]');
-        const textareaActive = document.querySelector('textarea:focus');
-        
-        // Ne pas recharger si un menu est ouvert, un modal est affiché, ou si l'utilisateur est en train d'écrire
-        if (activeMenus.length === 0 && activeModals.length === 0 && !textareaActive) {
-            location.reload();
-        }
-    }, 60000);
+    // Actions sur les conversations et participants
+    setupConversationActions();
 }
 
 /**
- * Arrêter l'auto-refresh
+ * Configuration des actions de conversation
  */
-function stopAutoRefresh() {
-    clearInterval(autoRefreshInterval);
-}
-
-/**
- * Configuration des actions rapides sur les conversations
- */
-function setupQuickActions() {
+function setupConversationActions() {
+    // Archiver une conversation
+    const archiveBtn = document.getElementById('archive-btn');
+    if (archiveBtn) {
+        archiveBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (confirm('Êtes-vous sûr de vouloir archiver cette conversation ?')) {
+                document.getElementById('archiveForm').submit();
+            }
+        });
+    }
+    
+    // Supprimer une conversation
+    const deleteBtn = document.getElementById('delete-btn');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (confirm('Êtes-vous sûr de vouloir supprimer cette conversation ?')) {
+                document.getElementById('deleteForm').submit();
+            }
+        });
+    }
+    
+    // Restaurer une conversation
+    const restoreBtn = document.getElementById('restore-btn');
+    if (restoreBtn) {
+        restoreBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('restoreForm').submit();
+        });
+    }
+    
+    // Gestion du modal pour l'ajout de participants
+    const addParticipantBtn = document.getElementById('add-participant-btn');
+    if (addParticipantBtn) {
+        addParticipantBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            showAddParticipantModal();
+        });
+    }
+    
+    // Gestion de la fermeture du modal
+    const closeModalBtns = document.querySelectorAll('.close');
+    closeModalBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            closeModal(this.closest('.modal'));
+        });
+    });
+    
+    // Fermeture du modal en cliquant en dehors
+    window.addEventListener('click', function(event) {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            if (event.target === modal) {
+                closeModal(modal);
+            }
+        });
+    });
+    
     // Gestionnaire de clic pour les menus d'actions rapides
     document.addEventListener('click', function(event) {
         if (!event.target.closest('.quick-actions')) {
@@ -65,205 +97,86 @@ function setupQuickActions() {
             });
         }
     });
-    
-    // S'assurer que tous les boutons de quick-actions ont le bon event listener
-    document.querySelectorAll('.quick-actions-btn').forEach(btn => {
-        const onclick = btn.getAttribute('onclick');
-        if (onclick) {
-            const idMatch = onclick.match(/\d+/);
-            if (idMatch) {
-                const id = idMatch[0];
-                btn.onclick = function(e) {
-                    toggleQuickActions(id);
-                    e.stopPropagation();
-                    return false;
-                };
-            }
-        }
-    });
 }
 
 /**
- * Bascule l'affichage du menu d'actions rapides
- * @param {number} id - ID de la conversation
+ * Configuration des validations de formulaire
  */
-function toggleQuickActions(id) {
-    const menu = document.getElementById('quick-actions-' + id);
-    if (!menu) return;
-    
-    // Fermer tous les autres menus
-    document.querySelectorAll('.quick-actions-menu').forEach(item => {
-        if (item !== menu) {
-            item.classList.remove('active');
-        }
-    });
-    
-    // Basculer l'état du menu actuel
-    menu.classList.toggle('active');
-    
-    // Mettre la conversation parente en avant-plan pendant que le menu est ouvert
-    const conversationItem = menu.closest('.conversation-item');
-    if (conversationItem) {
-        if (menu.classList.contains('active')) {
-            conversationItem.classList.add('active');
-        } else {
-            conversationItem.classList.remove('active');
-        }
-    }
-    
-    // Empêcher la propagation du clic pour éviter la navigation
-    event.stopPropagation();
-    return false;
-}
-
-/**
- * Marque une conversation comme lue
- * @param {number} convId - ID de la conversation
- */
-function markConversationAsRead(convId) {
-    fetch(`api/mark_conversation.php?id=${convId}&action=mark_read`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                window.location.reload();
-            } else {
-                alert('Erreur: ' + data.error);
-            }
-        })
-        .catch(error => console.error('Erreur:', error));
-}
-
-/**
- * Marque une conversation comme non lue
- * @param {number} convId - ID de la conversation
- */
-function markConversationAsUnread(convId) {
-    fetch(`api/mark_conversation.php?id=${convId}&action=mark_unread`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                window.location.reload();
-            } else {
-                alert('Erreur: ' + data.error);
-            }
-        })
-        .catch(error => console.error('Erreur:', error));
-}
-
-/**
- * Configuration des soumissions de formulaire
- */
-function setupFormSubmission() {
-    // Empêcher la soumission multiple des formulaires
-    document.querySelectorAll('form').forEach(form => {
-        form.addEventListener('submit', function(e) {
-            // Désactiver le bouton d'envoi après soumission
-            const submitButton = this.querySelector('button[type="submit"]');
-            if (submitButton) {
-                submitButton.disabled = true;
-                
-                // Ajouter un loader si le bouton n'en a pas déjà un
-                if (!submitButton.innerHTML.includes('fa-spinner')) {
-                    const originalContent = submitButton.innerHTML;
-                    submitButton.dataset.originalContent = originalContent;
-                    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Traitement en cours...';
-                }
-            }
-        });
-    });
-}
-
-/**
- * Configuration des téléchargements de fichiers
- */
-function setupFileUploads() {
-    // Gestion des pièces jointes
-    const fileInputs = document.querySelectorAll('input[type="file"]');
-    
-    fileInputs.forEach(input => {
-        input.addEventListener('change', function(e) {
-            const fileListContainer = document.getElementById('file-list');
-            if (fileListContainer) {
-                fileListContainer.innerHTML = '';
-                
-                if (this.files.length > 0) {
-                    for (let i = 0; i < this.files.length; i++) {
-                        const file = this.files[i];
-                        const fileSize = formatFileSize(file.size);
-                        
-                        const fileInfo = document.createElement('div');
-                        fileInfo.className = 'file-info';
-                        fileInfo.innerHTML = `
-                            <i class="fas fa-file"></i>
-                            <span>${file.name} (${fileSize})</span>
-                        `;
-                        fileListContainer.appendChild(fileInfo);
-                    }
-                }
-            }
-        });
-    });
-}
-
-/**
- * Met à jour l'état des boutons d'action en fonction de la sélection
- */
-function updateBulkActionButtons() {
-    const selectedConvs = document.querySelectorAll('.conversation-checkbox:checked');
-    const selectedCount = selectedConvs.length;
-    
-    // Référence aux boutons
-    const btnMarkRead = document.querySelector('button[data-action="mark_read"]');
-    const btnMarkUnread = document.querySelector('button[data-action="mark_unread"]');
-    const allButtons = document.querySelectorAll('.bulk-action-btn');
-    
-    // Mettre à jour le texte de tous les boutons avec le nombre sélectionné correct
-    allButtons.forEach(button => {
-        const actionText = button.dataset.actionText || 'Appliquer';
-        const icon = button.dataset.icon ? `<i class="fas fa-${button.dataset.icon}"></i> ` : '';
-        button.innerHTML = `${icon}${actionText} (${selectedCount})`;
-    });
-    
-    // Masquer les boutons par défaut si rien n'est sélectionné
-    if (selectedCount === 0) {
-        allButtons.forEach(button => {
-            button.disabled = true;
-            button.style.display = 'none';
-        });
-        return;
-    }
-    
-    // Vérifier si tous les messages sélectionnés sont lus ou non lus
-    let hasReadMessages = false;
-    let hasUnreadMessages = false;
-    
-    selectedConvs.forEach(checkbox => {
-        const conversationItem = checkbox.closest('.conversation-item');
-        const isRead = conversationItem.getAttribute('data-is-read') === '1';
+function setupFormValidation() {
+    // Validation des formulaires de message
+    const messageForm = document.getElementById('messageForm');
+    if (messageForm) {
+        const textArea = messageForm.querySelector('textarea[name="contenu"]');
+        const submitBtn = messageForm.querySelector('button[type="submit"]');
         
-        if (isRead) {
-            hasReadMessages = true;
-        } else {
-            hasUnreadMessages = true;
+        if (textArea) {
+            // Compteur de caractères
+            const counter = document.createElement('div');
+            counter.id = 'char-counter';
+            counter.className = 'text-muted small';
+            counter.style.color = '#6c757d';
+            textArea.parentNode.insertBefore(counter, textArea.nextSibling);
+            
+            const maxLength = 10000;
+            
+            // Mise à jour en temps réel
+            textArea.addEventListener('input', function() {
+                const currentLength = this.value.length;
+                counter.textContent = `${currentLength}/${maxLength} caractères`;
+                
+                if (currentLength > maxLength) {
+                    counter.style.color = '#dc3545';
+                    submitBtn.disabled = true;
+                } else {
+                    counter.style.color = '#6c757d';
+                    submitBtn.disabled = false;
+                }
+            });
+            
+            // Déclencher l'événement au chargement
+            textArea.dispatchEvent(new Event('input'));
         }
-    });
-    
-    // Mettre à jour la visibilité des boutons en fonction de la sélection
-    if (btnMarkRead) {
-        btnMarkRead.disabled = !hasUnreadMessages;
-        btnMarkRead.style.display = hasUnreadMessages ? 'inline-flex' : 'none';
+        
+        // Empêcher la soumission si vide
+        messageForm.addEventListener('submit', function(e) {
+            const textareaContent = textArea.value.trim();
+            if (textareaContent === '') {
+                e.preventDefault();
+                alert('Le message ne peut pas être vide');
+            }
+        });
     }
     
-    if (btnMarkUnread) {
-        btnMarkUnread.disabled = !hasReadMessages;
-        btnMarkUnread.style.display = hasReadMessages ? 'inline-flex' : 'none';
+    // Gestion des pièces jointes
+    const fileInput = document.getElementById('attachments');
+    if (fileInput) {
+        fileInput.addEventListener('change', updateFileList);
     }
+}
+
+/**
+ * Mise à jour de la liste des fichiers sélectionnés
+ */
+function updateFileList() {
+    const fileList = document.getElementById('file-list');
+    if (!fileList) return;
     
-    // Afficher les autres boutons d'action
-    document.querySelectorAll('.bulk-action-btn:not([data-action="mark_read"]):not([data-action="mark_unread"])').forEach(button => {
-        button.disabled = false;
-        button.style.display = 'inline-flex';
-    });
+    fileList.innerHTML = '';
+    
+    if (this.files.length > 0) {
+        for (let i = 0; i < this.files.length; i++) {
+            const file = this.files[i];
+            const fileSize = formatFileSize(file.size);
+            
+            const fileInfo = document.createElement('div');
+            fileInfo.className = 'file-info';
+            fileInfo.innerHTML = `
+                <i class="fas fa-file"></i>
+                <span>${file.name} (${fileSize})</span>
+            `;
+            fileList.appendChild(fileInfo);
+        }
+    }
 }
 
 /**
@@ -273,7 +186,7 @@ function setupBulkActions() {
     const selectAllCheckbox = document.getElementById('select-all-conversations');
     const actionButtons = document.querySelectorAll('.bulk-action-btn');
     
-    if (selectAllCheckbox && actionButtons.length > 0) {
+    if (selectAllCheckbox) {
         // Sélectionner/désélectionner tous
         selectAllCheckbox.addEventListener('change', function() {
             const checkboxes = document.querySelectorAll('.conversation-checkbox');
@@ -313,34 +226,7 @@ function setupBulkActions() {
                 
                 if (selectedIds.length === 0) return;
                 
-                // Message de confirmation personnalisé selon l'action
-                let confirmMessage = '';
-                switch(action) {
-                    case 'delete':
-                        confirmMessage = `Êtes-vous sûr de vouloir supprimer ${selectedIds.length} conversation(s) ?`;
-                        break;
-                    case 'delete_permanently':
-                        confirmMessage = `Êtes-vous sûr de vouloir supprimer définitivement ${selectedIds.length} conversation(s) ? Cette action est irréversible.`;
-                        break;
-                    case 'archive':
-                        confirmMessage = `Êtes-vous sûr de vouloir archiver ${selectedIds.length} conversation(s) ?`;
-                        break;
-                    case 'restore':
-                        confirmMessage = `Êtes-vous sûr de vouloir restaurer ${selectedIds.length} conversation(s) ?`;
-                        break;
-                    case 'mark_read':
-                        confirmMessage = `Marquer ${selectedIds.length} conversation(s) comme lues ?`;
-                        break;
-                    case 'mark_unread':
-                        confirmMessage = `Marquer ${selectedIds.length} conversation(s) comme non lues ?`;
-                        break;
-                    default:
-                        confirmMessage = `Effectuer l'action "${action}" sur ${selectedIds.length} conversation(s) ?`;
-                }
-                
-                if (confirm(confirmMessage)) {
-                    performBulkAction(action, selectedIds);
-                }
+                performBulkAction(action, selectedIds);
             });
         });
         
@@ -350,85 +236,215 @@ function setupBulkActions() {
 }
 
 /**
+ * Met à jour l'état des boutons d'action en fonction de la sélection
+ */
+function updateBulkActionButtons() {
+    const selectedConvs = document.querySelectorAll('.conversation-checkbox:checked');
+    const selectedCount = selectedConvs.length;
+    
+    // Mettre à jour le texte de tous les boutons avec le nombre sélectionné correct
+    const allButtons = document.querySelectorAll('.bulk-action-btn');
+    allButtons.forEach(button => {
+        const actionText = button.dataset.actionText || 'Appliquer';
+        const icon = button.dataset.icon ? `<i class="fas fa-${button.dataset.icon}"></i> ` : '';
+        button.innerHTML = `${icon}${actionText} (${selectedCount})`;
+        
+        // Masquer/désactiver les boutons si rien n'est sélectionné
+        button.disabled = selectedCount === 0;
+        button.style.display = selectedCount === 0 ? 'none' : 'inline-flex';
+    });
+    
+    if (selectedCount === 0) return;
+    
+    // Vérifier si tous les messages sélectionnés sont lus ou non lus
+    const btnMarkRead = document.querySelector('button[data-action="mark_read"]');
+    const btnMarkUnread = document.querySelector('button[data-action="mark_unread"]');
+    let hasReadMessages = false;
+    let hasUnreadMessages = false;
+    
+    selectedConvs.forEach(checkbox => {
+        const conversationItem = checkbox.closest('.conversation-item');
+        const isRead = conversationItem.getAttribute('data-is-read') === '1';
+        
+        if (isRead) {
+            hasReadMessages = true;
+        } else {
+            hasUnreadMessages = true;
+        }
+    });
+    
+    // Ajuster la visibilité des boutons selon la sélection
+    if (btnMarkRead) {
+        btnMarkRead.disabled = !hasUnreadMessages;
+        btnMarkRead.style.display = hasUnreadMessages ? 'inline-flex' : 'none';
+    }
+    
+    if (btnMarkUnread) {
+        btnMarkUnread.disabled = !hasReadMessages;
+        btnMarkUnread.style.display = hasReadMessages ? 'inline-flex' : 'none';
+    }
+}
+
+/**
  * Exécute une action en masse sur plusieurs conversations
- * @param {string} action - Action à effectuer
- * @param {Array} convIds - Tableau des IDs de conversations
+ * @param {string} action
+ * @param {Array} convIds
  */
 function performBulkAction(action, convIds) {
-    // Préparer les données pour l'envoi
-    const data = {
-        action: action,
-        ids: convIds
-    };
+    // Demander confirmation
+    let confirmMessage = '';
+    switch(action) {
+        case 'delete':
+            confirmMessage = `Êtes-vous sûr de vouloir supprimer ${convIds.length} conversation(s) ?`;
+            break;
+        case 'delete_permanently':
+            confirmMessage = `Êtes-vous sûr de vouloir supprimer définitivement ${convIds.length} conversation(s) ? Cette action est irréversible.`;
+            break;
+        case 'archive':
+            confirmMessage = `Êtes-vous sûr de vouloir archiver ${convIds.length} conversation(s) ?`;
+            break;
+        case 'restore':
+            confirmMessage = `Êtes-vous sûr de vouloir restaurer ${convIds.length} conversation(s) ?`;
+            break;
+        case 'mark_read':
+            confirmMessage = `Marquer ${convIds.length} conversation(s) comme lues ?`;
+            break;
+        case 'mark_unread':
+            confirmMessage = `Marquer ${convIds.length} conversation(s) comme non lues ?`;
+            break;
+        default:
+            confirmMessage = `Effectuer l'action "${action}" sur ${convIds.length} conversation(s) ?`;
+    }
     
-    // Envoyer la requête
-    fetch('api/bulk_actions.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Afficher un message de succès
-            alert(`Action réussie sur ${data.count} conversation(s)`);
-            
-            // Recharger la page
-            window.location.reload();
-        } else {
-            console.error('Erreur:', data.error);
-            alert('Erreur lors de l\'action: ' + data.error);
+    if (confirm(confirmMessage)) {
+        // Préparer les données pour l'envoi
+        const data = {
+            action: action,
+            ids: convIds
+        };
+        
+        // Envoyer la requête
+        fetch('api/conversations.php?action=bulk', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Afficher un message de succès
+                alert(`Action réussie sur ${data.count} conversation(s)`);
+                
+                // Recharger la page
+                window.location.reload();
+            } else {
+                console.error('Erreur:', data.error);
+                alert('Erreur lors de l\'action: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Une erreur est survenue lors de l\'exécution de l\'action.');
+        });
+    }
+}
+
+/**
+ * Bascule l'affichage du menu d'actions rapides
+ * @param {number} id
+ */
+function toggleQuickActions(id) {
+    const menu = document.getElementById('quick-actions-' + id);
+    if (!menu) return;
+    
+    // Fermer tous les autres menus
+    document.querySelectorAll('.quick-actions-menu').forEach(item => {
+        if (item !== menu) {
+            item.classList.remove('active');
         }
-    })
-    .catch(error => {
-        console.error('Erreur:', error);
-        alert('Une erreur est survenue lors de l\'exécution de l\'action.');
     });
+    
+    // Basculer l'état du menu actuel
+    menu.classList.toggle('active');
+    
+    // Mettre la conversation parente en avant-plan pendant que le menu est ouvert
+    const conversationItem = menu.closest('.conversation-item');
+    if (conversationItem) {
+        if (menu.classList.contains('active')) {
+            conversationItem.classList.add('active');
+        } else {
+            conversationItem.classList.remove('active');
+        }
+    }
+    
+    // Empêcher la propagation du clic pour éviter la navigation
+    event.stopPropagation();
+    return false;
+}
+
+/**
+ * Marque une conversation comme lue
+ * @param {number} convId
+ */
+function markConversationAsRead(convId) {
+    fetch(`api/conversations.php?id=${convId}&action=mark_read`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert('Erreur: ' + data.error);
+            }
+        })
+        .catch(error => console.error('Erreur:', error));
+}
+
+/**
+ * Marque une conversation comme non lue
+ * @param {number} convId
+ */
+function markConversationAsUnread(convId) {
+    fetch(`api/conversations.php?id=${convId}&action=mark_unread`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert('Erreur: ' + data.error);
+            }
+        })
+        .catch(error => console.error('Erreur:', error));
+}
+
+/**
+ * Affiche le modal d'ajout de participants
+ */
+function showAddParticipantModal() {
+    const modal = document.getElementById('addParticipantModal');
+    if (modal) {
+        modal.style.display = 'block';
+    }
+}
+
+/**
+ * Ferme un modal
+ * @param {HTMLElement} modal
+ */
+function closeModal(modal) {
+    if (modal) {
+        modal.style.display = 'none';
+    }
 }
 
 /**
  * Formater la taille des fichiers
- * @param {number} bytes - Taille en octets
- * @returns {string} Taille formatée avec unité
+ * @param {number} bytes
+ * @returns {string}
  */
 function formatFileSize(bytes) {
     if (bytes < 1024) return bytes + ' B';
     else if (bytes < 1048576) return Math.round(bytes / 1024) + ' KB';
     else return Math.round(bytes / 1048576 * 10) / 10 + ' MB';
-}
-
-/**
- * Affiche un message de confirmation avant soumission
- * @param {string} message - Message de confirmation
- * @returns {boolean} True si confirmé, sinon False
- */
-function confirmAction(message) {
-    return confirm(message);
-}
-
-/**
- * AJAX helper pour effectuer des requêtes
- * @param {string} url - URL de la requête
- * @param {Object} options - Options de la requête
- * @returns {Promise} Promesse avec la réponse
- */
-function ajax(url, options = {}) {
-    const defaultOptions = {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    };
-    
-    const requestOptions = { ...defaultOptions, ...options };
-    
-    return fetch(url, requestOptions)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erreur réseau: ' + response.status);
-            }
-            return response.json();
-        });
 }

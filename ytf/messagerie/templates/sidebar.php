@@ -1,6 +1,6 @@
 <?php
 /**
- * Barre latérale avec le menu de navigation
+ * /templates/sidebar.php - Barre latérale avec le menu de navigation
  */
 
 // Liste des dossiers pour le menu

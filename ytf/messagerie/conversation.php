@@ -1,22 +1,31 @@
 <?php
 /**
- * Affichage et gestion d'une conversation
+ * /conversation.php - Affichage et gestion d'une conversation
  */
 
 // Inclure les fichiers nécessaires
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/config/constants.php';
-require_once __DIR__ . '/core/utils.php';
-require_once __DIR__ . '/core/auth.php';
-require_once __DIR__ . '/models/conversation.php';
-require_once __DIR__ . '/models/message.php';
-require_once __DIR__ . '/models/participant.php';
-require_once __DIR__ . '/controllers/conversation.php';
-require_once __DIR__ . '/controllers/message.php';
-require_once __DIR__ . '/controllers/participant.php';
+require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/message_functions.php';
+require_once __DIR__ . '/includes/auth.php';
 
 // Vérifier l'authentification
-$user = requireAuth();
+if (!isLoggedIn()) {
+    header('Location: ' . LOGIN_URL);
+    exit;
+}
+
+$user = $_SESSION['user'];
+// Adaptation: utiliser 'profil' comme 'type' si 'type' n'existe pas
+if (!isset($user['type']) && isset($user['profil'])) {
+    $user['type'] = $user['profil'];
+}
+
+// Vérifier que le type est défini
+if (!isset($user['type'])) {
+    die("Erreur: Type d'utilisateur non défini dans la session");
+}
 
 // Récupérer l'ID de la conversation
 $convId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -51,109 +60,132 @@ try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && !$isDeleted) {
         switch ($_POST['action']) {
             case 'send_message':
-                $result = handleSendMessage(
-                    $convId,
-                    $user,
-                    $_POST['contenu'],
-                    isset($_POST['importance']) ? $_POST['importance'] : 'normal',
-                    isset($_POST['parent_message_id']) && !empty($_POST['parent_message_id']) ? (int)$_POST['parent_message_id'] : null,
-                    isset($_FILES['attachments']) ? $_FILES['attachments'] : []
-                );
-                
-                if ($result['success']) {
-                    // Redirection pour éviter les soumissions multiples
-                    redirect("conversation.php?id=$convId");
-                } else {
-                    $error = $result['message'];
-                    $messageContent = $_POST['contenu']; // Conserver le contenu en cas d'erreur
+                if (!empty($_POST['contenu'])) {
+                    // Conserver le contenu du message en cas d'erreur
+                    $messageContent = $_POST['contenu'];
+                    
+                    try {
+                        // Vérifier si l'utilisateur peut répondre à une annonce
+                        if (!$canReply) {
+                            throw new Exception("Vous n'êtes pas autorisé à répondre à cette annonce");
+                        }
+                        
+                        $filesData = isset($_FILES['attachments']) ? $_FILES['attachments'] : [];
+                        $importance = 'normal'; // Importance par défaut
+                        
+                        // Seuls certains utilisateurs peuvent définir une importance
+                        if (canSetMessageImportance($user['type']) && isset($_POST['importance'])) {
+                            $importance = $_POST['importance'];
+                        }
+                        
+                        $parentMessageId = isset($_POST['parent_message_id']) && !empty($_POST['parent_message_id']) ? 
+                                          (int)$_POST['parent_message_id'] : null;
+                        
+                        addMessage(
+                            $convId, 
+                            $user['id'], 
+                            $user['type'], 
+                            $_POST['contenu'],
+                            $importance,
+                            false, // Est annonce
+                            false, // Notification obligatoire
+                            false, // Accusé de réception
+                            $parentMessageId, // Message parent
+                            'standard',
+                            $filesData
+                        );
+                        
+                        // Redirection pour éviter les soumissions multiples
+                        redirect("conversation.php?id=$convId");
+                    } catch (Exception $e) {
+                        $error = $e->getMessage();
+                        // Ne pas rediriger en cas d'erreur pour conserver le formulaire
+                    }
                 }
                 break;
                 
             case 'add_participant':
-                $result = handleAddParticipant(
-                    $convId,
-                    $_POST['participant_id'],
-                    $_POST['participant_type'],
-                    $user
-                );
-                
-                if ($result['success']) {
-                    $success = $result['message'];
-                } else {
-                    $error = $result['message'];
+                if (isset($_POST['participant_id']) && isset($_POST['participant_type'])) {
+                    // Vérifier que l'utilisateur est admin ou modérateur
+                    if (!$isModerator) {
+                        throw new Exception("Vous n'êtes pas autorisé à ajouter des participants");
+                    }
+                    
+                    addParticipantToConversation(
+                        $convId, 
+                        $_POST['participant_id'], 
+                        $_POST['participant_type'], 
+                        $user['id'], 
+                        $user['type']
+                    );
+                    redirect("conversation.php?id=$convId");
                 }
                 break;
                 
             case 'promote_moderator':
-                $result = handlePromoteToModerator(
-                    $convId,
-                    $_POST['participant_id'],
-                    $user
-                );
-                
-                if ($result['success']) {
-                    $success = $result['message'];
-                } else {
-                    $error = $result['message'];
+                if (isset($_POST['participant_id'])) {
+                    // Vérifier que l'utilisateur est admin
+                    if (!$isAdmin) {
+                        throw new Exception("Vous n'êtes pas autorisé à promouvoir des modérateurs");
+                    }
+                    
+                    promoteToModerator(
+                        $_POST['participant_id'], 
+                        $user['id'], 
+                        $user['type'], 
+                        $convId
+                    );
+                    redirect("conversation.php?id=$convId");
                 }
                 break;
                 
             case 'demote_moderator':
-                $result = handleDemoteFromModerator(
-                    $convId,
-                    $_POST['participant_id'],
-                    $user
-                );
-                
-                if ($result['success']) {
-                    $success = $result['message'];
-                } else {
-                    $error = $result['message'];
+                if (isset($_POST['participant_id'])) {
+                    // Vérifier que l'utilisateur est admin
+                    if (!$isAdmin) {
+                        throw new Exception("Vous n'êtes pas autorisé à rétrograder des modérateurs");
+                    }
+                    
+                    demoteFromModerator(
+                        $_POST['participant_id'], 
+                        $user['id'], 
+                        $user['type'], 
+                        $convId
+                    );
+                    redirect("conversation.php?id=$convId");
                 }
                 break;
                 
             case 'remove_participant':
-                $result = handleRemoveParticipant(
-                    $convId,
-                    $_POST['participant_id'],
-                    $user
-                );
-                
-                if ($result['success']) {
-                    $success = $result['message'];
-                } else {
-                    $error = $result['message'];
+                if (isset($_POST['participant_id'])) {
+                    // Vérifier que l'utilisateur est admin ou modérateur
+                    if (!$isModerator) {
+                        throw new Exception("Vous n'êtes pas autorisé à supprimer des participants");
+                    }
+                    
+                    removeParticipant(
+                        $_POST['participant_id'], 
+                        $user['id'], 
+                        $user['type'], 
+                        $convId
+                    );
+                    redirect("conversation.php?id=$convId");
                 }
                 break;
                 
             case 'archive_conversation':
-                $result = handleArchiveConversation($convId, $user);
-                
-                if ($result['success']) {
-                    redirect($result['redirect']);
-                } else {
-                    $error = $result['message'];
-                }
+                archiveConversation($convId, $user['id'], $user['type']);
+                redirect("index.php?folder=archives");
                 break;
                 
             case 'delete_conversation':
-                $result = handleDeleteConversation($convId, $user);
-                
-                if ($result['success']) {
-                    redirect($result['redirect']);
-                } else {
-                    $error = $result['message'];
-                }
+                deleteConversation($convId, $user['id'], $user['type']);
+                redirect("index.php?folder=corbeille");
                 break;
                 
             case 'restore_conversation':
-                $result = handleRestoreConversation($convId, $user);
-                
-                if ($result['success']) {
-                    redirect($result['redirect']);
-                } else {
-                    $error = $result['message'];
-                }
+                restoreConversation($convId, $user['id'], $user['type']);
+                redirect("conversation.php?id=$convId");
                 break;
         }
     }
@@ -183,7 +215,7 @@ include 'templates/header.php';
                 <button id="add-participant-btn" class="btn-icon"><i class="fas fa-plus-circle"></i></button>
                 <?php endif; ?>
             </h3>
-            <?php include 'templates/components/participant-list.php'; ?>
+            <?php include 'templates/participant-list.php'; ?>
         </div>
         
         <div class="conversation-actions">
@@ -204,8 +236,12 @@ include 'templates/header.php';
     
     <main class="conversation-main">
         <div class="messages-container">
+            <?php 
+            // Définir cette variable pour indiquer qu'on est dans la vue conversation
+                $isConversationView = true; 
+            ?>
             <?php foreach ($messages as $message): ?>
-                <?php include 'templates/components/message-item.php'; ?>
+                <?php include 'templates/message-item.php'; ?>
             <?php endforeach; ?>
         </div>
         
@@ -218,7 +254,7 @@ include 'templates/header.php';
     </form>
 </div>
 <?php elseif ($canReply): ?>
-<div class="reply-box">
+<div class="reply-box" style="display: block !important; position: sticky !important; bottom: 0 !important; z-index: 1000 !important;">
     <form method="post" enctype="multipart/form-data" id="messageForm">
         <input type="hidden" name="action" value="send_message">
         <input type="hidden" name="parent_message_id" id="parent-message-id" value="">
@@ -260,11 +296,11 @@ include 'templates/header.php';
         </div>
     </form>
 </div>
-<?php elseif (!$isDeleted && $conversation['type'] === 'annonce'): ?>
-<div class="conversation-deleted">
-    <p>Cette annonce est en lecture seule. Vous ne pouvez pas y répondre.</p>
-</div>
-<?php endif; ?>
+        <?php elseif (!$isDeleted && $conversation['type'] === 'annonce'): ?>
+        <div class="conversation-deleted">
+            <p>Cette annonce est en lecture seule. Vous ne pouvez pas y répondre.</p>
+        </div>
+        <?php endif; ?>
     </main>
     <?php endif; ?>
 </div>

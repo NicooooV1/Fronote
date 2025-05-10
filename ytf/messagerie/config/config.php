@@ -1,5 +1,6 @@
 <?php
-// Configuration de la base de données
+// /config/config.php
+// Connexion à la base de données et démarrage de session
 $host = 'localhost';
 $db   = 'db_MASSE';
 $user = '22405372';

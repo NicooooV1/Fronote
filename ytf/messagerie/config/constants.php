@@ -1,7 +1,10 @@
 <?php
+// /config/constants.php
+// Constantes de l'application
+
 // Chemins
 define('BASE_PATH', dirname(__DIR__) . '/');
-define('UPLOAD_DIR', BASE_PATH . 'assets/uploads/');
+define('UPLOAD_DIR', BASE_PATH . 'uploads/');
 define('TEMPLATES_DIR', BASE_PATH . 'templates/');
 define('ASSETS_DIR', BASE_PATH . 'assets/');
 
@@ -29,5 +32,5 @@ define('FOLDER_ARCHIVES', 'archives');
 define('FOLDER_INFORMATION', 'information');
 define('FOLDER_CORBEILLE', 'corbeille');
 
-// Redirection login
+// Redirection login - exact path from original code
 define('LOGIN_URL', '/~u22405372/SAE/Pronote/login/public/index.php');

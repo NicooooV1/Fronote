@@ -6,11 +6,9 @@
 // Inclure les fichiers nécessaires
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/config/constants.php';
-require_once __DIR__ . '/core/utils.php';
-require_once __DIR__ . '/core/auth.php';
-require_once __DIR__ . '/models/participant.php';
-require_once __DIR__ . '/models/conversation.php';
-require_once __DIR__ . '/controllers/conversation.php';
+require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/message_functions.php';
+require_once __DIR__ . '/includes/auth.php';
 
 // Vérifier l'authentification
 $user = requireAuth();
@@ -68,48 +66,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         // Création de la conversation
-        $result = handleCreateConversation(
+        $convId = createConversation(
             $titre, 
             count($participants) > 1 ? 'groupe' : 'individuelle',
-            $user,
+            $user['id'],
+            $user['type'],
             $participants
         );
         
-        if ($result['success']) {
-            $convId = $result['convId'];
-            
-            // Envoi du message
-            $filesData = isset($_FILES['attachments']) ? $_FILES['attachments'] : [];
-            
-            // Vérifier si l'utilisateur peut définir l'importance
-            if (!canSetMessageImportance($user['type'])) {
-                $importance = 'normal';
-            }
-            
-            $result = handleSendMessage(
-                $convId,
-                $user,
-                $contenu,
-                $importance,
-                null, // Parent message ID
-                $filesData
-            );
-            
-            if ($result['success']) {
-                $success = "Votre message a été envoyé avec succès";
-                
-                // Réinitialiser les variables pour un nouveau message
-                $destinataires = [];
-                $titre = '';
-                $contenu = '';
-                $importance = 'normal';
-                $accuseReception = false;
-            } else {
-                $error = $result['message'];
-            }
-        } else {
-            $error = $result['message'];
+        // Envoi du message
+        $filesData = isset($_FILES['attachments']) ? $_FILES['attachments'] : [];
+        
+        // Vérifier si l'utilisateur peut définir l'importance
+        if (!canSetMessageImportance($user['type'])) {
+            $importance = 'normal';
         }
+        
+        // Vérifier si l'utilisateur peut demander un accusé de réception
+        if ($user['type'] === 'eleve') {
+            $accuseReception = false;
+        }
+        
+        addMessage(
+            $convId,
+            $user['id'],
+            $user['type'],
+            $contenu,
+            $importance,
+            false, // Est annonce
+            false, // Notification obligatoire
+            false, // Accusé de réception - toujours désactivé
+            null, // Parent message ID
+            'standard', // Type message
+            $filesData
+        );
+        
+        $success = "Votre message a été envoyé avec succès";
+        
+        // Réinitialiser les variables pour un nouveau message
+        $destinataires = [];
+        $titre = '';
+        $contenu = '';
+        $importance = 'normal';
+        $accuseReception = false;
         
     } catch (Exception $e) {
         $error = $e->getMessage();
@@ -150,6 +149,9 @@ if ($query) {
     $destinataires_disponibles['administrateur'] = $query->fetchAll();
 }
 
+// Inclure l'en-tête
+include 'templates/header.php';
+
 /**
  * Obtient le label du type de destinataire
  * @param string $type Type de destinataire
@@ -165,9 +167,6 @@ function getRecipientTypeLabel($type) {
     ];
     return $labels[$type] ?? ucfirst($type);
 }
-
-// Inclure l'en-tête
-include 'templates/header.php';
 ?>
 
 <div class="content">
@@ -294,6 +293,66 @@ include 'templates/header.php';
     </div>
     <?php endif; ?>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Validation de la longueur du message
+    const textarea = document.getElementById('contenu');
+    const charCounter = document.getElementById('char-counter');
+    const maxLength = 10000;
+    
+    if (textarea && charCounter) {
+        // Fonction de mise à jour du compteur
+        function updateCounter() {
+            const currentLength = textarea.value.length;
+            charCounter.textContent = `${currentLength}/${maxLength} caractères`;
+            
+            if (currentLength > maxLength) {
+                charCounter.style.color = '#dc3545';
+                document.querySelector('button[type="submit"]').disabled = true;
+            } else {
+                charCounter.style.color = '#6c757d';
+                document.querySelector('button[type="submit"]').disabled = false;
+            }
+        }
+        
+        // Mettre à jour le compteur au chargement
+        updateCounter();
+        
+        // Mettre à jour le compteur lors de la saisie
+        textarea.addEventListener('input', updateCounter);
+    }
+    
+    // Validation de la longueur du titre
+    const titleInput = document.getElementById('titre');
+    const titleCounter = document.getElementById('title-counter');
+    
+    if (titleInput && titleCounter) {
+        // Fonction de mise à jour du compteur de titre
+        function updateTitleCounter() {
+            const currentLength = titleInput.value.length;
+            titleCounter.textContent = `${currentLength}/100 caractères`;
+            
+            if (currentLength > 100) {
+                titleCounter.style.color = '#dc3545';
+                document.querySelector('button[type="submit"]').disabled = true;
+            } else {
+                titleCounter.style.color = '#6c757d';
+                // Ne pas réactiver le bouton si le contenu est trop long
+                if (textarea && textarea.value.length <= maxLength) {
+                    document.querySelector('button[type="submit"]').disabled = false;
+                }
+            }
+        }
+        
+        // Mettre à jour le compteur au chargement
+        updateTitleCounter();
+        
+        // Mettre à jour le compteur lors de la saisie
+        titleInput.addEventListener('input', updateTitleCounter);
+    }
+});
+</script>
 
 <?php
 // Inclure le pied de page

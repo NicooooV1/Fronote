@@ -1,6 +1,6 @@
 <?php
 /**
- * /templates/header.php - En-tête HTML commun
+ * En-tête HTML commun
  */
 
 // URL de base
@@ -16,8 +16,7 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
 $currentFolder = isset($_GET['folder']) ? $_GET['folder'] : 'reception';
 
 // Compter les notifications non lues
-$unreadNotifications = isset($user) ? getUnreadNotifications($user['id'], $user['type']) : [];
-$unreadCount = count($unreadNotifications);
+$unreadNotifications = isset($user) ? countUnreadNotifications($user['id'], $user['type']) : 0;
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -32,15 +31,11 @@ $unreadCount = count($unreadNotifications);
     
     <?php if (in_array($currentPage, ['conversation'])): ?>
     <link rel="stylesheet" href="<?= $baseUrl ?>assets/css/conversation.css">
-    <link rel="stylesheet" href="<?= $baseUrl ?>assets/css/conversation-fix.css">
     <?php endif; ?>
     
     <?php if (in_array($currentPage, ['new_message', 'new_announcement', 'class_message'])): ?>
-    <link rel="stylesheet" href="<?= $baseUrl ?>assets/css/message-form.css">
-    <link rel="stylesheet" href="<?= $baseUrl ?>assets/css/recipients.css">
+    <link rel="stylesheet" href="<?= $baseUrl ?>assets/css/forms.css">
     <?php endif; ?>
-    
-    <!-- Suppression de l'inclusion de main.js ici pour éviter la duplication -->
 </head>
 <body>
     <div class="container">
@@ -56,8 +51,8 @@ $unreadCount = count($unreadNotifications);
                 <span><?= htmlspecialchars($user['prenom'] . ' ' . $user['nom']) ?></span>
                 <span class="badge"><?= htmlspecialchars(ucfirst($user['type'])) ?></span>
                 
-                <?php if ($unreadCount > 0): ?>
-                <span class="notification-badge"><?= $unreadCount ?></span>
+                <?php if ($unreadNotifications > 0): ?>
+                <span class="notification-badge"><?= $unreadNotifications ?></span>
                 <?php endif; ?>
                 <?php endif; ?>
             </div>

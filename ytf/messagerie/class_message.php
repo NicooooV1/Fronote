@@ -6,10 +6,9 @@
 // Inclure les fichiers nécessaires
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/config/constants.php';
-require_once __DIR__ . '/core/utils.php';
-require_once __DIR__ . '/core/auth.php';
-require_once __DIR__ . '/controllers/message.php';
-require_once __DIR__ . '/models/class.php';
+require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/message_functions.php';
+require_once __DIR__ . '/includes/auth.php';
 
 // Vérifier l'authentification
 $user = requireAuth();
@@ -63,9 +62,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // Envoi du message à la classe
         $filesData = isset($_FILES['attachments']) ? $_FILES['attachments'] : [];
-        
-        $result = handleSendClassMessage(
-            $user,
+        $convId = sendMessageToClass(
+            $user['id'],
             $classe,
             $titre,
             $contenu,
@@ -75,11 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $filesData
         );
         
-        if ($result['success']) {
-            $success = $result['message'];
-        } else {
-            $error = $result['message'];
-        }
+        $success = "Votre message a été envoyé avec succès à la classe " . htmlspecialchars($classe);
         
     } catch (Exception $e) {
         $error = $e->getMessage();
@@ -187,6 +181,69 @@ include 'templates/header.php';
     </div>
     <?php endif; ?>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Validation de la longueur du contenu
+    const textarea = document.getElementById('contenu');
+    const charCounter = document.getElementById('char-counter');
+    const maxLength = 10000;
+    
+    if (textarea && charCounter) {
+        // Fonction de mise à jour du compteur
+        function updateCounter() {
+            const currentLength = textarea.value.length;
+            charCounter.textContent = `${currentLength}/${maxLength} caractères`;
+            
+            if (currentLength > maxLength) {
+                charCounter.style.color = '#dc3545';
+                document.querySelector('button[type="submit"]').disabled = true;
+            } else {
+                charCounter.style.color = '#6c757d';
+                // Ne pas réactiver le bouton si le titre est trop long
+                if (titleInput && titleInput.value.length <= 100) {
+                    document.querySelector('button[type="submit"]').disabled = false;
+                }
+            }
+        }
+        
+        // Mettre à jour le compteur au chargement
+        updateCounter();
+        
+        // Mettre à jour le compteur lors de la saisie
+        textarea.addEventListener('input', updateCounter);
+    }
+    
+    // Validation de la longueur du titre
+    const titleInput = document.getElementById('titre');
+    const titleCounter = document.getElementById('title-counter');
+    
+    if (titleInput && titleCounter) {
+        // Fonction de mise à jour du compteur de titre
+        function updateTitleCounter() {
+            const currentLength = titleInput.value.length;
+            titleCounter.textContent = `${currentLength}/100 caractères`;
+            
+            if (currentLength > 100) {
+                titleCounter.style.color = '#dc3545';
+                document.querySelector('button[type="submit"]').disabled = true;
+            } else {
+                titleCounter.style.color = '#6c757d';
+                // Ne pas réactiver le bouton si le contenu est trop long
+                if (textarea && textarea.value.length <= maxLength) {
+                    document.querySelector('button[type="submit"]').disabled = false;
+                }
+            }
+        }
+        
+        // Mettre à jour le compteur au chargement
+        updateTitleCounter();
+        
+        // Mettre à jour le compteur lors de la saisie
+        titleInput.addEventListener('input', updateTitleCounter);
+    }
+});
+</script>
 
 <?php
 // Inclure le pied de page

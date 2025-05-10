@@ -32,11 +32,11 @@ function checkNotifications() {
         .then(response => response.json())
         .then(data => {
             if (!data.has_errors) {
-                updateNotificationBadge(data.count);
+                updateNotificationBadge(data.new_notifications);
                 
                 // Si l'utilisateur a activé les notifications du navigateur et qu'il y a de nouvelles notifications
-                if (data.count > 0 && hasNotificationPermission() && data.latest_notification) {
-                    showBrowserNotification(data.count, data.latest_notification);
+                if (data.new_notifications > 0 && hasNotificationPermission() && data.latest_notification) {
+                    showBrowserNotification(data.new_notifications, data.latest_notification);
                 }
             }
         })
@@ -48,7 +48,7 @@ function checkNotifications() {
  * @param {number} count - Nombre de notifications non lues
  */
 function updateNotificationBadge(count) {
-    let badge = document.querySelector('.notification-badge');
+    const badge = document.querySelector('.notification-badge');
     
     if (count > 0) {
         // Créer un badge s'il n'existe pas
@@ -188,41 +188,53 @@ function showBrowserNotification(count, latestNotification) {
     const shouldPlaySound = localStorage.getItem('notification_sound') !== 'false';
     
     // Créer la notification
-    const title = "Pronote - Messagerie";
-    let expediteurNom = "Expéditeur";
+    const title = 'Pronote - Messagerie';
+    let body = '';
     
-    // Récupérer l'expéditeur
-    if (latestNotification && latestNotification.expediteur_nom) {
-        expediteurNom = latestNotification.expediteur_nom;
+    // Personnaliser le message selon le type de notification
+    switch (latestNotification.notification_type) {
+        case 'important':
+            body = `Message important de ${latestNotification.expediteur_nom}`;
+            break;
+        case 'reply':
+            body = `Réponse de ${latestNotification.expediteur_nom}`;
+            break;
+        case 'mention':
+            body = `${latestNotification.expediteur_nom} vous a mentionné`;
+            break;
+        case 'broadcast':
+            body = `Annonce de ${latestNotification.expediteur_nom}`;
+            break;
+        default:
+            body = count === 1 
+                ? `Nouveau message de ${latestNotification.expediteur_nom}`
+                : `${count} nouveaux messages non lus`;
     }
     
+    // Créer la notification
     const options = {
-        body: count === 1 
-            ? `Nouveau message de ${expediteurNom}`
-            : `${count} nouveaux messages non lus`,
-        icon: '/assets/images/pronote-icon.png' // Remplacer par le bon chemin
+        body: body,
+        icon: '/assets/images/pronote-icon.png',
+        tag: 'pronote-notification', // Remplacer les anciennes notifications
+        renotify: true // Notifier même si une notification avec le même tag existe
     };
     
-    try {
-        const notification = new Notification(title, options);
-        
-        // Jouer un son si activé
-        if (shouldPlaySound) {
-            playNotificationSound();
-        }
-        
-        // Rediriger vers la conversation au clic sur la notification
-        notification.onclick = function() {
-            window.focus();
-            if (latestNotification && latestNotification.conversation_id) {
-                window.location.href = `conversation.php?id=${latestNotification.conversation_id}`;
-            } else {
-                window.location.href = 'index.php';
-            }
-        };
-    } catch (e) {
-        console.error('Erreur lors de la création de la notification:', e);
+    const notification = new Notification(title, options);
+    
+    // Jouer un son si activé
+    if (shouldPlaySound) {
+        playNotificationSound();
     }
+    
+    // Rediriger vers la conversation au clic sur la notification
+    notification.onclick = function() {
+        window.focus();
+        if (latestNotification.conversation_id) {
+            window.location.href = `conversation.php?id=${latestNotification.conversation_id}`;
+        } else {
+            window.location.href = 'index.php';
+        }
+    };
 }
 
 /**

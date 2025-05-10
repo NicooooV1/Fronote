@@ -6,10 +6,9 @@
 // Inclure les fichiers nécessaires
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/config/constants.php';
-require_once __DIR__ . '/core/utils.php';
-require_once __DIR__ . '/core/auth.php';
-require_once __DIR__ . '/models/notification.php';
-require_once __DIR__ . '/controllers/notification.php';
+require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/message_functions.php';
+require_once __DIR__ . '/includes/auth.php';
 
 // Vérifier l'authentification
 $user = requireAuth();
@@ -34,9 +33,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ];
     
     // Mettre à jour les préférences
-    $result = handleUpdateNotificationPreferences($user['id'], $user['type'], $preferences);
+    $result = updateUserNotificationPreferences($user['id'], $user['type'], $preferences);
     
-    if ($result['success']) {
+    if ($result) {
         $success = 'Vos préférences de notification ont été mises à jour avec succès.';
     } else {
         $error = 'Une erreur est survenue lors de la mise à jour de vos préférences.';
