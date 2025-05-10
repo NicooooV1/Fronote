@@ -799,3 +799,40 @@ function markMessageAsUnread(messageId) {
         })
         .catch(error => console.error('Erreur:', error));
 }
+
+// Gestion des pièces jointes
+document.addEventListener('DOMContentLoaded', function() {
+    const attachmentsInput = document.getElementById('attachments');
+    if (attachmentsInput) {
+        attachmentsInput.addEventListener('change', function(e) {
+            const fileList = document.getElementById('file-list');
+            fileList.innerHTML = '';
+            
+            if (this.files.length > 0) {
+                for (let i = 0; i < this.files.length; i++) {
+                    const file = this.files[i];
+                    const fileSize = formatFileSize(file.size);
+                    
+                    const fileInfo = document.createElement('div');
+                    fileInfo.className = 'file-info';
+                    fileInfo.innerHTML = `
+                        <i class="fas fa-file"></i>
+                        <span>${file.name} (${fileSize})</span>
+                    `;
+                    fileList.appendChild(fileInfo);
+                }
+            }
+        });
+    }
+});
+
+/**
+ * Formater la taille des fichiers
+ * @param {number} bytes - Taille en octets
+ * @returns {string} Taille formatée avec unité
+ */
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    else if (bytes < 1048576) return Math.round(bytes / 1024) + ' KB';
+    else return Math.round(bytes / 1048576 * 10) / 10 + ' MB';
+}
