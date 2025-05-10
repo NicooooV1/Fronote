@@ -47,6 +47,12 @@ function handleArchiveConversation($convId, $user) {
     }
 }
 
+/**
+ * Gère la désarchivation d'une conversation
+ * @param int $convId
+ * @param array $user
+ * @return array
+ */
 function handleUnarchiveConversation($convId, $user) {
     try {
         // Vérifier que l'utilisateur est participant à la conversation

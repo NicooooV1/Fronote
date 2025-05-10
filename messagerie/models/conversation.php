@@ -174,46 +174,6 @@ function unarchiveConversation($convId, $userId, $userType) {
 }
 
 /**
- * Gère la désarchivation d'une conversation
- * @param int $convId
- * @param array $user
- * @return array
- */
-function handleUnarchiveConversation($convId, $user) {
-    try {
-        // Vérifier que l'utilisateur est participant à la conversation
-        $participantInfo = getParticipantInfo($convId, $user['id'], $user['type']);
-        if (!$participantInfo || $participantInfo['is_deleted'] == 1) {
-            return [
-                'success' => false,
-                'message' => "Vous n'êtes pas autorisé à accéder à cette conversation"
-            ];
-        }
-        
-        // Désarchiver la conversation
-        $result = unarchiveConversation($convId, $user['id'], $user['type']);
-        
-        if ($result) {
-            return [
-                'success' => true,
-                'message' => "La conversation a été désarchivée avec succès",
-                'redirect' => "index.php?folder=reception"
-            ];
-        } else {
-            return [
-                'success' => false,
-                'message' => "Erreur lors de la désarchivation de la conversation"
-            ];
-        }
-    } catch (Exception $e) {
-        return [
-            'success' => false,
-            'message' => $e->getMessage()
-        ];
-    }
-}
-
-/**
  * Supprimer une conversation pour un utilisateur
  * @param int $convId
  * @param int $userId
