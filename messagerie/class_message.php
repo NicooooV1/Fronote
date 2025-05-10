@@ -10,6 +10,7 @@ require_once __DIR__ . '/core/utils.php';
 require_once __DIR__ . '/core/auth.php';
 require_once __DIR__ . '/controllers/message.php';
 require_once __DIR__ . '/models/class.php';
+require_once __DIR__ . '/models/message.php'; // Ajout de cette ligne pour corriger l'erreur fatale
 
 // Vérifier l'authentification
 $user = requireAuth();
@@ -140,6 +141,7 @@ include 'templates/header.php';
             </div>
             
             <div class="options-group">
+                <?php if (canSetMessageImportance($user['type'])): ?>
                 <div class="form-group" style="margin-bottom: 0;">
                     <label for="importance">Importance</label>
                     <select name="importance" id="importance">
@@ -148,6 +150,7 @@ include 'templates/header.php';
                         <option value="urgent">Urgent</option>
                     </select>
                 </div>
+                <?php endif; ?>
                 
                 <div class="form-group" style="margin-bottom: 0;">
                     <label class="checkbox-container">

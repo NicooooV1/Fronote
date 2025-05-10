@@ -9,6 +9,7 @@ require_once __DIR__ . '/config/constants.php';
 require_once __DIR__ . '/core/utils.php';
 require_once __DIR__ . '/core/auth.php';
 require_once __DIR__ . '/controllers/message.php';
+require_once __DIR__ . '/models/message.php'; // Ajout de cette ligne pour corriger l'erreur fatale
 
 // Vérifier l'authentification
 $user = requireAuth();

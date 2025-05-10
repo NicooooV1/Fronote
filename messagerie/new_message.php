@@ -11,6 +11,7 @@ require_once __DIR__ . '/core/auth.php';
 require_once __DIR__ . '/models/participant.php';
 require_once __DIR__ . '/models/conversation.php';
 require_once __DIR__ . '/controllers/conversation.php';
+require_once __DIR__ . '/models/message.php'; // Ajout de cette ligne pour corriger l'erreur fatale
 
 // Vérifier l'authentification
 $user = requireAuth();
@@ -120,32 +121,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Récupérer la liste des destinataires potentiels
 $destinataires_disponibles = [];
 
-// Élèves
-$query = $pdo->query("SELECT id, CONCAT(prenom, ' ', nom, ' (', classe, ')') as nom_complet FROM eleves ORDER BY nom");
+// Élèves (en excluant l'utilisateur actuel)
+$query = $pdo->prepare("SELECT id, CONCAT(prenom, ' ', nom, ' (', classe, ')') as nom_complet 
+                        FROM eleves 
+                        WHERE NOT (id = ? AND ? = 'eleve')
+                        ORDER BY nom");
+$query->execute([$user['id'], $user['type']]);
 if ($query) {
     $destinataires_disponibles['eleve'] = $query->fetchAll();
 }
 
-// Parents
-$query = $pdo->query("SELECT id, CONCAT(prenom, ' ', nom) as nom_complet FROM parents ORDER BY nom");
+// Parents (en excluant l'utilisateur actuel)
+$query = $pdo->prepare("SELECT id, CONCAT(prenom, ' ', nom) as nom_complet 
+                        FROM parents 
+                        WHERE NOT (id = ? AND ? = 'parent')
+                        ORDER BY nom");
+$query->execute([$user['id'], $user['type']]);
 if ($query) {
     $destinataires_disponibles['parent'] = $query->fetchAll();
 }
 
-// Professeurs
-$query = $pdo->query("SELECT id, CONCAT(prenom, ' ', nom, ' (', matiere, ')') as nom_complet FROM professeurs ORDER BY nom");
+// Professeurs (en excluant l'utilisateur actuel)
+$query = $pdo->prepare("SELECT id, CONCAT(prenom, ' ', nom, ' (', matiere, ')') as nom_complet 
+                        FROM professeurs 
+                        WHERE NOT (id = ? AND ? = 'professeur')
+                        ORDER BY nom");
+$query->execute([$user['id'], $user['type']]);
 if ($query) {
     $destinataires_disponibles['professeur'] = $query->fetchAll();
 }
 
-// Vie scolaire
-$query = $pdo->query("SELECT id, CONCAT(prenom, ' ', nom) as nom_complet FROM vie_scolaire ORDER BY nom");
+// Vie scolaire (en excluant l'utilisateur actuel)
+$query = $pdo->prepare("SELECT id, CONCAT(prenom, ' ', nom) as nom_complet 
+                        FROM vie_scolaire 
+                        WHERE NOT (id = ? AND ? = 'vie_scolaire')
+                        ORDER BY nom");
+$query->execute([$user['id'], $user['type']]);
 if ($query) {
     $destinataires_disponibles['vie_scolaire'] = $query->fetchAll();
 }
 
-// Administrateurs
-$query = $pdo->query("SELECT id, CONCAT(prenom, ' ', nom) as nom_complet FROM administrateurs ORDER BY nom");
+// Administrateurs (en excluant l'utilisateur actuel)
+$query = $pdo->prepare("SELECT id, CONCAT(prenom, ' ', nom) as nom_complet 
+                        FROM administrateurs 
+                        WHERE NOT (id = ? AND ? = 'administrateur')
+                        ORDER BY nom");
+$query->execute([$user['id'], $user['type']]);
 if ($query) {
     $destinataires_disponibles['administrateur'] = $query->fetchAll();
 }

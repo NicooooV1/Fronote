@@ -20,6 +20,18 @@ function initFormValidation() {
     const titleInput = document.getElementById('titre');
     const contentTextarea = document.getElementById('contenu');
     
+    // Suppression des compteurs existants pour éviter les doublons
+    const existingTitleCounter = document.getElementById('title-counter');
+    const existingCharCounter = document.getElementById('char-counter');
+    
+    if (existingTitleCounter) {
+        existingTitleCounter.parentNode.removeChild(existingTitleCounter);
+    }
+    
+    if (existingCharCounter) {
+        existingCharCounter.parentNode.removeChild(existingCharCounter);
+    }
+    
     // Validation du titre
     if (titleInput) {
         const titleCounter = document.createElement('div');
@@ -39,12 +51,18 @@ function initFormValidation() {
             
             if (currentLength > maxLength) {
                 titleCounter.style.color = '#dc3545';
-                document.querySelector('button[type="submit"]').disabled = true;
+                const submitButton = document.querySelector('button[type="submit"]');
+                if (submitButton) {
+                    submitButton.disabled = true;
+                }
             } else {
                 titleCounter.style.color = '#6c757d';
                 // Ne pas réactiver le bouton si le contenu est trop long
                 if (contentTextarea && contentTextarea.value.length <= 10000) {
-                    document.querySelector('button[type="submit"]').disabled = false;
+                    const submitButton = document.querySelector('button[type="submit"]');
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                    }
                 }
             }
         });
@@ -72,12 +90,18 @@ function initFormValidation() {
             
             if (currentLength > maxLength) {
                 charCounter.style.color = '#dc3545';
-                document.querySelector('button[type="submit"]').disabled = true;
+                const submitButton = document.querySelector('button[type="submit"]');
+                if (submitButton) {
+                    submitButton.disabled = true;
+                }
             } else {
                 charCounter.style.color = '#6c757d';
                 // Ne pas réactiver le bouton si le titre est trop long
                 if (titleInput && titleInput.value.length <= 100) {
-                    document.querySelector('button[type="submit"]').disabled = false;
+                    const submitButton = document.querySelector('button[type="submit"]');
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                    }
                 }
             }
         });
@@ -90,9 +114,41 @@ function initFormValidation() {
     const forms = document.querySelectorAll('form');
     forms.forEach(form => {
         form.addEventListener('submit', function(e) {
-            const requiredFields = form.querySelectorAll('[required]');
+            // Vérifier les limites de caractères
             let valid = true;
             
+            // Vérifier le titre
+            if (titleInput && titleInput.value.length > 100) {
+                e.preventDefault();
+                valid = false;
+                if (!document.getElementById('title-error')) {
+                    const errorMsg = document.createElement('div');
+                    errorMsg.id = 'title-error';
+                    errorMsg.style.color = '#dc3545';
+                    errorMsg.style.fontSize = '12px';
+                    errorMsg.style.marginTop = '5px';
+                    errorMsg.textContent = 'Le titre ne peut pas dépasser 100 caractères';
+                    titleInput.parentNode.insertBefore(errorMsg, titleInput.nextSibling.nextSibling);
+                }
+            }
+            
+            // Vérifier le contenu
+            if (contentTextarea && contentTextarea.value.length > 10000) {
+                e.preventDefault();
+                valid = false;
+                if (!document.getElementById('content-error')) {
+                    const errorMsg = document.createElement('div');
+                    errorMsg.id = 'content-error';
+                    errorMsg.style.color = '#dc3545';
+                    errorMsg.style.fontSize = '12px';
+                    errorMsg.style.marginTop = '5px';
+                    errorMsg.textContent = 'Le message ne peut pas dépasser 10000 caractères';
+                    contentTextarea.parentNode.insertBefore(errorMsg, contentTextarea.nextSibling.nextSibling);
+                }
+            }
+            
+            // Vérifier aussi les champs requis
+            const requiredFields = form.querySelectorAll('[required]');
             requiredFields.forEach(field => {
                 if (!field.value.trim()) {
                     e.preventDefault();

@@ -200,7 +200,7 @@ function showBrowserNotification(count, latestNotification) {
         body: count === 1 
             ? `Nouveau message de ${expediteurNom}`
             : `${count} nouveaux messages non lus`,
-        icon: '/assets/images/pronote-icon.png' // Remplacer par le bon chemin
+            // icon: '/assets/images/pronote-icon.png'
     };
     
     try {
