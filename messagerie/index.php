@@ -80,52 +80,45 @@ include 'templates/header.php';
             </label>
             
             <div class="bulk-action-buttons">
-                <?php if ($currentFolder === 'archives'): ?>
-                <button data-action="unarchive" data-icon="inbox" data-action-text="Désarchiver" class="bulk-action-btn btn primary" disabled>
-                    <i class="fas fa-inbox"></i> Désarchiver (0)
-                </button>
-
-                <button data-action="delete" data-icon="trash" data-action-text="Supprimer" class="bulk-action-btn btn warning" disabled>
-                    <i class="fas fa-trash"></i> Supprimer (0)
-                </button>
-                
-                <button data-action="mark_read" data-icon="envelope-open" data-action-text="Marquer comme lu" class="bulk-action-btn btn secondary" disabled>
-                    <i class="fas fa-envelope-open"></i> Marquer comme lu (0)
-                </button>
-
-                <button data-action="mark_unread" data-icon="envelope" data-action-text="Marquer comme non lu" class="bulk-action-btn btn secondary" disabled>
-                    <i class="fas fa-envelope"></i> Marquer comme non lu (0)
-                </button>
-                <?php elseif ($currentFolder !== 'archives'): ?>
-                <button data-action="archive" data-icon="archive" data-action-text="Archiver" class="bulk-action-btn btn secondary" disabled>
-                    <i class="fas fa-archive"></i> Archiver (0)
-                </button>
-                <?php endif; ?>
-                
-                <?php if ($currentFolder !== 'corbeille'): ?>
-                <button data-action="delete" data-icon="trash" data-action-text="Supprimer" class="bulk-action-btn btn warning" disabled>
-                    <i class="fas fa-trash"></i> Supprimer (0)
-                </button>
+                <?php 
+                // Boutons d'actions spécifiques selon le dossier
+                if ($currentFolder === 'archives'): ?>
+                    <!-- Boutons pour les archives -->
+                    <button data-action="unarchive" data-icon="inbox" data-action-text="Désarchiver" class="bulk-action-btn btn primary" disabled>
+                        <i class="fas fa-inbox"></i> Désarchiver (0)
+                    </button>
+                <?php elseif ($currentFolder !== 'corbeille'): ?>
+                    <!-- Bouton d'archivage pour les dossiers autres que archives et corbeille -->
+                    <button data-action="archive" data-icon="archive" data-action-text="Archiver" class="bulk-action-btn btn secondary" disabled>
+                        <i class="fas fa-archive"></i> Archiver (0)
+                    </button>
                 <?php endif; ?>
                 
                 <?php if ($currentFolder === 'corbeille'): ?>
-                <button data-action="restore" data-icon="trash-restore" data-action-text="Restaurer" class="bulk-action-btn btn primary" disabled>
-                    <i class="fas fa-trash-restore"></i> Restaurer (0)
-                </button>
-                
-                <button data-action="delete_permanently" data-icon="trash-alt" data-action-text="Supprimer définitivement" class="bulk-action-btn btn warning" disabled>
-                    <i class="fas fa-trash-alt"></i> Supprimer définitivement (0)
-                </button>
+                    <!-- Boutons pour la corbeille -->
+                    <button data-action="restore" data-icon="trash-restore" data-action-text="Restaurer" class="bulk-action-btn btn primary" disabled>
+                        <i class="fas fa-trash-restore"></i> Restaurer (0)
+                    </button>
+                    
+                    <button data-action="delete_permanently" data-icon="trash-alt" data-action-text="Supprimer définitivement" class="bulk-action-btn btn warning" disabled>
+                        <i class="fas fa-trash-alt"></i> Supprimer définitivement (0)
+                    </button>
+                <?php else: ?>
+                    <!-- Bouton de suppression pour tous les dossiers sauf corbeille -->
+                    <button data-action="delete" data-icon="trash" data-action-text="Supprimer" class="bulk-action-btn btn warning" disabled>
+                        <i class="fas fa-trash"></i> Supprimer (0)
+                    </button>
                 <?php endif; ?>
                 
                 <?php if ($currentFolder !== 'corbeille'): ?>
-                <button data-action="mark_read" data-icon="envelope-open" data-action-text="Marquer comme lu" class="bulk-action-btn btn secondary" disabled>
-                    <i class="fas fa-envelope-open"></i> Marquer comme lu (0)
-                </button>
-                
-                <button data-action="mark_unread" data-icon="envelope" data-action-text="Marquer comme non lu" class="bulk-action-btn btn secondary" disabled>
-                    <i class="fas fa-envelope"></i> Marquer comme non lu (0)
-                </button>
+                    <!-- Boutons de marquage communs à tous les dossiers sauf corbeille -->
+                    <button data-action="mark_read" data-icon="envelope-open" data-action-text="Marquer comme lu" class="bulk-action-btn btn secondary" disabled>
+                        <i class="fas fa-envelope-open"></i> Marquer comme lu (0)
+                    </button>
+                    
+                    <button data-action="mark_unread" data-icon="envelope" data-action-text="Marquer comme non lu" class="bulk-action-btn btn secondary" disabled>
+                        <i class="fas fa-envelope"></i> Marquer comme non lu (0)
+                    </button>
                 <?php endif; ?>
             </div>
         </div>
