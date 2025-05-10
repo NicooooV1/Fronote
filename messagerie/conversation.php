@@ -244,7 +244,6 @@ include 'templates/header.php';
         <?php endif; ?>
         
         <textarea name="contenu" rows="4" placeholder="Envoyer un message..." required><?= htmlspecialchars($messageContent) ?></textarea>
-        <div id="char-counter" class="text-muted small">0/10000 caractères</div>
         
         <div class="form-footer">
             <div class="file-upload">

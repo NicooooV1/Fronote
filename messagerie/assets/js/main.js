@@ -218,13 +218,19 @@ function setupBulkActions() {
         
         // Configurer les clics sur les boutons d'action
         actionButtons.forEach(button => {
-            button.addEventListener('click', function() {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
                 const action = this.dataset.action;
+                if (!action) return;
+                
                 const selectedIds = Array.from(
                     document.querySelectorAll('.conversation-checkbox:checked')
                 ).map(cb => parseInt(cb.value, 10));
                 
-                if (selectedIds.length === 0) return;
+                if (selectedIds.length === 0) {
+                    alert('Veuillez sélectionner au moins une conversation');
+                    return;
+                }
                 
                 performBulkAction(action, selectedIds);
             });
@@ -249,9 +255,15 @@ function updateBulkActionButtons() {
         const icon = button.dataset.icon ? `<i class="fas fa-${button.dataset.icon}"></i> ` : '';
         button.innerHTML = `${icon}${actionText} (${selectedCount})`;
         
-        // Masquer/désactiver les boutons si rien n'est sélectionné
+        // Activer/désactiver les boutons en fonction de la sélection
         button.disabled = selectedCount === 0;
-        button.style.display = selectedCount === 0 ? 'none' : 'inline-flex';
+        
+        // Afficher/masquer les boutons si rien n'est sélectionné
+        if (selectedCount === 0) {
+            button.style.display = 'none';
+        } else {
+            button.style.display = 'inline-flex';
+        }
     });
     
     if (selectedCount === 0) return;
@@ -259,29 +271,37 @@ function updateBulkActionButtons() {
     // Vérifier si tous les messages sélectionnés sont lus ou non lus
     const btnMarkRead = document.querySelector('button[data-action="mark_read"]');
     const btnMarkUnread = document.querySelector('button[data-action="mark_unread"]');
-    let hasReadMessages = false;
-    let hasUnreadMessages = false;
     
-    selectedConvs.forEach(checkbox => {
-        const conversationItem = checkbox.closest('.conversation-item');
-        const isRead = conversationItem.getAttribute('data-is-read') === '1';
+    // Si on est dans un dossier autre que la corbeille, montrer les boutons Lu/Non lu
+    const isTrashFolder = window.location.href.includes('folder=corbeille');
+    
+    if (btnMarkRead && btnMarkUnread && !isTrashFolder) {
+        let hasReadMessages = false;
+        let hasUnreadMessages = false;
         
-        if (isRead) {
-            hasReadMessages = true;
-        } else {
-            hasUnreadMessages = true;
+        selectedConvs.forEach(checkbox => {
+            const conversationItem = checkbox.closest('.conversation-item');
+            if (conversationItem) {
+                const isRead = !conversationItem.classList.contains('unread');
+                
+                if (isRead) {
+                    hasReadMessages = true;
+                } else {
+                    hasUnreadMessages = true;
+                }
+            }
+        });
+        
+        // Ajuster la visibilité des boutons selon la sélection
+        if (btnMarkRead) {
+            btnMarkRead.disabled = !hasUnreadMessages;
+            btnMarkRead.style.display = hasUnreadMessages ? 'inline-flex' : 'none';
         }
-    });
-    
-    // Ajuster la visibilité des boutons selon la sélection
-    if (btnMarkRead) {
-        btnMarkRead.disabled = !hasUnreadMessages;
-        btnMarkRead.style.display = hasUnreadMessages ? 'inline-flex' : 'none';
-    }
-    
-    if (btnMarkUnread) {
-        btnMarkUnread.disabled = !hasReadMessages;
-        btnMarkUnread.style.display = hasReadMessages ? 'inline-flex' : 'none';
+        
+        if (btnMarkUnread) {
+            btnMarkUnread.disabled = !hasReadMessages;
+            btnMarkUnread.style.display = hasReadMessages ? 'inline-flex' : 'none';
+        }
     }
 }
 
@@ -323,15 +343,28 @@ function performBulkAction(action, convIds) {
             ids: convIds
         };
         
+        // Montrer un indicateur de chargement
+        document.body.style.cursor = 'wait';
+        
+        // Désactiver les boutons pendant le traitement
+        document.querySelectorAll('.bulk-action-btn').forEach(btn => {
+            btn.disabled = true;
+        });
+        
         // Envoyer la requête
-        fetch('api/conversations.php?action=bulk', {
+        fetch('api/conversation.php?action=bulk', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(data)
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erreur réseau: ' + response.status);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 // Afficher un message de succès
@@ -342,11 +375,29 @@ function performBulkAction(action, convIds) {
             } else {
                 console.error('Erreur:', data.error);
                 alert('Erreur lors de l\'action: ' + data.error);
+                
+                // Restaurer le curseur et réactiver les boutons
+                document.body.style.cursor = 'default';
+                document.querySelectorAll('.bulk-action-btn').forEach(btn => {
+                    btn.disabled = false;
+                });
+                
+                // Mettre à jour l'état des boutons
+                updateBulkActionButtons();
             }
         })
         .catch(error => {
             console.error('Erreur:', error);
-            alert('Une erreur est survenue lors de l\'exécution de l\'action.');
+            alert('Une erreur est survenue lors de l\'exécution de l\'action: ' + error.message);
+            
+            // Restaurer le curseur et réactiver les boutons
+            document.body.style.cursor = 'default';
+            document.querySelectorAll('.bulk-action-btn').forEach(btn => {
+                btn.disabled = false;
+            });
+            
+            // Mettre à jour l'état des boutons
+            updateBulkActionButtons();
         });
     }
 }
@@ -389,8 +440,13 @@ function toggleQuickActions(id) {
  * @param {number} convId
  */
 function markConversationAsRead(convId) {
-    fetch(`api/conversations.php?id=${convId}&action=mark_read`)
-        .then(response => response.json())
+    fetch(`api/conversation.php?id=${convId}&action=mark_read`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erreur réseau: ' + response.status);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 window.location.reload();
@@ -406,8 +462,13 @@ function markConversationAsRead(convId) {
  * @param {number} convId
  */
 function markConversationAsUnread(convId) {
-    fetch(`api/conversations.php?id=${convId}&action=mark_unread`)
-        .then(response => response.json())
+    fetch(`api/conversation.php?id=${convId}&action=mark_unread`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erreur réseau: ' + response.status);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 window.location.reload();

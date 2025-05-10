@@ -266,7 +266,11 @@ function selectAllInCategory(categoryId) {
     const category = document.getElementById(categoryId);
     if (!category) return;
     
-    const checkboxes = category.querySelectorAll('input[type="checkbox"]:not(:checked)');
+    const currentUserId = document.body.getAttribute('data-user-id');
+    const currentUserType = document.body.getAttribute('data-user-type');
+    const currentUserSelector = `input[value="${currentUserType}_${currentUserId}"]`;
+    
+    const checkboxes = category.querySelectorAll('input[type="checkbox"]:not(:checked):not(' + currentUserSelector + ')');
     checkboxes.forEach(checkbox => {
         checkbox.checked = true;
     });

@@ -62,14 +62,14 @@ $messageClasses = array_filter($messageClasses);
         <?php endif; ?>
     </div>
     
-    <div class="message-footer">
-        <div class="message-status">
-            <?php if ($isSelf && isset($message['est_lu']) && $message['est_lu']): ?>
-                <div class="message-read">
-                    <i class="fas fa-check"></i> Vu
-                </div>
-            <?php endif; ?>
+<!-- Dans le footer du message -->
+    <div class="message-status">
+        <?php if ($isSelf && isset($message['est_lu']) && $message['est_lu']): ?>
+        <div class="message-read">
+            <i class="fas fa-check"></i> Vu
         </div>
+        <?php endif; ?>
+    </div>
         
         <?php if (isset($canReply) && $canReply && !$isSelf): ?>
         <div class="message-actions">

@@ -717,7 +717,7 @@ function loadParticipants() {
  * @param {number} messageId - ID du message
  */
 function markMessageAsRead(messageId) {
-    fetch(`api/mark_message.php?id=${messageId}&action=mark_read`)
+    fetch(`api/messages.php?id=${messageId}&action=mark_read`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -727,15 +727,12 @@ function markMessageAsRead(messageId) {
                     message.classList.add('read');
                     
                     // Mettre à jour l'indicateur de lecture
-                    const readIndicator = message.querySelector('.message-read');
-                    if (!readIndicator) {
-                        const footer = message.querySelector('.message-footer .message-status');
-                        if (footer) {
-                            const readStatus = document.createElement('div');
-                            readStatus.className = 'message-read';
-                            readStatus.innerHTML = '<i class="fas fa-check"></i> Vu';
-                            footer.appendChild(readStatus);
-                        }
+                    const messageStatus = message.querySelector('.message-status');
+                    if (messageStatus && !message.querySelector('.message-read')) {
+                        const readStatus = document.createElement('div');
+                        readStatus.className = 'message-read';
+                        readStatus.innerHTML = '<i class="fas fa-check"></i> Vu';
+                        messageStatus.appendChild(readStatus);
                     }
                     
                     // Remplacer le bouton
@@ -752,8 +749,6 @@ function markMessageAsRead(messageId) {
                         readBtn.parentNode.replaceChild(unreadBtn, readBtn);
                     }
                 }
-            } else {
-                console.error('Erreur:', data.error);
             }
         })
         .catch(error => console.error('Erreur:', error));

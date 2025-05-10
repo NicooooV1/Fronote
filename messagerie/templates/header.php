@@ -3,7 +3,7 @@
  * En-tête HTML commun
  */
 
-// Inclure le fichier avec la fonction countUnreadNotifications
+// Inclure le modèle de notification
 require_once __DIR__ . '/../models/notification.php';
 
 // URL de base
@@ -40,7 +40,7 @@ $unreadNotifications = isset($user) ? countUnreadNotifications($user['id'], $use
     <link rel="stylesheet" href="<?= $baseUrl ?>assets/css/forms.css">
     <?php endif; ?>
 </head>
-<body>
+<body <?php if (isset($user)): ?>data-user-id="<?= $user['id'] ?>" data-user-type="<?= $user['type'] ?>"<?php endif; ?>>
     <div class="container">
         <header>
             <?php if ($currentPage != 'index'): ?>
