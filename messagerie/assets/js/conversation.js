@@ -87,14 +87,19 @@ function setupMessageValidation() {
     const textArea = document.querySelector('textarea[name="contenu"]');
     
     if (messageForm && textArea) {
-        // Créer un compteur de caractères
-        const counter = document.createElement('div');
-        counter.id = 'char-counter';
-        counter.className = 'text-muted small mt-1';
-        counter.style.fontSize = '12px';
-        counter.style.color = '#6c757d';
-        counter.style.marginTop = '5px';
-        textArea.parentNode.insertBefore(counter, textArea.nextSibling);
+        // Vérifier si un compteur existe déjà
+        let counter = document.getElementById('char-counter');
+        
+        // Si le compteur n'existe pas, le créer
+        if (!counter) {
+            counter = document.createElement('div');
+            counter.id = 'char-counter';
+            counter.className = 'text-muted small mt-1';
+            counter.style.fontSize = '12px';
+            counter.style.color = '#6c757d';
+            counter.style.marginTop = '5px';
+            textArea.parentNode.insertBefore(counter, textArea.nextSibling);
+        }
         
         // Mettre à jour le compteur en temps réel
         textArea.addEventListener('input', function() {
@@ -117,6 +122,14 @@ function setupMessageValidation() {
         // Déclencher l'événement d'entrée pour mettre à jour le compteur immédiatement
         const inputEvent = new Event('input');
         textArea.dispatchEvent(inputEvent);
+        
+        // Supprimer tous les compteurs en double
+        const counters = document.querySelectorAll('.text-muted.small:not(#char-counter)');
+        counters.forEach(element => {
+            if (element.textContent.includes('caractères') && element !== counter) {
+                element.remove();
+            }
+        });
     }
 }
 
@@ -295,172 +308,6 @@ function setupRealTimeUpdates() {
     }
     
     /**
-     * Ajoute un message au DOM
-     * @param {Object} message - Objet message à ajouter
-     * @param {HTMLElement} container - Conteneur où ajouter le message
-     */
-    function appendMessageToDOM(message, container) {
-        // Créer un nouvel élément div pour le message
-        const messageElement = document.createElement('div');
-        
-        // Déterminer les classes du message
-        let classes = ['message'];
-        if (message.is_self) classes.push('self');
-        if (message.est_lu === 1 || message.est_lu === true) classes.push('read');
-        if (message.status) classes.push(message.status);
-        
-        messageElement.className = classes.join(' ');
-        messageElement.setAttribute('data-id', message.id);
-        messageElement.setAttribute('data-timestamp', message.timestamp);
-        
-        // Formater la date lisible
-        const messageDate = new Date(message.timestamp * 1000);
-        const formattedDate = formatMessageDate(messageDate);
-        
-        // Construction du HTML du message
-        let messageHTML = `
-            <div class="message-header">
-                <div class="sender">
-                    <strong>${escapeHTML(message.expediteur_nom)}</strong>
-                    <span class="sender-type">${getParticipantType(message.sender_type)}</span>
-                </div>
-                <div class="message-meta">
-        `;
-        
-        // Ajouter le tag d'importance si non standard
-        if (message.status && message.status !== 'normal') {
-            messageHTML += `<span class="importance-tag ${message.status}">${message.status}</span>`;
-        }
-        
-        messageHTML += `
-                    <span class="date">${formattedDate}</span>
-                </div>
-            </div>
-            <div class="message-content">${nl2br(escapeHTML(message.body || message.contenu))}</div>
-            <div class="message-footer">
-                <div class="message-status">
-                    ${(message.est_lu === 1 || message.est_lu === true) ? '<div class="message-read"><i class="fas fa-check"></i> Vu</div>' : ''}
-                </div>
-        `;
-        
-        // Ajouter les actions si ce n'est pas un message de l'utilisateur courant
-        if (!message.is_self) {
-            messageHTML += `
-                <div class="message-actions">
-                    ${(message.est_lu === 1 || message.est_lu === true) ? 
-                        `<button class="btn-icon mark-unread-btn" data-message-id="${message.id}">
-                            <i class="fas fa-envelope"></i> Marquer comme non lu
-                        </button>` : 
-                        `<button class="btn-icon mark-read-btn" data-message-id="${message.id}">
-                            <i class="fas fa-envelope-open"></i> Marquer comme lu
-                        </button>`
-                    }
-                    <button class="btn-icon" onclick="replyToMessage(${message.id}, '${escapeHTML(message.expediteur_nom)}')">
-                        <i class="fas fa-reply"></i> Répondre
-                    </button>
-                </div>
-            `;
-        }
-        
-        messageHTML += `
-            </div>
-        `;
-        
-        // Définir le HTML du message
-        messageElement.innerHTML = messageHTML;
-        
-        // Ajouter l'événement pour les boutons
-        setTimeout(() => {
-            const readBtn = messageElement.querySelector('.mark-read-btn');
-            const unreadBtn = messageElement.querySelector('.mark-unread-btn');
-            
-            if (readBtn) {
-                readBtn.addEventListener('click', function() {
-                    const messageId = this.getAttribute('data-message-id');
-                    markMessageAsRead(messageId);
-                });
-            }
-            
-            if (unreadBtn) {
-                unreadBtn.addEventListener('click', function() {
-                    const messageId = this.getAttribute('data-message-id');
-                    markMessageAsUnread(messageId);
-                });
-            }
-        }, 100);
-        
-        // Ajouter le message au conteneur
-        container.appendChild(messageElement);
-    }
-    
-    /**
-     * Formatage de la date d'un message
-     * @param {Date} date - Date à formater
-     * @returns {string} Date formatée
-     */
-    function formatMessageDate(date) {
-        const now = new Date();
-        const diffMs = now - date;
-        const diffSecs = Math.floor(diffMs / 1000);
-        const diffMins = Math.floor(diffSecs / 60);
-        const diffHours = Math.floor(diffMins / 60);
-        const diffDays = Math.floor(diffHours / 24);
-        
-        if (diffSecs < 60) {
-            return "À l'instant";
-        } else if (diffMins < 60) {
-            return `Il y a ${diffMins} minute${diffMins > 1 ? 's' : ''}`;
-        } else if (diffHours < 24) {
-            return `Il y a ${diffHours} heure${diffHours > 1 ? 's' : ''}`;
-        } else if (diffDays < 2) {
-            return `Hier à ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-        } else {
-            return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth()+1).toString().padStart(2, '0')}/${date.getFullYear()} à ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-        }
-    }
-    
-    /**
-     * Échappe les caractères HTML
-     * @param {string} text - Texte à échapper
-     * @returns {string} Texte échappé
-     */
-    function escapeHTML(text) {
-        if (!text) return '';
-        return text
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-    
-    /**
-     * Convertit les retours à la ligne en <br>
-     * @param {string} text - Texte à convertir
-     * @returns {string} Texte avec des <br>
-     */
-    function nl2br(text) {
-        if (!text) return '';
-        return text.replace(/\n/g, '<br>');
-    }
-    
-    /**
-     * Renvoie le libellé du type de participant
-     * @param {string} type - Type de participant
-     * @returns {string} Libellé formaté
-     */
-    function getParticipantType(type) {
-        const types = {
-            'eleve': 'Élève',
-            'parent': 'Parent',
-            'professeur': 'Professeur',
-            'vie_scolaire': 'Vie scolaire',
-            'administrateur': 'Administrateur'
-        };
-        return types[type] || type;
-    }
-    
-    /**
      * Actualise la liste des participants
      */
     function refreshParticipantsList() {
@@ -493,6 +340,105 @@ function setupRealTimeUpdates() {
             }
         });
     }
+}
+
+/**
+ * Ajoute un message au DOM
+ * @param {Object} message - Objet message à ajouter
+ * @param {HTMLElement} container - Conteneur où ajouter le message
+ */
+function appendMessageToDOM(message, container) {
+    // Créer un nouvel élément div pour le message
+    const messageElement = document.createElement('div');
+    
+    // Déterminer les classes du message
+    let classes = ['message'];
+    if (message.is_self) classes.push('self');
+    if (message.est_lu === 1 || message.est_lu === true) classes.push('read');
+    if (message.status) classes.push(message.status);
+    
+    messageElement.className = classes.join(' ');
+    messageElement.setAttribute('data-id', message.id);
+    messageElement.setAttribute('data-timestamp', message.timestamp);
+    
+    // Formater la date lisible
+    const messageDate = new Date(message.timestamp * 1000);
+    const formattedDate = formatMessageDate(messageDate);
+    
+    // Construction du HTML du message
+    let messageHTML = `
+        <div class="message-header">
+            <div class="sender">
+                <strong>${escapeHTML(message.expediteur_nom)}</strong>
+                <span class="sender-type">${getParticipantType(message.sender_type)}</span>
+            </div>
+            <div class="message-meta">
+    `;
+    
+    // Ajouter le tag d'importance si non standard
+    if (message.status && message.status !== 'normal') {
+        messageHTML += `<span class="importance-tag ${message.status}">${message.status}</span>`;
+    }
+    
+    messageHTML += `
+                <span class="date">${formattedDate}</span>
+            </div>
+        </div>
+        <div class="message-content">${nl2br(escapeHTML(message.body || message.contenu))}</div>
+        <div class="message-footer">
+            <div class="message-status">
+                ${(message.est_lu === 1 || message.est_lu === true) ? '<div class="message-read"><i class="fas fa-check"></i> Vu</div>' : ''}
+            </div>
+    `;
+    
+    // Ajouter les actions si ce n'est pas un message de l'utilisateur courant
+    if (!message.is_self) {
+        messageHTML += `
+            <div class="message-actions">
+                ${(message.est_lu === 1 || message.est_lu === true) ? 
+                    `<button class="btn-icon mark-unread-btn" data-message-id="${message.id}">
+                        <i class="fas fa-envelope"></i> Marquer comme non lu
+                    </button>` : 
+                    `<button class="btn-icon mark-read-btn" data-message-id="${message.id}">
+                        <i class="fas fa-envelope-open"></i> Marquer comme lu
+                    </button>`
+                }
+                <button class="btn-icon" onclick="replyToMessage(${message.id}, '${escapeHTML(message.expediteur_nom)}')">
+                    <i class="fas fa-reply"></i> Répondre
+                </button>
+            </div>
+        `;
+    }
+    
+    messageHTML += `
+        </div>
+    `;
+    
+    // Définir le HTML du message
+    messageElement.innerHTML = messageHTML;
+    
+    // Ajouter l'événement pour les boutons
+    setTimeout(() => {
+        const readBtn = messageElement.querySelector('.mark-read-btn');
+        const unreadBtn = messageElement.querySelector('.mark-unread-btn');
+        
+        if (readBtn) {
+            readBtn.addEventListener('click', function() {
+                const messageId = this.getAttribute('data-message-id');
+                markMessageAsRead(messageId);
+            });
+        }
+        
+        if (unreadBtn) {
+            unreadBtn.addEventListener('click', function() {
+                const messageId = this.getAttribute('data-message-id');
+                markMessageAsUnread(messageId);
+            });
+        }
+    }, 100);
+    
+    // Ajouter le message au conteneur
+    container.appendChild(messageElement);
 }
 
 /**
@@ -840,4 +786,71 @@ function formatFileSize(bytes) {
     if (bytes < 1024) return bytes + ' B';
     else if (bytes < 1048576) return Math.round(bytes / 1024) + ' KB';
     else return Math.round(bytes / 1048576 * 10) / 10 + ' MB';
+}
+
+/**
+ * Formatage de la date d'un message
+ * @param {Date} date - Date à formater
+ * @returns {string} Date formatée
+ */
+function formatMessageDate(date) {
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffSecs < 60) {
+        return "À l'instant";
+    } else if (diffMins < 60) {
+        return `Il y a ${diffMins} minute${diffMins > 1 ? 's' : ''}`;
+    } else if (diffHours < 24) {
+        return `Il y a ${diffHours} heure${diffHours > 1 ? 's' : ''}`;
+    } else if (diffDays < 2) {
+        return `Hier à ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    } else {
+        return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth()+1).toString().padStart(2, '0')}/${date.getFullYear()} à ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    }
+}
+
+/**
+ * Échappe les caractères HTML
+ * @param {string} text - Texte à échapper
+ * @returns {string} Texte échappé
+ */
+function escapeHTML(text) {
+    if (!text) return '';
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+/**
+ * Convertit les retours à la ligne en <br>
+ * @param {string} text - Texte à convertir
+ * @returns {string} Texte avec des <br>
+ */
+function nl2br(text) {
+    if (!text) return '';
+    return text.replace(/\n/g, '<br>');
+}
+
+/**
+ * Renvoie le libellé du type de participant
+ * @param {string} type - Type de participant
+ * @returns {string} Libellé formaté
+ */
+function getParticipantType(type) {
+    const types = {
+        'eleve': 'Élève',
+        'parent': 'Parent',
+        'professeur': 'Professeur',
+        'vie_scolaire': 'Vie scolaire',
+        'administrateur': 'Administrateur'
+    };
+    return types[type] || type;
 }

@@ -8,6 +8,17 @@
     font-family: 'Arial', 'Helvetica', sans-serif;
 }
 
+/* Général : Palette de couleurs Pronote */
+:root {
+    --pronote-primary: #009b72;
+    --pronote-secondary: #4A6572;
+    --pronote-light-bg: #f8f9fa;
+    --pronote-border: #e9ecef;
+    --pronote-text: #495057;
+    --pronote-link: #009b72;
+    --pronote-hover: #008a65;
+}
+
 body {
     background-color: #f0f3f8;
     color: #333;
@@ -35,6 +46,7 @@ header {
     background-color: #009b72; /* Couleur principale Pronote */
     color: white;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
 header h1 {
@@ -87,8 +99,9 @@ header h1 {
 .sidebar {
     width: 260px;
     padding: 20px 0;
-    background-color: #f8f9fa;
-    border-right: 1px solid #e9ecef;
+    background-color: white;
+    border-right: 1px solid var(--pronote-border);
+    box-shadow: 0 0 5px rgba(0,0,0,0.05);
 }
 
 .folder-menu {
@@ -99,20 +112,30 @@ header h1 {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 20px;
+    padding: 12px 20px;
     color: #495057;
     text-decoration: none;
     transition: background-color 0.2s;
+    border-radius: 0;
+    font-size: 14px;
 }
 
 .folder-menu a:hover {
-    background-color: #e9ecef;
+    background-color: rgba(0, 155, 114, 0.05);
 }
 
 .folder-menu a.active {
-    background-color: #e1f8f2;
-    color: #009b72;
-    border-left: 3px solid #009b72;
+    background-color: rgba(0, 155, 114, 0.1);
+    color: var(--pronote-primary);
+    border-left: 3px solid var(--pronote-primary);
+    font-weight: 600;
+}
+
+.folder-menu a i {
+    color: var(--pronote-primary);
+    width: 20px;
+    text-align: center;
+    margin-right: 10px;
 }
 
 .action-buttons {
@@ -142,10 +165,16 @@ header h1 {
 .btn.primary {
     background-color: #009b72;
     color: white;
+    border-radius: 4px;
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    padding: 10px 16px;
 }
 
 .btn.primary:hover {
-    background-color: #008a65;
+    background-color: var(--pronote-hover);
 }
 
 .btn.secondary {
@@ -194,7 +223,7 @@ main h2 {
 .conversation-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 0;
     position: relative; /* Pour le contexte de z-index */
 }
 
@@ -202,18 +231,21 @@ main h2 {
     display: flex;
     align-items: center;
     gap: 15px;
-    padding: 15px;
+    padding: 15px 20px;
     text-decoration: none;
     color: #495057;
-    border-radius: 4px;
     transition: background-color 0.2s;
-    border: 1px solid #e9ecef;
+    border-top: 1px solid var(--pronote-border);
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    margin-bottom: 0;
     position: relative;
     z-index: 1; /* Base z-index */
 }
 
 .conversation-item:hover {
-    background-color: #f8f9fa;
+    background-color: rgba(0, 155, 114, 0.05);
     z-index: 10; /* Élevé lors du survol pour s'assurer que son menu reste au dessus */
 }
 
@@ -222,8 +254,8 @@ main h2 {
 }
 
 .conversation-item.unread {
-    background-color: #e6f7f2;
-    border-left: 3px solid #009b72;
+    background-color: rgba(0, 155, 114, 0.08);
+    border-left: 3px solid var(--pronote-primary);
 }
 
 .conversation-item.annonce {
@@ -592,6 +624,69 @@ main h2 {
 
 .error-notification {
     animation: fadeInDown 0.3s ease-out;
+}
+
+/* Checkbox */
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    position: relative;
+    padding-left: 28px;
+    cursor: pointer;
+    user-select: none;
+    margin-bottom: 10px;
+}
+
+.checkbox-container input {
+    position: absolute;
+    opacity: 0;
+    height: 0;
+    width: 0;
+}
+
+.checkmark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 18px;
+    width: 18px;
+    background-color: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 3px;
+}
+
+.checkbox-container:hover input ~ .checkmark {
+    background-color: #f8f9fa;
+}
+
+.checkbox-container input:checked ~ .checkmark {
+    background-color: #009b72;
+    border-color: #009b72;
+}
+
+.checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+.checkbox-container input:checked ~ .checkmark:after {
+    display: block;
+    left: 6px;
+    top: 2px;
+    width: 4px;
+    height: 9px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+/* Compteur de caractères style Pronote */
+#char-counter {
+    font-size: 11px !important;
+    color: #6c757d !important;
+    text-align: right;
+    margin-top: 5px;
 }
 
 /* Responsive */
