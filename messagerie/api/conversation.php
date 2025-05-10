@@ -77,15 +77,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
                 }
                 $message = "Conversations restaurées";
                 break;
+                
             case 'unarchive':
-                // Désarchiver les conversations
+                // Désarchiver les conversations (fonctionnalité identique à restore)
                 foreach ($convIds as $convId) {
                     if (unarchiveConversation($convId, $user['id'], $user['type'])) {
                         $count++;
                     }
                 }
-    $message = "Conversations désarchivées";
-    break;
+                $message = "Conversations désarchivées";
+                break;
                 
             case 'mark_read':
                 // Marquer comme lues
@@ -119,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
                         // Mettre à jour la date de dernière lecture
                         $updateStmt = $pdo->prepare("
                             UPDATE conversation_participants 
-                            SET last_read_at = NOW() 
+                            SET last_read_at = NOW(), unread_count = 0
                             WHERE conversation_id = ? AND user_id = ? AND user_type = ?
                         ");
                         $updateStmt->execute([$convId, $user['id'], $user['type']]);
@@ -149,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
                         ");
                         $updateStmt->execute([$convId, $user['id'], $user['type']]);
                         
-                        // Récupérer le dernier message de la conversation
+                        // Récupérer le dernier message de la conversation qui n'est pas de l'utilisateur
                         $lastMessageStmt = $pdo->prepare("
                             SELECT id FROM messages 
                             WHERE conversation_id = ? 
@@ -160,8 +161,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
                         $lastMessageId = $lastMessageStmt->fetchColumn();
                         
                         if ($lastMessageId) {
-                            // Marquer comme non lu
+                            // Marquer le dernier message comme non lu
                             markMessageAsUnread($lastMessageId, $user['id'], $user['type']);
+                            
+                            // Mettre à jour le compteur de messages non lus
+                            $updateCountStmt = $pdo->prepare("
+                                UPDATE conversation_participants 
+                                SET unread_count = 1
+                                WHERE conversation_id = ? AND user_id = ? AND user_type = ?
+                            ");
+                            $updateCountStmt->execute([$convId, $user['id'], $user['type']]);
                         }
                         
                         $count++;

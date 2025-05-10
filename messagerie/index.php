@@ -80,7 +80,23 @@ include 'templates/header.php';
             </label>
             
             <div class="bulk-action-buttons">
-                <?php if ($currentFolder !== 'archives'): ?>
+                <?php if ($currentFolder === 'archives'): ?>
+                <button data-action="unarchive" data-icon="inbox" data-action-text="Désarchiver" class="bulk-action-btn btn primary" disabled>
+                    <i class="fas fa-inbox"></i> Désarchiver (0)
+                </button>
+
+                <button data-action="delete" data-icon="trash" data-action-text="Supprimer" class="bulk-action-btn btn warning" disabled>
+                    <i class="fas fa-trash"></i> Supprimer (0)
+                </button>
+                
+                <button data-action="mark_read" data-icon="envelope-open" data-action-text="Marquer comme lu" class="bulk-action-btn btn secondary" disabled>
+                    <i class="fas fa-envelope-open"></i> Marquer comme lu (0)
+                </button>
+
+                <button data-action="mark_unread" data-icon="envelope" data-action-text="Marquer comme non lu" class="bulk-action-btn btn secondary" disabled>
+                    <i class="fas fa-envelope"></i> Marquer comme non lu (0)
+                </button>
+                <?php elseif ($currentFolder !== 'archives'): ?>
                 <button data-action="archive" data-icon="archive" data-action-text="Archiver" class="bulk-action-btn btn secondary" disabled>
                     <i class="fas fa-archive"></i> Archiver (0)
                 </button>
