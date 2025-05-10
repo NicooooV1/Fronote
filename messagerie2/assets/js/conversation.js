@@ -781,3 +781,21 @@ function markMessageAsUnread(messageId) {
                     
                     // Remplacer le bouton
                     const unreadBtn = message.querySelector('.mark-unread-btn');
+                    if (unreadBtn) {
+                        const readBtn = document.createElement('button');
+                        readBtn.className = 'btn-icon mark-read-btn';
+                        readBtn.setAttribute('data-message-id', messageId);
+                        readBtn.innerHTML = '<i class="fas fa-envelope-open"></i> Marquer comme lu';
+                        readBtn.addEventListener('click', function() {
+                            markMessageAsRead(messageId);
+                        });
+                        
+                        unreadBtn.parentNode.replaceChild(readBtn, unreadBtn);
+                    }
+                }
+            } else {
+                console.error('Erreur:', data.error);
+            }
+        })
+        .catch(error => console.error('Erreur:', error));
+}
