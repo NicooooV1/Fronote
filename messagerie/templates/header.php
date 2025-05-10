@@ -1,7 +1,10 @@
 <?php
 /**
- * /templates/header.php - En-tête HTML commun
+ * En-tête HTML commun
  */
+
+// Inclure le fichier avec la fonction countUnreadNotifications
+require_once __DIR__ . '/../models/notification.php';
 
 // URL de base
 $baseUrl = '/~u22405372/SAE/Pronote/messagerie/';
@@ -16,8 +19,7 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
 $currentFolder = isset($_GET['folder']) ? $_GET['folder'] : 'reception';
 
 // Compter les notifications non lues
-$unreadNotifications = isset($user) ? getUnreadNotifications($user['id'], $user['type']) : [];
-$unreadCount = count($unreadNotifications);
+$unreadNotifications = isset($user) ? countUnreadNotifications($user['id'], $user['type']) : 0;
 ?>
 <!DOCTYPE html>
 <html lang="fr">
