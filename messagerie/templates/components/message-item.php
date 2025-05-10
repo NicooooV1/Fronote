@@ -1,12 +1,10 @@
 <?php
 /**
- * /templates/message-item.php - Élément de message individuel
+ * Item d'un message dans une conversation
  * 
- * Variables attendues:
- * - $message: Informations sur le message
- * - $user: Utilisateur courant
- * - $conversation: Informations sur la conversation
- * - $canReply: Si l'utilisateur peut répondre
+ * @param array $message Le message à afficher
+ * @param array $user L'utilisateur connecté
+ * @param bool $canReply Si l'utilisateur peut répondre
  */
 
 // Classes CSS pour le message
@@ -16,12 +14,19 @@ if ($isSelf) {
     $messageClasses[] = 'self';
 }
 
-// Vérification de l'existence de l'importance et définition d'une valeur par défaut
+// Importance/statut du message
 $importance = isset($message['status']) ? $message['status'] : 'normal';
 $messageClasses[] = $importance;
 
-$messageClasses[] = isset($message['est_lu']) && $message['est_lu'] ? 'read' : '';
-$messageClasses[] = isset($conversation['type']) && $conversation['type'] === 'annonce' ? 'annonce' : '';
+// Message lu/non lu
+if (isset($message['est_lu']) && $message['est_lu']) {
+    $messageClasses[] = 'read';
+}
+
+// Annonce
+if (isset($conversation) && isset($conversation['type']) && $conversation['type'] === 'annonce') {
+    $messageClasses[] = 'annonce';
+}
 
 // Filtrer les classes vides
 $messageClasses = array_filter($messageClasses);
@@ -34,12 +39,7 @@ $messageClasses = array_filter($messageClasses);
             <span class="sender-type"><?= getParticipantType($message['expediteur_type']) ?></span>
         </div>
         <div class="message-meta">
-            <?php 
-            // Afficher le statut correct - MODIFIÉ pour prioritiser le type annonce
-            $statusClass = '';
-            $statusLabel = '';
-            
-            if ($importance !== 'normal'): ?>
+            <?php if ($importance !== 'normal'): ?>
             <span class="importance-tag <?= htmlspecialchars($importance) ?>">
                 <?= htmlspecialchars($importance) ?>
             </span>
@@ -64,8 +64,8 @@ $messageClasses = array_filter($messageClasses);
     
     <div class="message-footer">
         <div class="message-status">
-            <?php if ($isSelf && isset($message['est_lu']) && ($message['est_lu'] === 1 || $message['est_lu'] === true)): ?>
-                <div class="message-read" style="display: inline-flex !important; visibility: visible !important; opacity: 1 !important;">
+            <?php if ($isSelf && isset($message['est_lu']) && $message['est_lu']): ?>
+                <div class="message-read">
                     <i class="fas fa-check"></i> Vu
                 </div>
             <?php endif; ?>
@@ -73,18 +73,6 @@ $messageClasses = array_filter($messageClasses);
         
         <?php if (isset($canReply) && $canReply && !$isSelf): ?>
         <div class="message-actions">
-            <?php if (!isset($isConversationView) || !$isConversationView): ?>
-                <?php if (isset($message['est_lu']) && $message['est_lu']): ?>
-                    <button class="btn-icon mark-unread-btn" data-message-id="<?= (int)$message['id'] ?>">
-                        <i class="fas fa-envelope"></i> Marquer comme non lu
-                    </button>
-                <?php else: ?>
-                    <button class="btn-icon mark-read-btn" data-message-id="<?= (int)$message['id'] ?>">
-                        <i class="fas fa-envelope-open"></i> Marquer comme lu
-                    </button>
-                <?php endif; ?>
-            <?php endif; ?>
-            
             <button class="btn-icon" onclick="replyToMessage(<?= (int)$message['id'] ?>, '<?= htmlspecialchars(addslashes($message['expediteur_nom'])) ?>')">
                 <i class="fas fa-reply"></i> Répondre
             </button>

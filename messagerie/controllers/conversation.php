@@ -1,22 +1,17 @@
 <?php
 /**
- * /actions/conversation_actions.php - Actions sur les conversations
- * 
- * Ce fichier contient les fonctions d'action sur les conversations qui
- * servent d'intermédiaire entre les contrôleurs et les fonctions core.
+ * Contrôleur pour les actions sur les conversations
  */
-
 require_once __DIR__ . '/../config/config.php';
-require_once __DIR__ . '/../config/constants.php';
-require_once __DIR__ . '/../includes/functions.php';
-require_once __DIR__ . '/../includes/message_functions.php';
-require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../models/conversation.php';
+require_once __DIR__ . '/../models/participant.php';
+require_once __DIR__ . '/../core/utils.php';
 
 /**
  * Gère l'archivage d'une conversation
- * @param int $convId ID de la conversation
- * @param array $user Informations sur l'utilisateur
- * @return array Résultat de l'action [success, message]
+ * @param int $convId
+ * @param array $user
+ * @return array
  */
 function handleArchiveConversation($convId, $user) {
     try {
@@ -54,9 +49,9 @@ function handleArchiveConversation($convId, $user) {
 
 /**
  * Gère la suppression d'une conversation
- * @param int $convId ID de la conversation
- * @param array $user Informations sur l'utilisateur
- * @return array Résultat de l'action [success, message]
+ * @param int $convId
+ * @param array $user
+ * @return array
  */
 function handleDeleteConversation($convId, $user) {
     try {
@@ -94,9 +89,9 @@ function handleDeleteConversation($convId, $user) {
 
 /**
  * Gère la restauration d'une conversation depuis la corbeille
- * @param int $convId ID de la conversation
- * @param array $user Informations sur l'utilisateur
- * @return array Résultat de l'action [success, message]
+ * @param int $convId
+ * @param array $user
+ * @return array
  */
 function handleRestoreConversation($convId, $user) {
     try {
@@ -134,9 +129,9 @@ function handleRestoreConversation($convId, $user) {
 
 /**
  * Gère la suppression définitive d'une conversation
- * @param int $convId ID de la conversation
- * @param array $user Informations sur l'utilisateur
- * @return array Résultat de l'action [success, message]
+ * @param int $convId
+ * @param array $user
+ * @return array
  */
 function handlePermanentDelete($convId, $user) {
     try {
@@ -174,9 +169,9 @@ function handlePermanentDelete($convId, $user) {
 
 /**
  * Gère la suppression multiple de conversations
- * @param array $convIds Tableau des IDs de conversations
- * @param array $user Informations sur l'utilisateur
- * @return array Résultat de l'action [success, message]
+ * @param array $convIds
+ * @param array $user
+ * @return array
  */
 function handleMultipleDelete($convIds, $user) {
     try {
@@ -215,11 +210,11 @@ function handleMultipleDelete($convIds, $user) {
 
 /**
  * Crée une nouvelle conversation
- * @param string $titre Titre de la conversation
- * @param string $type Type de conversation
- * @param array $user Informations sur l'utilisateur
- * @param array $participants Participants à ajouter
- * @return array Résultat de l'action [success, message, convId]
+ * @param string $titre
+ * @param string $type
+ * @param array $user
+ * @param array $participants
+ * @return array
  */
 function handleCreateConversation($titre, $type, $user, $participants) {
     try {

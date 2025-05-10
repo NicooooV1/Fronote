@@ -1,26 +1,21 @@
 <?php
 /**
- * /actions/message_actions.php - Actions sur les messages
- * 
- * Ce fichier contient les fonctions d'action sur les messages qui
- * servent d'intermédiaire entre les contrôleurs et les fonctions core.
+ * Contrôleur pour les actions sur les messages
  */
-
 require_once __DIR__ . '/../config/config.php';
-require_once __DIR__ . '/../config/constants.php';
-require_once __DIR__ . '/../includes/functions.php';
-require_once __DIR__ . '/../includes/message_functions.php';
-require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../models/message.php';
+require_once __DIR__ . '/../models/conversation.php';
+require_once __DIR__ . '/../core/utils.php';
 
 /**
  * Gère l'envoi d'un nouveau message
- * @param int $convId ID de la conversation
- * @param array $user Informations sur l'utilisateur
- * @param string $contenu Contenu du message
- * @param string $importance Importance du message
- * @param int|null $parentMessageId ID du message parent (pour les réponses)
- * @param array $filesData Données des fichiers joints
- * @return array Résultat de l'action [success, message]
+ * @param int $convId
+ * @param array $user
+ * @param string $contenu
+ * @param string $importance
+ * @param int|null $parentMessageId
+ * @param array $filesData
+ * @return array
  */
 function handleSendMessage($convId, $user, $contenu, $importance = 'normal', $parentMessageId = null, $filesData = []) {
     try {
@@ -83,13 +78,13 @@ function handleSendMessage($convId, $user, $contenu, $importance = 'normal', $pa
 
 /**
  * Gère l'envoi d'une annonce
- * @param array $user Informations sur l'utilisateur
- * @param string $titre Titre de l'annonce
- * @param string $contenu Contenu de l'annonce
- * @param array $participants Participants à l'annonce
- * @param bool $notificationObligatoire Si la notification est obligatoire
- * @param array $filesData Données des fichiers joints
- * @return array Résultat de l'action [success, message]
+ * @param array $user
+ * @param string $titre
+ * @param string $contenu
+ * @param array $participants
+ * @param bool $notificationObligatoire
+ * @param array $filesData
+ * @return array
  */
 function handleSendAnnouncement($user, $titre, $contenu, $participants, $notificationObligatoire = true, $filesData = []) {
     try {
@@ -149,15 +144,15 @@ function handleSendAnnouncement($user, $titre, $contenu, $participants, $notific
 
 /**
  * Gère l'envoi d'un message à une classe
- * @param array $user Informations sur l'utilisateur
- * @param string $classe Classe destinataire
- * @param string $titre Titre du message
- * @param string $contenu Contenu du message
- * @param string $importance Importance du message
- * @param bool $notificationObligatoire Si la notification est obligatoire
- * @param bool $includeParents Inclure les parents dans les destinataires
- * @param array $filesData Données des fichiers joints
- * @return array Résultat de l'action [success, message]
+ * @param array $user
+ * @param string $classe
+ * @param string $titre
+ * @param string $contenu
+ * @param string $importance
+ * @param bool $notificationObligatoire
+ * @param bool $includeParents
+ * @param array $filesData
+ * @return array
  */
 function handleSendClassMessage($user, $classe, $titre, $contenu, $importance = 'normal', $notificationObligatoire = false, $includeParents = false, $filesData = []) {
     try {
@@ -203,9 +198,9 @@ function handleSendClassMessage($user, $classe, $titre, $contenu, $importance = 
 
 /**
  * Gère le marquage d'un message comme lu
- * @param int $messageId ID du message
- * @param array $user Informations sur l'utilisateur
- * @return array Résultat de l'action [success, message]
+ * @param int $messageId
+ * @param array $user
+ * @return array
  */
 function handleMarkMessageAsRead($messageId, $user) {
     try {
@@ -262,9 +257,9 @@ function handleMarkMessageAsRead($messageId, $user) {
 
 /**
  * Gère le marquage d'un message comme non lu
- * @param int $messageId ID du message
- * @param array $user Informations sur l'utilisateur
- * @return array Résultat de l'action [success, message]
+ * @param int $messageId
+ * @param array $user
+ * @return array
  */
 function handleMarkMessageAsUnread($messageId, $user) {
     try {

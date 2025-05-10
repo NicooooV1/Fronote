@@ -1,31 +1,18 @@
 <?php
 /**
- * /index.php - Interface principale de messagerie
+ * Interface principale de messagerie
  */
 
 // Inclure les fichiers nécessaires
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/config/constants.php';
-require_once __DIR__ . '/includes/functions.php';
-require_once __DIR__ . '/includes/message_functions.php';
-require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/core/utils.php';
+require_once __DIR__ . '/core/auth.php';
+require_once __DIR__ . '/models/conversation.php';
+require_once __DIR__ . '/models/notification.php';
 
 // Vérifier l'authentification
-if (!isLoggedIn()) {
-    header('Location: ' . LOGIN_URL);
-    exit;
-}
-
-$user = $_SESSION['user'];
-// Adaptation: utiliser 'profil' comme 'type' si 'type' n'existe pas
-if (!isset($user['type']) && isset($user['profil'])) {
-    $user['type'] = $user['profil'];
-}
-
-// Vérifier que le type est défini
-if (!isset($user['type'])) {
-    die("Erreur: Type d'utilisateur non défini dans la session");
-}
+$user = requireAuth();
 
 // Définir le titre de la page
 $pageTitle = 'Pronote - Messagerie';
@@ -61,25 +48,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['con
 $currentFolder = isset($_GET['folder']) ? $_GET['folder'] : 'reception';
 
 // Récupérer les conversations
-$convs = getConversations($user['id'], $user['type'], $currentFolder);
-
-// Liste des dossiers pour le menu (déplacé depuis sidebar.php pour compatibilité)
-$folders = [
-    'reception' => 'Boîte de réception',
-    'envoyes' => 'Messages envoyés',
-    'archives' => 'Archives',
-    'information' => 'Informations',
-    'corbeille' => 'Corbeille'
-];
-
-// Fonctionnalités disponibles selon le profil
-$canSendAnnouncement = in_array($user['type'], ['vie_scolaire', 'administrateur']);
-$isProfesseur = ($user['type'] === 'professeur');
+$conversations = getConversations($user['id'], $user['type'], $currentFolder);
 
 // Si c'est une requête AJAX, renvoyer seulement le contenu partiel
 if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
     // Inclure uniquement le template de la liste des conversations
-    include 'templates/conversation-list.php';
+    foreach ($conversations as $conversation) {
+        include 'templates/components/conversation-item.php';
+    }
     exit;
 }
 
@@ -92,10 +68,66 @@ include 'templates/header.php';
     <?php include 'templates/sidebar.php'; ?>
 
     <main>
-        <h2><?= $folders[$currentFolder] ?? 'Messages' ?></h2>
+        <h2><?= isset($folders[$currentFolder]) ? $folders[$currentFolder] : 'Messages' ?></h2>
+        
+        <!-- Section des actions en masse pour tous les dossiers -->
+        <?php if (!empty($conversations)): ?>
+        <div class="bulk-actions">
+            <label class="checkbox-container">
+                <input type="checkbox" id="select-all-conversations">
+                <span class="checkmark"></span>
+                <strong>Tout sélectionner</strong>
+            </label>
+            
+            <div class="bulk-action-buttons">
+                <?php if ($currentFolder !== 'archives'): ?>
+                <button data-action="archive" data-icon="archive" data-action-text="Archiver" class="bulk-action-btn btn secondary" disabled>
+                    <i class="fas fa-archive"></i> Archiver (0)
+                </button>
+                <?php endif; ?>
+                
+                <?php if ($currentFolder !== 'corbeille'): ?>
+                <button data-action="delete" data-icon="trash" data-action-text="Supprimer" class="bulk-action-btn btn warning" disabled>
+                    <i class="fas fa-trash"></i> Supprimer (0)
+                </button>
+                <?php endif; ?>
+                
+                <?php if ($currentFolder === 'corbeille'): ?>
+                <button data-action="restore" data-icon="trash-restore" data-action-text="Restaurer" class="bulk-action-btn btn primary" disabled>
+                    <i class="fas fa-trash-restore"></i> Restaurer (0)
+                </button>
+                
+                <button data-action="delete_permanently" data-icon="trash-alt" data-action-text="Supprimer définitivement" class="bulk-action-btn btn warning" disabled>
+                    <i class="fas fa-trash-alt"></i> Supprimer définitivement (0)
+                </button>
+                <?php endif; ?>
+                
+                <?php if ($currentFolder !== 'corbeille'): ?>
+                <button data-action="mark_read" data-icon="envelope-open" data-action-text="Marquer comme lu" class="bulk-action-btn btn secondary" disabled>
+                    <i class="fas fa-envelope-open"></i> Marquer comme lu (0)
+                </button>
+                
+                <button data-action="mark_unread" data-icon="envelope" data-action-text="Marquer comme non lu" class="bulk-action-btn btn secondary" disabled>
+                    <i class="fas fa-envelope"></i> Marquer comme non lu (0)
+                </button>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
         
         <!-- Liste des conversations -->
-        <?php include 'templates/conversation-list.php'; ?>
+        <div class="conversation-list">
+            <?php if (empty($conversations)): ?>
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>Aucun message dans ce dossier</p>
+            </div>
+            <?php else: ?>
+                <?php foreach ($conversations as $conversation): ?>
+                    <?php include 'templates/components/conversation-item.php'; ?>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
     </main>
 </div>
 

@@ -1,17 +1,19 @@
 <?php
-// /includes/class_functions.php - Fonctions pour la gestion des classes
-
+/**
+ * Modèle pour la gestion des classes
+ */
 require_once __DIR__ . '/../config/config.php';
-require_once __DIR__ . '/../config/constants.php';
-require_once __DIR__ . '/message_functions.php';
+require_once __DIR__ . '/../core/utils.php';
+require_once __DIR__ . '/conversation.php';
+require_once __DIR__ . '/message.php';
 
 /**
  * Récupère les membres d'une classe
- * @param string $classeId ID de la classe
- * @param bool $includeEleves Inclure les élèves
- * @param bool $includeParents Inclure les parents
- * @param bool $includeProfesseurs Inclure les professeurs
- * @return array Membres de la classe
+ * @param string $classeId
+ * @param bool $includeEleves
+ * @param bool $includeParents
+ * @param bool $includeProfesseurs
+ * @return array
  */
 function getClassMembers($classeId, $includeEleves = true, $includeParents = false, $includeProfesseurs = false) {
     global $pdo;
@@ -27,7 +29,7 @@ function getClassMembers($classeId, $includeEleves = true, $includeParents = fal
         $members = array_merge($members, $eleves->fetchAll());
     }
     
-    // Récupérer les parents (dans la nouvelle DB, la relation parent-élève n'est pas explicite)
+    // Récupérer les parents
     if ($includeParents) {
         $parents = $pdo->prepare("
             SELECT id, 'parent' as type, CONCAT(prenom, ' ', nom) as nom_complet
@@ -53,26 +55,26 @@ function getClassMembers($classeId, $includeEleves = true, $includeParents = fal
 
 /**
  * Envoie un message à toute une classe
- * @param int $professeurId ID du professeur
- * @param string $classeId ID de la classe
- * @param string $titre Titre du message
- * @param string $contenu Contenu du message
- * @param string $importance Importance du message
- * @param bool $notificationObligatoire Si la notification est obligatoire
- * @param bool $includeParents Inclure les parents dans les destinataires
- * @param array $filesData Données des fichiers joints
- * @return int ID de la conversation créée
+ * @param int $professeurId
+ * @param string $classeId
+ * @param string $titre
+ * @param string $contenu
+ * @param string $importance
+ * @param bool $notificationObligatoire
+ * @param bool $includeParents
+ * @param array $filesData
+ * @return int
  */
 function sendMessageToClass($professeurId, $classeId, $titre, $contenu, $importance = 'normal', 
-                          $notificationObligatoire = false, $includeParents = false, $filesData = []) {
+                           $notificationObligatoire = false, $includeParents = false, $filesData = []) {
     
     // Récupérer les membres de la classe
     $members = getClassMembers($classeId, true, $includeParents, false);
     
-    // Formater les participants pour createConversation
+    // Formater les participants
     $participants = [];
     foreach ($members as $member) {
-        // Ne pas inclure le créateur dans les participants (il sera ajouté automatiquement)
+        // Ne pas inclure le créateur dans les participants
         if ($member['id'] != $professeurId || $member['type'] != 'professeur') {
             $participants[] = ['id' => $member['id'], 'type' => $member['type']];
         }
@@ -101,13 +103,13 @@ function sendMessageToClass($professeurId, $classeId, $titre, $contenu, $importa
 
 /**
  * Récupère les classes disponibles
- * @return array Liste des classes
+ * @return array
  */
 function getAvailableClasses() {
     global $pdo;
     
     // D'abord essayer de récupérer les classes depuis le fichier établissement.json
-    $etablissementFile = dirname(__DIR__) . '/../login/data/etablissement.json';
+    $etablissementFile = dirname(__DIR__, 2) . '/login/data/etablissement.json';
     $classes = [];
 
     if (file_exists($etablissementFile)) {
@@ -124,42 +126,4 @@ function getAvailableClasses() {
     }
     
     return $classes;
-}
-
-/**
- * Vérifie si un professeur est professeur principal d'une classe
- * @param int $professeurId ID du professeur
- * @param string $classeId ID de la classe
- * @return bool True si le professeur est professeur principal
- */
-function isProfesseurPrincipal($professeurId, $classeId) {
-    global $pdo;
-    
-    $stmt = $pdo->prepare("
-        SELECT id FROM professeurs
-        WHERE id = ? AND (professeur_principal = ? OR professeur_principal = 'oui')
-    ");
-    $stmt->execute([$professeurId, $classeId]);
-    
-    return $stmt->fetch() !== false;
-}
-
-/**
- * Vérifie si un professeur enseigne dans une classe
- * @param int $professeurId ID du professeur
- * @param string $classeId ID de la classe
- * @return bool True si le professeur enseigne dans la classe
- */
-function isTeachingClass($professeurId, $classeId) {
-    global $pdo;
-    
-    // Cette fonction dépend de la structure de la base de données
-    // À adapter selon votre schéma
-    $stmt = $pdo->prepare("
-        SELECT id FROM professeurs
-        WHERE id = ? AND classe_enseignee LIKE ?
-    ");
-    $stmt->execute([$professeurId, "%$classeId%"]);
-    
-    return $stmt->fetch() !== false || isProfesseurPrincipal($professeurId, $classeId);
 }

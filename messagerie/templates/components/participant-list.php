@@ -1,13 +1,12 @@
 <?php
 /**
- * /templates/participant-list.php - Liste des participants
+ * Liste des participants d'une conversation
  * 
- * Variables attendues:
- * - $participants: Liste des participants
- * - $user: Utilisateur courant
- * - $isAdmin: Si l'utilisateur est administrateur
- * - $isModerator: Si l'utilisateur est modérateur
- * - $isDeleted: Si la conversation est dans la corbeille
+ * @param array $participants Les participants à afficher
+ * @param array $user L'utilisateur connecté
+ * @param bool $isAdmin Si l'utilisateur est administrateur
+ * @param bool $isModerator Si l'utilisateur est modérateur
+ * @param bool $isDeleted Si la conversation est supprimée
  */
 ?>
 

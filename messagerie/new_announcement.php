@@ -6,9 +6,9 @@
 // Inclure les fichiers nécessaires
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/config/constants.php';
-require_once __DIR__ . '/includes/functions.php';
-require_once __DIR__ . '/includes/message_functions.php';
-require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/core/utils.php';
+require_once __DIR__ . '/core/auth.php';
+require_once __DIR__ . '/controllers/message.php';
 
 // Vérifier l'authentification
 $user = requireAuth();
@@ -143,34 +143,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("Aucun destinataire n'a pu être identifié avec les critères sélectionnés");
         }
         
-        // Création de la conversation
-        $convId = createConversation(
-            $titre,
-            'annonce',
-            $user['id'],
-            $user['type'],
-            $participants
-        );
-        
-        // Envoi du message d'annonce
+        // Appeler la fonction d'envoi d'annonce
         $notificationObligatoire = isset($_POST['notification_obligatoire']) && $_POST['notification_obligatoire'] === 'on';
         $filesData = isset($_FILES['attachments']) ? $_FILES['attachments'] : [];
         
-        addMessage(
-            $convId,
-            $user['id'],
-            $user['type'],
+        $result = handleSendAnnouncement(
+            $user,
+            $titre,
             $contenu,
-            'important', // Importance
-            true, // Est annonce
-            $notificationObligatoire, // Notification obligatoire
-            false, // Accusé de réception
-            null, // Parent message ID 
-            'annonce', // Type message
+            $participants,
+            $notificationObligatoire,
             $filesData
         );
         
-        $success = "L'annonce a été envoyée avec succès à " . count($participants) . " destinataire(s)";
+        if ($result['success']) {
+            $success = $result['message'];
+        } else {
+            $error = $result['message'];
+        }
         
     } catch (Exception $e) {
         $error = $e->getMessage();
@@ -178,8 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Récupérer la liste des classes disponibles
-$query = $pdo->query("SELECT DISTINCT classe FROM eleves ORDER BY classe");
-$classes = $query->fetchAll(PDO::FETCH_COLUMN);
+$classes = getAvailableClasses();
 
 // Inclure l'en-tête
 include 'templates/header.php';
@@ -288,87 +277,6 @@ include 'templates/header.php';
     </div>
     <?php endif; ?>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Validation de la longueur du contenu
-    const textarea = document.getElementById('contenu');
-    const charCounter = document.getElementById('char-counter');
-    const maxLength = 10000;
-    
-    if (textarea && charCounter) {
-        // Fonction de mise à jour du compteur
-        function updateCounter() {
-            const currentLength = textarea.value.length;
-            charCounter.textContent = `${currentLength}/${maxLength} caractères`;
-            
-            if (currentLength > maxLength) {
-                charCounter.style.color = '#dc3545';
-                document.querySelector('button[type="submit"]').disabled = true;
-            } else {
-                charCounter.style.color = '#6c757d';
-                // Ne pas réactiver le bouton si le titre est trop long
-                if (titleInput && titleInput.value.length <= 100) {
-                    document.querySelector('button[type="submit"]').disabled = false;
-                }
-            }
-        }
-        
-        // Mettre à jour le compteur au chargement
-        updateCounter();
-        
-        // Mettre à jour le compteur lors de la saisie
-        textarea.addEventListener('input', updateCounter);
-    }
-    
-    // Validation de la longueur du titre
-    const titleInput = document.getElementById('titre');
-    const titleCounter = document.getElementById('title-counter');
-    
-    if (titleInput && titleCounter) {
-        // Fonction de mise à jour du compteur de titre
-        function updateTitleCounter() {
-            const currentLength = titleInput.value.length;
-            titleCounter.textContent = `${currentLength}/100 caractères`;
-            
-            if (currentLength > 100) {
-                titleCounter.style.color = '#dc3545';
-                document.querySelector('button[type="submit"]').disabled = true;
-            } else {
-                titleCounter.style.color = '#6c757d';
-                // Ne pas réactiver le bouton si le contenu est trop long
-                if (textarea && textarea.value.length <= maxLength) {
-                    document.querySelector('button[type="submit"]').disabled = false;
-                }
-            }
-        }
-        
-        // Mettre à jour le compteur au chargement
-        updateTitleCounter();
-        
-        // Mettre à jour le compteur lors de la saisie
-        titleInput.addEventListener('input', updateTitleCounter);
-    }
-});
-
-function toggleTargetOptions() {
-    const cible = document.getElementById('cible');
-    if (!cible) return;
-    
-    const targetClasses = document.getElementById('target-classes');
-    if (!targetClasses) return;
-    
-    // Masquer toutes les options
-    document.querySelectorAll('.target-options').forEach(el => {
-        el.style.display = 'none';
-    });
-    
-    // Afficher les options correspondant à la cible
-    if (cible.value === 'classes') {
-        targetClasses.style.display = 'block';
-    }
-}
-</script>
 
 <?php
 // Inclure le pied de page
