@@ -3,6 +3,7 @@
  * 
  * Ce script fournit une solution robuste pour l'actualisation automatique
  * des messages dans une conversation sans nécessiter de rafraîchissement de page.
+ * Version corrigée avec meilleure gestion des erreurs et compatibilité améliorée.
  */
 
 // Marquer la présence du système avancé pour éviter les conflits avec le système simple
@@ -81,8 +82,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Requête à l'API
-        fetch(`api/get_conversation_updates.php?conv_id=${convId}&last_timestamp=${lastTimestamp}`)
+        // Requête à l'API avec un timestamp pour éviter la mise en cache
+        fetch(`api/get_conversation_updates.php?conv_id=${convId}&last_timestamp=${lastTimestamp}&_=${Date.now()}`)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erreur HTTP ${response.status}`);
@@ -128,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Récupérer et afficher les nouveaux messages
     function fetchAndDisplayNewMessages() {
-        fetch(`api/get_new_messages.php?conv_id=${convId}&last_timestamp=${lastTimestamp}`)
+        fetch(`api/get_new_messages.php?conv_id=${convId}&last_timestamp=${lastTimestamp}&_=${Date.now()}`)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erreur HTTP ${response.status}`);
@@ -145,11 +146,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     const newMessages = data.messages;
                     
                     newMessages.forEach(message => {
-                        appendMessageToDOM(message, messagesContainer);
-                        
-                        // Mise à jour du timestamp
-                        if (message.timestamp > lastTimestamp) {
-                            lastTimestamp = message.timestamp;
+                        // S'assurer que le message a toutes les propriétés nécessaires
+                        if (message) {
+                            appendMessageToDOM(message, messagesContainer);
+                            
+                            // Mise à jour du timestamp
+                            if (message.timestamp > lastTimestamp) {
+                                lastTimestamp = message.timestamp;
+                            }
                         }
                     });
                     
@@ -172,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Actualiser la liste des participants
     function refreshParticipantsList() {
-        fetch(`api/get_participants_list.php?conv_id=${convId}`)
+        fetch(`api/get_participants_list.php?conv_id=${convId}&_=${Date.now()}`)
             .then(response => response.text())
             .then(html => {
                 const participantsList = document.querySelector('.participants-list');
@@ -298,13 +302,16 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Ajouter un message au DOM
     function appendMessageToDOM(message, container) {
+        // Vérifier si le container existe
+        if (!container) return;
+        
         // Créer un nouvel élément div pour le message
         const messageElement = document.createElement('div');
         
         // Déterminer les classes du message
         let classes = ['message'];
-        if (message.is_self == 1) classes.push('self');
-        if (message.est_lu == 1) classes.push('read');
+        if (message.is_self == 1 || message.is_self === true) classes.push('self');
+        if (message.est_lu == 1 || message.est_lu === true) classes.push('read');
         if (message.status) classes.push(message.status);
         
         messageElement.className = classes.join(' ');
@@ -315,12 +322,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const messageDate = new Date(message.timestamp * 1000);
         const formattedDate = formatMessageDate(messageDate);
         
+        // S'assurer que les champs nécessaires existent
+        const messageBody = message.body || message.contenu || "";
+        const expediteurNom = message.expediteur_nom || "Inconnu";
+        const senderType = message.sender_type || "inconnu";
+        
         // Construction du HTML du message
         let messageHTML = `
             <div class="message-header">
                 <div class="sender">
-                    <strong>${escapeHTML(message.expediteur_nom)}</strong>
-                    <span class="sender-type">${getParticipantType(message.sender_type)}</span>
+                    <strong>${escapeHTML(expediteurNom)}</strong>
+                    <span class="sender-type">${getParticipantType(senderType)}</span>
                 </div>
                 <div class="message-meta">
         `;
@@ -334,7 +346,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <span class="date">${formattedDate}</span>
                 </div>
             </div>
-            <div class="message-content">${linkify(nl2br(escapeHTML(message.body || message.contenu)))}</div>
+            <div class="message-content">${linkify(nl2br(escapeHTML(messageBody)))}</div>
         `;
         
         // Ajouter les pièces jointes s'il y en a
@@ -356,15 +368,15 @@ document.addEventListener('DOMContentLoaded', function() {
         messageHTML += `
             <div class="message-footer">
                 <div class="message-status">
-                    ${message.est_lu == 1 ? '<div class="message-read"><i class="fas fa-check"></i> Vu</div>' : ''}
+                    ${(message.est_lu == 1 || message.est_lu === true) ? '<div class="message-read"><i class="fas fa-check"></i> Vu</div>' : ''}
                 </div>
         `;
         
         // Ajouter les actions si ce n'est pas un message de l'utilisateur courant
-        if (!message.is_self) {
+        if (!(message.is_self == 1 || message.is_self === true)) {
             messageHTML += `
                 <div class="message-actions">
-                    ${message.est_lu ? 
+                    ${message.est_lu == 1 || message.est_lu === true ? 
                         `<button class="btn-icon mark-unread-btn" data-message-id="${message.id}">
                             <i class="fas fa-envelope"></i> Marquer comme non lu
                         </button>` : 
@@ -372,7 +384,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <i class="fas fa-envelope-open"></i> Marquer comme lu
                         </button>`
                     }
-                    <button class="btn-icon" onclick="replyToMessage(${message.id}, '${escapeHTML(message.expediteur_nom)}')">
+                    <button class="btn-icon" onclick="replyToMessage(${message.id}, '${escapeHTML(expediteurNom)}')">
                         <i class="fas fa-reply"></i> Répondre
                     </button>
                 </div>
@@ -386,7 +398,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Définir le HTML du message
         messageElement.innerHTML = messageHTML;
         
-        // Ajouter l'événement pour les boutons
+        // Ajouter l'événement pour les boutons après un petit délai
         setTimeout(() => {
             const readBtn = messageElement.querySelector('.mark-read-btn');
             const unreadBtn = messageElement.querySelector('.mark-unread-btn');
@@ -452,13 +464,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Transforme les URLs en liens cliquables
     function linkify(text) {
         if (!text) return '';
-        const pattern = '~(https?://|ftp://|www\.)[-a-z0-9+&@#/%?=~_|!:,.;]*[-a-z0-9+&@#/%=~_|]~i';
-        return text.replace(new RegExp(pattern, 'gi'), function(match) {
-            let url = match;
-            if (match.indexOf('http') !== 0 && match.indexOf('ftp') !== 0) {
-                url = 'http://' + match;
-            }
-            return `<a href="${url}" target="_blank" rel="noopener noreferrer">${match}</a>`;
+        const urlPattern = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
+        return text.replace(urlPattern, function(url) {
+            return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
         });
     }
     
@@ -478,7 +486,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function checkForNotifications() {
         if (!isPollingActive) return;
         
-        fetch('api/check_notifications.php')
+        fetch('api/check_notifications.php?_=' + Date.now())
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erreur HTTP ${response.status}`);
@@ -486,17 +494,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 return response.json();
             })
             .then(data => {
-                if (data.success) {
+                // Compatibilité avec le format de réponse de l'API
+                if (data.has_errors === false || data.success) {
                     // Mettre à jour le compteur de notifications
-                    updateNotificationBadge(data.count);
+                    updateNotificationBadge(data.new_notifications || 0);
                     
                     // Si sur la page d'index, actualiser la liste des conversations
-                    if (isIndexPage && data.count > 0) {
+                    if (isIndexPage && (data.new_notifications > 0)) {
                         refreshConversationList();
                     }
                     
                     // Si nouvelle notification et pas sur la page de conversation
-                    if (data.latest && !isConversationPage && data.count > 0) {
+                    if (data.latest_notification && !isConversationPage && (data.new_notifications > 0)) {
                         showDesktopNotification(data);
                     }
                 }
@@ -515,7 +524,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const currentFolder = new URLSearchParams(window.location.search).get('folder') || 'reception';
         
         // Obtenir un fragment HTML pour la liste des conversations
-        fetch(`index.php?folder=${currentFolder}&ajax=1`)
+        fetch(`index.php?folder=${currentFolder}&ajax=1&_=${Date.now()}`)
             .then(response => response.text())
             .then(html => {
                 // Créer un DOM temporaire pour extraire la liste des conversations
@@ -606,10 +615,21 @@ document.addEventListener('DOMContentLoaded', function() {
         if (Notification.permission !== "granted") return;
         
         const title = "Nouvelle notification Pronote";
+        let expediteurNom = "Nouveau message";
+        let count = 0;
+        
+        // Compatibilité avec les deux formats possibles de réponse API
+        if (data.latest_notification) {
+            expediteurNom = data.latest_notification.expediteur_nom || "Expéditeur";
+            count = data.new_notifications || 1;
+        } else if (data.count) {
+            count = data.count;
+        }
+        
         const options = {
-            body: data.count === 1 
-                ? `Nouveau message de ${data.latest.expediteur_nom}`
-                : `${data.count} nouveaux messages non lus`,
+            body: count === 1 
+                ? `Nouveau message de ${expediteurNom}`
+                : `${count} nouveaux messages non lus`,
             icon: '/assets/images/icon-notification.png' // Chemin vers une icône appropriée
         };
         
@@ -618,8 +638,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Rediriger vers la conversation lorsqu'on clique sur la notification
         notification.onclick = function() {
             window.focus();
-            if (data.latest && data.latest.conversation_id) {
-                window.location.href = `conversation.php?id=${data.latest.conversation_id}`;
+            if (data.latest_notification && data.latest_notification.conversation_id) {
+                window.location.href = `conversation.php?id=${data.latest_notification.conversation_id}`;
             }
         };
     }
@@ -632,12 +652,14 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.quick-actions-btn').forEach(btn => {
                 const onclick = btn.getAttribute('onclick');
                 if (onclick) {
-                    const id = onclick.match(/\d+/)[0];
-                    btn.onclick = function(e) {
-                        window.toggleQuickActions(id);
-                        e.stopPropagation();
-                        return false;
-                    };
+                    const id = onclick.match(/\d+/);
+                    if (id && id[0]) {
+                        btn.onclick = function(e) {
+                            window.toggleQuickActions(id[0]);
+                            e.stopPropagation();
+                            return false;
+                        };
+                    }
                 }
             });
         }
@@ -656,6 +678,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Si la fonction existe globalement
         if (typeof window.setupBulkActions === 'function') {
             window.setupBulkActions();
+        } else if (typeof window.updateBulkActionButtons === 'function') {
+            // Fallback sur la fonction spécifique si disponible
+            window.updateBulkActionButtons();
         }
     }
     
@@ -687,6 +712,90 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
+    // Fonctions externes qui pourraient être appelées par d'autres scripts
+    
+    // Marquer un message comme lu
+    window.markMessageAsRead = function(messageId) {
+        fetch(`api/mark_message.php?id=${messageId}&action=mark_read`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Mettre à jour l'interface utilisateur
+                    const message = document.querySelector(`.message[data-id="${messageId}"]`);
+                    if (message) {
+                        message.classList.add('read');
+                        
+                        // Mettre à jour l'indicateur de lecture
+                        const readIndicator = message.querySelector('.message-read');
+                        if (!readIndicator) {
+                            const footer = message.querySelector('.message-footer .message-status');
+                            if (footer) {
+                                const readStatus = document.createElement('div');
+                                readStatus.className = 'message-read';
+                                readStatus.innerHTML = '<i class="fas fa-check"></i> Vu';
+                                footer.appendChild(readStatus);
+                            }
+                        }
+                        
+                        // Remplacer le bouton
+                        const readBtn = message.querySelector('.mark-read-btn');
+                        if (readBtn) {
+                            const unreadBtn = document.createElement('button');
+                            unreadBtn.className = 'btn-icon mark-unread-btn';
+                            unreadBtn.setAttribute('data-message-id', messageId);
+                            unreadBtn.innerHTML = '<i class="fas fa-envelope"></i> Marquer comme non lu';
+                            unreadBtn.addEventListener('click', function() {
+                                window.markMessageAsUnread(messageId);
+                            });
+                            
+                            readBtn.parentNode.replaceChild(unreadBtn, readBtn);
+                        }
+                    }
+                } else {
+                    console.error('Erreur:', data.error);
+                }
+            })
+            .catch(error => console.error('Erreur:', error));
+    };
+    
+    // Marquer un message comme non lu
+    window.markMessageAsUnread = function(messageId) {
+        fetch(`api/mark_message.php?id=${messageId}&action=mark_unread`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Mettre à jour l'interface utilisateur
+                    const message = document.querySelector(`.message[data-id="${messageId}"]`);
+                    if (message) {
+                        message.classList.remove('read');
+                        
+                        // Supprimer l'indicateur de lecture
+                        const readIndicator = message.querySelector('.message-read');
+                        if (readIndicator) {
+                            readIndicator.remove();
+                        }
+                        
+                        // Remplacer le bouton
+                        const unreadBtn = message.querySelector('.mark-unread-btn');
+                        if (unreadBtn) {
+                            const readBtn = document.createElement('button');
+                            readBtn.className = 'btn-icon mark-read-btn';
+                            readBtn.setAttribute('data-message-id', messageId);
+                            readBtn.innerHTML = '<i class="fas fa-envelope-open"></i> Marquer comme lu';
+                            readBtn.addEventListener('click', function() {
+                                window.markMessageAsRead(messageId);
+                            });
+                            
+                            unreadBtn.parentNode.replaceChild(readBtn, unreadBtn);
+                        }
+                    }
+                } else {
+                    console.error('Erreur:', data.error);
+                }
+            })
+            .catch(error => console.error('Erreur:', error));
+    };
     
     // Démarrer le système d'actualisation en temps réel
     startRealtimeUpdates();

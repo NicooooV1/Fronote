@@ -206,6 +206,67 @@ function setupFileUploads() {
 }
 
 /**
+ * Met à jour l'état des boutons d'action en fonction de la sélection
+ */
+function updateBulkActionButtons() {
+    const selectedConvs = document.querySelectorAll('.conversation-checkbox:checked');
+    const selectedCount = selectedConvs.length;
+    
+    // Référence aux boutons
+    const btnMarkRead = document.querySelector('button[data-action="mark_read"]');
+    const btnMarkUnread = document.querySelector('button[data-action="mark_unread"]');
+    const allButtons = document.querySelectorAll('.bulk-action-btn');
+    
+    // Mettre à jour le texte de tous les boutons avec le nombre sélectionné correct
+    allButtons.forEach(button => {
+        const actionText = button.dataset.actionText || 'Appliquer';
+        const icon = button.dataset.icon ? `<i class="fas fa-${button.dataset.icon}"></i> ` : '';
+        button.innerHTML = `${icon}${actionText} (${selectedCount})`;
+    });
+    
+    // Masquer les boutons par défaut si rien n'est sélectionné
+    if (selectedCount === 0) {
+        allButtons.forEach(button => {
+            button.disabled = true;
+            button.style.display = 'none';
+        });
+        return;
+    }
+    
+    // Vérifier si tous les messages sélectionnés sont lus ou non lus
+    let hasReadMessages = false;
+    let hasUnreadMessages = false;
+    
+    selectedConvs.forEach(checkbox => {
+        const conversationItem = checkbox.closest('.conversation-item');
+        const isRead = conversationItem.getAttribute('data-is-read') === '1';
+        
+        if (isRead) {
+            hasReadMessages = true;
+        } else {
+            hasUnreadMessages = true;
+        }
+    });
+    
+    // Mettre à jour la visibilité des boutons en fonction de la sélection
+    if (btnMarkRead) {
+        btnMarkRead.disabled = !hasUnreadMessages;
+        btnMarkRead.style.display = hasUnreadMessages ? 'inline-flex' : 'none';
+    }
+    
+    if (btnMarkUnread) {
+        btnMarkUnread.disabled = !hasReadMessages;
+        btnMarkUnread.style.display = hasReadMessages ? 'inline-flex' : 'none';
+    }
+    
+    // Afficher les autres boutons d'action
+    document.querySelectorAll('.bulk-action-btn:not([data-action="mark_read"]):not([data-action="mark_unread"])').forEach(button => {
+        button.disabled = false;
+        button.style.display = 'inline-flex';
+    });
+}
+
+/**
  * Configuration des actions en masse
  */
 function setupBulkActions() {
@@ -226,7 +287,7 @@ function setupBulkActions() {
                 }
             });
             
-            updateActionButtons();
+            updateBulkActionButtons();
         });
         
         // Mettre à jour les boutons d'action lorsqu'une case est cochée/décochée
@@ -238,7 +299,7 @@ function setupBulkActions() {
                     conversationItem.classList.toggle('selected', this.checked);
                 }
                 
-                updateActionButtons();
+                updateBulkActionButtons();
             });
         });
         
@@ -284,39 +345,8 @@ function setupBulkActions() {
         });
         
         // Exécuter une première fois pour initialiser l'état des boutons
-        updateActionButtons();
+        updateBulkActionButtons();
     }
-}
-
-/**
- * Met à jour l'état des boutons d'action en fonction de la sélection
- */
-function updateActionButtons() {
-    const selectedConvs = document.querySelectorAll('.conversation-checkbox:checked');
-    const selectedCount = selectedConvs.length;
-    
-    // Vérifier si tous les messages sélectionnés sont lus ou non lus
-    const allRead = Array.from(selectedConvs).every(cb => 
-        cb.closest('.conversation-item').getAttribute('data-is-read') === '1');
-    const allUnread = Array.from(selectedConvs).every(cb => 
-        cb.closest('.conversation-item').getAttribute('data-is-read') === '0');
-    const mixed = !allRead && !allUnread;
-    
-    // Référence aux boutons
-    const btnMarkRead = document.querySelector('button[data-action="mark_read"]');
-    const btnMarkUnread = document.querySelector('button[data-action="mark_unread"]');
-    
-    // Mise à jour de la visibilité des boutons
-    if (btnMarkRead) btnMarkRead.hidden = allRead;
-    if (btnMarkUnread) btnMarkUnread.hidden = allUnread;
-    
-    // Mettre à jour le texte des boutons
-    document.querySelectorAll('.bulk-action-btn').forEach(button => {
-        button.disabled = selectedCount === 0;
-        const actionText = button.dataset.actionText || 'Appliquer';
-        const icon = button.dataset.icon ? `<i class="fas fa-${button.dataset.icon}"></i> ` : '';
-        button.innerHTML = `${icon}${actionText} (${selectedCount})`;
-    });
 }
 
 /**

@@ -20,6 +20,7 @@ function getConversations($userId, $userType, $dossier = 'reception') {
     global $pdo;
     
     // Requête de base pour récupérer les conversations
+    // Utilisation du champ unread_count au lieu de COUNT(*)
     $baseQuery = "
         SELECT DISTINCT c.id, c.subject as titre, 
                CASE WHEN EXISTS (SELECT 1 FROM messages WHERE conversation_id = c.id AND status = 'annonce') THEN 'annonce' ELSE 'standard' END as type,
@@ -29,15 +30,14 @@ function getConversations($userId, $userType, $dossier = 'reception') {
                    WHEN EXISTS (SELECT 1 FROM messages WHERE conversation_id = c.id AND status = 'annonce') THEN 'annonce'
                    ELSE (SELECT status FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1)
                END as status,
-               COUNT(CASE WHEN (cp.last_read_at IS NULL OR m.created_at > cp.last_read_at) AND m.sender_id != ? AND m.sender_type != ? THEN 1 END) as non_lus
+               cp.unread_count as non_lus
         FROM conversations c
         JOIN conversation_participants cp ON c.id = cp.conversation_id
-        LEFT JOIN messages m ON c.id = m.conversation_id
         WHERE cp.user_id = ? AND cp.user_type = ?
     ";
     
     // Paramètres initiaux
-    $params = [$userId, $userType, $userId, $userType];
+    $params = [$userId, $userType];
     
     // Conditions spécifiques à chaque dossier
     switch ($dossier) {
@@ -79,7 +79,7 @@ function getConversations($userId, $userType, $dossier = 'reception') {
     }
     
     // Grouper et ordonner
-    $baseQuery .= " GROUP BY c.id ORDER BY c.updated_at DESC";
+    $baseQuery .= " ORDER BY c.updated_at DESC";
     
     $stmt = $pdo->prepare($baseQuery);
     $stmt->execute($params);
@@ -87,37 +87,280 @@ function getConversations($userId, $userType, $dossier = 'reception') {
 }
 
 /**
- * Retourne le libellé d'un statut de message
- * @param string $status Statut du message
- * @return string Libellé du statut
+ * Récupère les préférences de notification d'un utilisateur
+ * Si elles n'existent pas, les crée avec les valeurs par défaut
+ * 
+ * @param int $userId ID de l'utilisateur
+ * @param string $userType Type d'utilisateur
+ * @return array Préférences de notification
  */
-function getMessageStatusLabel($status) {
-    $statuses = [
-        'normal' => 'Message normal',
-        'important' => 'Message important',
-        'urgent' => 'Message urgent',
-        'annonce' => 'Annonce'
-    ];
-    return $statuses[$status] ?? 'Message normal';
+function getUserNotificationPreferences($userId, $userType) {
+    global $pdo;
+    
+    // Vérifier si les préférences existent déjà
+    $stmt = $pdo->prepare("
+        SELECT * FROM user_notification_preferences
+        WHERE user_id = ? AND user_type = ?
+    ");
+    $stmt->execute([$userId, $userType]);
+    $preferences = $stmt->fetch();
+    
+    // Si les préférences n'existent pas, les créer avec les valeurs par défaut
+    if (!$preferences) {
+        $stmt = $pdo->prepare("
+            INSERT INTO user_notification_preferences
+            (user_id, user_type, email_notifications, browser_notifications, 
+             notification_sound, mention_notifications, reply_notifications, 
+             important_notifications, digest_frequency)
+            VALUES (?, ?, 0, 1, 1, 1, 1, 1, 'never')
+        ");
+        $stmt->execute([$userId, $userType]);
+        
+        // Récupérer les préférences nouvellement créées
+        $stmt = $pdo->prepare("
+            SELECT * FROM user_notification_preferences
+            WHERE user_id = ? AND user_type = ?
+        ");
+        $stmt->execute([$userId, $userType]);
+        $preferences = $stmt->fetch();
+    }
+    
+    return $preferences;
 }
 
 /**
- * Transforme les URLs en liens cliquables
- * @param string $text Texte à transformer
- * @return string Texte avec liens cliquables
+ * Met à jour les préférences de notification d'un utilisateur
+ * 
+ * @param int $userId ID de l'utilisateur
+ * @param string $userType Type d'utilisateur
+ * @param array $preferences Nouvelles préférences
+ * @return bool True si succès
  */
-function linkify($text) {
-    // Modèle pour capturer les URLs http, https, ftp et les URLs commençant par www
-    $pattern = '~(https?://|ftp://|www\.)[-a-z0-9+&@#/%?=~_|!:,.;]*[-a-z0-9+&@#/%=~_|]~i';
+function updateUserNotificationPreferences($userId, $userType, $preferences) {
+    global $pdo;
     
-    return preg_replace_callback($pattern, function($matches) {
-        $url = $matches[0];
-        // Si l'URL ne commence pas par http:// ou https://, ajouter http://
-        if (!preg_match('~^https?://~i', $url)) {
-            $url = 'http://' . $url;
+    // Valider les préférences
+    $validPreferences = [];
+    
+    // Valider les booléens
+    $booleanFields = [
+        'email_notifications', 'browser_notifications', 'notification_sound',
+        'mention_notifications', 'reply_notifications', 'important_notifications'
+    ];
+    
+    foreach ($booleanFields as $field) {
+        if (isset($preferences[$field])) {
+            $validPreferences[$field] = $preferences[$field] ? 1 : 0;
         }
-        return '<a href="' . htmlspecialchars($url) . '" target="_blank" rel="noopener noreferrer">' . htmlspecialchars($matches[0]) . '</a>';
-    }, $text);
+    }
+    
+    // Valider digest_frequency
+    if (isset($preferences['digest_frequency'])) {
+        $validFrequencies = ['never', 'daily', 'weekly'];
+        if (in_array($preferences['digest_frequency'], $validFrequencies)) {
+            $validPreferences['digest_frequency'] = $preferences['digest_frequency'];
+        }
+    }
+    
+    // Si aucune préférence valide n'a été fournie, retourner false
+    if (empty($validPreferences)) {
+        return false;
+    }
+    
+    // Créer la requête d'update
+    $sql = "UPDATE user_notification_preferences SET ";
+    $params = [];
+    
+    foreach ($validPreferences as $field => $value) {
+        $sql .= "$field = ?, ";
+        $params[] = $value;
+    }
+    
+    // Supprimer la virgule finale et ajouter la condition WHERE
+    $sql = rtrim($sql, ', ');
+    $sql .= " WHERE user_id = ? AND user_type = ?";
+    $params[] = $userId;
+    $params[] = $userType;
+    
+    // Exécuter la requête
+    $stmt = $pdo->prepare($sql);
+    $result = $stmt->execute($params);
+    
+    // Si aucune ligne n'a été mise à jour, les préférences n'existent peut-être pas encore
+    if ($stmt->rowCount() === 0) {
+        // Vérifier si les préférences existent
+        $checkStmt = $pdo->prepare("
+            SELECT id FROM user_notification_preferences
+            WHERE user_id = ? AND user_type = ?
+        ");
+        $checkStmt->execute([$userId, $userType]);
+        
+        if (!$checkStmt->fetch()) {
+            // Créer les préférences avec les valeurs par défaut + les valeurs fournies
+            $defaults = [
+                'email_notifications' => 0,
+                'browser_notifications' => 1,
+                'notification_sound' => 1,
+                'mention_notifications' => 1,
+                'reply_notifications' => 1,
+                'important_notifications' => 1,
+                'digest_frequency' => 'never'
+            ];
+            
+            // Fusionner les valeurs par défaut avec les valeurs fournies
+            $values = array_merge($defaults, $validPreferences);
+            
+            $insertSql = "
+                INSERT INTO user_notification_preferences
+                (user_id, user_type, email_notifications, browser_notifications,
+                notification_sound, mention_notifications, reply_notifications,
+                important_notifications, digest_frequency)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ";
+            
+            $insertParams = [
+                $userId, $userType,
+                $values['email_notifications'], $values['browser_notifications'],
+                $values['notification_sound'], $values['mention_notifications'],
+                $values['reply_notifications'], $values['important_notifications'],
+                $values['digest_frequency']
+            ];
+            
+            $insertStmt = $pdo->prepare($insertSql);
+            return $insertStmt->execute($insertParams);
+        }
+    }
+    
+    return $result;
+}
+
+/**
+ * Détermine si une notification doit être envoyée en fonction des préférences
+ * 
+ * @param array $preferences Préférences de notification
+ * @param string $notificationType Type de notification
+ * @return bool True si la notification doit être envoyée
+ */
+function shouldSendNotification($preferences, $notificationType) {
+    // Si c'est une annonce ou une notification obligatoire, toujours envoyer
+    if ($notificationType === 'broadcast') {
+        return true;
+    }
+    
+    // Vérifier les préférences selon le type
+    switch ($notificationType) {
+        case 'mention':
+            return isset($preferences['mention_notifications']) && $preferences['mention_notifications'];
+        case 'reply':
+            return isset($preferences['reply_notifications']) && $preferences['reply_notifications'];
+        case 'important':
+            return isset($preferences['important_notifications']) && $preferences['important_notifications'];
+        case 'unread':
+        default:
+            return true; // Par défaut, envoyer les notifications normales
+    }
+}
+
+function getUnreadNotifications($userId, $userType, $limit = 50) {
+    global $pdo;
+    
+    // Assurez-vous que limit est un entier pour éviter les injections SQL
+    $limit = (int)$limit;
+    
+    $stmt = $pdo->prepare("
+        SELECT n.*, 
+               m.body as contenu, m.sender_id as expediteur_id, m.sender_type as expediteur_type,
+               m.conversation_id,
+               c.subject as conversation_titre,
+               CASE 
+                   WHEN m.sender_type = 'eleve' THEN 
+                       (SELECT CONCAT(e.prenom, ' ', e.nom) FROM eleves e WHERE e.id = m.sender_id)
+                   WHEN m.sender_type = 'parent' THEN 
+                       (SELECT CONCAT(p.prenom, ' ', p.nom) FROM parents p WHERE p.id = m.sender_id)
+                   WHEN m.sender_type = 'professeur' THEN 
+                       (SELECT CONCAT(p.prenom, ' ', p.nom) FROM professeurs p WHERE p.id = m.sender_id)
+                   WHEN m.sender_type = 'vie_scolaire' THEN 
+                       (SELECT CONCAT(v.prenom, ' ', v.nom) FROM vie_scolaire v WHERE v.id = m.sender_id)
+                   WHEN m.sender_type = 'administrateur' THEN 
+                       (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = m.sender_id)
+                   ELSE 'Inconnu'
+               END as expediteur_nom,
+               m.status,
+               notified_at as date_creation
+        FROM message_notifications n
+        JOIN messages m ON n.message_id = m.id
+        JOIN conversations c ON m.conversation_id = c.id
+        WHERE n.user_id = ? AND n.user_type = ? AND n.is_read = 0
+        ORDER BY n.notified_at DESC
+        LIMIT " . $limit
+    );
+    $stmt->execute([$userId, $userType]);
+    
+    return $stmt->fetchAll();
+}
+
+/**
+ * Récupère toutes les notifications récentes d'un utilisateur (lues et non lues)
+ * @param int $userId ID de l'utilisateur
+ * @param string $userType Type d'utilisateur
+ * @param int $days Nombre de jours à remonter
+ * @param int $limit Nombre maximum de notifications à récupérer
+ * @return array Notifications récentes
+ */
+function getRecentNotifications($userId, $userType, $days = 7, $limit = 50) {
+    global $pdo;
+    
+    $stmt = $pdo->prepare("
+        SELECT n.*, 
+               m.body as contenu, m.sender_id as expediteur_id, m.sender_type as expediteur_type,
+               m.conversation_id,
+               c.subject as conversation_titre,
+               CASE 
+                   WHEN m.sender_type = 'eleve' THEN 
+                       (SELECT CONCAT(e.prenom, ' ', e.nom) FROM eleves e WHERE e.id = m.sender_id)
+                   WHEN m.sender_type = 'parent' THEN 
+                       (SELECT CONCAT(p.prenom, ' ', p.nom) FROM parents p WHERE p.id = m.sender_id)
+                   WHEN m.sender_type = 'professeur' THEN 
+                       (SELECT CONCAT(p.prenom, ' ', p.nom) FROM professeurs p WHERE p.id = m.sender_id)
+                   WHEN m.sender_type = 'vie_scolaire' THEN 
+                       (SELECT CONCAT(v.prenom, ' ', v.nom) FROM vie_scolaire v WHERE v.id = m.sender_id)
+                   WHEN m.sender_type = 'administrateur' THEN 
+                       (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = m.sender_id)
+                   ELSE 'Inconnu'
+               END as expediteur_nom,
+               m.status,
+               notified_at as date_creation
+        FROM message_notifications n
+        JOIN messages m ON n.message_id = m.id
+        JOIN conversations c ON m.conversation_id = c.id
+        WHERE n.user_id = ? AND n.user_type = ? AND n.notified_at > DATE_SUB(NOW(), INTERVAL ? DAY)
+        ORDER BY n.notified_at DESC
+        LIMIT ?
+    ");
+    $stmt->execute([$userId, $userType, $days, $limit]);
+    
+    return $stmt->fetchAll();
+}
+
+/**
+ * Compte le nombre de notifications non lues pour un utilisateur
+ * @param int $userId ID de l'utilisateur
+ * @param string $userType Type d'utilisateur
+ * @return int Nombre de notifications non lues
+ */
+function countUnreadNotifications($userId, $userType) {
+    global $pdo;
+    
+    // Utiliser la somme des unread_count de toutes les conversations de l'utilisateur
+    $stmt = $pdo->prepare("
+        SELECT SUM(unread_count) as total_unread
+        FROM conversation_participants
+        WHERE user_id = ? AND user_type = ? AND is_deleted = 0
+    ");
+    $stmt->execute([$userId, $userType]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    return $result['total_unread'] ?: 0;
 }
 
 /**
@@ -541,6 +784,58 @@ function getMessages($convId, $userId, $userType) {
 }
 
 /**
+ * Récupère un message par son ID
+ * @param int $messageId ID du message
+ * @return array|false Message ou false si non trouvé
+ */
+function getMessageById($messageId) {
+    global $pdo;
+    
+    $sql = "
+        SELECT m.*, 
+               1 as est_lu, /* Le message est considéré comme lu pour son expéditeur */
+               1 as is_self, /* C'est un message de l'utilisateur lui-même */
+               CASE 
+                   WHEN m.sender_type = 'eleve' THEN 
+                       (SELECT CONCAT(e.prenom, ' ', e.nom) FROM eleves e WHERE e.id = m.sender_id)
+                   WHEN m.sender_type = 'parent' THEN 
+                       (SELECT CONCAT(p.prenom, ' ', p.nom) FROM parents p WHERE p.id = m.sender_id)
+                   WHEN m.sender_type = 'professeur' THEN 
+                       (SELECT CONCAT(p.prenom, ' ', p.nom) FROM professeurs p WHERE p.id = m.sender_id)
+                   WHEN m.sender_type = 'vie_scolaire' THEN 
+                       (SELECT CONCAT(v.prenom, ' ', v.nom) FROM vie_scolaire v WHERE v.id = m.sender_id)
+                   WHEN m.sender_type = 'administrateur' THEN 
+                       (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = m.sender_id)
+                   ELSE 'Inconnu'
+               END as expediteur_nom,
+               m.sender_id as expediteur_id, 
+               m.sender_type as expediteur_type,
+               m.body as contenu,
+               m.status as status,
+               m.created_at as date_envoi,
+               UNIX_TIMESTAMP(m.created_at) as timestamp
+        FROM messages m
+        WHERE m.id = ?
+    ";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$messageId]);
+    $message = $stmt->fetch();
+    
+    if ($message) {
+        // Récupérer les pièces jointes
+        $attachmentStmt = $pdo->prepare("
+            SELECT id, message_id, file_name as nom_fichier, file_path as chemin
+            FROM message_attachments 
+            WHERE message_id = ?
+        ");
+        $attachmentStmt->execute([$messageId]);
+        $message['pieces_jointes'] = $attachmentStmt->fetchAll();
+    }
+    
+    return $message;
+}
+
+/**
  * Ajoute un nouveau message
  * @param int $convId ID de la conversation
  * @param int $senderId ID de l'expéditeur
@@ -557,7 +852,7 @@ function getMessages($convId, $userId, $userType) {
  */
 function addMessage($convId, $senderId, $senderType, $content, $importance = 'normal', 
                    $estAnnonce = false, $notificationObligatoire = false, 
-                   $accuseReception = false, // Maintenu pour compatibilité mais ignoré
+                   $accuseReception = false, 
                    $parentMessageId = null, $typeMessage = 'standard', $filesData = []) {
     global $pdo;
     
@@ -601,20 +896,52 @@ function addMessage($convId, $senderId, $senderType, $content, $importance = 'no
         $participantsStmt->execute([$convId]);
         $participants = $participantsStmt->fetchAll();
         
-        // Créer des notifications
-        $notificationType = $estAnnonce ? 'broadcast' : 'unread';
+        // Déterminer le type de notification
+        $notificationType = 'unread';
+        if ($estAnnonce) {
+            $notificationType = 'broadcast';
+        } elseif ($importance === 'important' || $importance === 'urgent') {
+            $notificationType = 'important';
+        } elseif ($parentMessageId) {
+            // Vérifier si c'est une réponse directe
+            $notificationType = 'reply';
+        }
+        
+        // Créer des notifications pour chaque participant
         $addNotification = $pdo->prepare("
-            INSERT INTO message_notifications (user_id, user_type, message_id, notification_type) 
-            VALUES (?, ?, ?, ?)
+            INSERT INTO message_notifications (user_id, user_type, message_id, notification_type, is_read, read_at) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        ");
+        
+        // Incrémenter le compteur de messages non lus
+        $incrementUnread = $pdo->prepare("
+            UPDATE conversation_participants 
+            SET unread_count = unread_count + 1 
+            WHERE conversation_id = ? AND user_id = ? AND user_type = ?
         ");
         
         foreach ($participants as $p) {
+            // Ne pas créer de notification pour l'expéditeur
             if ($p['user_id'] != $senderId || $p['user_type'] != $senderType) {
+                // Si c'est une notification obligatoire ou une annonce, marquer comme non lue
+                $isRead = 0;
+                $readAt = null;
+                
+                // Créer la notification
                 $addNotification->execute([
                     $p['user_id'], 
                     $p['user_type'], 
                     $messageId, 
-                    $notificationType
+                    $notificationType,
+                    $isRead,
+                    $readAt
+                ]);
+                
+                // Incrémenter le compteur non lu pour ce participant
+                $incrementUnread->execute([
+                    $convId,
+                    $p['user_id'],
+                    $p['user_type']
                 ]);
             }
         }
@@ -656,6 +983,7 @@ function addMessage($convId, $senderId, $senderType, $content, $importance = 'no
     }
 }
 
+
 /**
  * Marque un message comme lu
  * @param int $messageId ID du message
@@ -674,21 +1002,50 @@ function markMessageAsRead($messageId, $userId, $userType) {
     if ($result) {
         $convId = $result['conversation_id'];
         
-        // Mettre à jour la date de dernière lecture du participant
+        // Vérifier si la notification existe et n'est pas déjà lue
+        $checkStmt = $pdo->prepare("
+            SELECT id, is_read FROM message_notifications 
+            WHERE message_id = ? AND user_id = ? AND user_type = ?
+        ");
+        $checkStmt->execute([$messageId, $userId, $userType]);
+        $notification = $checkStmt->fetch();
+        
+        if ($notification) {
+            // Si la notification existe et n'est pas déjà lue, la marquer comme lue
+            if (!$notification['is_read']) {
+                // Marquer comme lu et enregistrer la date de lecture
+                $updNotif = $pdo->prepare("
+                    UPDATE message_notifications 
+                    SET is_read = 1, read_at = NOW() 
+                    WHERE id = ?
+                ");
+                $updNotif->execute([$notification['id']]);
+                
+                // Décrémenter le compteur de messages non lus pour ce participant
+                $updCount = $pdo->prepare("
+                    UPDATE conversation_participants 
+                    SET unread_count = GREATEST(0, unread_count - 1) 
+                    WHERE conversation_id = ? AND user_id = ? AND user_type = ?
+                ");
+                $updCount->execute([$convId, $userId, $userType]);
+            }
+        } else {
+            // Si la notification n'existe pas, on la crée comme déjà lue
+            $createNotif = $pdo->prepare("
+                INSERT INTO message_notifications 
+                (user_id, user_type, message_id, notification_type, is_read, read_at) 
+                VALUES (?, ?, ?, 'unread', 1, NOW())
+            ");
+            $createNotif->execute([$userId, $userType, $messageId]);
+        }
+        
+        // Mettre à jour la date de dernière lecture pour la conversation
         $updateStmt = $pdo->prepare("
             UPDATE conversation_participants 
             SET last_read_at = NOW() 
             WHERE conversation_id = ? AND user_id = ? AND user_type = ?
         ");
         $updateStmt->execute([$convId, $userId, $userType]);
-        
-        // Marquer les notifications comme lues
-        $updNotif = $pdo->prepare("
-            UPDATE message_notifications 
-            SET is_read = 1 
-            WHERE message_id = ? AND user_id = ? AND user_type = ?
-        ");
-        $updNotif->execute([$messageId, $userId, $userType]);
     }
     
     return true;
@@ -712,62 +1069,66 @@ function markMessageAsUnread($messageId, $userId, $userType) {
     if ($result) {
         $convId = $result['conversation_id'];
         
-        // Marquer la notification comme non lue
-        $updNotif = $pdo->prepare("
-            UPDATE message_notifications 
-            SET is_read = 0 
+        // Vérifier si la notification existe
+        $checkStmt = $pdo->prepare("
+            SELECT id, is_read FROM message_notifications 
             WHERE message_id = ? AND user_id = ? AND user_type = ?
         ");
-        $updNotif->execute([$messageId, $userId, $userType]);
+        $checkStmt->execute([$messageId, $userId, $userType]);
+        $notification = $checkStmt->fetch();
         
-        // Mettre à jour la date de dernière lecture pour être nulle
+        if ($notification) {
+            // Si la notification existe et est déjà lue, la marquer comme non lue
+            if ($notification['is_read']) {
+                // Marquer comme non lu et réinitialiser la date de lecture
+                $updNotif = $pdo->prepare("
+                    UPDATE message_notifications 
+                    SET is_read = 0, read_at = NULL 
+                    WHERE id = ?
+                ");
+                $updNotif->execute([$notification['id']]);
+                
+                // Incrémenter le compteur de messages non lus pour ce participant
+                $updCount = $pdo->prepare("
+                    UPDATE conversation_participants 
+                    SET unread_count = unread_count + 1 
+                    WHERE conversation_id = ? AND user_id = ? AND user_type = ?
+                ");
+                $updCount->execute([$convId, $userId, $userType]);
+            }
+        } else {
+            // Si la notification n'existe pas, on la crée comme non lue
+            $createNotif = $pdo->prepare("
+                INSERT INTO message_notifications 
+                (user_id, user_type, message_id, notification_type, is_read, read_at) 
+                VALUES (?, ?, ?, 'unread', 0, NULL)
+            ");
+            $createNotif->execute([$userId, $userType, $messageId]);
+            
+            // Incrémenter le compteur de messages non lus
+            $updCount = $pdo->prepare("
+                UPDATE conversation_participants 
+                SET unread_count = unread_count + 1 
+                WHERE conversation_id = ? AND user_id = ? AND user_type = ?
+            ");
+            $updCount->execute([$convId, $userId, $userType]);
+        }
+        
+        // Réinitialiser la date de dernière lecture pour être antérieure à ce message
+        // (cela marquera tous les messages jusqu'à celui-ci comme non lus)
         $updateStmt = $pdo->prepare("
             UPDATE conversation_participants 
-            SET last_read_at = NULL 
+            SET last_read_at = (
+                SELECT created_at FROM messages 
+                WHERE conversation_id = ? AND id < ? 
+                ORDER BY created_at DESC LIMIT 1
+            )
             WHERE conversation_id = ? AND user_id = ? AND user_type = ?
         ");
-        $updateStmt->execute([$convId, $userId, $userType]);
+        $updateStmt->execute([$convId, $messageId, $convId, $userId, $userType]);
     }
     
     return true;
-}
-
-/**
- * Récupère les notifications non lues d'un utilisateur
- * @param int $userId ID de l'utilisateur
- * @param string $userType Type d'utilisateur
- * @return array Notifications non lues
- */
-function getUnreadNotifications($userId, $userType) {
-    global $pdo;
-    
-    $stmt = $pdo->prepare("
-        SELECT n.*, 
-               m.body as contenu, m.sender_id as expediteur_id, m.sender_type as expediteur_type,
-               c.subject as conversation_titre,
-               CASE 
-                   WHEN m.sender_type = 'eleve' THEN 
-                       (SELECT CONCAT(e.prenom, ' ', e.nom) FROM eleves e WHERE e.id = m.sender_id)
-                   WHEN m.sender_type = 'parent' THEN 
-                       (SELECT CONCAT(p.prenom, ' ', p.nom) FROM parents p WHERE p.id = m.sender_id)
-                   WHEN m.sender_type = 'professeur' THEN 
-                       (SELECT CONCAT(p.prenom, ' ', p.nom) FROM professeurs p WHERE p.id = m.sender_id)
-                   WHEN m.sender_type = 'vie_scolaire' THEN 
-                       (SELECT CONCAT(v.prenom, ' ', v.nom) FROM vie_scolaire v WHERE v.id = m.sender_id)
-                   WHEN m.sender_type = 'administrateur' THEN 
-                       (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = m.sender_id)
-                   ELSE 'Inconnu'
-               END as expediteur_nom,
-               notified_at as date_creation
-        FROM message_notifications n
-        JOIN messages m ON n.message_id = m.id
-        JOIN conversations c ON m.conversation_id = c.id
-        WHERE n.user_id = ? AND n.user_type = ? AND n.is_read = 0
-        ORDER BY n.notified_at DESC
-    ");
-    $stmt->execute([$userId, $userType]);
-    
-    return $stmt->fetchAll();
 }
 
 /**

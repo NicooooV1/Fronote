@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialiser la recherche de destinataires
     initRecipientSearch();
+    
+    // Initialiser l'état des boutons de catégorie
+    updateCategoryButtons();
 });
 
 /**
@@ -104,6 +107,76 @@ function updateSelectedRecipients() {
         
         container.appendChild(tag);
     });
+    
+    // Mettre à jour les boutons après chaque changement
+    updateCategoryButtons();
+}
+
+/**
+ * Met à jour l'affichage des boutons Tout sélectionner/Tout désélectionner
+ * pour chaque catégorie de destinataires
+ */
+function updateCategoryButtons() {
+    // Pour chaque catégorie de destinataires
+    document.querySelectorAll('.recipient-category').forEach(category => {
+        const categoryId = category.id;
+        const checkboxes = category.querySelectorAll('input[type="checkbox"]');
+        const selectAllBtn = category.querySelector('.category-actions a:first-child');
+        const deselectAllBtn = category.querySelector('.category-actions a:last-child');
+        
+        const totalCheckboxes = checkboxes.length;
+        const checkedCheckboxes = category.querySelectorAll('input[type="checkbox"]:checked').length;
+        
+        // Cas 1: Personne n'est sélectionné - uniquement "Tout sélectionner"
+        if (checkedCheckboxes === 0) {
+            if (selectAllBtn) selectAllBtn.style.display = 'inline';
+            if (deselectAllBtn) deselectAllBtn.style.display = 'none';
+        }
+        // Cas 2: Tout le monde est sélectionné - uniquement "Tout désélectionner"
+        else if (checkedCheckboxes === totalCheckboxes) {
+            if (selectAllBtn) selectAllBtn.style.display = 'none';
+            if (deselectAllBtn) deselectAllBtn.style.display = 'inline';
+        }
+        // Cas 3: Sélection partielle - les deux boutons
+        else {
+            if (selectAllBtn) selectAllBtn.style.display = 'inline';
+            if (deselectAllBtn) deselectAllBtn.style.display = 'inline';
+        }
+    });
+}
+
+/**
+ * Sélectionne tous les destinataires d'une catégorie
+ * @param {string} categoryId - ID de la catégorie
+ */
+function selectAllInCategory(categoryId) {
+    const category = document.getElementById(categoryId);
+    if (!category) return;
+    
+    const checkboxes = category.querySelectorAll('input[type="checkbox"]:not(:checked)');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+    });
+    
+    updateSelectedRecipients();
+    updateCategoryButtons();
+}
+
+/**
+ * Désélectionne tous les destinataires d'une catégorie
+ * @param {string} categoryId - ID de la catégorie
+ */
+function deselectAllInCategory(categoryId) {
+    const category = document.getElementById(categoryId);
+    if (!category) return;
+    
+    const checkboxes = category.querySelectorAll('input[type="checkbox"]:checked');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    
+    updateSelectedRecipients();
+    updateCategoryButtons();
 }
 
 /**

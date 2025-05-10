@@ -37,6 +37,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("Le titre est obligatoire");
         }
         
+        // Vérifier la longueur du titre
+        if (mb_strlen($titre) > 100) {
+            throw new Exception("Le titre ne peut pas dépasser 100 caractères");
+        }
+        
         if (empty($contenu)) {
             throw new Exception("Le message ne peut pas être vide");
         }
@@ -234,7 +239,8 @@ function getRecipientTypeLabel($type) {
             
             <div class="form-group">
                 <label for="titre">Titre</label>
-                <input type="text" name="titre" id="titre" value="<?= htmlspecialchars($titre) ?>" required>
+                <input type="text" name="titre" id="titre" value="<?= htmlspecialchars($titre) ?>" required maxlength="100">
+                <div id="title-counter" class="text-muted small">0/100 caractères</div>
             </div>
             
             <div class="form-group">
@@ -315,6 +321,35 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Mettre à jour le compteur lors de la saisie
         textarea.addEventListener('input', updateCounter);
+    }
+    
+    // Validation de la longueur du titre
+    const titleInput = document.getElementById('titre');
+    const titleCounter = document.getElementById('title-counter');
+    
+    if (titleInput && titleCounter) {
+        // Fonction de mise à jour du compteur de titre
+        function updateTitleCounter() {
+            const currentLength = titleInput.value.length;
+            titleCounter.textContent = `${currentLength}/100 caractères`;
+            
+            if (currentLength > 100) {
+                titleCounter.style.color = '#dc3545';
+                document.querySelector('button[type="submit"]').disabled = true;
+            } else {
+                titleCounter.style.color = '#6c757d';
+                // Ne pas réactiver le bouton si le contenu est trop long
+                if (textarea && textarea.value.length <= maxLength) {
+                    document.querySelector('button[type="submit"]').disabled = false;
+                }
+            }
+        }
+        
+        // Mettre à jour le compteur au chargement
+        updateTitleCounter();
+        
+        // Mettre à jour le compteur lors de la saisie
+        titleInput.addEventListener('input', updateTitleCounter);
     }
 });
 </script>

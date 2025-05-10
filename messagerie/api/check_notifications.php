@@ -1,11 +1,11 @@
 <?php
-// 1. désactiver l’output HTML des erreurs
+// Désactiver l'output HTML des erreurs
 ini_set('display_errors', 0);
 ini_set('display_startup_errors', 0);
 header('Content-Type: application/json; charset=utf-8');
 session_start();
 
-// 2. authentification basique
+// Authentication basique
 if (empty($_SESSION['user_id']) || empty($_SESSION['user_type'])) {
   echo json_encode([
     'has_errors' => true,
@@ -14,34 +14,48 @@ if (empty($_SESSION['user_id']) || empty($_SESSION['user_type'])) {
   exit;
 }
 
-// 3. connexion PDO (ton config.php doit définir DSN, DB_USER, DB_PASS)
-require_once __DIR__ . '/config.php';
-$pdo = new PDO(DSN, DB_USER, DB_PASS, [
-  PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-  PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-]);
+// Inclure les fichiers nécessaires
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/message_functions.php';
 
 try {
-  // 4. compter les notifications non lues dans message_notifications
-  $stmt = $pdo->prepare("
-    SELECT COUNT(*) AS new_notifications
-      FROM message_notifications
-     WHERE user_id   = :uid
-       AND user_type = :utype
-       AND is_read   = 0
-  ");
-  $stmt->execute([
-    'uid'   => (int)$_SESSION['user_id'],
-    'utype' => $_SESSION['user_type'],
-  ]);
-  $row = $stmt->fetch();
-  $count = isset($row['new_notifications']) ? (int)$row['new_notifications'] : 0;
-
-  // 5. renvoyer le JSON
-  echo json_encode([
+  // Récupérer l'ID et le type d'utilisateur
+  $userId = (int)$_SESSION['user_id'];
+  $userType = $_SESSION['user_type'];
+  
+  // Utiliser la nouvelle fonction pour compter les notifications non lues
+  $count = countUnreadNotifications($userId, $userType);
+  
+  // Récupérer la dernière notification non lue pour les notifications du navigateur
+  $latestNotification = null;
+  if ($count > 0) {
+    $unreadNotifications = getUnreadNotifications($userId, $userType, 1);
+    if (!empty($unreadNotifications)) {
+      $latestNotification = $unreadNotifications[0];
+    }
+  }
+  
+  // Préparer la réponse
+  $response = [
     'has_errors'        => false,
     'new_notifications' => $count
-  ]);
+  ];
+  
+  // Ajouter la dernière notification si disponible
+  if ($latestNotification) {
+    $response['latest_notification'] = [
+      'id' => $latestNotification['id'],
+      'conversation_id' => $latestNotification['conversation_id'],
+      'expediteur_nom' => $latestNotification['expediteur_nom'],
+      'conversation_titre' => $latestNotification['conversation_titre'],
+      'notification_type' => $latestNotification['notification_type'],
+      'status' => $latestNotification['status'],
+      'date_creation' => $latestNotification['date_creation']
+    ];
+  }
+  
+  // Renvoyer la réponse JSON
+  echo json_encode($response);
 }
 catch (Throwable $e) {
   error_log('[check_notifications] '.$e->getMessage());

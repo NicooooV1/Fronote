@@ -11,26 +11,32 @@ document.addEventListener('DOMContentLoaded', function() {
  * Initialise les notifications
  */
 function initNotifications() {
-    // Vérifier les nouvelles notifications toutes les 60 secondes
-    setInterval(checkNotifications, 60000);
+    // Vérifier les nouvelles notifications toutes les 30 secondes
+    setInterval(checkNotifications, 30000);
+    
+    // Vérifier immédiatement au chargement de la page
+    checkNotifications();
     
     // Gérer les clics sur les notifications
     initNotificationClicks();
+    
+    // Demander la permission pour les notifications du navigateur si l'utilisateur n'a pas encore décidé
+    requestNotificationPermission();
 }
 
 /**
  * Vérifie les nouvelles notifications
  */
 function checkNotifications() {
-    fetch('check_notifications.php')
+    fetch('api/check_notifications.php')
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                updateNotificationBadge(data.count);
+            if (!data.has_errors) {
+                updateNotificationBadge(data.new_notifications);
                 
                 // Si l'utilisateur a activé les notifications du navigateur et qu'il y a de nouvelles notifications
-                if (data.count > 0 && hasNotificationPermission()) {
-                    showBrowserNotification(data.count, data.latest);
+                if (data.new_notifications > 0 && hasNotificationPermission() && data.latest_notification) {
+                    showBrowserNotification(data.new_notifications, data.latest_notification);
                 }
             }
         })
@@ -69,19 +75,20 @@ function updateNotificationBadge(count) {
  * Initialise les clics sur les notifications
  */
 function initNotificationClicks() {
-    const notificationItems = document.querySelectorAll('.notification-item');
-    
-    notificationItems.forEach(item => {
-        item.addEventListener('click', function() {
-            const notificationId = this.dataset.id;
-            const conversationId = this.dataset.conversationId;
+    // Délègue les événements pour gérer les notifications ajoutées dynamiquement
+    document.addEventListener('click', function(e) {
+        // Vérifier si le clic était sur une notification
+        if (e.target.closest('.notification-item')) {
+            const notificationItem = e.target.closest('.notification-item');
+            const notificationId = notificationItem.dataset.id;
+            const conversationId = notificationItem.dataset.conversationId;
             
             // Marquer comme lu
             markNotificationRead(notificationId);
             
             // Rediriger vers la conversation
             window.location.href = `conversation.php?id=${conversationId}`;
-        });
+        }
     });
 }
 
@@ -90,17 +97,7 @@ function initNotificationClicks() {
  * @param {number} notificationId - ID de la notification
  */
 function markNotificationRead(notificationId) {
-    fetch(`mark_notification_read.php?id=${notificationId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Mettre à jour l'interface utilisateur
-                const notificationItem = document.querySelector(`.notification-item[data-id="${notificationId}"]`);
-                if (notificationItem) {
-                    notificationItem.classList.add('read');
-                }
-            }
-        })
+    fetch(`api/mark_notification_read.php?id=${notificationId}`)
         .catch(error => console.error('Erreur lors du marquage de la notification:', error));
 }
 
@@ -116,9 +113,65 @@ function hasNotificationPermission() {
  * Demande l'autorisation pour les notifications du navigateur
  */
 function requestNotificationPermission() {
-    if (window.Notification && Notification.permission !== 'denied') {
-        Notification.requestPermission();
+    // Vérifier si le navigateur supporte les notifications
+    if (window.Notification && Notification.permission === 'default') {
+        // Créer un bouton pour demander la permission
+        const container = document.querySelector('main');
+        if (container) {
+            const notificationPrompt = document.createElement('div');
+            notificationPrompt.className = 'notification-prompt alert info';
+            notificationPrompt.innerHTML = `
+                <p>
+                    <i class="fas fa-bell"></i> 
+                    Voulez-vous recevoir des notifications pour les nouveaux messages ?
+                </p>
+                <button id="enable-notifications" class="btn primary">
+                    <i class="fas fa-check"></i> Activer les notifications
+                </button>
+                <button id="dismiss-notification-prompt" class="btn cancel">
+                    <i class="fas fa-times"></i> Non merci
+                </button>
+            `;
+            
+            // Insérer au début du main
+            container.insertBefore(notificationPrompt, container.firstChild);
+            
+            // Gestionnaires d'événements
+            document.getElementById('enable-notifications').addEventListener('click', function() {
+                Notification.requestPermission().then(function(permission) {
+                    notificationPrompt.remove();
+                    
+                    // Si l'utilisateur accepte, mettre à jour la préférence dans la base de données
+                    if (permission === 'granted') {
+                        updateNotificationPreference('browser_notifications', true);
+                    }
+                });
+            });
+            
+            document.getElementById('dismiss-notification-prompt').addEventListener('click', function() {
+                notificationPrompt.remove();
+                
+                // Stocker que l'utilisateur a refusé pour ne plus lui demander
+                localStorage.setItem('notification_prompt_dismissed', 'true');
+            });
+        }
     }
+}
+
+/**
+ * Met à jour une préférence de notification
+ * @param {string} preference - Nom de la préférence
+ * @param {boolean} value - Valeur de la préférence
+ */
+function updateNotificationPreference(preference, value) {
+    const formData = new FormData();
+    formData.append('preference', preference);
+    formData.append('value', value ? '1' : '0');
+    
+    fetch('api/update_notification_preference.php', {
+        method: 'POST',
+        body: formData
+    }).catch(error => console.error('Erreur lors de la mise à jour de la préférence:', error));
 }
 
 /**
@@ -127,27 +180,88 @@ function requestNotificationPermission() {
  * @param {Object} latestNotification - Dernière notification
  */
 function showBrowserNotification(count, latestNotification) {
-    if (!window.Notification || Notification.permission !== 'granted') {
+    if (!hasNotificationPermission()) {
         return;
     }
     
-    const title = 'Pronote Messagerie';
+    // Vérifier les préférences utilisateur stockées en local
+    const shouldPlaySound = localStorage.getItem('notification_sound') !== 'false';
+    
+    // Créer la notification
+    const title = 'Pronote - Messagerie';
+    let body = '';
+    
+    // Personnaliser le message selon le type de notification
+    switch (latestNotification.notification_type) {
+        case 'important':
+            body = `Message important de ${latestNotification.expediteur_nom}`;
+            break;
+        case 'reply':
+            body = `Réponse de ${latestNotification.expediteur_nom}`;
+            break;
+        case 'mention':
+            body = `${latestNotification.expediteur_nom} vous a mentionné`;
+            break;
+        case 'broadcast':
+            body = `Annonce de ${latestNotification.expediteur_nom}`;
+            break;
+        default:
+            body = count === 1 
+                ? `Nouveau message de ${latestNotification.expediteur_nom}`
+                : `${count} nouveaux messages non lus`;
+    }
+    
+    // Créer la notification
     const options = {
-        body: count === 1 
-            ? `Nouveau message de ${latestNotification.expediteur_nom}`
-            : `${count} nouveaux messages non lus`,
-        icon: '/assets/images/pronote-icon.png'
+        body: body,
+        icon: '/assets/images/pronote-icon.png',
+        tag: 'pronote-notification', // Remplacer les anciennes notifications
+        renotify: true // Notifier même si une notification avec le même tag existe
     };
     
     const notification = new Notification(title, options);
     
+    // Jouer un son si activé
+    if (shouldPlaySound) {
+        playNotificationSound();
+    }
+    
     // Rediriger vers la conversation au clic sur la notification
     notification.onclick = function() {
         window.focus();
-        if (latestNotification && latestNotification.conversation_id) {
+        if (latestNotification.conversation_id) {
             window.location.href = `conversation.php?id=${latestNotification.conversation_id}`;
         } else {
             window.location.href = 'index.php';
         }
     };
+}
+
+/**
+ * Joue un son de notification
+ */
+function playNotificationSound() {
+    try {
+        // Utiliser l'API Web Audio pour créer un son simple
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // La note "La"
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); // Volume bas
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        // Jouer un bref son
+        oscillator.start();
+        
+        // Arrêter après 200ms
+        setTimeout(() => {
+            oscillator.stop();
+        }, 200);
+    } catch (e) {
+        console.log("Son de notification non supporté:", e);
+    }
 }

@@ -45,8 +45,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("Le titre est obligatoire");
         }
         
+        // Vérifier la longueur du titre
+        if (mb_strlen($titre) > 100) {
+            throw new Exception("Le titre ne peut pas dépasser 100 caractères");
+        }
+        
         if (empty($contenu)) {
             throw new Exception("Le message ne peut pas être vide");
+        }
+        
+        // Vérifier la longueur maximale du message
+        $maxLength = 10000;
+        if (mb_strlen($contenu) > $maxLength) {
+            throw new Exception("Votre message est trop long (maximum $maxLength caractères)");
         }
         
         // Envoi du message à la classe
@@ -112,12 +123,14 @@ include 'templates/header.php';
             
             <div class="form-group">
                 <label for="titre">Titre</label>
-                <input type="text" name="titre" id="titre" required>
+                <input type="text" name="titre" id="titre" required maxlength="100">
+                <div id="title-counter" class="text-muted small">0/100 caractères</div>
             </div>
             
             <div class="form-group">
                 <label for="contenu">Message</label>
                 <textarea name="contenu" id="contenu" required></textarea>
+                <div id="char-counter" class="text-muted small">0/10000 caractères</div>
             </div>
             
             <div class="options-group">
@@ -168,6 +181,69 @@ include 'templates/header.php';
     </div>
     <?php endif; ?>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Validation de la longueur du contenu
+    const textarea = document.getElementById('contenu');
+    const charCounter = document.getElementById('char-counter');
+    const maxLength = 10000;
+    
+    if (textarea && charCounter) {
+        // Fonction de mise à jour du compteur
+        function updateCounter() {
+            const currentLength = textarea.value.length;
+            charCounter.textContent = `${currentLength}/${maxLength} caractères`;
+            
+            if (currentLength > maxLength) {
+                charCounter.style.color = '#dc3545';
+                document.querySelector('button[type="submit"]').disabled = true;
+            } else {
+                charCounter.style.color = '#6c757d';
+                // Ne pas réactiver le bouton si le titre est trop long
+                if (titleInput && titleInput.value.length <= 100) {
+                    document.querySelector('button[type="submit"]').disabled = false;
+                }
+            }
+        }
+        
+        // Mettre à jour le compteur au chargement
+        updateCounter();
+        
+        // Mettre à jour le compteur lors de la saisie
+        textarea.addEventListener('input', updateCounter);
+    }
+    
+    // Validation de la longueur du titre
+    const titleInput = document.getElementById('titre');
+    const titleCounter = document.getElementById('title-counter');
+    
+    if (titleInput && titleCounter) {
+        // Fonction de mise à jour du compteur de titre
+        function updateTitleCounter() {
+            const currentLength = titleInput.value.length;
+            titleCounter.textContent = `${currentLength}/100 caractères`;
+            
+            if (currentLength > 100) {
+                titleCounter.style.color = '#dc3545';
+                document.querySelector('button[type="submit"]').disabled = true;
+            } else {
+                titleCounter.style.color = '#6c757d';
+                // Ne pas réactiver le bouton si le contenu est trop long
+                if (textarea && textarea.value.length <= maxLength) {
+                    document.querySelector('button[type="submit"]').disabled = false;
+                }
+            }
+        }
+        
+        // Mettre à jour le compteur au chargement
+        updateTitleCounter();
+        
+        // Mettre à jour le compteur lors de la saisie
+        titleInput.addEventListener('input', updateTitleCounter);
+    }
+});
+</script>
 
 <?php
 // Inclure le pied de page

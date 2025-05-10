@@ -135,14 +135,16 @@ function getConversationType($type) {
  * @param string $status Statut du message
  * @return string Libellé du statut
  */
-function getMessageStatusLabel($status) {
+if (!function_exists('getMessageStatusLabel')) {
+    function getMessageStatusLabel($status) {
     $statuses = [
-        'normal' => 'Message normal',
-        'important' => 'Message important',
-        'urgent' => 'Message urgent',
-        'annonce' => 'Annonce'
-    ];
-    return $statuses[$status] ?? 'Message normal';
+            'normal' => 'Message normal',
+            'important' => 'Message important',
+            'urgent' => 'Message urgent',
+            'annonce' => 'Annonce'
+        ];
+        return $statuses[$status] ?? 'Message normal';
+    }
 }
 
 /**

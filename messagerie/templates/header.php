@@ -32,6 +32,7 @@ $unreadCount = count($unreadNotifications);
     
     <?php if (in_array($currentPage, ['conversation'])): ?>
     <link rel="stylesheet" href="<?= $baseUrl ?>assets/css/conversation.css">
+    <link rel="stylesheet" href="<?= $baseUrl ?>assets/css/conversation-fix.css">
     <?php endif; ?>
     
     <?php if (in_array($currentPage, ['new_message', 'new_announcement', 'class_message'])): ?>
