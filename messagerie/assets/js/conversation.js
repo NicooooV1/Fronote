@@ -30,6 +30,15 @@ function initReadTracker() {
     let lastReadMessageId = 0;
     let isTracking = false;
     let isPolling = false;
+    let useSSE = true; // Utiliser SSE par défaut, fallback sur long polling si besoin
+    let eventSource = null;
+    
+    // Récupérer le dernier message lu lors du chargement initial
+    const messageElements = document.querySelectorAll('.message');
+    if (messageElements.length > 0) {
+        const lastMessage = messageElements[messageElements.length - 1];
+        lastReadMessageId = parseInt(lastMessage.dataset.id || '0', 10);
+    }
     
     // Observer pour détecter les messages visibles
     const messageObserver = new IntersectionObserver((entries) => {
@@ -39,7 +48,7 @@ function initReadTracker() {
                 const messageId = parseInt(messageEl.dataset.id, 10);
                 
                 // Si ce message est plus récent que le dernier lu, le marquer
-                if (messageId > lastReadMessageId) {
+                if (!messageEl.classList.contains('self') && messageId > lastReadMessageId) {
                     markMessageAsRead(messageId);
                     lastReadMessageId = messageId;
                 }
@@ -51,7 +60,7 @@ function initReadTracker() {
     });
     
     // Observer tous les messages
-    document.querySelectorAll('.message').forEach(message => {
+    document.querySelectorAll('.message:not(.self)').forEach(message => {
         messageObserver.observe(message);
     });
     
@@ -68,7 +77,7 @@ function initReadTracker() {
         
         const convId = new URLSearchParams(window.location.search).get('id');
         
-        fetch(`api/read_status.php?action=mark_read&conv_id=${convId}`, {
+        fetch(`api/read_status.php?action=read&conv_id=${convId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ messageId })
@@ -77,7 +86,7 @@ function initReadTracker() {
         .then(data => {
             if (data.success) {
                 // Mettre à jour l'interface avec le nouveau statut
-                updateReadStatus(data.readStatus);
+                updateReadStatus(data.read_status);
             }
             isTracking = false;
         })
@@ -121,28 +130,90 @@ function initReadTracker() {
     }
     
     /**
+     * Initialise la connexion SSE pour les mises à jour de lecture
+     */
+    function initSSE() {
+        const convId = new URLSearchParams(window.location.search).get('id');
+        if (!convId) return;
+        
+        // Fermer toute connexion existante
+        if (eventSource) {
+            eventSource.close();
+        }
+        
+        try {
+            // Créer une nouvelle connexion SSE
+            eventSource = new EventSource(`api/read_status.php?action=read-sse&conv_id=${convId}`);
+            
+            // Écouter les événements de connexion
+            eventSource.addEventListener('connected', function(e) {
+                console.log('SSE: Connexion établie');
+            });
+            
+            // Écouter les mises à jour de lecture
+            eventSource.addEventListener('read_update', function(e) {
+                const data = JSON.parse(e.data);
+                updateReadStatus(data.read_status);
+            });
+            
+            // Gérer les erreurs de connexion SSE
+            eventSource.addEventListener('error', function(e) {
+                console.error('SSE: Erreur de connexion', e);
+                
+                // Fermer la connexion et basculer vers le polling en cas d'erreur
+                eventSource.close();
+                eventSource = null;
+                useSSE = false;
+                
+                // Démarrer le polling comme fallback
+                startReadStatusPolling();
+            });
+            
+            // Keep-alive pour maintenir la connexion
+            eventSource.addEventListener('keep-alive', function(e) {
+                console.log('SSE: Keep-alive reçu');
+            });
+            
+        } catch (error) {
+            console.error('SSE: Échec de l\'initialisation', error);
+            useSSE = false;
+            
+            // Fallback sur le polling
+            startReadStatusPolling();
+        }
+    }
+    
+    /**
      * Démarre le polling pour les mises à jour de lecture
      */
     function startReadStatusPolling() {
-        if (isPolling) return;
+        if (isPolling || useSSE) return;
         
         isPolling = true;
+        console.log('Long polling: Démarrage');
         
         function pollForUpdates() {
             const convId = new URLSearchParams(window.location.search).get('id');
-            const lastMessageId = getLastMessageId();
+            if (!convId) {
+                isPolling = false;
+                return;
+            }
             
-            fetch(`api/read_status.php?action=updates&conv_id=${convId}&since=${lastReadMessageId}`)
+            fetch(`api/read_status.php?action=read-updates&conv_id=${convId}&since=${lastReadMessageId}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
                         // Appliquer les mises à jour reçues
-                        data.updates.forEach(updateReadStatus);
+                        data.updates.forEach(update => {
+                            updateReadStatus(update.read_status);
+                        });
                         
                         // Continuer le polling si toujours sur la page
                         if (document.visibilityState === 'visible') {
-                            pollForUpdates();
+                            // Ajouter un délai entre les requêtes pour réduire la charge
+                            setTimeout(pollForUpdates, 2000);
                         } else {
+                            // Pause si l'onglet n'est pas actif
                             document.addEventListener('visibilitychange', onVisibilityChange);
                             isPolling = false;
                         }
@@ -164,19 +235,35 @@ function initReadTracker() {
             }
         }
         
-        function getLastMessageId() {
-            const messages = document.querySelectorAll('.message');
-            if (messages.length === 0) return 0;
-            
-            return parseInt(messages[messages.length - 1].dataset.id, 10);
-        }
-        
         // Démarrer le polling
         pollForUpdates();
     }
     
-    // Démarrer le polling pour les mises à jour
-    startReadStatusPolling();
+    // Initialiser les mises à jour de statut de lecture
+    if (useSSE && typeof EventSource !== 'undefined') {
+        // Utiliser SSE si disponible
+        initSSE();
+    } else {
+        // Fallback sur le long polling
+        startReadStatusPolling();
+    }
+    
+    // Ajouter des gestionnaires d'événements pour les boutons de marquage
+    document.addEventListener('click', function(e) {
+        // Bouton "Marquer comme lu"
+        if (e.target.closest('.mark-read-btn')) {
+            const btn = e.target.closest('.mark-read-btn');
+            const messageId = btn.dataset.messageId;
+            markMessageAsRead(messageId);
+        }
+        
+        // Bouton "Marquer comme non lu"
+        if (e.target.closest('.mark-unread-btn')) {
+            const btn = e.target.closest('.mark-unread-btn');
+            const messageId = btn.dataset.messageId;
+            markMessageAsUnread(messageId);
+        }
+    });
 }
 
 /**
@@ -552,26 +639,6 @@ function setupRealTimeUpdates() {
 }
 
 /**
- * Fait défiler un élément jusqu'en bas
- * @param {HTMLElement} element - Élément à faire défiler jusqu'en bas
- */
-function scrollToBottom(element) {
-    if (element) {
-        element.scrollTop = element.scrollHeight;
-    }
-}
-
-/**
- * Vérifie si l'élément est défilé jusqu'en bas
- * @param {HTMLElement} element - Élément à vérifier
- * @returns {boolean} True si l'élément est défilé jusqu'en bas
- */
-function isScrolledToBottom(element) {
-    if (!element) return false;
-    return Math.abs(element.scrollHeight - element.scrollTop - element.clientHeight) < 20;
-}
-
-/**
  * Configure l'envoi AJAX des messages
  */
 function setupAjaxMessageSending() {
@@ -705,19 +772,38 @@ function appendMessageToDOM(message, container) {
             </div>
         </div>
         <div class="message-content">${nl2br(escapeHTML(message.body || message.contenu))}</div>
-        <div class="message-footer">
-            <div class="message-status">
-                ${message.is_self ? `
-                    <div class="message-read-status" data-message-id="${message.id}">
-                        ${(message.est_lu === 1 || message.est_lu === true) ? 
-                            '<div class="message-read"><i class="fas fa-check"></i> Vu</div>' : ''}
-                    </div>
-                ` : ''}
-            </div>
     `;
     
-    // Ajouter les actions si ce n'est pas un message de l'utilisateur courant
-    if (!message.is_self) {
+    // Ajouter les pièces jointes si présentes
+    if (message.pieces_jointes && message.pieces_jointes.length > 0) {
+        messageHTML += `<div class="attachments">`;
+        message.pieces_jointes.forEach(piece => {
+            messageHTML += `
+                <a href="${piece.chemin}" class="attachment" target="_blank">
+                    <i class="fas fa-paperclip"></i> ${escapeHTML(piece.nom_fichier)}
+                </a>
+            `;
+        });
+        messageHTML += `</div>`;
+    }
+    
+    messageHTML += `<div class="message-footer">`;
+    
+    // Ajouter le statut de lecture pour les propres messages de l'utilisateur
+    if (message.is_self) {
+        messageHTML += `
+            <div class="message-status">
+                <div class="message-read-status" data-message-id="${message.id}">
+                    ${(message.est_lu === 1 || message.est_lu === true) ? 
+                        '<div class="all-read"><i class="fas fa-check-double"></i> Vu</div>' : 
+                        '<div class="partial-read"><i class="fas fa-check"></i> <span class="read-count">0/' + 
+                        (document.querySelectorAll('.participants-list li:not(.left)').length - 1) + 
+                        '</span></div>'}
+                </div>
+            </div>
+        `;
+    } else {
+        // Ajouter les actions pour les messages des autres
         messageHTML += `
             <div class="message-actions">
                 ${(message.est_lu === 1 || message.est_lu === true) ? 
@@ -735,35 +821,51 @@ function appendMessageToDOM(message, container) {
         `;
     }
     
-    messageHTML += `
-        </div>
-    `;
+    messageHTML += `</div>`;
     
     // Définir le HTML du message
     messageElement.innerHTML = messageHTML;
     
-    // Ajouter l'événement pour les boutons
-    setTimeout(() => {
-        const readBtn = messageElement.querySelector('.mark-read-btn');
-        const unreadBtn = messageElement.querySelector('.mark-unread-btn');
-        
-        if (readBtn) {
-            readBtn.addEventListener('click', function() {
-                const messageId = this.getAttribute('data-message-id');
-                markMessageAsRead(messageId);
-            });
-        }
-        
-        if (unreadBtn) {
-            unreadBtn.addEventListener('click', function() {
-                const messageId = this.getAttribute('data-message-id');
-                markMessageAsUnread(messageId);
-            });
-        }
-    }, 100);
-    
     // Ajouter le message au conteneur
     container.appendChild(messageElement);
+    
+    // Observer le nouveau message si ce n'est pas un message de l'utilisateur
+    if (!message.is_self) {
+        const messageObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const messageEl = entry.target;
+                    const messageId = parseInt(messageEl.dataset.id, 10);
+                    markMessageAsRead(messageId);
+                    messageObserver.unobserve(messageEl);
+                }
+            });
+        }, {
+            root: document.querySelector('.messages-container'),
+            threshold: 0.5
+        });
+        messageObserver.observe(messageElement);
+    }
+}
+
+/**
+ * Fait défiler un élément jusqu'en bas
+ * @param {HTMLElement} element - Élément à faire défiler jusqu'en bas
+ */
+function scrollToBottom(element) {
+    if (element) {
+        element.scrollTop = element.scrollHeight;
+    }
+}
+
+/**
+ * Vérifie si l'élément est défilé jusqu'en bas
+ * @param {HTMLElement} element - Élément à vérifier
+ * @returns {boolean} True si l'élément est défilé jusqu'en bas
+ */
+function isScrolledToBottom(element) {
+    if (!element) return false;
+    return Math.abs(element.scrollHeight - element.scrollTop - element.clientHeight) < 20;
 }
 
 /**
@@ -898,41 +1000,36 @@ function loadParticipants() {
  * @param {number} messageId - ID du message
  */
 function markMessageAsRead(messageId) {
-    fetch(`api/messages.php?id=${messageId}&action=mark_read`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Mettre à jour l'interface utilisateur
-                const message = document.querySelector(`.message[data-id="${messageId}"]`);
-                if (message) {
-                    message.classList.add('read');
+    const convId = new URLSearchParams(window.location.search).get('id');
+    if (!convId) return;
+    
+    fetch(`api/read_status.php?action=read&conv_id=${convId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Mettre à jour l'interface utilisateur
+            const message = document.querySelector(`.message[data-id="${messageId}"]`);
+            if (message) {
+                message.classList.add('read');
+                
+                // Mettre à jour le bouton
+                const readBtn = message.querySelector('.mark-read-btn');
+                if (readBtn) {
+                    const unreadBtn = document.createElement('button');
+                    unreadBtn.className = 'btn-icon mark-unread-btn';
+                    unreadBtn.setAttribute('data-message-id', messageId);
+                    unreadBtn.innerHTML = '<i class="fas fa-envelope"></i> Marquer comme non lu';
                     
-                    // Mettre à jour l'indicateur de lecture
-                    const messageStatus = message.querySelector('.message-status');
-                    if (messageStatus && !message.querySelector('.message-read')) {
-                        const readStatus = document.createElement('div');
-                        readStatus.className = 'message-read';
-                        readStatus.innerHTML = '<i class="fas fa-check"></i> Vu';
-                        messageStatus.appendChild(readStatus);
-                    }
-                    
-                    // Remplacer le bouton
-                    const readBtn = message.querySelector('.mark-read-btn');
-                    if (readBtn) {
-                        const unreadBtn = document.createElement('button');
-                        unreadBtn.className = 'btn-icon mark-unread-btn';
-                        unreadBtn.setAttribute('data-message-id', messageId);
-                        unreadBtn.innerHTML = '<i class="fas fa-envelope"></i> Marquer comme non lu';
-                        unreadBtn.addEventListener('click', function() {
-                            markMessageAsUnread(messageId);
-                        });
-                        
-                        readBtn.parentNode.replaceChild(unreadBtn, readBtn);
-                    }
+                    readBtn.parentNode.replaceChild(unreadBtn, readBtn);
                 }
             }
-        })
-        .catch(error => console.error('Erreur:', error));
+        }
+    })
+    .catch(error => console.error('Erreur:', error));
 }
 
 /**
@@ -954,22 +1051,13 @@ function markMessageAsUnread(messageId) {
                 if (message) {
                     message.classList.remove('read');
                     
-                    // Supprimer l'indicateur de lecture
-                    const readIndicator = message.querySelector('.message-read');
-                    if (readIndicator) {
-                        readIndicator.remove();
-                    }
-                    
-                    // Remplacer le bouton
+                    // Mettre à jour le bouton
                     const unreadBtn = message.querySelector('.mark-unread-btn');
                     if (unreadBtn) {
                         const readBtn = document.createElement('button');
                         readBtn.className = 'btn-icon mark-read-btn';
                         readBtn.setAttribute('data-message-id', messageId);
                         readBtn.innerHTML = '<i class="fas fa-envelope-open"></i> Marquer comme lu';
-                        readBtn.addEventListener('click', function() {
-                            markMessageAsRead(messageId);
-                        });
                         
                         unreadBtn.parentNode.replaceChild(readBtn, unreadBtn);
                     }

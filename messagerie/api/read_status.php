@@ -90,6 +90,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
             throw new Exception("Vous n'êtes pas autorisé à accéder à cette conversation");
         }
         
+        // Envoyer des headers pour éviter la mise en cache
+        header('Cache-Control: no-cache, must-revalidate');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+        
         // Fonction pour vérifier les mises à jour
         function checkForUpdates($pdo, $convId, $since) {
             // Récupérer tous les messages de la conversation depuis lastMessageId
@@ -102,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
             $messages = $messagesStmt->fetchAll(PDO::FETCH_COLUMN);
             
             if (empty($messages)) {
-                return [];
+                return ['updates' => []];
             }
             
             // Récupérer les versions actuelles de tous les participants
@@ -169,20 +174,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
                 $result = checkForUpdates($pdo, $convId, $since);
                 $updates = $result['updates'];
                 
-                // Renvoyer les mises à jour
-                echo json_encode([
-                    'success' => true,
-                    'updates' => $updates,
-                    'timestamp' => time()
-                ]);
-                exit;
+                // Si des mises à jour sont disponibles, les renvoyer
+                if (!empty($updates)) {
+                    echo json_encode([
+                        'success' => true,
+                        'updates' => $updates,
+                        'timestamp' => time()
+                    ]);
+                    exit;
+                }
+                
+                // Mettre à jour la somme des versions pour éviter de boucler pour rien
+                $currentVersionSum = $newVersionSum;
             }
             
             // Fermer et réouvrir la connexion pour éviter le timeout
-            if (time() - $startTime > 10) {
+            if (time() - $startTime > 15) {
                 $pdo = null;
                 $pdo = new PDO($dsn, $user, $pass, $options);
             }
+            
+            // Vider le tampon de sortie pour éviter les timeouts
+            ob_flush();
+            flush();
         }
         
         // Si aucune mise à jour n'est disponible après le temps d'attente, renvoyer une réponse vide
@@ -228,6 +242,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
                 echo "id: $id\n";
             }
             echo "data: " . json_encode($data) . "\n\n";
+            ob_flush();
             flush();
         }
         
@@ -248,8 +263,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
         // Boucle principale de l'événement SSE
         $connectionTime = time();
         $eventId = $lastEventId;
+        $keepAliveInterval = 15; // Envoyer un keep-alive toutes les 15 secondes
+        $lastKeepAlive = time();
+        
+        // Récupérer tous les messages de la conversation
+        $messagesStmt = $pdo->prepare("
+            SELECT id FROM messages
+            WHERE conversation_id = ?
+            ORDER BY id ASC
+        ");
+        $messagesStmt->execute([$convId]);
+        $messages = $messagesStmt->fetchAll(PDO::FETCH_COLUMN);
         
         while (true) {
+            // Envoyer un keep-alive périodiquement
+            if (time() - $lastKeepAlive >= $keepAliveInterval) {
+                sendSSE('keep-alive', ['time' => time()]);
+                $lastKeepAlive = time();
+            }
+            
             // Vérifier les nouvelles versions
             $versionStmt->execute([$convId]);
             $newVersions = [];
@@ -269,15 +301,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
             
             // Si des participants ont changé, envoyer des mises à jour
             if (!empty($changedParticipants)) {
-                // Récupérer les messages de la conversation
-                $messagesStmt = $pdo->prepare("
-                    SELECT id FROM messages
-                    WHERE conversation_id = ?
-                    ORDER BY id ASC
-                ");
-                $messagesStmt->execute([$convId]);
-                $messages = $messagesStmt->fetchAll(PDO::FETCH_COLUMN);
-                
                 foreach ($messages as $messageId) {
                     $readStatus = getMessageReadStatus($messageId);
                     
@@ -299,8 +322,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
                 $pdo = new PDO($dsn, $user, $pass, $options);
                 $connectionTime = time();
                 
-                // Envoyer un événement keep-alive
-                sendSSE('keep-alive', ['time' => time()]);
+                // Recharger les versions des participants
+                $versionStmt = $pdo->prepare("
+                    SELECT user_id, user_type, version FROM conversation_participants
+                    WHERE conversation_id = ? AND is_deleted = 0
+                ");
+                
+                // Vérifier si le client est toujours connecté
+                if (connection_aborted()) {
+                    exit;
+                }
             }
         }
         

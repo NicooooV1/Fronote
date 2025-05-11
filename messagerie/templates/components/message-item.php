@@ -68,16 +68,20 @@ $messageClasses = array_filter($messageClasses);
             <?php if ($isSelf): ?>
                 <div class="message-read-status" data-message-id="<?= (int)$message['id'] ?>">
                     <?php if (isset($message['read_status']) && $message['read_status']['all_read']): ?>
+                        <!-- Badge bleu quand tous ont lu (conformément au cahier des charges) -->
                         <div class="all-read">
                             <i class="fas fa-check-double"></i> Vu
                         </div>
-                    <?php elseif (isset($message['read_status']) && $message['read_status']['read_count'] > 0): ?>
+                    <?php elseif (isset($message['read_status']) && $message['read_status']['read_by_count'] > 0): ?>
+                        <!-- Badge gris avec détail des lecteurs (conformément au cahier des charges) -->
                         <div class="partial-read">
                             <i class="fas fa-check"></i> 
-                            <span class="read-count"><?= $message['read_status']['read_count'] ?>/<?= $message['read_status']['total_participants'] - 1 ?></span>
-                            <span class="read-tooltip" title="<?= implode(', ', array_column($message['read_status']['readers'] ?? [], 'reader_name')) ?>">
+                            <span class="read-count"><?= $message['read_status']['read_by_count'] ?>/<?= $message['read_status']['total_participants'] - 1 ?></span>
+                            <?php if (!empty($message['read_status']['readers'])): ?>
+                            <span class="read-tooltip" title="<?= htmlspecialchars(implode(', ', array_column($message['read_status']['readers'], 'nom_complet'))) ?>">
                                 <i class="fas fa-info-circle"></i>
                             </span>
+                            <?php endif; ?>
                         </div>
                     <?php endif; ?>
                 </div>
