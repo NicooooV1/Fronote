@@ -6,6 +6,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialiser les actions de conversation
     initConversationActions();
     
+    // Initialiser la configuration des connections actives
+    setupActiveConnections();
+    
     // Initialisation du système de lecture des messages
     initReadTracker();
     
@@ -26,15 +29,36 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 /**
- * Configure un gestionnaire pour nettoyer les ressources avant la navigation
+ * Configure les connections actives
  */
-function setupBeforeUnloadHandler() {
+function setupActiveConnections() {
     // Variable globale pour suivre l'état des connexions
+    // Initialiser à TRUE par défaut pour permettre le démarrage immédiat du polling
     window.activeConnections = {
-        polling: false,
+        messagePolling: true,  // Pour les messages
+        readStatusPolling: true, // Pour les status de lecture
         abortController: new AbortController()
     };
     
+    // Réactiver le polling si l'onglet devient visible
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+            window.activeConnections.messagePolling = true;
+            window.activeConnections.readStatusPolling = true;
+        }
+    });
+    
+    // Réactiver également le polling au focus de la fenêtre
+    window.addEventListener('focus', function() {
+        window.activeConnections.messagePolling = true;
+        window.activeConnections.readStatusPolling = true;
+    });
+}
+
+/**
+ * Configure un gestionnaire pour nettoyer les ressources avant la navigation
+ */
+function setupBeforeUnloadHandler() {
     // Gestionnaire d'événement pour la navigation
     window.addEventListener('beforeunload', cleanupResources);
     window.addEventListener('pagehide', cleanupResources);
@@ -42,13 +66,16 @@ function setupBeforeUnloadHandler() {
     // Fonction pour nettoyer les ressources
     function cleanupResources() {
         // Annuler les requêtes fetch en cours
-        window.activeConnections.abortController.abort();
+        if (window.activeConnections && window.activeConnections.abortController) {
+            window.activeConnections.abortController.abort();
+            window.activeConnections.abortController = new AbortController();
+        }
         
-        // Créer un nouveau AbortController pour les prochaines requêtes
-        window.activeConnections.abortController = new AbortController();
-        
-        // Indiquer que le polling doit s'arrêter
-        window.activeConnections.polling = false;
+        // Indiquer que le polling doit s'arrêter (utiliser des flags séparés)
+        if (window.activeConnections) {
+            window.activeConnections.messagePolling = false;
+            window.activeConnections.readStatusPolling = false;
+        }
     }
 }
 
@@ -182,22 +209,32 @@ function initReadTracker() {
     
     /**
      * Démarre le polling AJAX pour les mises à jour de lecture
+     * Utilise setInterval au lieu de setTimeout récursif
      */
     function startPolling() {
-        pollingActive = true;
-        console.log('AJAX Polling: Démarrage');
-        window.activeConnections.polling = true;
+        console.log('AJAX Read Status Polling: Démarrage');
+        
+        // Démarrer immédiatement avec un état initial
+        pollForUpdates();
+        
+        // Configurer un intervalle régulier au lieu d'un appel récursif
+        const pollingIntervalId = setInterval(() => {
+            // Ne déclencher le polling que si l'indicateur est actif
+            if (window.activeConnections && window.activeConnections.readStatusPolling) {
+                pollForUpdates();
+            } else {
+                console.log('AJAX Read Status Polling: En pause');
+            }
+        }, pollingInterval);
+        
+        // Stocker l'ID d'intervalle pour pouvoir l'annuler plus tard si nécessaire
+        window.readStatusPollingId = pollingIntervalId;
         
         function pollForUpdates() {
-            if (!pollingActive || !window.activeConnections.polling) {
-                console.log('AJAX Polling: Arrêté');
-                return;
-            }
-            
             const convId = new URLSearchParams(window.location.search).get('id');
             if (!convId) {
-                pollingActive = false;
-                window.activeConnections.polling = false;
+                console.log('AJAX Read Status Polling: Pas d\'ID de conversation, arrêt');
+                clearInterval(pollingIntervalId);
                 return;
             }
             
@@ -235,37 +272,27 @@ function initReadTracker() {
                                 }
                             });
                         }
-                        
-                        // Continuer le polling après un délai
-                        setTimeout(pollForUpdates, pollingInterval);
                     } else {
-                        console.error('Erreur de polling:', data.error || 'Erreur inconnue');
-                        // Réessayer après un délai plus long en cas d'erreur
-                        setTimeout(pollForUpdates, pollingInterval * 2);
+                        console.error('Erreur de polling des statuts de lecture:', data.error || 'Erreur inconnue');
                     }
                 })
                 .catch(error => {
                     // Ne pas afficher d'erreur si la requête a été annulée (navigation)
                     if (error.name !== 'AbortError') {
-                        console.error('Erreur de polling:', error);
-                        // Augmenter l'intervalle en cas d'erreur
-                        setTimeout(pollForUpdates, pollingInterval * 2);
+                        console.error('Erreur de polling des statuts de lecture:', error);
                     }
                 });
         }
         
-        // Démarrer le polling
-        pollForUpdates();
-        
         // Gérer les événements de visibilité du document
         document.addEventListener('visibilitychange', function() {
             if (document.visibilityState === 'visible') {
-                if (!pollingActive && window.activeConnections.polling) {
-                    pollingActive = true;
-                    pollForUpdates();
-                }
+                // Réactiver le polling et actualiser immédiatement
+                window.activeConnections.readStatusPolling = true;
                 // Réinitialiser l'intervalle quand la page est visible
                 pollingInterval = 3000;
+                // Forcer une mise à jour immédiate
+                pollForUpdates();
             } else {
                 // Ralentir le polling quand l'onglet n'est pas actif
                 pollingInterval = 10000; // 10 secondes quand inactif
@@ -275,6 +302,8 @@ function initReadTracker() {
         // Réinitialiser l'intervalle quand l'onglet redevient actif
         window.addEventListener('focus', function() {
             pollingInterval = 3000; // Retour à 3 secondes quand actif
+            // Forcer une mise à jour immédiate
+            pollForUpdates();
         });
     }
     
@@ -363,7 +392,6 @@ function setupRealTimeUpdates() {
     const refreshInterval = 5000; // 5 secondes entre chaque vérification
     let lastTimestamp = 0;
     let isCheckingForUpdates = false; // Flag pour éviter les requêtes concurrentes
-    let updateCheckActive = true;
     
     // Initialiser le timestamp de départ avec le dernier message
     const lastMessage = document.querySelector('.message:last-child');
@@ -377,7 +405,9 @@ function setupRealTimeUpdates() {
     // Fonction de vérification des mises à jour
     function checkForUpdates() {
         // Éviter les requêtes concurrentes
-        if (isCheckingForUpdates || !updateCheckActive || !window.activeConnections.polling) return;
+        if (isCheckingForUpdates || !window.activeConnections.messagePolling) {
+            return;
+        }
         
         // Vérifier si l'utilisateur a le focus sur l'onglet et n'est pas en train d'écrire
         const textareaActive = document.querySelector('textarea:focus');
@@ -385,7 +415,6 @@ function setupRealTimeUpdates() {
         
         if (textareaActive || modalOpen) {
             // L'utilisateur est en train d'écrire ou un modal est ouvert, on reporte la vérification
-            setTimeout(checkForUpdates, refreshInterval);
             return;
         }
         
@@ -412,28 +441,19 @@ function setupRealTimeUpdates() {
                     refreshParticipantsList();
                 }
                 
-                // Mettre à jour le timestamp
+                // Mettre à jour le timestamp - Utiliser le timestamp du dernier message
+                // au lieu du timestamp actuel pour éviter les confusions
                 if (data.timestamp) {
                     lastTimestamp = data.timestamp;
                 }
                 
                 isCheckingForUpdates = false;
-                
-                // Programmer la prochaine vérification si nous sommes toujours actifs
-                if (updateCheckActive && window.activeConnections.polling) {
-                    setTimeout(checkForUpdates, refreshInterval);
-                }
             })
             .catch(error => {
                 // Ne pas afficher d'erreur si la requête a été annulée (navigation)
                 if (error.name !== 'AbortError') {
                     console.error('Erreur lors de la vérification des mises à jour:', error);
                     isCheckingForUpdates = false;
-                    
-                    // Réessayer après un délai en cas d'erreur
-                    if (updateCheckActive && window.activeConnections.polling) {
-                        setTimeout(checkForUpdates, refreshInterval * 2);
-                    }
                 }
             });
     }
@@ -567,13 +587,19 @@ function setupRealTimeUpdates() {
             });
     }
     
-    // Démarrer la vérification des mises à jour
-    setTimeout(checkForUpdates, 1000); // Démarrer après 1 seconde
+    // Utiliser setInterval au lieu de setTimeout récursif pour plus de robustesse
+    const messagePollingId = setInterval(() => {
+        // Ne déclencher le polling que si l'indicateur est actif
+        if (window.activeConnections && window.activeConnections.messagePolling) {
+            checkForUpdates();
+        }
+    }, refreshInterval);
     
-    // Gestionnaire pour arrêter les vérifications lors de la navigation
-    window.addEventListener('beforeunload', function() {
-        updateCheckActive = false;
-    });
+    // Stocker l'ID d'intervalle pour pouvoir l'annuler plus tard si nécessaire
+    window.messagePollingId = messagePollingId;
+    
+    // Effectuer une vérification initiale
+    setTimeout(checkForUpdates, 1000);
     
     // Gestion du scroll - si l'utilisateur fait défiler vers le bas, masquer l'indicateur
     const messagesContainer = document.querySelector('.messages-container');
