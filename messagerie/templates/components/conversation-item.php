@@ -1,108 +1,192 @@
 <?php
 /**
- * Item d'un message dans une conversation
+ * Item for conversation list or message display
  * 
- * @param array $message or $conversation The message/conversation to display
+ * @param array $conversation The conversation to display in listing view
+ * @param array $message The message to display in conversation view
  * @param array $user Current logged-in user
- * @param bool $canReply Whether the user can reply
  */
 
-// First, determine which variable to use (message or conversation)
-$item = isset($message) ? $message : (isset($conversation) ? $conversation : []);
+// First, determine which type of view we're in
+$inConversationView = isset($message) && !empty($message);
+$inListingView = isset($conversation) && !empty($conversation);
 
-// Classes CSS for the message
-$messageClasses = [];
-$isSelf = isset($item['expediteur_id']) && isset($item['expediteur_type']) && isset($user) && 
-          isCurrentUser($item['expediteur_id'], $item['expediteur_type'], $user);
-if ($isSelf) {
-    $messageClasses[] = 'self';
-}
+// Classes CSS for the item
+$itemClasses = [];
 
-// Importance/status of the message
-$importance = isset($item['status']) ? $item['status'] : 'normal';
-$messageClasses[] = $importance;
+if ($inConversationView) {
+    // CONVERSATION VIEW - displaying a message
+    $isSelf = isset($message['expediteur_id'], $message['expediteur_type']) && 
+              isCurrentUser($message['expediteur_id'], $message['expediteur_type'], $user);
+    if ($isSelf) {
+        $itemClasses[] = 'self';
+    }
 
-// Read/unread message
-if (isset($item['est_lu']) && $item['est_lu']) {
-    $messageClasses[] = 'read';
-}
+    // Importance/status of the message
+    $importance = isset($message['status']) ? $message['status'] : 'normal';
+    $itemClasses[] = $importance;
 
-// Announcement
-if (isset($conversation) && isset($conversation['type']) && $conversation['type'] === 'annonce') {
-    $messageClasses[] = 'annonce';
-}
+    // Read/unread message
+    if (isset($message['est_lu']) && $message['est_lu']) {
+        $itemClasses[] = 'read';
+    }
 
-// Filter empty classes
-$messageClasses = array_filter($messageClasses);
-?>
-
-<div class="message <?= implode(' ', $messageClasses) ?>" data-id="<?= isset($item['id']) ? (int)$item['id'] : 0 ?>" data-timestamp="<?= isset($item['date_envoi']) ? strtotime($item['date_envoi']) : 0 ?>">
-    <div class="message-header">
-        <div class="sender">
-            <strong><?= isset($item['expediteur_nom']) ? htmlspecialchars($item['expediteur_nom']) : 'Unknown' ?></strong>
-            <span class="sender-type"><?= isset($item['expediteur_type']) ? getParticipantType($item['expediteur_type']) : '' ?></span>
+    // Display a message
+    ?>
+    <div class="message <?= implode(' ', $itemClasses) ?>" data-id="<?= (int)$message['id'] ?>" data-timestamp="<?= strtotime($message['date_envoi']) ?>">
+        <!-- Message display for conversation view -->
+        <div class="message-header">
+            <div class="sender">
+                <strong><?= htmlspecialchars($message['expediteur_nom']) ?></strong>
+                <span class="sender-type"><?= getParticipantType($message['expediteur_type']) ?></span>
+            </div>
+            <div class="message-meta">
+                <?php if ($importance !== 'normal'): ?>
+                <span class="importance-tag <?= htmlspecialchars($importance) ?>">
+                    <?= htmlspecialchars($importance) ?>
+                </span>
+                <?php endif; ?>
+                <span class="date"><?= formatDate($message['date_envoi']) ?></span>
+            </div>
         </div>
-        <div class="message-meta">
-            <?php if ($importance !== 'normal'): ?>
-            <span class="importance-tag <?= htmlspecialchars($importance) ?>">
-                <?= htmlspecialchars($importance) ?>
-            </span>
-            <?php endif; ?>
-            <span class="date"><?= isset($item['date_envoi']) ? formatDate($item['date_envoi']) : 'Jamais' ?></span>
-        </div>
-    </div>
-    
-    <div class="message-content">
-        <?= isset($item['contenu']) ? nl2br(linkify(htmlspecialchars($item['contenu']))) : '' ?>
         
-        <?php if (isset($item['pieces_jointes']) && !empty($item['pieces_jointes'])): ?>
-        <div class="attachments">
-            <?php foreach ($item['pieces_jointes'] as $attachment): ?>
-            <a href="<?= isset($baseUrl) ? $baseUrl : '' ?><?= htmlspecialchars($attachment['chemin']) ?>" class="attachment" target="_blank">
-                <i class="fas fa-paperclip"></i> <?= htmlspecialchars($attachment['nom_fichier']) ?>
-            </a>
-            <?php endforeach; ?>
-        </div>
-        <?php endif; ?>
-    </div>
-    
-    <div class="message-footer">
-        <!-- Improved display of read status -->
-        <div class="message-status">
-            <?php if ($isSelf): ?>
-                <div class="message-read-status" data-message-id="<?= isset($item['id']) ? (int)$item['id'] : 0 ?>">
-                    <?php if (isset($item['read_status']) && $item['read_status']['all_read']): ?>
-                        <div class="all-read">
-                            <i class="fas fa-check-double"></i> Vu
-                        </div>
-                    <?php elseif (isset($item['read_status']) && $item['read_status']['read_by_count'] > 0): ?>
-                        <div class="partial-read">
-                            <i class="fas fa-check"></i> 
-                            <span class="read-count"><?= $item['read_status']['read_by_count'] ?>/<?= $item['read_status']['total_participants'] - 1 ?></span>
-                            <span class="read-tooltip" title="<?= implode(', ', array_column($item['read_status']['readers'], 'nom_complet')) ?>">
-                                <i class="fas fa-info-circle"></i>
-                            </span>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            <?php endif; ?>
-        </div>
+        <div class="message-content">
+            <?= nl2br(linkify(htmlspecialchars($message['contenu']))) ?>
             
-        <?php if (isset($canReply) && $canReply && !$isSelf): ?>
-        <div class="message-actions">
-            <?php if (isset($item['est_lu']) && $item['est_lu']): ?>
-                <button class="btn-icon mark-unread-btn" data-message-id="<?= isset($item['id']) ? (int)$item['id'] : 0 ?>">
-                    <i class="fas fa-envelope"></i> Marquer comme non lu
-                </button>
-            <?php else: ?>
-                <button class="btn-icon mark-read-btn" data-message-id="<?= isset($item['id']) ? (int)$item['id'] : 0 ?>">
-                    <i class="fas fa-envelope-open"></i> Marquer comme lu
-                </button>
+            <?php if (!empty($message['pieces_jointes'])): ?>
+            <div class="attachments">
+                <?php foreach ($message['pieces_jointes'] as $attachment): ?>
+                <a href="<?= isset($baseUrl) ? $baseUrl : '' ?><?= htmlspecialchars($attachment['chemin']) ?>" class="attachment" target="_blank">
+                    <i class="fas fa-paperclip"></i> <?= htmlspecialchars($attachment['nom_fichier']) ?>
+                </a>
+                <?php endforeach; ?>
+            </div>
             <?php endif; ?>
-            <button class="btn-icon" onclick="replyToMessage(<?= isset($item['id']) ? (int)$item['id'] : 0 ?>, '<?= isset($item['expediteur_nom']) ? htmlspecialchars(addslashes($item['expediteur_nom'])) : '' ?>')">
-                <i class="fas fa-reply"></i> Répondre
-            </button>
         </div>
-        <?php endif; ?>
+        
+        <div class="message-footer">
+            <!-- Read status display -->
+            <div class="message-status">
+                <?php if ($isSelf): ?>
+                    <div class="message-read-status" data-message-id="<?= (int)$message['id'] ?>">
+                        <?php if (isset($message['read_status']) && $message['read_status']['all_read']): ?>
+                            <div class="all-read">
+                                <i class="fas fa-check-double"></i> Vu
+                            </div>
+                        <?php elseif (isset($message['read_status']) && $message['read_status']['read_by_count'] > 0): ?>
+                            <div class="partial-read">
+                                <i class="fas fa-check"></i> 
+                                <span class="read-count"><?= $message['read_status']['read_by_count'] ?>/<?= $message['read_status']['total_participants'] - 1 ?></span>
+                                <span class="read-tooltip" title="<?= implode(', ', array_column($message['read_status']['readers'], 'nom_complet')) ?>">
+                                    <i class="fas fa-info-circle"></i>
+                                </span>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+                
+            <?php if (isset($canReply) && $canReply && !$isSelf): ?>
+            <div class="message-actions">
+                <?php if (isset($message['est_lu']) && $message['est_lu']): ?>
+                    <button class="btn-icon mark-unread-btn" data-message-id="<?= (int)$message['id'] ?>">
+                        <i class="fas fa-envelope"></i> Marquer comme non lu
+                    </button>
+                <?php else: ?>
+                    <button class="btn-icon mark-read-btn" data-message-id="<?= (int)$message['id'] ?>">
+                        <i class="fas fa-envelope-open"></i> Marquer comme lu
+                    </button>
+                <?php endif; ?>
+                <button class="btn-icon" onclick="replyToMessage(<?= (int)$message['id'] ?>, '<?= htmlspecialchars(addslashes($message['expediteur_nom'])) ?>')">
+                    <i class="fas fa-reply"></i> Répondre
+                </button>
+            </div>
+            <?php endif; ?>
+        </div>
     </div>
-</div>
+    <?php
+} elseif ($inListingView) {
+    // LISTING VIEW - displaying a conversation item in the list
+    // Add unread class if needed
+    if (isset($conversation['non_lus']) && $conversation['non_lus'] > 0) {
+        $itemClasses[] = 'unread';
+    }
+    
+    // Add type-specific class (if it's an announcement)
+    if (isset($conversation['type']) && $conversation['type'] === 'annonce') {
+        $itemClasses[] = 'annonce';
+    }
+    
+    // Get the conversation ID
+    $convId = isset($conversation['id']) ? (int)$conversation['id'] : 0;
+    
+    // This is specifically for the conversation list view
+    ?>
+    <a href="conversation.php?id=<?= $convId ?>" class="conversation-item <?= implode(' ', $itemClasses) ?>">
+        <!-- Checkbox for bulk actions -->
+        <label class="checkbox-container conversation-selector">
+            <input type="checkbox" class="conversation-checkbox" value="<?= $convId ?>">
+            <span class="checkmark"></span>
+        </label>
+        
+        <!-- Conversation icon based on type -->
+        <div class="conversation-icon <?= isset($conversation['type']) ? $conversation['type'] : '' ?>">
+            <i class="fas fa-<?= getConversationIcon(isset($conversation['type']) ? $conversation['type'] : 'standard') ?>"></i>
+        </div>
+        
+        <div class="conversation-content">
+            <div class="conversation-header">
+                <h3><?= isset($conversation['titre']) ? htmlspecialchars($conversation['titre']) : 'Sans titre' ?></h3>
+                
+                <!-- Quick actions menu -->
+                <div class="quick-actions">
+                    <button class="quick-actions-btn" onclick="toggleQuickActions(<?= $convId ?>); return false;">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <div class="quick-actions-menu" id="quick-actions-<?= $convId ?>">
+                        <?php if ($currentFolder !== 'corbeille'): ?>
+                            <?php if ($currentFolder !== 'archives'): ?>
+                            <form method="post" action="">
+                                <input type="hidden" name="action" value="archive">
+                                <input type="hidden" name="conv_id" value="<?= $convId ?>">
+                                <button type="submit"><i class="fas fa-archive"></i> Archiver</button>
+                            </form>
+                            <?php endif; ?>
+                            
+                            <form method="post" action="">
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="conv_id" value="<?= $convId ?>">
+                                <button type="submit" class="delete"><i class="fas fa-trash"></i> Supprimer</button>
+                            </form>
+                        <?php else: ?>
+                            <form method="post" action="">
+                                <input type="hidden" name="action" value="restore">
+                                <input type="hidden" name="conv_id" value="<?= $convId ?>">
+                                <button type="submit"><i class="fas fa-trash-restore"></i> Restaurer</button>
+                            </form>
+                            
+                            <form method="post" action="">
+                                <input type="hidden" name="action" value="delete_permanently">
+                                <input type="hidden" name="conv_id" value="<?= $convId ?>">
+                                <button type="submit" class="delete"><i class="fas fa-trash-alt"></i> Supprimer définitivement</button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="conversation-meta">
+                <span class="type"><?= isset($conversation['type']) ? getConversationType($conversation['type']) : 'Message' ?></span>
+                <span class="date"><?= isset($conversation['dernier_message']) ? formatDate($conversation['dernier_message']) : formatDate($conversation['date_creation']) ?></span>
+                <?php if (isset($conversation['status']) && $conversation['status'] !== 'normal'): ?>
+                    <span class="message-status <?= $conversation['status'] ?>"><?= ucfirst($conversation['status']) ?></span>
+                <?php endif; ?>
+            </div>
+        </div>
+    </a>
+    <?php
+} else {
+    // Fallback display if neither condition is met
+    echo '<div class="error-item">Données indisponibles</div>';
+}
+?>
