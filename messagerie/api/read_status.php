@@ -42,6 +42,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Point d'entrée SSE pour les statuts de lecture en temps réel
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id'], $_GET['action']) && $_GET['action'] === 'stream') {
+    // Désactiver la limite de temps d'exécution pour les connexions SSE
+    set_time_limit(0);
+    
     $convId = (int)$_GET['conv_id'];
     $lastMessageId = isset($_GET['since']) ? (int)$_GET['since'] : 0;
     $lastVersionSum = isset($_GET['version']) ? (int)$_GET['version'] : 0;
@@ -197,7 +200,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id'], $_GET['actio
  * @return string
  */
 function generateSSEToken($convId, $userId, $userType) {
-    $secret = 'BkTW#9f7@L!zP3vQ#Rx*8jN2'; // Change in production
+    $secrets = require_once __DIR__ . '/../config/secrets.php';
+    $secret = $secrets['sse_token_secret'];
+    
     $expiry = time() + 3600; // 1 heure
     $data = $convId . '|' . $userId . '|' . $userType . '|' . $expiry;
     $signature = hash_hmac('sha256', $data, $secret);
@@ -214,16 +219,25 @@ function generateSSEToken($convId, $userId, $userType) {
  * @return bool
  */
 function validateSSEToken($token, $convId, $userId, $userType) {
-    $secret = 'BkTW#9f7@L!zP3vQ#Rx*8jN2'; // Même clé que dans sse_token.php
+    $secrets = require_once __DIR__ . '/../config/secrets.php';
+    $secret = $secrets['sse_token_secret'];
     
     try {
+        // Ajout d'une vérification supplémentaire
+        if (empty($token)) {
+            error_log("Empty SSE token");
+            return false;
+        }
+        
         $decoded = base64_decode($token);
         if ($decoded === false) {
+            error_log("Failed to decode SSE token");
             return false;
         }
         
         $parts = explode('|', $decoded);
         if (count($parts) !== 5) { // Vérifier qu'il y a 5 parties
+            error_log("Invalid token format: ".count($parts)." parts instead of 5");
             return false;
         }
         
@@ -231,6 +245,7 @@ function validateSSEToken($token, $convId, $userId, $userType) {
         
         // Vérifier l'expiration
         if (time() > (int)$expiry) {
+            error_log("Token expired");
             return false;
         }
         
@@ -238,6 +253,7 @@ function validateSSEToken($token, $convId, $userId, $userType) {
         if ((int)$tokenConvId !== (int)$convId || 
             (int)$tokenUserId !== (int)$userId || 
             $tokenUserType !== $userType) {
+            error_log("Token parameters mismatch");
             return false;
         }
         
@@ -245,7 +261,11 @@ function validateSSEToken($token, $convId, $userId, $userType) {
         $data = $tokenConvId . '|' . $tokenUserId . '|' . $tokenUserType . '|' . $expiry;
         $computedSignature = hash_hmac('sha256', $data, $secret);
         
-        return hash_equals($computedSignature, $signature);
+        $valid = hash_equals($computedSignature, $signature);
+        if (!$valid) {
+            error_log("Invalid token signature");
+        }
+        return $valid;
         
     } catch (Exception $e) {
         // Journal de l'erreur mais ne pas interrompre le flux
@@ -253,6 +273,7 @@ function validateSSEToken($token, $convId, $userId, $userType) {
         return false;
     }
 }
+
 
 // Endpoint pour marquer un message comme lu
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['conv_id']) && isset($_GET['action']) && $_GET['action'] === 'read') {

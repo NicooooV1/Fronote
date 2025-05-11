@@ -60,7 +60,7 @@ function getReconnectDelay(attempts) {
 }
 
 /**
- * Configure la connexion SSE pour les mises à jour des messages
+ * Configure la connexion SSE pour les messages
  */
 function setupSSEForMessages() {
     const convId = new URLSearchParams(window.location.search).get('id');
@@ -75,6 +75,9 @@ function setupSSEForMessages() {
     const lastMessage = document.querySelector('.message:last-child');
     const lastTimestamp = lastMessage ? parseInt(lastMessage.dataset.timestamp || '0', 10) : 0;
     
+    // Afficher un indicateur de connexion
+    console.log('Connecting to message stream...');
+    
     // Récupérer le jeton SSE
     getSSEToken(convId)
         .then(token => {
@@ -86,6 +89,9 @@ function setupSSEForMessages() {
             
             // Stocker la référence
             window.sseConnections.messageSource = messageSource;
+            
+            // Log de connexion
+            console.log('SSE connection established for messages');
             
             // Événement pour les nouveaux messages
             messageSource.addEventListener('message', function(event) {
@@ -120,13 +126,13 @@ function setupSSEForMessages() {
             
             // Gestion des erreurs
             messageSource.addEventListener('error', function(event) {
-                console.error('SSE Error: Connection failed or closed.');
+                console.error('SSE Error: Connection failed or closed. ReadyState:', this.readyState);
                 
                 // Si la connexion est fermée, tenter de se reconnecter après un délai
                 if (this.readyState === EventSource.CLOSED) {
                     messagesReconnectAttempts++;
                     const delay = getReconnectDelay(messagesReconnectAttempts);
-                    console.log(`Reconnecting messages in ${delay/1000} seconds...`);
+                    console.log(`Reconnecting messages in ${delay/1000} seconds... (Attempt ${messagesReconnectAttempts})`);
                     setTimeout(setupSSEForMessages, delay);
                 }
             });
@@ -135,6 +141,7 @@ function setupSSEForMessages() {
             messageSource.addEventListener('ping', function(event) {
                 // Connexion maintenue, rien à faire
                 messagesReconnectAttempts = 0;  // Réinitialiser le compteur à chaque ping réussi
+                console.log('Ping received from server, connection alive');
             });
         })
         .catch(error => {
@@ -142,8 +149,121 @@ function setupSSEForMessages() {
             // Réessayer après un délai
             messagesReconnectAttempts++;
             const delay = getReconnectDelay(messagesReconnectAttempts);
-            console.log(`Reconnecting messages after error in ${delay/1000} seconds...`);
+            console.log(`Reconnecting messages after error in ${delay/1000} seconds... (Attempt ${messagesReconnectAttempts})`);
             setTimeout(setupSSEForMessages, delay);
+        });
+}
+
+/**
+ * Configure la connexion SSE pour les statuts de lecture
+ */
+function setupSSEForReadStatus() {
+    const convId = new URLSearchParams(window.location.search).get('id');
+    if (!convId) return;
+    
+    // Fermer une éventuelle connexion existante
+    if (window.sseConnections.readStatusSource) {
+        window.sseConnections.readStatusSource.close();
+    }
+    
+    // Récupérer le dernier message ID
+    let lastReadMessageId = 0;
+    const messageElements = document.querySelectorAll('.message');
+    if (messageElements.length > 0) {
+        const lastMessage = messageElements[messageElements.length - 1];
+        lastReadMessageId = parseInt(lastMessage.dataset.id || '0', 10);
+    }
+    
+    // Afficher un indicateur de connexion
+    console.log('Connecting to read status stream...');
+    
+    // Récupérer le jeton SSE
+    getSSEToken(convId)
+        .then(token => {
+            // Réinitialiser le compteur de tentatives si nous obtenons un jeton
+            readStatusReconnectAttempts = 0;
+            
+            // Créer la connexion SSE
+            const readStatusSource = new EventSource(`api/read_status.php?action=stream&conv_id=${convId}&since=${lastReadMessageId}&version=0&token=${token}`);
+            
+            // Stocker la référence
+            window.sseConnections.readStatusSource = readStatusSource;
+            
+            // Log de connexion
+            console.log('SSE connection established for read status');
+            
+            // Événement d'initialisation
+            readStatusSource.addEventListener('init', function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('Read status initialized with version:', data.version);
+                    // Stocker la version initiale si nécessaire
+                } catch (e) {
+                    console.error('Erreur lors du traitement de l\'initialisation:', e);
+                }
+            });
+            
+            // Événement pour l'état initial
+            readStatusSource.addEventListener('initial_state', function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('Received initial read status for', Object.keys(data).length, 'messages');
+                    
+                    // Mettre à jour tous les statuts
+                    Object.entries(data).forEach(([messageId, readStatus]) => {
+                        updateReadStatus(readStatus);
+                    });
+                } catch (e) {
+                    console.error('Erreur lors du traitement de l\'état initial:', e);
+                }
+            });
+            
+            // Événement pour les mises à jour
+            readStatusSource.addEventListener('read_status', function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('Received read status updates for', data.updates.length, 'messages');
+                    
+                    data.updates.forEach(update => {
+                        updateReadStatus(update.read_status);
+                        
+                        // Mettre à jour lastReadMessageId si nécessaire
+                        if (update.messageId > lastReadMessageId) {
+                            lastReadMessageId = update.messageId;
+                        }
+                    });
+                } catch (e) {
+                    console.error('Erreur lors du traitement des mises à jour de lecture:', e);
+                }
+            });
+            
+            // Gestion des erreurs
+            readStatusSource.addEventListener('error', function(event) {
+                console.error('SSE Error: Read status connection failed or closed. ReadyState:', this.readyState);
+                
+                // Si la connexion est fermée, tenter de se reconnecter après un délai
+                if (this.readyState === EventSource.CLOSED) {
+                    readStatusReconnectAttempts++;
+                    const delay = getReconnectDelay(readStatusReconnectAttempts);
+                    console.log(`Reconnecting read status in ${delay/1000} seconds... (Attempt ${readStatusReconnectAttempts})`);
+                    setTimeout(setupSSEForReadStatus, delay);
+                }
+            });
+            
+            // Ping pour maintenir la connexion
+            readStatusSource.addEventListener('ping', function(event) {
+                // Connexion maintenue, rien à faire
+                readStatusReconnectAttempts = 0;  // Réinitialiser le compteur à chaque ping réussi
+                console.log('Ping received from read status server, connection alive');
+            });
+        })
+        .catch(error => {
+            console.error('Erreur lors de la configuration SSE pour les statuts de lecture:', error);
+            // Réessayer après un délai
+            readStatusReconnectAttempts++;
+            const delay = getReconnectDelay(readStatusReconnectAttempts);
+            console.log(`Reconnecting read status after error in ${delay/1000} seconds... (Attempt ${readStatusReconnectAttempts})`);
+            setTimeout(setupSSEForReadStatus, delay);
         });
 }
 
@@ -153,6 +273,8 @@ function setupSSEForMessages() {
  * @returns {Promise<string>} Le jeton SSE
  */
 function getSSEToken(convId) {
+    console.log('Requesting SSE token for conversation:', convId);
+    
     return fetch(`api/sse_token.php?conv_id=${convId}`)
         .then(response => {
             if (!response.ok) {
@@ -165,8 +287,10 @@ function getSSEToken(convId) {
         })
         .then(data => {
             if (data.success) {
+                console.log('SSE token received successfully');
                 return data.token;
             } else {
+                console.error('SSE token error:', data.error);
                 throw new Error(data.error || 'Erreur lors de la récupération du jeton');
             }
         });
