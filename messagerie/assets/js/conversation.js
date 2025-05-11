@@ -31,7 +31,6 @@ document.addEventListener('DOMContentLoaded', function() {
 function setupBeforeUnloadHandler() {
     // Variable globale pour suivre l'état des connexions
     window.activeConnections = {
-        sse: null,
         polling: false,
         abortController: new AbortController()
     };
@@ -42,13 +41,6 @@ function setupBeforeUnloadHandler() {
     
     // Fonction pour nettoyer les ressources
     function cleanupResources() {
-        // Fermer toute connexion SSE active
-        if (window.activeConnections.sse) {
-            console.log('Closing SSE connection before navigation');
-            window.activeConnections.sse.close();
-            window.activeConnections.sse = null;
-        }
-        
         // Annuler les requêtes fetch en cours
         window.activeConnections.abortController.abort();
         
@@ -67,8 +59,8 @@ function initReadTracker() {
     // Variables pour l'état de lecture
     let lastReadMessageId = 0;
     let isMarkingMessage = false;
-    let isPolling = false;
-    let useSSE = true; // Utiliser SSE par défaut, fallback sur long polling si besoin
+    let pollingActive = false;
+    let pollingInterval = 3000; // Interroger le serveur toutes les 3 secondes
     
     // Récupérer le dernier message lu lors du chargement initial
     const messageElements = document.querySelectorAll('.message');
@@ -188,113 +180,27 @@ function initReadTracker() {
     }
     
     /**
-     * Initialise la connexion SSE pour les mises à jour de lecture
+     * Démarre le polling AJAX pour les mises à jour de lecture
      */
-    function initSSE() {
-        const convId = new URLSearchParams(window.location.search).get('id');
-        if (!convId) return;
-        
-        // Fermer toute connexion existante
-        if (window.activeConnections.sse) {
-            window.activeConnections.sse.close();
-        }
-        
-        try {
-            // Créer une nouvelle connexion SSE
-            const eventSource = new EventSource(`api/read_status.php?action=read-sse&conv_id=${convId}`);
-            window.activeConnections.sse = eventSource;
-            
-            // Écouter les événements de connexion
-            eventSource.addEventListener('connected', function(e) {
-                console.log('SSE: Connexion établie');
-            });
-            
-            // Récupérer l'état initial
-            eventSource.addEventListener('initial_state', function(e) {
-                const data = JSON.parse(e.data);
-                processInitialState(data);
-            });
-            
-            // Écouter les mises à jour de lecture
-            eventSource.addEventListener('read_update', function(e) {
-                const data = JSON.parse(e.data);
-                updateReadStatus(data.read_status);
-            });
-            
-            // Gérer les erreurs de connexion SSE
-            eventSource.addEventListener('error', function(e) {
-                console.error('SSE: Erreur de connexion', e);
-                
-                // Fermer la connexion et basculer vers le polling en cas d'erreur persistante
-                eventSource.close();
-                window.activeConnections.sse = null;
-                
-                // Fallback to polling after a delay
-                setTimeout(() => {
-                    if (useSSE) {
-                        useSSE = false;
-                        startReadStatusPolling();
-                    }
-                }, 3000);
-            });
-            
-            // Keep-alive pour maintenir la connexion
-            eventSource.addEventListener('keep-alive', function(e) {
-                // Silent keep-alive
-            });
-            
-            // Gérer les demandes de reconnexion
-            eventSource.addEventListener('reconnect', function(e) {
-                console.log('SSE: Le serveur a demandé une reconnexion');
-                setTimeout(initSSE, 1000);
-            });
-            
-        } catch (error) {
-            console.error('SSE: Échec de l\'initialisation', error);
-            useSSE = false;
-            
-            // Fallback sur le polling
-            startReadStatusPolling();
-        }
-    }
-    
-    /**
-     * Traite l'état initial des messages
-     */
-    function processInitialState(data) {
-        if (!data || !data.statuses) return;
-        
-        // Mettre à jour le statut de lecture pour chaque message
-        Object.keys(data.statuses).forEach(messageId => {
-            updateReadStatus(data.statuses[messageId]);
-        });
-    }
-    
-    /**
-     * Démarre le polling pour les mises à jour de lecture
-     */
-    function startReadStatusPolling() {
-        if (isPolling || useSSE) return;
-        
-        isPolling = true;
+    function startPolling() {
+        pollingActive = true;
+        console.log('AJAX Polling: Démarrage');
         window.activeConnections.polling = true;
-        console.log('Long polling: Démarrage');
         
         function pollForUpdates() {
-            if (!window.activeConnections.polling) {
-                console.log('Long polling: Arrêté par navigation');
-                isPolling = false;
+            if (!pollingActive || !window.activeConnections.polling) {
+                console.log('AJAX Polling: Arrêté');
                 return;
             }
             
             const convId = new URLSearchParams(window.location.search).get('id');
             if (!convId) {
-                isPolling = false;
+                pollingActive = false;
                 window.activeConnections.polling = false;
                 return;
             }
             
-            fetch(`api/read_status.php?action=read-updates&conv_id=${convId}&since=${lastReadMessageId}`, {
+            fetch(`api/read_status.php?action=read-status&conv_id=${convId}`, {
                 signal: window.activeConnections.abortController.signal
             })
                 .then(response => {
@@ -305,29 +211,19 @@ function initReadTracker() {
                 })
                 .then(data => {
                     if (data.success) {
-                        // Appliquer les mises à jour reçues
-                        data.updates.forEach(update => {
-                            updateReadStatus(update.read_status);
+                        // Mettre à jour les statuts de lecture pour chaque message
+                        Object.entries(data.statuses).forEach(([messageId, readStatus]) => {
+                            updateReadStatus(readStatus);
                         });
                         
-                        // Mettre à jour le timestamp
-                        if (data.timestamp) {
-                            lastTimestamp = data.timestamp;
-                        }
-                        
-                        // Continuer le polling si toujours sur la page
-                        if (document.visibilityState === 'visible' && window.activeConnections.polling) {
-                            // Ajouter un délai entre les requêtes pour réduire la charge
-                            setTimeout(pollForUpdates, 2000);
-                        } else {
-                            // Pause si l'onglet n'est pas actif
-                            document.addEventListener('visibilitychange', onVisibilityChange);
-                            isPolling = false;
+                        // Continuer le polling si toujours actif
+                        if (pollingActive && window.activeConnections.polling) {
+                            setTimeout(pollForUpdates, pollingInterval);
                         }
                     } else {
                         // Réessayer après un délai en cas d'erreur
-                        if (window.activeConnections.polling) {
-                            setTimeout(pollForUpdates, 5000);
+                        if (pollingActive && window.activeConnections.polling) {
+                            setTimeout(pollForUpdates, pollingInterval * 2);
                         }
                     }
                 })
@@ -335,33 +231,38 @@ function initReadTracker() {
                     // Ne pas afficher d'erreur si la requête a été annulée (navigation)
                     if (error.name !== 'AbortError') {
                         console.error('Erreur de polling:', error);
-                        if (window.activeConnections.polling) {
-                            setTimeout(pollForUpdates, 5000);
+                        // Augmenter l'intervalle en cas d'erreur
+                        if (pollingActive && window.activeConnections.polling) {
+                            setTimeout(pollForUpdates, pollingInterval * 2);
                         }
                     }
                 });
         }
         
-        function onVisibilityChange() {
-            if (document.visibilityState === 'visible' && window.activeConnections.polling) {
-                document.removeEventListener('visibilitychange', onVisibilityChange);
-                startReadStatusPolling();
-            }
-        }
-        
         // Démarrer le polling
         pollForUpdates();
+        
+        // Gérer les événements de visibilité du document
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') {
+                if (!pollingActive && window.activeConnections.polling) {
+                    pollingActive = true;
+                    pollForUpdates();
+                }
+            } else {
+                // Ralentir le polling quand l'onglet n'est pas actif
+                pollingInterval = 10000; // 10 secondes quand inactif
+            }
+        });
+        
+        // Réinitialiser l'intervalle quand l'onglet redevient actif
+        window.addEventListener('focus', function() {
+            pollingInterval = 3000; // Retour à 3 secondes quand actif
+        });
     }
     
-    // Initialiser les mises à jour de statut de lecture
-    if (useSSE && typeof EventSource !== 'undefined') {
-        // Utiliser SSE si disponible
-        initSSE();
-    } else {
-        // Fallback sur le long polling
-        useSSE = false;
-        startReadStatusPolling();
-    }
+    // Démarrer le polling AJAX
+    startPolling();
     
     // Ajouter des gestionnaires d'événements pour les boutons de marquage
     document.addEventListener('click', function(e) {
@@ -442,9 +343,10 @@ function initReadTracker() {
 function setupRealTimeUpdates() {
     // Variables pour la gestion des mises à jour
     const convId = new URLSearchParams(window.location.search).get('id');
-    const refreshInterval = 10000; // 10 secondes entre chaque vérification
+    const refreshInterval = 5000; // 5 secondes entre chaque vérification
     let lastTimestamp = 0;
     let isCheckingForUpdates = false; // Flag pour éviter les requêtes concurrentes
+    let updateCheckActive = true;
     
     // Initialiser le timestamp de départ avec le dernier message
     const lastMessage = document.querySelector('.message:last-child');
@@ -458,7 +360,7 @@ function setupRealTimeUpdates() {
     // Fonction de vérification des mises à jour
     function checkForUpdates() {
         // Éviter les requêtes concurrentes
-        if (isCheckingForUpdates || !window.activeConnections || !window.activeConnections.polling) return;
+        if (isCheckingForUpdates || !updateCheckActive || !window.activeConnections.polling) return;
         
         // Vérifier si l'utilisateur a le focus sur l'onglet et n'est pas en train d'écrire
         const textareaActive = document.querySelector('textarea:focus');
@@ -472,7 +374,7 @@ function setupRealTimeUpdates() {
         
         isCheckingForUpdates = true;
         
-        // Requête de vérification
+        // Requête de vérification avec gestion d'erreur améliorée
         fetch(`api/messages.php?conv_id=${convId}&action=check_updates&last_timestamp=${lastTimestamp}`, {
             signal: window.activeConnections.abortController.signal
         })
@@ -500,8 +402,8 @@ function setupRealTimeUpdates() {
                 
                 isCheckingForUpdates = false;
                 
-                // Programmer la prochaine vérification si nous sommes toujours sur la page
-                if (window.activeConnections && window.activeConnections.polling) {
+                // Programmer la prochaine vérification si nous sommes toujours actifs
+                if (updateCheckActive && window.activeConnections.polling) {
                     setTimeout(checkForUpdates, refreshInterval);
                 }
             })
@@ -511,9 +413,9 @@ function setupRealTimeUpdates() {
                     console.error('Erreur lors de la vérification des mises à jour:', error);
                     isCheckingForUpdates = false;
                     
-                    // Réessayer après un délai en cas d'erreur si nous sommes toujours sur la page
-                    if (window.activeConnections && window.activeConnections.polling) {
-                        setTimeout(checkForUpdates, refreshInterval);
+                    // Réessayer après un délai en cas d'erreur
+                    if (updateCheckActive && window.activeConnections.polling) {
+                        setTimeout(checkForUpdates, refreshInterval * 2);
                     }
                 }
             });
@@ -649,7 +551,12 @@ function setupRealTimeUpdates() {
     }
     
     // Démarrer la vérification des mises à jour
-    setTimeout(checkForUpdates, refreshInterval);
+    setTimeout(checkForUpdates, 1000); // Démarrer après 1 seconde
+    
+    // Gestionnaire pour arrêter les vérifications lors de la navigation
+    window.addEventListener('beforeunload', function() {
+        updateCheckActive = false;
+    });
     
     // Gestion du scroll - si l'utilisateur fait défiler vers le bas, masquer l'indicateur
     const messagesContainer = document.querySelector('.messages-container');
@@ -1230,4 +1137,156 @@ function formatMessageDate(date) {
     } else {
         return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth()+1).toString().padStart(2, '0')}/${date.getFullYear()} à ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
     }
+}
+
+/**
+ * Validation du formulaire de message
+ */
+function setupMessageValidation() {
+    const form = document.getElementById('messageForm');
+    if (!form) return;
+    
+    const textarea = form.querySelector('textarea[name="contenu"]');
+    const submitBtn = form.querySelector('button[type="submit"]');
+    
+    if (textarea) {
+        textarea.addEventListener('input', function() {
+            const isEmpty = this.value.trim() === '';
+            if (submitBtn) {
+                submitBtn.disabled = isEmpty;
+            }
+        });
+        
+        // Vérifier l'état initial
+        textarea.dispatchEvent(new Event('input'));
+    }
+}
+
+/**
+ * Utilitaire pour afficher des notifications d'erreur
+ * @param {string} message - Message d'erreur
+ * @param {number} duration - Durée d'affichage
+ */
+function afficherNotificationErreur(message, duration = 5000) {
+    // Créer la div de notification si elle n'existe pas
+    let notifContainer = document.getElementById('error-notification-container');
+    
+    if (!notifContainer) {
+        notifContainer = document.createElement('div');
+        notifContainer.id = 'error-notification-container';
+        
+        // Styles pour centrer la notification
+        notifContainer.style.position = 'fixed';
+        notifContainer.style.top = '50%';
+        notifContainer.style.left = '50%';
+        notifContainer.style.transform = 'translate(-50%, -50%)';
+        notifContainer.style.zIndex = '10000';
+        notifContainer.style.width = 'auto';
+        notifContainer.style.maxWidth = '80%';
+        
+        document.body.appendChild(notifContainer);
+    }
+    
+    // Créer la notification
+    const notification = document.createElement('div');
+    notification.className = 'error-notification';
+    
+    // Styles de la notification
+    notification.style.backgroundColor = '#f8d7da';
+    notification.style.color = '#721c24';
+    notification.style.padding = '15px 20px';
+    notification.style.margin = '10px';
+    notification.style.borderRadius = '5px';
+    notification.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.2)';
+    notification.style.display = 'flex';
+    notification.style.justifyContent = 'space-between';
+    notification.style.alignItems = 'center';
+    notification.style.minWidth = '300px';
+    
+    // Créer le contenu de la notification
+    const content = document.createElement('div');
+    content.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+    
+    // Créer le bouton de fermeture
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '&times;';
+    closeBtn.style.background = 'none';
+    closeBtn.style.border = 'none';
+    closeBtn.style.color = '#721c24';
+    closeBtn.style.fontSize = '20px';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.style.marginLeft = '15px';
+    
+    // Ajouter le contenu et le bouton à la notification
+    notification.appendChild(content);
+    notification.appendChild(closeBtn);
+    
+    // Ajouter la notification au conteneur
+    notifContainer.appendChild(notification);
+    
+    // Fermer la notification quand on clique sur le bouton
+    closeBtn.addEventListener('click', function() {
+        notifContainer.removeChild(notification);
+        
+        // Supprimer le conteneur s'il n'y a plus de notifications
+        if (notifContainer.children.length === 0) {
+            document.body.removeChild(notifContainer);
+        }
+    });
+    
+    // Fermer automatiquement après la durée spécifiée
+    setTimeout(function() {
+        if (notification.parentNode === notifContainer) {
+            notifContainer.removeChild(notification);
+            
+            // Supprimer le conteneur s'il n'y a plus de notifications
+            if (notifContainer.children.length === 0) {
+                document.body.removeChild(notifContainer);
+            }
+        }
+    }, duration);
+    
+    return notification;
+}
+
+/**
+ * Fonction utilitaire pour marquer un message comme lu
+ * Exposée globalement pour être utilisée par d'autres scripts
+ * @param {number} messageId - ID du message à marquer comme lu
+ */
+function markMessageAsRead(messageId) {
+    const convId = new URLSearchParams(window.location.search).get('id');
+    
+    fetch(`api/read_status.php?action=read&conv_id=${convId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId }),
+        signal: window.activeConnections.abortController.signal
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Mettre à jour l'interface avec le nouveau statut
+            const messageEl = document.querySelector(`.message[data-id="${messageId}"]`);
+            if (messageEl) {
+                messageEl.classList.add('read');
+                
+                // Mettre à jour le bouton si présent
+                const readBtn = messageEl.querySelector('.mark-read-btn');
+                if (readBtn) {
+                    const unreadBtn = document.createElement('button');
+                    unreadBtn.className = 'btn-icon mark-unread-btn';
+                    unreadBtn.setAttribute('data-message-id', messageId);
+                    unreadBtn.innerHTML = '<i class="fas fa-envelope"></i> Marquer comme non lu';
+                    
+                    readBtn.parentNode.replaceChild(unreadBtn, readBtn);
+                }
+            }
+        }
+    })
+    .catch(error => {
+        if (error.name !== 'AbortError') {
+            console.error('Erreur lors du marquage comme lu:', error);
+        }
+    });
 }
