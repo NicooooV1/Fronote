@@ -31,9 +31,14 @@ function handleFileUploads($filesData) {
     
     $uploadDir = UPLOAD_DIR;
     
-    // Créer le répertoire si nécessaire
-    if (!checkUploadPath($uploadDir)) {
-        throw new Exception("Impossible de créer le répertoire d'upload");
+    // Créer le répertoire avec les droits appropriés
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+    
+    // Vérifier que le dossier est accessible en écriture
+    if (!is_writable($uploadDir)) {
+        chmod($uploadDir, 0755);
     }
     
     foreach ($filesData['name'] as $key => $name) {
@@ -43,9 +48,12 @@ function handleFileUploads($filesData) {
             $filePath = $uploadDir . $filename;
             
             if (move_uploaded_file($tmp_name, $filePath)) {
+                // Stocker le chemin relatif pour l'accès web
+                $webPath = 'assets/uploads/' . $filename;
+                
                 $uploadedFiles[] = [
                     'name' => $name,
-                    'path' => $filePath
+                    'path' => $webPath // Chemin relatif pour l'accès web
                 ];
             }
         }

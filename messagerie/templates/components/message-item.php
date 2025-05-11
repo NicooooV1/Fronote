@@ -54,7 +54,7 @@ $messageClasses = array_filter($messageClasses);
         <?php if (!empty($message['pieces_jointes'])): ?>
         <div class="attachments">
             <?php foreach ($message['pieces_jointes'] as $attachment): ?>
-            <a href="<?= htmlspecialchars($attachment['chemin']) ?>" class="attachment" target="_blank">
+            <a href="<?= isset($baseUrl) ? $baseUrl : '' ?><?= htmlspecialchars($attachment['chemin']) ?>" class="attachment" target="_blank">
                 <i class="fas fa-paperclip"></i> <?= htmlspecialchars($attachment['nom_fichier']) ?>
             </a>
             <?php endforeach; ?>
@@ -62,15 +62,15 @@ $messageClasses = array_filter($messageClasses);
         <?php endif; ?>
     </div>
     
-<!-- Dans le footer du message -->
-    <div class="message-status">
-        <?php if ($isSelf && isset($message['est_lu']) && $message['est_lu']): ?>
-        <div class="message-read">
-            <i class="fas fa-check"></i> Vu
+    <div class="message-footer">
+        <div class="message-status">
+            <?php if ($isSelf && isset($message['est_lu']) && $message['est_lu']): ?>
+            <div class="message-read">
+                <i class="fas fa-check"></i> Vu
+            </div>
+            <?php endif; ?>
         </div>
-        <?php endif; ?>
-    </div>
-        
+            
         <?php if (isset($canReply) && $canReply && !$isSelf): ?>
         <div class="message-actions">
             <button class="btn-icon" onclick="replyToMessage(<?= (int)$message['id'] ?>, '<?= htmlspecialchars(addslashes($message['expediteur_nom'])) ?>')">

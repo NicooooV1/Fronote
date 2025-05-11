@@ -11,7 +11,27 @@
 ?>
 
 <ul class="participants-list">
-    <?php foreach ($participants as $p): 
+    <?php 
+    // Regrouper les participants par statut
+    $admins = [];
+    $moderators = [];
+    $normal = [];
+    $left = [];
+    
+    foreach ($participants as $p) {
+        if ($p['a_quitte']) {
+            $left[] = $p;
+        } elseif ($p['est_administrateur']) {
+            $admins[] = $p;
+        } elseif ($p['est_moderateur']) {
+            $moderators[] = $p;
+        } else {
+            $normal[] = $p;
+        }
+    }
+    
+    // Afficher les administrateurs d'abord, puis modérateurs, puis normaux, puis ceux qui ont quitté
+    foreach (array_merge($admins, $moderators, $normal, $left) as $p): 
         // Définir les classes CSS pour le participant
         $cssClass = [];
         if ($p['a_quitte']) $cssClass[] = 'left';
@@ -22,14 +42,14 @@
     ?>
     <li class="<?= $cssClassStr ?>">
         <i class="fas fa-user-<?= getParticipantIcon($p['utilisateur_type']) ?>"></i>
-        <?= htmlspecialchars($p['nom_complet']) ?>
+        <span class="participant-name"><?= htmlspecialchars($p['nom_complet'] ?: 'Utilisateur inconnu') ?></span>
         
         <span class="participant-type"><?= getParticipantType($p['utilisateur_type']) ?></span>
         
         <?php if ($p['a_quitte']): ?>
         <span class="left-tag">A quitté</span>
         <?php elseif ($p['est_administrateur']): ?>
-        <span class="admin-tag">Admin/Envoyeur</span>
+        <span class="admin-tag">Admin</span>
         <?php elseif ($p['est_moderateur']): ?>
         <span class="mod-tag">Mod</span>
         <?php endif; ?>
@@ -40,14 +60,14 @@
                 <i class="fas fa-level-down-alt"></i>
             </button>
             <?php else: ?>
-            <button class="action-btn" onclick="promoteToModerator(<?= (int)$p['id'] ?>)" title="Promouvoir en modérateur">
+            <button class="action-btn" onclick="promoteToModerator(<?= (int)$p['id'] ?>)" title="Promouvoir">
                 <i class="fas fa-user-shield"></i>
             </button>
             <?php endif; ?>
         <?php endif; ?>
         
         <?php if (!$isDeleted && $isModerator && !$p['est_administrateur'] && !$p['a_quitte'] && $p['utilisateur_id'] != $user['id']): ?>
-        <button class="action-btn remove" onclick="removeParticipant(<?= (int)$p['id'] ?>)" title="Supprimer de la conversation">
+        <button class="action-btn remove" onclick="removeParticipant(<?= (int)$p['id'] ?>)" title="Supprimer">
             <i class="fas fa-user-minus"></i>
         </button>
         <?php endif; ?>

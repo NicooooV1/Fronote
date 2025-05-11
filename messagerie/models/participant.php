@@ -31,6 +31,7 @@ function getParticipants($convId) {
                END as nom_complet
         FROM conversation_participants cp
         WHERE cp.conversation_id = ?
+        ORDER BY cp.is_admin DESC, cp.is_moderator DESC, cp.is_deleted ASC, nom_complet ASC
     ";
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$convId]);

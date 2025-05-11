@@ -106,9 +106,11 @@ function initSidebarCollapse() {
         sidebarToggle.className = 'sidebar-toggle';
         sidebarToggle.title = 'Afficher/masquer la liste des participants';
         sidebarToggle.innerHTML = '<i class="fas fa-bars"></i>';
+        sidebarToggle.style.display = 'flex'; // Assurer que le bouton est visible
+        sidebarToggle.style.zIndex = '1200';  // Mettre au premier plan
         
         // Insérer le bouton comme premier enfant de conversation-page
-        conversationPage.insertBefore(sidebarToggle, conversationPage.firstChild);
+        conversationPage.prepend(sidebarToggle);
     }
     
     // Vérifier s'il y a une préférence sauvegardée
