@@ -102,7 +102,7 @@ function getMessages($convId, $userId, $userType) {
                 WHEN u.user_type = 'administrateur' THEN 
                     (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = u.user_id)
                 ELSE 'Inconnu'
-            END as reader_name,
+            END as nom_complet,
             u.user_id,
             u.user_type
         FROM (
@@ -119,7 +119,7 @@ function getMessages($convId, $userId, $userType) {
         $attachmentStmt->execute([$message['id']]);
         $message['pieces_jointes'] = $attachmentStmt->fetchAll();
         
-        // Marquer comme lu si pas encore lu et mettre à jour last_read_message_id
+        // Marquer comme lu si pas encore lu et si ce n'est pas notre propre message
         if (!$message['est_lu'] && !$message['is_self']) {
             markMessageAsRead($message['id'], $userId, $userType);
         }
@@ -129,15 +129,17 @@ function getMessages($convId, $userId, $userType) {
         $readInfo = $readInfoStmt->fetch();
         
         $message['read_status'] = [
+            'message_id' => $message['id'],
             'total_participants' => (int)$readInfo['total_participants'],
-            'read_count' => (int)$readInfo['read_count'],
-            'all_read' => (int)$readInfo['total_participants'] === (int)$readInfo['read_count'],
+            'read_by_count' => (int)$readInfo['read_count'],
+            'all_read' => (int)$readInfo['read_count'] === (int)$readInfo['total_participants'],
             'percentage' => $readInfo['total_participants'] > 0 ? 
-                            round(($readInfo['read_count'] / $readInfo['total_participants']) * 100) : 0
+                            round(($readInfo['read_count'] / $readInfo['total_participants']) * 100) : 0,
+            'readers' => []
         ];
         
         // Récupérer les noms des lecteurs si nécessaire
-        if ($readInfo['read_count'] > 0 && !$message['read_status']['all_read']) {
+        if ($readInfo['read_count'] > 0) {
             $readerNamesStmt->execute([$convId, $message['id'], $userId, $userType, $convId, $message['id']]);
             $message['read_status']['readers'] = $readerNamesStmt->fetchAll();
         }
@@ -239,9 +241,10 @@ function getMessagesEvenIfDeleted($convId, $userId, $userType) {
         $readInfo = $readInfoStmt->fetch();
         
         $message['read_status'] = [
+            'message_id' => $message['id'],
             'total_participants' => (int)$readInfo['total_participants'],
-            'read_count' => (int)$readInfo['read_count'],
-            'all_read' => (int)$readInfo['total_participants'] === (int)$readInfo['read_count'],
+            'read_by_count' => (int)$readInfo['read_count'],
+            'all_read' => (int)$readInfo['read_count'] === (int)$readInfo['total_participants'],
             'percentage' => $readInfo['total_participants'] > 0 ? 
                             round(($readInfo['read_count'] / $readInfo['total_participants']) * 100) : 0
         ];
@@ -308,9 +311,10 @@ function getMessageById($messageId) {
         $readInfo = $readInfoStmt->fetch();
         
         $message['read_status'] = [
+            'message_id' => $message['id'],
             'total_participants' => (int)$readInfo['total_participants'],
-            'read_count' => (int)$readInfo['read_count'],
-            'all_read' => (int)$readInfo['total_participants'] === (int)$readInfo['read_count'],
+            'read_by_count' => (int)$readInfo['read_count'],
+            'all_read' => (int)$readInfo['read_count'] === (int)$readInfo['total_participants'],
             'percentage' => $readInfo['total_participants'] > 0 ? 
                           round(($readInfo['read_count'] / $readInfo['total_participants']) * 100) : 0
         ];
@@ -707,8 +711,9 @@ function getMessageReadStatus($messageId) {
     
     if (!$result) {
         return [
+            'message_id' => $messageId,
             'total_participants' => 0,
-            'read_count' => 0,
+            'read_by_count' => 0,
             'all_read' => false,
             'percentage' => 0,
             'readers' => []
@@ -742,7 +747,7 @@ function getMessageReadStatus($messageId) {
                    WHEN cp.user_type = 'administrateur' THEN 
                        (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = cp.user_id)
                    ELSE 'Inconnu'
-               END as reader_name
+               END as nom_complet
         FROM conversation_participants cp
         WHERE cp.conversation_id = ? AND cp.last_read_message_id >= ? AND cp.is_deleted = 0
     ");
@@ -750,9 +755,10 @@ function getMessageReadStatus($messageId) {
     $readers = $readersStmt->fetchAll();
     
     return [
+        'message_id' => $messageId,
         'total_participants' => (int)$readInfo['total_participants'],
-        'read_count' => (int)$readInfo['read_count'],
-        'all_read' => (int)$readInfo['total_participants'] === (int)$readInfo['read_count'],
+        'read_by_count' => (int)$readInfo['read_count'],
+        'all_read' => (int)$readInfo['read_count'] === (int)$readInfo['total_participants'],
         'percentage' => $readInfo['total_participants'] > 0 ? 
                       round(($readInfo['read_count'] / $readInfo['total_participants']) * 100) : 0,
         'readers' => $readers

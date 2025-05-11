@@ -260,12 +260,51 @@
     align-items: center;
 }
 
-.message-read {
-    display: inline-flex;
+/* Statut "Vu" des messages */
+.message-read-status {
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.all-read {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    color: #28a745;
+    font-weight: 500;
+}
+
+.partial-read {
+    display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 12px;
-    color: #28a745;
+    color: #6c757d;
+}
+
+.read-count {
+    font-weight: 500;
+}
+
+.read-tooltip {
+    cursor: pointer;
+    position: relative;
+}
+
+.read-tooltip:hover::before {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 10px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+    z-index: 1000;
 }
 
 /* --- PIÈCES JOINTES --- */

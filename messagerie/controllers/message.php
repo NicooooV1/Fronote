@@ -237,9 +237,13 @@ function handleMarkMessageAsRead($messageId, $user) {
         $result = markMessageAsRead($messageId, $user['id'], $user['type']);
         
         if ($result) {
+            // Récupérer le statut de lecture mis à jour
+            $readStatus = getMessageReadStatus($messageId);
+            
             return [
                 'success' => true,
-                'message' => "Message marqué comme lu"
+                'message' => "Message marqué comme lu",
+                'readStatus' => $readStatus
             ];
         } else {
             return [
@@ -296,9 +300,13 @@ function handleMarkMessageAsUnread($messageId, $user) {
         $result = markMessageAsUnread($messageId, $user['id'], $user['type']);
         
         if ($result) {
+            // Récupérer le statut de lecture mis à jour
+            $readStatus = getMessageReadStatus($messageId);
+            
             return [
                 'success' => true,
-                'message' => "Message marqué comme non lu"
+                'message' => "Message marqué comme non lu",
+                'readStatus' => $readStatus
             ];
         } else {
             return [

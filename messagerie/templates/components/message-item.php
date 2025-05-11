@@ -32,7 +32,7 @@ if (isset($conversation) && isset($conversation['type']) && $conversation['type'
 $messageClasses = array_filter($messageClasses);
 ?>
 
-<div class="message <?= implode(' ', $messageClasses) ?>" data-id="<?= (int)$message['id'] ?>" data-timestamp="<?= strtotime($message['date_envoi']) ?>">
+<div class="message <?= implode(' ', $messageClasses) ?>" data-id="<?= (int)$message['id'] ?>" data-timestamp="<?= $message['timestamp'] ?>">
     <div class="message-header">
         <div class="sender">
             <strong><?= htmlspecialchars($message['expediteur_nom']) ?></strong>
@@ -63,16 +63,38 @@ $messageClasses = array_filter($messageClasses);
     </div>
     
     <div class="message-footer">
+        <!-- Affichage amélioré du statut de lecture -->
         <div class="message-status">
-            <?php if ($isSelf && isset($message['est_lu']) && $message['est_lu']): ?>
-            <div class="message-read">
-                <i class="fas fa-check"></i> Vu
-            </div>
+            <?php if ($isSelf): ?>
+                <div class="message-read-status" data-message-id="<?= (int)$message['id'] ?>">
+                    <?php if (isset($message['read_status']) && $message['read_status']['all_read']): ?>
+                        <div class="all-read">
+                            <i class="fas fa-check-double"></i> Vu
+                        </div>
+                    <?php elseif (isset($message['read_status']) && $message['read_status']['read_count'] > 0): ?>
+                        <div class="partial-read">
+                            <i class="fas fa-check"></i> 
+                            <span class="read-count"><?= $message['read_status']['read_count'] ?>/<?= $message['read_status']['total_participants'] - 1 ?></span>
+                            <span class="read-tooltip" title="<?= implode(', ', array_column($message['read_status']['readers'] ?? [], 'reader_name')) ?>">
+                                <i class="fas fa-info-circle"></i>
+                            </span>
+                        </div>
+                    <?php endif; ?>
+                </div>
             <?php endif; ?>
         </div>
             
         <?php if (isset($canReply) && $canReply && !$isSelf): ?>
         <div class="message-actions">
+            <?php if (isset($message['est_lu']) && $message['est_lu']): ?>
+                <button class="btn-icon mark-unread-btn" data-message-id="<?= (int)$message['id'] ?>">
+                    <i class="fas fa-envelope"></i> Marquer comme non lu
+                </button>
+            <?php else: ?>
+                <button class="btn-icon mark-read-btn" data-message-id="<?= (int)$message['id'] ?>">
+                    <i class="fas fa-envelope-open"></i> Marquer comme lu
+                </button>
+            <?php endif; ?>
             <button class="btn-icon" onclick="replyToMessage(<?= (int)$message['id'] ?>, '<?= htmlspecialchars(addslashes($message['expediteur_nom'])) ?>')">
                 <i class="fas fa-reply"></i> Répondre
             </button>
