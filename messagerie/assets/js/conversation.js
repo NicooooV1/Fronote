@@ -61,6 +61,7 @@ function initReadTracker() {
     let isMarkingMessage = false;
     let pollingActive = false;
     let pollingInterval = 3000; // Interroger le serveur toutes les 3 secondes
+    let versionSum = 0; // Pour suivre la version des statuts de lecture
     
     // Récupérer le dernier message lu lors du chargement initial
     const messageElements = document.querySelectorAll('.message');
@@ -200,7 +201,8 @@ function initReadTracker() {
                 return;
             }
             
-            fetch(`api/read_status.php?action=read-status&conv_id=${convId}`, {
+            // Utiliser le nouvel endpoint de polling au lieu du SSE
+            fetch(`api/read_status.php?action=read-polling&conv_id=${convId}&version=${versionSum}&since=${lastReadMessageId}`, {
                 signal: window.activeConnections.abortController.signal
             })
                 .then(response => {
@@ -211,20 +213,35 @@ function initReadTracker() {
                 })
                 .then(data => {
                     if (data.success) {
-                        // Mettre à jour les statuts de lecture pour chaque message
-                        Object.entries(data.statuses).forEach(([messageId, readStatus]) => {
-                            updateReadStatus(readStatus);
-                        });
+                        // Mettre à jour la version pour les prochaines requêtes
+                        versionSum = data.version || 0;
                         
-                        // Continuer le polling si toujours actif
-                        if (pollingActive && window.activeConnections.polling) {
-                            setTimeout(pollForUpdates, pollingInterval);
+                        // Si c'est la première requête et qu'on a un état initial
+                        if (data.initialState) {
+                            // Mettre à jour tous les statuts de lecture
+                            Object.entries(data.initialState).forEach(([messageId, readStatus]) => {
+                                updateReadStatus(readStatus);
+                            });
                         }
+                        
+                        // Traiter les mises à jour
+                        if (data.hasUpdates && data.updates) {
+                            data.updates.forEach(update => {
+                                updateReadStatus(update.read_status);
+                                
+                                // Mettre à jour lastReadMessageId si nécessaire
+                                if (update.messageId > lastReadMessageId) {
+                                    lastReadMessageId = update.messageId;
+                                }
+                            });
+                        }
+                        
+                        // Continuer le polling après un délai
+                        setTimeout(pollForUpdates, pollingInterval);
                     } else {
-                        // Réessayer après un délai en cas d'erreur
-                        if (pollingActive && window.activeConnections.polling) {
-                            setTimeout(pollForUpdates, pollingInterval * 2);
-                        }
+                        console.error('Erreur de polling:', data.error || 'Erreur inconnue');
+                        // Réessayer après un délai plus long en cas d'erreur
+                        setTimeout(pollForUpdates, pollingInterval * 2);
                     }
                 })
                 .catch(error => {
@@ -232,9 +249,7 @@ function initReadTracker() {
                     if (error.name !== 'AbortError') {
                         console.error('Erreur de polling:', error);
                         // Augmenter l'intervalle en cas d'erreur
-                        if (pollingActive && window.activeConnections.polling) {
-                            setTimeout(pollForUpdates, pollingInterval * 2);
-                        }
+                        setTimeout(pollForUpdates, pollingInterval * 2);
                     }
                 });
         }
@@ -249,6 +264,8 @@ function initReadTracker() {
                     pollingActive = true;
                     pollForUpdates();
                 }
+                // Réinitialiser l'intervalle quand la page est visible
+                pollingInterval = 3000;
             } else {
                 // Ralentir le polling quand l'onglet n'est pas actif
                 pollingInterval = 10000; // 10 secondes quand inactif

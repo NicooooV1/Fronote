@@ -73,11 +73,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['conv_id']) && isset($_
     exit;
 }
 
-// Endpoint Server-Sent Events pour les mises à jour de lecture
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_GET['action']) && $_GET['action'] === 'read-sse') {
+// Endpoint optimisé pour les mises à jour de lecture (remplaçant le SSE)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_GET['action']) && $_GET['action'] === 'read-polling') {
+    header('Content-Type: application/json');
+    
     try {
         $convId = (int)$_GET['conv_id'];
-        $lastEventId = isset($_SERVER['HTTP_LAST_EVENT_ID']) ? (int)$_SERVER['HTTP_LAST_EVENT_ID'] : 0;
+        $lastVersion = isset($_GET['version']) ? (int)$_GET['version'] : 0;
+        $since = isset($_GET['since']) ? (int)$_GET['since'] : 0;
         
         // Vérifier que l'utilisateur est participant à la conversation
         $checkParticipant = $pdo->prepare("
@@ -86,144 +89,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
         ");
         $checkParticipant->execute([$convId, $user['id'], $user['type']]);
         if (!$checkParticipant->fetch()) {
-            header('HTTP/1.1 403 Forbidden');
+            echo json_encode(['success' => false, 'error' => 'Forbidden']);
             exit;
         }
         
-        // Configuration des entêtes pour SSE
-        header('Content-Type: text/event-stream');
-        header('Cache-Control: no-cache');
-        header('Connection: keep-alive');
-        header('X-Accel-Buffering: no'); // Désactiver la mise en mémoire tampon pour Nginx
+        // Obtenir la somme actuelle des versions
+        $versionStmt = $pdo->prepare("
+            SELECT SUM(version) as version_sum FROM conversation_participants
+            WHERE conversation_id = ? AND is_deleted = 0
+        ");
+        $versionStmt->execute([$convId]);
+        $currentVersionSum = (int)$versionStmt->fetchColumn();
         
-        // Fonction pour envoyer un événement SSE
-        function sendSSE($event, $data, $id = null) {
-            echo "event: $event\n";
-            if ($id !== null) {
-                echo "id: $id\n";
-            }
-            echo "data: " . json_encode($data) . "\n\n";
-            ob_flush();
-            flush();
+        // Si la version n'a pas changé, on renvoie juste le timestamp actuel
+        if ($currentVersionSum === $lastVersion) {
+            echo json_encode([
+                'success' => true,
+                'hasUpdates' => false,
+                'version' => $currentVersionSum,
+                'timestamp' => time()
+            ]);
+            exit;
         }
         
-        // Envoyer un événement de connexion
-        sendSSE('connected', ['message' => 'Connected to SSE stream']);
+        // Sinon, récupérer les mises à jour
+        $messagesStmt = $pdo->prepare("
+            SELECT id FROM messages
+            WHERE conversation_id = ? AND id > ?
+            ORDER BY id ASC
+        ");
+        $messagesStmt->execute([$convId, $since]);
+        $messages = $messagesStmt->fetchAll(PDO::FETCH_COLUMN);
         
-        // Récupérer l'état initial
-        function getConversationReadState($convId) {
-            global $pdo;
-            
-            $messagesStmt = $pdo->prepare("
+        $updates = [];
+        foreach ($messages as $messageId) {
+            $readStatus = getMessageReadStatus($messageId);
+            $updates[] = [
+                'messageId' => $messageId,
+                'read_status' => $readStatus
+            ];
+        }
+        
+        // Si c'est la première requête (version=0), renvoyer toutes les données
+        if ($lastVersion === 0) {
+            $allMessagesStmt = $pdo->prepare("
                 SELECT id FROM messages
                 WHERE conversation_id = ?
                 ORDER BY id ASC
             ");
-            $messagesStmt->execute([$convId]);
-            $messages = $messagesStmt->fetchAll(PDO::FETCH_COLUMN);
+            $allMessagesStmt->execute([$convId]);
+            $allMessages = $allMessagesStmt->fetchAll(PDO::FETCH_COLUMN);
             
-            $readStates = [];
-            foreach ($messages as $messageId) {
-                $readStatus = getMessageReadStatus($messageId);
-                $readStates[$messageId] = $readStatus;
+            $initialState = [];
+            foreach ($allMessages as $messageId) {
+                $initialState[$messageId] = getMessageReadStatus($messageId);
             }
             
-            return $readStates;
-        }
-        
-        // Obtenir la somme des versions pour détecter les changements
-        function getCurrentVersionSum($convId) {
-            global $pdo;
-            $stmt = $pdo->prepare("
-                SELECT SUM(version) as version_sum FROM conversation_participants
-                WHERE conversation_id = ? AND is_deleted = 0
-            ");
-            $stmt->execute([$convId]);
-            return (int)$stmt->fetchColumn();
-        }
-        
-        // Récupérer les mises à jour depuis un certain moment
-        function getReadUpdates($convId, $since = 0) {
-            global $pdo;
-            
-            $messagesStmt = $pdo->prepare("
-                SELECT id FROM messages
-                WHERE conversation_id = ? AND id > ?
-                ORDER BY id ASC
-            ");
-            $messagesStmt->execute([$convId, $since]);
-            $messages = $messagesStmt->fetchAll(PDO::FETCH_COLUMN);
-            
-            $updates = [];
-            foreach ($messages as $messageId) {
-                $readStatus = getMessageReadStatus($messageId);
-                $updates[] = [
-                    'messageId' => $messageId,
-                    'read_status' => $readStatus
-                ];
-            }
-            
-            return $updates;
-        }
-        
-        // Envoyer l'état initial
-        $initialState = getConversationReadState($convId);
-        sendSSE('initial_state', $initialState);
-        
-        // Initialiser les variables pour la boucle principale
-        $connectionStartTime = time();
-        $lastKeepAlive = time();
-        $keepAliveInterval = 15; // Envoyer un keep-alive toutes les 15 secondes
-        $maxIdleTime = 30; // Temps maximum d'inactivité en secondes
-        $maxConnectionTime = 120; // Rotation de connexion après 2 minutes
-        $previousVersionSum = getCurrentVersionSum($convId);
-        $since = 0;
-        
-        // Boucle principale
-        while (true) {
-            // Keep-alive périodique
-            if (time() - $lastKeepAlive >= $keepAliveInterval) {
-                sendSSE('keep-alive', ['time' => time()]);
-                $lastKeepAlive = time();
-            }
-            
-            // Vérifier les changements de version
-            $currentVersionSum = getCurrentVersionSum($convId);
-            
-            if ($currentVersionSum != $previousVersionSum) {
-                // Versions changées, envoyer les mises à jour
-                $updates = getReadUpdates($convId, $since);
-                if (!empty($updates)) {
-                    sendSSE('read_update', $updates);
-                    // Mettre à jour le dernier ID connu
-                    $lastMessage = end($updates);
-                    if ($lastMessage) {
-                        $since = $lastMessage['messageId'];
-                    }
-                }
-                $previousVersionSum = $currentVersionSum;
-            }
-            
-            // Rotation de connexion périodique pour éviter les timeouts
-            if (time() - $connectionStartTime > $maxConnectionTime) {
-                sendSSE('reconnect', ['message' => 'Connection rotation']);
-                break;
-            }
-            
-            // Vérifier si le client est toujours connecté
-            if (connection_aborted()) {
-                break;
-            }
-            
-            // Pause pour éviter de surcharger le serveur
-            sleep(2);
+            echo json_encode([
+                'success' => true,
+                'hasUpdates' => true,
+                'version' => $currentVersionSum,
+                'initialState' => $initialState,
+                'updates' => $updates,
+                'timestamp' => time()
+            ]);
+        } else {
+            echo json_encode([
+                'success' => true,
+                'hasUpdates' => !empty($updates),
+                'version' => $currentVersionSum,
+                'updates' => $updates,
+                'timestamp' => time()
+            ]);
         }
         
     } catch (Exception $e) {
-        header('HTTP/1.1 500 Internal Server Error');
-        echo "event: error\n";
-        echo "data: " . json_encode(['error' => $e->getMessage()]) . "\n\n";
-        exit;
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
     exit;
 }
