@@ -11,7 +11,8 @@ require_once __DIR__ . '/core/auth.php';
 require_once __DIR__ . '/models/participant.php';
 require_once __DIR__ . '/models/conversation.php';
 require_once __DIR__ . '/controllers/conversation.php';
-require_once __DIR__ . '/models/message.php'; // Ajout de cette ligne pour corriger l'erreur fatale
+require_once __DIR__ . '/controllers/message.php'; // Ajout de cette ligne pour résoudre l'erreur
+require_once __DIR__ . '/models/message.php';
 
 // Vérifier l'authentification
 $user = requireAuth();
