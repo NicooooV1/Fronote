@@ -20,7 +20,45 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialiser la sidebar rétractable
     initSidebarCollapse();
+    
+    // Nettoyage des ressources lors de la navigation
+    setupBeforeUnloadHandler();
 });
+
+/**
+ * Configure un gestionnaire pour nettoyer les ressources avant la navigation
+ */
+function setupBeforeUnloadHandler() {
+    // Variable globale pour suivre l'état des connexions
+    window.activeConnections = {
+        sse: null,
+        polling: false,
+        abortController: new AbortController()
+    };
+    
+    // Gestionnaire d'événement pour la navigation
+    window.addEventListener('beforeunload', cleanupResources);
+    window.addEventListener('pagehide', cleanupResources);
+    
+    // Fonction pour nettoyer les ressources
+    function cleanupResources() {
+        // Fermer toute connexion SSE active
+        if (window.activeConnections.sse) {
+            console.log('Closing SSE connection before navigation');
+            window.activeConnections.sse.close();
+            window.activeConnections.sse = null;
+        }
+        
+        // Annuler les requêtes fetch en cours
+        window.activeConnections.abortController.abort();
+        
+        // Créer un nouveau AbortController pour les prochaines requêtes
+        window.activeConnections.abortController = new AbortController();
+        
+        // Indiquer que le polling doit s'arrêter
+        window.activeConnections.polling = false;
+    }
+}
 
 /**
  * Initialise le système de détection et de suivi des messages lus
@@ -31,7 +69,6 @@ function initReadTracker() {
     let isMarkingMessage = false;
     let isPolling = false;
     let useSSE = true; // Utiliser SSE par défaut, fallback sur long polling si besoin
-    let eventSource = null;
     
     // Récupérer le dernier message lu lors du chargement initial
     const messageElements = document.querySelectorAll('.message');
@@ -78,7 +115,8 @@ function initReadTracker() {
         fetch(`api/read_status.php?action=read&conv_id=${convId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messageId })
+            body: JSON.stringify({ messageId }),
+            signal: window.activeConnections.abortController.signal
         })
         .then(response => {
             if (!response.ok) {
@@ -95,12 +133,15 @@ function initReadTracker() {
             }
         })
         .catch(error => {
-            console.error('Erreur lors du marquage comme lu:', error);
-            // Réessayer après un délai
-            setTimeout(() => {
-                isMarkingMessage = false;
-                markMessageAsRead(messageId);
-            }, 2000);
+            // Ne pas afficher d'erreur si la requête a été annulée (navigation)
+            if (error.name !== 'AbortError') {
+                console.error('Erreur lors du marquage comme lu:', error);
+                // Réessayer après un délai
+                setTimeout(() => {
+                    isMarkingMessage = false;
+                    markMessageAsRead(messageId);
+                }, 2000);
+            }
         })
         .finally(() => {
             isMarkingMessage = false;
@@ -154,13 +195,14 @@ function initReadTracker() {
         if (!convId) return;
         
         // Fermer toute connexion existante
-        if (eventSource) {
-            eventSource.close();
+        if (window.activeConnections.sse) {
+            window.activeConnections.sse.close();
         }
         
         try {
             // Créer une nouvelle connexion SSE
-            eventSource = new EventSource(`api/read_status.php?action=read-sse&conv_id=${convId}`);
+            const eventSource = new EventSource(`api/read_status.php?action=read-sse&conv_id=${convId}`);
+            window.activeConnections.sse = eventSource;
             
             // Écouter les événements de connexion
             eventSource.addEventListener('connected', function(e) {
@@ -185,7 +227,7 @@ function initReadTracker() {
                 
                 // Fermer la connexion et basculer vers le polling en cas d'erreur persistante
                 eventSource.close();
-                eventSource = null;
+                window.activeConnections.sse = null;
                 
                 // Fallback to polling after a delay
                 setTimeout(() => {
@@ -235,16 +277,26 @@ function initReadTracker() {
         if (isPolling || useSSE) return;
         
         isPolling = true;
+        window.activeConnections.polling = true;
         console.log('Long polling: Démarrage');
         
         function pollForUpdates() {
-            const convId = new URLSearchParams(window.location.search).get('id');
-            if (!convId) {
+            if (!window.activeConnections.polling) {
+                console.log('Long polling: Arrêté par navigation');
                 isPolling = false;
                 return;
             }
             
-            fetch(`api/read_status.php?action=read-updates&conv_id=${convId}&since=${lastReadMessageId}`)
+            const convId = new URLSearchParams(window.location.search).get('id');
+            if (!convId) {
+                isPolling = false;
+                window.activeConnections.polling = false;
+                return;
+            }
+            
+            fetch(`api/read_status.php?action=read-updates&conv_id=${convId}&since=${lastReadMessageId}`, {
+                signal: window.activeConnections.abortController.signal
+            })
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`Erreur réseau: ${response.status}`);
@@ -264,7 +316,7 @@ function initReadTracker() {
                         }
                         
                         // Continuer le polling si toujours sur la page
-                        if (document.visibilityState === 'visible') {
+                        if (document.visibilityState === 'visible' && window.activeConnections.polling) {
                             // Ajouter un délai entre les requêtes pour réduire la charge
                             setTimeout(pollForUpdates, 2000);
                         } else {
@@ -274,17 +326,24 @@ function initReadTracker() {
                         }
                     } else {
                         // Réessayer après un délai en cas d'erreur
-                        setTimeout(pollForUpdates, 5000);
+                        if (window.activeConnections.polling) {
+                            setTimeout(pollForUpdates, 5000);
+                        }
                     }
                 })
                 .catch(error => {
-                    console.error('Erreur de polling:', error);
-                    setTimeout(pollForUpdates, 5000);
+                    // Ne pas afficher d'erreur si la requête a été annulée (navigation)
+                    if (error.name !== 'AbortError') {
+                        console.error('Erreur de polling:', error);
+                        if (window.activeConnections.polling) {
+                            setTimeout(pollForUpdates, 5000);
+                        }
+                    }
                 });
         }
         
         function onVisibilityChange() {
-            if (document.visibilityState === 'visible') {
+            if (document.visibilityState === 'visible' && window.activeConnections.polling) {
                 document.removeEventListener('visibilitychange', onVisibilityChange);
                 startReadStatusPolling();
             }
@@ -327,7 +386,9 @@ function initReadTracker() {
         
         isMarkingMessage = true;
         
-        fetch(`api/messages.php?id=${messageId}&action=mark_unread`)
+        fetch(`api/messages.php?id=${messageId}&action=mark_unread`, {
+            signal: window.activeConnections.abortController.signal
+        })
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erreur réseau: ${response.status}`);
@@ -363,192 +424,15 @@ function initReadTracker() {
                 }
             })
             .catch(error => {
-                afficherNotificationErreur("Erreur: " + error.message);
-                console.error('Erreur:', error);
+                // Ne pas afficher d'erreur si la requête a été annulée (navigation)
+                if (error.name !== 'AbortError') {
+                    afficherNotificationErreur("Erreur: " + error.message);
+                    console.error('Erreur:', error);
+                }
             })
             .finally(() => {
                 isMarkingMessage = false;
             });
-    }
-}
-
-/**
- * Initialise les actions principales de conversation
- */
-function initConversationActions() {
-    // Gestion du scroll dans les conversations
-    const messagesContainer = document.querySelector('.messages-container');
-    if (messagesContainer) {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-    
-    // Actions sur les conversations et participants
-    // Archiver une conversation
-    const archiveBtn = document.getElementById('archive-btn');
-    if (archiveBtn) {
-        archiveBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            if (confirm('Êtes-vous sûr de vouloir archiver cette conversation ?')) {
-                document.getElementById('archiveForm').submit();
-            }
-        });
-    }
-    
-    // Supprimer une conversation
-    const deleteBtn = document.getElementById('delete-btn');
-    if (deleteBtn) {
-        deleteBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            if (confirm('Êtes-vous sûr de vouloir supprimer cette conversation ?')) {
-                document.getElementById('deleteForm').submit();
-            }
-        });
-    }
-    
-    // Restaurer une conversation
-    const restoreBtn = document.getElementById('restore-btn');
-    if (restoreBtn) {
-        restoreBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            document.getElementById('restoreForm').submit();
-        });
-    }
-    
-    // Gestion du modal pour l'ajout de participants
-    const addParticipantBtn = document.getElementById('add-participant-btn');
-    if (addParticipantBtn) {
-        addParticipantBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            showAddParticipantModal();
-        });
-    }
-    
-    // Gestion de la fermeture du modal
-    const closeModalBtns = document.querySelectorAll('.close');
-    closeModalBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            closeAddParticipantModal();
-        });
-    });
-    
-    // Fermeture du modal en cliquant en dehors
-    window.addEventListener('click', function(event) {
-        const modals = document.querySelectorAll('.modal');
-        modals.forEach(modal => {
-            if (event.target === modal) {
-                modal.style.display = 'none';
-            }
-        });
-    });
-}
-
-/**
- * Initialise la fonctionnalité de sidebar rétractable
- */
-function initSidebarCollapse() {
-    // Créer le bouton de toggle s'il n'existe pas déjà
-    let sidebarToggle = document.getElementById('sidebar-toggle');
-    const conversationPage = document.querySelector('.conversation-page');
-    
-    if (!conversationPage) return;
-    
-    // Créer le bouton s'il n'existe pas
-    if (!sidebarToggle) {
-        sidebarToggle = document.createElement('button');
-        sidebarToggle.id = 'sidebar-toggle';
-        sidebarToggle.className = 'sidebar-toggle';
-        sidebarToggle.title = 'Afficher/masquer la liste des participants';
-        sidebarToggle.innerHTML = '<i class="fas fa-bars"></i>';
-        sidebarToggle.style.display = 'flex'; // Assurer que le bouton est visible
-        sidebarToggle.style.zIndex = '1200';  // Mettre au premier plan
-        
-        // Insérer le bouton comme premier enfant de conversation-page
-        conversationPage.prepend(sidebarToggle);
-    }
-    
-    // Vérifier s'il y a une préférence sauvegardée
-    const sidebarCollapsed = localStorage.getItem('conversation_sidebar_collapsed') === 'true';
-    
-    // Initialiser l'état en fonction de la préférence
-    if (sidebarCollapsed) {
-        conversationPage.setAttribute('data-sidebar-collapsed', 'true');
-        sidebarToggle.innerHTML = '<i class="fas fa-bars"></i>';
-    } else {
-        conversationPage.setAttribute('data-sidebar-collapsed', 'false');
-        sidebarToggle.innerHTML = '<i class="fas fa-times"></i>';
-    }
-    
-    // Toggle la visibilité de la sidebar
-    sidebarToggle.addEventListener('click', function() {
-        const isCurrentlyCollapsed = conversationPage.getAttribute('data-sidebar-collapsed') === 'true';
-        const newState = !isCurrentlyCollapsed;
-        
-        conversationPage.setAttribute('data-sidebar-collapsed', newState);
-        
-        // Mettre à jour l'icône du bouton
-        this.innerHTML = newState ? 
-            '<i class="fas fa-bars"></i>' : 
-            '<i class="fas fa-times"></i>';
-        
-        // Sauvegarder la préférence
-        localStorage.setItem('conversation_sidebar_collapsed', newState);
-        
-        // Déclencher un événement resize pour ajuster les composants
-        window.dispatchEvent(new Event('resize'));
-    });
-}
-
-/**
- * Configure la validation du formulaire de message
- */
-function setupMessageValidation() {
-    const messageForm = document.getElementById('messageForm');
-    const textArea = document.querySelector('textarea[name="contenu"]');
-    
-    if (messageForm && textArea) {
-        // Vérifier si un compteur existe déjà
-        let counter = document.getElementById('char-counter');
-        
-        // Si le compteur n'existe pas, le créer
-        if (!counter) {
-            counter = document.createElement('div');
-            counter.id = 'char-counter';
-            counter.className = 'text-muted small mt-1';
-            counter.style.fontSize = '12px';
-            counter.style.color = '#6c757d';
-            counter.style.marginTop = '5px';
-            textArea.parentNode.insertBefore(counter, textArea.nextSibling);
-        }
-        
-        // Mettre à jour le compteur en temps réel
-        textArea.addEventListener('input', function() {
-            const maxLength = 10000;
-            const currentLength = this.value.length;
-            const remaining = maxLength - currentLength;
-            
-            counter.textContent = `${currentLength}/${maxLength} caractères`;
-            
-            // Visualisation du dépassement
-            if (currentLength > maxLength) {
-                counter.style.color = '#dc3545';
-                document.querySelector('button[type="submit"]').disabled = true;
-            } else {
-                counter.style.color = '#6c757d';
-                document.querySelector('button[type="submit"]').disabled = false;
-            }
-        });
-        
-        // Déclencher l'événement d'entrée pour mettre à jour le compteur immédiatement
-        const inputEvent = new Event('input');
-        textArea.dispatchEvent(inputEvent);
-        
-        // Supprimer tous les compteurs en double
-        const counters = document.querySelectorAll('.text-muted.small:not(#char-counter)');
-        counters.forEach(element => {
-            if (element.textContent.includes('caractères') && element !== counter) {
-                element.remove();
-            }
-        });
     }
 }
 
@@ -574,7 +458,7 @@ function setupRealTimeUpdates() {
     // Fonction de vérification des mises à jour
     function checkForUpdates() {
         // Éviter les requêtes concurrentes
-        if (isCheckingForUpdates) return;
+        if (isCheckingForUpdates || !window.activeConnections || !window.activeConnections.polling) return;
         
         // Vérifier si l'utilisateur a le focus sur l'onglet et n'est pas en train d'écrire
         const textareaActive = document.querySelector('textarea:focus');
@@ -589,7 +473,9 @@ function setupRealTimeUpdates() {
         isCheckingForUpdates = true;
         
         // Requête de vérification
-        fetch(`api/messages.php?conv_id=${convId}&action=check_updates&last_timestamp=${lastTimestamp}`)
+        fetch(`api/messages.php?conv_id=${convId}&action=check_updates&last_timestamp=${lastTimestamp}`, {
+            signal: window.activeConnections.abortController.signal
+        })
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erreur réseau: ${response.status}`);
@@ -614,15 +500,22 @@ function setupRealTimeUpdates() {
                 
                 isCheckingForUpdates = false;
                 
-                // Programmer la prochaine vérification
-                setTimeout(checkForUpdates, refreshInterval);
+                // Programmer la prochaine vérification si nous sommes toujours sur la page
+                if (window.activeConnections && window.activeConnections.polling) {
+                    setTimeout(checkForUpdates, refreshInterval);
+                }
             })
             .catch(error => {
-                console.error('Erreur lors de la vérification des mises à jour:', error);
-                isCheckingForUpdates = false;
-                
-                // Réessayer après un délai en cas d'erreur
-                setTimeout(checkForUpdates, refreshInterval);
+                // Ne pas afficher d'erreur si la requête a été annulée (navigation)
+                if (error.name !== 'AbortError') {
+                    console.error('Erreur lors de la vérification des mises à jour:', error);
+                    isCheckingForUpdates = false;
+                    
+                    // Réessayer après un délai en cas d'erreur si nous sommes toujours sur la page
+                    if (window.activeConnections && window.activeConnections.polling) {
+                        setTimeout(checkForUpdates, refreshInterval);
+                    }
+                }
             });
     }
     
@@ -680,7 +573,9 @@ function setupRealTimeUpdates() {
      * Récupère et ajoute les nouveaux messages à la conversation
      */
     function fetchNewMessages() {
-        fetch(`api/messages.php?conv_id=${convId}&action=get_new&last_timestamp=${lastTimestamp}`)
+        fetch(`api/messages.php?conv_id=${convId}&action=get_new&last_timestamp=${lastTimestamp}`, {
+            signal: window.activeConnections.abortController.signal
+        })
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erreur réseau: ${response.status}`);
@@ -719,7 +614,10 @@ function setupRealTimeUpdates() {
                 }
             })
             .catch(error => {
-                console.error('Erreur lors de la récupération des nouveaux messages:', error);
+                // Ne pas afficher d'erreur si la requête a été annulée (navigation)
+                if (error.name !== 'AbortError') {
+                    console.error('Erreur lors de la récupération des nouveaux messages:', error);
+                }
             });
     }
     
@@ -727,7 +625,9 @@ function setupRealTimeUpdates() {
      * Actualise la liste des participants
      */
     function refreshParticipantsList() {
-        fetch(`api/participants.php?conv_id=${convId}&action=get_list`)
+        fetch(`api/participants.php?conv_id=${convId}&action=get_list`, {
+            signal: window.activeConnections.abortController.signal
+        })
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erreur réseau: ${response.status}`);
@@ -740,16 +640,16 @@ function setupRealTimeUpdates() {
                     participantsList.innerHTML = html;
                 }
             })
-            .catch(error => console.error('Erreur lors de l\'actualisation des participants:', error));
+            .catch(error => {
+                // Ne pas afficher d'erreur si la requête a été annulée (navigation)
+                if (error.name !== 'AbortError') {
+                    console.error('Erreur lors de l\'actualisation des participants:', error);
+                }
+            });
     }
     
     // Démarrer la vérification des mises à jour
     setTimeout(checkForUpdates, refreshInterval);
-    
-    // Arrêter les mises à jour lorsque l'utilisateur quitte la page
-    window.addEventListener('beforeunload', () => {
-        isCheckingForUpdates = true; // Empêcher de nouvelles requêtes
-    });
     
     // Gestion du scroll - si l'utilisateur fait défiler vers le bas, masquer l'indicateur
     const messagesContainer = document.querySelector('.messages-container');
@@ -799,7 +699,8 @@ function setupAjaxMessageSending() {
         // Envoyer la requête AJAX
         fetch('api/messages.php', {
             method: 'POST',
-            body: formData
+            body: formData,
+            signal: window.activeConnections.abortController.signal
         })
         .then(response => {
             // Vérifier si la réponse est ok avant de continuer
@@ -843,8 +744,11 @@ function setupAjaxMessageSending() {
             }
         })
         .catch(error => {
-            console.error('Erreur:', error);
-            alert('Erreur lors de l\'envoi du message. Veuillez réessayer.');
+            // Ne pas afficher d'erreur si la requête a été annulée (navigation)
+            if (error.name !== 'AbortError') {
+                console.error('Erreur:', error);
+                alert('Erreur lors de l\'envoi du message. Veuillez réessayer.');
+            }
         })
         .finally(() => {
             // Réactiver le bouton quoi qu'il arrive
@@ -999,6 +903,132 @@ function isScrolledToBottom(element) {
 }
 
 /**
+ * Initialise les actions principales de conversation
+ */
+function initConversationActions() {
+    // Gestion du scroll dans les conversations
+    const messagesContainer = document.querySelector('.messages-container');
+    if (messagesContainer) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+    
+    // Actions sur les conversations et participants
+    // Archiver une conversation
+    const archiveBtn = document.getElementById('archive-btn');
+    if (archiveBtn) {
+        archiveBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (confirm('Êtes-vous sûr de vouloir archiver cette conversation ?')) {
+                document.getElementById('archiveForm').submit();
+            }
+        });
+    }
+    
+    // Supprimer une conversation
+    const deleteBtn = document.getElementById('delete-btn');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (confirm('Êtes-vous sûr de vouloir supprimer cette conversation ?')) {
+                document.getElementById('deleteForm').submit();
+            }
+        });
+    }
+    
+    // Restaurer une conversation
+    const restoreBtn = document.getElementById('restore-btn');
+    if (restoreBtn) {
+        restoreBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('restoreForm').submit();
+        });
+    }
+    
+    // Gestion du modal pour l'ajout de participants
+    const addParticipantBtn = document.getElementById('add-participant-btn');
+    if (addParticipantBtn) {
+        addParticipantBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            showAddParticipantModal();
+        });
+    }
+    
+    // Gestion de la fermeture du modal
+    const closeModalBtns = document.querySelectorAll('.close');
+    closeModalBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            closeAddParticipantModal();
+        });
+    });
+    
+    // Fermeture du modal en cliquant en dehors
+    window.addEventListener('click', function(event) {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    });
+}
+
+/**
+ * Initialise la fonctionnalité de sidebar rétractable
+ */
+function initSidebarCollapse() {
+    // Créer le bouton de toggle s'il n'existe pas déjà
+    let sidebarToggle = document.getElementById('sidebar-toggle');
+    const conversationPage = document.querySelector('.conversation-page');
+    
+    if (!conversationPage) return;
+    
+    // Créer le bouton s'il n'existe pas
+    if (!sidebarToggle) {
+        sidebarToggle = document.createElement('button');
+        sidebarToggle.id = 'sidebar-toggle';
+        sidebarToggle.className = 'sidebar-toggle';
+        sidebarToggle.title = 'Afficher/masquer la liste des participants';
+        sidebarToggle.innerHTML = '<i class="fas fa-bars"></i>';
+        sidebarToggle.style.display = 'flex'; // Assurer que le bouton est visible
+        sidebarToggle.style.zIndex = '1200';  // Mettre au premier plan
+        
+        // Insérer le bouton comme premier enfant de conversation-page
+        conversationPage.prepend(sidebarToggle);
+    }
+    
+    // Vérifier s'il y a une préférence sauvegardée
+    const sidebarCollapsed = localStorage.getItem('conversation_sidebar_collapsed') === 'true';
+    
+    // Initialiser l'état en fonction de la préférence
+    if (sidebarCollapsed) {
+        conversationPage.setAttribute('data-sidebar-collapsed', 'true');
+        sidebarToggle.innerHTML = '<i class="fas fa-bars"></i>';
+    } else {
+        conversationPage.setAttribute('data-sidebar-collapsed', 'false');
+        sidebarToggle.innerHTML = '<i class="fas fa-times"></i>';
+    }
+    
+    // Toggle la visibilité de la sidebar
+    sidebarToggle.addEventListener('click', function() {
+        const isCurrentlyCollapsed = conversationPage.getAttribute('data-sidebar-collapsed') === 'true';
+        const newState = !isCurrentlyCollapsed;
+        
+        conversationPage.setAttribute('data-sidebar-collapsed', newState);
+        
+        // Mettre à jour l'icône du bouton
+        this.innerHTML = newState ? 
+            '<i class="fas fa-bars"></i>' : 
+            '<i class="fas fa-times"></i>';
+        
+        // Sauvegarder la préférence
+        localStorage.setItem('conversation_sidebar_collapsed', newState);
+        
+        // Déclencher un événement resize pour ajuster les composants
+        window.dispatchEvent(new Event('resize'));
+    });
+}
+
+/**
  * Affiche le modal d'ajout de participants
  */
 function showAddParticipantModal() {
@@ -1100,7 +1130,9 @@ function loadParticipants() {
     select.innerHTML = '<option value="">Chargement...</option>';
     
     // Faire une requête AJAX pour récupérer les participants
-    fetch(`api/participants.php?type=${type}&conv_id=${convId}`)
+    fetch(`api/participants.php?type=${type}&conv_id=${convId}`, {
+        signal: window.activeConnections.abortController.signal
+    })
         .then(response => {
             if (!response.ok) {
                 throw new Error(`Erreur réseau: ${response.status}`);
@@ -1125,160 +1157,12 @@ function loadParticipants() {
             });
         })
         .catch(error => {
-            select.innerHTML = '<option value="">Erreur lors du chargement</option>';
-            console.error('Erreur:', error);
-        });
-}
-
-/**
- * Marque un message comme lu
- * @param {number} messageId - ID du message
- */
-function markMessageAsRead(messageId) {
-    const convId = new URLSearchParams(window.location.search).get('id');
-    if (!convId) return;
-    
-    fetch(`api/read_status.php?action=read&conv_id=${convId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messageId })
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`Erreur réseau: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            // Mettre à jour l'interface utilisateur
-            const message = document.querySelector(`.message[data-id="${messageId}"]`);
-            if (message) {
-                message.classList.add('read');
-                
-                // Mettre à jour le bouton
-                const readBtn = message.querySelector('.mark-read-btn');
-                if (readBtn) {
-                    const unreadBtn = document.createElement('button');
-                    unreadBtn.className = 'btn-icon mark-unread-btn';
-                    unreadBtn.setAttribute('data-message-id', messageId);
-                    unreadBtn.innerHTML = '<i class="fas fa-envelope"></i> Marquer comme non lu';
-                    
-                    readBtn.parentNode.replaceChild(unreadBtn, readBtn);
-                }
-                
-                // Mettre à jour le statut de lecture
-                if (data.read_status) {
-                    updateReadStatus(data.read_status);
-                }
-            }
-        }
-    })
-    .catch(error => console.error('Erreur:', error));
-}
-
-/**
- * Marque un message comme non lu
- * @param {number} messageId - ID du message
- */
-function markMessageAsUnread(messageId) {
-    fetch(`api/messages.php?id=${messageId}&action=mark_unread`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Erreur réseau: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                // Mettre à jour l'interface utilisateur
-                const message = document.querySelector(`.message[data-id="${messageId}"]`);
-                if (message) {
-                    message.classList.remove('read');
-                    
-                    // Mettre à jour le bouton
-                    const unreadBtn = message.querySelector('.mark-unread-btn');
-                    if (unreadBtn) {
-                        const readBtn = document.createElement('button');
-                        readBtn.className = 'btn-icon mark-read-btn';
-                        readBtn.setAttribute('data-message-id', messageId);
-                        readBtn.innerHTML = '<i class="fas fa-envelope-open"></i> Marquer comme lu';
-                        
-                        unreadBtn.parentNode.replaceChild(readBtn, unreadBtn);
-                    }
-                }
-            } else {
-                afficherNotificationErreur("Erreur: " + (data.error || "Une erreur est survenue"));
-                console.error('Erreur:', data.error);
-            }
-        })
-        .catch(error => {
-            afficherNotificationErreur("Erreur: " + error.message);
-            console.error('Erreur:', error);
-        });
-}
-
-// Gestion des pièces jointes
-document.addEventListener('DOMContentLoaded', function() {
-    const attachmentsInput = document.getElementById('attachments');
-    if (attachmentsInput) {
-        attachmentsInput.addEventListener('change', function(e) {
-            const fileList = document.getElementById('file-list');
-            fileList.innerHTML = '';
-            
-            if (this.files.length > 0) {
-                for (let i = 0; i < this.files.length; i++) {
-                    const file = this.files[i];
-                    const fileSize = formatFileSize(file.size);
-                    
-                    const fileInfo = document.createElement('div');
-                    fileInfo.className = 'file-info';
-                    fileInfo.innerHTML = `
-                        <i class="fas fa-file"></i>
-                        <span>${file.name} (${fileSize})</span>
-                    `;
-                    fileList.appendChild(fileInfo);
-                }
+            // Ne pas afficher d'erreur si la requête a été annulée (navigation)
+            if (error.name !== 'AbortError') {
+                select.innerHTML = '<option value="">Erreur lors du chargement</option>';
+                console.error('Erreur:', error);
             }
         });
-    }
-});
-
-/**
- * Formater la taille des fichiers
- * @param {number} bytes - Taille en octets
- * @returns {string} Taille formatée avec unité
- */
-function formatFileSize(bytes) {
-    if (bytes < 1024) return bytes + ' B';
-    else if (bytes < 1048576) return Math.round(bytes / 1024) + ' KB';
-    else return Math.round(bytes / 1048576 * 10) / 10 + ' MB';
-}
-
-/**
- * Formatage de la date d'un message
- * @param {Date} date - Date à formater
- * @returns {string} Date formatée
- */
-function formatMessageDate(date) {
-    const now = new Date();
-    const diffMs = now - date;
-    const diffSecs = Math.floor(diffMs / 1000);
-    const diffMins = Math.floor(diffSecs / 60);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-    
-    if (diffSecs < 60) {
-        return "À l'instant";
-    } else if (diffMins < 60) {
-        return `Il y a ${diffMins} minute${diffMins > 1 ? 's' : ''}`;
-    } else if (diffHours < 24) {
-        return `Il y a ${diffHours} heure${diffHours > 1 ? 's' : ''}`;
-    } else if (diffDays < 2) {
-        return `Hier à ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-    } else {
-        return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth()+1).toString().padStart(2, '0')}/${date.getFullYear()} à ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-    }
 }
 
 /**
@@ -1320,4 +1204,30 @@ function getParticipantType(type) {
         'administrateur': 'Administrateur'
     };
     return types[type] || type;
+}
+
+/**
+ * Formater la date d'un message
+ * @param {Date} date - Date à formater
+ * @returns {string} Date formatée
+ */
+function formatMessageDate(date) {
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffSecs < 60) {
+        return "À l'instant";
+    } else if (diffMins < 60) {
+        return `Il y a ${diffMins} minute${diffMins > 1 ? 's' : ''}`;
+    } else if (diffHours < 24) {
+        return `Il y a ${diffHours} heure${diffHours > 1 ? 's' : ''}`;
+    } else if (diffDays < 2) {
+        return `Hier à ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    } else {
+        return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth()+1).toString().padStart(2, '0')}/${date.getFullYear()} à ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    }
 }
