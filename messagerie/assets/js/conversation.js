@@ -50,6 +50,15 @@ function setupSSEForConversation() {
     });
 }
 
+// Fonction pour gérer les délais de reconnexion de manière exponentielle
+let messagesReconnectAttempts = 0;
+let readStatusReconnectAttempts = 0;
+
+function getReconnectDelay(attempts) {
+    // Délai exponentiel: 1s, 2s, 4s, 8s, etc. jusqu'à max 30s
+    return Math.min(Math.pow(2, attempts) * 1000, 30000);
+}
+
 /**
  * Configure la connexion SSE pour les mises à jour des messages
  */
@@ -69,6 +78,9 @@ function setupSSEForMessages() {
     // Récupérer le jeton SSE
     getSSEToken(convId)
         .then(token => {
+            // Réinitialiser le compteur de tentatives si nous obtenons un jeton
+            messagesReconnectAttempts = 0;
+            
             // Créer la connexion SSE
             const messageSource = new EventSource(`api/messages.php?action=stream&conv_id=${convId}&last_timestamp=${lastTimestamp}&token=${token}`);
             
@@ -108,23 +120,30 @@ function setupSSEForMessages() {
             
             // Gestion des erreurs
             messageSource.addEventListener('error', function(event) {
-                console.error('SSE Error: Connection failed or closed. Reconnecting...');
+                console.error('SSE Error: Connection failed or closed.');
                 
                 // Si la connexion est fermée, tenter de se reconnecter après un délai
                 if (this.readyState === EventSource.CLOSED) {
-                    setTimeout(setupSSEForMessages, 5000);
+                    messagesReconnectAttempts++;
+                    const delay = getReconnectDelay(messagesReconnectAttempts);
+                    console.log(`Reconnecting messages in ${delay/1000} seconds...`);
+                    setTimeout(setupSSEForMessages, delay);
                 }
             });
             
             // Ping pour maintenir la connexion
             messageSource.addEventListener('ping', function(event) {
                 // Connexion maintenue, rien à faire
+                messagesReconnectAttempts = 0;  // Réinitialiser le compteur à chaque ping réussi
             });
         })
         .catch(error => {
             console.error('Erreur lors de la configuration SSE pour les messages:', error);
             // Réessayer après un délai
-            setTimeout(setupSSEForMessages, 5000);
+            messagesReconnectAttempts++;
+            const delay = getReconnectDelay(messagesReconnectAttempts);
+            console.log(`Reconnecting messages after error in ${delay/1000} seconds...`);
+            setTimeout(setupSSEForMessages, delay);
         });
 }
 
@@ -176,6 +195,9 @@ function setupSSEForReadStatus() {
     // Récupérer le jeton SSE
     getSSEToken(convId)
         .then(token => {
+            // Réinitialiser le compteur de tentatives si nous obtenons un jeton
+            readStatusReconnectAttempts = 0;
+            
             // Créer la connexion SSE
             const readStatusSource = new EventSource(`api/read_status.php?action=stream&conv_id=${convId}&since=${lastReadMessageId}&version=0&token=${token}`);
             
@@ -226,23 +248,30 @@ function setupSSEForReadStatus() {
             
             // Gestion des erreurs
             readStatusSource.addEventListener('error', function(event) {
-                console.error('SSE Error: Read status connection failed or closed. Reconnecting...');
+                console.error('SSE Error: Read status connection failed or closed.');
                 
                 // Si la connexion est fermée, tenter de se reconnecter après un délai
                 if (this.readyState === EventSource.CLOSED) {
-                    setTimeout(setupSSEForReadStatus, 5000);
+                    readStatusReconnectAttempts++;
+                    const delay = getReconnectDelay(readStatusReconnectAttempts);
+                    console.log(`Reconnecting read status in ${delay/1000} seconds...`);
+                    setTimeout(setupSSEForReadStatus, delay);
                 }
             });
             
             // Ping pour maintenir la connexion
             readStatusSource.addEventListener('ping', function(event) {
                 // Connexion maintenue, rien à faire
+                readStatusReconnectAttempts = 0;  // Réinitialiser le compteur à chaque ping réussi
             });
         })
         .catch(error => {
             console.error('Erreur lors de la configuration SSE pour les statuts de lecture:', error);
             // Réessayer après un délai
-            setTimeout(setupSSEForReadStatus, 5000);
+            readStatusReconnectAttempts++;
+            const delay = getReconnectDelay(readStatusReconnectAttempts);
+            console.log(`Reconnecting read status after error in ${delay/1000} seconds...`);
+            setTimeout(setupSSEForReadStatus, delay);
         });
 }
 
@@ -1154,8 +1183,9 @@ function setupAjaxMessageSending() {
  * Utilitaire pour afficher des notifications d'erreur
  * @param {string} message - Message d'erreur
  * @param {number} duration - Durée d'affichage
+ * @param {string} type - Type de notification (error, success, info, warning)
  */
-function afficherNotificationErreur(message, duration = 5000) {
+function afficherNotificationErreur(message, duration = 5000, type = 'error') {
     // Créer la div de notification si elle n'existe pas
     let notifContainer = document.getElementById('error-notification-container');
     
@@ -1179,9 +1209,29 @@ function afficherNotificationErreur(message, duration = 5000) {
     const notification = document.createElement('div');
     notification.className = 'error-notification';
     
+    // Styles basés sur le type
+    let backgroundColor, textColor, icon;
+    if (type === 'error') {
+        backgroundColor = '#f8d7da';
+        textColor = '#721c24';
+        icon = 'exclamation-circle';
+    } else if (type === 'success') {
+        backgroundColor = '#d4edda';
+        textColor = '#155724';
+        icon = 'check-circle';
+    } else if (type === 'info') {
+        backgroundColor = '#d1ecf1';
+        textColor = '#0c5460';
+        icon = 'info-circle';
+    } else if (type === 'warning') {
+        backgroundColor = '#fff3cd';
+        textColor = '#856404';
+        icon = 'exclamation-triangle';
+    }
+    
     // Styles de la notification
-    notification.style.backgroundColor = '#f8d7da';
-    notification.style.color = '#721c24';
+    notification.style.backgroundColor = backgroundColor;
+    notification.style.color = textColor;
     notification.style.padding = '15px 20px';
     notification.style.margin = '10px';
     notification.style.borderRadius = '5px';
@@ -1190,17 +1240,18 @@ function afficherNotificationErreur(message, duration = 5000) {
     notification.style.justifyContent = 'space-between';
     notification.style.alignItems = 'center';
     notification.style.minWidth = '300px';
+    notification.style.animation = 'fadeInDown 0.3s ease-out';
     
     // Créer le contenu de la notification
     const content = document.createElement('div');
-    content.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+    content.innerHTML = `<i class="fas fa-${icon}"></i> ${message}`;
     
     // Créer le bouton de fermeture
     const closeBtn = document.createElement('button');
     closeBtn.innerHTML = '&times;';
     closeBtn.style.background = 'none';
     closeBtn.style.border = 'none';
-    closeBtn.style.color = '#721c24';
+    closeBtn.style.color = textColor;
     closeBtn.style.fontSize = '20px';
     closeBtn.style.cursor = 'pointer';
     closeBtn.style.marginLeft = '15px';
@@ -1235,4 +1286,9 @@ function afficherNotificationErreur(message, duration = 5000) {
     }, duration);
     
     return notification;
+}
+
+// Fonction pour afficher les succès
+function afficherNotificationSucces(message, duration = 5000) {
+    return afficherNotificationErreur(message, duration, 'success');
 }

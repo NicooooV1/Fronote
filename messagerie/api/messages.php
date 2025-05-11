@@ -13,15 +13,17 @@ require_once __DIR__ . '/../core/auth.php';
 require_once __DIR__ . '/../core/rate_limiter.php';
 require_once __DIR__ . '/../core/logger.php';
 require_once __DIR__ . '/../core/utils.php';
+require_once __DIR__ . '/../core/error_handler.php';
 
-// Toujours répondre en JSON
-header('Content-Type: application/json');
+// Toujours répondre en JSON (sauf pour SSE)
+if (!isset($_GET['action']) || $_GET['action'] !== 'stream') {
+    header('Content-Type: application/json');
+}
 
 // Vérifier l'authentification
 $user = checkAuth();
 if (!$user) {
-    echo json_encode(['success' => false, 'error' => 'Non authentifié']);
-    exit;
+    handleAuthError();
 }
 
 // Limiter le taux de requêtes API
@@ -36,8 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['action'])) {
     $csrfToken = $data['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
     
     if (!validateCSRFToken($csrfToken)) {
-        echo json_encode(['success' => false, 'error' => 'Jeton CSRF invalide']);
-        exit;
+        handleValidationError('Jeton CSRF invalide');
     }
 }
 
@@ -49,15 +50,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id'], $_GET['actio
 
     if (!$convId) {
         header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'error' => 'ID de conversation invalide']);
-        exit;
+        handleValidationError('ID de conversation invalide');
     }
     
     // Vérifier le jeton SSE
     if (!validateSSEToken($token, $convId, $user['id'], $user['type'])) {
         header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'error' => 'Jeton SSE invalide']);
-        exit;
+        handleAuthError();
     }
 
     // Configuration des en-têtes SSE
@@ -204,7 +203,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id'], $_GET['actio
  * @return string
  */
 function generateSSEToken($convId, $userId, $userType) {
-    $secret = 'BkTW#9f7@L!zP3vQ#Rx*8jN2'; // Change in production
+    $secrets = require_once __DIR__ . '/../config/secrets.php';
+    $secret = $secrets['sse_token_secret'];
+    
     $expiry = time() + 3600; // 1 heure
     $data = $convId . '|' . $userId . '|' . $userType . '|' . $expiry;
     $signature = hash_hmac('sha256', $data, $secret);
@@ -221,16 +222,25 @@ function generateSSEToken($convId, $userId, $userType) {
  * @return bool
  */
 function validateSSEToken($token, $convId, $userId, $userType) {
-    $secret = 'BkTW#9f7@L!zP3vQ#Rx*8jN2'; // Même clé que dans sse_token.php
+    $secrets = require_once __DIR__ . '/../config/secrets.php';
+    $secret = $secrets['sse_token_secret'];
     
     try {
+        // Ajout d'une vérification supplémentaire
+        if (empty($token)) {
+            error_log("Empty SSE token");
+            return false;
+        }
+        
         $decoded = base64_decode($token);
         if ($decoded === false) {
+            error_log("Failed to decode SSE token");
             return false;
         }
         
         $parts = explode('|', $decoded);
-        if (count($parts) !== 5) { // Vérifier qu'il y a 5 parties
+        if (count($parts) !== 5) {
+            error_log("Invalid token format: ".count($parts)." parts instead of 5");
             return false;
         }
         
@@ -238,6 +248,7 @@ function validateSSEToken($token, $convId, $userId, $userType) {
         
         // Vérifier l'expiration
         if (time() > (int)$expiry) {
+            error_log("Token expired");
             return false;
         }
         
@@ -245,6 +256,7 @@ function validateSSEToken($token, $convId, $userId, $userType) {
         if ((int)$tokenConvId !== (int)$convId || 
             (int)$tokenUserId !== (int)$userId || 
             $tokenUserType !== $userType) {
+            error_log("Token parameters mismatch");
             return false;
         }
         
@@ -252,10 +264,14 @@ function validateSSEToken($token, $convId, $userId, $userType) {
         $data = $tokenConvId . '|' . $tokenUserId . '|' . $tokenUserType . '|' . $expiry;
         $computedSignature = hash_hmac('sha256', $data, $secret);
         
-        return hash_equals($computedSignature, $signature);
+        $valid = hash_equals($computedSignature, $signature);
+        if (!$valid) {
+            error_log("Invalid token signature");
+        }
+        return $valid;
         
     } catch (Exception $e) {
-        // Journal de l'erreur mais ne pas interrompre le flux
+        // Log de l'erreur mais ne pas interrompre le flux
         error_log("SSE token validation error: " . $e->getMessage());
         return false;
     }
@@ -308,11 +324,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             echo json_encode($result);
         }
     } catch (Exception $e) {
-        logException($e, ['action' => 'send_message', 'conv_id' => $convId ?? 0]);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage()
-        ]);
+        handleApiError($e, ['action' => 'send_message', 'conv_id' => $convId ?? 0]);
     }
     exit;
 }
@@ -323,8 +335,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
     $lastTimestamp = isset($_GET['last_timestamp']) ? (int)$_GET['last_timestamp'] : 0;
 
     if (!$convId) {
-        echo json_encode(['success' => false, 'error' => 'ID de conversation invalide']);
-        exit;
+        handleValidationError('ID de conversation invalide');
     }
 
     try {
@@ -398,8 +409,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
             'messages' => $messages
         ]);
     } catch (Exception $e) {
-        logException($e, ['action' => 'get_new', 'conv_id' => $convId]);
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        handleApiError($e, ['action' => 'get_new', 'conv_id' => $convId]);
     }
     exit;
 }
@@ -410,8 +420,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
     $lastTimestamp = isset($_GET['last_timestamp']) ? (int)$_GET['last_timestamp'] : 0;
 
     if (!$convId) {
-        echo json_encode(['success' => false, 'error' => 'ID de conversation invalide']);
-        exit;
+        handleValidationError('ID de conversation invalide');
     }
 
     try {
@@ -487,8 +496,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
             'timestamp' => $timestampToReturn // Utiliser le timestamp du dernier message
         ]);
     } catch (Exception $e) {
-        logException($e, ['action' => 'check_updates', 'conv_id' => $convId]);
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        handleApiError($e, ['action' => 'check_updates', 'conv_id' => $convId]);
     }
     exit;
 }
@@ -499,8 +507,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id']) && isset($_GET['a
     $action = $_GET['action'];
 
     if (!$messageId || !in_array($action, ['mark_read', 'mark_unread'])) {
-        echo json_encode(['success' => false, 'error' => 'Paramètres invalides']);
-        exit;
+        handleValidationError('Paramètres invalides');
     }
 
     try {
@@ -514,11 +521,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id']) && isset($_GET['a
         
         echo json_encode($result);
     } catch (Exception $e) {
-        logException($e, ['action' => $action, 'message_id' => $messageId]);
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        handleApiError($e, ['action' => $action, 'message_id' => $messageId]);
     }
     exit;
 }
 
 // Si on arrive ici, c'est que l'action demandée n'existe pas
-echo json_encode(['success' => false, 'error' => 'Action non supportée']);
+handleNotFoundError('Action non supportée');

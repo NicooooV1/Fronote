@@ -102,6 +102,12 @@ function initFormValidation() {
                     if (submitButton) {
                         submitButton.disabled = false;
                     }
+                } else if (!titleInput) {
+                    // Si pas de titre, activer le bouton
+                    const submitButton = document.querySelector('button[type="submit"]');
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                    }
                 }
             }
         });
@@ -130,6 +136,10 @@ function initFormValidation() {
                     errorMsg.textContent = 'Le titre ne peut pas dépasser 100 caractères';
                     titleInput.parentNode.insertBefore(errorMsg, titleInput.nextSibling.nextSibling);
                 }
+                // Afficher une notification d'erreur
+                if (typeof afficherNotificationErreur === 'function') {
+                    afficherNotificationErreur('Le titre ne peut pas dépasser 100 caractères');
+                }
             }
             
             // Vérifier le contenu
@@ -144,6 +154,10 @@ function initFormValidation() {
                     errorMsg.style.marginTop = '5px';
                     errorMsg.textContent = 'Le message ne peut pas dépasser 10000 caractères';
                     contentTextarea.parentNode.insertBefore(errorMsg, contentTextarea.nextSibling.nextSibling);
+                }
+                // Afficher une notification d'erreur
+                if (typeof afficherNotificationErreur === 'function') {
+                    afficherNotificationErreur('Le message ne peut pas dépasser 10000 caractères');
                 }
             }
             
@@ -166,6 +180,10 @@ function initFormValidation() {
                         errorMsg.textContent = 'Ce champ est requis';
                         field.parentNode.insertBefore(errorMsg, field.nextSibling);
                     }
+                    // Afficher une notification d'erreur
+                    if (typeof afficherNotificationErreur === 'function') {
+                        afficherNotificationErreur(`Le champ "${field.getAttribute('placeholder') || field.name}" est requis`);
+                    }
                 } else {
                     field.classList.remove('is-invalid');
                     const errorMsg = field.nextElementSibling;
@@ -178,6 +196,55 @@ function initFormValidation() {
             return valid;
         });
     });
+    
+    // Validation des pièces jointes
+    const fileInput = document.getElementById('attachments');
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            const maxSize = 10 * 1024 * 1024; // 10 Mo
+            const allowedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'jpg', 'jpeg', 'png', 'gif'];
+            
+            let valid = true;
+            let errorMessage = '';
+            
+            // Vérifier chaque fichier
+            for (let i = 0; i < this.files.length; i++) {
+                const file = this.files[i];
+                
+                // Vérifier la taille
+                if (file.size > maxSize) {
+                    valid = false;
+                    errorMessage = `Le fichier ${file.name} est trop volumineux (max: 10 Mo)`;
+                    break;
+                }
+                
+                // Vérifier l'extension
+                const extension = file.name.split('.').pop().toLowerCase();
+                if (!allowedExtensions.includes(extension)) {
+                    valid = false;
+                    errorMessage = `Le type de fichier .${extension} n'est pas autorisé`;
+                    break;
+                }
+            }
+            
+            // Afficher une erreur si nécessaire
+            if (!valid) {
+                // Réinitialiser l'input
+                this.value = '';
+                // Vider la liste des fichiers
+                const fileList = document.getElementById('file-list');
+                if (fileList) {
+                    fileList.innerHTML = '';
+                }
+                // Afficher une notification d'erreur
+                if (typeof afficherNotificationErreur === 'function') {
+                    afficherNotificationErreur(errorMessage);
+                } else {
+                    alert(errorMessage);
+                }
+            }
+        });
+    }
 }
 
 /**
@@ -209,6 +276,49 @@ function initRecipientSelection() {
         // Initialiser l'état
         toggleTargetOptions();
     }
+    
+    // Vérifier si on a déjà des destinataires sélectionnés
+    const selectedDestinatairesCookies = getCookie('selected_destinataires');
+    if (selectedDestinatairesCookies) {
+        try {
+            const selectedDestinataires = JSON.parse(selectedDestinatairesCookies);
+            // Cocher les destinataires
+            selectedDestinataires.forEach(dest => {
+                const checkbox = document.querySelector(`input[name="destinataires[]"][value="${dest}"]`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                }
+            });
+            // Mettre à jour l'affichage
+            updateSelectedRecipients();
+        } catch (e) {
+            console.error('Erreur lors de la lecture des destinataires enregistrés:', e);
+        }
+    }
+}
+
+/**
+ * Lit un cookie par son nom
+ * @param {string} name Nom du cookie
+ * @returns {string|null} Valeur du cookie ou null
+ */
+function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    if (match) return match[2];
+    return null;
+}
+
+/**
+ * Définit un cookie
+ * @param {string} name Nom du cookie
+ * @param {string} value Valeur du cookie
+ * @param {number} days Durée en jours
+ */
+function setCookie(name, value, days) {
+    const date = new Date();
+    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    const expires = "expires=" + date.toUTCString();
+    document.cookie = name + "=" + value + ";" + expires + ";path=/";
 }
 
 /**
@@ -221,6 +331,7 @@ function updateSelectedRecipients() {
     container.innerHTML = '';
     
     const checkboxes = document.querySelectorAll('input[name="destinataires[]"]:checked');
+    const selectedDestinataires = [];
     
     checkboxes.forEach(checkbox => {
         const label = checkbox.nextElementSibling;
@@ -228,6 +339,9 @@ function updateSelectedRecipients() {
         
         const text = label.textContent;
         const value = checkbox.value;
+        
+        // Enregistrer pour les cookies
+        selectedDestinataires.push(value);
         
         const tag = document.createElement('div');
         tag.className = 'recipient-tag';
@@ -239,8 +353,17 @@ function updateSelectedRecipients() {
         container.appendChild(tag);
     });
     
+    // Enregistrer les destinataires dans un cookie (pour la persistance)
+    setCookie('selected_destinataires', JSON.stringify(selectedDestinataires), 1);
+    
     // Mettre à jour les boutons après chaque changement
     updateCategoryButtons();
+    
+    // Activer/désactiver le bouton d'envoi en fonction du nombre de destinataires
+    const submitBtn = document.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = selectedDestinataires.length === 0;
+    }
 }
 
 /**
@@ -332,6 +455,12 @@ function selectAllInCategory(categoryId) {
     });
     
     updateSelectedRecipients();
+    
+    // Notification de succès
+    if (typeof afficherNotificationSucces === 'function') {
+        const categoryName = category.querySelector('.category-title')?.textContent || 'catégorie';
+        afficherNotificationSucces(`Tous les destinataires de la ${categoryName} ont été sélectionnés`, 2000);
+    }
 }
 
 /**
@@ -348,6 +477,12 @@ function deselectAllInCategory(categoryId) {
     });
     
     updateSelectedRecipients();
+    
+    // Notification de succès
+    if (typeof afficherNotificationSucces === 'function') {
+        const categoryName = category.querySelector('.category-title')?.textContent || 'catégorie';
+        afficherNotificationSucces(`Tous les destinataires de la ${categoryName} ont été désélectionnés`, 2000);
+    }
 }
 
 /**
@@ -406,6 +541,11 @@ function initFileUpload() {
                         <span>${file.name} (${fileSize})</span>
                     `;
                     fileList.appendChild(fileInfo);
+                }
+                
+                // Notification de succès
+                if (typeof afficherNotificationSucces === 'function') {
+                    afficherNotificationSucces(`${this.files.length} fichier(s) sélectionné(s)`, 2000);
                 }
             }
         });

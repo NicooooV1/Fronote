@@ -10,6 +10,7 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../core/auth.php';
 require_once __DIR__ . '/../core/rate_limiter.php';
 require_once __DIR__ . '/../core/logger.php';
+require_once __DIR__ . '/../core/error_handler.php';
 
 // Définir le type MIME avant toute sortie
 header('Content-Type: application/json');
@@ -17,8 +18,7 @@ header('Content-Type: application/json');
 // Vérifier l'authentification
 $user = checkAuth();
 if (!$user) {
-    echo json_encode(['success' => false, 'error' => 'Non authentifié']);
-    exit;
+    handleAuthError();
 }
 
 // Vérifie la limitation de taux
@@ -32,7 +32,9 @@ try {
      * @return string
      */
     function generateNotificationSSEToken($userId, $userType) {
-        $secret = 'Sk*7pM#d3F@vG9tZ!qL*6bR8'; // Changer en production
+        $secrets = require_once __DIR__ . '/../config/secrets.php';
+        $secret = $secrets['notification_token_secret'];
+        
         $expiry = time() + 3600; // 1 heure
         $data = $userId . '|' . $userType . '|' . $expiry;
         $signature = hash_hmac('sha256', $data, $secret);
@@ -50,9 +52,6 @@ try {
         'expires' => time() + 3600 // 1 heure
     ]);
 } catch (Exception $e) {
-    // Log l'erreur mais ne l'affiche pas
-    if (function_exists('logException')) {
-        logException($e, ['action' => 'generate_notification_token']);
-    }
-    echo json_encode(['success' => false, 'error' => 'Erreur lors de la génération du jeton']);
+    // Utiliser le gestionnaire d'erreur centralisé
+    handleApiError($e, ['action' => 'generate_notification_token']);
 }

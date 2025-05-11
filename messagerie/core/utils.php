@@ -24,6 +24,7 @@ function redirect($url) {
 function generateCSRFToken() {
     if (empty($_SESSION['csrf_token'])) {
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        $_SESSION['csrf_token_time'] = time();
     }
     return $_SESSION['csrf_token'];
 }
@@ -35,6 +36,15 @@ function generateCSRFToken() {
  */
 function validateCSRFToken($token) {
     if (empty($_SESSION['csrf_token']) || empty($token)) {
+        error_log("CSRF validation failed: empty token");
+        return false;
+    }
+    
+    // Ajouter une expiration au token
+    if (isset($_SESSION['csrf_token_time']) && (time() - $_SESSION['csrf_token_time']) > 3600) {
+        // Token expiré après 1h
+        $_SESSION['csrf_token'] = null;
+        error_log("CSRF validation failed: token expired");
         return false;
     }
     
@@ -100,6 +110,34 @@ function buildSafeInQuery($pdo, $baseQuery, $field, $values, $additionalParams =
         'query' => $query,
         'params' => $params
     ];
+}
+
+/**
+ * Valide et nettoie une entrée d'utilisateur
+ * @param mixed $input
+ * @param string $type Type de données attendu (string, int, email, etc.)
+ * @return mixed
+ */
+function cleanInput($input, $type = 'string') {
+    switch ($type) {
+        case 'int':
+            return filter_var($input, FILTER_SANITIZE_NUMBER_INT);
+        case 'float':
+            return filter_var($input, FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
+        case 'email':
+            return filter_var($input, FILTER_SANITIZE_EMAIL);
+        case 'url':
+            return filter_var($input, FILTER_SANITIZE_URL);
+        case 'string':
+        default:
+            if (is_string($input)) {
+                // Supprimer les caractères invisibles du début et de la fin
+                $input = trim($input);
+                // Convertir les caractères HTML spéciaux en entités
+                return htmlspecialchars($input, ENT_QUOTES, 'UTF-8');
+            }
+            return $input;
+    }
 }
 
 /**

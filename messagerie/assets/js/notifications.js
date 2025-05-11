@@ -58,19 +58,25 @@ function setupSSEForNotifications() {
                 }
             });
             
-            // Gestion des erreurs
+            // Gestion des erreurs avec backoff exponentiel
+            let reconnectAttempt = 0;
             window.notificationSource.addEventListener('error', function(event) {
-                console.error('SSE Error: Notification connection failed or closed. Reconnecting...');
+                console.error('SSE Error: Notification connection failed or closed.');
                 
                 // Si la connexion est fermée, tenter de se reconnecter après un délai
                 if (this.readyState === EventSource.CLOSED) {
-                    setTimeout(setupSSEForNotifications, 5000);
+                    // Implémenter un délai exponentiel
+                    const delay = Math.min(Math.pow(2, reconnectAttempt) * 1000, 30000);
+                    reconnectAttempt++;
+                    console.log(`Reconnecting to notifications in ${delay/1000} seconds...`);
+                    setTimeout(setupSSEForNotifications, delay);
                 }
             });
             
             // Ping pour maintenir la connexion
             window.notificationSource.addEventListener('ping', function(event) {
                 // Connexion maintenue, rien à faire
+                reconnectAttempt = 0; // Réinitialiser le compteur de tentatives
             });
         })
         .catch(error => {
@@ -143,6 +149,25 @@ function initNotificationClicks() {
  */
 function markNotificationRead(notificationId) {
     fetch(`api/notifications.php?action=mark_read&id=${notificationId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erreur HTTP: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Mise à jour réussie, rafraîchir le compteur si nécessaire
+            if (data.success) {
+                // Vérifier le nombre de notifications non lues
+                fetch('api/notifications.php?action=check')
+                    .then(res => res.json())
+                    .then(result => {
+                        if (result.success) {
+                            updateNotificationBadge(result.count);
+                        }
+                    });
+            }
+        })
         .catch(error => console.error('Erreur lors du marquage de la notification:', error));
 }
 
@@ -250,7 +275,20 @@ function updateNotificationPreference(preference, value) {
     fetch('api/notifications.php', {
         method: 'POST',
         body: formData
-    }).catch(error => console.error('Erreur lors de la mise à jour de la préférence:', error));
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Préférence mise à jour avec succès
+            console.log('Préférence de notification mise à jour');
+        }
+    })
+    .catch(error => console.error('Erreur lors de la mise à jour de la préférence:', error));
 }
 
 /**
@@ -279,7 +317,11 @@ function showBrowserNotification(count, latestNotification) {
         body: count === 1 
             ? `Nouveau message de ${expediteurNom}`
             : `${count} nouveaux messages non lus`,
-            // icon: '/assets/images/pronote-icon.png'
+        icon: '/assets/images/pronote-icon.png',
+        badge: '/assets/images/notification-badge.png',
+        tag: 'pronote-message', // Regrouper les notifications
+        requireInteraction: false, // Ne pas nécessiter d'interaction
+        silent: !shouldPlaySound // Respecter la préférence de son
     };
     
     try {
