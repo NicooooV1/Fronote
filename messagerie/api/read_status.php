@@ -19,6 +19,133 @@ if (!$user) {
     exit;
 }
 
+// Point d'entrée SSE pour les statuts de lecture en temps réel
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id'], $_GET['action']) && $_GET['action'] === 'stream') {
+    $convId = (int)$_GET['conv_id'];
+    $lastMessageId = isset($_GET['since']) ? (int)$_GET['since'] : 0;
+    $lastVersionSum = isset($_GET['version']) ? (int)$_GET['version'] : 0;
+
+    if (!$convId) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'ID de conversation invalide']);
+        exit;
+    }
+
+    // Configuration des en-têtes SSE
+    header('Content-Type: text/event-stream');
+    header('Cache-Control: no-cache');
+    header('Connection: keep-alive');
+    // Empêcher le buffering
+    ini_set('output_buffering', 'off');
+    ini_set('implicit_flush', true);
+    ob_implicit_flush(true);
+
+    // Vérifier que l'utilisateur est participant à la conversation
+    $checkParticipant = $pdo->prepare("
+        SELECT id FROM conversation_participants 
+        WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND is_deleted = 0
+    ");
+    $checkParticipant->execute([$convId, $user['id'], $user['type']]);
+    if (!$checkParticipant->fetch()) {
+        echo "event: error\n";
+        echo "data: {\"message\": \"Vous n'êtes pas autorisé à accéder à cette conversation\"}\n\n";
+        exit;
+    }
+
+    // Récupérer la version actuelle
+    $versionStmt = $pdo->prepare("
+        SELECT SUM(version) as version_sum FROM conversation_participants
+        WHERE conversation_id = ? AND is_deleted = 0
+    ");
+    $versionStmt->execute([$convId]);
+    $currentVersionSum = (int)$versionStmt->fetchColumn();
+
+    // Envoyer la version initiale
+    echo "event: init\n";
+    echo "data: {\"version\": " . $currentVersionSum . "}\n\n";
+    flush();
+
+    // Envoyer l'état initial si c'est la première connexion
+    if ($lastVersionSum === 0) {
+        $allMessagesStmt = $pdo->prepare("
+            SELECT id FROM messages
+            WHERE conversation_id = ?
+            ORDER BY id ASC
+        ");
+        $allMessagesStmt->execute([$convId]);
+        $allMessages = $allMessagesStmt->fetchAll(PDO::FETCH_COLUMN);
+        
+        $initialState = [];
+        foreach ($allMessages as $messageId) {
+            $initialState[$messageId] = getMessageReadStatus($messageId);
+        }
+        
+        echo "event: initial_state\n";
+        echo "data: " . json_encode($initialState) . "\n\n";
+        flush();
+    }
+
+    // Boucle principale
+    while (true) {
+        // Vérifier si la connexion client est toujours active
+        if (connection_aborted()) {
+            break;
+        }
+        
+        // Récupérer la version actuelle
+        $versionStmt->execute([$convId]);
+        $newVersionSum = (int)$versionStmt->fetchColumn();
+        
+        // Si la version a changé, envoyer les mises à jour
+        if ($newVersionSum !== $currentVersionSum) {
+            // Récupérer les messages depuis le dernier connu
+            $messagesStmt = $pdo->prepare("
+                SELECT id FROM messages
+                WHERE conversation_id = ? AND id > ?
+                ORDER BY id ASC
+            ");
+            $messagesStmt->execute([$convId, $lastMessageId]);
+            $messages = $messagesStmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            $updates = [];
+            foreach ($messages as $messageId) {
+                $updates[] = [
+                    'messageId' => $messageId,
+                    'read_status' => getMessageReadStatus($messageId)
+                ];
+                
+                // Mettre à jour le dernier ID
+                if ($messageId > $lastMessageId) {
+                    $lastMessageId = $messageId;
+                }
+            }
+            
+            // Envoyer les mises à jour
+            if (!empty($updates)) {
+                echo "event: read_status\n";
+                echo "data: " . json_encode([
+                    'version' => $newVersionSum,
+                    'updates' => $updates
+                ]) . "\n\n";
+                flush();
+            }
+            
+            // Mettre à jour la version actuelle
+            $currentVersionSum = $newVersionSum;
+        }
+        
+        // Envoyer un ping pour maintenir la connexion
+        echo "event: ping\n";
+        echo "data: {\"time\": " . time() . "}\n\n";
+        flush();
+        
+        // Pause pour éviter de surcharger le serveur
+        sleep(2);
+    }
+    
+    exit;
+}
+
 // Endpoint pour marquer un message comme lu
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['conv_id']) && isset($_GET['action']) && $_GET['action'] === 'read') {
     header('Content-Type: application/json');

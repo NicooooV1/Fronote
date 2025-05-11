@@ -19,6 +19,68 @@ if (!$user) {
     exit;
 }
 
+// Point d'entrée SSE pour les notifications en temps réel
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'stream') {
+    // Configuration des en-têtes SSE
+    header('Content-Type: text/event-stream');
+    header('Cache-Control: no-cache');
+    header('Connection: keep-alive');
+    // Empêcher le buffering
+    ini_set('output_buffering', 'off');
+    ini_set('implicit_flush', true);
+    ob_implicit_flush(true);
+
+    // Récupérer le dernier ID de notification connu
+    $lastNotificationId = isset($_GET['last_id']) ? (int)$_GET['last_id'] : 0;
+
+    // Envoyer un ping initial
+    echo "event: ping\n";
+    echo "data: {\"time\": " . time() . "}\n\n";
+    flush();
+
+    // Boucle principale
+    while (true) {
+        // Vérifier si la connexion client est toujours active
+        if (connection_aborted()) {
+            break;
+        }
+        
+        // Compter les notifications non lues
+        $count = countUnreadNotifications($user['id'], $user['type']);
+        
+        // Récupérer la dernière notification si nécessaire
+        $latestNotification = null;
+        if ($count > 0) {
+            $notifications = getUnreadNotifications($user['id'], $user['type'], 1);
+            if (!empty($notifications)) {
+                $latestNotification = $notifications[0];
+                
+                // Vérifier s'il s'agit d'une nouvelle notification
+                if ($latestNotification['id'] > $lastNotificationId) {
+                    $lastNotificationId = $latestNotification['id'];
+                    
+                    echo "event: notification\n";
+                    echo "data: " . json_encode([
+                        'count' => $count,
+                        'latest_notification' => $latestNotification
+                    ]) . "\n\n";
+                    flush();
+                }
+            }
+        }
+        
+        // Envoyer un ping pour maintenir la connexion
+        echo "event: ping\n";
+        echo "data: {\"time\": " . time() . "}\n\n";
+        flush();
+        
+        // Pause pour éviter de surcharger le serveur
+        sleep(3);
+    }
+    
+    exit;
+}
+
 // Vérification des notifications
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'check') {
     header('Content-Type: application/json');

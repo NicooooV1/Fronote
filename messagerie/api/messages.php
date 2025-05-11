@@ -21,6 +21,139 @@ if (!$user) {
     exit;
 }
 
+// Point d'entrée SSE pour les mises à jour de messages en temps réel
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id'], $_GET['action']) && $_GET['action'] === 'stream') {
+    $convId = (int)$_GET['conv_id'];
+    $lastTimestamp = isset($_GET['last_timestamp']) ? (int)$_GET['last_timestamp'] : 0;
+
+    if (!$convId) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'ID de conversation invalide']);
+        exit;
+    }
+
+    // Configuration des en-têtes SSE
+    header('Content-Type: text/event-stream');
+    header('Cache-Control: no-cache');
+    header('Connection: keep-alive');
+    // Empêcher le buffering
+    ini_set('output_buffering', 'off');
+    ini_set('implicit_flush', true);
+    ob_implicit_flush(true);
+
+    // Vérifier que l'utilisateur est participant à la conversation
+    $checkParticipant = $pdo->prepare("
+        SELECT id FROM conversation_participants 
+        WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND is_deleted = 0
+    ");
+    $checkParticipant->execute([$convId, $user['id'], $user['type']]);
+    if (!$checkParticipant->fetch()) {
+        echo "event: error\n";
+        echo "data: {\"message\": \"Vous n'êtes pas autorisé à accéder à cette conversation\"}\n\n";
+        exit;
+    }
+
+    // Envoyer un ping initial pour établir la connexion
+    echo "event: ping\n";
+    echo "data: {\"time\": " . time() . "}\n\n";
+    flush();
+
+    // Boucle principale
+    while (true) {
+        // Vérifier si la connexion client est toujours active
+        if (connection_aborted()) {
+            break;
+        }
+
+        // Récupérer les nouveaux messages
+        $stmt = $pdo->prepare("
+            SELECT m.*, 
+                   CASE 
+                       WHEN cp.last_read_at IS NULL OR m.created_at > cp.last_read_at THEN 0
+                       ELSE 1
+                   END as est_lu,
+                   CASE 
+                       WHEN m.sender_id = ? AND m.sender_type = ? THEN 1
+                       ELSE 0
+                   END as is_self,
+                   CASE 
+                       WHEN m.sender_type = 'eleve' THEN 
+                           (SELECT CONCAT(e.prenom, ' ', e.nom) FROM eleves e WHERE e.id = m.sender_id)
+                       WHEN m.sender_type = 'parent' THEN 
+                           (SELECT CONCAT(p.prenom, ' ', p.nom) FROM parents p WHERE p.id = m.sender_id)
+                       WHEN m.sender_type = 'professeur' THEN 
+                           (SELECT CONCAT(p.prenom, ' ', p.nom) FROM professeurs p WHERE p.id = m.sender_id)
+                       WHEN m.sender_type = 'vie_scolaire' THEN 
+                           (SELECT CONCAT(v.prenom, ' ', v.nom) FROM vie_scolaire v WHERE v.id = m.sender_id)
+                       WHEN m.sender_type = 'administrateur' THEN 
+                           (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = m.sender_id)
+                       ELSE 'Inconnu'
+                   END as expediteur_nom,
+                   m.body as contenu, 
+                   UNIX_TIMESTAMP(m.created_at) as timestamp
+            FROM messages m
+            LEFT JOIN conversation_participants cp ON (
+                m.conversation_id = cp.conversation_id AND 
+                cp.user_id = ? AND 
+                cp.user_type = ?
+            )
+            WHERE m.conversation_id = ? AND UNIX_TIMESTAMP(m.created_at) > ?
+            ORDER BY m.created_at ASC
+        ");
+        $stmt->execute([$user['id'], $user['type'], $user['id'], $user['type'], $convId, $lastTimestamp]);
+        $messages = $stmt->fetchAll();
+
+        if (!empty($messages)) {
+            // Récupérer les pièces jointes pour chaque message
+            $attachmentStmt = $pdo->prepare("
+                SELECT id, message_id, file_name as nom_fichier, file_path as chemin
+                FROM message_attachments 
+                WHERE message_id = ?
+            ");
+            
+            foreach ($messages as &$message) {
+                $attachmentStmt->execute([$message['id']]);
+                $message['pieces_jointes'] = $attachmentStmt->fetchAll();
+                
+                // Mettre à jour le timestamp du dernier message
+                if ($message['timestamp'] > $lastTimestamp) {
+                    $lastTimestamp = $message['timestamp'];
+                }
+            }
+
+            // Envoyer les messages au client
+            echo "event: message\n";
+            echo "data: " . json_encode($messages) . "\n\n";
+            flush();
+        }
+        
+        // Vérifier les changements de participants
+        $participantsChangedStmt = $pdo->prepare("
+            SELECT MAX(UNIX_TIMESTAMP(updated_at)) as last_update 
+            FROM conversation_participants
+            WHERE conversation_id = ?
+        ");
+        $participantsChangedStmt->execute([$convId]);
+        $lastParticipantUpdate = $participantsChangedStmt->fetchColumn() ?: 0;
+        
+        if ($lastParticipantUpdate > $lastTimestamp) {
+            echo "event: participants_changed\n";
+            echo "data: {\"timestamp\": " . $lastParticipantUpdate . "}\n\n";
+            flush();
+        }
+        
+        // Envoyer un ping pour maintenir la connexion
+        echo "event: ping\n";
+        echo "data: {\"time\": " . time() . "}\n\n";
+        flush();
+        
+        // Pause pour éviter de surcharger le serveur
+        sleep(2);
+    }
+    
+    exit;
+}
+
 // Envoi d'un nouveau message via AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'send_message') {
     try {

@@ -11,11 +11,8 @@ document.addEventListener('DOMContentLoaded', function() {
  * Initialise les notifications
  */
 function initNotifications() {
-    // Vérifier les nouvelles notifications toutes les 30 secondes
-    setInterval(checkNotifications, 30000);
-    
-    // Vérifier immédiatement au chargement de la page
-    checkNotifications();
+    // Configurer les notifications en temps réel
+    setupSSEForNotifications();
     
     // Gérer les clics sur les notifications
     initNotificationClicks();
@@ -25,50 +22,64 @@ function initNotifications() {
 }
 
 /**
- * Vérifie les nouvelles notifications
+ * Configure la connexion SSE pour les notifications
  */
-function checkNotifications() {
-    fetch('api/notifications.php?action=check')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                updateNotificationBadge(data.count);
-                
-                // Si l'utilisateur a activé les notifications du navigateur et qu'il y a de nouvelles notifications
-                if (data.count > 0 && hasNotificationPermission() && data.latest_notification) {
-                    showBrowserNotification(data.count, data.latest_notification);
-                }
-            }
-        })
-        .catch(error => console.error('Erreur lors de la vérification des notifications:', error));
-}
-
-/**
- * Met à jour le badge de notification
- * @param {number} count - Nombre de notifications non lues
- */
-function updateNotificationBadge(count) {
-    let badge = document.querySelector('.notification-badge');
-    
-    if (count > 0) {
-        // Créer un badge s'il n'existe pas
-        if (!badge) {
-            const userInfo = document.querySelector('.user-info');
-            if (userInfo) {
-                const newBadge = document.createElement('span');
-                newBadge.className = 'notification-badge';
-                newBadge.textContent = count;
-                userInfo.appendChild(newBadge);
-            }
-        } else {
-            // Mettre à jour le badge existant
-            badge.textContent = count;
-            badge.style.display = 'flex';
-        }
-    } else if (badge) {
-        // Masquer le badge s'il n'y a pas de notification
-        badge.style.display = 'none';
+function setupSSEForNotifications() {
+    // Fermer une connexion existante
+    if (window.notificationSource) {
+        window.notificationSource.close();
     }
+    
+    // Récupérer le dernier ID de notification connu
+    const lastNotificationId = localStorage.getItem('last_notification_id') || 0;
+    
+    // Créer la connexion SSE
+    window.notificationSource = new EventSource(`api/notifications.php?action=stream&last_id=${lastNotificationId}`);
+    
+    // Événement pour les nouvelles notifications
+    window.notificationSource.addEventListener('notification', function(event) {
+        const data = JSON.parse(event.data);
+        
+        // Mettre à jour le badge de notification
+        updateNotificationBadge(data.count);
+        
+        // Stocker le dernier ID
+        if (data.latest_notification) {
+            localStorage.setItem('last_notification_id', data.latest_notification.id);
+            
+            // Si l'utilisateur a activé les notifications du navigateur
+            if (hasNotificationPermission() && data.latest_notification) {
+                showBrowserNotification(data.count, data.latest_notification);
+            }
+        }
+    });
+    
+    // Gestion des erreurs
+    window.notificationSource.addEventListener('error', function(event) {
+        console.error('SSE Error: Notification connection failed or closed. Reconnecting...');
+        
+        // Si la connexion est fermée, tenter de se reconnecter après un délai
+        if (this.readyState === EventSource.CLOSED) {
+            setTimeout(setupSSEForNotifications, 5000);
+        }
+    });
+    
+    // Ping pour maintenir la connexion
+    window.notificationSource.addEventListener('ping', function(event) {
+        // Connexion maintenue, rien à faire
+    });
+    
+    // Gérer les événements de visibilité pour optimiser les connexions
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'hidden') {
+            if (window.notificationSource) {
+                window.notificationSource.close();
+                window.notificationSource = null;
+            }
+        } else if (document.visibilityState === 'visible') {
+            setupSSEForNotifications();
+        }
+    });
 }
 
 /**
@@ -99,6 +110,34 @@ function initNotificationClicks() {
 function markNotificationRead(notificationId) {
     fetch(`api/notifications.php?action=mark_read&id=${notificationId}`)
         .catch(error => console.error('Erreur lors du marquage de la notification:', error));
+}
+
+/**
+ * Met à jour le badge de notification
+ * @param {number} count - Nombre de notifications non lues
+ */
+function updateNotificationBadge(count) {
+    let badge = document.querySelector('.notification-badge');
+    
+    if (count > 0) {
+        // Créer un badge s'il n'existe pas
+        if (!badge) {
+            const userInfo = document.querySelector('.user-info');
+            if (userInfo) {
+                const newBadge = document.createElement('span');
+                newBadge.className = 'notification-badge';
+                newBadge.textContent = count;
+                userInfo.appendChild(newBadge);
+            }
+        } else {
+            // Mettre à jour le badge existant
+            badge.textContent = count;
+            badge.style.display = 'flex';
+        }
+    } else if (badge) {
+        // Masquer le badge s'il n'y a pas de notification
+        badge.style.display = 'none';
+    }
 }
 
 /**

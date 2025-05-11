@@ -6,14 +6,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialiser les actions de conversation
     initConversationActions();
     
-    // Initialiser la configuration des connections actives
-    setupActiveConnections();
-    
     // Initialisation du système de lecture des messages
     initReadTracker();
     
     // Actualisation en temps réel pour les modifications de conversation
-    setupRealTimeUpdates();
+    setupSSEForConversation();
     
     // Validation du formulaire de message
     setupMessageValidation();
@@ -29,30 +26,180 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 /**
- * Configure les connections actives
+ * Configuration des SSE pour la conversation
  */
-function setupActiveConnections() {
+function setupSSEForConversation() {
     // Variable globale pour suivre l'état des connexions
-    // Initialiser à TRUE par défaut pour permettre le démarrage immédiat du polling
-    window.activeConnections = {
-        messagePolling: true,  // Pour les messages
-        readStatusPolling: true, // Pour les status de lecture
-        abortController: new AbortController()
+    window.sseConnections = {
+        messageSource: null,
+        readStatusSource: null
     };
     
-    // Réactiver le polling si l'onglet devient visible
+    // Configurer les connexions SSE
+    setupSSEForMessages();
+    setupSSEForReadStatus();
+    
+    // Gérer la visibilité de la page pour optimiser les connexions
     document.addEventListener('visibilitychange', function() {
-        if (document.visibilityState === 'visible') {
-            window.activeConnections.messagePolling = true;
-            window.activeConnections.readStatusPolling = true;
+        if (document.visibilityState === 'hidden') {
+            closeAllSSEConnections();
+        } else if (document.visibilityState === 'visible') {
+            setupSSEForMessages();
+            setupSSEForReadStatus();
+        }
+    });
+}
+
+/**
+ * Configure la connexion SSE pour les mises à jour des messages
+ */
+function setupSSEForMessages() {
+    const convId = new URLSearchParams(window.location.search).get('id');
+    if (!convId) return;
+    
+    // Fermer une éventuelle connexion existante
+    if (window.sseConnections.messageSource) {
+        window.sseConnections.messageSource.close();
+    }
+    
+    // Récupérer le timestamp du dernier message
+    const lastMessage = document.querySelector('.message:last-child');
+    const lastTimestamp = lastMessage ? parseInt(lastMessage.dataset.timestamp || '0', 10) : 0;
+    
+    // Créer la connexion SSE
+    const messageSource = new EventSource(`api/messages.php?action=stream&conv_id=${convId}&last_timestamp=${lastTimestamp}`);
+    
+    // Stocker la référence
+    window.sseConnections.messageSource = messageSource;
+    
+    // Événement pour les nouveaux messages
+    messageSource.addEventListener('message', function(event) {
+        const messages = JSON.parse(event.data);
+        
+        // Ajouter les messages à l'interface
+        const messagesContainer = document.querySelector('.messages-container');
+        const wasAtBottom = isScrolledToBottom(messagesContainer);
+        
+        messages.forEach(message => {
+            appendMessageToDOM(message, messagesContainer);
+        });
+        
+        if (wasAtBottom) {
+            scrollToBottom(messagesContainer);
+        } else {
+            showNewMessagesIndicator(messages.length);
+        }
+        
+        // Lire audio pour notification (optionnelle)
+        playNotificationSound();
+    });
+    
+    // Événement pour les changements de participants
+    messageSource.addEventListener('participants_changed', function(event) {
+        refreshParticipantsList();
+    });
+    
+    // Gestion des erreurs
+    messageSource.addEventListener('error', function(event) {
+        console.error('SSE Error: Connection failed or closed. Reconnecting...');
+        
+        // Si la connexion est fermée, tenter de se reconnecter après un délai
+        if (this.readyState === EventSource.CLOSED) {
+            setTimeout(setupSSEForMessages, 5000);
         }
     });
     
-    // Réactiver également le polling au focus de la fenêtre
-    window.addEventListener('focus', function() {
-        window.activeConnections.messagePolling = true;
-        window.activeConnections.readStatusPolling = true;
+    // Ping pour maintenir la connexion
+    messageSource.addEventListener('ping', function(event) {
+        // Connexion maintenue, rien à faire
     });
+}
+
+/**
+ * Configure la connexion SSE pour les statuts de lecture
+ */
+function setupSSEForReadStatus() {
+    const convId = new URLSearchParams(window.location.search).get('id');
+    if (!convId) return;
+    
+    // Fermer une éventuelle connexion existante
+    if (window.sseConnections.readStatusSource) {
+        window.sseConnections.readStatusSource.close();
+    }
+    
+    // Récupérer le dernier message ID
+    let lastReadMessageId = 0;
+    const messageElements = document.querySelectorAll('.message');
+    if (messageElements.length > 0) {
+        const lastMessage = messageElements[messageElements.length - 1];
+        lastReadMessageId = parseInt(lastMessage.dataset.id || '0', 10);
+    }
+    
+    // Créer la connexion SSE
+    const readStatusSource = new EventSource(`api/read_status.php?action=stream&conv_id=${convId}&since=${lastReadMessageId}&version=0`);
+    
+    // Stocker la référence
+    window.sseConnections.readStatusSource = readStatusSource;
+    
+    // Événement d'initialisation
+    readStatusSource.addEventListener('init', function(event) {
+        const data = JSON.parse(event.data);
+        // Stocker la version initiale si nécessaire
+    });
+    
+    // Événement pour l'état initial
+    readStatusSource.addEventListener('initial_state', function(event) {
+        const data = JSON.parse(event.data);
+        
+        // Mettre à jour tous les statuts
+        Object.entries(data).forEach(([messageId, readStatus]) => {
+            updateReadStatus(readStatus);
+        });
+    });
+    
+    // Événement pour les mises à jour
+    readStatusSource.addEventListener('read_status', function(event) {
+        const data = JSON.parse(event.data);
+        
+        data.updates.forEach(update => {
+            updateReadStatus(update.read_status);
+            
+            // Mettre à jour lastReadMessageId si nécessaire
+            if (update.messageId > lastReadMessageId) {
+                lastReadMessageId = update.messageId;
+            }
+        });
+    });
+    
+    // Gestion des erreurs
+    readStatusSource.addEventListener('error', function(event) {
+        console.error('SSE Error: Read status connection failed or closed. Reconnecting...');
+        
+        // Si la connexion est fermée, tenter de se reconnecter après un délai
+        if (this.readyState === EventSource.CLOSED) {
+            setTimeout(setupSSEForReadStatus, 5000);
+        }
+    });
+    
+    // Ping pour maintenir la connexion
+    readStatusSource.addEventListener('ping', function(event) {
+        // Connexion maintenue, rien à faire
+    });
+}
+
+/**
+ * Ferme toutes les connexions SSE
+ */
+function closeAllSSEConnections() {
+    if (window.sseConnections.messageSource) {
+        window.sseConnections.messageSource.close();
+        window.sseConnections.messageSource = null;
+    }
+    
+    if (window.sseConnections.readStatusSource) {
+        window.sseConnections.readStatusSource.close();
+        window.sseConnections.readStatusSource = null;
+    }
 }
 
 /**
@@ -65,17 +212,8 @@ function setupBeforeUnloadHandler() {
     
     // Fonction pour nettoyer les ressources
     function cleanupResources() {
-        // Annuler les requêtes fetch en cours
-        if (window.activeConnections && window.activeConnections.abortController) {
-            window.activeConnections.abortController.abort();
-            window.activeConnections.abortController = new AbortController();
-        }
-        
-        // Indiquer que le polling doit s'arrêter (utiliser des flags séparés)
-        if (window.activeConnections) {
-            window.activeConnections.messagePolling = false;
-            window.activeConnections.readStatusPolling = false;
-        }
+        // Fermer les connexions SSE
+        closeAllSSEConnections();
     }
 }
 
@@ -83,20 +221,6 @@ function setupBeforeUnloadHandler() {
  * Initialise le système de détection et de suivi des messages lus
  */
 function initReadTracker() {
-    // Variables pour l'état de lecture
-    let lastReadMessageId = 0;
-    let isMarkingMessage = false;
-    let pollingActive = false;
-    let pollingInterval = 3000; // Interroger le serveur toutes les 3 secondes
-    let versionSum = 0; // Pour suivre la version des statuts de lecture
-    
-    // Récupérer le dernier message lu lors du chargement initial
-    const messageElements = document.querySelectorAll('.message');
-    if (messageElements.length > 0) {
-        const lastMessage = messageElements[messageElements.length - 1];
-        lastReadMessageId = parseInt(lastMessage.dataset.id || '0', 10);
-    }
-    
     // Configuration améliorée de l'IntersectionObserver
     const messageObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -121,195 +245,6 @@ function initReadTracker() {
         messageObserver.observe(message);
     });
     
-    /**
-     * Marque un message comme lu via l'API
-     */
-    function markMessageAsRead(messageId) {
-        // Éviter les requêtes concurrentes
-        if (isMarkingMessage) return;
-        
-        isMarkingMessage = true;
-        
-        const convId = new URLSearchParams(window.location.search).get('id');
-        
-        fetch(`api/read_status.php?action=read&conv_id=${convId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messageId }),
-            signal: window.activeConnections.abortController.signal
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Erreur réseau: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                // Mettre à jour l'interface avec le nouveau statut
-                updateReadStatus(data.read_status);
-            } else {
-                console.warn("Échec du marquage comme lu:", data.error || "Erreur inconnue");
-            }
-        })
-        .catch(error => {
-            // Ne pas afficher d'erreur si la requête a été annulée (navigation)
-            if (error.name !== 'AbortError') {
-                console.error('Erreur lors du marquage comme lu:', error);
-                // Réessayer après un délai
-                setTimeout(() => {
-                    isMarkingMessage = false;
-                    markMessageAsRead(messageId);
-                }, 2000);
-            }
-        })
-        .finally(() => {
-            isMarkingMessage = false;
-        });
-    }
-    
-    /**
-     * Met à jour l'affichage du statut de lecture d'un message
-     */
-    function updateReadStatus(readStatus) {
-        if (!readStatus || !readStatus.message_id) return;
-        
-        const messageEl = document.querySelector(`.message[data-id="${readStatus.message_id}"]`);
-        if (!messageEl) return;
-        
-        const statusEl = messageEl.querySelector('.message-read-status');
-        if (!statusEl) return;
-        
-        // Mettre à jour le contenu selon l'état de lecture
-        if (readStatus.all_read) {
-            statusEl.innerHTML = `
-                <div class="all-read">
-                    <i class="fas fa-check-double"></i> Vu
-                </div>
-            `;
-            // Ajouter la classe 'read' au message
-            messageEl.classList.add('read');
-        } else if (readStatus.read_by_count > 0) {
-            // Créer la liste des noms des lecteurs
-            const readerNames = readStatus.readers && readStatus.readers.length > 0 
-                ? readStatus.readers.map(r => r.nom_complet).join(', ')
-                : 'Personne';
-            
-            statusEl.innerHTML = `
-                <div class="partial-read">
-                    <i class="fas fa-check"></i>
-                    <span class="read-count">${readStatus.read_by_count}/${readStatus.total_participants - 1}</span>
-                    <span class="read-tooltip" title="${readerNames}">
-                        <i class="fas fa-info-circle"></i>
-                    </span>
-                </div>
-            `;
-        }
-    }
-    
-    /**
-     * Démarre le polling AJAX pour les mises à jour de lecture
-     * Utilise setInterval au lieu de setTimeout récursif
-     */
-    function startPolling() {
-        console.log('AJAX Read Status Polling: Démarrage');
-        
-        // Démarrer immédiatement avec un état initial
-        pollForUpdates();
-        
-        // Configurer un intervalle régulier au lieu d'un appel récursif
-        const pollingIntervalId = setInterval(() => {
-            // Ne déclencher le polling que si l'indicateur est actif
-            if (window.activeConnections && window.activeConnections.readStatusPolling) {
-                pollForUpdates();
-            } else {
-                console.log('AJAX Read Status Polling: En pause');
-            }
-        }, pollingInterval);
-        
-        // Stocker l'ID d'intervalle pour pouvoir l'annuler plus tard si nécessaire
-        window.readStatusPollingId = pollingIntervalId;
-        
-        function pollForUpdates() {
-            const convId = new URLSearchParams(window.location.search).get('id');
-            if (!convId) {
-                console.log('AJAX Read Status Polling: Pas d\'ID de conversation, arrêt');
-                clearInterval(pollingIntervalId);
-                return;
-            }
-            
-            // Utiliser le nouvel endpoint de polling au lieu du SSE
-            fetch(`api/read_status.php?action=read-polling&conv_id=${convId}&version=${versionSum}&since=${lastReadMessageId}`, {
-                signal: window.activeConnections.abortController.signal
-            })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`Erreur réseau: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success) {
-                        // Mettre à jour la version pour les prochaines requêtes
-                        versionSum = data.version || 0;
-                        
-                        // Si c'est la première requête et qu'on a un état initial
-                        if (data.initialState) {
-                            // Mettre à jour tous les statuts de lecture
-                            Object.entries(data.initialState).forEach(([messageId, readStatus]) => {
-                                updateReadStatus(readStatus);
-                            });
-                        }
-                        
-                        // Traiter les mises à jour
-                        if (data.hasUpdates && data.updates) {
-                            data.updates.forEach(update => {
-                                updateReadStatus(update.read_status);
-                                
-                                // Mettre à jour lastReadMessageId si nécessaire
-                                if (update.messageId > lastReadMessageId) {
-                                    lastReadMessageId = update.messageId;
-                                }
-                            });
-                        }
-                    } else {
-                        console.error('Erreur de polling des statuts de lecture:', data.error || 'Erreur inconnue');
-                    }
-                })
-                .catch(error => {
-                    // Ne pas afficher d'erreur si la requête a été annulée (navigation)
-                    if (error.name !== 'AbortError') {
-                        console.error('Erreur de polling des statuts de lecture:', error);
-                    }
-                });
-        }
-        
-        // Gérer les événements de visibilité du document
-        document.addEventListener('visibilitychange', function() {
-            if (document.visibilityState === 'visible') {
-                // Réactiver le polling et actualiser immédiatement
-                window.activeConnections.readStatusPolling = true;
-                // Réinitialiser l'intervalle quand la page est visible
-                pollingInterval = 3000;
-                // Forcer une mise à jour immédiate
-                pollForUpdates();
-            } else {
-                // Ralentir le polling quand l'onglet n'est pas actif
-                pollingInterval = 10000; // 10 secondes quand inactif
-            }
-        });
-        
-        // Réinitialiser l'intervalle quand l'onglet redevient actif
-        window.addEventListener('focus', function() {
-            pollingInterval = 3000; // Retour à 3 secondes quand actif
-            // Forcer une mise à jour immédiate
-            pollForUpdates();
-        });
-    }
-    
-    // Démarrer le polling AJAX
-    startPolling();
-    
     // Ajouter des gestionnaires d'événements pour les boutons de marquage
     document.addEventListener('click', function(e) {
         // Bouton "Marquer comme lu"
@@ -326,386 +261,196 @@ function initReadTracker() {
             markMessageAsUnread(messageId);
         }
     });
+}
+
+/**
+ * Met à jour l'affichage du statut de lecture d'un message
+ */
+function updateReadStatus(readStatus) {
+    if (!readStatus || !readStatus.message_id) return;
     
-    // Marque un message comme non lu
-    function markMessageAsUnread(messageId) {
-        if (isMarkingMessage) return;
+    const messageEl = document.querySelector(`.message[data-id="${readStatus.message_id}"]`);
+    if (!messageEl) return;
+    
+    const statusEl = messageEl.querySelector('.message-read-status');
+    if (!statusEl) return;
+    
+    // Mettre à jour le contenu selon l'état de lecture
+    if (readStatus.all_read) {
+        statusEl.innerHTML = `
+            <div class="all-read">
+                <i class="fas fa-check-double"></i> Vu
+            </div>
+        `;
+        // Ajouter la classe 'read' au message
+        messageEl.classList.add('read');
+    } else if (readStatus.read_by_count > 0) {
+        // Créer la liste des noms des lecteurs
+        const readerNames = readStatus.readers && readStatus.readers.length > 0 
+            ? readStatus.readers.map(r => r.nom_complet).join(', ')
+            : 'Personne';
         
-        isMarkingMessage = true;
-        
-        fetch(`api/messages.php?id=${messageId}&action=mark_unread`, {
-            signal: window.activeConnections.abortController.signal
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Erreur réseau: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    // Mettre à jour l'interface utilisateur
-                    const message = document.querySelector(`.message[data-id="${messageId}"]`);
-                    if (message) {
-                        message.classList.remove('read');
-                        
-                        // Mettre à jour le bouton
-                        const unreadBtn = message.querySelector('.mark-unread-btn');
-                        if (unreadBtn) {
-                            const readBtn = document.createElement('button');
-                            readBtn.className = 'btn-icon mark-read-btn';
-                            readBtn.setAttribute('data-message-id', messageId);
-                            readBtn.innerHTML = '<i class="fas fa-envelope-open"></i> Marquer comme lu';
-                            
-                            unreadBtn.parentNode.replaceChild(readBtn, unreadBtn);
-                        }
-                    }
-                    
-                    // Mettre à jour le statut de lecture
-                    if (data.readStatus) {
-                        updateReadStatus(data.readStatus);
-                    }
-                } else {
-                    afficherNotificationErreur("Erreur: " + (data.error || "Une erreur est survenue"));
-                    console.error('Erreur:', data.error);
-                }
-            })
-            .catch(error => {
-                // Ne pas afficher d'erreur si la requête a été annulée (navigation)
-                if (error.name !== 'AbortError') {
-                    afficherNotificationErreur("Erreur: " + error.message);
-                    console.error('Erreur:', error);
-                }
-            })
-            .finally(() => {
-                isMarkingMessage = false;
-            });
+        statusEl.innerHTML = `
+            <div class="partial-read">
+                <i class="fas fa-check"></i>
+                <span class="read-count">${readStatus.read_by_count}/${readStatus.total_participants - 1}</span>
+                <span class="read-tooltip" title="${readerNames}">
+                    <i class="fas fa-info-circle"></i>
+                </span>
+            </div>
+        `;
     }
 }
 
 /**
- * Configure les mises à jour en temps réel pour la conversation
+ * Marque un message comme lu via l'API
  */
-function setupRealTimeUpdates() {
-    // Variables pour la gestion des mises à jour
+function markMessageAsRead(messageId) {
     const convId = new URLSearchParams(window.location.search).get('id');
-    const refreshInterval = 5000; // 5 secondes entre chaque vérification
-    let lastTimestamp = 0;
-    let isCheckingForUpdates = false; // Flag pour éviter les requêtes concurrentes
     
-    // Initialiser le timestamp de départ avec le dernier message
-    const lastMessage = document.querySelector('.message:last-child');
-    if (lastMessage) {
-        lastTimestamp = parseInt(lastMessage.getAttribute('data-timestamp') || '0', 10);
-    }
-    
-    // Ne pas continuer si on n'est pas sur une page de conversation
-    if (!convId) return;
-    
-    // Fonction de vérification des mises à jour
-    function checkForUpdates() {
-        // Éviter les requêtes concurrentes
-        if (isCheckingForUpdates || !window.activeConnections.messagePolling) {
-            return;
-        }
-        
-        // Vérifier si l'utilisateur a le focus sur l'onglet et n'est pas en train d'écrire
-        const textareaActive = document.querySelector('textarea:focus');
-        const modalOpen = document.querySelector('.modal[style*="display: block"]');
-        
-        if (textareaActive || modalOpen) {
-            // L'utilisateur est en train d'écrire ou un modal est ouvert, on reporte la vérification
-            return;
-        }
-        
-        isCheckingForUpdates = true;
-        
-        // Requête de vérification avec gestion d'erreur améliorée
-        fetch(`api/messages.php?conv_id=${convId}&action=check_updates&last_timestamp=${lastTimestamp}`, {
-            signal: window.activeConnections.abortController.signal
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Erreur réseau: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success && data.hasUpdates) {
-                    // Si des mises à jour sont disponibles, les récupérer
-                    fetchNewMessages();
-                }
+    fetch(`api/read_status.php?action=read&conv_id=${convId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Mettre à jour l'interface avec le nouveau statut
+            const messageEl = document.querySelector(`.message[data-id="${messageId}"]`);
+            if (messageEl) {
+                messageEl.classList.add('read');
                 
-                // Vérifier les changements de participants
-                if (data.success && data.participantsChanged) {
-                    refreshParticipantsList();
-                }
-                
-                // Mettre à jour le timestamp - Utiliser le timestamp du dernier message
-                // au lieu du timestamp actuel pour éviter les confusions
-                if (data.timestamp) {
-                    lastTimestamp = data.timestamp;
-                }
-                
-                isCheckingForUpdates = false;
-            })
-            .catch(error => {
-                // Ne pas afficher d'erreur si la requête a été annulée (navigation)
-                if (error.name !== 'AbortError') {
-                    console.error('Erreur lors de la vérification des mises à jour:', error);
-                    isCheckingForUpdates = false;
-                }
-            });
-    }
-    
-    /**
-     * Affiche un indicateur de nouveaux messages
-     * @param {number} count - Nombre de nouveaux messages
-     */
-    function showNewMessagesIndicator(count) {
-        // Créer ou mettre à jour un indicateur flottant
-        let indicator = document.getElementById('new-messages-indicator');
-        
-        if (!indicator) {
-            indicator = document.createElement('div');
-            indicator.id = 'new-messages-indicator';
-            indicator.style.position = 'fixed';
-            indicator.style.bottom = '100px';
-            indicator.style.right = '20px';
-            indicator.style.backgroundColor = '#009b72';
-            indicator.style.color = 'white';
-            indicator.style.padding = '10px 15px';
-            indicator.style.borderRadius = '20px';
-            indicator.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
-            indicator.style.cursor = 'pointer';
-            indicator.style.zIndex = '1000';
-            
-            indicator.addEventListener('click', function() {
-                const messagesContainer = document.querySelector('.messages-container');
-                scrollToBottom(messagesContainer);
-                this.style.display = 'none';
-            });
-            
-            document.body.appendChild(indicator);
-        }
-        
-        indicator.textContent = `${count} nouveau(x) message(s)`;
-        indicator.style.display = 'block';
-        
-        // Masquer après un délai si non cliqué
-        setTimeout(() => {
-            if (indicator) indicator.style.display = 'none';
-        }, 5000);
-    }
-    
-    /**
-     * Joue un son de notification (optionnel)
-     */
-    function playNotificationSound() {
-        // On pourrait implémenter un son de notification ici
-        // Par exemple:
-        // const audio = new Audio('/assets/sounds/notification.mp3');
-        // audio.play();
-    }
-    
-    /**
-     * Récupère et ajoute les nouveaux messages à la conversation
-     */
-    function fetchNewMessages() {
-        fetch(`api/messages.php?conv_id=${convId}&action=get_new&last_timestamp=${lastTimestamp}`, {
-            signal: window.activeConnections.abortController.signal
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Erreur réseau: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success && data.messages && data.messages.length > 0) {
-                    // Mettre à jour la référence du dernier timestamp
-                    const messages = data.messages;
-                    const messagesContainer = document.querySelector('.messages-container');
+                // Mettre à jour le bouton si présent
+                const readBtn = messageEl.querySelector('.mark-read-btn');
+                if (readBtn) {
+                    const unreadBtn = document.createElement('button');
+                    unreadBtn.className = 'btn-icon mark-unread-btn';
+                    unreadBtn.setAttribute('data-message-id', messageId);
+                    unreadBtn.innerHTML = '<i class="fas fa-envelope"></i> Marquer comme non lu';
                     
-                    // On était déjà en bas avant les nouveaux messages?
-                    const wasAtBottom = isScrolledToBottom(messagesContainer);
-                    
-                    // Ajouter chaque nouveau message
-                    messages.forEach(message => {
-                        appendMessageToDOM(message, messagesContainer);
-                        
-                        // Mise à jour du lastTimestamp avec le plus récent
-                        if (message.timestamp > lastTimestamp) {
-                            lastTimestamp = message.timestamp;
-                        }
-                    });
-                    
-                    // Faire défiler vers le bas si l'utilisateur était déjà en bas
-                    if (wasAtBottom) {
-                        scrollToBottom(messagesContainer);
-                    } else {
-                        // Sinon, indiquer qu'il y a de nouveaux messages
-                        showNewMessagesIndicator(messages.length);
-                    }
-                    
-                    // Lecture audio pour notification (optionnelle)
-                    playNotificationSound();
+                    readBtn.parentNode.replaceChild(unreadBtn, readBtn);
                 }
-            })
-            .catch(error => {
-                // Ne pas afficher d'erreur si la requête a été annulée (navigation)
-                if (error.name !== 'AbortError') {
-                    console.error('Erreur lors de la récupération des nouveaux messages:', error);
-                }
-            });
-    }
-    
-    /**
-     * Actualise la liste des participants
-     */
-    function refreshParticipantsList() {
-        fetch(`api/participants.php?conv_id=${convId}&action=get_list`, {
-            signal: window.activeConnections.abortController.signal
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Erreur réseau: ${response.status}`);
-                }
-                return response.text();
-            })
-            .then(html => {
-                const participantsList = document.querySelector('.participants-list');
-                if (participantsList) {
-                    participantsList.innerHTML = html;
-                }
-            })
-            .catch(error => {
-                // Ne pas afficher d'erreur si la requête a été annulée (navigation)
-                if (error.name !== 'AbortError') {
-                    console.error('Erreur lors de l\'actualisation des participants:', error);
-                }
-            });
-    }
-    
-    // Utiliser setInterval au lieu de setTimeout récursif pour plus de robustesse
-    const messagePollingId = setInterval(() => {
-        // Ne déclencher le polling que si l'indicateur est actif
-        if (window.activeConnections && window.activeConnections.messagePolling) {
-            checkForUpdates();
-        }
-    }, refreshInterval);
-    
-    // Stocker l'ID d'intervalle pour pouvoir l'annuler plus tard si nécessaire
-    window.messagePollingId = messagePollingId;
-    
-    // Effectuer une vérification initiale
-    setTimeout(checkForUpdates, 1000);
-    
-    // Gestion du scroll - si l'utilisateur fait défiler vers le bas, masquer l'indicateur
-    const messagesContainer = document.querySelector('.messages-container');
-    if (messagesContainer) {
-        messagesContainer.addEventListener('scroll', function() {
-            if (isScrolledToBottom(this)) {
-                const indicator = document.getElementById('new-messages-indicator');
-                if (indicator) indicator.style.display = 'none';
             }
-        });
-    }
+            
+            // Mettre à jour le statut de lecture
+            if (data.read_status) {
+                updateReadStatus(data.read_status);
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Erreur lors du marquage comme lu:', error);
+    });
 }
 
 /**
- * Configure l'envoi AJAX des messages
+ * Marque un message comme non lu
  */
-function setupAjaxMessageSending() {
-    const form = document.getElementById('messageForm');
-    if (!form) return;
-    
-    form.addEventListener('submit', function(e) {
-        e.preventDefault(); // Empêcher la soumission normale
-        
-        // Vérifier le contenu du message
-        const textarea = form.querySelector('textarea[name="contenu"]');
-        const messageContent = textarea.value.trim();
-        if (messageContent === '') {
-            alert('Le message ne peut pas être vide');
-            return;
-        }
-        
-        // Récupérer l'ID de conversation de l'URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const convId = urlParams.get('id');
-        
-        // Créer un objet FormData pour l'envoi des données, y compris les fichiers
-        const formData = new FormData(form);
-        formData.append('conversation_id', convId);
-        formData.append('action', 'send_message');
-        
-        // Afficher un indicateur de chargement
-        const submitBtn = form.querySelector('button[type="submit"]');
-        const originalBtnText = submitBtn.innerHTML;
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
-        
-        // Envoyer la requête AJAX
-        fetch('api/messages.php', {
-            method: 'POST',
-            body: formData,
-            signal: window.activeConnections.abortController.signal
-        })
-        .then(response => {
-            // Vérifier si la réponse est ok avant de continuer
-            if (!response.ok) {
-                throw new Error(`Erreur HTTP: ${response.status}`);
-            }
-            return response.json();
-        })
+function markMessageAsUnread(messageId) {
+    fetch(`api/messages.php?id=${messageId}&action=mark_unread`)
+        .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Vider le formulaire
-                textarea.value = '';
-                
-                // Vider l'aperçu des pièces jointes
-                const fileList = document.getElementById('file-list');
-                if (fileList) fileList.innerHTML = '';
-                
-                // Réinitialiser l'input de fichiers
-                const fileInput = document.getElementById('attachments');
-                if (fileInput) fileInput.value = '';
-                
                 // Mettre à jour l'interface utilisateur
-                if (data.message) {
-                    // Ajouter le nouveau message à la conversation
-                    const messagesContainer = document.querySelector('.messages-container');
-                    if (messagesContainer) {
-                        appendMessageToDOM(data.message, messagesContainer);
-                        scrollToBottom(messagesContainer);
+                const message = document.querySelector(`.message[data-id="${messageId}"]`);
+                if (message) {
+                    message.classList.remove('read');
+                    
+                    // Mettre à jour le bouton
+                    const unreadBtn = message.querySelector('.mark-unread-btn');
+                    if (unreadBtn) {
+                        const readBtn = document.createElement('button');
+                        readBtn.className = 'btn-icon mark-read-btn';
+                        readBtn.setAttribute('data-message-id', messageId);
+                        readBtn.innerHTML = '<i class="fas fa-envelope-open"></i> Marquer comme lu';
+                        
+                        unreadBtn.parentNode.replaceChild(readBtn, unreadBtn);
                     }
                 }
                 
-                // Réinitialiser le formulaire de réponse si c'est une réponse
-                const replyInterface = document.getElementById('reply-interface');
-                if (replyInterface && replyInterface.style.display !== 'none') {
-                    document.getElementById('parent-message-id').value = '';
-                    replyInterface.style.display = 'none';
+                // Mettre à jour le statut de lecture
+                if (data.readStatus) {
+                    updateReadStatus(data.readStatus);
                 }
             } else {
-                // Afficher l'erreur
-                alert('Erreur lors de l\'envoi du message: ' + (data.error || 'Erreur inconnue'));
+                afficherNotificationErreur("Erreur: " + (data.error || "Une erreur est survenue"));
+                console.error('Erreur:', data.error);
             }
         })
         .catch(error => {
-            // Ne pas afficher d'erreur si la requête a été annulée (navigation)
-            if (error.name !== 'AbortError') {
-                console.error('Erreur:', error);
-                alert('Erreur lors de l\'envoi du message. Veuillez réessayer.');
+            afficherNotificationErreur("Erreur: " + error.message);
+            console.error('Erreur:', error);
+        });
+}
+
+/**
+ * Rafraîchit la liste des participants
+ */
+function refreshParticipantsList() {
+    const convId = new URLSearchParams(window.location.search).get('id');
+    
+    fetch(`api/participants.php?conv_id=${convId}&action=get_list`)
+        .then(response => response.text())
+        .then(html => {
+            const participantsList = document.querySelector('.participants-list');
+            if (participantsList) {
+                participantsList.innerHTML = html;
             }
         })
-        .finally(() => {
-            // Réactiver le bouton quoi qu'il arrive
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalBtnText;
+        .catch(error => {
+            console.error('Erreur lors de l\'actualisation des participants:', error);
         });
-    });
+}
+
+/**
+ * Affiche un indicateur de nouveaux messages
+ * @param {number} count - Nombre de nouveaux messages
+ */
+function showNewMessagesIndicator(count) {
+    // Créer ou mettre à jour un indicateur flottant
+    let indicator = document.getElementById('new-messages-indicator');
+    
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'new-messages-indicator';
+        indicator.style.position = 'fixed';
+        indicator.style.bottom = '100px';
+        indicator.style.right = '20px';
+        indicator.style.backgroundColor = '#009b72';
+        indicator.style.color = 'white';
+        indicator.style.padding = '10px 15px';
+        indicator.style.borderRadius = '20px';
+        indicator.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+        indicator.style.cursor = 'pointer';
+        indicator.style.zIndex = '1000';
+        
+        indicator.addEventListener('click', function() {
+            const messagesContainer = document.querySelector('.messages-container');
+            scrollToBottom(messagesContainer);
+            this.style.display = 'none';
+        });
+        
+        document.body.appendChild(indicator);
+    }
+    
+    indicator.textContent = `${count} nouveau(x) message(s)`;
+    indicator.style.display = 'block';
+    
+    // Masquer après un délai si non cliqué
+    setTimeout(() => {
+        if (indicator) indicator.style.display = 'none';
+    }, 5000);
+}
+
+/**
+ * Joue un son de notification (optionnel)
+ */
+function playNotificationSound() {
+    // On pourrait implémenter un son de notification ici
+    // Par exemple:
+    // const audio = new Audio('/assets/sounds/notification.mp3');
+    // audio.play();
 }
 
 /**
@@ -1080,15 +825,8 @@ function loadParticipants() {
     select.innerHTML = '<option value="">Chargement...</option>';
     
     // Faire une requête AJAX pour récupérer les participants
-    fetch(`api/participants.php?type=${type}&conv_id=${convId}`, {
-        signal: window.activeConnections.abortController.signal
-    })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Erreur réseau: ${response.status}`);
-            }
-            return response.json();
-        })
+    fetch(`api/participants.php?type=${type}&conv_id=${convId}`)
+        .then(response => response.json())
         .then(data => {
             select.innerHTML = '';
             
@@ -1107,11 +845,8 @@ function loadParticipants() {
             });
         })
         .catch(error => {
-            // Ne pas afficher d'erreur si la requête a été annulée (navigation)
-            if (error.name !== 'AbortError') {
-                select.innerHTML = '<option value="">Erreur lors du chargement</option>';
-                console.error('Erreur:', error);
-            }
+            select.innerHTML = '<option value="">Erreur lors du chargement</option>';
+            console.error('Erreur:', error);
         });
 }
 
@@ -1206,6 +941,97 @@ function setupMessageValidation() {
 }
 
 /**
+ * Configure l'envoi AJAX des messages
+ */
+function setupAjaxMessageSending() {
+    const form = document.getElementById('messageForm');
+    if (!form) return;
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault(); // Empêcher la soumission normale
+        
+        // Vérifier le contenu du message
+        const textarea = form.querySelector('textarea[name="contenu"]');
+        const messageContent = textarea.value.trim();
+        if (messageContent === '') {
+            alert('Le message ne peut pas être vide');
+            return;
+        }
+        
+        // Récupérer l'ID de conversation de l'URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const convId = urlParams.get('id');
+        
+        // Créer un objet FormData pour l'envoi des données, y compris les fichiers
+        const formData = new FormData(form);
+        formData.append('conversation_id', convId);
+        formData.append('action', 'send_message');
+        
+        // Afficher un indicateur de chargement
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalBtnText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
+        
+        // Envoyer la requête AJAX
+        fetch('api/messages.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            // Vérifier si la réponse est ok avant de continuer
+            if (!response.ok) {
+                throw new Error(`Erreur HTTP: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Vider le formulaire
+                textarea.value = '';
+                
+                // Vider l'aperçu des pièces jointes
+                const fileList = document.getElementById('file-list');
+                if (fileList) fileList.innerHTML = '';
+                
+                // Réinitialiser l'input de fichiers
+                const fileInput = document.getElementById('attachments');
+                if (fileInput) fileInput.value = '';
+                
+                // Mettre à jour l'interface utilisateur
+                if (data.message) {
+                    // Ajouter le nouveau message à la conversation
+                    const messagesContainer = document.querySelector('.messages-container');
+                    if (messagesContainer) {
+                        appendMessageToDOM(data.message, messagesContainer);
+                        scrollToBottom(messagesContainer);
+                    }
+                }
+                
+                // Réinitialiser le formulaire de réponse si c'est une réponse
+                const replyInterface = document.getElementById('reply-interface');
+                if (replyInterface && replyInterface.style.display !== 'none') {
+                    document.getElementById('parent-message-id').value = '';
+                    replyInterface.style.display = 'none';
+                }
+            } else {
+                // Afficher l'erreur
+                alert('Erreur lors de l\'envoi du message: ' + (data.error || 'Erreur inconnue'));
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de l\'envoi du message. Veuillez réessayer.');
+        })
+        .finally(() => {
+            // Réactiver le bouton quoi qu'il arrive
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+        });
+    });
+}
+
+/**
  * Utilitaire pour afficher des notifications d'erreur
  * @param {string} message - Message d'erreur
  * @param {number} duration - Durée d'affichage
@@ -1290,46 +1116,4 @@ function afficherNotificationErreur(message, duration = 5000) {
     }, duration);
     
     return notification;
-}
-
-/**
- * Fonction utilitaire pour marquer un message comme lu
- * Exposée globalement pour être utilisée par d'autres scripts
- * @param {number} messageId - ID du message à marquer comme lu
- */
-function markMessageAsRead(messageId) {
-    const convId = new URLSearchParams(window.location.search).get('id');
-    
-    fetch(`api/read_status.php?action=read&conv_id=${convId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messageId }),
-        signal: window.activeConnections.abortController.signal
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Mettre à jour l'interface avec le nouveau statut
-            const messageEl = document.querySelector(`.message[data-id="${messageId}"]`);
-            if (messageEl) {
-                messageEl.classList.add('read');
-                
-                // Mettre à jour le bouton si présent
-                const readBtn = messageEl.querySelector('.mark-read-btn');
-                if (readBtn) {
-                    const unreadBtn = document.createElement('button');
-                    unreadBtn.className = 'btn-icon mark-unread-btn';
-                    unreadBtn.setAttribute('data-message-id', messageId);
-                    unreadBtn.innerHTML = '<i class="fas fa-envelope"></i> Marquer comme non lu';
-                    
-                    readBtn.parentNode.replaceChild(unreadBtn, readBtn);
-                }
-            }
-        }
-    })
-    .catch(error => {
-        if (error.name !== 'AbortError') {
-            console.error('Erreur lors du marquage comme lu:', error);
-        }
-    });
 }
