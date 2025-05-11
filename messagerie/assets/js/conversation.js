@@ -6,6 +6,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialiser les actions de conversation
     initConversationActions();
     
+    // Initialisation du système de lecture des messages
+    initReadTracker();
+    
     // Actualisation en temps réel pour les modifications de conversation
     setupRealTimeUpdates();
     
@@ -18,6 +21,163 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialiser la sidebar rétractable
     initSidebarCollapse();
 });
+
+/**
+ * Initialise le système de détection et de suivi des messages lus
+ */
+function initReadTracker() {
+    // Variables pour l'état de lecture
+    let lastReadMessageId = 0;
+    let isTracking = false;
+    let isPolling = false;
+    
+    // Observer pour détecter les messages visibles
+    const messageObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const messageEl = entry.target;
+                const messageId = parseInt(messageEl.dataset.id, 10);
+                
+                // Si ce message est plus récent que le dernier lu, le marquer
+                if (messageId > lastReadMessageId) {
+                    markMessageAsRead(messageId);
+                    lastReadMessageId = messageId;
+                }
+            }
+        });
+    }, {
+        root: document.querySelector('.messages-container'),
+        threshold: 0.5 // Le message est considéré comme lu lorsqu'il est à moitié visible
+    });
+    
+    // Observer tous les messages
+    document.querySelectorAll('.message').forEach(message => {
+        messageObserver.observe(message);
+    });
+    
+    /**
+     * Marque un message comme lu via l'API
+     */
+    function markMessageAsRead(messageId) {
+        // Éviter les requêtes concurrentes
+        if (isTracking) {
+            return;
+        }
+        
+        isTracking = true;
+        
+        const convId = new URLSearchParams(window.location.search).get('id');
+        
+        fetch(`api/read_status.php?action=mark_read&conv_id=${convId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messageId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Mettre à jour l'interface avec le nouveau statut
+                updateReadStatus(data.readStatus);
+            }
+            isTracking = false;
+        })
+        .catch(error => {
+            console.error('Erreur lors du marquage comme lu:', error);
+            isTracking = false;
+        });
+    }
+    
+    /**
+     * Met à jour l'affichage du statut de lecture d'un message
+     */
+    function updateReadStatus(readStatus) {
+        const messageEl = document.querySelector(`.message[data-id="${readStatus.message_id}"]`);
+        if (!messageEl) return;
+        
+        const statusEl = messageEl.querySelector('.message-read-status');
+        if (!statusEl) return;
+        
+        // Mettre à jour le contenu selon l'état de lecture
+        if (readStatus.all_read) {
+            statusEl.innerHTML = `
+                <div class="all-read">
+                    <i class="fas fa-check-double"></i> Vu
+                </div>
+            `;
+        } else if (readStatus.read_by_count > 0) {
+            // Créer la liste des noms des lecteurs
+            const readerNames = readStatus.readers.map(r => r.nom_complet).join(', ');
+            
+            statusEl.innerHTML = `
+                <div class="partial-read">
+                    <i class="fas fa-check"></i>
+                    <span class="read-count">${readStatus.read_by_count}/${readStatus.total_participants - 1}</span>
+                    <span class="read-tooltip" title="${readerNames}">
+                        <i class="fas fa-info-circle"></i>
+                    </span>
+                </div>
+            `;
+        }
+    }
+    
+    /**
+     * Démarre le polling pour les mises à jour de lecture
+     */
+    function startReadStatusPolling() {
+        if (isPolling) return;
+        
+        isPolling = true;
+        
+        function pollForUpdates() {
+            const convId = new URLSearchParams(window.location.search).get('id');
+            const lastMessageId = getLastMessageId();
+            
+            fetch(`api/read_status.php?action=updates&conv_id=${convId}&since=${lastReadMessageId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Appliquer les mises à jour reçues
+                        data.updates.forEach(updateReadStatus);
+                        
+                        // Continuer le polling si toujours sur la page
+                        if (document.visibilityState === 'visible') {
+                            pollForUpdates();
+                        } else {
+                            document.addEventListener('visibilitychange', onVisibilityChange);
+                            isPolling = false;
+                        }
+                    } else {
+                        // Réessayer après un délai en cas d'erreur
+                        setTimeout(pollForUpdates, 5000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur de polling:', error);
+                    setTimeout(pollForUpdates, 5000);
+                });
+        }
+        
+        function onVisibilityChange() {
+            if (document.visibilityState === 'visible') {
+                document.removeEventListener('visibilitychange', onVisibilityChange);
+                startReadStatusPolling();
+            }
+        }
+        
+        function getLastMessageId() {
+            const messages = document.querySelectorAll('.message');
+            if (messages.length === 0) return 0;
+            
+            return parseInt(messages[messages.length - 1].dataset.id, 10);
+        }
+        
+        // Démarrer le polling
+        pollForUpdates();
+    }
+    
+    // Démarrer le polling pour les mises à jour
+    startReadStatusPolling();
+}
 
 /**
  * Initialise les actions principales de conversation
@@ -197,27 +357,6 @@ function setupMessageValidation() {
             }
         });
     }
-}
-
-
-/**
- * Fait défiler un élément jusqu'en bas
- * @param {HTMLElement} element - Élément à faire défiler jusqu'en bas
- */
-function scrollToBottom(element) {
-    if (element) {
-        element.scrollTop = element.scrollHeight;
-    }
-}
-
-/**
- * Vérifie si l'élément est défilé jusqu'en bas
- * @param {HTMLElement} element - Élément à vérifier
- * @returns {boolean} True si l'élément est défilé jusqu'en bas
- */
-function isScrolledToBottom(element) {
-    if (!element) return false;
-    return Math.abs(element.scrollHeight - element.scrollTop - element.clientHeight) < 20;
 }
 
 /**
@@ -413,106 +552,27 @@ function setupRealTimeUpdates() {
 }
 
 /**
- * Ajoute un message au DOM
- * @param {Object} message - Objet message à ajouter
- * @param {HTMLElement} container - Conteneur où ajouter le message
+ * Fait défiler un élément jusqu'en bas
+ * @param {HTMLElement} element - Élément à faire défiler jusqu'en bas
  */
-function appendMessageToDOM(message, container) {
-    // Créer un nouvel élément div pour le message
-    const messageElement = document.createElement('div');
-    
-    // Déterminer les classes du message
-    let classes = ['message'];
-    if (message.is_self) classes.push('self');
-    if (message.est_lu === 1 || message.est_lu === true) classes.push('read');
-    if (message.status) classes.push(message.status);
-    
-    messageElement.className = classes.join(' ');
-    messageElement.setAttribute('data-id', message.id);
-    messageElement.setAttribute('data-timestamp', message.timestamp);
-    
-    // Formater la date lisible
-    const messageDate = new Date(message.timestamp * 1000);
-    const formattedDate = formatMessageDate(messageDate);
-    
-    // Construction du HTML du message
-    let messageHTML = `
-        <div class="message-header">
-            <div class="sender">
-                <strong>${escapeHTML(message.expediteur_nom)}</strong>
-                <span class="sender-type">${getParticipantType(message.sender_type)}</span>
-            </div>
-            <div class="message-meta">
-    `;
-    
-    // Ajouter le tag d'importance si non standard
-    if (message.status && message.status !== 'normal') {
-        messageHTML += `<span class="importance-tag ${message.status}">${message.status}</span>`;
+function scrollToBottom(element) {
+    if (element) {
+        element.scrollTop = element.scrollHeight;
     }
-    
-    messageHTML += `
-                <span class="date">${formattedDate}</span>
-            </div>
-        </div>
-        <div class="message-content">${nl2br(escapeHTML(message.body || message.contenu))}</div>
-        <div class="message-footer">
-            <div class="message-status">
-                ${(message.est_lu === 1 || message.est_lu === true) ? '<div class="message-read"><i class="fas fa-check"></i> Vu</div>' : ''}
-            </div>
-    `;
-    
-    // Ajouter les actions si ce n'est pas un message de l'utilisateur courant
-    if (!message.is_self) {
-        messageHTML += `
-            <div class="message-actions">
-                ${(message.est_lu === 1 || message.est_lu === true) ? 
-                    `<button class="btn-icon mark-unread-btn" data-message-id="${message.id}">
-                        <i class="fas fa-envelope"></i> Marquer comme non lu
-                    </button>` : 
-                    `<button class="btn-icon mark-read-btn" data-message-id="${message.id}">
-                        <i class="fas fa-envelope-open"></i> Marquer comme lu
-                    </button>`
-                }
-                <button class="btn-icon" onclick="replyToMessage(${message.id}, '${escapeHTML(message.expediteur_nom)}')">
-                    <i class="fas fa-reply"></i> Répondre
-                </button>
-            </div>
-        `;
-    }
-    
-    messageHTML += `
-        </div>
-    `;
-    
-    // Définir le HTML du message
-    messageElement.innerHTML = messageHTML;
-    
-    // Ajouter l'événement pour les boutons
-    setTimeout(() => {
-        const readBtn = messageElement.querySelector('.mark-read-btn');
-        const unreadBtn = messageElement.querySelector('.mark-unread-btn');
-        
-        if (readBtn) {
-            readBtn.addEventListener('click', function() {
-                const messageId = this.getAttribute('data-message-id');
-                markMessageAsRead(messageId);
-            });
-        }
-        
-        if (unreadBtn) {
-            unreadBtn.addEventListener('click', function() {
-                const messageId = this.getAttribute('data-message-id');
-                markMessageAsUnread(messageId);
-            });
-        }
-    }, 100);
-    
-    // Ajouter le message au conteneur
-    container.appendChild(messageElement);
 }
 
 /**
- * Envoie un message via AJAX - Version corrigée
+ * Vérifie si l'élément est défilé jusqu'en bas
+ * @param {HTMLElement} element - Élément à vérifier
+ * @returns {boolean} True si l'élément est défilé jusqu'en bas
+ */
+function isScrolledToBottom(element) {
+    if (!element) return false;
+    return Math.abs(element.scrollHeight - element.scrollTop - element.clientHeight) < 20;
+}
+
+/**
+ * Configure l'envoi AJAX des messages
  */
 function setupAjaxMessageSending() {
     const form = document.getElementById('messageForm');
@@ -600,6 +660,110 @@ function setupAjaxMessageSending() {
             submitBtn.innerHTML = originalBtnText;
         });
     });
+}
+
+/**
+ * Ajoute un message au DOM
+ * @param {Object} message - Objet message à ajouter
+ * @param {HTMLElement} container - Conteneur où ajouter le message
+ */
+function appendMessageToDOM(message, container) {
+    // Créer un nouvel élément div pour le message
+    const messageElement = document.createElement('div');
+    
+    // Déterminer les classes du message
+    let classes = ['message'];
+    if (message.is_self) classes.push('self');
+    if (message.est_lu === 1 || message.est_lu === true) classes.push('read');
+    if (message.status) classes.push(message.status);
+    
+    messageElement.className = classes.join(' ');
+    messageElement.setAttribute('data-id', message.id);
+    messageElement.setAttribute('data-timestamp', message.timestamp);
+    
+    // Formater la date lisible
+    const messageDate = new Date(message.timestamp * 1000);
+    const formattedDate = formatMessageDate(messageDate);
+    
+    // Construction du HTML du message
+    let messageHTML = `
+        <div class="message-header">
+            <div class="sender">
+                <strong>${escapeHTML(message.expediteur_nom)}</strong>
+                <span class="sender-type">${getParticipantType(message.sender_type)}</span>
+            </div>
+            <div class="message-meta">
+    `;
+    
+    // Ajouter le tag d'importance si non standard
+    if (message.status && message.status !== 'normal') {
+        messageHTML += `<span class="importance-tag ${message.status}">${message.status}</span>`;
+    }
+    
+    messageHTML += `
+                <span class="date">${formattedDate}</span>
+            </div>
+        </div>
+        <div class="message-content">${nl2br(escapeHTML(message.body || message.contenu))}</div>
+        <div class="message-footer">
+            <div class="message-status">
+                ${message.is_self ? `
+                    <div class="message-read-status" data-message-id="${message.id}">
+                        ${(message.est_lu === 1 || message.est_lu === true) ? 
+                            '<div class="message-read"><i class="fas fa-check"></i> Vu</div>' : ''}
+                    </div>
+                ` : ''}
+            </div>
+    `;
+    
+    // Ajouter les actions si ce n'est pas un message de l'utilisateur courant
+    if (!message.is_self) {
+        messageHTML += `
+            <div class="message-actions">
+                ${(message.est_lu === 1 || message.est_lu === true) ? 
+                    `<button class="btn-icon mark-unread-btn" data-message-id="${message.id}">
+                        <i class="fas fa-envelope"></i> Marquer comme non lu
+                    </button>` : 
+                    `<button class="btn-icon mark-read-btn" data-message-id="${message.id}">
+                        <i class="fas fa-envelope-open"></i> Marquer comme lu
+                    </button>`
+                }
+                <button class="btn-icon" onclick="replyToMessage(${message.id}, '${escapeHTML(message.expediteur_nom)}')">
+                    <i class="fas fa-reply"></i> Répondre
+                </button>
+            </div>
+        `;
+    }
+    
+    messageHTML += `
+        </div>
+    `;
+    
+    // Définir le HTML du message
+    messageElement.innerHTML = messageHTML;
+    
+    // Ajouter l'événement pour les boutons
+    setTimeout(() => {
+        const readBtn = messageElement.querySelector('.mark-read-btn');
+        const unreadBtn = messageElement.querySelector('.mark-unread-btn');
+        
+        if (readBtn) {
+            readBtn.addEventListener('click', function() {
+                const messageId = this.getAttribute('data-message-id');
+                markMessageAsRead(messageId);
+            });
+        }
+        
+        if (unreadBtn) {
+            unreadBtn.addEventListener('click', function() {
+                const messageId = this.getAttribute('data-message-id');
+                markMessageAsUnread(messageId);
+            });
+        }
+    }, 100);
+    
+    // Ajouter le message au conteneur
+    container.appendChild(messageElement);
 }
 
 /**
@@ -776,7 +940,7 @@ function markMessageAsRead(messageId) {
  * @param {number} messageId - ID du message
  */
 function markMessageAsUnread(messageId) {
-    fetch(`api/messages.php?id=${messageId}&action=mark_unread`) // Correction du chemin API
+    fetch(`api/messages.php?id=${messageId}&action=mark_unread`)
         .then(response => {
             if (!response.ok) {
                 throw new Error(`Erreur réseau: ${response.status}`);

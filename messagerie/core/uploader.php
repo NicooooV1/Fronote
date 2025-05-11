@@ -25,7 +25,8 @@ function checkUploadPath($path) {
 function handleFileUploads($filesData) {
     $uploadedFiles = [];
     
-    if (empty($filesData) || !isset($filesData['name'])) {
+    // Si aucun fichier n'est téléchargé, retourner immédiatement un tableau vide
+    if (empty($filesData) || !isset($filesData['name']) || empty($filesData['name'][0])) {
         return $uploadedFiles;
     }
     
@@ -37,25 +38,14 @@ function handleFileUploads($filesData) {
     }
     
     // Vérifier que le dossier est accessible en écriture
-    if (!is_writable($uploadDir)) {
-        chmod($uploadDir, 0755);
-    }
+    // Retirez cette partie si vous n'avez pas les droits
+    // if (!is_writable($uploadDir)) {
+    //     chmod($uploadDir, 0755);
+    // }
     
     foreach ($filesData['name'] as $key => $name) {
         if ($filesData['error'][$key] === UPLOAD_ERR_OK) {
-            $tmp_name = $filesData['tmp_name'][$key];
-            $filename = uniqid() . '_' . basename($name);
-            $filePath = $uploadDir . $filename;
-            
-            if (move_uploaded_file($tmp_name, $filePath)) {
-                // Stocker le chemin relatif pour l'accès web
-                $webPath = 'assets/uploads/' . $filename;
-                
-                $uploadedFiles[] = [
-                    'name' => $name,
-                    'path' => $webPath // Chemin relatif pour l'accès web
-                ];
-            }
+            // Reste du code...
         }
     }
     

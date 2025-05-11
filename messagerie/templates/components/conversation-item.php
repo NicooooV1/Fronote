@@ -1,99 +1,104 @@
 <?php
 /**
- * Item d'une conversation dans la liste
+ * Item d'un message dans une conversation
  * 
- * @param array $conversation La conversation à afficher
- * @param string $currentFolder Le dossier actuel
+ * @param array $message Le message à afficher
+ * @param array $user L'utilisateur connecté
+ * @param bool $canReply Si l'utilisateur peut répondre
  */
+
+// Classes CSS pour le message
+$messageClasses = [];
+$isSelf = isCurrentUser($message['expediteur_id'], $message['expediteur_type'], $user);
+if ($isSelf) {
+    $messageClasses[] = 'self';
+}
+
+// Importance/statut du message
+$importance = isset($message['status']) ? $message['status'] : 'normal';
+$messageClasses[] = $importance;
+
+// Message lu/non lu
+if (isset($message['est_lu']) && $message['est_lu']) {
+    $messageClasses[] = 'read';
+}
+
+// Annonce
+if (isset($conversation) && isset($conversation['type']) && $conversation['type'] === 'annonce') {
+    $messageClasses[] = 'annonce';
+}
+
+// Filtrer les classes vides
+$messageClasses = array_filter($messageClasses);
 ?>
-<div class="conversation-item <?= $conversation['non_lus'] > 0 ? 'unread' : '' ?> <?= $conversation['type'] === 'annonce' ? 'annonce' : '' ?>" data-is-read="<?= $conversation['non_lus'] == 0 ? '1' : '0' ?>">
-    <label class="checkbox-container conversation-selector">
-        <input type="checkbox" class="conversation-checkbox" value="<?= (int)$conversation['id'] ?>">
-        <span class="checkmark"></span>
-    </label>
-    
-    <a href="conversation.php?id=<?= (int)$conversation['id'] ?>" class="conversation-content">
-        <div class="conversation-icon <?= $conversation['type'] === 'annonce' ? 'annonce' : '' ?>">
-            <i class="fas fa-<?= getConversationIcon($conversation['type']) ?>"></i>
+
+<div class="message <?= implode(' ', $messageClasses) ?>" data-id="<?= (int)$message['id'] ?>" data-timestamp="<?= strtotime($message['date_envoi']) ?>">
+    <div class="message-header">
+        <div class="sender">
+            <strong><?= htmlspecialchars($message['expediteur_nom']) ?></strong>
+            <span class="sender-type"><?= getParticipantType($message['expediteur_type']) ?></span>
         </div>
-        <div class="conversation-header">
-            <h3><?= htmlspecialchars($conversation['titre'] ?: 'Conversation #'.$conversation['id']) ?></h3>
-            <?php if ($conversation['non_lus'] > 0): ?>
-            <span class="badge">
-                <?php if ((int)$conversation['non_lus'] === 1): ?>
-                    1 NOUVEAU
-                <?php else: ?>
-                    <?= (int)$conversation['non_lus'] ?> NOUVEAUX
-                <?php endif; ?>
+        <div class="message-meta">
+            <?php if ($importance !== 'normal'): ?>
+            <span class="importance-tag <?= htmlspecialchars($importance) ?>">
+                <?= htmlspecialchars($importance) ?>
             </span>
             <?php endif; ?>
+            <span class="date"><?= formatDate($message['date_envoi']) ?></span>
         </div>
-        <div class="conversation-meta">
-            <?php 
-            $statusClass = '';
-            $statusLabel = '';
-            
-            if ($conversation['type'] === 'annonce') {
-                $statusClass = 'annonce';
-                $statusLabel = 'Annonce';
-            } elseif (isset($conversation['status'])) {
-                $statusClass = $conversation['status'];
-                $statusLabel = getMessageStatusLabel($conversation['status']);
-            } else {
-                $statusLabel = getConversationType($conversation['type']);
-            }
-            ?>
-            <span class="message-status <?= $statusClass ?>"><?= htmlspecialchars($statusLabel) ?></span>
-            <span class="date"><?= formatDate($conversation['dernier_message']) ?></span>
-        </div>
-    </a>
+    </div>
     
-    <!-- Menu d'actions rapides -->
-    <div class="quick-actions">
-        <button class="quick-actions-btn" onclick="toggleQuickActions(<?= (int)$conversation['id'] ?>)">
-            <i class="fas fa-ellipsis-v"></i>
-        </button>
-        <div class="quick-actions-menu" id="quick-actions-<?= (int)$conversation['id'] ?>">
-            <?php if ($currentFolder === 'archives'): ?>
-            <!-- Actions pour les archives -->
-            <button type="button" onclick="performBulkAction('unarchive', [<?= (int)$conversation['id'] ?>])">
-                <i class="fas fa-inbox"></i> Désarchiver
-            </button>
-            
-            <button type="button" onclick="performBulkAction('delete', [<?= (int)$conversation['id'] ?>])" class="delete">
-                <i class="fas fa-trash"></i> Supprimer
-            </button>
-            <?php elseif ($currentFolder === 'corbeille'): ?>
-            <!-- Actions pour la corbeille -->
-            <button type="button" onclick="performBulkAction('restore', [<?= (int)$conversation['id'] ?>])">
-                <i class="fas fa-trash-restore"></i> Restaurer
-            </button>
-            
-            <button type="button" onclick="performBulkAction('delete_permanently', [<?= (int)$conversation['id'] ?>])" class="delete">
-                <i class="fas fa-trash-alt"></i> Supprimer définitivement
-            </button>
-            <?php else: ?>
-            <!-- Actions pour les autres dossiers -->
-            <?php if ($conversation['non_lus'] > 0): ?>
-            <button type="button" onclick="markConversationAsRead(<?= (int)$conversation['id'] ?>)">
-                <i class="fas fa-envelope-open"></i> Marquer comme lu
-            </button>
-            <?php else: ?>
-            <button type="button" onclick="markConversationAsUnread(<?= (int)$conversation['id'] ?>)">
-                <i class="fas fa-envelope"></i> Marquer comme non lu
-            </button>
-            <?php endif; ?>
-            
-            <?php if ($currentFolder !== 'archives'): ?>
-            <button type="button" onclick="performBulkAction('archive', [<?= (int)$conversation['id'] ?>])">
-                <i class="fas fa-archive"></i> Archiver
-            </button>
-            <?php endif; ?>
-            
-            <button type="button" onclick="performBulkAction('delete', [<?= (int)$conversation['id'] ?>])" class="delete">
-                <i class="fas fa-trash"></i> Supprimer
-            </button>
+    <div class="message-content">
+        <?= nl2br(linkify(htmlspecialchars($message['contenu']))) ?>
+        
+        <?php if (!empty($message['pieces_jointes'])): ?>
+        <div class="attachments">
+            <?php foreach ($message['pieces_jointes'] as $attachment): ?>
+            <a href="<?= isset($baseUrl) ? $baseUrl : '' ?><?= htmlspecialchars($attachment['chemin']) ?>" class="attachment" target="_blank">
+                <i class="fas fa-paperclip"></i> <?= htmlspecialchars($attachment['nom_fichier']) ?>
+            </a>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+    </div>
+    
+    <div class="message-footer">
+        <!-- Affichage amélioré du statut de lecture -->
+        <div class="message-status">
+            <?php if ($isSelf): ?>
+                <div class="message-read-status" data-message-id="<?= (int)$message['id'] ?>">
+                    <?php if (isset($message['read_status']) && $message['read_status']['all_read']): ?>
+                        <div class="all-read">
+                            <i class="fas fa-check-double"></i> Vu
+                        </div>
+                    <?php elseif (isset($message['read_status']) && $message['read_status']['read_by_count'] > 0): ?>
+                        <div class="partial-read">
+                            <i class="fas fa-check"></i> 
+                            <span class="read-count"><?= $message['read_status']['read_by_count'] ?>/<?= $message['read_status']['total_participants'] - 1 ?></span>
+                            <span class="read-tooltip" title="<?= implode(', ', array_column($message['read_status']['readers'], 'nom_complet')) ?>">
+                                <i class="fas fa-info-circle"></i>
+                            </span>
+                        </div>
+                    <?php endif; ?>
+                </div>
             <?php endif; ?>
         </div>
+            
+        <?php if (isset($canReply) && $canReply && !$isSelf): ?>
+        <div class="message-actions">
+            <?php if (isset($message['est_lu']) && $message['est_lu']): ?>
+                <button class="btn-icon mark-unread-btn" data-message-id="<?= (int)$message['id'] ?>">
+                    <i class="fas fa-envelope"></i> Marquer comme non lu
+                </button>
+            <?php else: ?>
+                <button class="btn-icon mark-read-btn" data-message-id="<?= (int)$message['id'] ?>">
+                    <i class="fas fa-envelope-open"></i> Marquer comme lu
+                </button>
+            <?php endif; ?>
+            <button class="btn-icon" onclick="replyToMessage(<?= (int)$message['id'] ?>, '<?= htmlspecialchars(addslashes($message['expediteur_nom'])) ?>')">
+                <i class="fas fa-reply"></i> Répondre
+            </button>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
