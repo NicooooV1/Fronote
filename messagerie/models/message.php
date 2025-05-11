@@ -459,13 +459,123 @@ function addMessage($convId, $senderId, $senderType, $content, $importance = 'no
 }
 
 /**
- * Marque un message comme lu
- * @param int $messageId
- * @param int $userId
- * @param string $userType
+ * Marque un message comme lu avec contrôle optimiste de concurrence
+ * @param int $messageId - ID du message
+ * @param int $userId - ID de l'utilisateur
+ * @param string $userType - Type d'utilisateur
+ * @param int $maxRetries - Nombre maximum de tentatives en cas de conflit
  * @return bool
  */
-function markMessageAsRead($messageId, $userId, $userType) {
+function markMessageAsRead($messageId, $userId, $userType, $maxRetries = 3) {
+    global $pdo;
+    
+    // Récupérer l'ID de la conversation pour ce message
+    $stmt = $pdo->prepare("SELECT conversation_id FROM messages WHERE id = ?");
+    $stmt->execute([$messageId]);
+    $convId = $stmt->fetchColumn();
+    
+    if (!$convId) return false;
+    
+    $retriesLeft = $maxRetries;
+    
+    while ($retriesLeft > 0) {
+        try {
+            $pdo->beginTransaction();
+            
+            // Récupérer la version actuelle avec FOR UPDATE pour bloquer la ligne
+            $getVersionStmt = $pdo->prepare("
+                SELECT last_read_message_id, version 
+                FROM conversation_participants 
+                WHERE conversation_id = ? AND user_id = ? AND user_type = ?
+                FOR UPDATE
+            ");
+            $getVersionStmt->execute([$convId, $userId, $userType]);
+            $participantInfo = $getVersionStmt->fetch();
+            
+            if (!$participantInfo) {
+                $pdo->rollBack();
+                return false;
+            }
+            
+            $currentVersion = $participantInfo['version'];
+            $currentLastReadId = $participantInfo['last_read_message_id'];
+            
+            // Ne mettre à jour que si le nouveau message ID est plus grand
+            if ($currentLastReadId === null || $messageId > $currentLastReadId) {
+                // Incrémenter la version et mettre à jour last_read_message_id
+                $updateStmt = $pdo->prepare("
+                    UPDATE conversation_participants 
+                    SET last_read_message_id = ?, version = version + 1, last_read_at = NOW()
+                    WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND version = ?
+                ");
+                $updateStmt->execute([$messageId, $convId, $userId, $userType, $currentVersion]);
+                
+                // Mettre à jour les notifications et le compteur unread_count
+                if ($updateStmt->rowCount() > 0) {
+                    // Marquer les notifications comme lues
+                    $updateNotif = $pdo->prepare("
+                        UPDATE message_notifications 
+                        SET is_read = 1, read_at = NOW() 
+                        WHERE message_id = ? AND user_id = ? AND user_type = ? AND is_read = 0
+                    ");
+                    $updateNotif->execute([$messageId, $userId, $userType]);
+                    
+                    // Recalculer précisément le compteur unread_count
+                    $updateCount = $pdo->prepare("
+                        UPDATE conversation_participants
+                        SET unread_count = (
+                            SELECT COUNT(*) 
+                            FROM messages m
+                            LEFT JOIN conversation_participants cp ON m.conversation_id = cp.conversation_id
+                            WHERE m.conversation_id = ? 
+                            AND cp.user_id = ? AND cp.user_type = ?
+                            AND (cp.last_read_message_id IS NULL OR m.id > cp.last_read_message_id)
+                            AND m.sender_id != ? AND m.sender_type != ?
+                        )
+                        WHERE conversation_id = ? AND user_id = ? AND user_type = ?
+                    ");
+                    $updateCount->execute([$convId, $userId, $userType, $userId, $userType, $convId, $userId, $userType]);
+                    
+                    $pdo->commit();
+                    return true;
+                } else {
+                    // Conflit détecté, la version a changé entre-temps
+                    $pdo->rollBack();
+                    $retriesLeft--;
+                    
+                    // Attendre un peu avant de réessayer pour éviter les contentions
+                    usleep(100000); // 100 ms
+                    continue;
+                }
+            } else {
+                // Aucune mise à jour nécessaire (message déjà lu)
+                $pdo->commit();
+                return true;
+            }
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $retriesLeft--;
+            
+            if ($retriesLeft <= 0) {
+                return false;
+            }
+            
+            // Attendre avant de réessayer
+            usleep(100000); // 100 ms
+        }
+    }
+    
+    return false;
+}
+
+/**
+ * Récupère le statut de lecture d'un message avec des informations détaillées
+ * @param int $messageId
+ * @return array
+ */
+function getMessageReadStatus($messageId) {
     global $pdo;
     
     // Récupérer l'ID de la conversation pour ce message
@@ -474,114 +584,64 @@ function markMessageAsRead($messageId, $userId, $userType) {
     $result = $stmt->fetch();
     
     if (!$result) {
-        return false;
+        return [
+            'message_id' => $messageId,
+            'total_participants' => 0,
+            'read_by_count' => 0,
+            'all_read' => false,
+            'percentage' => 0,
+            'readers' => []
+        ];
     }
     
     $convId = $result['conversation_id'];
     
-    $pdo->beginTransaction();
-    try {
-        // Récupérer les informations actuelles du participant
-        $getParticipant = $pdo->prepare("
-            SELECT last_read_message_id, version 
-            FROM conversation_participants 
-            WHERE conversation_id = ? AND user_id = ? AND user_type = ?
-        ");
-        $getParticipant->execute([$convId, $userId, $userType]);
-        $participantInfo = $getParticipant->fetch();
-        
-        if (!$participantInfo) {
-            // Le participant n'existe pas dans cette conversation
-            $pdo->rollBack();
-            return false;
-        }
-        
-        $currentVersion = $participantInfo['version'];
-        $currentLastReadId = $participantInfo['last_read_message_id'];
-        
-        // Ne mettre à jour que si le nouveau message ID est plus grand
-        if ($currentLastReadId === null || $messageId > $currentLastReadId) {
-            // Mettre à jour le last_read_message_id avec contrôle optimiste
-            $updateStmt = $pdo->prepare("
-                UPDATE conversation_participants 
-                SET last_read_message_id = ?, version = version + 1, last_read_at = NOW() 
-                WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND version = ?
-            ");
-            $updateStmt->execute([$messageId, $convId, $userId, $userType, $currentVersion]);
-            
-            // Si la mise à jour a échoué (concurrence), réessayer
-            if ($updateStmt->rowCount() === 0) {
-                // Attendre un court instant et réessayer
-                usleep(100000); // 100 ms
-                
-                // Récupérer la nouvelle version
-                $getParticipant->execute([$convId, $userId, $userType]);
-                $newParticipantInfo = $getParticipant->fetch();
-                
-                if ($newParticipantInfo) {
-                    $newVersion = $newParticipantInfo['version'];
-                    $newLastReadId = $newParticipantInfo['last_read_message_id'];
-                    
-                    // Réessayer avec la nouvelle version
-                    if ($newLastReadId === null || $messageId > $newLastReadId) {
-                        $updateStmt->execute([$messageId, $convId, $userId, $userType, $newVersion]);
-                    }
-                }
-            }
-        }
-        
-        // Vérifier si la notification existe et n'est pas déjà lue
-        $checkStmt = $pdo->prepare("
-            SELECT id, is_read FROM message_notifications 
-            WHERE message_id = ? AND user_id = ? AND user_type = ?
-        ");
-        $checkStmt->execute([$messageId, $userId, $userType]);
-        $notification = $checkStmt->fetch();
-        
-        if ($notification) {
-            // Si la notification existe et n'est pas déjà lue, la marquer comme lue
-            if (!$notification['is_read']) {
-                // Marquer comme lu et enregistrer la date de lecture
-                $updNotif = $pdo->prepare("
-                    UPDATE message_notifications 
-                    SET is_read = 1, read_at = NOW() 
-                    WHERE id = ?
-                ");
-                $updNotif->execute([$notification['id']]);
-                
-                // Recalculer le compteur de messages non lus
-                $recalcUnread = $pdo->prepare("
-                    UPDATE conversation_participants cp
-                    SET unread_count = (
-                        SELECT COUNT(*) 
-                        FROM messages m
-                        LEFT JOIN message_notifications mn ON m.id = mn.message_id AND mn.user_id = ? AND mn.user_type = ?
-                        WHERE m.conversation_id = ? 
-                        AND (mn.id IS NULL OR mn.is_read = 0)
-                        AND m.sender_id != ? AND m.sender_type != ?
-                    )
-                    WHERE cp.conversation_id = ? AND cp.user_id = ? AND cp.user_type = ?
-                ");
-                $recalcUnread->execute([
-                    $userId, $userType, $convId, $userId, $userType, $convId, $userId, $userType
-                ]);
-            }
-        } else {
-            // Si la notification n'existe pas, on la crée comme déjà lue
-            $createNotif = $pdo->prepare("
-                INSERT INTO message_notifications 
-                (user_id, user_type, message_id, notification_type, is_read, read_at) 
-                VALUES (?, ?, ?, 'unread', 1, NOW())
-            ");
-            $createNotif->execute([$userId, $userType, $messageId]);
-        }
-        
-        $pdo->commit();
-        return true;
-    } catch (Exception $e) {
-        $pdo->rollBack();
-        return false;
-    }
+    // Récupérer le nombre total de participants et le nombre de participants qui ont lu
+    $readInfoStmt = $pdo->prepare("
+        SELECT 
+            COUNT(*) as total_participants,
+            SUM(CASE WHEN cp.last_read_message_id >= ? THEN 1 ELSE 0 END) as read_count
+        FROM conversation_participants cp
+        WHERE cp.conversation_id = ? AND cp.is_deleted = 0
+        AND cp.user_id != (SELECT sender_id FROM messages WHERE id = ?)
+        AND cp.user_type != (SELECT sender_type FROM messages WHERE id = ?)
+    ");
+    $readInfoStmt->execute([$messageId, $convId, $messageId, $messageId]);
+    $readInfo = $readInfoStmt->fetch();
+    
+    // Récupérer les participants qui ont lu
+    $readersStmt = $pdo->prepare("
+        SELECT cp.user_id, cp.user_type,
+               CASE 
+                   WHEN cp.user_type = 'eleve' THEN 
+                       (SELECT CONCAT(e.prenom, ' ', e.nom) FROM eleves e WHERE e.id = cp.user_id)
+                   WHEN cp.user_type = 'parent' THEN 
+                       (SELECT CONCAT(p.prenom, ' ', p.nom) FROM parents p WHERE p.id = cp.user_id)
+                   WHEN cp.user_type = 'professeur' THEN 
+                       (SELECT CONCAT(p.prenom, ' ', p.nom) FROM professeurs p WHERE p.id = cp.user_id)
+                   WHEN cp.user_type = 'vie_scolaire' THEN 
+                       (SELECT CONCAT(v.prenom, ' ', v.nom) FROM vie_scolaire v WHERE v.id = cp.user_id)
+                   WHEN cp.user_type = 'administrateur' THEN 
+                       (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = cp.user_id)
+                   ELSE 'Inconnu'
+               END as nom_complet
+        FROM conversation_participants cp
+        WHERE cp.conversation_id = ? AND cp.last_read_message_id >= ? AND cp.is_deleted = 0
+        AND cp.user_id != (SELECT sender_id FROM messages WHERE id = ?)
+        AND cp.user_type != (SELECT sender_type FROM messages WHERE id = ?)
+    ");
+    $readersStmt->execute([$convId, $messageId, $messageId, $messageId]);
+    $readers = $readersStmt->fetchAll();
+    
+    return [
+        'message_id' => $messageId,
+        'total_participants' => (int)$readInfo['total_participants'],
+        'read_by_count' => (int)$readInfo['read_count'],
+        'all_read' => (int)$readInfo['read_count'] === (int)$readInfo['total_participants'] && (int)$readInfo['total_participants'] > 0,
+        'percentage' => $readInfo['total_participants'] > 0 ? 
+                      round(($readInfo['read_count'] / $readInfo['total_participants']) * 100) : 0,
+        'readers' => $readers
+    ];
 }
 
 /**

@@ -11,18 +11,18 @@ require_once __DIR__ . '/../core/auth.php';
 ini_set('display_errors', 0);
 error_reporting(0);
 
-// Toujours répondre en JSON
-header('Content-Type: application/json');
-
 // Vérifier l'authentification
 $user = checkAuth();
 if (!$user) {
+    header('Content-Type: application/json');
     echo json_encode(['success' => false, 'error' => 'Non authentifié']);
     exit;
 }
 
 // Endpoint pour marquer un message comme lu
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['conv_id']) && isset($_GET['action']) && $_GET['action'] === 'read') {
+    header('Content-Type: application/json');
+    
     try {
         $convId = (int)$_GET['conv_id'];
         
@@ -55,14 +55,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['conv_id']) && isset($_
             throw new Exception("Message introuvable dans cette conversation");
         }
         
-        // Marquer le message comme lu
-        $result = markMessageAsRead($messageId, $user['id'], $user['type']);
+        // Marquer le message comme lu avec le mécanisme de retry
+        $result = markMessageAsRead($messageId, $user['id'], $user['type'], 3);
         
         // Récupérer les informations de lecture actualisées
         $readStatus = getMessageReadStatus($messageId);
         
         echo json_encode([
-            'success' => true,
+            'success' => $result,
             'messageId' => $messageId,
             'read_status' => $readStatus
         ]);
@@ -73,8 +73,225 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['conv_id']) && isset($_
     exit;
 }
 
+// Endpoint Server-Sent Events pour les mises à jour de lecture
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_GET['action']) && $_GET['action'] === 'read-sse') {
+    try {
+        $convId = (int)$_GET['conv_id'];
+        $lastEventId = isset($_SERVER['HTTP_LAST_EVENT_ID']) ? (int)$_SERVER['HTTP_LAST_EVENT_ID'] : 0;
+        
+        // Vérifier que l'utilisateur est participant à la conversation
+        $checkParticipant = $pdo->prepare("
+            SELECT id FROM conversation_participants 
+            WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND is_deleted = 0
+        ");
+        $checkParticipant->execute([$convId, $user['id'], $user['type']]);
+        if (!$checkParticipant->fetch()) {
+            header('HTTP/1.1 403 Forbidden');
+            exit;
+        }
+        
+        // Configuration des entêtes pour SSE
+        header('Content-Type: text/event-stream');
+        header('Cache-Control: no-cache');
+        header('Connection: keep-alive');
+        header('X-Accel-Buffering: no'); // Désactiver la mise en mémoire tampon pour Nginx
+        
+        // Fonction pour envoyer un événement SSE
+        function sendSSE($event, $data, $id = null) {
+            echo "event: $event\n";
+            if ($id !== null) {
+                echo "id: $id\n";
+            }
+            echo "data: " . json_encode($data) . "\n\n";
+            ob_flush();
+            flush();
+        }
+        
+        // Envoyer un événement de connexion
+        sendSSE('connected', ['message' => 'Connected to SSE stream']);
+        
+        // Récupérer l'état initial
+        function getConversationReadState($convId) {
+            global $pdo;
+            
+            $messagesStmt = $pdo->prepare("
+                SELECT id FROM messages
+                WHERE conversation_id = ?
+                ORDER BY id ASC
+            ");
+            $messagesStmt->execute([$convId]);
+            $messages = $messagesStmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            $readStates = [];
+            foreach ($messages as $messageId) {
+                $readStatus = getMessageReadStatus($messageId);
+                $readStates[$messageId] = $readStatus;
+            }
+            
+            return $readStates;
+        }
+        
+        // Obtenir la somme des versions pour détecter les changements
+        function getCurrentVersionSum($convId) {
+            global $pdo;
+            $stmt = $pdo->prepare("
+                SELECT SUM(version) as version_sum FROM conversation_participants
+                WHERE conversation_id = ? AND is_deleted = 0
+            ");
+            $stmt->execute([$convId]);
+            return (int)$stmt->fetchColumn();
+        }
+        
+        // Récupérer les mises à jour depuis un certain moment
+        function getReadUpdates($convId, $since = 0) {
+            global $pdo;
+            
+            $messagesStmt = $pdo->prepare("
+                SELECT id FROM messages
+                WHERE conversation_id = ? AND id > ?
+                ORDER BY id ASC
+            ");
+            $messagesStmt->execute([$convId, $since]);
+            $messages = $messagesStmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            $updates = [];
+            foreach ($messages as $messageId) {
+                $readStatus = getMessageReadStatus($messageId);
+                $updates[] = [
+                    'messageId' => $messageId,
+                    'read_status' => $readStatus
+                ];
+            }
+            
+            return $updates;
+        }
+        
+        // Envoyer l'état initial
+        $initialState = getConversationReadState($convId);
+        sendSSE('initial_state', $initialState);
+        
+        // Initialiser les variables pour la boucle principale
+        $connectionStartTime = time();
+        $lastKeepAlive = time();
+        $keepAliveInterval = 15; // Envoyer un keep-alive toutes les 15 secondes
+        $maxIdleTime = 30; // Temps maximum d'inactivité en secondes
+        $maxConnectionTime = 120; // Rotation de connexion après 2 minutes
+        $previousVersionSum = getCurrentVersionSum($convId);
+        $since = 0;
+        
+        // Boucle principale
+        while (true) {
+            // Keep-alive périodique
+            if (time() - $lastKeepAlive >= $keepAliveInterval) {
+                sendSSE('keep-alive', ['time' => time()]);
+                $lastKeepAlive = time();
+            }
+            
+            // Vérifier les changements de version
+            $currentVersionSum = getCurrentVersionSum($convId);
+            
+            if ($currentVersionSum != $previousVersionSum) {
+                // Versions changées, envoyer les mises à jour
+                $updates = getReadUpdates($convId, $since);
+                if (!empty($updates)) {
+                    sendSSE('read_update', $updates);
+                    // Mettre à jour le dernier ID connu
+                    $lastMessage = end($updates);
+                    if ($lastMessage) {
+                        $since = $lastMessage['messageId'];
+                    }
+                }
+                $previousVersionSum = $currentVersionSum;
+            }
+            
+            // Rotation de connexion périodique pour éviter les timeouts
+            if (time() - $connectionStartTime > $maxConnectionTime) {
+                sendSSE('reconnect', ['message' => 'Connection rotation']);
+                break;
+            }
+            
+            // Vérifier si le client est toujours connecté
+            if (connection_aborted()) {
+                break;
+            }
+            
+            // Pause pour éviter de surcharger le serveur
+            sleep(2);
+        }
+        
+    } catch (Exception $e) {
+        header('HTTP/1.1 500 Internal Server Error');
+        echo "event: error\n";
+        echo "data: " . json_encode(['error' => $e->getMessage()]) . "\n\n";
+        exit;
+    }
+    exit;
+}
+
+// Récupération des statuts de lecture pour plusieurs messages
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_GET['action']) && $_GET['action'] === 'read-status') {
+    header('Content-Type: application/json');
+    
+    try {
+        $convId = (int)$_GET['conv_id'];
+        $messageIds = isset($_GET['messages']) ? array_map('intval', explode(',', $_GET['messages'])) : [];
+        
+        // Vérifier que l'utilisateur est participant à la conversation
+        $checkParticipant = $pdo->prepare("
+            SELECT id FROM conversation_participants 
+            WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND is_deleted = 0
+        ");
+        $checkParticipant->execute([$convId, $user['id'], $user['type']]);
+        if (!$checkParticipant->fetch()) {
+            throw new Exception("Vous n'êtes pas autorisé à accéder à cette conversation");
+        }
+        
+        // Si aucun message n'est spécifié, récupérer tous les messages de la conversation
+        if (empty($messageIds)) {
+            $messagesStmt = $pdo->prepare("
+                SELECT id FROM messages
+                WHERE conversation_id = ?
+                ORDER BY id ASC
+            ");
+            $messagesStmt->execute([$convId]);
+            $messageIds = $messagesStmt->fetchAll(PDO::FETCH_COLUMN);
+        } else {
+            // Vérifier que les messages appartiennent à la conversation
+            $placeholders = implode(',', array_fill(0, count($messageIds), '?'));
+            $checkMessagesStmt = $pdo->prepare("
+                SELECT id FROM messages
+                WHERE id IN ($placeholders) AND conversation_id = ?
+            ");
+            $params = array_merge($messageIds, [$convId]);
+            $checkMessagesStmt->execute($params);
+            $validMessageIds = $checkMessagesStmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            // Ne garder que les IDs valides
+            $messageIds = array_intersect($messageIds, $validMessageIds);
+        }
+        
+        // Récupérer les statuts de lecture pour chaque message
+        $statuses = [];
+        foreach ($messageIds as $messageId) {
+            $readStatus = getMessageReadStatus($messageId);
+            $statuses[$messageId] = $readStatus;
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'statuses' => $statuses
+        ]);
+        
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 // Endpoint Long Polling pour récupérer les mises à jour de lecture
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_GET['action']) && $_GET['action'] === 'read-updates') {
+    header('Content-Type: application/json');
+    
     try {
         $convId = (int)$_GET['conv_id'];
         $since = isset($_GET['since']) ? (int)$_GET['since'] : 0;
@@ -90,14 +307,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
             throw new Exception("Vous n'êtes pas autorisé à accéder à cette conversation");
         }
         
-        // Envoyer des headers pour éviter la mise en cache
-        header('Cache-Control: no-cache, must-revalidate');
-        header('Pragma: no-cache');
-        header('Expires: 0');
-        
         // Fonction pour vérifier les mises à jour
         function checkForUpdates($pdo, $convId, $since) {
-            // Récupérer tous les messages de la conversation depuis lastMessageId
+            // Récupérer tous les messages depuis le dernier connu
             $messagesStmt = $pdo->prepare("
                 SELECT id FROM messages
                 WHERE conversation_id = ? AND id > ?
@@ -110,7 +322,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
                 return ['updates' => []];
             }
             
-            // Récupérer les versions actuelles de tous les participants
+            // Récupérer la somme des versions de tous les participants
             $versionStmt = $pdo->prepare("
                 SELECT SUM(version) as version_sum FROM conversation_participants
                 WHERE conversation_id = ? AND is_deleted = 0
@@ -126,8 +338,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
                 
                 $updates[] = [
                     'messageId' => $messageId,
-                    'read_status' => $readStatus,
-                    'readers' => array_column($readStatus['readers'], 'user_id')
+                    'read_status' => $readStatus
                 ];
             }
             
@@ -188,15 +399,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
                 $currentVersionSum = $newVersionSum;
             }
             
-            // Fermer et réouvrir la connexion pour éviter le timeout
-            if (time() - $startTime > 15) {
-                $pdo = null;
-                $pdo = new PDO($dsn, $user, $pass, $options);
+            // Vider le tampon de sortie pour éviter les timeouts
+            if (ob_get_level() > 0) {
+                ob_flush();
+                flush();
             }
             
-            // Vider le tampon de sortie pour éviter les timeouts
-            ob_flush();
-            flush();
+            // Vérifier si la connexion client est toujours active
+            if (connection_aborted()) {
+                exit;
+            }
         }
         
         // Si aucune mise à jour n'est disponible après le temps d'attente, renvoyer une réponse vide
@@ -212,193 +424,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
     exit;
 }
 
-// Endpoint Server-Sent Events pour les mises à jour de lecture
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_GET['action']) && $_GET['action'] === 'read-sse') {
-    try {
-        $convId = (int)$_GET['conv_id'];
-        $lastEventId = isset($_SERVER['HTTP_LAST_EVENT_ID']) ? (int)$_SERVER['HTTP_LAST_EVENT_ID'] : 0;
-        
-        // Vérifier que l'utilisateur est participant à la conversation
-        $checkParticipant = $pdo->prepare("
-            SELECT id FROM conversation_participants 
-            WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND is_deleted = 0
-        ");
-        $checkParticipant->execute([$convId, $user['id'], $user['type']]);
-        if (!$checkParticipant->fetch()) {
-            header('HTTP/1.1 403 Forbidden');
-            exit;
-        }
-        
-        // Configuration des entêtes pour SSE
-        header('Content-Type: text/event-stream');
-        header('Cache-Control: no-cache');
-        header('Connection: keep-alive');
-        header('X-Accel-Buffering: no'); // Désactiver la mise en mémoire tampon pour Nginx
-        
-        // Fonction pour envoyer un événement SSE
-        function sendSSE($event, $data, $id = null) {
-            echo "event: $event\n";
-            if ($id !== null) {
-                echo "id: $id\n";
-            }
-            echo "data: " . json_encode($data) . "\n\n";
-            ob_flush();
-            flush();
-        }
-        
-        // Envoyer un événement de connexion
-        sendSSE('connected', ['message' => 'Connected to SSE stream']);
-        
-        // Récupérer les versions initiales de tous les participants
-        $versionStmt = $pdo->prepare("
-            SELECT user_id, user_type, version FROM conversation_participants
-            WHERE conversation_id = ? AND is_deleted = 0
-        ");
-        $versionStmt->execute([$convId]);
-        $initialVersions = [];
-        while ($row = $versionStmt->fetch()) {
-            $initialVersions[$row['user_id'] . '_' . $row['user_type']] = $row['version'];
-        }
-        
-        // Boucle principale de l'événement SSE
-        $connectionTime = time();
-        $eventId = $lastEventId;
-        $keepAliveInterval = 15; // Envoyer un keep-alive toutes les 15 secondes
-        $lastKeepAlive = time();
-        
-        // Récupérer tous les messages de la conversation
-        $messagesStmt = $pdo->prepare("
-            SELECT id FROM messages
-            WHERE conversation_id = ?
-            ORDER BY id ASC
-        ");
-        $messagesStmt->execute([$convId]);
-        $messages = $messagesStmt->fetchAll(PDO::FETCH_COLUMN);
-        
-        while (true) {
-            // Envoyer un keep-alive périodiquement
-            if (time() - $lastKeepAlive >= $keepAliveInterval) {
-                sendSSE('keep-alive', ['time' => time()]);
-                $lastKeepAlive = time();
-            }
-            
-            // Vérifier les nouvelles versions
-            $versionStmt->execute([$convId]);
-            $newVersions = [];
-            while ($row = $versionStmt->fetch()) {
-                $newVersions[$row['user_id'] . '_' . $row['user_type']] = $row['version'];
-            }
-            
-            // Chercher les participants avec des versions modifiées
-            $changedParticipants = [];
-            foreach ($newVersions as $key => $version) {
-                if (!isset($initialVersions[$key]) || $initialVersions[$key] != $version) {
-                    list($userId, $userType) = explode('_', $key);
-                    $changedParticipants[] = ['user_id' => $userId, 'user_type' => $userType];
-                    $initialVersions[$key] = $version; // Mettre à jour la version
-                }
-            }
-            
-            // Si des participants ont changé, envoyer des mises à jour
-            if (!empty($changedParticipants)) {
-                foreach ($messages as $messageId) {
-                    $readStatus = getMessageReadStatus($messageId);
-                    
-                    $eventId++;
-                    sendSSE('read_update', [
-                        'messageId' => $messageId,
-                        'read_status' => $readStatus,
-                        'readers' => array_column($readStatus['readers'], 'user_id')
-                    ], $eventId);
-                }
-            }
-            
-            // Pause pour éviter de surcharger le serveur
-            sleep(2);
-            
-            // Fermer et réouvrir la connexion pour éviter le timeout après un certain temps
-            if (time() - $connectionTime > 120) { // 2 minutes
-                $pdo = null;
-                $pdo = new PDO($dsn, $user, $pass, $options);
-                $connectionTime = time();
-                
-                // Recharger les versions des participants
-                $versionStmt = $pdo->prepare("
-                    SELECT user_id, user_type, version FROM conversation_participants
-                    WHERE conversation_id = ? AND is_deleted = 0
-                ");
-                
-                // Vérifier si le client est toujours connecté
-                if (connection_aborted()) {
-                    exit;
-                }
-            }
-        }
-        
-    } catch (Exception $e) {
-        header('HTTP/1.1 500 Internal Server Error');
-        exit;
-    }
-    exit;
-}
-
-// Récupération des statuts de lecture pour plusieurs messages
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_GET['action']) && $_GET['action'] === 'read-status') {
-    try {
-        $convId = (int)$_GET['conv_id'];
-        $messageIds = isset($_GET['messages']) ? array_map('intval', explode(',', $_GET['messages'])) : [];
-        
-        // Vérifier que l'utilisateur est participant à la conversation
-        $checkParticipant = $pdo->prepare("
-            SELECT id FROM conversation_participants 
-            WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND is_deleted = 0
-        ");
-        $checkParticipant->execute([$convId, $user['id'], $user['type']]);
-        if (!$checkParticipant->fetch()) {
-            throw new Exception("Vous n'êtes pas autorisé à accéder à cette conversation");
-        }
-        
-        // Si aucun message n'est spécifié, récupérer tous les messages de la conversation
-        if (empty($messageIds)) {
-            $messagesStmt = $pdo->prepare("
-                SELECT id FROM messages
-                WHERE conversation_id = ?
-                ORDER BY id ASC
-            ");
-            $messagesStmt->execute([$convId]);
-            $messageIds = $messagesStmt->fetchAll(PDO::FETCH_COLUMN);
-        } else {
-            // Vérifier que les messages appartiennent à la conversation
-            $placeholders = implode(',', array_fill(0, count($messageIds), '?'));
-            $checkMessagesStmt = $pdo->prepare("
-                SELECT id FROM messages
-                WHERE id IN ($placeholders) AND conversation_id = ?
-            ");
-            $params = array_merge($messageIds, [$convId]);
-            $checkMessagesStmt->execute($params);
-            $validMessageIds = $checkMessagesStmt->fetchAll(PDO::FETCH_COLUMN);
-            
-            // Ne garder que les IDs valides
-            $messageIds = array_intersect($messageIds, $validMessageIds);
-        }
-        
-        // Récupérer les statuts de lecture pour chaque message
-        $statuses = [];
-        foreach ($messageIds as $messageId) {
-            $readStatus = getMessageReadStatus($messageId);
-            $statuses[$messageId] = $readStatus;
-        }
-        
-        echo json_encode([
-            'success' => true,
-            'statuses' => $statuses
-        ]);
-        
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-    }
-    exit;
-}
-
 // Si on arrive ici, c'est que l'action demandée n'existe pas
+header('Content-Type: application/json');
 echo json_encode(['success' => false, 'error' => 'Action non supportée']);

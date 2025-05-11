@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function initReadTracker() {
     // Variables pour l'état de lecture
     let lastReadMessageId = 0;
-    let isTracking = false;
+    let isMarkingMessage = false;
     let isPolling = false;
     let useSSE = true; // Utiliser SSE par défaut, fallback sur long polling si besoin
     let eventSource = null;
@@ -40,26 +40,26 @@ function initReadTracker() {
         lastReadMessageId = parseInt(lastMessage.dataset.id || '0', 10);
     }
     
-    // Observer pour détecter les messages visibles
+    // Configuration améliorée de l'IntersectionObserver
     const messageObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
-            if (entry.isIntersecting) {
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.7) {
                 const messageEl = entry.target;
                 const messageId = parseInt(messageEl.dataset.id, 10);
                 
-                // Si ce message est plus récent que le dernier lu, le marquer
-                if (!messageEl.classList.contains('self') && messageId > lastReadMessageId) {
+                // Éviter les requêtes inutiles pour les messages déjà lus ou envoyés par l'utilisateur
+                if (!messageEl.classList.contains('read') && !messageEl.classList.contains('self')) {
                     markMessageAsRead(messageId);
-                    lastReadMessageId = messageId;
                 }
             }
         });
     }, {
         root: document.querySelector('.messages-container'),
-        threshold: 0.5 // Le message est considéré comme lu lorsqu'il est à moitié visible
+        threshold: 0.7, // 70% visible pour être considéré comme lu
+        rootMargin: '0px 0px -20% 0px' // Ignorer le bas de l'écran
     });
     
-    // Observer tous les messages
+    // Observer tous les messages qui ne sont pas de l'utilisateur
     document.querySelectorAll('.message:not(.self)').forEach(message => {
         messageObserver.observe(message);
     });
@@ -69,11 +69,9 @@ function initReadTracker() {
      */
     function markMessageAsRead(messageId) {
         // Éviter les requêtes concurrentes
-        if (isTracking) {
-            return;
-        }
+        if (isMarkingMessage) return;
         
-        isTracking = true;
+        isMarkingMessage = true;
         
         const convId = new URLSearchParams(window.location.search).get('id');
         
@@ -82,17 +80,30 @@ function initReadTracker() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ messageId })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erreur réseau: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 // Mettre à jour l'interface avec le nouveau statut
                 updateReadStatus(data.read_status);
+            } else {
+                console.warn("Échec du marquage comme lu:", data.error || "Erreur inconnue");
             }
-            isTracking = false;
         })
         .catch(error => {
             console.error('Erreur lors du marquage comme lu:', error);
-            isTracking = false;
+            // Réessayer après un délai
+            setTimeout(() => {
+                isMarkingMessage = false;
+                markMessageAsRead(messageId);
+            }, 2000);
+        })
+        .finally(() => {
+            isMarkingMessage = false;
         });
     }
     
@@ -100,6 +111,8 @@ function initReadTracker() {
      * Met à jour l'affichage du statut de lecture d'un message
      */
     function updateReadStatus(readStatus) {
+        if (!readStatus || !readStatus.message_id) return;
+        
         const messageEl = document.querySelector(`.message[data-id="${readStatus.message_id}"]`);
         if (!messageEl) return;
         
@@ -113,9 +126,13 @@ function initReadTracker() {
                     <i class="fas fa-check-double"></i> Vu
                 </div>
             `;
+            // Ajouter la classe 'read' au message
+            messageEl.classList.add('read');
         } else if (readStatus.read_by_count > 0) {
             // Créer la liste des noms des lecteurs
-            const readerNames = readStatus.readers.map(r => r.nom_complet).join(', ');
+            const readerNames = readStatus.readers && readStatus.readers.length > 0 
+                ? readStatus.readers.map(r => r.nom_complet).join(', ')
+                : 'Personne';
             
             statusEl.innerHTML = `
                 <div class="partial-read">
@@ -150,6 +167,12 @@ function initReadTracker() {
                 console.log('SSE: Connexion établie');
             });
             
+            // Récupérer l'état initial
+            eventSource.addEventListener('initial_state', function(e) {
+                const data = JSON.parse(e.data);
+                processInitialState(data);
+            });
+            
             // Écouter les mises à jour de lecture
             eventSource.addEventListener('read_update', function(e) {
                 const data = JSON.parse(e.data);
@@ -160,18 +183,28 @@ function initReadTracker() {
             eventSource.addEventListener('error', function(e) {
                 console.error('SSE: Erreur de connexion', e);
                 
-                // Fermer la connexion et basculer vers le polling en cas d'erreur
+                // Fermer la connexion et basculer vers le polling en cas d'erreur persistante
                 eventSource.close();
                 eventSource = null;
-                useSSE = false;
                 
-                // Démarrer le polling comme fallback
-                startReadStatusPolling();
+                // Fallback to polling after a delay
+                setTimeout(() => {
+                    if (useSSE) {
+                        useSSE = false;
+                        startReadStatusPolling();
+                    }
+                }, 3000);
             });
             
             // Keep-alive pour maintenir la connexion
             eventSource.addEventListener('keep-alive', function(e) {
-                console.log('SSE: Keep-alive reçu');
+                // Silent keep-alive
+            });
+            
+            // Gérer les demandes de reconnexion
+            eventSource.addEventListener('reconnect', function(e) {
+                console.log('SSE: Le serveur a demandé une reconnexion');
+                setTimeout(initSSE, 1000);
             });
             
         } catch (error) {
@@ -181,6 +214,18 @@ function initReadTracker() {
             // Fallback sur le polling
             startReadStatusPolling();
         }
+    }
+    
+    /**
+     * Traite l'état initial des messages
+     */
+    function processInitialState(data) {
+        if (!data || !data.statuses) return;
+        
+        // Mettre à jour le statut de lecture pour chaque message
+        Object.keys(data.statuses).forEach(messageId => {
+            updateReadStatus(data.statuses[messageId]);
+        });
     }
     
     /**
@@ -200,13 +245,23 @@ function initReadTracker() {
             }
             
             fetch(`api/read_status.php?action=read-updates&conv_id=${convId}&since=${lastReadMessageId}`)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Erreur réseau: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.success) {
                         // Appliquer les mises à jour reçues
                         data.updates.forEach(update => {
                             updateReadStatus(update.read_status);
                         });
+                        
+                        // Mettre à jour le timestamp
+                        if (data.timestamp) {
+                            lastTimestamp = data.timestamp;
+                        }
                         
                         // Continuer le polling si toujours sur la page
                         if (document.visibilityState === 'visible') {
@@ -245,6 +300,7 @@ function initReadTracker() {
         initSSE();
     } else {
         // Fallback sur le long polling
+        useSSE = false;
         startReadStatusPolling();
     }
     
@@ -264,6 +320,56 @@ function initReadTracker() {
             markMessageAsUnread(messageId);
         }
     });
+    
+    // Marque un message comme non lu
+    function markMessageAsUnread(messageId) {
+        if (isMarkingMessage) return;
+        
+        isMarkingMessage = true;
+        
+        fetch(`api/messages.php?id=${messageId}&action=mark_unread`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Erreur réseau: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Mettre à jour l'interface utilisateur
+                    const message = document.querySelector(`.message[data-id="${messageId}"]`);
+                    if (message) {
+                        message.classList.remove('read');
+                        
+                        // Mettre à jour le bouton
+                        const unreadBtn = message.querySelector('.mark-unread-btn');
+                        if (unreadBtn) {
+                            const readBtn = document.createElement('button');
+                            readBtn.className = 'btn-icon mark-read-btn';
+                            readBtn.setAttribute('data-message-id', messageId);
+                            readBtn.innerHTML = '<i class="fas fa-envelope-open"></i> Marquer comme lu';
+                            
+                            unreadBtn.parentNode.replaceChild(readBtn, unreadBtn);
+                        }
+                    }
+                    
+                    // Mettre à jour le statut de lecture
+                    if (data.readStatus) {
+                        updateReadStatus(data.readStatus);
+                    }
+                } else {
+                    afficherNotificationErreur("Erreur: " + (data.error || "Une erreur est survenue"));
+                    console.error('Erreur:', data.error);
+                }
+            })
+            .catch(error => {
+                afficherNotificationErreur("Erreur: " + error.message);
+                console.error('Erreur:', error);
+            })
+            .finally(() => {
+                isMarkingMessage = false;
+            });
+    }
 }
 
 /**
@@ -448,7 +554,6 @@ function setupMessageValidation() {
 
 /**
  * Configure les mises à jour en temps réel pour la conversation
- * Implémentation prioritaire utilisant l'approche Long polling / AJAX poll
  */
 function setupRealTimeUpdates() {
     // Variables pour la gestion des mises à jour
@@ -485,7 +590,12 @@ function setupRealTimeUpdates() {
         
         // Requête de vérification
         fetch(`api/messages.php?conv_id=${convId}&action=check_updates&last_timestamp=${lastTimestamp}`)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Erreur réseau: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success && data.hasUpdates) {
                     // Si des mises à jour sont disponibles, les récupérer
@@ -495,6 +605,11 @@ function setupRealTimeUpdates() {
                 // Vérifier les changements de participants
                 if (data.success && data.participantsChanged) {
                     refreshParticipantsList();
+                }
+                
+                // Mettre à jour le timestamp
+                if (data.timestamp) {
+                    lastTimestamp = data.timestamp;
                 }
                 
                 isCheckingForUpdates = false;
@@ -566,7 +681,12 @@ function setupRealTimeUpdates() {
      */
     function fetchNewMessages() {
         fetch(`api/messages.php?conv_id=${convId}&action=get_new&last_timestamp=${lastTimestamp}`)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Erreur réseau: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success && data.messages && data.messages.length > 0) {
                     // Mettre à jour la référence du dernier timestamp
@@ -608,7 +728,12 @@ function setupRealTimeUpdates() {
      */
     function refreshParticipantsList() {
         fetch(`api/participants.php?conv_id=${convId}&action=get_list`)
-            .then(response => response.text())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Erreur réseau: ${response.status}`);
+                }
+                return response.text();
+            })
             .then(html => {
                 const participantsList = document.querySelector('.participants-list');
                 if (participantsList) {
@@ -833,17 +958,22 @@ function appendMessageToDOM(message, container) {
     if (!message.is_self) {
         const messageObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
-                if (entry.isIntersecting) {
+                if (entry.isIntersecting && entry.intersectionRatio >= 0.7) {
                     const messageEl = entry.target;
                     const messageId = parseInt(messageEl.dataset.id, 10);
-                    markMessageAsRead(messageId);
-                    messageObserver.unobserve(messageEl);
+                    
+                    if (!messageEl.classList.contains('read')) {
+                        markMessageAsRead(messageId);
+                        messageObserver.unobserve(messageEl);
+                    }
                 }
             });
         }, {
             root: document.querySelector('.messages-container'),
-            threshold: 0.5
+            threshold: 0.7,
+            rootMargin: '0px 0px -20% 0px'
         });
+        
         messageObserver.observe(messageElement);
     }
 }
@@ -971,7 +1101,12 @@ function loadParticipants() {
     
     // Faire une requête AJAX pour récupérer les participants
     fetch(`api/participants.php?type=${type}&conv_id=${convId}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erreur réseau: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             select.innerHTML = '';
             
@@ -1008,7 +1143,12 @@ function markMessageAsRead(messageId) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messageId })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Erreur réseau: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             // Mettre à jour l'interface utilisateur
@@ -1025,6 +1165,11 @@ function markMessageAsRead(messageId) {
                     unreadBtn.innerHTML = '<i class="fas fa-envelope"></i> Marquer comme non lu';
                     
                     readBtn.parentNode.replaceChild(unreadBtn, readBtn);
+                }
+                
+                // Mettre à jour le statut de lecture
+                if (data.read_status) {
+                    updateReadStatus(data.read_status);
                 }
             }
         }
