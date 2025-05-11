@@ -2,6 +2,10 @@
 /**
  * API pour les actions sur les notifications
  */
+// Désactiver l'affichage des erreurs pour éviter de corrompre le JSON/SSE
+ini_set('display_errors', 0);
+error_reporting(0);
+
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../controllers/notification.php';
 require_once __DIR__ . '/../models/notification.php';
@@ -9,10 +13,6 @@ require_once __DIR__ . '/../core/auth.php';
 require_once __DIR__ . '/../core/rate_limiter.php';
 require_once __DIR__ . '/../core/logger.php';
 require_once __DIR__ . '/../core/utils.php';
-
-// Désactiver l'affichage des erreurs pour éviter de corrompre le JSON
-ini_set('display_errors', 0);
-error_reporting(0);
 
 // Vérifier l'authentification
 $user = checkAuth();
@@ -50,10 +50,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     header('Content-Type: text/event-stream');
     header('Cache-Control: no-cache');
     header('Connection: keep-alive');
+    header('X-Accel-Buffering: no'); // Pour Nginx
     // Empêcher le buffering
     ini_set('output_buffering', 'off');
     ini_set('implicit_flush', true);
     ob_implicit_flush(true);
+    if (ob_get_level() > 0) ob_end_flush();
 
     // Récupérer le dernier ID de notification connu
     $lastNotificationId = isset($_GET['last_id']) ? (int)$_GET['last_id'] : 0;

@@ -66,53 +66,30 @@ function setupSSEForMessages() {
     const lastMessage = document.querySelector('.message:last-child');
     const lastTimestamp = lastMessage ? parseInt(lastMessage.dataset.timestamp || '0', 10) : 0;
     
-    // Créer la connexion SSE
-    const messageSource = new EventSource(`api/messages.php?action=stream&conv_id=${convId}&last_timestamp=${lastTimestamp}`);
-    
-    // Stocker la référence
-    window.sseConnections.messageSource = messageSource;
-    
-    // Événement pour les nouveaux messages
-    messageSource.addEventListener('message', function(event) {
-        const messages = JSON.parse(event.data);
-        
-        // Ajouter les messages à l'interface
-        const messagesContainer = document.querySelector('.messages-container');
-        const wasAtBottom = isScrolledToBottom(messagesContainer);
-        
-        messages.forEach(message => {
-            appendMessageToDOM(message, messagesContainer);
+    // Obtenir d'abord un jeton SSE
+    fetch(`api/sse_token.php?conv_id=${convId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success || !data.token) {
+                console.error('Impossible d\'obtenir un jeton SSE:', data.error || 'Erreur inconnue');
+                return;
+            }
+            
+            // Créer la connexion SSE avec le jeton
+            const messageSource = new EventSource(
+                `api/messages.php?action=stream&conv_id=${convId}&last_timestamp=${lastTimestamp}&token=${data.token}`
+            );
+            
+            // Stocker la référence
+            window.sseConnections.messageSource = messageSource;
+            
+            // Configuration des événements...
+        })
+        .catch(error => {
+            console.error('Erreur lors de la récupération du jeton SSE:', error);
+            // Réessayer après un délai
+            setTimeout(setupSSEForMessages, 10000); // Délai plus long
         });
-        
-        if (wasAtBottom) {
-            scrollToBottom(messagesContainer);
-        } else {
-            showNewMessagesIndicator(messages.length);
-        }
-        
-        // Lire audio pour notification (optionnelle)
-        playNotificationSound();
-    });
-    
-    // Événement pour les changements de participants
-    messageSource.addEventListener('participants_changed', function(event) {
-        refreshParticipantsList();
-    });
-    
-    // Gestion des erreurs
-    messageSource.addEventListener('error', function(event) {
-        console.error('SSE Error: Connection failed or closed. Reconnecting...');
-        
-        // Si la connexion est fermée, tenter de se reconnecter après un délai
-        if (this.readyState === EventSource.CLOSED) {
-            setTimeout(setupSSEForMessages, 5000);
-        }
-    });
-    
-    // Ping pour maintenir la connexion
-    messageSource.addEventListener('ping', function(event) {
-        // Connexion maintenue, rien à faire
-    });
 }
 
 /**

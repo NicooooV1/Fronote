@@ -2,6 +2,10 @@
 /**
  * API pour les actions sur les messages
  */
+// Désactiver l'affichage des erreurs pour éviter de corrompre le JSON/SSE
+ini_set('display_errors', 0);
+error_reporting(0);
+
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../controllers/message.php';
 require_once __DIR__ . '/../models/message.php';
@@ -9,10 +13,6 @@ require_once __DIR__ . '/../core/auth.php';
 require_once __DIR__ . '/../core/rate_limiter.php';
 require_once __DIR__ . '/../core/logger.php';
 require_once __DIR__ . '/../core/utils.php';
-
-// Désactiver l'affichage des erreurs pour éviter de corrompre le JSON
-ini_set('display_errors', 0);
-error_reporting(0);
 
 // Toujours répondre en JSON
 header('Content-Type: application/json');
@@ -64,10 +64,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id'], $_GET['actio
     header('Content-Type: text/event-stream');
     header('Cache-Control: no-cache');
     header('Connection: keep-alive');
+    header('X-Accel-Buffering: no'); // Pour Nginx
     // Empêcher le buffering
     ini_set('output_buffering', 'off');
     ini_set('implicit_flush', true);
     ob_implicit_flush(true);
+    if (ob_get_level() > 0) ob_end_flush();
 
     // Vérifier que l'utilisateur est participant à la conversation
     $checkParticipant = $pdo->prepare("
@@ -219,7 +221,7 @@ function generateSSEToken($convId, $userId, $userType) {
  * @return bool
  */
 function validateSSEToken($token, $convId, $userId, $userType) {
-    $secret = 'BkTW#9f7@L!zP3vQ#Rx*8jN2'; // Same as above
+    $secret = 'BkTW#9f7@L!zP3vQ#Rx*8jN2'; // Même clé que dans sse_token.php
     
     try {
         $decoded = base64_decode($token);
@@ -228,7 +230,7 @@ function validateSSEToken($token, $convId, $userId, $userType) {
         }
         
         $parts = explode('|', $decoded);
-        if (count($parts) !== 5) {
+        if (count($parts) !== 5) { // Vérifier qu'il y a 5 parties
             return false;
         }
         
@@ -253,7 +255,8 @@ function validateSSEToken($token, $convId, $userId, $userType) {
         return hash_equals($computedSignature, $signature);
         
     } catch (Exception $e) {
-        logException($e, ['action' => 'validate_token']);
+        // Journal de l'erreur mais ne pas interrompre le flux
+        error_log("SSE token validation error: " . $e->getMessage());
         return false;
     }
 }

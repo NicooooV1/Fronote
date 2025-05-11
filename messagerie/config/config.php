@@ -1,6 +1,6 @@
 <?php
 // Chargement sécurisé des informations d'identification
-$credentials = require_once dirname(__DIR__, 2) . '/config/credentials.php';
+$credentials = require_once __DIR__ . '/credentials.php';
 
 // Configuration de la base de données
 $host = $credentials['db_host'];
