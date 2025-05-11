@@ -6,6 +6,7 @@
     flex-grow: 1;
     height: calc(100vh - 60px);
     overflow: hidden;
+    position: relative;
 }
 
 /* Sidebar de conversation */
@@ -17,6 +18,7 @@
     padding: 20px;
     overflow-y: auto;
     flex-shrink: 0;
+    transition: width 0.3s ease, padding 0.3s ease, margin 0.3s ease;
 }
 
 .conversation-info h3 {
@@ -114,6 +116,7 @@
     position: relative;
     height: 100%;
     overflow: hidden;
+    transition: margin-left 0.3s ease;
 }
 
 /* Container de messages scrollable */
@@ -552,4 +555,45 @@
         padding: 8px 12px;
         font-size: 12px;
     }
+}
+
+/* Toggle button pour la sidebar */
+.sidebar-toggle {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    background: none;
+    border: none;
+    color: #495057;
+    font-size: 16px;
+    cursor: pointer;
+    z-index: 1100;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: #f8f9fa;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.sidebar-toggle:hover {
+    background-color: #e9ecef;
+}
+
+/* État collapsed de la sidebar */
+.conversation-page[data-sidebar-collapsed="true"] .conversation-sidebar {
+    width: 0;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    border-right: none;
+}
+
+/* Ajuster la zone principale quand la sidebar est repliée */
+.conversation-page[data-sidebar-collapsed="true"] .conversation-main {
+    margin-left: 50px; /* Espace pour le bouton toggle */
 }

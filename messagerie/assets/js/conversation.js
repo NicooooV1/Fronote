@@ -14,12 +14,22 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialisation de l'envoi AJAX
     setupAjaxMessageSending();
+    
+    // Initialiser la sidebar rétractable
+    initSidebarCollapse();
 });
 
 /**
  * Initialise les actions principales de conversation
  */
 function initConversationActions() {
+    // Gestion du scroll dans les conversations
+    const messagesContainer = document.querySelector('.messages-container');
+    if (messagesContainer) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+    
+    // Actions sur les conversations et participants
     // Archiver une conversation
     const archiveBtn = document.getElementById('archive-btn');
     if (archiveBtn) {
@@ -76,6 +86,60 @@ function initConversationActions() {
                 modal.style.display = 'none';
             }
         });
+    });
+}
+
+/**
+ * Initialise la fonctionnalité de sidebar rétractable
+ */
+function initSidebarCollapse() {
+    // Créer le bouton de toggle s'il n'existe pas déjà
+    let sidebarToggle = document.getElementById('sidebar-toggle');
+    const conversationPage = document.querySelector('.conversation-page');
+    
+    if (!conversationPage) return;
+    
+    // Créer le bouton s'il n'existe pas
+    if (!sidebarToggle) {
+        sidebarToggle = document.createElement('button');
+        sidebarToggle.id = 'sidebar-toggle';
+        sidebarToggle.className = 'sidebar-toggle';
+        sidebarToggle.title = 'Afficher/masquer la liste des participants';
+        sidebarToggle.innerHTML = '<i class="fas fa-bars"></i>';
+        
+        // Insérer le bouton comme premier enfant de conversation-page
+        conversationPage.insertBefore(sidebarToggle, conversationPage.firstChild);
+    }
+    
+    // Vérifier s'il y a une préférence sauvegardée
+    const sidebarCollapsed = localStorage.getItem('conversation_sidebar_collapsed') === 'true';
+    
+    // Initialiser l'état en fonction de la préférence
+    if (sidebarCollapsed) {
+        conversationPage.setAttribute('data-sidebar-collapsed', 'true');
+        sidebarToggle.innerHTML = '<i class="fas fa-bars"></i>';
+    } else {
+        conversationPage.setAttribute('data-sidebar-collapsed', 'false');
+        sidebarToggle.innerHTML = '<i class="fas fa-times"></i>';
+    }
+    
+    // Toggle la visibilité de la sidebar
+    sidebarToggle.addEventListener('click', function() {
+        const isCurrentlyCollapsed = conversationPage.getAttribute('data-sidebar-collapsed') === 'true';
+        const newState = !isCurrentlyCollapsed;
+        
+        conversationPage.setAttribute('data-sidebar-collapsed', newState);
+        
+        // Mettre à jour l'icône du bouton
+        this.innerHTML = newState ? 
+            '<i class="fas fa-bars"></i>' : 
+            '<i class="fas fa-times"></i>';
+        
+        // Sauvegarder la préférence
+        localStorage.setItem('conversation_sidebar_collapsed', newState);
+        
+        // Déclencher un événement resize pour ajuster les composants
+        window.dispatchEvent(new Event('resize'));
     });
 }
 

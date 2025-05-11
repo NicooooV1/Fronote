@@ -222,7 +222,7 @@ try {
 include 'templates/header.php';
 ?>
 
-<div class="content conversation-page">
+<div class="content conversation-page" data-sidebar-collapsed="false">
     <?php if (isset($error) && !empty($error)): ?>
     <div class="alert error"><?= htmlspecialchars($error) ?></div>
     <?php elseif (isset($success) && !empty($success)): ?>
