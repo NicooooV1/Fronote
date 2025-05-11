@@ -66,29 +66,90 @@ function setupSSEForMessages() {
     const lastMessage = document.querySelector('.message:last-child');
     const lastTimestamp = lastMessage ? parseInt(lastMessage.dataset.timestamp || '0', 10) : 0;
     
-    // Obtenir d'abord un jeton SSE
-    fetch(`api/sse_token.php?conv_id=${convId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (!data.success || !data.token) {
-                console.error('Impossible d\'obtenir un jeton SSE:', data.error || 'Erreur inconnue');
-                return;
-            }
-            
-            // Créer la connexion SSE avec le jeton
-            const messageSource = new EventSource(
-                `api/messages.php?action=stream&conv_id=${convId}&last_timestamp=${lastTimestamp}&token=${data.token}`
-            );
+    // Récupérer le jeton SSE
+    getSSEToken(convId)
+        .then(token => {
+            // Créer la connexion SSE
+            const messageSource = new EventSource(`api/messages.php?action=stream&conv_id=${convId}&last_timestamp=${lastTimestamp}&token=${token}`);
             
             // Stocker la référence
             window.sseConnections.messageSource = messageSource;
             
-            // Configuration des événements...
+            // Événement pour les nouveaux messages
+            messageSource.addEventListener('message', function(event) {
+                try {
+                    const messages = JSON.parse(event.data);
+                    
+                    // Ajouter les messages à l'interface
+                    const messagesContainer = document.querySelector('.messages-container');
+                    const wasAtBottom = isScrolledToBottom(messagesContainer);
+                    
+                    messages.forEach(message => {
+                        appendMessageToDOM(message, messagesContainer);
+                    });
+                    
+                    if (wasAtBottom) {
+                        scrollToBottom(messagesContainer);
+                    } else {
+                        showNewMessagesIndicator(messages.length);
+                    }
+                    
+                    // Lire audio pour notification (optionnelle)
+                    playNotificationSound();
+                } catch (e) {
+                    console.error('Erreur lors du traitement des messages:', e);
+                }
+            });
+            
+            // Événement pour les changements de participants
+            messageSource.addEventListener('participants_changed', function(event) {
+                refreshParticipantsList();
+            });
+            
+            // Gestion des erreurs
+            messageSource.addEventListener('error', function(event) {
+                console.error('SSE Error: Connection failed or closed. Reconnecting...');
+                
+                // Si la connexion est fermée, tenter de se reconnecter après un délai
+                if (this.readyState === EventSource.CLOSED) {
+                    setTimeout(setupSSEForMessages, 5000);
+                }
+            });
+            
+            // Ping pour maintenir la connexion
+            messageSource.addEventListener('ping', function(event) {
+                // Connexion maintenue, rien à faire
+            });
         })
         .catch(error => {
-            console.error('Erreur lors de la récupération du jeton SSE:', error);
+            console.error('Erreur lors de la configuration SSE pour les messages:', error);
             // Réessayer après un délai
-            setTimeout(setupSSEForMessages, 10000); // Délai plus long
+            setTimeout(setupSSEForMessages, 5000);
+        });
+}
+
+/**
+ * Fonction pour récupérer un jeton SSE
+ * @param {number} convId - ID de la conversation
+ * @returns {Promise<string>} Le jeton SSE
+ */
+function getSSEToken(convId) {
+    return fetch(`api/sse_token.php?conv_id=${convId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erreur HTTP: ${response.status}`);
+            }
+            return response.json().catch(e => {
+                console.error("Réponse non-JSON reçue:", e);
+                throw new Error("Le serveur a renvoyé une réponse non valide");
+            });
+        })
+        .then(data => {
+            if (data.success) {
+                return data.token;
+            } else {
+                throw new Error(data.error || 'Erreur lors de la récupération du jeton');
+            }
         });
 }
 
@@ -112,56 +173,77 @@ function setupSSEForReadStatus() {
         lastReadMessageId = parseInt(lastMessage.dataset.id || '0', 10);
     }
     
-    // Créer la connexion SSE
-    const readStatusSource = new EventSource(`api/read_status.php?action=stream&conv_id=${convId}&since=${lastReadMessageId}&version=0`);
-    
-    // Stocker la référence
-    window.sseConnections.readStatusSource = readStatusSource;
-    
-    // Événement d'initialisation
-    readStatusSource.addEventListener('init', function(event) {
-        const data = JSON.parse(event.data);
-        // Stocker la version initiale si nécessaire
-    });
-    
-    // Événement pour l'état initial
-    readStatusSource.addEventListener('initial_state', function(event) {
-        const data = JSON.parse(event.data);
-        
-        // Mettre à jour tous les statuts
-        Object.entries(data).forEach(([messageId, readStatus]) => {
-            updateReadStatus(readStatus);
-        });
-    });
-    
-    // Événement pour les mises à jour
-    readStatusSource.addEventListener('read_status', function(event) {
-        const data = JSON.parse(event.data);
-        
-        data.updates.forEach(update => {
-            updateReadStatus(update.read_status);
+    // Récupérer le jeton SSE
+    getSSEToken(convId)
+        .then(token => {
+            // Créer la connexion SSE
+            const readStatusSource = new EventSource(`api/read_status.php?action=stream&conv_id=${convId}&since=${lastReadMessageId}&version=0&token=${token}`);
             
-            // Mettre à jour lastReadMessageId si nécessaire
-            if (update.messageId > lastReadMessageId) {
-                lastReadMessageId = update.messageId;
-            }
-        });
-    });
-    
-    // Gestion des erreurs
-    readStatusSource.addEventListener('error', function(event) {
-        console.error('SSE Error: Read status connection failed or closed. Reconnecting...');
-        
-        // Si la connexion est fermée, tenter de se reconnecter après un délai
-        if (this.readyState === EventSource.CLOSED) {
+            // Stocker la référence
+            window.sseConnections.readStatusSource = readStatusSource;
+            
+            // Événement d'initialisation
+            readStatusSource.addEventListener('init', function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    // Stocker la version initiale si nécessaire
+                } catch (e) {
+                    console.error('Erreur lors du traitement de l\'initialisation:', e);
+                }
+            });
+            
+            // Événement pour l'état initial
+            readStatusSource.addEventListener('initial_state', function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    // Mettre à jour tous les statuts
+                    Object.entries(data).forEach(([messageId, readStatus]) => {
+                        updateReadStatus(readStatus);
+                    });
+                } catch (e) {
+                    console.error('Erreur lors du traitement de l\'état initial:', e);
+                }
+            });
+            
+            // Événement pour les mises à jour
+            readStatusSource.addEventListener('read_status', function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    data.updates.forEach(update => {
+                        updateReadStatus(update.read_status);
+                        
+                        // Mettre à jour lastReadMessageId si nécessaire
+                        if (update.messageId > lastReadMessageId) {
+                            lastReadMessageId = update.messageId;
+                        }
+                    });
+                } catch (e) {
+                    console.error('Erreur lors du traitement des mises à jour de lecture:', e);
+                }
+            });
+            
+            // Gestion des erreurs
+            readStatusSource.addEventListener('error', function(event) {
+                console.error('SSE Error: Read status connection failed or closed. Reconnecting...');
+                
+                // Si la connexion est fermée, tenter de se reconnecter après un délai
+                if (this.readyState === EventSource.CLOSED) {
+                    setTimeout(setupSSEForReadStatus, 5000);
+                }
+            });
+            
+            // Ping pour maintenir la connexion
+            readStatusSource.addEventListener('ping', function(event) {
+                // Connexion maintenue, rien à faire
+            });
+        })
+        .catch(error => {
+            console.error('Erreur lors de la configuration SSE pour les statuts de lecture:', error);
+            // Réessayer après un délai
             setTimeout(setupSSEForReadStatus, 5000);
-        }
-    });
-    
-    // Ping pour maintenir la connexion
-    readStatusSource.addEventListener('ping', function(event) {
-        // Connexion maintenue, rien à faire
-    });
+        });
 }
 
 /**
@@ -285,12 +367,23 @@ function updateReadStatus(readStatus) {
 function markMessageAsRead(messageId) {
     const convId = new URLSearchParams(window.location.search).get('id');
     
+    // Obtenir le jeton CSRF
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    
     fetch(`api/read_status.php?action=read&conv_id=${convId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messageId })
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken
+        },
+        body: JSON.stringify({ messageId, csrf_token: csrfToken })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             // Mettre à jour l'interface avec le nouveau statut
@@ -318,6 +411,7 @@ function markMessageAsRead(messageId) {
     })
     .catch(error => {
         console.error('Erreur lors du marquage comme lu:', error);
+        afficherNotificationErreur("Une erreur est survenue lors du marquage du message comme lu");
     });
 }
 
@@ -326,7 +420,12 @@ function markMessageAsRead(messageId) {
  */
 function markMessageAsUnread(messageId) {
     fetch(`api/messages.php?id=${messageId}&action=mark_unread`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erreur HTTP: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 // Mettre à jour l'interface utilisateur
@@ -368,7 +467,12 @@ function refreshParticipantsList() {
     const convId = new URLSearchParams(window.location.search).get('id');
     
     fetch(`api/participants.php?conv_id=${convId}&action=get_list`)
-        .then(response => response.text())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erreur HTTP: ${response.status}`);
+            }
+            return response.text();
+        })
         .then(html => {
             const participantsList = document.querySelector('.participants-list');
             if (participantsList) {
@@ -424,10 +528,29 @@ function showNewMessagesIndicator(count) {
  * Joue un son de notification (optionnel)
  */
 function playNotificationSound() {
-    // On pourrait implémenter un son de notification ici
-    // Par exemple:
-    // const audio = new Audio('/assets/sounds/notification.mp3');
-    // audio.play();
+    try {
+        // Utiliser l'API Web Audio pour créer un son simple
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // La note "La"
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); // Volume bas
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        // Jouer un bref son
+        oscillator.start();
+        
+        // Arrêter après 200ms
+        setTimeout(() => {
+            oscillator.stop();
+        }, 200);
+    } catch (e) {
+        console.log("Son de notification non supporté:", e);
+    }
 }
 
 /**
@@ -515,7 +638,7 @@ function appendMessageToDOM(message, container) {
                         <i class="fas fa-envelope-open"></i> Marquer comme lu
                     </button>`
                 }
-                <button class="btn-icon" onclick="replyToMessage(${message.id}, '${escapeHTML(message.expediteur_nom)}')">
+                <button class="btn-icon" onclick="replyToMessage(${message.id}, '${escapeHTML(addSlashes(message.expediteur_nom))}')">
                     <i class="fas fa-reply"></i> Répondre
                 </button>
             </div>
@@ -803,7 +926,12 @@ function loadParticipants() {
     
     // Faire une requête AJAX pour récupérer les participants
     fetch(`api/participants.php?type=${type}&conv_id=${convId}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erreur HTTP: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             select.innerHTML = '';
             
@@ -840,6 +968,20 @@ function escapeHTML(text) {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+}
+
+/**
+ * Échappe les apostrophes et les guillemets pour les chaînes JavaScript
+ * @param {string} text - Texte à échapper
+ * @returns {string} Texte échappé
+ */
+function addSlashes(text) {
+    if (!text) return '';
+    return text
+        .replace(/\\/g, '\\\\')
+        .replace(/\'/g, '\\\'')
+        .replace(/\"/g, '\\"')
+        .replace(/\0/g, '\\0');
 }
 
 /**
@@ -931,7 +1073,7 @@ function setupAjaxMessageSending() {
         const textarea = form.querySelector('textarea[name="contenu"]');
         const messageContent = textarea.value.trim();
         if (messageContent === '') {
-            alert('Le message ne peut pas être vide');
+            afficherNotificationErreur('Le message ne peut pas être vide');
             return;
         }
         
@@ -993,12 +1135,12 @@ function setupAjaxMessageSending() {
                 }
             } else {
                 // Afficher l'erreur
-                alert('Erreur lors de l\'envoi du message: ' + (data.error || 'Erreur inconnue'));
+                afficherNotificationErreur('Erreur lors de l\'envoi du message: ' + (data.error || 'Erreur inconnue'));
             }
         })
         .catch(error => {
             console.error('Erreur:', error);
-            alert('Erreur lors de l\'envoi du message. Veuillez réessayer.');
+            afficherNotificationErreur('Erreur lors de l\'envoi du message. Veuillez réessayer.');
         })
         .finally(() => {
             // Réactiver le bouton quoi qu'il arrive

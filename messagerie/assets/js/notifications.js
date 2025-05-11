@@ -28,46 +28,56 @@ function setupSSEForNotifications() {
     // Fermer une connexion existante
     if (window.notificationSource) {
         window.notificationSource.close();
+        window.notificationSource = null;
     }
     
     // Récupérer le dernier ID de notification connu
     const lastNotificationId = localStorage.getItem('last_notification_id') || 0;
     
-    // Créer la connexion SSE
-    window.notificationSource = new EventSource(`api/notifications.php?action=stream&last_id=${lastNotificationId}`);
-    
-    // Événement pour les nouvelles notifications
-    window.notificationSource.addEventListener('notification', function(event) {
-        const data = JSON.parse(event.data);
-        
-        // Mettre à jour le badge de notification
-        updateNotificationBadge(data.count);
-        
-        // Stocker le dernier ID
-        if (data.latest_notification) {
-            localStorage.setItem('last_notification_id', data.latest_notification.id);
+    // Récupérer le jeton SSE pour les notifications
+    getNotificationToken()
+        .then(token => {
+            // Créer la connexion SSE
+            window.notificationSource = new EventSource(`api/notifications.php?action=stream&last_id=${lastNotificationId}&token=${token}`);
             
-            // Si l'utilisateur a activé les notifications du navigateur
-            if (hasNotificationPermission() && data.latest_notification) {
-                showBrowserNotification(data.count, data.latest_notification);
-            }
-        }
-    });
-    
-    // Gestion des erreurs
-    window.notificationSource.addEventListener('error', function(event) {
-        console.error('SSE Error: Notification connection failed or closed. Reconnecting...');
-        
-        // Si la connexion est fermée, tenter de se reconnecter après un délai
-        if (this.readyState === EventSource.CLOSED) {
+            // Événement pour les nouvelles notifications
+            window.notificationSource.addEventListener('notification', function(event) {
+                const data = JSON.parse(event.data);
+                
+                // Mettre à jour le badge de notification
+                updateNotificationBadge(data.count);
+                
+                // Stocker le dernier ID
+                if (data.latest_notification) {
+                    localStorage.setItem('last_notification_id', data.latest_notification.id);
+                    
+                    // Si l'utilisateur a activé les notifications du navigateur
+                    if (hasNotificationPermission() && data.latest_notification) {
+                        showBrowserNotification(data.count, data.latest_notification);
+                    }
+                }
+            });
+            
+            // Gestion des erreurs
+            window.notificationSource.addEventListener('error', function(event) {
+                console.error('SSE Error: Notification connection failed or closed. Reconnecting...');
+                
+                // Si la connexion est fermée, tenter de se reconnecter après un délai
+                if (this.readyState === EventSource.CLOSED) {
+                    setTimeout(setupSSEForNotifications, 5000);
+                }
+            });
+            
+            // Ping pour maintenir la connexion
+            window.notificationSource.addEventListener('ping', function(event) {
+                // Connexion maintenue, rien à faire
+            });
+        })
+        .catch(error => {
+            console.error('Erreur lors de la configuration des notifications:', error);
+            // Tentative de reconnexion après un délai
             setTimeout(setupSSEForNotifications, 5000);
-        }
-    });
-    
-    // Ping pour maintenir la connexion
-    window.notificationSource.addEventListener('ping', function(event) {
-        // Connexion maintenue, rien à faire
-    });
+        });
     
     // Gérer les événements de visibilité pour optimiser les connexions
     document.addEventListener('visibilitychange', function() {
@@ -80,6 +90,30 @@ function setupSSEForNotifications() {
             setupSSEForNotifications();
         }
     });
+}
+
+/**
+ * Fonction pour récupérer un jeton SSE pour les notifications
+ * @returns {Promise<string>} Le jeton SSE
+ */
+function getNotificationToken() {
+    return fetch('api/notification_token.php')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erreur HTTP: ${response.status}`);
+            }
+            return response.json().catch(e => {
+                console.error("Réponse non-JSON reçue:", e);
+                throw new Error("Le serveur a renvoyé une réponse non valide");
+            });
+        })
+        .then(data => {
+            if (data.success) {
+                return data.token;
+            } else {
+                throw new Error(data.error || 'Erreur lors de la récupération du jeton');
+            }
+        });
 }
 
 /**
@@ -206,6 +240,12 @@ function updateNotificationPreference(preference, value) {
     const formData = new FormData();
     formData.append('action', 'update_preferences');
     formData.append('preferences[' + preference + ']', value ? '1' : '0');
+    
+    // Récupérer le jeton CSRF
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    if (csrfToken) {
+        formData.append('csrf_token', csrfToken);
+    }
     
     fetch('api/notifications.php', {
         method: 'POST',
