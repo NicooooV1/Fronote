@@ -6,6 +6,9 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../controllers/message.php';
 require_once __DIR__ . '/../models/message.php';
 require_once __DIR__ . '/../core/auth.php';
+require_once __DIR__ . '/../core/rate_limiter.php';
+require_once __DIR__ . '/../core/logger.php';
+require_once __DIR__ . '/../core/utils.php';
 
 // Désactiver l'affichage des erreurs pour éviter de corrompre le JSON
 ini_set('display_errors', 0);
@@ -21,14 +24,39 @@ if (!$user) {
     exit;
 }
 
+// Limiter le taux de requêtes API
+enforceRateLimit('api_messages', 120, 60, true); // 120 requêtes/minute
+
+// Vérifier le jeton CSRF pour toutes les requêtes POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['action'])) {
+    $requestData = file_get_contents('php://input');
+    $data = json_decode($requestData, true) ?: [];
+    
+    // Vérifier le jeton CSRF soit dans les données JSON, soit dans l'en-tête
+    $csrfToken = $data['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    
+    if (!validateCSRFToken($csrfToken)) {
+        echo json_encode(['success' => false, 'error' => 'Jeton CSRF invalide']);
+        exit;
+    }
+}
+
 // Point d'entrée SSE pour les mises à jour de messages en temps réel
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id'], $_GET['action']) && $_GET['action'] === 'stream') {
     $convId = (int)$_GET['conv_id'];
     $lastTimestamp = isset($_GET['last_timestamp']) ? (int)$_GET['last_timestamp'] : 0;
+    $token = isset($_GET['token']) ? $_GET['token'] : '';
 
     if (!$convId) {
         header('Content-Type: application/json');
         echo json_encode(['success' => false, 'error' => 'ID de conversation invalide']);
+        exit;
+    }
+    
+    // Vérifier le jeton SSE
+    if (!validateSSEToken($token, $convId, $user['id'], $user['type'])) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'Jeton SSE invalide']);
         exit;
     }
 
@@ -52,7 +80,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id'], $_GET['actio
         echo "data: {\"message\": \"Vous n'êtes pas autorisé à accéder à cette conversation\"}\n\n";
         exit;
     }
-
+    
+    // Définir une durée maximale pour la connexion SSE (30 minutes)
+    $maxExecutionTime = 1800; // 30 minutes
+    $startTime = time();
+    
     // Envoyer un ping initial pour établir la connexion
     echo "event: ping\n";
     echo "data: {\"time\": " . time() . "}\n\n";
@@ -62,6 +94,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id'], $_GET['actio
     while (true) {
         // Vérifier si la connexion client est toujours active
         if (connection_aborted()) {
+            break;
+        }
+        
+        // Vérifier si la durée maximale est atteinte
+        if (time() - $startTime > $maxExecutionTime) {
+            echo "event: timeout\n";
+            echo "data: {\"message\": \"La connexion a expiré. Veuillez vous reconnecter.\"}\n\n";
+            flush();
             break;
         }
 
@@ -154,9 +194,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id'], $_GET['actio
     exit;
 }
 
+/**
+ * Génère un jeton SSE sécurisé
+ * @param int $convId
+ * @param int $userId
+ * @param string $userType
+ * @return string
+ */
+function generateSSEToken($convId, $userId, $userType) {
+    $secret = 'BkTW#9f7@L!zP3vQ#Rx*8jN2'; // Change in production
+    $expiry = time() + 3600; // 1 heure
+    $data = $convId . '|' . $userId . '|' . $userType . '|' . $expiry;
+    $signature = hash_hmac('sha256', $data, $secret);
+    
+    return base64_encode($data . '|' . $signature);
+}
+
+/**
+ * Valide un jeton SSE
+ * @param string $token
+ * @param int $convId
+ * @param int $userId
+ * @param string $userType
+ * @return bool
+ */
+function validateSSEToken($token, $convId, $userId, $userType) {
+    $secret = 'BkTW#9f7@L!zP3vQ#Rx*8jN2'; // Same as above
+    
+    try {
+        $decoded = base64_decode($token);
+        if ($decoded === false) {
+            return false;
+        }
+        
+        $parts = explode('|', $decoded);
+        if (count($parts) !== 5) {
+            return false;
+        }
+        
+        list($tokenConvId, $tokenUserId, $tokenUserType, $expiry, $signature) = $parts;
+        
+        // Vérifier l'expiration
+        if (time() > (int)$expiry) {
+            return false;
+        }
+        
+        // Vérifier les paramètres
+        if ((int)$tokenConvId !== (int)$convId || 
+            (int)$tokenUserId !== (int)$userId || 
+            $tokenUserType !== $userType) {
+            return false;
+        }
+        
+        // Vérifier la signature
+        $data = $tokenConvId . '|' . $tokenUserId . '|' . $tokenUserType . '|' . $expiry;
+        $computedSignature = hash_hmac('sha256', $data, $secret);
+        
+        return hash_equals($computedSignature, $signature);
+        
+    } catch (Exception $e) {
+        logException($e, ['action' => 'validate_token']);
+        return false;
+    }
+}
+
 // Envoi d'un nouveau message via AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'send_message') {
     try {
+        // Vérifier le jeton CSRF
+        if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
+            throw new Exception("Jeton CSRF invalide");
+        }
+        
         $convId = isset($_POST['conversation_id']) ? (int)$_POST['conversation_id'] : 0;
         $contenu = isset($_POST['contenu']) ? trim($_POST['contenu']) : '';
         $importance = isset($_POST['importance']) ? $_POST['importance'] : 'normal';
@@ -171,7 +280,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             throw new Exception("Le message ne peut pas être vide");
         }
         
-        // Traiter les pièces jointes
+        // Limiter la taille du message
+        if (strlen($contenu) > 10000) {
+            throw new Exception("Le message est trop long (maximum 10000 caractères)");
+        }
+        
+        // Vérifier que l'utilisateur a le droit de répondre à cette conversation
+        requirePermission($user, PERMISSION_SEND_MESSAGE, ['conversation_id' => $convId]);
+        
+        // Traiter les pièces jointes de manière sécurisée
         $filesData = isset($_FILES['attachments']) ? $_FILES['attachments'] : [];
         
         $result = handleSendMessage($convId, $user, $contenu, $importance, $parentMessageId, $filesData);
@@ -188,6 +305,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             echo json_encode($result);
         }
     } catch (Exception $e) {
+        logException($e, ['action' => 'send_message', 'conv_id' => $convId ?? 0]);
         echo json_encode([
             'success' => false,
             'error' => $e->getMessage()
@@ -277,6 +395,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
             'messages' => $messages
         ]);
     } catch (Exception $e) {
+        logException($e, ['action' => 'get_new', 'conv_id' => $convId]);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
     exit;
@@ -365,6 +484,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
             'timestamp' => $timestampToReturn // Utiliser le timestamp du dernier message
         ]);
     } catch (Exception $e) {
+        logException($e, ['action' => 'check_updates', 'conv_id' => $convId]);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
     exit;
@@ -391,6 +511,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id']) && isset($_GET['a
         
         echo json_encode($result);
     } catch (Exception $e) {
+        logException($e, ['action' => $action, 'message_id' => $messageId]);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
     exit;

@@ -6,6 +6,9 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../controllers/notification.php';
 require_once __DIR__ . '/../models/notification.php';
 require_once __DIR__ . '/../core/auth.php';
+require_once __DIR__ . '/../core/rate_limiter.php';
+require_once __DIR__ . '/../core/logger.php';
+require_once __DIR__ . '/../core/utils.php';
 
 // Désactiver l'affichage des erreurs pour éviter de corrompre le JSON
 ini_set('display_errors', 0);
@@ -19,8 +22,30 @@ if (!$user) {
     exit;
 }
 
+// Limiter le taux de requêtes API
+enforceRateLimit('api_notifications', 120, 60, true); // 120 requêtes/minute
+
+// Vérifier le jeton CSRF pour toutes les requêtes POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $csrfToken = $_POST['csrf_token'] ?? '';
+    
+    if (!validateCSRFToken($csrfToken)) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'Jeton CSRF invalide']);
+        exit;
+    }
+}
+
 // Point d'entrée SSE pour les notifications en temps réel
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'stream') {
+    // Vérifier le jeton SSE
+    $token = $_GET['token'] ?? '';
+    if (!validateNotificationSSEToken($token, $user['id'], $user['type'])) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'Jeton SSE invalide']);
+        exit;
+    }
+    
     // Configuration des en-têtes SSE
     header('Content-Type: text/event-stream');
     header('Cache-Control: no-cache');
@@ -32,6 +57,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
     // Récupérer le dernier ID de notification connu
     $lastNotificationId = isset($_GET['last_id']) ? (int)$_GET['last_id'] : 0;
+    
+    // Définir une durée maximale pour la connexion SSE (30 minutes)
+    $maxExecutionTime = 1800; // 30 minutes
+    $startTime = time();
 
     // Envoyer un ping initial
     echo "event: ping\n";
@@ -42,6 +71,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     while (true) {
         // Vérifier si la connexion client est toujours active
         if (connection_aborted()) {
+            break;
+        }
+        
+        // Vérifier si la durée maximale est atteinte
+        if (time() - $startTime > $maxExecutionTime) {
+            echo "event: timeout\n";
+            echo "data: {\"message\": \"La connexion a expiré. Veuillez vous reconnecter.\"}\n\n";
+            flush();
             break;
         }
         
@@ -81,6 +118,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit;
 }
 
+/**
+ * Génère un jeton SSE pour les notifications
+ * @param int $userId
+ * @param string $userType
+ * @return string
+ */
+function generateNotificationSSEToken($userId, $userType) {
+    $secret = 'Sk*7pM#d3F@vG9tZ!qL*6bR8'; // Changer en production
+    $expiry = time() + 3600; // 1 heure
+    $data = $userId . '|' . $userType . '|' . $expiry;
+    $signature = hash_hmac('sha256', $data, $secret);
+    
+    return base64_encode($data . '|' . $signature);
+}
+
+/**
+ * Valide un jeton SSE pour les notifications
+ * @param string $token
+ * @param int $userId
+ * @param string $userType
+ * @return bool
+ */
+function validateNotificationSSEToken($token, $userId, $userType) {
+    $secret = 'Sk*7pM#d3F@vG9tZ!qL*6bR8'; // Même que ci-dessus
+    
+    try {
+        $decoded = base64_decode($token);
+        if ($decoded === false) {
+            return false;
+        }
+        
+        $parts = explode('|', $decoded);
+        if (count($parts) !== 4) {
+            return false;
+        }
+        
+        list($tokenUserId, $tokenUserType, $expiry, $signature) = $parts;
+        
+        // Vérifier l'expiration
+        if (time() > (int)$expiry) {
+            return false;
+        }
+        
+        // Vérifier les paramètres
+        if ((int)$tokenUserId !== (int)$userId || 
+            $tokenUserType !== $userType) {
+            return false;
+        }
+        
+        // Vérifier la signature
+        $data = $tokenUserId . '|' . $tokenUserType . '|' . $expiry;
+        $computedSignature = hash_hmac('sha256', $data, $secret);
+        
+        return hash_equals($computedSignature, $signature);
+        
+    } catch (Exception $e) {
+        logException($e, ['action' => 'validate_notification_token']);
+        return false;
+    }
+}
+
 // Vérification des notifications
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'check') {
     header('Content-Type: application/json');
@@ -103,6 +201,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'latest_notification' => $latestNotification
         ]);
     } catch (Exception $e) {
+        logException($e, ['action' => 'check_notifications']);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
     exit;
@@ -147,6 +246,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'latest_notification' => $latestNotification
         ]);
     } catch (Exception $e) {
+        logException($e, ['action' => 'check_conditional']);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
     exit;
@@ -167,6 +267,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id']) && isset($_GET['a
         $result = handleMarkNotificationRead($notificationId, $user);
         echo json_encode($result);
     } catch (Exception $e) {
+        logException($e, ['action' => 'mark_read', 'notification_id' => $notificationId]);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
     exit;
@@ -185,6 +286,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $result = handleUpdateNotificationPreferences($user['id'], $user['type'], $_POST['preferences']);
         echo json_encode($result);
     } catch (Exception $e) {
+        logException($e, ['action' => 'update_preferences']);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
     exit;

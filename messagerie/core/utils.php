@@ -18,6 +18,91 @@ function redirect($url) {
 }
 
 /**
+ * Génère un jeton CSRF et le stocke en session
+ * @return string
+ */
+function generateCSRFToken() {
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+/**
+ * Vérifie si le jeton CSRF est valide
+ * @param string $token
+ * @return bool
+ */
+function validateCSRFToken($token) {
+    if (empty($_SESSION['csrf_token']) || empty($token)) {
+        return false;
+    }
+    
+    return hash_equals($_SESSION['csrf_token'], $token);
+}
+
+/**
+ * Crée un champ caché de jeton CSRF pour les formulaires
+ * @return string
+ */
+function csrfField() {
+    $token = generateCSRFToken();
+    return '<input type="hidden" name="csrf_token" value="' . $token . '">';
+}
+
+/**
+ * Construit une requête SQL sécurisée avec des clauses IN
+ * @param PDO $pdo Instance PDO
+ * @param string $baseQuery Requête SQL de base
+ * @param string $field Nom du champ pour la clause IN
+ * @param array $values Valeurs pour la clause IN
+ * @param array $additionalParams Paramètres supplémentaires pour la requête
+ * @return array Tableau contenant la requête préparée et le tableau de paramètres
+ */
+function buildSafeInQuery($pdo, $baseQuery, $field, $values, $additionalParams = []) {
+    // Si aucune valeur, retourner une requête qui ne renvoie rien
+    if (empty($values)) {
+        return [
+            'query' => $baseQuery . " WHERE 1=0",
+            'params' => []
+        ];
+    }
+    
+    // Assainir les valeurs (s'assurer qu'elles sont toutes du bon type)
+    $sanitizedValues = [];
+    foreach ($values as $value) {
+        if (is_numeric($value)) {
+            $sanitizedValues[] = (int)$value;
+        } elseif (is_string($value)) {
+            $sanitizedValues[] = $value;
+        }
+    }
+    
+    // Créer des placeholders nommés uniques pour chaque valeur
+    $placeholders = [];
+    $params = [];
+    
+    foreach ($sanitizedValues as $index => $value) {
+        $paramName = "in_param_" . $index;
+        $placeholders[] = ":" . $paramName;
+        $params[$paramName] = $value;
+    }
+    
+    // Ajouter les paramètres supplémentaires
+    if (!empty($additionalParams)) {
+        $params = array_merge($params, $additionalParams);
+    }
+    
+    // Construire la requête finale
+    $query = $baseQuery . " WHERE " . $field . " IN (" . implode(", ", $placeholders) . ")";
+    
+    return [
+        'query' => $query,
+        'params' => $params
+    ];
+}
+
+/**
  * Formatte une date de façon conviviale
  * @param string $date
  * @return string

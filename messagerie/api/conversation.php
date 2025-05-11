@@ -7,6 +7,8 @@ require_once __DIR__ . '/../controllers/conversation.php';
 require_once __DIR__ . '/../core/auth.php';
 require_once __DIR__ . '/../models/message.php';
 require_once __DIR__ . '/../controllers/message.php';
+require_once __DIR__ . '/../core/rate_limiter.php';
+require_once __DIR__ . '/../core/utils.php';
 
 // Désactiver l'affichage des erreurs pour éviter de corrompre le JSON
 ini_set('display_errors', 0);
@@ -22,10 +24,27 @@ if (!$user) {
     exit;
 }
 
+// Limiter le taux de requêtes API
+enforceRateLimit('api_conversation', 60, 60, true); // 60 requêtes/minute
+
+// Vérifier le jeton CSRF pour toutes les requêtes POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $requestData = file_get_contents('php://input');
+    $data = json_decode($requestData, true) ?: [];
+    
+    // Vérifier le jeton CSRF soit dans les données JSON, soit dans l'en-tête
+    $csrfToken = $data['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    
+    if (!validateCSRFToken($csrfToken)) {
+        echo json_encode(['success' => false, 'error' => 'Jeton CSRF invalide']);
+        exit;
+    }
+}
+
 // Point d'entrée pour les actions en masse
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'bulk') {
     // Récupérer les données JSON
-    $data = json_decode(file_get_contents('php://input'), true);
+    $data = json_decode(file_get_contents('php://input'), true) ?: [];
 
     if (!isset($data['ids']) || !is_array($data['ids']) || empty($data['ids']) || !isset($data['action'])) {
         echo json_encode(['success' => false, 'error' => 'Paramètres invalides']);
@@ -33,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
     }
 
     $action = $data['action'];
-    $convIds = $data['ids'];
+    $convIds = array_map('intval', $data['ids']); // Assainir les IDs
     $count = 0;
 
     try {
@@ -43,8 +62,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
             case 'delete':
                 // Supprimer les conversations
                 foreach ($convIds as $convId) {
-                    if (deleteConversation($convId, $user['id'], $user['type'])) {
-                        $count++;
+                    // Vérifier l'autorisation avec le nouveau système
+                    if (hasPermission($user, PERMISSION_DELETE_CONVERSATION, ['conversation_id' => $convId])) {
+                        if (deleteConversation($convId, $user['id'], $user['type'])) {
+                            $count++;
+                        }
                     }
                 }
                 $message = "Conversations supprimées";
@@ -53,8 +75,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
             case 'delete_permanently':
                 // Supprimer définitivement les conversations
                 foreach ($convIds as $convId) {
-                    if (deletePermanently($convId, $user['id'], $user['type'])) {
-                        $count++;
+                    if (hasPermission($user, PERMISSION_DELETE_CONVERSATION, ['conversation_id' => $convId])) {
+                        if (deletePermanently($convId, $user['id'], $user['type'])) {
+                            $count++;
+                        }
                     }
                 }
                 $message = "Conversations supprimées définitivement";
@@ -63,8 +87,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
             case 'archive':
                 // Archiver les conversations
                 foreach ($convIds as $convId) {
-                    if (archiveConversation($convId, $user['id'], $user['type'])) {
-                        $count++;
+                    if (hasPermission($user, PERMISSION_ARCHIVE_CONVERSATION, ['conversation_id' => $convId])) {
+                        if (archiveConversation($convId, $user['id'], $user['type'])) {
+                            $count++;
+                        }
                     }
                 }
                 $message = "Conversations archivées";
@@ -198,6 +224,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
             $pdo->rollBack();
         }
         
+        logException($e, ['action' => $action, 'ids' => $convIds]);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
     exit;
@@ -206,12 +233,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
 // Action de suppression multiple
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'delete_multiple') {
     // Récupérer les données JSON
-    $data = json_decode(file_get_contents('php://input'), true);
+    $data = json_decode(file_get_contents('php://input'), true) ?: [];
 
     if (!isset($data['ids']) || !is_array($data['ids']) || empty($data['ids'])) {
         echo json_encode(['success' => false, 'error' => 'Aucun identifiant fourni']);
         exit;
     }
+
+    // Assainir les IDs
+    $data['ids'] = array_map('intval', $data['ids']);
 
     try {
         $pdo->beginTransaction();
@@ -224,6 +254,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
     } catch (Exception $e) {
         $pdo->rollBack();
         
+        logException($e, ['action' => 'delete_multiple', 'ids' => $data['ids']]);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
     exit;
@@ -265,6 +296,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id']) && isset($_GET['a
         
         echo json_encode($result);
     } catch (Exception $e) {
+        logException($e, ['action' => $action, 'conversation_id' => $convId]);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
     exit;
