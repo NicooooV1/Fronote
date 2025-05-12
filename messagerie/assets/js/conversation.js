@@ -9,8 +9,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialisation du système de lecture des messages
     initReadTracker();
     
-    // Actualisation en temps réel pour les modifications de conversation via polling AJAX
-    setupPollingForConversation();
+    // Actualisation en temps réel pour les modifications de conversation
+    setupRealTimeUpdates();
     
     // Validation du formulaire de message
     setupMessageValidation();
@@ -26,204 +26,29 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 /**
- * Configuration du polling AJAX pour la conversation
- */
-function setupPollingForConversation() {
-    // Variable globale pour suivre l'état des polling
-    window.pollingIntervals = {
-        messagesInterval: null,
-        readStatusInterval: null
-    };
-    
-    // Configurer les polling AJAX
-    setupPollingForMessages();
-    setupPollingForReadStatus();
-    
-    // Gérer la visibilité de la page pour optimiser les connexions
-    document.addEventListener('visibilitychange', function() {
-        if (document.visibilityState === 'hidden') {
-            stopAllPolling();
-        } else if (document.visibilityState === 'visible') {
-            setupPollingForMessages();
-            setupPollingForReadStatus();
-        }
-    });
-}
-
-/**
- * Configure le polling pour les messages
- */
-function setupPollingForMessages() {
-    const convId = new URLSearchParams(window.location.search).get('id');
-    if (!convId) return;
-    
-    // Arrêter le polling existant si présent
-    if (window.pollingIntervals.messagesInterval) {
-        clearInterval(window.pollingIntervals.messagesInterval);
-    }
-    
-    // Récupérer le timestamp du dernier message
-    const lastMessage = document.querySelector('.message:last-child');
-    const lastTimestamp = lastMessage ? parseInt(lastMessage.dataset.timestamp || '0', 10) : 0;
-    
-    // Fonction pour vérifier les nouveaux messages
-    function checkForNewMessages() {
-        AjaxClient.get('api/messages.php', {
-            conv_id: convId, 
-            action: 'check_updates', 
-            last_timestamp: lastTimestamp
-        })
-        .then(data => {
-            if (data.success && data.hasUpdates) {
-                // Il y a de nouveaux messages, les récupérer
-                fetchNewMessages(convId, lastTimestamp);
-                
-                // Mettre à jour les participants si nécessaire
-                if (data.participantsChanged) {
-                    refreshParticipantsList();
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Erreur lors de la vérification des nouveaux messages:', error);
-        });
-    }
-    
-    // Vérifier immédiatement puis régulièrement
-    checkForNewMessages();
-    window.pollingIntervals.messagesInterval = setInterval(checkForNewMessages, 5000); // toutes les 5 secondes
-}
-
-/**
- * Récupère les nouveaux messages
- */
-function fetchNewMessages(convId, lastTimestamp) {
-    AjaxClient.get('api/messages.php', {
-        conv_id: convId, 
-        action: 'get_new', 
-        last_timestamp: lastTimestamp
-    })
-    .then(data => {
-        if (data.success && data.messages && data.messages.length > 0) {
-            // Ajouter les messages à l'interface
-            const messagesContainer = document.querySelector('.messages-container');
-            const wasAtBottom = isScrolledToBottom(messagesContainer);
-            
-            data.messages.forEach(message => {
-                appendMessageToDOM(message, messagesContainer);
-            });
-            
-            if (wasAtBottom) {
-                scrollToBottom(messagesContainer);
-            } else {
-                showNewMessagesIndicator(data.messages.length);
-            }
-            
-            // Lire audio pour notification (optionnelle)
-            playNotificationSound();
-        }
-    })
-    .catch(error => {
-        console.error('Erreur lors de la récupération des nouveaux messages:', error);
-    });
-}
-
-/**
- * Configure le polling pour les statuts de lecture
- */
-function setupPollingForReadStatus() {
-    const convId = new URLSearchParams(window.location.search).get('id');
-    if (!convId) return;
-    
-    // Arrêter le polling existant si présent
-    if (window.pollingIntervals.readStatusInterval) {
-        clearInterval(window.pollingIntervals.readStatusInterval);
-    }
-    
-    // Récupérer le dernier message ID
-    let lastReadMessageId = 0;
-    const messageElements = document.querySelectorAll('.message');
-    if (messageElements.length > 0) {
-        const lastMessage = messageElements[messageElements.length - 1];
-        lastReadMessageId = parseInt(lastMessage.dataset.id || '0', 10);
-    }
-    
-    // État initial pour les versions
-    let currentVersion = 0;
-    
-    // Fonction pour vérifier les mises à jour de statut de lecture
-    function checkReadStatus() {
-        AjaxClient.get('api/read_status.php', {
-            action: 'read-polling', 
-            conv_id: convId, 
-            version: currentVersion, 
-            since: lastReadMessageId
-        })
-        .then(data => {
-            if (data.success) {
-                // Mettre à jour la version
-                currentVersion = data.version;
-                
-                // Traiter les mises à jour si présentes
-                if (data.hasUpdates) {
-                    // S'il s'agit de la première récupération et qu'un état initial est fourni
-                    if (data.initialState) {
-                        Object.entries(data.initialState).forEach(([messageId, readStatus]) => {
-                            updateReadStatus(readStatus);
-                        });
-                    }
-                    
-                    // Traiter les mises à jour
-                    if (data.updates && data.updates.length > 0) {
-                        data.updates.forEach(update => {
-                            updateReadStatus(update.read_status);
-                            
-                            // Mettre à jour lastReadMessageId si nécessaire
-                            if (update.messageId > lastReadMessageId) {
-                                lastReadMessageId = update.messageId;
-                            }
-                        });
-                    }
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Erreur lors de la vérification des statuts de lecture:', error);
-        });
-    }
-    
-    // Vérifier immédiatement puis régulièrement
-    checkReadStatus();
-    window.pollingIntervals.readStatusInterval = setInterval(checkReadStatus, 5000); // toutes les 5 secondes
-}
-
-/**
- * Arrête tous les intervals de polling
- */
-function stopAllPolling() {
-    if (window.pollingIntervals.messagesInterval) {
-        clearInterval(window.pollingIntervals.messagesInterval);
-        window.pollingIntervals.messagesInterval = null;
-    }
-    
-    if (window.pollingIntervals.readStatusInterval) {
-        clearInterval(window.pollingIntervals.readStatusInterval);
-        window.pollingIntervals.readStatusInterval = null;
-    }
-}
-
-/**
  * Configure un gestionnaire pour nettoyer les ressources avant la navigation
  */
 function setupBeforeUnloadHandler() {
+    // Variable globale pour suivre l'état des connexions
+    window.activeConnections = {
+        polling: false,
+        abortController: new AbortController()
+    };
+    
     // Gestionnaire d'événement pour la navigation
     window.addEventListener('beforeunload', cleanupResources);
     window.addEventListener('pagehide', cleanupResources);
     
     // Fonction pour nettoyer les ressources
     function cleanupResources() {
-        // Arrêter les polling AJAX
-        stopAllPolling();
+        // Annuler les requêtes fetch en cours
+        window.activeConnections.abortController.abort();
+        
+        // Créer un nouveau AbortController pour les prochaines requêtes
+        window.activeConnections.abortController = new AbortController();
+        
+        // Indiquer que le polling doit s'arrêter
+        window.activeConnections.polling = false;
     }
 }
 
@@ -231,6 +56,20 @@ function setupBeforeUnloadHandler() {
  * Initialise le système de détection et de suivi des messages lus
  */
 function initReadTracker() {
+    // Variables pour l'état de lecture
+    let lastReadMessageId = 0;
+    let isMarkingMessage = false;
+    let pollingActive = false;
+    let pollingInterval = 3000; // Interroger le serveur toutes les 3 secondes
+    let versionSum = 0; // Pour suivre la version des statuts de lecture
+    
+    // Récupérer le dernier message lu lors du chargement initial
+    const messageElements = document.querySelectorAll('.message');
+    if (messageElements.length > 0) {
+        const lastMessage = messageElements[messageElements.length - 1];
+        lastReadMessageId = parseInt(lastMessage.dataset.id || '0', 10);
+    }
+    
     // Configuration améliorée de l'IntersectionObserver
     const messageObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -255,6 +94,193 @@ function initReadTracker() {
         messageObserver.observe(message);
     });
     
+    /**
+     * Marque un message comme lu via l'API
+     */
+    function markMessageAsRead(messageId) {
+        // Éviter les requêtes concurrentes
+        if (isMarkingMessage) return;
+        
+        isMarkingMessage = true;
+        
+        const convId = new URLSearchParams(window.location.search).get('id');
+        
+        fetch(`api/read_status.php?action=read&conv_id=${convId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messageId }),
+            signal: window.activeConnections.abortController.signal
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erreur réseau: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Mettre à jour l'interface avec le nouveau statut
+                updateReadStatus(data.read_status);
+            } else {
+                console.warn("Échec du marquage comme lu:", data.error || "Erreur inconnue");
+            }
+        })
+        .catch(error => {
+            // Ne pas afficher d'erreur si la requête a été annulée (navigation)
+            if (error.name !== 'AbortError') {
+                console.error('Erreur lors du marquage comme lu:', error);
+                // Réessayer après un délai
+                setTimeout(() => {
+                    isMarkingMessage = false;
+                    markMessageAsRead(messageId);
+                }, 2000);
+            }
+        })
+        .finally(() => {
+            isMarkingMessage = false;
+        });
+    }
+    
+    /**
+     * Met à jour l'affichage du statut de lecture d'un message
+     */
+    function updateReadStatus(readStatus) {
+        if (!readStatus || !readStatus.message_id) return;
+        
+        const messageEl = document.querySelector(`.message[data-id="${readStatus.message_id}"]`);
+        if (!messageEl) return;
+        
+        const statusEl = messageEl.querySelector('.message-read-status');
+        if (!statusEl) return;
+        
+        // Mettre à jour le contenu selon l'état de lecture
+        if (readStatus.all_read) {
+            statusEl.innerHTML = `
+                <div class="all-read">
+                    <i class="fas fa-check-double"></i> Vu
+                </div>
+            `;
+            // Ajouter la classe 'read' au message
+            messageEl.classList.add('read');
+        } else if (readStatus.read_by_count > 0) {
+            // Créer la liste des noms des lecteurs
+            const readerNames = readStatus.readers && readStatus.readers.length > 0 
+                ? readStatus.readers.map(r => r.nom_complet).join(', ')
+                : 'Personne';
+            
+            statusEl.innerHTML = `
+                <div class="partial-read">
+                    <i class="fas fa-check"></i>
+                    <span class="read-count">${readStatus.read_by_count}/${readStatus.total_participants - 1}</span>
+                    <span class="read-tooltip" title="${readerNames}">
+                        <i class="fas fa-info-circle"></i>
+                    </span>
+                </div>
+            `;
+        }
+    }
+    
+    /**
+     * Démarre le polling AJAX pour les mises à jour de lecture
+     */
+    function startPolling() {
+        pollingActive = true;
+        console.log('AJAX Polling: Démarrage');
+        window.activeConnections.polling = true;
+        
+        function pollForUpdates() {
+            if (!pollingActive || !window.activeConnections.polling) {
+                console.log('AJAX Polling: Arrêté');
+                return;
+            }
+            
+            const convId = new URLSearchParams(window.location.search).get('id');
+            if (!convId) {
+                pollingActive = false;
+                window.activeConnections.polling = false;
+                return;
+            }
+            
+            // Utiliser le nouvel endpoint de polling au lieu du SSE
+            fetch(`api/read_status.php?action=read-polling&conv_id=${convId}&version=${versionSum}&since=${lastReadMessageId}`, {
+                signal: window.activeConnections.abortController.signal
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Erreur réseau: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        // Mettre à jour la version pour les prochaines requêtes
+                        versionSum = data.version || 0;
+                        
+                        // Si c'est la première requête et qu'on a un état initial
+                        if (data.initialState) {
+                            // Mettre à jour tous les statuts de lecture
+                            Object.entries(data.initialState).forEach(([messageId, readStatus]) => {
+                                updateReadStatus(readStatus);
+                            });
+                        }
+                        
+                        // Traiter les mises à jour
+                        if (data.hasUpdates && data.updates) {
+                            data.updates.forEach(update => {
+                                updateReadStatus(update.read_status);
+                                
+                                // Mettre à jour lastReadMessageId si nécessaire
+                                if (update.messageId > lastReadMessageId) {
+                                    lastReadMessageId = update.messageId;
+                                }
+                            });
+                        }
+                        
+                        // Continuer le polling après un délai
+                        setTimeout(pollForUpdates, pollingInterval);
+                    } else {
+                        console.error('Erreur de polling:', data.error || 'Erreur inconnue');
+                        // Réessayer après un délai plus long en cas d'erreur
+                        setTimeout(pollForUpdates, pollingInterval * 2);
+                    }
+                })
+                .catch(error => {
+                    // Ne pas afficher d'erreur si la requête a été annulée (navigation)
+                    if (error.name !== 'AbortError') {
+                        console.error('Erreur de polling:', error);
+                        // Augmenter l'intervalle en cas d'erreur
+                        setTimeout(pollForUpdates, pollingInterval * 2);
+                    }
+                });
+        }
+        
+        // Démarrer le polling
+        pollForUpdates();
+        
+        // Gérer les événements de visibilité du document
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') {
+                if (!pollingActive && window.activeConnections.polling) {
+                    pollingActive = true;
+                    pollForUpdates();
+                }
+                // Réinitialiser l'intervalle quand la page est visible
+                pollingInterval = 3000;
+            } else {
+                // Ralentir le polling quand l'onglet n'est pas actif
+                pollingInterval = 10000; // 10 secondes quand inactif
+            }
+        });
+        
+        // Réinitialiser l'intervalle quand l'onglet redevient actif
+        window.addEventListener('focus', function() {
+            pollingInterval = 3000; // Retour à 3 secondes quand actif
+        });
+    }
+    
+    // Démarrer le polling AJAX
+    startPolling();
+    
     // Ajouter des gestionnaires d'événements pour les boutons de marquage
     document.addEventListener('click', function(e) {
         // Bouton "Marquer comme lu"
@@ -271,217 +297,389 @@ function initReadTracker() {
             markMessageAsUnread(messageId);
         }
     });
-}
-
-/**
- * Met à jour l'affichage du statut de lecture d'un message
- */
-function updateReadStatus(readStatus) {
-    if (!readStatus || !readStatus.message_id) return;
     
-    const messageEl = document.querySelector(`.message[data-id="${readStatus.message_id}"]`);
-    if (!messageEl) return;
-    
-    const statusEl = messageEl.querySelector('.message-read-status');
-    if (!statusEl) return;
-    
-    // Mettre à jour le contenu selon l'état de lecture
-    if (readStatus.all_read) {
-        statusEl.innerHTML = `
-            <div class="all-read">
-                <i class="fas fa-check-double"></i> Vu
-            </div>
-        `;
-        // Ajouter la classe 'read' au message
-        messageEl.classList.add('read');
-    } else if (readStatus.read_by_count > 0) {
-        // Créer la liste des noms des lecteurs
-        const readerNames = readStatus.readers && readStatus.readers.length > 0 
-            ? readStatus.readers.map(r => r.nom_complet).join(', ')
-            : 'Personne';
+    // Marque un message comme non lu
+    function markMessageAsUnread(messageId) {
+        if (isMarkingMessage) return;
         
-        statusEl.innerHTML = `
-            <div class="partial-read">
-                <i class="fas fa-check"></i>
-                <span class="read-count">${readStatus.read_by_count}/${readStatus.total_participants - 1}</span>
-                <span class="read-tooltip" title="${readerNames}">
-                    <i class="fas fa-info-circle"></i>
-                </span>
-            </div>
-        `;
+        isMarkingMessage = true;
+        
+        fetch(`api/messages.php?id=${messageId}&action=mark_unread`, {
+            signal: window.activeConnections.abortController.signal
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Erreur réseau: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Mettre à jour l'interface utilisateur
+                    const message = document.querySelector(`.message[data-id="${messageId}"]`);
+                    if (message) {
+                        message.classList.remove('read');
+                        
+                        // Mettre à jour le bouton
+                        const unreadBtn = message.querySelector('.mark-unread-btn');
+                        if (unreadBtn) {
+                            const readBtn = document.createElement('button');
+                            readBtn.className = 'btn-icon mark-read-btn';
+                            readBtn.setAttribute('data-message-id', messageId);
+                            readBtn.innerHTML = '<i class="fas fa-envelope-open"></i> Marquer comme lu';
+                            
+                            unreadBtn.parentNode.replaceChild(readBtn, unreadBtn);
+                        }
+                    }
+                    
+                    // Mettre à jour le statut de lecture
+                    if (data.readStatus) {
+                        updateReadStatus(data.readStatus);
+                    }
+                } else {
+                    afficherNotificationErreur("Erreur: " + (data.error || "Une erreur est survenue"));
+                    console.error('Erreur:', data.error);
+                }
+            })
+            .catch(error => {
+                // Ne pas afficher d'erreur si la requête a été annulée (navigation)
+                if (error.name !== 'AbortError') {
+                    afficherNotificationErreur("Erreur: " + error.message);
+                    console.error('Erreur:', error);
+                }
+            })
+            .finally(() => {
+                isMarkingMessage = false;
+            });
     }
 }
 
 /**
- * Marque un message comme lu via l'API
+ * Configure les mises à jour en temps réel pour la conversation
  */
-function markMessageAsRead(messageId) {
+function setupRealTimeUpdates() {
+    // Variables pour la gestion des mises à jour
     const convId = new URLSearchParams(window.location.search).get('id');
-    const csrfToken = Utils?.getCSRFToken() || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const refreshInterval = 5000; // 5 secondes entre chaque vérification
+    let lastTimestamp = 0;
+    let isCheckingForUpdates = false; // Flag pour éviter les requêtes concurrentes
+    let updateCheckActive = true;
     
-    AjaxClient.post(`api/read_status.php?action=read&conv_id=${convId}`, { 
-        messageId, 
-        csrf_token: csrfToken 
-    })
-    .then(data => {
-        if (data.success) {
-            // Mettre à jour l'interface avec le nouveau statut
-            const messageEl = document.querySelector(`.message[data-id="${messageId}"]`);
-            if (messageEl) {
-                messageEl.classList.add('read');
-                
-                // Mettre à jour le bouton si présent
-                const readBtn = messageEl.querySelector('.mark-read-btn');
-                if (readBtn) {
-                    const unreadBtn = document.createElement('button');
-                    unreadBtn.className = 'btn-icon mark-unread-btn';
-                    unreadBtn.setAttribute('data-message-id', messageId);
-                    unreadBtn.innerHTML = '<i class="fas fa-envelope"></i> Marquer comme non lu';
-                    
-                    readBtn.parentNode.replaceChild(unreadBtn, readBtn);
-                }
-            }
-            
-            // Mettre à jour le statut de lecture
-            if (data.read_status) {
-                updateReadStatus(data.read_status);
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Erreur lors du marquage comme lu:', error);
-        Notifications.error("Une erreur est survenue lors du marquage du message comme lu");
-    });
-}
-
-/**
- * Marque un message comme non lu
- */
-function markMessageAsUnread(messageId) {
-    AjaxClient.get('api/messages.php', {
-        id: messageId, 
-        action: 'mark_unread'
-    })
-    .then(data => {
-        if (data.success) {
-            // Mettre à jour l'interface utilisateur
-            const message = document.querySelector(`.message[data-id="${messageId}"]`);
-            if (message) {
-                message.classList.remove('read');
-                
-                // Mettre à jour le bouton
-                const unreadBtn = message.querySelector('.mark-unread-btn');
-                if (unreadBtn) {
-                    const readBtn = document.createElement('button');
-                    readBtn.className = 'btn-icon mark-read-btn';
-                    readBtn.setAttribute('data-message-id', messageId);
-                    readBtn.innerHTML = '<i class="fas fa-envelope-open"></i> Marquer comme lu';
-                    
-                    unreadBtn.parentNode.replaceChild(readBtn, unreadBtn);
-                }
-            }
-            
-            // Mettre à jour le statut de lecture
-            if (data.readStatus) {
-                updateReadStatus(data.readStatus);
-            }
-        } else {
-            Notifications.error("Erreur: " + (data.error || "Une erreur est survenue"));
-        }
-    })
-    .catch(error => {
-        Notifications.error("Erreur: " + error.message);
-    });
-}
-
-/**
- * Rafraîchit la liste des participants
- */
-function refreshParticipantsList() {
-    const convId = new URLSearchParams(window.location.search).get('id');
-    
-    AjaxClient.get('api/participants.php', {
-        conv_id: convId, 
-        action: 'get_list'
-    })
-    .then(html => {
-        const participantsList = document.querySelector('.participants-list');
-        if (participantsList) {
-            participantsList.innerHTML = html;
-        }
-    })
-    .catch(error => {
-        console.error('Erreur lors de l\'actualisation des participants:', error);
-    });
-}
-
-/**
- * Affiche un indicateur de nouveaux messages
- * @param {number} count - Nombre de nouveaux messages
- */
-function showNewMessagesIndicator(count) {
-    // Créer ou mettre à jour un indicateur flottant
-    let indicator = document.getElementById('new-messages-indicator');
-    
-    if (!indicator) {
-        indicator = document.createElement('div');
-        indicator.id = 'new-messages-indicator';
-        indicator.style.position = 'fixed';
-        indicator.style.bottom = '100px';
-        indicator.style.right = '20px';
-        indicator.style.backgroundColor = '#009b72';
-        indicator.style.color = 'white';
-        indicator.style.padding = '10px 15px';
-        indicator.style.borderRadius = '20px';
-        indicator.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
-        indicator.style.cursor = 'pointer';
-        indicator.style.zIndex = '1000';
-        
-        indicator.addEventListener('click', function() {
-            const messagesContainer = document.querySelector('.messages-container');
-            scrollToBottom(messagesContainer);
-            this.style.display = 'none';
-        });
-        
-        document.body.appendChild(indicator);
+    // Initialiser le timestamp de départ avec le dernier message
+    const lastMessage = document.querySelector('.message:last-child');
+    if (lastMessage) {
+        lastTimestamp = parseInt(lastMessage.getAttribute('data-timestamp') || '0', 10);
     }
     
-    indicator.textContent = `${count} nouveau(x) message(s)`;
-    indicator.style.display = 'block';
+    // Ne pas continuer si on n'est pas sur une page de conversation
+    if (!convId) return;
     
-    // Masquer après un délai si non cliqué
-    setTimeout(() => {
-        if (indicator) indicator.style.display = 'none';
-    }, 5000);
-}
-
-/**
- * Joue un son de notification (optionnel)
- */
-function playNotificationSound() {
-    try {
-        // Utiliser l'API Web Audio pour créer un son simple
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
+    // Fonction de vérification des mises à jour
+    function checkForUpdates() {
+        // Éviter les requêtes concurrentes
+        if (isCheckingForUpdates || !updateCheckActive || !window.activeConnections.polling) return;
         
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // La note "La"
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); // Volume bas
+        // Vérifier si l'utilisateur a le focus sur l'onglet et n'est pas en train d'écrire
+        const textareaActive = document.querySelector('textarea:focus');
+        const modalOpen = document.querySelector('.modal[style*="display: block"]');
         
-        oscillator.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
+        if (textareaActive || modalOpen) {
+            // L'utilisateur est en train d'écrire ou un modal est ouvert, on reporte la vérification
+            setTimeout(checkForUpdates, refreshInterval);
+            return;
+        }
         
-        // Jouer un bref son
-        oscillator.start();
+        isCheckingForUpdates = true;
         
-        // Arrêter après 200ms
+        // Requête de vérification avec gestion d'erreur améliorée
+        fetch(`api/messages.php?conv_id=${convId}&action=check_updates&last_timestamp=${lastTimestamp}`, {
+            signal: window.activeConnections.abortController.signal
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Erreur réseau: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success && data.hasUpdates) {
+                    // Si des mises à jour sont disponibles, les récupérer
+                    fetchNewMessages();
+                }
+                
+                // Vérifier les changements de participants
+                if (data.success && data.participantsChanged) {
+                    refreshParticipantsList();
+                }
+                
+                // Mettre à jour le timestamp
+                if (data.timestamp) {
+                    lastTimestamp = data.timestamp;
+                }
+                
+                isCheckingForUpdates = false;
+                
+                // Programmer la prochaine vérification si nous sommes toujours actifs
+                if (updateCheckActive && window.activeConnections.polling) {
+                    setTimeout(checkForUpdates, refreshInterval);
+                }
+            })
+            .catch(error => {
+                // Ne pas afficher d'erreur si la requête a été annulée (navigation)
+                if (error.name !== 'AbortError') {
+                    console.error('Erreur lors de la vérification des mises à jour:', error);
+                    isCheckingForUpdates = false;
+                    
+                    // Réessayer après un délai en cas d'erreur
+                    if (updateCheckActive && window.activeConnections.polling) {
+                        setTimeout(checkForUpdates, refreshInterval * 2);
+                    }
+                }
+            });
+    }
+    
+    /**
+     * Affiche un indicateur de nouveaux messages
+     * @param {number} count - Nombre de nouveaux messages
+     */
+    function showNewMessagesIndicator(count) {
+        // Créer ou mettre à jour un indicateur flottant
+        let indicator = document.getElementById('new-messages-indicator');
+        
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'new-messages-indicator';
+            indicator.style.position = 'fixed';
+            indicator.style.bottom = '100px';
+            indicator.style.right = '20px';
+            indicator.style.backgroundColor = '#009b72';
+            indicator.style.color = 'white';
+            indicator.style.padding = '10px 15px';
+            indicator.style.borderRadius = '20px';
+            indicator.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+            indicator.style.cursor = 'pointer';
+            indicator.style.zIndex = '1000';
+            
+            indicator.addEventListener('click', function() {
+                const messagesContainer = document.querySelector('.messages-container');
+                scrollToBottom(messagesContainer);
+                this.style.display = 'none';
+            });
+            
+            document.body.appendChild(indicator);
+        }
+        
+        indicator.textContent = `${count} nouveau(x) message(s)`;
+        indicator.style.display = 'block';
+        
+        // Masquer après un délai si non cliqué
         setTimeout(() => {
-            oscillator.stop();
-        }, 200);
-    } catch (e) {
-        console.log("Son de notification non supporté:", e);
+            if (indicator) indicator.style.display = 'none';
+        }, 5000);
     }
+    
+    /**
+     * Joue un son de notification (optionnel)
+     */
+    function playNotificationSound() {
+        // On pourrait implémenter un son de notification ici
+        // Par exemple:
+        // const audio = new Audio('/assets/sounds/notification.mp3');
+        // audio.play();
+    }
+    
+    /**
+     * Récupère et ajoute les nouveaux messages à la conversation
+     */
+    function fetchNewMessages() {
+        fetch(`api/messages.php?conv_id=${convId}&action=get_new&last_timestamp=${lastTimestamp}`, {
+            signal: window.activeConnections.abortController.signal
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Erreur réseau: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success && data.messages && data.messages.length > 0) {
+                    // Mettre à jour la référence du dernier timestamp
+                    const messages = data.messages;
+                    const messagesContainer = document.querySelector('.messages-container');
+                    
+                    // On était déjà en bas avant les nouveaux messages?
+                    const wasAtBottom = isScrolledToBottom(messagesContainer);
+                    
+                    // Ajouter chaque nouveau message
+                    messages.forEach(message => {
+                        appendMessageToDOM(message, messagesContainer);
+                        
+                        // Mise à jour du lastTimestamp avec le plus récent
+                        if (message.timestamp > lastTimestamp) {
+                            lastTimestamp = message.timestamp;
+                        }
+                    });
+                    
+                    // Faire défiler vers le bas si l'utilisateur était déjà en bas
+                    if (wasAtBottom) {
+                        scrollToBottom(messagesContainer);
+                    } else {
+                        // Sinon, indiquer qu'il y a de nouveaux messages
+                        showNewMessagesIndicator(messages.length);
+                    }
+                    
+                    // Lecture audio pour notification (optionnelle)
+                    playNotificationSound();
+                }
+            })
+            .catch(error => {
+                // Ne pas afficher d'erreur si la requête a été annulée (navigation)
+                if (error.name !== 'AbortError') {
+                    console.error('Erreur lors de la récupération des nouveaux messages:', error);
+                }
+            });
+    }
+    
+    /**
+     * Actualise la liste des participants
+     */
+    function refreshParticipantsList() {
+        fetch(`api/participants.php?conv_id=${convId}&action=get_list`, {
+            signal: window.activeConnections.abortController.signal
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Erreur réseau: ${response.status}`);
+                }
+                return response.text();
+            })
+            .then(html => {
+                const participantsList = document.querySelector('.participants-list');
+                if (participantsList) {
+                    participantsList.innerHTML = html;
+                }
+            })
+            .catch(error => {
+                // Ne pas afficher d'erreur si la requête a été annulée (navigation)
+                if (error.name !== 'AbortError') {
+                    console.error('Erreur lors de l\'actualisation des participants:', error);
+                }
+            });
+    }
+    
+    // Démarrer la vérification des mises à jour
+    setTimeout(checkForUpdates, 1000); // Démarrer après 1 seconde
+    
+    // Gestionnaire pour arrêter les vérifications lors de la navigation
+    window.addEventListener('beforeunload', function() {
+        updateCheckActive = false;
+    });
+    
+    // Gestion du scroll - si l'utilisateur fait défiler vers le bas, masquer l'indicateur
+    const messagesContainer = document.querySelector('.messages-container');
+    if (messagesContainer) {
+        messagesContainer.addEventListener('scroll', function() {
+            if (isScrolledToBottom(this)) {
+                const indicator = document.getElementById('new-messages-indicator');
+                if (indicator) indicator.style.display = 'none';
+            }
+        });
+    }
+}
+
+/**
+ * Configure l'envoi AJAX des messages
+ */
+function setupAjaxMessageSending() {
+    const form = document.getElementById('messageForm');
+    if (!form) return;
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault(); // Empêcher la soumission normale
+        
+        // Vérifier le contenu du message
+        const textarea = form.querySelector('textarea[name="contenu"]');
+        const messageContent = textarea.value.trim();
+        if (messageContent === '') {
+            alert('Le message ne peut pas être vide');
+            return;
+        }
+        
+        // Récupérer l'ID de conversation de l'URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const convId = urlParams.get('id');
+        
+        // Créer un objet FormData pour l'envoi des données, y compris les fichiers
+        const formData = new FormData(form);
+        formData.append('conversation_id', convId);
+        formData.append('action', 'send_message');
+        
+        // Afficher un indicateur de chargement
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalBtnText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
+        
+        // Envoyer la requête AJAX
+        fetch('api/messages.php', {
+            method: 'POST',
+            body: formData,
+            signal: window.activeConnections.abortController.signal
+        })
+        .then(response => {
+            // Vérifier si la réponse est ok avant de continuer
+            if (!response.ok) {
+                throw new Error(`Erreur HTTP: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Vider le formulaire
+                textarea.value = '';
+                
+                // Vider l'aperçu des pièces jointes
+                const fileList = document.getElementById('file-list');
+                if (fileList) fileList.innerHTML = '';
+                
+                // Réinitialiser l'input de fichiers
+                const fileInput = document.getElementById('attachments');
+                if (fileInput) fileInput.value = '';
+                
+                // Mettre à jour l'interface utilisateur
+                if (data.message) {
+                    // Ajouter le nouveau message à la conversation
+                    const messagesContainer = document.querySelector('.messages-container');
+                    if (messagesContainer) {
+                        appendMessageToDOM(data.message, messagesContainer);
+                        scrollToBottom(messagesContainer);
+                    }
+                }
+                
+                // Réinitialiser le formulaire de réponse si c'est une réponse
+                const replyInterface = document.getElementById('reply-interface');
+                if (replyInterface && replyInterface.style.display !== 'none') {
+                    document.getElementById('parent-message-id').value = '';
+                    replyInterface.style.display = 'none';
+                }
+            } else {
+                // Afficher l'erreur
+                alert('Erreur lors de l\'envoi du message: ' + (data.error || 'Erreur inconnue'));
+            }
+        })
+        .catch(error => {
+            // Ne pas afficher d'erreur si la requête a été annulée (navigation)
+            if (error.name !== 'AbortError') {
+                console.error('Erreur:', error);
+                alert('Erreur lors de l\'envoi du message. Veuillez réessayer.');
+            }
+        })
+        .finally(() => {
+            // Réactiver le bouton quoi qu'il arrive
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+        });
+    });
 }
 
 /**
@@ -505,13 +703,13 @@ function appendMessageToDOM(message, container) {
     
     // Formater la date lisible
     const messageDate = new Date(message.timestamp * 1000);
-    const formattedDate = Utils?.formatDate ? Utils.formatDate(messageDate) : formatMessageDate(messageDate);
+    const formattedDate = formatMessageDate(messageDate);
     
     // Construction du HTML du message
     let messageHTML = `
         <div class="message-header">
             <div class="sender">
-                <strong>${Utils?.escapeHTML ? Utils.escapeHTML(message.expediteur_nom) : escapeHTML(message.expediteur_nom)}</strong>
+                <strong>${escapeHTML(message.expediteur_nom)}</strong>
                 <span class="sender-type">${getParticipantType(message.sender_type)}</span>
             </div>
             <div class="message-meta">
@@ -526,7 +724,7 @@ function appendMessageToDOM(message, container) {
                 <span class="date">${formattedDate}</span>
             </div>
         </div>
-        <div class="message-content">${Utils?.nl2br ? Utils.nl2br(Utils.escapeHTML(message.body || message.contenu)) : nl2br(escapeHTML(message.body || message.contenu))}</div>
+        <div class="message-content">${nl2br(escapeHTML(message.body || message.contenu))}</div>
     `;
     
     // Ajouter les pièces jointes si présentes
@@ -535,7 +733,7 @@ function appendMessageToDOM(message, container) {
         message.pieces_jointes.forEach(piece => {
             messageHTML += `
                 <a href="${piece.chemin}" class="attachment" target="_blank">
-                    <i class="fas fa-paperclip"></i> ${Utils?.escapeHTML ? Utils.escapeHTML(piece.nom_fichier) : escapeHTML(piece.nom_fichier)}
+                    <i class="fas fa-paperclip"></i> ${escapeHTML(piece.nom_fichier)}
                 </a>
             `;
         });
@@ -569,7 +767,7 @@ function appendMessageToDOM(message, container) {
                         <i class="fas fa-envelope-open"></i> Marquer comme lu
                     </button>`
                 }
-                <button class="btn-icon" onclick="replyToMessage(${message.id}, '${Utils?.addSlashes ? Utils.addSlashes(message.expediteur_nom) : addSlashes(message.expediteur_nom)}')">
+                <button class="btn-icon" onclick="replyToMessage(${message.id}, '${escapeHTML(message.expediteur_nom)}')">
                     <i class="fas fa-reply"></i> Répondre
                 </button>
             </div>
@@ -632,6 +830,12 @@ function isScrolledToBottom(element) {
  * Initialise les actions principales de conversation
  */
 function initConversationActions() {
+    // Gestion du scroll dans les conversations
+    const messagesContainer = document.querySelector('.messages-container');
+    if (messagesContainer) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+    
     // Actions sur les conversations et participants
     // Archiver une conversation
     const archiveBtn = document.getElementById('archive-btn');
@@ -804,151 +1008,6 @@ function cancelReply() {
 }
 
 /**
- * Charge les participants disponibles selon le type sélectionné
- */
-function loadParticipants() {
-    const type = document.getElementById('participant_type').value;
-    const select = document.getElementById('participant_id');
-    const convId = new URLSearchParams(window.location.search).get('id');
-    
-    if (!type || !select || !convId) return;
-    
-    // Vider la liste actuelle
-    select.innerHTML = '<option value="">Chargement...</option>';
-    
-    // Faire une requête AJAX pour récupérer les participants
-    AjaxClient.get('api/participants.php', {
-        type: type, 
-        conv_id: convId
-    })
-    .then(data => {
-        select.innerHTML = '';
-        
-        if (data.length === 0) {
-            select.innerHTML = '<option value="">Aucun participant disponible</option>';
-            return;
-        }
-        
-        select.innerHTML = '<option value="">Sélectionner un participant</option>';
-        
-        data.forEach(participant => {
-            const option = document.createElement('option');
-            option.value = participant.id;
-            option.textContent = participant.nom_complet;
-            select.appendChild(option);
-        });
-    })
-    .catch(error => {
-        select.innerHTML = '<option value="">Erreur lors du chargement</option>';
-        console.error('Erreur:', error);
-    });
-}
-
-/**
- * Validation du formulaire de message
- */
-function setupMessageValidation() {
-    const form = document.getElementById('messageForm');
-    if (!form) return;
-    
-    const textarea = form.querySelector('textarea[name="contenu"]');
-    const submitBtn = form.querySelector('button[type="submit"]');
-    
-    if (textarea) {
-        textarea.addEventListener('input', function() {
-            const isEmpty = this.value.trim() === '';
-            if (submitBtn) {
-                submitBtn.disabled = isEmpty;
-            }
-        });
-        
-        // Vérifier l'état initial
-        textarea.dispatchEvent(new Event('input'));
-    }
-}
-
-/**
- * Configure l'envoi AJAX des messages
- */
-function setupAjaxMessageSending() {
-    const form = document.getElementById('messageForm');
-    if (!form) return;
-    
-    form.addEventListener('submit', function(e) {
-        e.preventDefault(); // Empêcher la soumission normale
-        
-        // Vérifier le contenu du message
-        const textarea = form.querySelector('textarea[name="contenu"]');
-        const messageContent = textarea.value.trim();
-        if (messageContent === '') {
-            Notifications.error('Le message ne peut pas être vide');
-            return;
-        }
-        
-        // Récupérer l'ID de conversation de l'URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const convId = urlParams.get('id');
-        
-        // Créer un objet FormData pour l'envoi des données, y compris les fichiers
-        const formData = new FormData(form);
-        formData.append('conversation_id', convId);
-        formData.append('action', 'send_message');
-        
-        // Afficher un indicateur de chargement
-        const submitBtn = form.querySelector('button[type="submit"]');
-        const originalBtnText = submitBtn.innerHTML;
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
-        
-        // Envoyer la requête AJAX
-        AjaxClient.postForm('api/messages.php', formData)
-        .then(data => {
-            if (data.success) {
-                // Vider le formulaire
-                textarea.value = '';
-                
-                // Vider l'aperçu des pièces jointes
-                const fileList = document.getElementById('file-list');
-                if (fileList) fileList.innerHTML = '';
-                
-                // Réinitialiser l'input de fichiers
-                const fileInput = document.getElementById('attachments');
-                if (fileInput) fileInput.value = '';
-                
-                // Mettre à jour l'interface utilisateur
-                if (data.message) {
-                    // Ajouter le nouveau message à la conversation
-                    const messagesContainer = document.querySelector('.messages-container');
-                    if (messagesContainer) {
-                        appendMessageToDOM(data.message, messagesContainer);
-                        scrollToBottom(messagesContainer);
-                    }
-                }
-                
-                // Réinitialiser le formulaire de réponse si c'est une réponse
-                const replyInterface = document.getElementById('reply-interface');
-                if (replyInterface && replyInterface.style.display !== 'none') {
-                    document.getElementById('parent-message-id').value = '';
-                    replyInterface.style.display = 'none';
-                }
-            } else {
-                // Afficher l'erreur
-                Notifications.error('Erreur lors de l\'envoi du message: ' + (data.error || 'Erreur inconnue'));
-            }
-        })
-        .catch(error => {
-            console.error('Erreur:', error);
-            Notifications.error('Erreur lors de l\'envoi du message. Veuillez réessayer.');
-        })
-        .finally(() => {
-            // Réactiver le bouton quoi qu'il arrive
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalBtnText;
-        });
-    });
-}
-
-/**
  * Promeut un participant au rôle de modérateur
  * @param {number} participantId - ID du participant
  */
@@ -981,7 +1040,85 @@ function removeParticipant(participantId) {
     }
 }
 
-// Fonctions d'utilité pour la compatibilité
+/**
+ * Charge les participants disponibles selon le type sélectionné
+ */
+function loadParticipants() {
+    const type = document.getElementById('participant_type').value;
+    const select = document.getElementById('participant_id');
+    const convId = new URLSearchParams(window.location.search).get('id');
+    
+    if (!type || !select || !convId) return;
+    
+    // Vider la liste actuelle
+    select.innerHTML = '<option value="">Chargement...</option>';
+    
+    // Faire une requête AJAX pour récupérer les participants
+    fetch(`api/participants.php?type=${type}&conv_id=${convId}`, {
+        signal: window.activeConnections.abortController.signal
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erreur réseau: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            select.innerHTML = '';
+            
+            if (data.length === 0) {
+                select.innerHTML = '<option value="">Aucun participant disponible</option>';
+                return;
+            }
+            
+            select.innerHTML = '<option value="">Sélectionner un participant</option>';
+            
+            data.forEach(participant => {
+                const option = document.createElement('option');
+                option.value = participant.id;
+                option.textContent = participant.nom_complet;
+                select.appendChild(option);
+            });
+        })
+        .catch(error => {
+            // Ne pas afficher d'erreur si la requête a été annulée (navigation)
+            if (error.name !== 'AbortError') {
+                select.innerHTML = '<option value="">Erreur lors du chargement</option>';
+                console.error('Erreur:', error);
+            }
+        });
+}
+
+/**
+ * Échappe les caractères HTML
+ * @param {string} text - Texte à échapper
+ * @returns {string} Texte échappé
+ */
+function escapeHTML(text) {
+    if (!text) return '';
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+/**
+ * Convertit les retours à la ligne en <br>
+ * @param {string} text - Texte à convertir
+ * @returns {string} Texte avec des <br>
+ */
+function nl2br(text) {
+    if (!text) return '';
+    return text.replace(/\n/g, '<br>');
+}
+
+/**
+ * Renvoie le libellé du type de participant
+ * @param {string} type - Type de participant
+ * @returns {string} Libellé formaté
+ */
 function getParticipantType(type) {
     const types = {
         'eleve': 'Élève',
@@ -990,14 +1127,15 @@ function getParticipantType(type) {
         'vie_scolaire': 'Vie scolaire',
         'administrateur': 'Administrateur'
     };
-    return types[type] || ucfirst(type);
+    return types[type] || type;
 }
 
+/**
+ * Formater la date d'un message
+ * @param {Date} date - Date à formater
+ * @returns {string} Date formatée
+ */
 function formatMessageDate(date) {
-    if (typeof Utils !== 'undefined' && typeof Utils.formatDate === 'function') {
-        return Utils.formatDate(date);
-    }
-    
     const now = new Date();
     const diffMs = now - date;
     const diffSecs = Math.floor(diffMs / 1000);
@@ -1018,43 +1156,154 @@ function formatMessageDate(date) {
     }
 }
 
-function escapeHTML(text) {
-    if (typeof Utils !== 'undefined' && typeof Utils.escapeHTML === 'function') {
-        return Utils.escapeHTML(text);
-    }
+/**
+ * Validation du formulaire de message
+ */
+function setupMessageValidation() {
+    const form = document.getElementById('messageForm');
+    if (!form) return;
     
-    if (!text) return '';
-    return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+    const textarea = form.querySelector('textarea[name="contenu"]');
+    const submitBtn = form.querySelector('button[type="submit"]');
+    
+    if (textarea) {
+        textarea.addEventListener('input', function() {
+            const isEmpty = this.value.trim() === '';
+            if (submitBtn) {
+                submitBtn.disabled = isEmpty;
+            }
+        });
+        
+        // Vérifier l'état initial
+        textarea.dispatchEvent(new Event('input'));
+    }
 }
 
-function addSlashes(text) {
-    if (typeof Utils !== 'undefined' && typeof Utils.addSlashes === 'function') {
-        return Utils.addSlashes(text);
+/**
+ * Utilitaire pour afficher des notifications d'erreur
+ * @param {string} message - Message d'erreur
+ * @param {number} duration - Durée d'affichage
+ */
+function afficherNotificationErreur(message, duration = 5000) {
+    // Créer la div de notification si elle n'existe pas
+    let notifContainer = document.getElementById('error-notification-container');
+    
+    if (!notifContainer) {
+        notifContainer = document.createElement('div');
+        notifContainer.id = 'error-notification-container';
+        
+        // Styles pour centrer la notification
+        notifContainer.style.position = 'fixed';
+        notifContainer.style.top = '50%';
+        notifContainer.style.left = '50%';
+        notifContainer.style.transform = 'translate(-50%, -50%)';
+        notifContainer.style.zIndex = '10000';
+        notifContainer.style.width = 'auto';
+        notifContainer.style.maxWidth = '80%';
+        
+        document.body.appendChild(notifContainer);
     }
     
-    if (!text) return '';
-    return text
-        .replace(/\\/g, '\\\\')
-        .replace(/\'/g, '\\\'')
-        .replace(/\"/g, '\\"')
-        .replace(/\0/g, '\\0');
-}
-
-function nl2br(text) {
-    if (typeof Utils !== 'undefined' && typeof Utils.nl2br === 'function') {
-        return Utils.nl2br(text);
-    }
+    // Créer la notification
+    const notification = document.createElement('div');
+    notification.className = 'error-notification';
     
-    if (!text) return '';
-    return text.replace(/\n/g, '<br>');
+    // Styles de la notification
+    notification.style.backgroundColor = '#f8d7da';
+    notification.style.color = '#721c24';
+    notification.style.padding = '15px 20px';
+    notification.style.margin = '10px';
+    notification.style.borderRadius = '5px';
+    notification.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.2)';
+    notification.style.display = 'flex';
+    notification.style.justifyContent = 'space-between';
+    notification.style.alignItems = 'center';
+    notification.style.minWidth = '300px';
+    
+    // Créer le contenu de la notification
+    const content = document.createElement('div');
+    content.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+    
+    // Créer le bouton de fermeture
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '&times;';
+    closeBtn.style.background = 'none';
+    closeBtn.style.border = 'none';
+    closeBtn.style.color = '#721c24';
+    closeBtn.style.fontSize = '20px';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.style.marginLeft = '15px';
+    
+    // Ajouter le contenu et le bouton à la notification
+    notification.appendChild(content);
+    notification.appendChild(closeBtn);
+    
+    // Ajouter la notification au conteneur
+    notifContainer.appendChild(notification);
+    
+    // Fermer la notification quand on clique sur le bouton
+    closeBtn.addEventListener('click', function() {
+        notifContainer.removeChild(notification);
+        
+        // Supprimer le conteneur s'il n'y a plus de notifications
+        if (notifContainer.children.length === 0) {
+            document.body.removeChild(notifContainer);
+        }
+    });
+    
+    // Fermer automatiquement après la durée spécifiée
+    setTimeout(function() {
+        if (notification.parentNode === notifContainer) {
+            notifContainer.removeChild(notification);
+            
+            // Supprimer le conteneur s'il n'y a plus de notifications
+            if (notifContainer.children.length === 0) {
+                document.body.removeChild(notifContainer);
+            }
+        }
+    }, duration);
+    
+    return notification;
 }
 
-function ucfirst(str) {
-    if (!str) return '';
-    return str.charAt(0).toUpperCase() + str.slice(1);
+/**
+ * Fonction utilitaire pour marquer un message comme lu
+ * Exposée globalement pour être utilisée par d'autres scripts
+ * @param {number} messageId - ID du message à marquer comme lu
+ */
+function markMessageAsRead(messageId) {
+    const convId = new URLSearchParams(window.location.search).get('id');
+    
+    fetch(`api/read_status.php?action=read&conv_id=${convId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId }),
+        signal: window.activeConnections.abortController.signal
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Mettre à jour l'interface avec le nouveau statut
+            const messageEl = document.querySelector(`.message[data-id="${messageId}"]`);
+            if (messageEl) {
+                messageEl.classList.add('read');
+                
+                // Mettre à jour le bouton si présent
+                const readBtn = messageEl.querySelector('.mark-read-btn');
+                if (readBtn) {
+                    const unreadBtn = document.createElement('button');
+                    unreadBtn.className = 'btn-icon mark-unread-btn';
+                    unreadBtn.setAttribute('data-message-id', messageId);
+                    unreadBtn.innerHTML = '<i class="fas fa-envelope"></i> Marquer comme non lu';
+                    
+                    readBtn.parentNode.replaceChild(unreadBtn, readBtn);
+                }
+            }
+        }
+    })
+    .catch(error => {
+        if (error.name !== 'AbortError') {
+            console.error('Erreur lors du marquage comme lu:', error);
+        }
+    });
 }

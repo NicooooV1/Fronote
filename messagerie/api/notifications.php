@@ -2,17 +2,14 @@
 /**
  * API pour les actions sur les notifications
  */
-// Désactiver l'affichage des erreurs pour éviter de corrompre le JSON
-ini_set('display_errors', 0);
-error_reporting(0);
-
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../controllers/notification.php';
 require_once __DIR__ . '/../models/notification.php';
 require_once __DIR__ . '/../core/auth.php';
-require_once __DIR__ . '/../core/rate_limiter.php';
-require_once __DIR__ . '/../core/logger.php';
-require_once __DIR__ . '/../core/utils.php';
+
+// Désactiver l'affichage des erreurs pour éviter de corrompre le JSON
+ini_set('display_errors', 0);
+error_reporting(0);
 
 // Vérifier l'authentification
 $user = checkAuth();
@@ -20,20 +17,6 @@ if (!$user) {
     header('Content-Type: application/json');
     echo json_encode(['success' => false, 'error' => 'Non authentifié']);
     exit;
-}
-
-// Limiter le taux de requêtes API
-enforceRateLimit('api_notifications', 120, 60, true); // 120 requêtes/minute
-
-// Vérifier le jeton CSRF pour toutes les requêtes POST
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $csrfToken = $_POST['csrf_token'] ?? '';
-    
-    if (!validateCSRFToken($csrfToken)) {
-        header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'error' => 'Jeton CSRF invalide']);
-        exit;
-    }
 }
 
 // Vérification des notifications
@@ -58,7 +41,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'latest_notification' => $latestNotification
         ]);
     } catch (Exception $e) {
-        logException($e, ['action' => 'check_notifications']);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
     exit;
@@ -103,7 +85,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'latest_notification' => $latestNotification
         ]);
     } catch (Exception $e) {
-        logException($e, ['action' => 'check_conditional']);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
     exit;
@@ -124,7 +105,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id']) && isset($_GET['a
         $result = handleMarkNotificationRead($notificationId, $user);
         echo json_encode($result);
     } catch (Exception $e) {
-        logException($e, ['action' => 'mark_read', 'notification_id' => $notificationId]);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
     exit;
@@ -143,7 +123,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $result = handleUpdateNotificationPreferences($user['id'], $user['type'], $_POST['preferences']);
         echo json_encode($result);
     } catch (Exception $e) {
-        logException($e, ['action' => 'update_preferences']);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
     exit;

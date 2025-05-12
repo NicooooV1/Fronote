@@ -74,6 +74,47 @@ function getMessages($convId, $userId, $userType) {
         WHERE message_id = ?
     ");
     
+    // Requête pour récupérer les infos de lecture pour chaque message
+    $readInfoStmt = $pdo->prepare("
+        SELECT COUNT(*) as total_participants,
+               SUM(CASE WHEN cp.last_read_message_id >= ? THEN 1 ELSE 0 END) as read_count,
+               GROUP_CONCAT(
+                   CASE WHEN cp.last_read_message_id >= ? THEN 
+                     CONCAT(cp.user_id, '-', cp.user_type)
+                   ELSE NULL END
+               ) as readers
+        FROM conversation_participants cp
+        WHERE cp.conversation_id = ? AND cp.is_deleted = 0
+    ");
+    
+    // Requête pour obtenir les noms des lecteurs
+    $readerNamesStmt = $pdo->prepare("
+        SELECT 
+            CASE 
+                WHEN u.user_type = 'eleve' THEN 
+                    (SELECT CONCAT(e.prenom, ' ', e.nom) FROM eleves e WHERE e.id = u.user_id)
+                WHEN u.user_type = 'parent' THEN 
+                    (SELECT CONCAT(p.prenom, ' ', p.nom) FROM parents p WHERE p.id = u.user_id)
+                WHEN u.user_type = 'professeur' THEN 
+                    (SELECT CONCAT(p.prenom, ' ', p.nom) FROM professeurs p WHERE p.id = u.user_id)
+                WHEN u.user_type = 'vie_scolaire' THEN 
+                    (SELECT CONCAT(v.prenom, ' ', v.nom) FROM vie_scolaire v WHERE v.id = u.user_id)
+                WHEN u.user_type = 'administrateur' THEN 
+                    (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = u.user_id)
+                ELSE 'Inconnu'
+            END as nom_complet,
+            u.user_id,
+            u.user_type
+        FROM (
+            SELECT ? AS conversation_id, ? AS message_id, ? AS user_id, ? AS user_type
+        ) AS params
+        CROSS JOIN (
+            SELECT user_id, user_type
+            FROM conversation_participants
+            WHERE conversation_id = ? AND last_read_message_id >= ? AND is_deleted = 0
+        ) AS u
+    ");
+    
     foreach ($messages as &$message) {
         $attachmentStmt->execute([$message['id']]);
         $message['pieces_jointes'] = $attachmentStmt->fetchAll();
@@ -84,7 +125,24 @@ function getMessages($convId, $userId, $userType) {
         }
         
         // Récupérer les informations de lecture pour ce message
-        $message['read_status'] = getMessageReadStatus($message['id']);
+        $readInfoStmt->execute([$message['id'], $message['id'], $convId]);
+        $readInfo = $readInfoStmt->fetch();
+        
+        $message['read_status'] = [
+            'message_id' => $message['id'],
+            'total_participants' => (int)$readInfo['total_participants'],
+            'read_by_count' => (int)$readInfo['read_count'],
+            'all_read' => (int)$readInfo['read_count'] === (int)$readInfo['total_participants'],
+            'percentage' => $readInfo['total_participants'] > 0 ? 
+                            round(($readInfo['read_count'] / $readInfo['total_participants']) * 100) : 0,
+            'readers' => []
+        ];
+        
+        // Récupérer les noms des lecteurs si nécessaire
+        if ($readInfo['read_count'] > 0) {
+            $readerNamesStmt->execute([$convId, $message['id'], $userId, $userType, $convId, $message['id']]);
+            $message['read_status']['readers'] = $readerNamesStmt->fetchAll();
+        }
     }
 
     return $messages;
@@ -159,6 +217,19 @@ function getMessagesEvenIfDeleted($convId, $userId, $userType) {
         WHERE message_id = ?
     ");
     
+    // Requête pour récupérer les infos de lecture pour chaque message
+    $readInfoStmt = $pdo->prepare("
+        SELECT COUNT(*) as total_participants,
+               SUM(CASE WHEN cp.last_read_message_id >= ? THEN 1 ELSE 0 END) as read_count,
+               GROUP_CONCAT(
+                   CASE WHEN cp.last_read_message_id >= ? THEN 
+                     CONCAT(cp.user_id, '-', cp.user_type)
+                   ELSE NULL END
+               ) as readers
+        FROM conversation_participants cp
+        WHERE cp.conversation_id = ? AND cp.is_deleted = 0
+    ");
+    
     foreach ($messages as &$message) {
         $attachmentStmt->execute([$message['id']]);
         $message['pieces_jointes'] = $attachmentStmt->fetchAll();
@@ -166,7 +237,17 @@ function getMessagesEvenIfDeleted($convId, $userId, $userType) {
         // Ne pas marquer comme lu automatiquement puisque la conversation est dans la corbeille
         
         // Récupérer les informations de lecture pour ce message
-        $message['read_status'] = getMessageReadStatus($message['id']);
+        $readInfoStmt->execute([$message['id'], $message['id'], $convId]);
+        $readInfo = $readInfoStmt->fetch();
+        
+        $message['read_status'] = [
+            'message_id' => $message['id'],
+            'total_participants' => (int)$readInfo['total_participants'],
+            'read_by_count' => (int)$readInfo['read_count'],
+            'all_read' => (int)$readInfo['read_count'] === (int)$readInfo['total_participants'],
+            'percentage' => $readInfo['total_participants'] > 0 ? 
+                            round(($readInfo['read_count'] / $readInfo['total_participants']) * 100) : 0
+        ];
     }
 
     return $messages;
@@ -220,7 +301,23 @@ function getMessageById($messageId) {
         $message['pieces_jointes'] = $attachmentStmt->fetchAll();
         
         // Récupérer les informations de lecture pour ce message
-        $message['read_status'] = getMessageReadStatus($messageId);
+        $readInfoStmt = $pdo->prepare("
+            SELECT COUNT(*) as total_participants,
+                   SUM(CASE WHEN cp.last_read_message_id >= ? THEN 1 ELSE 0 END) as read_count
+            FROM conversation_participants cp
+            WHERE cp.conversation_id = ? AND cp.is_deleted = 0
+        ");
+        $readInfoStmt->execute([$messageId, $message['conversation_id']]);
+        $readInfo = $readInfoStmt->fetch();
+        
+        $message['read_status'] = [
+            'message_id' => $message['id'],
+            'total_participants' => (int)$readInfo['total_participants'],
+            'read_by_count' => (int)$readInfo['read_count'],
+            'all_read' => (int)$readInfo['read_count'] === (int)$readInfo['total_participants'],
+            'percentage' => $readInfo['total_participants'] > 0 ? 
+                          round(($readInfo['read_count'] / $readInfo['total_participants']) * 100) : 0
+        ];
     }
     
     return $message;
@@ -481,33 +578,13 @@ function markMessageAsRead($messageId, $userId, $userType, $maxRetries = 3) {
 function getMessageReadStatus($messageId) {
     global $pdo;
     
-    static $cachedStatuses = []; // Cache en mémoire
-    
-    // Vérifier si le statut est déjà en cache
-    if (isset($cachedStatuses[$messageId])) {
-        return $cachedStatuses[$messageId];
-    }
-    
-    // Requête optimisée qui fait tout en une seule fois
-    $stmt = $pdo->prepare("
-        SELECT 
-            m.id AS message_id,
-            m.conversation_id,
-            COUNT(cp.id) AS total_participants,
-            SUM(CASE WHEN cp.last_read_message_id >= m.id THEN 1 ELSE 0 END) AS read_count,
-            (COUNT(cp.id) = SUM(CASE WHEN cp.last_read_message_id >= m.id THEN 1 ELSE 0 END)) AS all_read
-        FROM messages m
-        JOIN conversation_participants cp ON m.conversation_id = cp.conversation_id
-        WHERE m.id = ? AND cp.is_deleted = 0
-        AND cp.user_id != m.sender_id AND cp.user_type != m.sender_type
-        GROUP BY m.id
-    ");
+    // Récupérer l'ID de la conversation pour ce message
+    $stmt = $pdo->prepare("SELECT conversation_id FROM messages WHERE id = ?");
     $stmt->execute([$messageId]);
     $result = $stmt->fetch();
     
     if (!$result) {
-        // Message non trouvé, créer une structure par défaut
-        $status = [
+        return [
             'message_id' => $messageId,
             'total_participants' => 0,
             'read_by_count' => 0,
@@ -515,50 +592,56 @@ function getMessageReadStatus($messageId) {
             'percentage' => 0,
             'readers' => []
         ];
-    } else {
-        // Calculer le statut
-        $status = [
-            'message_id' => $messageId,
-            'total_participants' => (int)$result['total_participants'],
-            'read_by_count' => (int)$result['read_count'],
-            'all_read' => (bool)$result['all_read'],
-            'percentage' => $result['total_participants'] > 0 ? 
-                round(($result['read_count'] / $result['total_participants']) * 100) : 0,
-            'readers' => []
-        ];
-        
-        // Récupérer les lecteurs uniquement si nécessaire
-        if ($status['read_by_count'] > 0) {
-            // Optimisation: n'exécuter cette requête que si nécessaire
-            $readersStmt = $pdo->prepare("
-                SELECT cp.user_id, cp.user_type,
-                   CASE 
-                       WHEN cp.user_type = 'eleve' THEN 
-                           (SELECT CONCAT(e.prenom, ' ', e.nom) FROM eleves e WHERE e.id = cp.user_id)
-                       WHEN cp.user_type = 'parent' THEN 
-                           (SELECT CONCAT(p.prenom, ' ', p.nom) FROM parents p WHERE p.id = cp.user_id)
-                       WHEN cp.user_type = 'professeur' THEN 
-                           (SELECT CONCAT(p.prenom, ' ', p.nom) FROM professeurs p WHERE p.id = cp.user_id)
-                       WHEN cp.user_type = 'vie_scolaire' THEN 
-                           (SELECT CONCAT(v.prenom, ' ', v.nom) FROM vie_scolaire v WHERE v.id = cp.user_id)
-                       WHEN cp.user_type = 'administrateur' THEN 
-                           (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = cp.user_id)
-                       ELSE 'Inconnu'
-                   END as nom_complet
-                FROM conversation_participants cp
-                WHERE cp.conversation_id = ? AND cp.last_read_message_id >= ? AND cp.is_deleted = 0
-                AND cp.user_id != (SELECT sender_id FROM messages WHERE id = ?)
-                AND cp.user_type != (SELECT sender_type FROM messages WHERE id = ?)
-            ");
-            $readersStmt->execute([$result['conversation_id'], $messageId, $messageId, $messageId]);
-            $status['readers'] = $readersStmt->fetchAll();
-        }
     }
     
-    // Mettre en cache
-    $cachedStatuses[$messageId] = $status;
+    $convId = $result['conversation_id'];
     
-    return $status;
+    // Récupérer le nombre total de participants et le nombre de participants qui ont lu
+    $readInfoStmt = $pdo->prepare("
+        SELECT 
+            COUNT(*) as total_participants,
+            SUM(CASE WHEN cp.last_read_message_id >= ? THEN 1 ELSE 0 END) as read_count
+        FROM conversation_participants cp
+        WHERE cp.conversation_id = ? AND cp.is_deleted = 0
+        AND cp.user_id != (SELECT sender_id FROM messages WHERE id = ?)
+        AND cp.user_type != (SELECT sender_type FROM messages WHERE id = ?)
+    ");
+    $readInfoStmt->execute([$messageId, $convId, $messageId, $messageId]);
+    $readInfo = $readInfoStmt->fetch();
+    
+    // Récupérer les participants qui ont lu
+    $readersStmt = $pdo->prepare("
+        SELECT cp.user_id, cp.user_type,
+               CASE 
+                   WHEN cp.user_type = 'eleve' THEN 
+                       (SELECT CONCAT(e.prenom, ' ', e.nom) FROM eleves e WHERE e.id = cp.user_id)
+                   WHEN cp.user_type = 'parent' THEN 
+                       (SELECT CONCAT(p.prenom, ' ', p.nom) FROM parents p WHERE p.id = cp.user_id)
+                   WHEN cp.user_type = 'professeur' THEN 
+                       (SELECT CONCAT(p.prenom, ' ', p.nom) FROM professeurs p WHERE p.id = cp.user_id)
+                   WHEN cp.user_type = 'vie_scolaire' THEN 
+                       (SELECT CONCAT(v.prenom, ' ', v.nom) FROM vie_scolaire v WHERE v.id = cp.user_id)
+                   WHEN cp.user_type = 'administrateur' THEN 
+                       (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = cp.user_id)
+                   ELSE 'Inconnu'
+               END as nom_complet
+        FROM conversation_participants cp
+        WHERE cp.conversation_id = ? AND cp.last_read_message_id >= ? AND cp.is_deleted = 0
+        AND cp.user_id != (SELECT sender_id FROM messages WHERE id = ?)
+        AND cp.user_type != (SELECT sender_type FROM messages WHERE id = ?)
+    ");
+    $readersStmt->execute([$convId, $messageId, $messageId, $messageId]);
+    $readers = $readersStmt->fetchAll();
+    
+    return [
+        'message_id' => $messageId,
+        'total_participants' => (int)$readInfo['total_participants'],
+        'read_by_count' => (int)$readInfo['read_count'],
+        'all_read' => (int)$readInfo['read_count'] === (int)$readInfo['total_participants'] && (int)$readInfo['total_participants'] > 0,
+        'percentage' => $readInfo['total_participants'] > 0 ? 
+                      round(($readInfo['read_count'] / $readInfo['total_participants']) * 100) : 0,
+        'readers' => $readers
+    ];
 }
 
 /**

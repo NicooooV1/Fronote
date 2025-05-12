@@ -1,17 +1,13 @@
 <?php
-// config/database.php
-
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'db_MASSE');
-define('DB_USER', '22405372');  // À modifier selon votre configuration
-define('DB_PASS', '807014');    // À modifier selon votre configuration
-
-try {
-    $dsn = sprintf('mysql:host=%s;dbname=%s;charset=utf8mb4', DB_HOST, DB_NAME);
-    $pdo = new PDO($dsn, DB_USER, DB_PASS, [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    ]);
-} catch (PDOException $e) {
-    die('Erreur de connexion à la base : ' . $e->getMessage());
-}
+// Configuration de la base de données
+$host = 'localhost';
+$db   = 'db_MASSE';
+$user = '22405372';
+$pass = '807014';
+$dsn  = "mysql:host=$host;dbname=$db;charset=utf8mb4";
+$options = [
+    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+];
+$pdo = new PDO($dsn, $user, $pass, $options);
+session_start();
