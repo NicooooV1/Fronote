@@ -6,145 +6,101 @@ class RendusController {
     private $renduModel;
     private $devoirModel;
     private $classeModel;
-    private $userModel;
+    private $fileUpload;
     
+    /**
+     * Constructeur
+     */
     public function __construct() {
-        // Initialisation des modèles
-        require_once ROOT_PATH . '/models/Rendu.php';
-        require_once ROOT_PATH . '/models/Devoir.php';
-        require_once ROOT_PATH . '/models/Classe.php';
-        require_once ROOT_PATH . '/../login/src/auth.php';
-        require_once ROOT_PATH . '/../login/src/user.php';
-
-        $auth = new Auth($this->db->getPDO());
-        
         $this->renduModel = new Rendu();
         $this->devoirModel = new Devoir();
         $this->classeModel = new Classe();
-        $this->userModel = new User();
-        
+        $this->fileUpload = new FileUpload();
+    }
+    
+    /**
+     * Affiche le formulaire pour rendre un devoir
+     */
+    public function create() {
         // Vérifier que l'utilisateur est connecté
-        if (!isset($_SESSION['user_id'])) {
-            header('Location: ' . BASE_URL . '/login.php');
-            exit;
-        }
-    }
-    
-    /**
-     * Affiche tous les rendus d'un devoir (vue professeur)
-     */
-    public function rendusDevoir($devoirId) {
-        // Vérifier que l'utilisateur est un professeur ou administrateur
-        if ($_SESSION['user_type'] !== TYPE_PROFESSEUR && !$_SESSION['is_admin']) {
-            $_SESSION['error'] = "Vous n'êtes pas autorisé à accéder à cette page.";
-            header('Location: ' . BASE_URL . '/devoirs/index.php');
-            exit;
-        }
+        requireAuthentication();
         
-        // Récupérer les informations du devoir
-        $devoir = $this->devoirModel->getDevoirById($devoirId);
-        
-        if (!$devoir) {
-            $_SESSION['error'] = "Devoir non trouvé.";
-            header('Location: ' . BASE_URL . '/devoirs/index.php');
-            exit;
-        }
-        
-        // Vérifier si le professeur est l'auteur du devoir
-        if ($devoir['auteur_id'] != $_SESSION['user_id'] && !$_SESSION['is_admin']) {
-            $_SESSION['error'] = "Vous n'êtes pas autorisé à accéder à ce devoir.";
-            header('Location: ' . BASE_URL . '/devoirs/index.php');
-            exit;
-        }
-        
-        // Récupérer tous les rendus pour ce devoir
-        $rendus = $this->renduModel->getRendusByDevoir($devoirId);
-        
-        // Récupérer les statistiques de rendu
-        $stats = $this->devoirModel->getStatistiquesRendu($devoirId);
-        
-        // Récupérer les élèves de la classe qui n'ont pas rendu le devoir
-        $eleves = $this->userModel->getElevesClasse($devoir['classe_id']);
-        $elevesSansRendu = [];
-        
-        foreach ($eleves as $eleve) {
-            $rendu = false;
-            foreach ($rendus as $r) {
-                if ($r['eleve_id'] == $eleve['id']) {
-                    $rendu = true;
-                    break;
-                }
-            }
-            
-            if (!$rendu) {
-                $elevesSansRendu[] = $eleve;
-            }
-        }
-        
-        // Charger la vue
-        require_once ROOT_PATH . '/views/devoirs/rendus.php';
-    }
-    
-    /**
-     * Affiche le formulaire de rendu d'un devoir (vue élève)
-     */
-    public function rendreDevoir($devoirId) {
         // Vérifier que l'utilisateur est un élève
         if ($_SESSION['user_type'] !== TYPE_ELEVE) {
-            $_SESSION['error'] = "Vous n'êtes pas autorisé à accéder à cette page.";
+            $_SESSION['error'] = "Vous n'avez pas les droits pour rendre un devoir.";
+            header('Location: ' . BASE_URL . '/devoirs/index.php');
+            exit;
+        }
+        
+        // Récupérer l'ID du devoir
+        $id = isset($_GET['id']) ? $_GET['id'] : null;
+        
+        if (!$id) {
+            $_SESSION['error'] = "Devoir non spécifié.";
             header('Location: ' . BASE_URL . '/devoirs/index.php');
             exit;
         }
         
         // Récupérer les informations du devoir
-        $devoir = $this->devoirModel->getDevoirById($devoirId);
+        $devoir = $this->devoirModel->getDevoirById($id);
         
         if (!$devoir) {
-            $_SESSION['error'] = "Devoir non trouvé.";
+            $_SESSION['error'] = "Devoir introuvable.";
             header('Location: ' . BASE_URL . '/devoirs/index.php');
             exit;
         }
         
-        // Vérifier que l'élève a accès à ce devoir (appartient à la classe)
-        $classeEleve = $this->classeModel->verifierEleveClasse($_SESSION['user_id'], $devoir['classe_id']);
-        
-        if (!$classeEleve) {
-            $_SESSION['error'] = "Vous n'êtes pas autorisé à accéder à ce devoir.";
+        // Vérifier que l'élève appartient à la classe
+        if (!$this->classeModel->verifierEleveClasse($_SESSION['user_id'], $devoir['classe_id'])) {
+            $_SESSION['error'] = "Vous n'avez pas accès à ce devoir.";
             header('Location: ' . BASE_URL . '/devoirs/index.php');
             exit;
         }
         
-        // Vérifier si l'élève a déjà rendu ce devoir
-        $renduExistant = $this->renduModel->getRenduEleve($devoirId, $_SESSION['user_id']);
+        // Vérifier que le devoir est visible
+        if (!$devoir['est_visible']) {
+            $_SESSION['error'] = "Ce devoir n'est pas encore visible.";
+            header('Location: ' . BASE_URL . '/devoirs/index.php');
+            exit;
+        }
+        
+        // Vérifier que la date limite n'est pas dépassée
+        if (strtotime($devoir['date_limite']) < time()) {
+            $_SESSION['error'] = "La date limite pour rendre ce devoir est dépassée.";
+            header('Location: ' . BASE_URL . '/devoirs/details.php?id=' . $id);
+            exit;
+        }
+        
+        // Vérifier que l'élève n'a pas déjà rendu ce devoir
+        if ($this->renduModel->verifierRenduExistant($id, $_SESSION['user_id'])) {
+            $_SESSION['error'] = "Vous avez déjà rendu ce devoir.";
+            header('Location: ' . BASE_URL . '/devoirs/details.php?id=' . $id);
+            exit;
+        }
         
         // Charger la vue
         require_once ROOT_PATH . '/views/devoirs/rendre.php';
     }
     
     /**
-     * Traite la soumission du formulaire de rendu
+     * Traite la soumission d'un rendu
      */
-    public function soumettreRendu() {
+    public function store() {
+        // Vérifier que l'utilisateur est connecté
+        requireAuthentication();
+        
         // Vérifier que l'utilisateur est un élève
         if ($_SESSION['user_type'] !== TYPE_ELEVE) {
-            $_SESSION['error'] = "Vous n'êtes pas autorisé à effectuer cette action.";
+            $_SESSION['error'] = "Vous n'avez pas les droits pour rendre un devoir.";
             header('Location: ' . BASE_URL . '/devoirs/index.php');
             exit;
         }
         
-        // Vérifier la méthode de requête
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $_SESSION['error'] = "Méthode non autorisée.";
-            header('Location: ' . BASE_URL . '/devoirs/index.php');
-            exit;
-        }
+        // Récupérer l'ID du devoir
+        $devoirId = isset($_POST['devoir_id']) ? $_POST['devoir_id'] : null;
         
-        // Récupérer les données du formulaire
-        $devoirId = isset($_POST['devoir_id']) ? (int)$_POST['devoir_id'] : 0;
-        $commentaire = isset($_POST['commentaire']) ? trim($_POST['commentaire']) : '';
-        
-        if ($devoirId === 0) {
-            $_SESSION['error'] = "ID de devoir non spécifié.";
+        if (!$devoirId) {
+            $_SESSION['error'] = "Devoir non spécifié.";
             header('Location: ' . BASE_URL . '/devoirs/index.php');
             exit;
         }
@@ -153,171 +109,483 @@ class RendusController {
         $devoir = $this->devoirModel->getDevoirById($devoirId);
         
         if (!$devoir) {
-            $_SESSION['error'] = "Devoir non trouvé.";
+            $_SESSION['error'] = "Devoir introuvable.";
             header('Location: ' . BASE_URL . '/devoirs/index.php');
             exit;
         }
         
-        // Vérifier que l'élève a accès à ce devoir
-        $classeEleve = $this->classeModel->verifierEleveClasse($_SESSION['user_id'], $devoir['classe_id']);
-        
-        if (!$classeEleve) {
-            $_SESSION['error'] = "Vous n'êtes pas autorisé à accéder à ce devoir.";
+        // Vérifier que l'élève appartient à la classe
+        if (!$this->classeModel->verifierEleveClasse($_SESSION['user_id'], $devoir['classe_id'])) {
+            $_SESSION['error'] = "Vous n'avez pas accès à ce devoir.";
             header('Location: ' . BASE_URL . '/devoirs/index.php');
             exit;
         }
         
-        // Vérifier si l'élève a déjà rendu ce devoir
-        $renduExistant = $this->renduModel->getRenduEleve($devoirId, $_SESSION['user_id']);
+        // Vérifier que le devoir est visible
+        if (!$devoir['est_visible']) {
+            $_SESSION['error'] = "Ce devoir n'est pas encore visible.";
+            header('Location: ' . BASE_URL . '/devoirs/index.php');
+            exit;
+        }
         
-        if ($renduExistant) {
-            $_SESSION['error'] = "Vous avez déjà rendu ce devoir. Vous pouvez le modifier en allant sur la page détaillée du devoir.";
+        // Vérifier que la date limite n'est pas dépassée
+        if (strtotime($devoir['date_limite']) < time()) {
+            $_SESSION['error'] = "La date limite pour rendre ce devoir est dépassée.";
             header('Location: ' . BASE_URL . '/devoirs/details.php?id=' . $devoirId);
             exit;
         }
         
-        // Traitement des fichiers
-        $fichiers = [];
-        
-        if (isset($_FILES['fichiers']) && !empty($_FILES['fichiers']['name'][0])) {
-            require_once ROOT_PATH . '/utils/FileUpload.php';
-            $fileUpload = new FileUpload();
-            
-            for ($i = 0; $i < count($_FILES['fichiers']['name']); $i++) {
-                $file = [
-                    'name' => $_FILES['fichiers']['name'][$i],
-                    'type' => $_FILES['fichiers']['type'][$i],
-                    'tmp_name' => $_FILES['fichiers']['tmp_name'][$i],
-                    'error' => $_FILES['fichiers']['error'][$i],
-                    'size' => $_FILES['fichiers']['size'][$i]
-                ];
-                
-                $uploadResult = $fileUpload->uploadFile($file, RENDUS_UPLOADS);
-                
-                if ($uploadResult['success']) {
-                    $fichiers[] = [
-                        'nom' => $file['name'],
-                        'type' => $this->determinerTypeFichier($file['name']),
-                        'fichier' => $uploadResult['filename']
-                    ];
-                } else {
-                    $_SESSION['error'] = "Erreur lors du téléchargement du fichier {$file['name']}: {$uploadResult['message']}";
-                    header('Location: ' . BASE_URL . '/devoirs/rendre.php?id=' . $devoirId);
-                    exit;
-                }
-            }
+        // Vérifier que l'élève n'a pas déjà rendu ce devoir
+        if ($this->renduModel->verifierRenduExistant($devoirId, $_SESSION['user_id'])) {
+            $_SESSION['error'] = "Vous avez déjà rendu ce devoir.";
+            header('Location: ' . BASE_URL . '/devoirs/details.php?id=' . $devoirId);
+            exit;
         }
         
-        // Si aucun fichier n'a été téléchargé et pas de commentaire
-        if (empty($fichiers) && empty($commentaire)) {
-            $_SESSION['error'] = "Vous devez fournir au moins un fichier ou un commentaire.";
+        // Récupérer les données du formulaire
+        $data = [
+            'devoir_id' => $devoirId,
+            'eleve_id' => $_SESSION['user_id'],
+            'commentaire' => $_POST['commentaire'] ?? '',
+            'fichiers' => []
+        ];
+        
+        // Vérifier qu'il y a soit un commentaire, soit des fichiers
+        if (empty($data['commentaire']) && empty($_FILES['fichiers']['name'][0])) {
+            $_SESSION['error'] = "Vous devez fournir un commentaire ou des fichiers.";
             header('Location: ' . BASE_URL . '/devoirs/rendre.php?id=' . $devoirId);
             exit;
+        }
+        
+        // Traiter les fichiers uploadés
+        if (!empty($_FILES['fichiers']['name'][0])) {
+            $uploads = $this->handleFileUploads($_FILES['fichiers']);
+            
+            if (isset($uploads['errors']) && !empty($uploads['errors'])) {
+                $_SESSION['errors'] = $uploads['errors'];
+                header('Location: ' . BASE_URL . '/devoirs/rendre.php?id=' . $devoirId);
+                exit;
+            }
+            
+            $data['fichiers'] = $uploads['fichiers'];
         }
         
         // Créer le rendu
-        $renduData = [
-            'devoir_id' => $devoirId,
-            'eleve_id' => $_SESSION['user_id'],
-            'commentaire' => $commentaire,
-            'fichiers' => $fichiers
-        ];
+        $renduId = $this->renduModel->createRendu($data);
         
-        $renduId = $this->renduModel->createRendu($renduData);
-        
-        if ($renduId) {
-            // Envoi de notification au professeur
-            require_once ROOT_PATH . '/utils/Notification.php';
-            $notificationModel = new Notification();
-            
-            $notificationData = [
-                'destinataire_id' => $devoir['auteur_id'],
-                'titre' => "Nouveau rendu pour le devoir: {$devoir['titre']}",
-                'contenu' => "Un nouveau rendu a été soumis par {$_SESSION['user_fullname']} pour le devoir {$devoir['titre']}.",
-                'devoir_id' => $devoirId,
-                'rendu_id' => $renduId
-            ];
-            
-            $notificationModel->createNotification($notificationData);
-            
-            $_SESSION['success'] = "Votre rendu a été soumis avec succès.";
-            header('Location: ' . BASE_URL . '/devoirs/details.php?id=' . $devoirId);
-            exit;
-        } else {
-            $_SESSION['error'] = "Une erreur est survenue lors de la soumission du rendu.";
+        if (!$renduId) {
+            $_SESSION['error'] = "Une erreur est survenue lors de la création du rendu.";
             header('Location: ' . BASE_URL . '/devoirs/rendre.php?id=' . $devoirId);
             exit;
         }
+        
+        $_SESSION['success'] = "Votre devoir a été rendu avec succès.";
+        header('Location: ' . BASE_URL . '/devoirs/details.php?id=' . $devoirId);
+        exit;
     }
     
     /**
-     * Affiche le formulaire de correction d'un rendu (vue professeur)
+     * Affiche le formulaire d'édition d'un rendu
      */
-    public function corrigerRendu($renduId) {
-        // Vérifier que l'utilisateur est un professeur ou administrateur
-        if ($_SESSION['user_type'] !== TYPE_PROFESSEUR && !$_SESSION['is_admin']) {
-            $_SESSION['error'] = "Vous n'êtes pas autorisé à accéder à cette page.";
+    public function edit() {
+        // Vérifier que l'utilisateur est connecté
+        requireAuthentication();
+        
+        // Vérifier que l'utilisateur est un élève
+        if ($_SESSION['user_type'] !== TYPE_ELEVE) {
+            $_SESSION['error'] = "Vous n'avez pas les droits pour modifier un rendu.";
+            header('Location: ' . BASE_URL . '/devoirs/index.php');
+            exit;
+        }
+        
+        // Récupérer l'ID du rendu
+        $id = isset($_GET['id']) ? $_GET['id'] : null;
+        
+        if (!$id) {
+            $_SESSION['error'] = "Rendu non spécifié.";
             header('Location: ' . BASE_URL . '/devoirs/index.php');
             exit;
         }
         
         // Récupérer les informations du rendu
-        $rendu = $this->renduModel->getRenduById($renduId);
+        $rendu = $this->renduModel->getRenduById($id);
         
         if (!$rendu) {
-            $_SESSION['error'] = "Rendu non trouvé.";
+            $_SESSION['error'] = "Rendu introuvable.";
             header('Location: ' . BASE_URL . '/devoirs/index.php');
+            exit;
+        }
+        
+        // Vérifier que l'élève est bien l'auteur du rendu
+        if ($rendu['eleve_id'] != $_SESSION['user_id']) {
+            $_SESSION['error'] = "Vous n'avez pas les droits pour modifier ce rendu.";
+            header('Location: ' . BASE_URL . '/devoirs/index.php');
+            exit;
+        }
+        
+        // Vérifier que le rendu n'est pas déjà corrigé
+        if ($rendu['statut'] === STATUT_CORRIGE) {
+            $_SESSION['error'] = "Ce rendu a déjà été corrigé et ne peut plus être modifié.";
+            header('Location: ' . BASE_URL . '/devoirs/details.php?id=' . $rendu['devoir_id']);
             exit;
         }
         
         // Récupérer les informations du devoir
         $devoir = $this->devoirModel->getDevoirById($rendu['devoir_id']);
         
-        // Vérifier que le professeur est l'auteur du devoir
-        if ($devoir['auteur_id'] != $_SESSION['user_id'] && !$_SESSION['is_admin']) {
-            $_SESSION['error'] = "Vous n'êtes pas autorisé à corriger ce rendu.";
+        // Vérifier que la date limite n'est pas dépassée
+        if (strtotime($devoir['date_limite']) < time()) {
+            $_SESSION['error'] = "La date limite pour modifier ce rendu est dépassée.";
+            header('Location: ' . BASE_URL . '/devoirs/details.php?id=' . $rendu['devoir_id']);
+            exit;
+        }
+        
+        // Charger la vue
+        require_once ROOT_PATH . '/views/devoirs/editer_rendu.php';
+    }
+    
+    /**
+     * Traite le formulaire d'édition d'un rendu
+     */
+    public function update() {
+        // Vérifier que l'utilisateur est connecté
+        requireAuthentication();
+        
+        // Vérifier que l'utilisateur est un élève
+        if ($_SESSION['user_type'] !== TYPE_ELEVE) {
+            $_SESSION['error'] = "Vous n'avez pas les droits pour modifier un rendu.";
             header('Location: ' . BASE_URL . '/devoirs/index.php');
             exit;
         }
+        
+        // Récupérer l'ID du rendu
+        $id = isset($_POST['id']) ? $_POST['id'] : null;
+        
+        if (!$id) {
+            $_SESSION['error'] = "Rendu non spécifié.";
+            header('Location: ' . BASE_URL . '/devoirs/index.php');
+            exit;
+        }
+        
+        // Récupérer les informations du rendu
+        $rendu = $this->renduModel->getRenduById($id);
+        
+        if (!$rendu) {
+            $_SESSION['error'] = "Rendu introuvable.";
+            header('Location: ' . BASE_URL . '/devoirs/index.php');
+            exit;
+        }
+        
+        // Vérifier que l'élève est bien l'auteur du rendu
+        if ($rendu['eleve_id'] != $_SESSION['user_id']) {
+            $_SESSION['error'] = "Vous n'avez pas les droits pour modifier ce rendu.";
+            header('Location: ' . BASE_URL . '/devoirs/index.php');
+            exit;
+        }
+        
+        // Vérifier que le rendu n'est pas déjà corrigé
+        if ($rendu['statut'] === STATUT_CORRIGE) {
+            $_SESSION['error'] = "Ce rendu a déjà été corrigé et ne peut plus être modifié.";
+            header('Location: ' . BASE_URL . '/devoirs/details.php?id=' . $rendu['devoir_id']);
+            exit;
+        }
+        
+        // Récupérer les informations du devoir
+        $devoir = $this->devoirModel->getDevoirById($rendu['devoir_id']);
+        
+        // Vérifier que la date limite n'est pas dépassée
+        if (strtotime($devoir['date_limite']) < time()) {
+            $_SESSION['error'] = "La date limite pour modifier ce rendu est dépassée.";
+            header('Location: ' . BASE_URL . '/devoirs/details.php?id=' . $rendu['devoir_id']);
+            exit;
+        }
+        
+        // Récupérer les données du formulaire
+        $data = [
+            'commentaire' => $_POST['commentaire'] ?? '',
+            'nouveaux_fichiers' => []
+        ];
+        
+        // Traiter les fichiers uploadés
+        if (!empty($_FILES['fichiers']['name'][0])) {
+            $uploads = $this->handleFileUploads($_FILES['fichiers']);
+            
+            if (isset($uploads['errors']) && !empty($uploads['errors'])) {
+                $_SESSION['errors'] = $uploads['errors'];
+                header('Location: ' . BASE_URL . '/devoirs/editer_rendu.php?id=' . $id);
+                exit;
+            }
+            
+            $data['nouveaux_fichiers'] = $uploads['fichiers'];
+        }
+        
+        // Mettre à jour le rendu
+        $success = $this->renduModel->updateRendu($id, $data);
+        
+        if (!$success) {
+            $_SESSION['error'] = "Une erreur est survenue lors de la mise à jour du rendu.";
+            header('Location: ' . BASE_URL . '/devoirs/editer_rendu.php?id=' . $id);
+            exit;
+        }
+        
+        $_SESSION['success'] = "Votre rendu a été mis à jour avec succès.";
+        header('Location: ' . BASE_URL . '/devoirs/details.php?id=' . $rendu['devoir_id']);
+        exit;
+    }
+    
+    /**
+     * Affiche la page de correction d'un rendu
+     */
+    public function correction() {
+        // Vérifier que l'utilisateur est connecté
+        requireAuthentication();
+        
+        // Vérifier que l'utilisateur est un professeur
+        if ($_SESSION['user_type'] !== TYPE_PROFESSEUR && !$_SESSION['is_admin']) {
+            $_SESSION['error'] = "Vous n'avez pas les droits pour corriger un rendu.";
+            header('Location: ' . BASE_URL . '/devoirs/index.php');
+            exit;
+        }
+        
+        // Récupérer l'ID du rendu
+        $id = isset($_GET['id']) ? $_GET['id'] : null;
+        
+        if (!$id) {
+            $_SESSION['error'] = "Rendu non spécifié.";
+            header('Location: ' . BASE_URL . '/devoirs/index.php');
+            exit;
+        }
+        
+        // Récupérer les informations du rendu
+        $rendu = $this->renduModel->getRenduById($id);
+        
+        if (!$rendu) {
+            $_SESSION['error'] = "Rendu introuvable.";
+            header('Location: ' . BASE_URL . '/devoirs/index.php');
+            exit;
+        }
+        
+        // Vérifier que le professeur est bien l'auteur du devoir
+        if ($rendu['professeur_id'] != $_SESSION['user_id'] && !$_SESSION['is_admin']) {
+            $_SESSION['error'] = "Vous n'avez pas les droits pour corriger ce rendu.";
+            header('Location: ' . BASE_URL . '/devoirs/index.php');
+            exit;
+        }
+        
+        // Récupérer les informations du devoir
+        $devoir = $this->devoirModel->getDevoirById($rendu['devoir_id']);
         
         // Charger la vue
         require_once ROOT_PATH . '/views/devoirs/corriger.php';
     }
     
     /**
-     * Traite la soumission du formulaire de correction
+     * Traite le formulaire de correction d'un rendu
      */
-    public function soumettreCorrection() {
-        // Vérifier que l'utilisateur est un professeur ou administrateur
+    public function saveCorrection() {
+        // Vérifier que l'utilisateur est connecté
+        requireAuthentication();
+        
+        // Vérifier que l'utilisateur est un professeur
         if ($_SESSION['user_type'] !== TYPE_PROFESSEUR && !$_SESSION['is_admin']) {
-            $_SESSION['error'] = "Vous n'êtes pas autorisé à effectuer cette action.";
+            $_SESSION['error'] = "Vous n'avez pas les droits pour corriger un rendu.";
             header('Location: ' . BASE_URL . '/devoirs/index.php');
             exit;
         }
         
-        // Vérifier la méthode de requête
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $_SESSION['error'] = "Méthode non autorisée.";
-            header('Location: ' . BASE_URL . '/devoirs/index.php');
-            exit;
-        }
+        // Récupérer l'ID du rendu
+        $id = isset($_POST['id']) ? $_POST['id'] : null;
         
-        // Récupérer les données du formulaire
-        $renduId = isset($_POST['rendu_id']) ? (int)$_POST['rendu_id'] : 0;
-        $note = isset($_POST['note']) ? (float)$_POST['note'] : null;
-        $commentaireProf = isset($_POST['commentaire_prof']) ? trim($_POST['commentaire_prof']) : '';
-        
-        if ($renduId === 0) {
-            $_SESSION['error'] = "ID de rendu non spécifié.";
+        if (!$id) {
+            $_SESSION['error'] = "Rendu non spécifié.";
             header('Location: ' . BASE_URL . '/devoirs/index.php');
             exit;
         }
         
         // Récupérer les informations du rendu
-        $rendu = $this->renduModel->getRenduById($renduId);
+        $rendu = $this->renduModel->getRenduById($id);
         
         if (!$rendu) {
-            $_SESSION['error'] = "Rendu non trouvé.";
+            $_SESSION['error'] = "Rendu introuvable.";
+            header('Location: ' . BASE_URL . '/devoirs/index.php');
+            exit;
+        }
+        
+        // Vérifier que le professeur est bien l'auteur du devoir
+        if ($rendu['professeur_id'] != $_SESSION['user_id'] && !$_SESSION['is_admin']) {
+            $_SESSION['error'] = "Vous n'avez pas les droits pour corriger ce rendu.";
+            header('Location: ' . BASE_URL . '/devoirs/index.php');
+            exit;
+        }
+        
+        // Récupérer les données du formulaire
+        $data = [
+            'note' => isset($_POST['note']) ? $_POST['note'] : null,
+            'commentaire_prof' => $_POST['commentaire_prof'] ?? '',
+            'statut' => STATUT_CORRIGE,
+            'date_correction' => date('Y-m-d H:i:s')
+        ];
+        
+        // Vérifier que la note est valide
+        if (!empty($data['note'])) {
+            $data['note'] = (float) $data['note'];
+            
+            // Récupérer le barème du devoir
+            $devoir = $this->devoirModel->getDevoirById($rendu['devoir_id']);
+            
+            if ($devoir && !empty($devoir['bareme_id']) && $data['note'] > $devoir['bareme_id']) {
+                $_SESSION['error'] = "La note ne peut pas dépasser le barème (" . $devoir['bareme_id'] . ").";
+                header('Location: ' . BASE_URL . '/devoirs/corriger.php?id=' . $id);
+                exit;
+            }
+        }
+        
+        // Mettre à jour le rendu
+        $success = $this->renduModel->updateRendu($id, $data);
+        
+        if (!$success) {
+            $_SESSION['error'] = "Une erreur est survenue lors de la correction du rendu.";
+            header('Location: ' . BASE_URL . '/devoirs/corriger.php?id=' . $id);
+            exit;
+        }
+        
+        $_SESSION['success'] = "Le rendu a été corrigé avec succès.";
+        header('Location: ' . BASE_URL . '/devoirs/rendus.php?devoir_id=' . $rendu['devoir_id']);
+        exit;
+    }
+    
+    /**
+     * Affiche la liste des rendus d'un devoir
+     */
+    public function index() {
+        // Vérifier que l'utilisateur est connecté
+        requireAuthentication();
+        
+        // Vérifier que l'utilisateur est un professeur
+        if ($_SESSION['user_type'] !== TYPE_PROFESSEUR && !$_SESSION['is_admin']) {
+            $_SESSION['error'] = "Vous n'avez pas les droits pour voir les rendus.";
+            header('Location: ' . BASE_URL . '/devoirs/index.php');
+            exit;
+        }
+        
+        // Récupérer l'ID du devoir
+        $devoirId = isset($_GET['devoir_id']) ? $_GET['devoir_id'] : null;
+        
+        if (!$devoirId) {
+            $_SESSION['error'] = "Devoir non spécifié.";
+            header('Location: ' . BASE_URL . '/devoirs/index.php');
+            exit;
+        }
+        
+        // Récupérer les informations du devoir
+        $devoir = $this->devoirModel->getDevoirById($devoirId);
+        
+        if (!$devoir) {
+            $_SESSION['error'] = "Devoir introuvable.";
+            header('Location: ' . BASE_URL . '/devoirs/index.php');
+            exit;
+        }
+        
+        // Vérifier que le professeur est bien l'auteur du devoir
+        if ($devoir['auteur_id'] != $_SESSION['user_id'] && !$_SESSION['is_admin']) {
+            $_SESSION['error'] = "Vous n'avez pas les droits pour voir les rendus de ce devoir.";
+            header('Location: ' . BASE_URL . '/devoirs/index.php');
+            exit;
+        }
+        
+        // Récupérer les filtres et la pagination
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $filters = $this->getFilters();
+        
+        // Ajouter l'ID du devoir aux filtres
+        $filters['devoir_id'] = $devoirId;
+        
+        // Construire la chaîne de requête pour la pagination
+        $queryString = '';
+        foreach ($filters as $key => $value) {
+            if ($key !== 'page' && $key !== 'devoir_id') {
+                $queryString .= "&$key=" . urlencode($value);
+            }
+        }
+        
+        // Récupérer les rendus
+        $rendus = $this->renduModel->getRendusByDevoir($devoirId, $filters, $page, ITEMS_PER_PAGE);
+        $totalRendus = $this->renduModel->countRendusByDevoir($devoirId, $filters);
+        
+        // Récupérer les statistiques des rendus
+        $stats = $this->renduModel->getStatistiquesRendu($devoirId);
+        
+        // Calculer le nombre total de pages
+        $totalPages = ceil($totalRendus / ITEMS_PER_PAGE);
+        
+        // Charger la vue
+        require_once ROOT_PATH . '/views/devoirs/rendus.php';
+    }
+    
+    /**
+     * Affiche les détails d'un rendu
+     */
+    public function show() {
+        // Vérifier que l'utilisateur est connecté
+        requireAuthentication();
+        
+        // Récupérer l'ID du rendu
+        $id = isset($_GET['id']) ? $_GET['id'] : null;
+        
+        if (!$id) {
+            $_SESSION['error'] = "Rendu non spécifié.";
+            header('Location: ' . BASE_URL . '/devoirs/index.php');
+            exit;
+        }
+        
+        // Récupérer les informations du rendu
+        $rendu = $this->renduModel->getRenduById($id);
+        
+        if (!$rendu) {
+            $_SESSION['error'] = "Rendu introuvable.";
+            header('Location: ' . BASE_URL . '/devoirs/index.php');
+            exit;
+        }
+        
+        // Vérifier les permissions
+        if ($_SESSION['user_type'] === TYPE_ELEVE) {
+            // Vérifier que l'élève est bien l'auteur du rendu ou que le devoir est en mode classe
+            if ($rendu['eleve_id'] != $_SESSION['user_id']) {
+                // Récupérer les informations du devoir
+                $devoir = $this->devoirModel->getDevoirById($rendu['devoir_id']);
+                
+                if (!$devoir || $devoir['confidentialite'] !== 'classe' || !$this->classeModel->verifierEleveClasse($_SESSION['user_id'], $devoir['classe_id'])) {
+                    $_SESSION['error'] = "Vous n'avez pas les droits pour voir ce rendu.";
+                    header('Location: ' . BASE_URL . '/devoirs/details.php?id=' . $rendu['devoir_id']);
+                    exit;
+                }
+            }
+        } elseif ($_SESSION['user_type'] === TYPE_PROFESSEUR) {
+            // Vérifier que le professeur est bien l'auteur du devoir
+            if ($rendu['professeur_id'] != $_SESSION['user_id'] && !$_SESSION['is_admin']) {
+                $_SESSION['error'] = "Vous n'avez pas les droits pour voir ce rendu.";
+                header('Location: ' . BASE_URL . '/devoirs/index.php');
+                exit;
+            }
+        } elseif ($_SESSION['user_type'] === TYPE_PARENT) {
+            // Vérifier que l'enfant est bien l'auteur du rendu
+            $enfants = $this->userModel->getEnfantsParent($_SESSION['user_id']);
+            $estParent = false;
+            
+            foreach ($enfants as $enfant) {
+                if ($enfant['id'] == $rendu['eleve_id']) {
+                    $estParent = true;
+                    break;
+                }
+            }
+            
+            if (!$estParent && !$_SESSION['is_admin']) {
+                $_SESSION['error'] = "Vous n'avez pas les droits pour voir ce rendu.";
+                header('Location: ' . BASE_URL . '/devoirs/index.php');
+                exit;
+            }
+        } elseif (!$_SESSION['is_admin']) {
+            $_SESSION['error'] = "Vous n'avez pas les droits pour voir ce rendu.";
             header('Location: ' . BASE_URL . '/devoirs/index.php');
             exit;
         }
@@ -325,243 +593,148 @@ class RendusController {
         // Récupérer les informations du devoir
         $devoir = $this->devoirModel->getDevoirById($rendu['devoir_id']);
         
-        // Vérifier que le professeur est l'auteur du devoir
-        if ($devoir['auteur_id'] != $_SESSION['user_id'] && !$_SESSION['is_admin']) {
-            $_SESSION['error'] = "Vous n'êtes pas autorisé à corriger ce rendu.";
+        // Charger la vue
+        require_once ROOT_PATH . '/views/devoirs/rendu_details.php';
+    }
+    
+    /**
+     * Exporte les rendus d'un devoir
+     */
+    public function export() {
+        // Vérifier que l'utilisateur est connecté
+        requireAuthentication();
+        
+        // Vérifier que l'utilisateur est un professeur
+        if ($_SESSION['user_type'] !== TYPE_PROFESSEUR && !$_SESSION['is_admin']) {
+            $_SESSION['error'] = "Vous n'avez pas les droits pour exporter les rendus.";
             header('Location: ' . BASE_URL . '/devoirs/index.php');
             exit;
         }
         
-        // Vérifier si le barème est défini
-        if ($devoir['bareme_id']) {
-            require_once ROOT_PATH . '/models/Bareme.php';
-            $baremeModel = new Bareme();
-            
-            $bareme = $baremeModel->getBaremeById($devoir['bareme_id']);
-            
-            if ($bareme && $note !== null) {
-                // Vérifier que la note est dans les limites du barème
-                if ($note < 0 || $note > $bareme['note_max']) {
-                    $_SESSION['error'] = "La note doit être comprise entre 0 et {$bareme['note_max']}.";
-                    header('Location: ' . BASE_URL . '/devoirs/corriger.php?id=' . $renduId);
-                    exit;
-                }
-            }
-        }
+        // Récupérer l'ID du devoir
+        $devoirId = isset($_GET['devoir_id']) ? $_GET['devoir_id'] : null;
         
-        // Mettre à jour le rendu
-        $updateData = [
-            'statut' => STATUT_CORRIGE,
-            'note' => $note,
-            'commentaire_prof' => $commentaireProf,
-            'date_correction' => date('Y-m-d H:i:s')
-        ];
-        
-        $success = $this->renduModel->updateRendu($renduId, $updateData);
-        
-        if ($success) {
-            // Envoi de notification à l'élève
-            require_once ROOT_PATH . '/utils/Notification.php';
-            $notificationModel = new Notification();
-            
-            $notificationData = [
-                'destinataire_id' => $rendu['eleve_id'],
-                'titre' => "Correction du devoir: {$devoir['titre']}",
-                'contenu' => "Votre rendu pour le devoir {$devoir['titre']} a été corrigé par {$_SESSION['user_fullname']}.",
-                'devoir_id' => $rendu['devoir_id'],
-                'rendu_id' => $renduId
-            ];
-            
-            $notificationModel->createNotification($notificationData);
-            
-            $_SESSION['success'] = "La correction a été enregistrée avec succès.";
-            header('Location: ' . BASE_URL . '/devoirs/rendus.php?devoir_id=' . $rendu['devoir_id']);
-            exit;
-        } else {
-            $_SESSION['error'] = "Une erreur est survenue lors de l'enregistrement de la correction.";
-            header('Location: ' . BASE_URL . '/devoirs/corriger.php?id=' . $renduId);
-            exit;
-        }
-    }
-    
-    /**
-     * Télécharge un fichier de rendu
-     */
-    public function telechargerFichier($fichierId) {
-        // Récupérer les informations du fichier
-        $sql = "SELECT fr.*, r.devoir_id, r.eleve_id 
-                FROM fichiers_rendu fr
-                JOIN rendus r ON fr.rendu_id = r.id
-                WHERE fr.id = :id";
-        
-        $fichier = $this->db->fetch($sql, [':id' => $fichierId]);
-        
-        if (!$fichier) {
-            $_SESSION['error'] = "Fichier non trouvé.";
+        if (!$devoirId) {
+            $_SESSION['error'] = "Devoir non spécifié.";
             header('Location: ' . BASE_URL . '/devoirs/index.php');
             exit;
         }
         
         // Récupérer les informations du devoir
-        $devoir = $this->devoirModel->getDevoirById($fichier['devoir_id']);
+        $devoir = $this->devoirModel->getDevoirById($devoirId);
         
-        // Vérifier les autorisations
-        if ($_SESSION['user_type'] === TYPE_ELEVE) {
-            // L'élève ne peut télécharger que ses propres fichiers
-            if ($fichier['eleve_id'] != $_SESSION['user_id']) {
-                $_SESSION['error'] = "Vous n'êtes pas autorisé à télécharger ce fichier.";
-                header('Location: ' . BASE_URL . '/devoirs/index.php');
-                exit;
-            }
-        } elseif ($_SESSION['user_type'] === TYPE_PROFESSEUR) {
-            // Le professeur ne peut télécharger que les fichiers des devoirs qu'il a créés
-            if ($devoir['auteur_id'] != $_SESSION['user_id'] && !$_SESSION['is_admin']) {
-                $_SESSION['error'] = "Vous n'êtes pas autorisé à télécharger ce fichier.";
-                header('Location: ' . BASE_URL . '/devoirs/index.php');
-                exit;
-            }
-        } elseif ($_SESSION['user_type'] === TYPE_PARENT) {
-            // Le parent ne peut télécharger que les fichiers de ses enfants
-            $enfants = $this->userModel->getEnfantsParent($_SESSION['user_id']);
-            $enfantAutorise = false;
-            
-            foreach ($enfants as $enfant) {
-                if ($enfant['id'] == $fichier['eleve_id']) {
-                    $enfantAutorise = true;
-                    break;
-                }
-            }
-            
-            if (!$enfantAutorise) {
-                $_SESSION['error'] = "Vous n'êtes pas autorisé à télécharger ce fichier.";
-                header('Location: ' . BASE_URL . '/devoirs/index.php');
-                exit;
-            }
-        } elseif (!$_SESSION['is_admin']) {
-            $_SESSION['error'] = "Vous n'êtes pas autorisé à télécharger ce fichier.";
+        if (!$devoir) {
+            $_SESSION['error'] = "Devoir introuvable.";
             header('Location: ' . BASE_URL . '/devoirs/index.php');
             exit;
         }
         
-        // Vérifier que le fichier existe
-        $cheminFichier = RENDUS_UPLOADS . '/' . $fichier['fichier'];
-        
-        if (!file_exists($cheminFichier)) {
-            $_SESSION['error'] = "Le fichier n'existe pas sur le serveur.";
+        // Vérifier que le professeur est bien l'auteur du devoir
+        if ($devoir['auteur_id'] != $_SESSION['user_id'] && !$_SESSION['is_admin']) {
+            $_SESSION['error'] = "Vous n'avez pas les droits pour exporter les rendus de ce devoir.";
             header('Location: ' . BASE_URL . '/devoirs/index.php');
             exit;
         }
         
-        // Déterminer le type MIME
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $mime = finfo_file($finfo, $cheminFichier);
-        finfo_close($finfo);
+        // Récupérer tous les rendus du devoir
+        $rendus = $this->renduModel->getRendusByDevoir($devoirId);
         
-        // Envoyer le fichier
-        header('Content-Type: ' . $mime);
-        header('Content-Disposition: attachment; filename="' . $fichier['nom'] . '"');
-        header('Content-Length: ' . filesize($cheminFichier));
-        header('Cache-Control: no-cache, must-revalidate');
-        header('Pragma: no-cache');
-        header('Expires: 0');
+        // Exporter en PDF
+        $pdf = new PDF("Rendus du devoir: " . $devoir['titre']);
+        $result = $pdf->generateDevoirPDF($devoir, $rendus, "rendus_devoir_" . $devoirId . ".pdf", "D");
         
-        // Lire et envoyer le fichier
-        readfile($cheminFichier);
+        // Pas besoin de redirection, le PDF est téléchargé
         exit;
     }
     
     /**
-     * Supprime un fichier de rendu
+     * Traite les fichiers uploadés
+     * @param array $files Tableau $_FILES['fichiers']
+     * @return array Résultat du traitement
      */
-    public function supprimerFichier() {
-        // Vérifier la méthode de requête
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $_SESSION['error'] = "Méthode non autorisée.";
-            header('Location: ' . BASE_URL . '/devoirs/index.php');
-            exit;
-        }
-        
-        // Récupérer l'ID du fichier
-        $fichierId = isset($_POST['fichier_id']) ? (int)$_POST['fichier_id'] : 0;
-        
-        if ($fichierId === 0) {
-            $_SESSION['error'] = "ID de fichier non spécifié.";
-            header('Location: ' . BASE_URL . '/devoirs/index.php');
-            exit;
-        }
-        
-        // Récupérer les informations du fichier
-        $sql = "SELECT fr.*, r.devoir_id, r.eleve_id 
-                FROM fichiers_rendu fr
-                JOIN rendus r ON fr.rendu_id = r.id
-                WHERE fr.id = :id";
-        
-        $fichier = $this->db->fetch($sql, [':id' => $fichierId]);
-        
-        if (!$fichier) {
-            $_SESSION['error'] = "Fichier non trouvé.";
-            header('Location: ' . BASE_URL . '/devoirs/index.php');
-            exit;
-        }
-        
-        // Vérifier les autorisations
-        if ($_SESSION['user_type'] === TYPE_ELEVE) {
-            // L'élève ne peut supprimer que ses propres fichiers
-            if ($fichier['eleve_id'] != $_SESSION['user_id']) {
-                $_SESSION['error'] = "Vous n'êtes pas autorisé à supprimer ce fichier.";
-                header('Location: ' . BASE_URL . '/devoirs/index.php');
-                exit;
-            }
-            
-            // Vérifier que le devoir n'est pas déjà corrigé
-            $rendu = $this->renduModel->getRenduById($fichier['rendu_id']);
-            if ($rendu && $rendu['statut'] === STATUT_CORRIGE) {
-                $_SESSION['error'] = "Vous ne pouvez pas supprimer un fichier d'un devoir déjà corrigé.";
-                header('Location: ' . BASE_URL . '/devoirs/details.php?id=' . $fichier['devoir_id']);
-                exit;
-            }
-        } elseif (!$_SESSION['is_admin']) {
-            $_SESSION['error'] = "Vous n'êtes pas autorisé à supprimer ce fichier.";
-            header('Location: ' . BASE_URL . '/devoirs/index.php');
-            exit;
-        }
-        
-        // Supprimer le fichier
-        $success = $this->renduModel->supprimerFichier($fichierId);
-        
-        if ($success) {
-            $_SESSION['success'] = "Le fichier a été supprimé avec succès.";
-        } else {
-            $_SESSION['error'] = "Une erreur est survenue lors de la suppression du fichier.";
-        }
-        
-        // Rediriger vers la page de détails du devoir
-        header('Location: ' . BASE_URL . '/devoirs/details.php?id=' . $fichier['devoir_id']);
-        exit;
-    }
-    
-    /**
-     * Détermine le type de fichier à partir de son extension
-     * @param string $filename Nom du fichier
-     * @return string Type de fichier ('PDF', 'IMG', 'DOC', 'OTHER')
-     */
-    private function determinerTypeFichier($filename) {
-        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-        
-        $typeMap = [
-            'pdf' => 'PDF',
-            'jpg' => 'IMG',
-            'jpeg' => 'IMG',
-            'png' => 'IMG',
-            'gif' => 'IMG',
-            'doc' => 'DOC',
-            'docx' => 'DOC',
-            'xls' => 'DOC',
-            'xlsx' => 'DOC',
-            'ppt' => 'DOC',
-            'pptx' => 'DOC'
+    private function handleFileUploads($files) {
+        $result = [
+            'fichiers' => [],
+            'errors' => []
         ];
         
-        return isset($typeMap[$extension]) ? $typeMap[$extension] : 'OTHER';
+        // Vérifier s'il y a des fichiers à traiter
+        if (empty($files['name'][0])) {
+            return $result;
+        }
+        
+        // Créer le répertoire de destination s'il n'existe pas
+        if (!file_exists(RENDUS_UPLOADS)) {
+            mkdir(RENDUS_UPLOADS, 0755, true);
+        }
+        
+        // Traiter chaque fichier
+        $filesCount = count($files['name']);
+        for ($i = 0; $i < $filesCount; $i++) {
+            // Ignorer les fichiers vides
+            if (empty($files['name'][$i])) {
+                continue;
+            }
+            
+            // Préparer le fichier pour l'upload
+            $file = [
+                'name' => $files['name'][$i],
+                'type' => $files['type'][$i],
+                'tmp_name' => $files['tmp_name'][$i],
+                'error' => $files['error'][$i],
+                'size' => $files['size'][$i]
+            ];
+            
+            // Uploader le fichier
+            $upload = $this->fileUpload->uploadFile($file, RENDUS_UPLOADS);
+            
+            if (!$upload['success']) {
+                $result['errors'][] = "Erreur lors de l'upload du fichier {$file['name']}: {$upload['message']}";
+                continue;
+            }
+            
+            // Ajouter le fichier aux résultats
+            $result['fichiers'][] = [
+                'nom' => $file['name'],
+                'type' => $file['type'],
+                'fichier' => $upload['filename']
+            ];
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Filtre les paramètres de la requête
+     * @return array Filtres à appliquer
+     */
+    private function getFilters() {
+        $filters = [];
+        
+        // Filtrer par statut
+        if (isset($_GET['statut']) && !empty($_GET['statut'])) {
+            $filters['statut'] = $_GET['statut'];
+        }
+        
+        // Filtrer par note
+        if (isset($_GET['note_min']) && !empty($_GET['note_min'])) {
+            $filters['note_min'] = $_GET['note_min'];
+        }
+        
+        if (isset($_GET['note_max']) && !empty($_GET['note_max'])) {
+            $filters['note_max'] = $_GET['note_max'];
+        }
+        
+        // Recherche textuelle
+        if (isset($_GET['search']) && !empty($_GET['search'])) {
+            $filters['search'] = $_GET['search'];
+        }
+        
+        // Page courante
+        if (isset($_GET['page']) && !empty($_GET['page'])) {
+            $filters['page'] = $_GET['page'];
+        }
+        
+        return $filters;
     }
 }

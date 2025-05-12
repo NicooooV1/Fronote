@@ -26,11 +26,6 @@
     
     <!-- Font Awesome (pour les icônes supplémentaires) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <?php if (isset($includeCalendar) && $includeCalendar): ?>
-        <!-- FullCalendar pour les vues de calendrier -->
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
-    <?php endif; ?>
 </head>
 <body>
     <!-- En-tête de page -->
@@ -43,36 +38,12 @@
             <nav class="main-nav">
                 <?php if ($_SESSION['user_type'] === TYPE_ELEVE || $_SESSION['user_type'] === TYPE_PARENT'): ?>
                     <a href="<?php echo BASE_URL; ?>/devoirs/index.php">Devoirs</a>
-                    <a href="<?php echo BASE_URL; ?>/cahier/calendrier.php">Cahier de texte</a>
-                    <a href="<?php echo BASE_URL; ?>/notifications/index.php">
-                        Notifications
-                        <?php 
-                        // Afficher le nombre de notifications non lues
-                        require_once ROOT_PATH . '/models/Notification.php';
-                        $notificationModel = new Notification();
-                        $nbNotifs = $notificationModel->countUnreadNotifications($_SESSION['user_id']);
-                        if ($nbNotifs > 0): 
-                        ?>
-                            <span class="badge badge-danger"><?php echo $nbNotifs; ?></span>
-                        <?php endif; ?>
-                    </a>
+                    <a href="<?php echo BASE_URL; ?>/cahier/chapitres.php">Cahier de texte</a>
                 <?php elseif ($_SESSION['user_type'] === TYPE_PROFESSEUR): ?>
                     <a href="<?php echo BASE_URL; ?>/devoirs/index.php">Devoirs</a>
-                    <a href="<?php echo BASE_URL; ?>/cahier/calendrier.php">Cahier de texte</a>
+                    <a href="<?php echo BASE_URL; ?>/cahier/chapitres.php">Cahier de texte</a>
                     <a href="<?php echo BASE_URL; ?>/ressources/index.php">Ressources</a>
                     <a href="<?php echo BASE_URL; ?>/classes/index.php">Classes</a>
-                    <a href="<?php echo BASE_URL; ?>/notifications/index.php">
-                        Notifications
-                        <?php 
-                        // Afficher le nombre de notifications non lues
-                        require_once ROOT_PATH . '/models/Notification.php';
-                        $notificationModel = new Notification();
-                        $nbNotifs = $notificationModel->countUnreadNotifications($_SESSION['user_id']);
-                        if ($nbNotifs > 0): 
-                        ?>
-                            <span class="badge badge-danger"><?php echo $nbNotifs; ?></span>
-                        <?php endif; ?>
-                    </a>
                 <?php elseif ($_SESSION['user_type'] === TYPE_ADMIN): ?>
                     <a href="<?php echo BASE_URL; ?>/admin/users.php">Utilisateurs</a>
                     <a href="<?php echo BASE_URL; ?>/admin/classes.php">Classes</a>
@@ -121,24 +92,11 @@
                         </a>
                     </div>
                     <div class="sidebar-menu-item">
-                        <a href="<?php echo BASE_URL; ?>/cahier/calendrier.php" class="<?php echo $currentPage === 'cahier' ? 'active' : ''; ?>">
-                            <i class="material-icons">event_note</i> Cahier de texte
+                        <a href="<?php echo BASE_URL; ?>/cahier/chapitres.php" class="<?php echo $currentPage === 'cahier' ? 'active' : ''; ?>">
+                            <i class="material-icons">book</i> Cahier de texte
                         </a>
                     </div>
                 </div>
-                
-                <div class="sidebar-menu-section">
-                    <div class="sidebar-menu-section-title">Communication</div>
-                    <div class="sidebar-menu-item">
-                        <a href="<?php echo BASE_URL; ?>/notifications/index.php" class="<?php echo $currentPage === 'notifications' ? 'active' : ''; ?>">
-                            <i class="material-icons">notifications</i> Notifications
-                            <?php if ($nbNotifs > 0): ?>
-                                <span class="badge badge-danger"><?php echo $nbNotifs; ?></span>
-                            <?php endif; ?>
-                        </a>
-                    </div>
-                </div>
-                
             <?php elseif ($_SESSION['user_type'] === TYPE_PROFESSEUR): ?>
                 <div class="sidebar-menu-section">
                     <div class="sidebar-menu-section-title">Enseignement</div>
@@ -158,8 +116,8 @@
                         </a>
                     </div>
                     <div class="sidebar-menu-item">
-                        <a href="<?php echo BASE_URL; ?>/cahier/calendrier.php" class="<?php echo $currentPage === 'cahier' ? 'active' : ''; ?>">
-                            <i class="material-icons">event_note</i> Cahier de texte
+                        <a href="<?php echo BASE_URL; ?>/cahier/chapitres.php" class="<?php echo $currentPage === 'cahier' ? 'active' : ''; ?>">
+                            <i class="material-icons">book</i> Cahier de texte
                         </a>
                     </div>
                     <div class="sidebar-menu-item">
@@ -195,14 +153,6 @@
                             <i class="material-icons">group</i> Mes classes
                         </a>
                     </div>
-                    <div class="sidebar-menu-item">
-                        <a href="<?php echo BASE_URL; ?>/notifications/index.php" class="<?php echo $currentPage === 'notifications' ? 'active' : ''; ?>">
-                            <i class="material-icons">notifications</i> Notifications
-                            <?php if ($nbNotifs > 0): ?>
-                                <span class="badge badge-danger"><?php echo $nbNotifs; ?></span>
-                            <?php endif; ?>
-                        </a>
-                    </div>
                 </div>
                 
             <?php elseif ($_SESSION['user_type'] === TYPE_PARENT): ?>
@@ -219,8 +169,8 @@
                         </a>
                     </div>
                     <div class="sidebar-menu-item">
-                        <a href="<?php echo BASE_URL; ?>/cahier/calendrier.php" class="<?php echo $currentPage === 'cahier' ? 'active' : ''; ?>">
-                            <i class="material-icons">event_note</i> Cahier de texte
+                        <a href="<?php echo BASE_URL; ?>/cahier/chapitres.php" class="<?php echo $currentPage === 'cahier' ? 'active' : ''; ?>">
+                            <i class="material-icons">book</i> Cahier de texte
                         </a>
                     </div>
                 </div>
@@ -241,18 +191,6 @@
                             </a>
                         </div>
                     <?php endforeach; ?>
-                </div>
-                
-                <div class="sidebar-menu-section">
-                    <div class="sidebar-menu-section-title">Communication</div>
-                    <div class="sidebar-menu-item">
-                        <a href="<?php echo BASE_URL; ?>/notifications/index.php" class="<?php echo $currentPage === 'notifications' ? 'active' : ''; ?>">
-                            <i class="material-icons">notifications</i> Notifications
-                            <?php if ($nbNotifs > 0): ?>
-                                <span class="badge badge-danger"><?php echo $nbNotifs; ?></span>
-                            <?php endif; ?>
-                        </a>
-                    </div>
                 </div>
                 
             <?php elseif ($_SESSION['user_type'] === TYPE_ADMIN): ?>
@@ -293,8 +231,8 @@
                         </a>
                     </div>
                     <div class="sidebar-menu-item">
-                        <a href="<?php echo BASE_URL; ?>/cahier/calendrier.php" class="<?php echo $currentPage === 'cahier' ? 'active' : ''; ?>">
-                            <i class="material-icons">event_note</i> Cahier de texte
+                        <a href="<?php echo BASE_URL; ?>/cahier/chapitres.php" class="<?php echo $currentPage === 'cahier' ? 'active' : ''; ?>">
+                            <i class="material-icons">book</i> Cahier de texte
                         </a>
                     </div>
                 </div>

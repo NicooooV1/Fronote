@@ -27,12 +27,6 @@ require_once ROOT_PATH . '/includes/header.php';
 
 <div class="view-navigation">
     <div class="nav-tabs">
-        <a href="<?php echo BASE_URL; ?>/cahier/calendrier.php">
-            <i class="material-icons">calendar_month</i> Calendrier
-        </a>
-        <a href="<?php echo BASE_URL; ?>/cahier/semaine.php">
-            <i class="material-icons">view_week</i> Vue semaine
-        </a>
         <a href="<?php echo BASE_URL; ?>/cahier/chapitres.php" class="active">
             <i class="material-icons">book</i> Chapitres
         </a>
