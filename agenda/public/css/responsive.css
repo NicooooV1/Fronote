@@ -1,0 +1,75 @@
+/* Responsive design pour la version mobile */
+@media (max-width: 768px) {
+  .toolbar {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+  
+  .navigation {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .period-display {
+    width: 100%;
+    text-align: center;
+    margin-left: 0;
+    margin-top: 10px;
+  }
+  
+  .view-selector {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+  }
+  
+  .options {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .export-import {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  /* Ajustements vue hebdomadaire */
+  .week-view .header-row,
+  .week-view .hour-row {
+    grid-template-columns: 50px repeat(7, 1fr);
+  }
+  
+  .week-view .day-header {
+    padding: 5px;
+    font-size: 12px;
+  }
+  
+  .week-view .day-date {
+    font-size: 10px;
+  }
+  
+  .week-view .hour-label {
+    padding: 5px;
+    font-size: 12px;
+  }
+  
+  /* Swipe pour navigation mobile */
+  #calendar {
+    touch-action: pan-y;
+  }
+}
+
+/* Pour les très petits écrans */
+@media (max-width: 480px) {
+  .week-view .header-row,
+  .week-view .hour-row {
+    grid-template-columns: 40px repeat(3, 1fr);
+  }
+  
+  /* Cacher les jours 4-7 sur mobile pour montrer 3 jours à la fois */
+  .week-view .day-header:nth-child(n+5),
+  .week-view .day-cell:nth-child(n+5) {
+    display: none;
+  }
+}
