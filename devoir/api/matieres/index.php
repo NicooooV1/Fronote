@@ -10,7 +10,7 @@ if (!isset($_SESSION['user'])) {
 }
 
 // Récupérer les matières du fichier JSON de l'établissement
-$jsonFile = __DIR__ . '/../../login/data/etablissement.json';
+$jsonFile = __DIR__ . '/~u22405372/SAE/Pronote/login/data/etablissement.json';
 
 if (!file_exists($jsonFile)) {
     echo json_encode([]);
