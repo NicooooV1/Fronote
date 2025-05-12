@@ -1,0 +1,729 @@
+/* Styles spécifiques pour le module Cahier de Texte */
+
+/* Vue calendrier */
+.calendar-container {
+    background-color: var(--background-white);
+    border-radius: 4px;
+    box-shadow: 0 2px 4px var(--shadow-color);
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background-color: rgba(0, 0, 0, 0.03);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.calendar-title {
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin: 0;
+}
+
+.calendar-nav {
+    display: flex;
+    align-items: center;
+}
+
+.calendar-nav button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s;
+}
+
+.calendar-nav button:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.calendar-views {
+    display: flex;
+    margin-left: 15px;
+}
+
+.calendar-view {
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 5px;
+    font-size: 0.9rem;
+    transition: background-color 0.3s;
+}
+
+.calendar-view:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.calendar-view.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.calendar-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background-color: rgba(0, 0, 0, 0.01);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.calendar-filters {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.calendar-filter {
+    display: flex;
+    align-items: center;
+}
+
+.calendar-filter label {
+    margin-right: 8px;
+    font-size: 0.9rem;
+}
+
+.calendar-filter select {
+    padding: 5px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    font-size: 0.9rem;
+}
+
+.calendar-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.calendar-grid {
+    height: 650px;
+    overflow-y: auto;
+}
+
+/* Événements du calendrier */
+.calendar-event {
+    padding: 5px 8px;
+    border-radius: 4px;
+    margin-bottom: 5px;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: transform 0.2s;
+    position: relative;
+}
+
+.calendar-event:hover {
+    transform: translateY(-2px);
+}
+
+.calendar-event-title {
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.calendar-event-time {
+    font-size: 0.8rem;
+    opacity: 0.8;
+}
+
+.calendar-event.status-previsionnelle {
+    /* Style par défaut */
+}
+
+.calendar-event.status-realisee {
+    border-left: 3px solid var(--success-color);
+}
+
+.calendar-event.status-annulee {
+    text-decoration: line-through;
+    opacity: 0.7;
+    border-left: 3px solid var(--danger-color);
+}
+
+/* Vue semaine */
+.week-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.week-day {
+    background-color: var(--background-white);
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px var(--shadow-color);
+    min-height: 300px;
+}
+
+.week-day-header {
+    padding: 10px;
+    text-align: center;
+    background-color: var(--primary-light);
+    color: white;
+}
+
+.week-day-name {
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.week-day-date {
+    font-size: 0.85rem;
+    opacity: 0.9;
+}
+
+.week-day-content {
+    padding: 10px;
+}
+
+.week-day.today .week-day-header {
+    background-color: var(--primary-color);
+}
+
+.week-day.weekend .week-day-header {
+    background-color: var(--background-light);
+    color: var(--text-primary);
+}
+
+.week-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.week-title {
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+
+.week-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+/* Seances dans la vue semaine */
+.seance-item {
+    background-color: rgba(25, 118, 210, 0.1);
+    border-left: 3px solid var(--primary-color);
+    padding: 8px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.seance-item:hover {
+    transform: translateY(-2px);
+}
+
+.seance-time {
+    font-size: 0.85rem;
+    margin-bottom: 3px;
+    font-weight: 500;
+}
+
+.seance-title {
+    font-size: 0.9rem;
+    margin-bottom: 3px;
+}
+
+.seance-info {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    display: flex;
+    justify-content: space-between;
+}
+
+.seance-item.status-realisee {
+    background-color: rgba(76, 175, 80, 0.1);
+    border-left-color: var(--success-color);
+}
+
+.seance-item.status-annulee {
+    background-color: rgba(244, 67, 54, 0.1);
+    border-left-color: var(--danger-color);
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+/* Vue jour (présente dans le calendrier) */
+.day-schedule {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    grid-auto-rows: minmax(30px, auto);
+}
+
+.time-slot {
+    text-align: right;
+    padding-right: 10px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    border-right: 1px solid var(--border-color);
+}
+
+.day-events {
+    position: relative;
+}
+
+.day-event {
+    position: absolute;
+    left: 5px;
+    right: 5px;
+    border-radius: 4px;
+    padding: 5px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    overflow: hidden;
+    box-shadow: 0 2px 4px var(--shadow-color);
+}
+
+/* Formulaire de séance */
+.seance-form {
+    background-color: var(--background-white);
+    padding: 20px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px var(--shadow-color);
+    margin-bottom: 20px;
+}
+
+.form-tabs {
+    display: flex;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.form-tab {
+    padding: 10px 15px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: border-color 0.3s;
+}
+
+.form-tab.active {
+    border-bottom-color: var(--primary-color);
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.date-time-group {
+    display: flex;
+    gap: 15px;
+}
+
+.date-time-group .form-group {
+    flex: 1;
+}
+
+.ressources-selector {
+    margin-top: 15px;
+}
+
+.ressources-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.ressource-item {
+    background-color: var(--background-light);
+    border-radius: 4px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.ressource-item:hover {
+    background-color: rgba(25, 118, 210, 0.1);
+}
+
+.ressource-item.selected {
+    background-color: rgba(25, 118, 210, 0.2);
+    border: 1px solid var(--primary-color);
+}
+
+.ressource-icon {
+    font-size: 24px;
+    margin-right: 10px;
+}
+
+.ressource-info {
+    flex: 1;
+}
+
+.ressource-title {
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.ressource-type {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.recurrence-options {
+    margin-top: 15px;
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Détails de séance */
+.seance-detail {
+    background-color: var(--background-white);
+    border-radius: 4px;
+    box-shadow: 0 2px 4px var(--shadow-color);
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.seance-detail-header {
+    padding: 15px;
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.seance-detail-title {
+    font-size: 1.5rem;
+    margin: 0 0 10px 0;
+}
+
+.seance-detail-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.seance-detail-meta-item {
+    display: flex;
+    align-items: center;
+}
+
+.seance-detail-meta-item i {
+    margin-right: 5px;
+}
+
+.seance-detail-actions {
+    padding: 10px 15px;
+    background-color: rgba(0, 0, 0, 0.03);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.seance-detail-content {
+    padding: 20px;
+}
+
+.seance-detail-section {
+    margin-bottom: 20px;
+}
+
+.seance-detail-section-title {
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.seance-detail-objectifs {
+    padding: 15px;
+    background-color: rgba(76, 175, 80, 0.05);
+    border-left: 4px solid var(--success-color);
+    border-radius: 0 4px 4px 0;
+    margin-bottom: 20px;
+}
+
+.seance-detail-modalites {
+    padding: 15px;
+    background-color: rgba(255, 152, 0, 0.05);
+    border-left: 4px solid var(--accent-color);
+    border-radius: 0 4px 4px 0;
+    margin-bottom: 20px;
+}
+
+/* Ressources */
+.ressources-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.ressource-card {
+    background-color: var(--background-white);
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px var(--shadow-color);
+    transition: transform 0.2s;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.ressource-card:hover {
+    transform: translateY(-3px);
+}
+
+.ressource-card-header {
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.ressource-card-title {
+    font-weight: 500;
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.ressource-card-body {
+    padding: 15px;
+    flex: 1;
+}
+
+.ressource-preview {
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.03);
+    margin-bottom: 15px;
+    border-radius: 4px;
+}
+
+.ressource-preview-icon {
+    font-size: 48px;
+    color: var(--text-secondary);
+}
+
+.ressource-card-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-top: 10px;
+}
+
+.ressource-card-actions {
+    padding: 10px 15px;
+    border-top: 1px solid var(--border-color);
+    background-color: rgba(0, 0, 0, 0.01);
+    display: flex;
+    justify-content: space-between;
+}
+
+/* Chapitres */
+.chapitres-list {
+    margin-bottom: 30px;
+}
+
+.chapitre-item {
+    background-color: var(--background-white);
+    border-radius: 4px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 4px var(--shadow-color);
+    overflow: hidden;
+}
+
+.chapitre-header {
+    padding: 15px;
+    background-color: rgba(0, 0, 0, 0.03);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.chapitre-title {
+    font-weight: 500;
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+.chapitre-toggle {
+    font-size: 1.2rem;
+    transition: transform 0.3s;
+}
+
+.chapitre-item.open .chapitre-toggle {
+    transform: rotate(180deg);
+}
+
+.chapitre-content {
+    padding: 15px;
+    display: none;
+    border-top: 1px solid var(--border-color);
+}
+
+.chapitre-item.open .chapitre-content {
+    display: block;
+}
+
+.chapitre-description {
+    margin-bottom: 15px;
+}
+
+.competences-list {
+    margin-top: 15px;
+}
+
+.competence-item {
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.competence-code {
+    font-weight: 500;
+    margin-right: 10px;
+    padding: 3px 8px;
+    background-color: var(--primary-light);
+    color: white;
+    border-radius: 3px;
+}
+
+.competence-description {
+    flex: 1;
+}
+
+/* Statuts des séances */
+.statut-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.statut-badge i {
+    margin-right: 5px;
+}
+
+.statut-previsionnelle {
+    background-color: #e3f2fd;
+    color: #0d47a1;
+}
+
+.statut-realisee {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+.statut-annulee {
+    background-color: #ffebee;
+    color: #c62828;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .calendar-toolbar {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    
+    .calendar-filters {
+        flex-direction: column;
+        align-items: flex-start;
+        width: 100%;
+    }
+    
+    .calendar-filter {
+        width: 100%;
+    }
+    
+    .calendar-filter select {
+        width: 100%;
+    }
+    
+    .calendar-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+
+@media (max-width: 768px) {
+    .week-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .week-day {
+        margin-bottom: 10px;
+    }
+    
+    .date-time-group {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .ressources-list {
+        grid-template-columns: 1fr;
+    }
+    
+    .seance-detail-meta {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .ressources-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 576px) {
+    .calendar-header {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .calendar-nav {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .calendar-views {
+        margin-left: 0;
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .seance-detail-actions {
+        flex-direction: column;
+    }
+    
+    .seance-detail-actions .btn {
+        width: 100%;
+    }
+}
