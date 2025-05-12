@@ -1,5 +1,10 @@
 /**
  * /assets/js/notifications.js - Gestion des notifications
+ * Ce module gère les notifications utilisateur, y compris:
+ * - Le polling des notifications depuis le serveur
+ * - L'affichage des badges de notification
+ * - Les notifications du navigateur (Web Notifications API)
+ * - Les sons de notification
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -17,8 +22,15 @@ function initNotifications() {
     // Gérer les clics sur les notifications
     initNotificationClicks();
     
-    // Demander la permission pour les notifications du navigateur si l'utilisateur n'a pas encore décidé
-    requestNotificationPermission();
+    // Demander la permission pour les notifications du navigateur si nécessaire
+    if (!localStorage.getItem('notification_prompt_dismissed')) {
+        requestNotificationPermission();
+    }
+    
+    // Publier un événement pour signaler que les notifications sont initialisées
+    if (typeof EventManager !== 'undefined') {
+        EventManager.publish('notifications:initialized', {});
+    }
 }
 
 /**
@@ -38,38 +50,35 @@ function setupPollingForNotifications() {
     
     // Fonction pour vérifier les nouvelles notifications
     function checkForNotifications() {
-        fetch(`api/notifications.php?action=check_conditional`)
-            .then(response => {
-                // Si 304 Not Modified, rien à faire
-                if (response.status === 304) {
-                    return null;
+        AjaxClient.get('api/notifications.php', {
+            action: 'check_conditional',
+            last_id: lastNotificationId
+        })
+        .then(data => {
+            // Mettre à jour le badge de notification
+            updateNotificationBadge(data.count);
+            
+            // Stocker le dernier ID
+            if (data.latest_notification) {
+                localStorage.setItem('last_notification_id', data.latest_notification.id);
+                
+                // Si l'utilisateur a activé les notifications du navigateur
+                if (hasNotificationPermission() && data.latest_notification) {
+                    showBrowserNotification(data.count, data.latest_notification);
                 }
                 
-                if (!response.ok) {
-                    throw new Error(`Erreur HTTP: ${response.status}`);
+                // Publier un événement pour les nouvelles notifications
+                if (typeof EventManager !== 'undefined') {
+                    EventManager.publish('notifications:new', {
+                        count: data.count,
+                        notification: data.latest_notification
+                    });
                 }
-                
-                return response.json();
-            })
-            .then(data => {
-                if (data) {
-                    // Mettre à jour le badge de notification
-                    updateNotificationBadge(data.count);
-                    
-                    // Stocker le dernier ID
-                    if (data.latest_notification) {
-                        localStorage.setItem('last_notification_id', data.latest_notification.id);
-                        
-                        // Si l'utilisateur a activé les notifications du navigateur
-                        if (hasNotificationPermission() && data.latest_notification) {
-                            showBrowserNotification(data.count, data.latest_notification);
-                        }
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Erreur lors de la vérification des notifications:', error);
-            });
+            }
+        })
+        .catch(error => {
+            console.error('Erreur lors de la vérification des notifications:', error);
+        });
     }
     
     // Vérifier immédiatement puis régulièrement
@@ -118,27 +127,36 @@ function initNotificationClicks() {
  * @param {number} notificationId - ID de la notification
  */
 function markNotificationRead(notificationId) {
-    fetch(`api/notifications.php?action=mark_read&id=${notificationId}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Erreur HTTP: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            // Mise à jour réussie, rafraîchir le compteur si nécessaire
-            if (data.success) {
-                // Vérifier le nombre de notifications non lues
-                fetch('api/notifications.php?action=check')
-                    .then(res => res.json())
-                    .then(result => {
-                        if (result.success) {
-                            updateNotificationBadge(result.count);
-                        }
-                    });
-            }
-        })
-        .catch(error => console.error('Erreur lors du marquage de la notification:', error));
+    AjaxClient.get('api/notifications.php', {
+        action: 'mark_read',
+        id: notificationId
+    })
+    .then(data => {
+        // Mise à jour réussie, rafraîchir le compteur si nécessaire
+        if (data.success) {
+            AjaxClient.get('api/notifications.php', {
+                action: 'check'
+            })
+            .then(result => {
+                if (result.success) {
+                    updateNotificationBadge(result.count);
+                    
+                    // Publier un événement de notification lue
+                    if (typeof EventManager !== 'undefined') {
+                        EventManager.publish('notifications:read', { id: notificationId });
+                    }
+                }
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Erreur lors du marquage de la notification:', error);
+        
+        // Afficher une notification d'erreur
+        if (typeof Notifications !== 'undefined') {
+            Notifications.error(`Erreur lors du marquage de la notification: ${error.message}`);
+        }
+    });
 }
 
 /**
@@ -163,9 +181,34 @@ function updateNotificationBadge(count) {
             badge.textContent = count;
             badge.style.display = 'flex';
         }
+        
+        // Mettre à jour le titre de la page
+        updatePageTitle(count);
     } else if (badge) {
         // Masquer le badge s'il n'y a pas de notification
         badge.style.display = 'none';
+        
+        // Restaurer le titre de la page
+        updatePageTitle(0);
+    }
+    
+    // Publier un événement de mise à jour du badge
+    if (typeof EventManager !== 'undefined') {
+        EventManager.publish('notifications:badge_updated', { count });
+    }
+}
+
+/**
+ * Met à jour le titre de la page avec le nombre de notifications
+ * @param {number} count - Nombre de notifications non lues
+ */
+function updatePageTitle(count) {
+    const originalTitle = document.title.replace(/^\(\d+\) /, '');
+    
+    if (count > 0) {
+        document.title = `(${count}) ${originalTitle}`;
+    } else {
+        document.title = originalTitle;
     }
 }
 
@@ -212,6 +255,19 @@ function requestNotificationPermission() {
                     // Si l'utilisateur accepte, mettre à jour la préférence dans la base de données
                     if (permission === 'granted') {
                         updateNotificationPreference('browser_notifications', true);
+                        
+                        // Publier un événement de permission accordée
+                        if (typeof EventManager !== 'undefined') {
+                            EventManager.publish('notifications:permission_granted', {});
+                        }
+                    } else {
+                        // Stocker que l'utilisateur a refusé pour ne plus lui demander
+                        localStorage.setItem('notification_prompt_dismissed', 'true');
+                        
+                        // Publier un événement de permission refusée
+                        if (typeof EventManager !== 'undefined') {
+                            EventManager.publish('notifications:permission_denied', {});
+                        }
                     }
                 });
             });
@@ -236,29 +292,30 @@ function updateNotificationPreference(preference, value) {
     formData.append('action', 'update_preferences');
     formData.append('preferences[' + preference + ']', value ? '1' : '0');
     
-    // Récupérer le jeton CSRF
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    if (csrfToken) {
-        formData.append('csrf_token', csrfToken);
-    }
-    
-    fetch('api/notifications.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`Erreur HTTP: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            // Préférence mise à jour avec succès
-            console.log('Préférence de notification mise à jour');
-        }
-    })
-    .catch(error => console.error('Erreur lors de la mise à jour de la préférence:', error));
+    // Utiliser la classe AjaxClient pour la cohérence
+    AjaxClient.postForm('api/notifications.php', formData)
+        .then(data => {
+            if (data.success) {
+                // Préférence mise à jour avec succès
+                console.log('Préférence de notification mise à jour');
+                
+                // Publier un événement de préférence mise à jour
+                if (typeof EventManager !== 'undefined') {
+                    EventManager.publish('notifications:preference_updated', {
+                        preference,
+                        value
+                    });
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Erreur lors de la mise à jour de la préférence:', error);
+            
+            // Afficher une notification d'erreur
+            if (typeof Notifications !== 'undefined') {
+                Notifications.error(`Erreur lors de la mise à jour de la préférence: ${error.message}`);
+            }
+        });
 }
 
 /**
@@ -310,6 +367,11 @@ function showBrowserNotification(count, latestNotification) {
             } else {
                 window.location.href = 'index.php';
             }
+            
+            // Publier un événement de notification cliquée
+            if (typeof EventManager !== 'undefined') {
+                EventManager.publish('notifications:clicked', { notification: latestNotification });
+            }
         };
     } catch (e) {
         console.error('Erreur lors de la création de la notification:', e);
@@ -340,7 +402,51 @@ function playNotificationSound() {
         setTimeout(() => {
             oscillator.stop();
         }, 200);
+        
+        // Publier un événement de son joué
+        if (typeof EventManager !== 'undefined') {
+            EventManager.publish('notifications:sound_played', {});
+        }
     } catch (e) {
         console.log("Son de notification non supporté:", e);
     }
 }
+
+/**
+ * Marque toutes les notifications comme lues
+ */
+function markAllNotificationsAsRead() {
+    AjaxClient.get('api/notifications.php', {
+        action: 'mark_all_read'
+    })
+    .then(data => {
+        if (data.success) {
+            // Mettre à jour le badge
+            updateNotificationBadge(0);
+            
+            // Publier un événement de toutes les notifications lues
+            if (typeof EventManager !== 'undefined') {
+                EventManager.publish('notifications:all_read', {});
+            }
+            
+            // Afficher un message de succès
+            if (typeof Notifications !== 'undefined') {
+                Notifications.success('Toutes les notifications ont été marquées comme lues');
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Erreur lors du marquage de toutes les notifications:', error);
+        
+        // Afficher une notification d'erreur
+        if (typeof Notifications !== 'undefined') {
+            Notifications.error(`Erreur: ${error.message}`);
+        }
+    });
+}
+
+// Exposer les fonctions publiques
+window.Notifications = window.Notifications || {};
+window.Notifications.markAllAsRead = markAllNotificationsAsRead;
+window.Notifications.requestPermission = requestNotificationPermission;
+window.Notifications.playSound = playNotificationSound;
