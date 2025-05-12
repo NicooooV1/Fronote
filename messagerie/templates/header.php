@@ -20,16 +20,21 @@ $currentFolder = isset($_GET['folder']) ? $_GET['folder'] : 'reception';
 
 // Compter les notifications non lues
 $unreadNotifications = isset($user) ? countUnreadNotifications($user['id'], $user['type']) : 0;
+
+// Générer le jeton CSRF
+$csrfToken = generateCSRFToken();
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<?= $csrfToken ?>">
     <title><?= htmlspecialchars($pageTitle) ?></title>
     
     <!-- Feuilles de style -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="<?= $baseUrl ?>assets/css/utilities.css">
     <link rel="stylesheet" href="<?= $baseUrl ?>assets/css/main.css">
     
     <?php if (in_array($currentPage, ['conversation'])): ?>

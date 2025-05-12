@@ -7,6 +7,7 @@ ini_set('display_errors', 0);
 error_reporting(0);
 
 require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../core/autoloader.php'; // Nouvel autoloader
 require_once __DIR__ . '/../controllers/message.php';
 require_once __DIR__ . '/../models/message.php';
 require_once __DIR__ . '/../core/auth.php';
@@ -15,34 +16,17 @@ require_once __DIR__ . '/../core/logger.php';
 require_once __DIR__ . '/../core/utils.php';
 require_once __DIR__ . '/../core/error_handler.php';
 
-// Toujours répondre en JSON
-header('Content-Type: application/json');
+// Initialiser les services
+$apiHandler = new ApiHandler($pdo);
+$dbService = new DatabaseService($pdo);
+$messageRepo = new MessageRepository($pdo);
 
-// Vérifier l'authentification
-$user = checkAuth();
-if (!$user) {
-    handleAuthError();
-}
+// Gérer la requête
+try {
+    $user = $apiHandler->getUser();
 
-// Limiter le taux de requêtes API
-enforceRateLimit('api_messages', 120, 60, true); // 120 requêtes/minute
-
-// Vérifier le jeton CSRF pour toutes les requêtes POST
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['action'])) {
-    $requestData = file_get_contents('php://input');
-    $data = json_decode($requestData, true) ?: [];
-    
-    // Vérifier le jeton CSRF soit dans les données JSON, soit dans l'en-tête
-    $csrfToken = $data['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
-    
-    if (!validateCSRFToken($csrfToken)) {
-        handleValidationError('Jeton CSRF invalide');
-    }
-}
-
-// Envoi d'un nouveau message via AJAX
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'send_message') {
-    try {
+    // Envoi d'un nouveau message via AJAX
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'send_message') {
         // Vérifier le jeton CSRF
         if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
             throw new Exception("Jeton CSRF invalide");
@@ -68,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
         
         // Vérifier que l'utilisateur a le droit de répondre à cette conversation
-        requirePermission($user, PERMISSION_SEND_MESSAGE, ['conversation_id' => $convId]);
+        $apiHandler->requirePermission(PERMISSION_SEND_MESSAGE, ['conversation_id' => $convId]);
         
         // Traiter les pièces jointes de manière sécurisée
         $filesData = isset($_FILES['attachments']) ? $_FILES['attachments'] : [];
@@ -77,38 +61,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         
         if ($result['success'] && isset($result['messageId'])) {
             // Récupérer les informations du message créé pour les renvoyer
-            $message = getMessageById($result['messageId']);
+            $message = $messageRepo->findById($result['messageId']);
             
-            echo json_encode([
-                'success' => true,
-                'message' => $message
-            ]);
+            $apiHandler->sendResponse(true, ['message' => $message]);
         } else {
-            echo json_encode($result);
+            $apiHandler->sendResponse(false, $result['message']);
         }
-    } catch (Exception $e) {
-        handleApiError($e, ['action' => 'send_message', 'conv_id' => $convId ?? 0]);
-    }
-    exit;
-}
-
-// Récupération des nouveaux messages d'une conversation
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_GET['action']) && $_GET['action'] === 'get_new') {
-    $convId = (int)$_GET['conv_id'];
-    $lastTimestamp = isset($_GET['last_timestamp']) ? (int)$_GET['last_timestamp'] : 0;
-
-    if (!$convId) {
-        handleValidationError('ID de conversation invalide');
     }
 
-    try {
+    // Récupération des nouveaux messages d'une conversation
+    else if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_GET['action']) && $_GET['action'] === 'get_new') {
+        $convId = (int)$_GET['conv_id'];
+        $lastTimestamp = isset($_GET['last_timestamp']) ? (int)$_GET['last_timestamp'] : 0;
+
+        if (!$convId) {
+            handleValidationError('ID de conversation invalide');
+        }
+
         // Vérifier que l'utilisateur est participant à la conversation
-        $checkParticipant = $pdo->prepare("
-            SELECT id FROM conversation_participants 
-            WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND is_deleted = 0
-        ");
-        $checkParticipant->execute([$convId, $user['id'], $user['type']]);
-        if (!$checkParticipant->fetch()) {
+        $participant = $dbService->getParticipantByConversation($user['id'], $user['type'], $convId);
+        if (!$participant || $participant['is_deleted'] == 1) {
             throw new Exception("Vous n'êtes pas autorisé à accéder à cette conversation");
         }
         
@@ -151,49 +123,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
         $messages = $stmt->fetchAll();
         
         // Récupérer les pièces jointes pour chaque message
-        $attachmentStmt = $pdo->prepare("
-            SELECT id, message_id, file_name as nom_fichier, file_path as chemin
-            FROM message_attachments 
-            WHERE message_id = ?
-        ");
-        
         foreach ($messages as &$message) {
-            $attachmentStmt->execute([$message['id']]);
-            $message['pieces_jointes'] = $attachmentStmt->fetchAll();
+            $message['pieces_jointes'] = $dbService->getAttachmentsByMessage($message['id']);
             
             // Marquer comme lu automatiquement
             if (!$message['est_lu'] && !$message['is_self']) {
-                markMessageAsRead($message['id'], $user['id'], $user['type']);
+                $dbService->markMessageAsRead($message['id'], $user['id'], $user['type']);
             }
         }
         
-        echo json_encode([
-            'success' => true,
-            'messages' => $messages
-        ]);
-    } catch (Exception $e) {
-        handleApiError($e, ['action' => 'get_new', 'conv_id' => $convId]);
-    }
-    exit;
-}
-
-// Vérification des mises à jour d'une conversation
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_GET['action']) && $_GET['action'] === 'check_updates') {
-    $convId = (int)$_GET['conv_id'];
-    $lastTimestamp = isset($_GET['last_timestamp']) ? (int)$_GET['last_timestamp'] : 0;
-
-    if (!$convId) {
-        handleValidationError('ID de conversation invalide');
+        $apiHandler->sendResponse(true, ['messages' => $messages]);
     }
 
-    try {
+    // Vérification des mises à jour d'une conversation
+    else if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_GET['action']) && $_GET['action'] === 'check_updates') {
+        $convId = (int)$_GET['conv_id'];
+        $lastTimestamp = isset($_GET['last_timestamp']) ? (int)$_GET['last_timestamp'] : 0;
+
+        if (!$convId) {
+            handleValidationError('ID de conversation invalide');
+        }
+
         // Vérifier que l'utilisateur est participant à la conversation
-        $checkParticipant = $pdo->prepare("
-            SELECT id FROM conversation_participants 
-            WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND is_deleted = 0
-        ");
-        $checkParticipant->execute([$convId, $user['id'], $user['type']]);
-        if (!$checkParticipant->fetch()) {
+        $participant = $dbService->getParticipantByConversation($user['id'], $user['type'], $convId);
+        if (!$participant || $participant['is_deleted'] == 1) {
             throw new Exception("Vous n'êtes pas autorisé à accéder à cette conversation");
         }
         
@@ -250,30 +203,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
         // Utiliser le timestamp du dernier message plutôt que le timestamp actuel
         $timestampToReturn = $lastMessageTimestamp ? $lastMessageTimestamp : $lastTimestamp;
         
-        echo json_encode([
-            'success' => true,
+        $apiHandler->sendResponse(true, [
             'hasUpdates' => $newMessagesCount > 0,
             'updateCount' => $newMessagesCount,
             'participantsChanged' => $participantsChanged,
             'senders' => $sendersInfo,
             'timestamp' => $timestampToReturn // Utiliser le timestamp du dernier message
         ]);
-    } catch (Exception $e) {
-        handleApiError($e, ['action' => 'check_updates', 'conv_id' => $convId]);
-    }
-    exit;
-}
-
-// Marquer un message comme lu/non lu
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id']) && isset($_GET['action'])) {
-    $messageId = (int)$_GET['id'];
-    $action = $_GET['action'];
-
-    if (!$messageId || !in_array($action, ['mark_read', 'mark_unread'])) {
-        handleValidationError('Paramètres invalides');
     }
 
-    try {
+    // Marquer un message comme lu/non lu
+    else if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id']) && isset($_GET['action'])) {
+        $messageId = (int)$_GET['id'];
+        $action = $_GET['action'];
+
+        if (!$messageId || !in_array($action, ['mark_read', 'mark_unread'])) {
+            handleValidationError('Paramètres invalides');
+        }
+
         $result = null;
         
         if ($action === 'mark_read') {
@@ -282,12 +229,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id']) && isset($_GET['a
             $result = handleMarkMessageAsUnread($messageId, $user);
         }
         
-        echo json_encode($result);
-    } catch (Exception $e) {
-        handleApiError($e, ['action' => $action, 'message_id' => $messageId]);
+        $apiHandler->sendResponse($result['success'], $result['success'] ? $result : $result['message']);
     }
-    exit;
-}
 
-// Si on arrive ici, c'est que l'action demandée n'existe pas
-handleNotFoundError('Action non supportée');
+    // Si on arrive ici, c'est que l'action demandée n'existe pas
+    else {
+        handleNotFoundError('Action non supportée');
+    }
+} catch (Exception $e) {
+    $apiHandler->handleError($e, ['endpoint' => 'messages.php']);
+}

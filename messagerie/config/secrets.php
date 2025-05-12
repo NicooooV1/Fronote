@@ -5,9 +5,6 @@
  */
 
 return [
-    // Secret pour les jetons SSE
-    'sse_token_secret' => 'BkTW#9f7@L!zP3vQ#Rx*8jN2',
-    
     // Secret pour les jetons de notification
     'notification_token_secret' => 'Sk*7pM#d3F@vG9tZ!qL*6bR8',
     

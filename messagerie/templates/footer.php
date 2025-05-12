@@ -6,6 +6,8 @@
     </div><!-- Fin du .container -->
     
     <!-- Scripts communs -->
+    <script src="<?= $baseUrl ?>assets/js/event_manager.js"></script>
+    <script src="<?= $baseUrl ?>assets/js/ajax_client.js"></script>
     <script src="<?= $baseUrl ?>assets/js/main.js"></script>
     
     <?php if (in_array($currentPage, ['conversation'])): ?>
