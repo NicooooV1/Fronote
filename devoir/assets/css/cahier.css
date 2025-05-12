@@ -139,10 +139,6 @@
     opacity: 0.8;
 }
 
-.calendar-event.status-previsionnelle {
-    /* Style par défaut */
-}
-
 .calendar-event.status-realisee {
     border-left: 3px solid var(--success-color);
 }
