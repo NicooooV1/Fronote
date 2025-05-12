@@ -95,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['conv_id']) && isset($_
     exit;
 }
 
-// Endpoint optimisé pour les mises à jour de lecture
+// Endpoint optimisé pour les mises à jour de lecture via polling AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_GET['action']) && $_GET['action'] === 'read-polling') {
     header('Content-Type: application/json');
     
