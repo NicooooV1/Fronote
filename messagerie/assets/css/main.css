@@ -8,17 +8,6 @@
     font-family: 'Arial', 'Helvetica', sans-serif;
 }
 
-/* Général : Palette de couleurs Pronote */
-:root {
-    --pronote-primary: #009b72;
-    --pronote-secondary: #4A6572;
-    --pronote-light-bg: #f8f9fa;
-    --pronote-border: #e9ecef;
-    --pronote-text: #495057;
-    --pronote-link: #009b72;
-    --pronote-hover: #008a65;
-}
-
 body {
     background-color: #f0f3f8;
     color: #333;
@@ -43,7 +32,7 @@ header {
     justify-content: space-between;
     align-items: center;
     padding: 15px 20px;
-    background-color: #009b72; /* Couleur principale Pronote */
+    background-color: #009b72;
     color: white;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
@@ -100,7 +89,7 @@ header h1 {
     width: 260px;
     padding: 20px 0;
     background-color: white;
-    border-right: 1px solid var(--pronote-border);
+    border-right: 1px solid #e9ecef;
     box-shadow: 0 0 5px rgba(0,0,0,0.05);
 }
 
@@ -126,13 +115,13 @@ header h1 {
 
 .folder-menu a.active {
     background-color: rgba(0, 155, 114, 0.1);
-    color: var(--pronote-primary);
-    border-left: 3px solid var(--pronote-primary);
+    color: #009b72;
+    border-left: 3px solid #009b72;
     font-weight: 600;
 }
 
 .folder-menu a i {
-    color: var(--pronote-primary);
+    color: #009b72;
     width: 20px;
     text-align: center;
     margin-right: 10px;
@@ -174,7 +163,7 @@ header h1 {
 }
 
 .btn.primary:hover {
-    background-color: var(--pronote-hover);
+    background-color: #008a65;
 }
 
 .btn.secondary {
@@ -224,7 +213,7 @@ main h2 {
     display: flex;
     flex-direction: column;
     gap: 0;
-    position: relative; /* Pour le contexte de z-index */
+    position: relative;
 }
 
 .conversation-item {
@@ -235,27 +224,27 @@ main h2 {
     text-decoration: none;
     color: #495057;
     transition: background-color 0.2s;
-    border-top: 1px solid var(--pronote-border);
+    border-top: 1px solid #e9ecef;
     border-left: none;
     border-right: none;
     border-bottom: none;
     margin-bottom: 0;
     position: relative;
-    z-index: 1; /* Base z-index */
+    z-index: 1;
 }
 
 .conversation-item:hover {
     background-color: rgba(0, 155, 114, 0.05);
-    z-index: 10; /* Élevé lors du survol pour s'assurer que son menu reste au dessus */
+    z-index: 10;
 }
 
 .conversation-item.active {
-    z-index: 11; /* Encore plus élevé si actif */
+    z-index: 11;
 }
 
 .conversation-item.unread {
     background-color: rgba(0, 155, 114, 0.08);
-    border-left: 3px solid var(--pronote-primary);
+    border-left: 3px solid #009b72;
 }
 
 .conversation-item.annonce {
@@ -344,7 +333,7 @@ main h2 {
 /* Menu d'actions rapides */
 .quick-actions {
     position: relative;
-    z-index: 20; /* Augmenté pour être au-dessus de tout élément conversation-item */
+    z-index: 20;
 }
 
 .quick-actions-btn {
@@ -365,7 +354,7 @@ main h2 {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     padding: 5px 0;
     min-width: 160px;
-    z-index: 100; /* Plus élevé que le conteneur mais cohérent */
+    z-index: 100;
     display: none;
 }
 

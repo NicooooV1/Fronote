@@ -2,6 +2,274 @@
  * Scripts principaux
  */
 
+// Fonctions d'utilité centralisées
+const Utils = {
+    /**
+     * Formatte une date de façon conviviale
+     * @param {string|Date} date
+     * @returns {string}
+     */
+    formatDate: function(date) {
+        if (!date) return 'Jamais';
+        
+        const timestamp = date instanceof Date ? date.getTime() : new Date(date).getTime();
+        const now = Date.now();
+        const diff = now - timestamp;
+        
+        if (diff < 60000) { // moins d'une minute
+            return 'À l\'instant';
+        } else if (diff < 3600000) { // moins d'une heure
+            const minutes = Math.floor(diff / 60000);
+            return `Il y a ${minutes} minute${minutes > 1 ? 's' : ''}`;
+        } else if (diff < 86400000) { // moins d'un jour
+            const hours = Math.floor(diff / 3600000);
+            return `Il y a ${hours} heure${hours > 1 ? 's' : ''}`;
+        } else if (diff < 172800000) { // moins de deux jours
+            const d = new Date(timestamp);
+            return `Hier à ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+        } else {
+            const d = new Date(timestamp);
+            return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth()+1).toString().padStart(2, '0')}/${d.getFullYear()} à ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+        }
+    },
+    
+    /**
+     * Échappe les caractères HTML
+     * @param {string} text - Texte à échapper
+     * @returns {string} Texte échappé
+     */
+    escapeHTML: function(text) {
+        if (!text) return '';
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    },
+    
+    /**
+     * Échappe les apostrophes et les guillemets pour les chaînes JavaScript
+     * @param {string} text - Texte à échapper
+     * @returns {string} Texte échappé
+     */
+    addSlashes: function(text) {
+        if (!text) return '';
+        return text
+            .replace(/\\/g, '\\\\')
+            .replace(/\'/g, '\\\'')
+            .replace(/\"/g, '\\"')
+            .replace(/\0/g, '\\0');
+    },
+    
+    /**
+     * Convertit les retours à la ligne en <br>
+     * @param {string} text - Texte à convertir
+     * @returns {string} Texte avec des <br>
+     */
+    nl2br: function(text) {
+        if (!text) return '';
+        return text.replace(/\n/g, '<br>');
+    },
+    
+    /**
+     * Transforme les URLs en liens cliquables
+     * @param {string} text
+     * @return {string}
+     */
+    linkify: function(text) {
+        if (!text) return '';
+        const pattern = '~(https?://[^\\s<]+)~i';
+        return text.replace(
+            new RegExp(pattern, 'gi'),
+            '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+        );
+    },
+    
+    /**
+     * Formater la taille des fichiers
+     * @param {number} bytes
+     * @returns {string}
+     */
+    formatFileSize: function(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        else if (bytes < 1048576) return Math.round(bytes / 1024) + ' KB';
+        else return Math.round(bytes / 1048576 * 10) / 10 + ' MB';
+    },
+    
+    /**
+     * Récupère le jeton CSRF du meta tag
+     * @returns {string} Jeton CSRF
+     */
+    getCSRFToken: function() {
+        return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    }
+};
+
+// Système de notification centralisé
+const Notifications = {
+    /**
+     * Affiche une notification avec un style adapté au type
+     * @param {string} message - Message à afficher
+     * @param {number} duration - Durée d'affichage en ms (par défaut 5000ms, 0 pour pas de fermeture auto)
+     * @param {string} type - Type de notification: 'error', 'success', 'info', 'warning'
+     * @returns {HTMLElement} Élément de notification créé
+     */
+    show: function(message, duration = 5000, type = 'error') {
+        // Créer la div de notification si elle n'existe pas
+        let notifContainer = document.getElementById('error-notification-container');
+        
+        if (!notifContainer) {
+            notifContainer = document.createElement('div');
+            notifContainer.id = 'error-notification-container';
+            
+            // Styles pour centrer la notification
+            notifContainer.style.position = 'fixed';
+            notifContainer.style.top = '50%';
+            notifContainer.style.left = '50%';
+            notifContainer.style.transform = 'translate(-50%, -50%)';
+            notifContainer.style.zIndex = '10000';
+            notifContainer.style.width = 'auto';
+            notifContainer.style.maxWidth = '80%';
+            
+            document.body.appendChild(notifContainer);
+        }
+        
+        // Créer la notification
+        const notification = document.createElement('div');
+        notification.className = 'error-notification';
+        
+        // Styles basés sur le type
+        let backgroundColor, textColor, icon;
+        if (type === 'error') {
+            backgroundColor = '#f8d7da';
+            textColor = '#721c24';
+            icon = 'exclamation-circle';
+        } else if (type === 'success') {
+            backgroundColor = '#d4edda';
+            textColor = '#155724';
+            icon = 'check-circle';
+        } else if (type === 'info') {
+            backgroundColor = '#d1ecf1';
+            textColor = '#0c5460';
+            icon = 'info-circle';
+        } else if (type === 'warning') {
+            backgroundColor = '#fff3cd';
+            textColor = '#856404';
+            icon = 'exclamation-triangle';
+        }
+        
+        // Styles de la notification
+        notification.style.backgroundColor = backgroundColor;
+        notification.style.color = textColor;
+        notification.style.padding = '15px 20px';
+        notification.style.margin = '10px';
+        notification.style.borderRadius = '5px';
+        notification.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.2)';
+        notification.style.display = 'flex';
+        notification.style.justifyContent = 'space-between';
+        notification.style.alignItems = 'center';
+        notification.style.minWidth = '300px';
+        notification.style.animation = 'fadeInDown 0.3s ease-out';
+        
+        // Créer le contenu de la notification
+        const content = document.createElement('div');
+        content.innerHTML = `<i class="fas fa-${icon}"></i> ${message}`;
+        
+        // Créer le bouton de fermeture
+        const closeBtn = document.createElement('button');
+        closeBtn.innerHTML = '&times;';
+        closeBtn.style.background = 'none';
+        closeBtn.style.border = 'none';
+        closeBtn.style.color = textColor;
+        closeBtn.style.fontSize = '20px';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.style.marginLeft = '15px';
+        
+        // Ajouter le contenu et le bouton à la notification
+        notification.appendChild(content);
+        notification.appendChild(closeBtn);
+        
+        // Ajouter la notification au conteneur
+        notifContainer.appendChild(notification);
+        
+        // Fermer la notification quand on clique sur le bouton
+        closeBtn.addEventListener('click', function() {
+            notifContainer.removeChild(notification);
+            
+            // Supprimer le conteneur s'il n'y a plus de notifications
+            if (notifContainer.children.length === 0) {
+                document.body.removeChild(notifContainer);
+            }
+        });
+        
+        // Fermer automatiquement après la durée spécifiée (sauf si duration = 0)
+        if (duration > 0) {
+            setTimeout(function() {
+                if (notification.parentNode === notifContainer) {
+                    notifContainer.removeChild(notification);
+                    
+                    // Supprimer le conteneur s'il n'y a plus de notifications
+                    if (notifContainer.children.length === 0) {
+                        document.body.removeChild(notifContainer);
+                    }
+                }
+            }, duration);
+        }
+        
+        return notification;
+    },
+    
+    /**
+     * Affiche une notification d'erreur
+     * @param {string} message - Message d'erreur
+     * @param {number} duration - Durée d'affichage
+     * @returns {HTMLElement} Élément de notification
+     */
+    error: function(message, duration = 5000) {
+        return this.show(message, duration, 'error');
+    },
+    
+    /**
+     * Affiche une notification de succès
+     * @param {string} message - Message de succès
+     * @param {number} duration - Durée d'affichage
+     * @returns {HTMLElement} Élément de notification
+     */
+    success: function(message, duration = 5000) {
+        return this.show(message, duration, 'success');
+    },
+    
+    /**
+     * Affiche une notification d'information
+     * @param {string} message - Message d'information
+     * @param {number} duration - Durée d'affichage
+     * @returns {HTMLElement} Élément de notification
+     */
+    info: function(message, duration = 5000) {
+        return this.show(message, duration, 'info');
+    },
+    
+    /**
+     * Affiche une notification d'avertissement
+     * @param {string} message - Message d'avertissement
+     * @param {number} duration - Durée d'affichage
+     * @returns {HTMLElement} Élément de notification
+     */
+    warning: function(message, duration = 5000) {
+        return this.show(message, duration, 'warning');
+    }
+};
+
+// Pour la compatibilité avec le code existant
+function afficherNotificationErreur(message, duration = 5000, type = 'error') {
+    return Notifications.show(message, duration, type);
+}
+
+function afficherNotificationSucces(message, duration = 5000) {
+    return Notifications.show(message, duration, 'success');
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialiser les actions de conversation
     initializeActions();
@@ -17,6 +285,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Ajouter le jeton CSRF aux en-têtes fetch par défaut
     setupFetchWithCSRF();
+    
+    // Publier un événement pour signaler que l'initialisation est terminée
+    if (typeof EventManager !== 'undefined') {
+        EventManager.publish('app:initialized', {});
+    }
 });
 
 /**
@@ -148,7 +421,7 @@ function setupFormValidation() {
             const textareaContent = textArea.value.trim();
             if (textareaContent === '') {
                 e.preventDefault();
-                afficherNotificationErreur('Le message ne peut pas être vide');
+                Notifications.error('Le message ne peut pas être vide');
             }
         });
     }
@@ -178,7 +451,7 @@ function updateFileList() {
             const allowedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'jpg', 'jpeg', 'png', 'gif'];
             
             if (!allowedExtensions.includes(fileExtension)) {
-                afficherNotificationErreur(`Le type de fichier .${fileExtension} n'est pas autorisé`);
+                Notifications.error(`Le type de fichier .${fileExtension} n'est pas autorisé`);
                 this.value = ''; // Réinitialiser l'input
                 return;
             }
@@ -186,12 +459,12 @@ function updateFileList() {
             // Vérification de la taille
             const maxSize = 10 * 1024 * 1024; // 10 Mo
             if (file.size > maxSize) {
-                afficherNotificationErreur(`Le fichier ${file.name} est trop volumineux (max: 10 Mo)`);
+                Notifications.error(`Le fichier ${file.name} est trop volumineux (max: 10 Mo)`);
                 this.value = ''; // Réinitialiser l'input
                 return;
             }
             
-            const fileSize = formatFileSize(file.size);
+            const fileSize = Utils.formatFileSize(file.size);
             
             const fileInfo = document.createElement('div');
             fileInfo.className = 'file-info';
@@ -253,7 +526,7 @@ function setupBulkActions() {
                 ).map(cb => parseInt(cb.value, 10));
                 
                 if (selectedIds.length === 0) {
-                    afficherNotificationErreur('Veuillez sélectionner au moins une conversation');
+                    Notifications.error('Veuillez sélectionner au moins une conversation');
                     return;
                 }
                 
@@ -354,7 +627,7 @@ function performBulkAction(action, convIds) {
         const data = {
             action: action,
             ids: convIds,
-            csrf_token: getCSRFToken()
+            csrf_token: Utils.getCSRFToken()
         };
         
         // Montrer un indicateur de chargement
@@ -366,40 +639,46 @@ function performBulkAction(action, convIds) {
         });
         
         // Afficher un indicateur de chargement
-        const loadingIndicator = afficherNotificationErreur('Traitement en cours...', 0, 'info');
+        const loadingIndicator = Notifications.info('Traitement en cours...', 0);
         
-        // Envoyer la requête
-        fetch('api/conversation.php?action=bulk', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': getCSRFToken()
-            },
-            body: JSON.stringify(data)
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erreur réseau: ' + response.status);
-            }
-            return response.json();
-        })
-        .then(data => {
-            // Supprimer l'indicateur de chargement
-            if (loadingIndicator && loadingIndicator.parentNode) {
-                loadingIndicator.parentNode.removeChild(loadingIndicator);
-            }
-            
-            if (data.success) {
-                // Afficher un message de succès
-                afficherNotificationErreur(`Action réussie sur ${data.count} conversation(s)`, 3000, 'success');
+        // Envoyer la requête via AjaxClient
+        AjaxClient.post('api/conversation.php?action=bulk', data)
+            .then(data => {
+                // Supprimer l'indicateur de chargement
+                if (loadingIndicator && loadingIndicator.parentNode) {
+                    loadingIndicator.parentNode.removeChild(loadingIndicator);
+                }
                 
-                // Recharger la page
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            } else {
-                console.error('Erreur:', data.error);
-                afficherNotificationErreur('Erreur lors de l\'action: ' + data.error, 5000, 'error');
+                if (data.success) {
+                    // Afficher un message de succès
+                    Notifications.success(`Action réussie sur ${data.count} conversation(s)`, 3000);
+                    
+                    // Recharger la page
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    console.error('Erreur:', data.error);
+                    Notifications.error('Erreur lors de l\'action: ' + data.error, 5000);
+                    
+                    // Restaurer le curseur et réactiver les boutons
+                    document.body.style.cursor = 'default';
+                    document.querySelectorAll('.bulk-action-btn').forEach(btn => {
+                        btn.disabled = false;
+                    });
+                    
+                    // Mettre à jour l'état des boutons
+                    updateBulkActionButtons();
+                }
+            })
+            .catch(error => {
+                // Supprimer l'indicateur de chargement
+                if (loadingIndicator && loadingIndicator.parentNode) {
+                    loadingIndicator.parentNode.removeChild(loadingIndicator);
+                }
+                
+                console.error('Erreur:', error);
+                Notifications.error('Une erreur est survenue lors de l\'exécution de l\'action: ' + error.message, 5000);
                 
                 // Restaurer le curseur et réactiver les boutons
                 document.body.style.cursor = 'default';
@@ -409,26 +688,7 @@ function performBulkAction(action, convIds) {
                 
                 // Mettre à jour l'état des boutons
                 updateBulkActionButtons();
-            }
-        })
-        .catch(error => {
-            // Supprimer l'indicateur de chargement
-            if (loadingIndicator && loadingIndicator.parentNode) {
-                loadingIndicator.parentNode.removeChild(loadingIndicator);
-            }
-            
-            console.error('Erreur:', error);
-            afficherNotificationErreur('Une erreur est survenue lors de l\'exécution de l\'action: ' + error.message, 5000, 'error');
-            
-            // Restaurer le curseur et réactiver les boutons
-            document.body.style.cursor = 'default';
-            document.querySelectorAll('.bulk-action-btn').forEach(btn => {
-                btn.disabled = false;
             });
-            
-            // Mettre à jour l'état des boutons
-            updateBulkActionButtons();
-        });
     }
 }
 
@@ -470,23 +730,17 @@ function toggleQuickActions(id) {
  * @param {number} convId
  */
 function markConversationAsRead(convId) {
-    fetch(`api/conversation.php?id=${convId}&action=mark_read`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erreur réseau: ' + response.status);
-            }
-            return response.json();
-        })
+    AjaxClient.get(`api/conversation.php?id=${convId}&action=mark_read`)
         .then(data => {
             if (data.success) {
                 window.location.reload();
             } else {
-                afficherNotificationErreur('Erreur: ' + data.error, 5000, 'error');
+                Notifications.error('Erreur: ' + data.error);
             }
         })
         .catch(error => {
             console.error('Erreur:', error);
-            afficherNotificationErreur('Erreur: ' + error.message, 5000, 'error');
+            Notifications.error('Erreur: ' + error.message);
         });
 }
 
@@ -495,23 +749,17 @@ function markConversationAsRead(convId) {
  * @param {number} convId
  */
 function markConversationAsUnread(convId) {
-    fetch(`api/conversation.php?id=${convId}&action=mark_unread`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erreur réseau: ' + response.status);
-            }
-            return response.json();
-        })
+    AjaxClient.get(`api/conversation.php?id=${convId}&action=mark_unread`)
         .then(data => {
             if (data.success) {
                 window.location.reload();
             } else {
-                afficherNotificationErreur('Erreur: ' + data.error, 5000, 'error');
+                Notifications.error('Erreur: ' + data.error);
             }
         })
         .catch(error => {
             console.error('Erreur:', error);
-            afficherNotificationErreur('Erreur: ' + error.message, 5000, 'error');
+            Notifications.error('Erreur: ' + error.message);
         });
 }
 
@@ -542,150 +790,17 @@ function closeModal(modal) {
 }
 
 /**
- * Formater la taille des fichiers
- * @param {number} bytes
- * @returns {string}
- */
-function formatFileSize(bytes) {
-    if (bytes < 1024) return bytes + ' B';
-    else if (bytes < 1048576) return Math.round(bytes / 1024) + ' KB';
-    else return Math.round(bytes / 1048576 * 10) / 10 + ' MB';
-}
-
-/**
- * Affiche une notification avec un style adapté au type
- * @param {string} message - Message à afficher
- * @param {number} duration - Durée d'affichage en ms (par défaut 5000ms, 0 pour pas de fermeture auto)
- * @param {string} type - Type de notification: 'error', 'success', 'info', 'warning'
- * @returns {HTMLElement} Élément de notification créé
- */
-function afficherNotificationErreur(message, duration = 5000, type = 'error') {
-    // Créer la div de notification si elle n'existe pas
-    let notifContainer = document.getElementById('error-notification-container');
-    
-    if (!notifContainer) {
-        notifContainer = document.createElement('div');
-        notifContainer.id = 'error-notification-container';
-        
-        // Styles pour centrer la notification
-        notifContainer.style.position = 'fixed';
-        notifContainer.style.top = '50%';
-        notifContainer.style.left = '50%';
-        notifContainer.style.transform = 'translate(-50%, -50%)';
-        notifContainer.style.zIndex = '10000';
-        notifContainer.style.width = 'auto';
-        notifContainer.style.maxWidth = '80%';
-        
-        document.body.appendChild(notifContainer);
-    }
-    
-    // Créer la notification
-    const notification = document.createElement('div');
-    notification.className = 'error-notification';
-    
-    // Styles basés sur le type
-    let backgroundColor, textColor, icon;
-    if (type === 'error') {
-        backgroundColor = '#f8d7da';
-        textColor = '#721c24';
-        icon = 'exclamation-circle';
-    } else if (type === 'success') {
-        backgroundColor = '#d4edda';
-        textColor = '#155724';
-        icon = 'check-circle';
-    } else if (type === 'info') {
-        backgroundColor = '#d1ecf1';
-        textColor = '#0c5460';
-        icon = 'info-circle';
-    } else if (type === 'warning') {
-        backgroundColor = '#fff3cd';
-        textColor = '#856404';
-        icon = 'exclamation-triangle';
-    }
-    
-    // Styles de la notification
-    notification.style.backgroundColor = backgroundColor;
-    notification.style.color = textColor;
-    notification.style.padding = '15px 20px';
-    notification.style.margin = '10px';
-    notification.style.borderRadius = '5px';
-    notification.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.2)';
-    notification.style.display = 'flex';
-    notification.style.justifyContent = 'space-between';
-    notification.style.alignItems = 'center';
-    notification.style.minWidth = '300px';
-    notification.style.animation = 'fadeInDown 0.3s ease-out';
-    
-    // Créer le contenu de la notification
-    const content = document.createElement('div');
-    content.innerHTML = `<i class="fas fa-${icon}"></i> ${message}`;
-    
-    // Créer le bouton de fermeture
-    const closeBtn = document.createElement('button');
-    closeBtn.innerHTML = '&times;';
-    closeBtn.style.background = 'none';
-    closeBtn.style.border = 'none';
-    closeBtn.style.color = textColor;
-    closeBtn.style.fontSize = '20px';
-    closeBtn.style.cursor = 'pointer';
-    closeBtn.style.marginLeft = '15px';
-    
-    // Ajouter le contenu et le bouton à la notification
-    notification.appendChild(content);
-    notification.appendChild(closeBtn);
-    
-    // Ajouter la notification au conteneur
-    notifContainer.appendChild(notification);
-    
-    // Fermer la notification quand on clique sur le bouton
-    closeBtn.addEventListener('click', function() {
-        notifContainer.removeChild(notification);
-        
-        // Supprimer le conteneur s'il n'y a plus de notifications
-        if (notifContainer.children.length === 0) {
-            document.body.removeChild(notifContainer);
-        }
-    });
-    
-    // Fermer automatiquement après la durée spécifiée (sauf si duration = 0)
-    if (duration > 0) {
-        setTimeout(function() {
-            if (notification.parentNode === notifContainer) {
-                notifContainer.removeChild(notification);
-                
-                // Supprimer le conteneur s'il n'y a plus de notifications
-                if (notifContainer.children.length === 0) {
-                    document.body.removeChild(notifContainer);
-                }
-            }
-        }, duration);
-    }
-    
-    return notification;
-}
-
-/**
- * Fonction pour afficher les succès
- * @param {string} message - Message à afficher
- * @param {number} duration - Durée d'affichage en ms (par défaut 5000ms)
- * @returns {HTMLElement} Élément de notification créé
- */
-function afficherNotificationSucces(message, duration = 5000) {
-    return afficherNotificationErreur(message, duration, 'success');
-}
-
-/**
  * Ajouter des gestionnaires d'erreurs globaux
  */
 function initErrorHandlers() {
     // Intercepter les erreurs non capturées
     window.addEventListener('error', function(event) {
-        afficherNotificationErreur('Erreur JavaScript: ' + event.message, 5000, 'error');
+        Notifications.error('Erreur JavaScript: ' + event.message);
     });
     
     // Intercepter les rejets de promesses non capturés
     window.addEventListener('unhandledrejection', function(event) {
-        afficherNotificationErreur('Erreur asynchrone: ' + event.reason, 5000, 'error');
+        Notifications.error('Erreur asynchrone: ' + event.reason);
     });
     
     // Intercepter les erreurs de chargement d'image
@@ -694,6 +809,13 @@ function initErrorHandlers() {
             event.target.src = 'assets/images/error.png'; // Image par défaut en cas d'erreur
         }
     }, true);
+    
+    // Écouter les erreurs AJAX
+    if (typeof EventManager !== 'undefined') {
+        EventManager.subscribe('ajax:error', function(data) {
+            Notifications.error('Erreur de communication avec le serveur: ' + data.message);
+        });
+    }
 }
 
 /**
@@ -723,19 +845,11 @@ function setupFetchWithCSRF() {
             
             // Ajouter l'en-tête X-CSRF-TOKEN si pas déjà présent
             if (!options.headers['X-CSRF-TOKEN']) {
-                options.headers['X-CSRF-TOKEN'] = getCSRFToken();
+                options.headers['X-CSRF-TOKEN'] = Utils.getCSRFToken();
             }
         }
         
         // Appeler la méthode fetch originale avec les options modifiées
         return originalFetch(url, options);
     };
-}
-
-/**
- * Récupère le jeton CSRF du meta tag
- * @returns {string} Jeton CSRF
- */
-function getCSRFToken() {
-    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 }

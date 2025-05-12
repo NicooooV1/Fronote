@@ -622,9 +622,9 @@
     color: #495057;
     font-size: 16px;
     cursor: pointer;
-    z-index: 1200; /* Valeur plus élevée pour s'assurer qu'il est au-dessus des autres éléments */
+    z-index: 1200;
     padding: 5px;
-    display: flex !important; /* Forcer l'affichage */
+    display: flex !important;
     align-items: center;
     justify-content: center;
     width: 30px;
@@ -650,5 +650,5 @@
 
 /* Ajuster la zone principale quand la sidebar est repliée */
 .conversation-page[data-sidebar-collapsed="true"] .conversation-main {
-    margin-left: 50px; /* Espace pour le bouton toggle */
+    margin-left: 50px;
 }

@@ -137,9 +137,8 @@ function initFormValidation() {
                     titleInput.parentNode.insertBefore(errorMsg, titleInput.nextSibling.nextSibling);
                 }
                 // Afficher une notification d'erreur
-                if (typeof afficherNotificationErreur === 'function') {
-                    afficherNotificationErreur('Le titre ne peut pas dépasser 100 caractères');
-                }
+                Notifications?.error('Le titre ne peut pas dépasser 100 caractères') ||
+                afficherNotificationErreur('Le titre ne peut pas dépasser 100 caractères');
             }
             
             // Vérifier le contenu
@@ -156,9 +155,8 @@ function initFormValidation() {
                     contentTextarea.parentNode.insertBefore(errorMsg, contentTextarea.nextSibling.nextSibling);
                 }
                 // Afficher une notification d'erreur
-                if (typeof afficherNotificationErreur === 'function') {
-                    afficherNotificationErreur('Le message ne peut pas dépasser 10000 caractères');
-                }
+                Notifications?.error('Le message ne peut pas dépasser 10000 caractères') || 
+                afficherNotificationErreur('Le message ne peut pas dépasser 10000 caractères');
             }
             
             // Vérifier aussi les champs requis
@@ -181,9 +179,8 @@ function initFormValidation() {
                         field.parentNode.insertBefore(errorMsg, field.nextSibling);
                     }
                     // Afficher une notification d'erreur
-                    if (typeof afficherNotificationErreur === 'function') {
-                        afficherNotificationErreur(`Le champ "${field.getAttribute('placeholder') || field.name}" est requis`);
-                    }
+                    Notifications?.error(`Le champ "${field.getAttribute('placeholder') || field.name}" est requis`) || 
+                    afficherNotificationErreur(`Le champ "${field.getAttribute('placeholder') || field.name}" est requis`);
                 } else {
                     field.classList.remove('is-invalid');
                     const errorMsg = field.nextElementSibling;
@@ -237,11 +234,8 @@ function initFormValidation() {
                     fileList.innerHTML = '';
                 }
                 // Afficher une notification d'erreur
-                if (typeof afficherNotificationErreur === 'function') {
-                    afficherNotificationErreur(errorMessage);
-                } else {
-                    alert(errorMessage);
-                }
+                Notifications?.error(errorMessage) || 
+                afficherNotificationErreur(errorMessage);
             }
         });
     }
@@ -457,10 +451,8 @@ function selectAllInCategory(categoryId) {
     updateSelectedRecipients();
     
     // Notification de succès
-    if (typeof afficherNotificationSucces === 'function') {
-        const categoryName = category.querySelector('.category-title')?.textContent || 'catégorie';
-        afficherNotificationSucces(`Tous les destinataires de la ${categoryName} ont été sélectionnés`, 2000);
-    }
+    Notifications?.success(`Tous les destinataires de la ${category.querySelector('.category-title')?.textContent || 'catégorie'} ont été sélectionnés`, 2000) || 
+    afficherNotificationSucces(`Tous les destinataires de la ${category.querySelector('.category-title')?.textContent || 'catégorie'} ont été sélectionnés`, 2000);
 }
 
 /**
@@ -479,10 +471,8 @@ function deselectAllInCategory(categoryId) {
     updateSelectedRecipients();
     
     // Notification de succès
-    if (typeof afficherNotificationSucces === 'function') {
-        const categoryName = category.querySelector('.category-title')?.textContent || 'catégorie';
-        afficherNotificationSucces(`Tous les destinataires de la ${categoryName} ont été désélectionnés`, 2000);
-    }
+    Notifications?.success(`Tous les destinataires de la ${category.querySelector('.category-title')?.textContent || 'catégorie'} ont été désélectionnés`, 2000) || 
+    afficherNotificationSucces(`Tous les destinataires de la ${category.querySelector('.category-title')?.textContent || 'catégorie'} ont été désélectionnés`, 2000);
 }
 
 /**
@@ -532,7 +522,7 @@ function initFileUpload() {
             if (this.files.length > 0) {
                 for (let i = 0; i < this.files.length; i++) {
                     const file = this.files[i];
-                    const fileSize = formatFileSize(file.size);
+                    const fileSize = Utils?.formatFileSize ? Utils.formatFileSize(file.size) : formatFileSize(file.size);
                     
                     const fileInfo = document.createElement('div');
                     fileInfo.className = 'file-info';
@@ -544,9 +534,8 @@ function initFileUpload() {
                 }
                 
                 // Notification de succès
-                if (typeof afficherNotificationSucces === 'function') {
-                    afficherNotificationSucces(`${this.files.length} fichier(s) sélectionné(s)`, 2000);
-                }
+                Notifications?.success(`${this.files.length} fichier(s) sélectionné(s)`, 2000) || 
+                afficherNotificationSucces(`${this.files.length} fichier(s) sélectionné(s)`, 2000);
             }
         });
     }
@@ -558,6 +547,10 @@ function initFileUpload() {
  * @returns {string} Taille formatée
  */
 function formatFileSize(bytes) {
+    if (typeof Utils !== 'undefined' && typeof Utils.formatFileSize === 'function') {
+        return Utils.formatFileSize(bytes);
+    }
+    
     if (bytes < 1024) return bytes + ' B';
     else if (bytes < 1048576) return Math.round(bytes / 1024) + ' KB';
     else return Math.round(bytes / 1048576 * 10) / 10 + ' MB';
