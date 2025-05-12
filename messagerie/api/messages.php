@@ -172,11 +172,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
         
         // Vérifier s'il y a de nouveaux messages après le timestamp donné
         $newMessagesStmt = $pdo->prepare("
-            SELECT COUNT(*) as count FROM messages
+            SELECT COUNT(*) as count, MAX(UNIX_TIMESTAMP(created_at)) as last_message_timestamp 
+            FROM messages
             WHERE conversation_id = ? AND UNIX_TIMESTAMP(created_at) > ?
         ");
         $newMessagesStmt->execute([$convId, $lastTimestamp]);
-        $newMessagesCount = $newMessagesStmt->fetchColumn();
+        $newMessagesInfo = $newMessagesStmt->fetch();
+        $newMessagesCount = $newMessagesInfo['count'];
+        $lastMessageTimestamp = $newMessagesInfo['last_message_timestamp'];
         
         // Vérifier si les participants ont changé
         $participantsChangedStmt = $pdo->prepare("
@@ -217,13 +220,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
             $sendersInfo = $sendersStmt->fetchAll(PDO::FETCH_ASSOC);
         }
         
+        // Utiliser le timestamp du dernier message plutôt que le timestamp actuel
+        $timestampToReturn = $lastMessageTimestamp ? $lastMessageTimestamp : $lastTimestamp;
+        
         echo json_encode([
             'success' => true,
             'hasUpdates' => $newMessagesCount > 0,
             'updateCount' => $newMessagesCount,
             'participantsChanged' => $participantsChanged,
             'senders' => $sendersInfo,
-            'timestamp' => time() // Timestamp actuel pour les futures requêtes
+            'timestamp' => $timestampToReturn // Utiliser le timestamp du dernier message
         ]);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);

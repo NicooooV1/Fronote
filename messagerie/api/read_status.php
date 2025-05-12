@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['conv_id']) && isset($_
     exit;
 }
 
-// Endpoint optimisé pour les mises à jour de lecture (remplaçant le SSE)
+// Endpoint optimisé pour les mises à jour de lecture
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_GET['action']) && $_GET['action'] === 'read-polling') {
     header('Content-Type: application/json');
     
@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
             exit;
         }
         
-        // Sinon, récupérer les mises à jour
+        // Récupérer tous les messages depuis le dernier connu
         $messagesStmt = $pdo->prepare("
             SELECT id FROM messages
             WHERE conversation_id = ? AND id > ?
@@ -229,14 +229,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
     exit;
 }
 
-// Endpoint Long Polling pour récupérer les mises à jour de lecture
+// Endpoint efficace pour les mises à jour de lecture
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_GET['action']) && $_GET['action'] === 'read-updates') {
     header('Content-Type: application/json');
     
     try {
         $convId = (int)$_GET['conv_id'];
         $since = isset($_GET['since']) ? (int)$_GET['since'] : 0;
-        $maxWaitTime = 30; // Temps d'attente maximum en secondes
         
         // Vérifier que l'utilisateur est participant à la conversation
         $checkParticipant = $pdo->prepare("
@@ -248,117 +247,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
             throw new Exception("Vous n'êtes pas autorisé à accéder à cette conversation");
         }
         
-        // Fonction pour vérifier les mises à jour
-        function checkForUpdates($pdo, $convId, $since) {
-            // Récupérer tous les messages depuis le dernier connu
-            $messagesStmt = $pdo->prepare("
-                SELECT id FROM messages
-                WHERE conversation_id = ? AND id > ?
-                ORDER BY id ASC
-            ");
-            $messagesStmt->execute([$convId, $since]);
-            $messages = $messagesStmt->fetchAll(PDO::FETCH_COLUMN);
-            
-            if (empty($messages)) {
-                return ['updates' => []];
-            }
-            
-            // Récupérer la somme des versions de tous les participants
-            $versionStmt = $pdo->prepare("
-                SELECT SUM(version) as version_sum FROM conversation_participants
-                WHERE conversation_id = ? AND is_deleted = 0
-            ");
-            $versionStmt->execute([$convId]);
-            $versionSum = $versionStmt->fetchColumn();
-            
-            $updates = [];
-            
-            // Pour chaque message, récupérer les informations de lecture
-            foreach ($messages as $messageId) {
-                $readStatus = getMessageReadStatus($messageId);
-                
-                $updates[] = [
-                    'messageId' => $messageId,
-                    'read_status' => $readStatus
-                ];
-            }
-            
-            return [
-                'version_sum' => $versionSum,
-                'updates' => $updates
+        // Récupérer tous les messages depuis le dernier connu
+        $messagesStmt = $pdo->prepare("
+            SELECT id FROM messages
+            WHERE conversation_id = ? AND id > ?
+            ORDER BY id ASC
+        ");
+        $messagesStmt->execute([$convId, $since]);
+        $messages = $messagesStmt->fetchAll(PDO::FETCH_COLUMN);
+        
+        // Récupérer la somme des versions
+        $versionStmt = $pdo->prepare("
+            SELECT SUM(version) as version_sum FROM conversation_participants
+            WHERE conversation_id = ? AND is_deleted = 0
+        ");
+        $versionStmt->execute([$convId]);
+        $versionSum = $versionStmt->fetchColumn();
+        
+        $updates = [];
+        foreach ($messages as $messageId) {
+            $readStatus = getMessageReadStatus($messageId);
+            $updates[] = [
+                'messageId' => $messageId,
+                'read_status' => $readStatus
             ];
         }
         
-        // Premier contrôle immédiat
-        $result = checkForUpdates($pdo, $convId, $since);
-        $initialVersionSum = $result['version_sum'] ?? 0;
-        $updates = $result['updates'];
-        
-        // Si des mises à jour sont disponibles immédiatement, les renvoyer
-        if (!empty($updates)) {
-            echo json_encode([
-                'success' => true,
-                'updates' => $updates,
-                'timestamp' => time()
-            ]);
-            exit;
-        }
-        
-        // Sinon, attendre les mises à jour en long polling
-        $startTime = time();
-        $currentVersionSum = $initialVersionSum;
-        
-        // Boucle de long polling
-        while (time() - $startTime < $maxWaitTime) {
-            // Pause pour éviter de surcharger la base de données
-            sleep(1);
-            
-            // Vérifier si la somme des versions a changé
-            $versionStmt = $pdo->prepare("
-                SELECT SUM(version) as version_sum FROM conversation_participants
-                WHERE conversation_id = ? AND is_deleted = 0
-            ");
-            $versionStmt->execute([$convId]);
-            $newVersionSum = $versionStmt->fetchColumn();
-            
-            // Si la somme des versions a changé, récupérer les mises à jour
-            if ($newVersionSum != $currentVersionSum) {
-                $result = checkForUpdates($pdo, $convId, $since);
-                $updates = $result['updates'];
-                
-                // Si des mises à jour sont disponibles, les renvoyer
-                if (!empty($updates)) {
-                    echo json_encode([
-                        'success' => true,
-                        'updates' => $updates,
-                        'timestamp' => time()
-                    ]);
-                    exit;
-                }
-                
-                // Mettre à jour la somme des versions pour éviter de boucler pour rien
-                $currentVersionSum = $newVersionSum;
-            }
-            
-            // Vider le tampon de sortie pour éviter les timeouts
-            if (ob_get_level() > 0) {
-                ob_flush();
-                flush();
-            }
-            
-            // Vérifier si la connexion client est toujours active
-            if (connection_aborted()) {
-                exit;
-            }
-        }
-        
-        // Si aucune mise à jour n'est disponible après le temps d'attente, renvoyer une réponse vide
         echo json_encode([
             'success' => true,
-            'updates' => [],
+            'hasUpdates' => !empty($updates),
+            'updates' => $updates,
+            'version' => $versionSum,
             'timestamp' => time()
         ]);
-        
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
