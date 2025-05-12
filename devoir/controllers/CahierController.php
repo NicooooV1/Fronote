@@ -17,7 +17,10 @@ class CahierController {
         require_once ROOT_PATH . '/models/Ressource.php';
         require_once ROOT_PATH . '/models/Matiere.php';
         require_once ROOT_PATH . '/models/Classe.php';
-        require_once ROOT_PATH . '/models/User.php';
+        require_once ROOT_PATH . '/../login/src/auth.php';
+        require_once ROOT_PATH . '/../login/src/user.php';
+
+        $auth = new Auth($this->db->getPDO());
         
         $this->seanceModel = new Seance();
         $this->chapitreModel = new Chapitre();

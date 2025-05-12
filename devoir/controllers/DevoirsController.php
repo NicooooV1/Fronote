@@ -13,7 +13,10 @@ class DevoirsController {
         require_once ROOT_PATH . '/models/Devoir.php';
         require_once ROOT_PATH . '/models/Rendu.php';
         require_once ROOT_PATH . '/models/Classe.php';
-        require_once ROOT_PATH . '/models/User.php';
+        require_once ROOT_PATH . '/../login/src/auth.php';
+        require_once ROOT_PATH . '/../login/src/user.php';
+
+        $auth = new Auth($this->db->getPDO());
         
         $this->devoirModel = new Devoir();
         $this->renduModel = new Rendu();

@@ -1,86 +1,153 @@
 <?php
 /**
- * Configuration principale de l'application
+ * Classe Database modifiée pour exposer l'instance PDO
+ * Nécessaire pour l'intégration avec le système de login
  */
-
-// Informations de base
-define('APP_NAME', 'ENT Scolaire');
-define('APP_VERSION', '1.0.0');
-define('BASE_URL', 'http://localhost/ent-scolaire'); // À adapter selon votre environnement
-
-// Chemins
-define('ROOT_PATH', dirname(__DIR__)); // Répertoire racine du projet
-define('UPLOADS_PATH', ROOT_PATH . '/uploads');
-define('DEVOIRS_UPLOADS', UPLOADS_PATH . '/devoirs');
-define('RENDUS_UPLOADS', UPLOADS_PATH . '/rendus');
-define('RESSOURCES_UPLOADS', UPLOADS_PATH . '/ressources');
-
-// Configuration de la base de données
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'ent_scolaire');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_CHARSET', 'utf8mb4');
-
-// Formats de date
-define('DATE_FORMAT', 'd/m/Y');
-define('DATETIME_FORMAT', 'd/m/Y H:i');
-define('TIME_FORMAT', 'H:i');
-
-// Statuts des devoirs
-define('STATUT_A_FAIRE', 'AF');
-define('STATUT_EN_COURS', 'EC');
-define('STATUT_RENDU', 'RE');
-define('STATUT_CORRIGE', 'CO');
-
-// Statuts des séances
-define('STATUT_PREVISIONNELLE', 'PREV');
-define('STATUT_REALISEE', 'REAL');
-define('STATUT_ANNULEE', 'ANNUL');
-
-// Types d'utilisateurs
-define('TYPE_ELEVE', 'eleve');
-define('TYPE_PROFESSEUR', 'professeur');
-define('TYPE_PARENT', 'parent');
-define('TYPE_ADMIN', 'admin');
-
-// Types de ressources
-define('RESSOURCE_FILE', 'FILE');
-define('RESSOURCE_LINK', 'LINK');
-define('RESSOURCE_VIDEO', 'VIDEO');
-define('RESSOURCE_QCM', 'QCM');
-define('RESSOURCE_TEXT', 'TEXT');
-define('RESSOURCE_GALLERY', 'GALLERY');
-
-// Types de pièces jointes
-define('PJ_PDF', 'PDF');
-define('PJ_IMG', 'IMG');
-define('PJ_DOC', 'DOC');
-define('PJ_LINK', 'LINK');
-define('PJ_OTHER', 'OTHER');
-
-// Options de téléchargement de fichiers
-define('MAX_UPLOAD_SIZE', 10 * 1024 * 1024); // 10 Mo
-define('ALLOWED_EXTENSIONS', [
-    'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
-    'jpg', 'jpeg', 'png', 'gif', 'zip', 'rar', 'txt'
-]);
-
-// Configuration du système de notification
-define('ENABLE_EMAIL_NOTIFICATIONS', true);
-define('NOTIFICATION_SENDER', 'no-reply@ent-scolaire.fr');
-define('NOTIFICATION_ADMIN_EMAIL', 'admin@ent-scolaire.fr');
-
-// Sécurité
-define('SESSION_LIFETIME', 3600); // 1 heure en secondes
-define('CSRF_TOKEN_LIFETIME', 1800); // 30 minutes en secondes
-
-// Limites et pagination
-define('ITEMS_PER_PAGE', 20);
-define('MAX_SEARCH_RESULTS', 100);
-define('MAX_FILE_UPLOADS_PER_DEVOIR', 5);
-
-// Paramètres calendrier
-define('CALENDAR_START_HOUR', 8); // 8h00
-define('CALENDAR_END_HOUR', 18); // 18h00
-define('DEFAULT_CALENDAR_VIEW', 'week'); // 'day', 'week', 'month'
+class Database {
+    private static $instance;
+    private $pdo;
+    
+    /**
+     * Constructeur privé (pattern Singleton)
+     */
+    private function __construct() {
+        try {
+            $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4';
+            $this->pdo = new PDO($dsn, DB_USER, DB_PASS, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false
+            ]);
+        } catch (PDOException $e) {
+            die('Erreur de connexion à la base de données: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Retourne l'instance unique de la classe Database
+     * @return Database Instance de Database
+     */
+    public static function getInstance() {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+    
+    /**
+     * Retourne l'instance PDO
+     * @return PDO Instance PDO
+     */
+    public function getPDO() {
+        return $this->pdo;
+    }
+    
+    /**
+     * Exécute une requête SQL et retourne plusieurs lignes
+     * @param string $sql Requête SQL
+     * @param array $params Paramètres de la requête
+     * @return array Résultats de la requête
+     */
+    public function fetchAll($sql, $params = []) {
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Exécute une requête SQL et retourne une seule ligne
+     * @param string $sql Requête SQL
+     * @param array $params Paramètres de la requête
+     * @return array|false Résultat de la requête ou false si aucun résultat
+     */
+    public function fetch($sql, $params = []) {
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetch();
+    }
+    
+    /**
+     * Insère des données dans une table
+     * @param string $table Nom de la table
+     * @param array $data Données à insérer
+     * @return int|false ID de la ligne insérée ou false en cas d'échec
+     */
+    public function insert($table, $data) {
+        $columns = implode(', ', array_keys($data));
+        $placeholders = ':' . implode(', :', array_keys($data));
+        
+        $sql = "INSERT INTO $table ($columns) VALUES ($placeholders)";
+        $stmt = $this->pdo->prepare($sql);
+        
+        $result = $stmt->execute($data);
+        return $result ? $this->pdo->lastInsertId() : false;
+    }
+    
+    /**
+     * Met à jour des données dans une table
+     * @param string $table Nom de la table
+     * @param array $data Données à mettre à jour
+     * @param string $where Condition WHERE
+     * @param array $params Paramètres de la condition WHERE
+     * @return bool Succès ou échec de la mise à jour
+     */
+    public function update($table, $data, $where, $params = []) {
+        $setParts = [];
+        foreach (array_keys($data) as $column) {
+            $setParts[] = "$column = :$column";
+        }
+        $setClause = implode(', ', $setParts);
+        
+        $sql = "UPDATE $table SET $setClause WHERE $where";
+        $stmt = $this->pdo->prepare($sql);
+        
+        $executeParams = array_merge($data, $params);
+        return $stmt->execute($executeParams);
+    }
+    
+    /**
+     * Supprime des données d'une table
+     * @param string $table Nom de la table
+     * @param string $where Condition WHERE
+     * @param array $params Paramètres de la condition WHERE
+     * @return bool Succès ou échec de la suppression
+     */
+    public function delete($table, $where, $params = []) {
+        $sql = "DELETE FROM $table WHERE $where";
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute($params);
+    }
+    
+    /**
+     * Exécute une requête SQL
+     * @param string $sql Requête SQL
+     * @param array $params Paramètres de la requête
+     * @return PDOStatement Résultat de la requête
+     */
+    public function query($sql, $params = []) {
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt;
+    }
+    
+    /**
+     * Démarre une transaction
+     */
+    public function beginTransaction() {
+        $this->pdo->beginTransaction();
+    }
+    
+    /**
+     * Valide une transaction
+     */
+    public function commit() {
+        $this->pdo->commit();
+    }
+    
+    /**
+     * Annule une transaction
+     */
+    public function rollback() {
+        $this->pdo->rollBack();
+    }
+}
