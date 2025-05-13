@@ -1,9 +1,8 @@
 <?php
-// Back-end: api/devoirs/index.php
+// api/devoirs/index.php - API pour la gestion des devoirs
 header('Content-Type: application/json');
-session_start();
-include '../../config.php'; // connexion PDO
-require_once '../../login/src/auth.php'; // Import de Auth
+require_once '../../config.php';
+require_once '../../login/src/auth.php';
 
 // Vérification de l'authentification
 $auth = new Auth($pdo);
@@ -29,13 +28,19 @@ function canModifyDevoirs() {
 
 // Fonction pour envoyer une notification
 function sendNotification($type, $devoir) {
-    // Point d'entrée pour les notifications futures
-    // À compléter avec le système d'envoi d'emails ou notifications push
-    return true;
+    global $pdo;
+    
+    // Créer une notification dans la base de données
+    $stmt = $pdo->prepare("
+        INSERT INTO notifications (type, id_devoir, statut, date_creation)
+        VALUES (?, ?, 'en_attente', NOW())
+    ");
+    
+    return $stmt->execute([$type, $devoir['id']]);
 }
 
 if ($method === 'GET') {
-    if ($id) { // retourner un seul
+    if ($id) { // retourner un seul devoir
         $stmt = $pdo->prepare('SELECT * FROM devoirs WHERE id=?');
         $stmt->execute([$id]);
         $devoir = $stmt->fetch();
@@ -73,11 +78,15 @@ if ($method === 'GET') {
             $where[] = 'DATE(date_remise)=?';
             $params[] = $_GET['date_remise'];
         }
+        if (isset($_GET['id_cahier_texte']) && $_GET['id_cahier_texte'] !== '') {
+            $where[] = 'id_cahier_texte=?';
+            $params[] = $_GET['id_cahier_texte'];
+        }
         
         $sql = 'SELECT id, titre, matiere, classe, date_remise, 
                 CONCAT("/uploads/", fichier_sujet) AS url_sujet, 
                 IF(fichier_corrige<>"",CONCAT("/uploads/",fichier_corrige),NULL) AS url_corrige,
-                id_professeur, date_publication 
+                id_professeur, date_publication, id_cahier_texte, description
                 FROM devoirs';
         
         if ($where) {
@@ -99,6 +108,7 @@ if (($method === 'POST' || $method === 'PUT') && canModifyDevoirs()) {
     $matiere = $_POST['matiere'] ?? '';
     $classe = $_POST['classe'] ?? '';
     $date_remise = $_POST['date_remise'] ?? '';
+    $description = $_POST['description'] ?? '';
     
     // Validation de base
     if (empty($titre) || empty($matiere) || empty($classe) || empty($date_remise)) {
@@ -122,7 +132,9 @@ if (($method === 'POST' || $method === 'PUT') && canModifyDevoirs()) {
                 'application/pdf', 
                 'image/jpeg', 
                 'image/png', 
-                'image/gif'
+                'image/gif',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
             ];
             
             if (!in_array($_FILES[$key]['type'], $allowedTypes)) {
@@ -133,7 +145,9 @@ if (($method === 'POST' || $method === 'PUT') && canModifyDevoirs()) {
             
             $ext = pathinfo($_FILES[$key]['name'], PATHINFO_EXTENSION);
             $name = uniqid() . ".$ext";
-            if (!move_uploaded_file($_FILES[$key]['tmp_name'], __DIR__ . '/../../uploads/' . $name)) {
+            $uploadPath = ROOT_PATH . '/uploads/' . $name;
+            
+            if (!move_uploaded_file($_FILES[$key]['tmp_name'], $uploadPath)) {
                 http_response_code(500);
                 echo json_encode(['error' => 'Erreur lors de l\'upload du fichier']);
                 exit;
@@ -155,8 +169,11 @@ if (($method === 'POST' || $method === 'PUT') && canModifyDevoirs()) {
     }
     
     if ($method === 'POST') {
-        $stmt = $pdo->prepare('INSERT INTO devoirs (titre, matiere, classe, date_remise, fichier_sujet, fichier_corrige, id_professeur, date_publication) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())');
-        $success = $stmt->execute([$titre, $matiere, $classe, $date_remise, $sujet, $corrige, $userId]);
+        // Vérifier si le devoir doit être associé à un cahier de texte
+        $id_cahier_texte = isset($_POST['id_cahier_texte']) ? $_POST['id_cahier_texte'] : null;
+        
+        $stmt = $pdo->prepare('INSERT INTO devoirs (titre, matiere, classe, date_remise, fichier_sujet, fichier_corrige, id_professeur, date_publication, description, id_cahier_texte) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)');
+        $success = $stmt->execute([$titre, $matiere, $classe, $date_remise, $sujet, $corrige, $userId, $description, $id_cahier_texte]);
         
         if ($success) {
             $devoirId = $pdo->lastInsertId();
@@ -169,12 +186,14 @@ if (($method === 'POST' || $method === 'PUT') && canModifyDevoirs()) {
             // Envoi de notification
             sendNotification('creation', $devoir);
             
-            // Planifier le rappel 24h avant la remise
-            // Cette partie nécessite un système de tâches planifiées (cron)
-            // qui sera implémenté séparément
+            // Réponse
+            echo json_encode(['id' => $devoirId, 'status' => 'created']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => 'Erreur lors de la création du devoir']);
         }
     } else {
-        $id = $_POST['id'];
+        $id = $id ?: $_POST['id']; // Utiliser l'ID de l'URL ou du formulaire
         
         // Vérifier que le professeur est le propriétaire de ce devoir
         if (!$auth->hasRole('administrateur')) {
@@ -189,8 +208,8 @@ if (($method === 'POST' || $method === 'PUT') && canModifyDevoirs()) {
             }
         }
         
-        $sql = 'UPDATE devoirs SET titre=?, matiere=?, classe=?, date_remise=?';
-        $params = [$titre, $matiere, $classe, $date_remise];
+        $sql = 'UPDATE devoirs SET titre=?, matiere=?, classe=?, date_remise=?, description=?';
+        $params = [$titre, $matiere, $classe, $date_remise, $description];
         
         if ($sujet) {
             $sql .= ', fichier_sujet=?';
@@ -206,13 +225,13 @@ if (($method === 'POST' || $method === 'PUT') && canModifyDevoirs()) {
         
         $stmt = $pdo->prepare($sql);
         $success = $stmt->execute($params);
-    }
-    
-    if ($success) {
-        echo json_encode(['status' => 'ok']);
-    } else {
-        http_response_code(500);
-        echo json_encode(['error' => 'Erreur lors de l\'opération']);
+        
+        if ($success) {
+            echo json_encode(['status' => 'updated']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => 'Erreur lors de la mise à jour']);
+        }
     }
 } elseif ($method === 'DELETE' && canModifyDevoirs()) {
     // Vérifier que le professeur est le propriétaire de ce devoir
@@ -240,10 +259,16 @@ if (($method === 'POST' || $method === 'PUT') && canModifyDevoirs()) {
     if ($result) {
         // Supprimer les fichiers associés
         if ($files['fichier_sujet']) {
-            @unlink(__DIR__ . '/../../uploads/' . $files['fichier_sujet']);
+            $path = ROOT_PATH . '/uploads/' . $files['fichier_sujet'];
+            if (file_exists($path)) {
+                @unlink($path);
+            }
         }
         if ($files['fichier_corrige']) {
-            @unlink(__DIR__ . '/../../uploads/' . $files['fichier_corrige']);
+            $path = ROOT_PATH . '/uploads/' . $files['fichier_corrige'];
+            if (file_exists($path)) {
+                @unlink($path);
+            }
         }
         
         echo json_encode(['status' => 'deleted']);
@@ -255,4 +280,3 @@ if (($method === 'POST' || $method === 'PUT') && canModifyDevoirs()) {
     http_response_code(403);
     echo json_encode(['error' => 'Opération non autorisée']);
 }
-?>

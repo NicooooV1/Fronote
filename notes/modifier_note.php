@@ -1,8 +1,8 @@
 <?php
-session_start();
+// Nous n'avons plus besoin de démarrer la session, car c'est fait dans Auth
 include 'includes/header.php'; 
 include 'includes/db.php';
-include 'includes/auth.php'; // Pour vérifier l'authentification
+include 'includes/auth.php';
 
 // Vérifier si l'utilisateur est un professeur
 if (!isTeacher()) {
@@ -10,12 +10,21 @@ if (!isTeacher()) {
   exit;
 }
 
+// Utiliser les données utilisateur de la session
+$user = $_SESSION['user'];
+
 // Charger les données depuis le fichier JSON
-$json_file = '../login/data/etablissement.json';
+$json_file = __DIR__ . '/../login/data/etablissement.json';
 $etablissement_data = [];
 
 if (file_exists($json_file)) {
   $etablissement_data = json_decode(file_get_contents($json_file), true);
+}
+
+// Vérifier que l'ID est fourni
+if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
+  header('Location: notes.php');
+  exit;
 }
 
 $id = $_GET['id'];
@@ -24,6 +33,14 @@ $stmt->execute([$id]);
 $note = $stmt->fetch();
 
 if (!$note) {
+  header('Location: notes.php');
+  exit;
+}
+
+// Vérifier que le professeur connecté est bien celui qui a créé la note
+// ou qu'il est un administrateur (fonctionnalité à implémenter si nécessaire)
+if ($note['nom_professeur'] !== $user['prenom'] . ' ' . $user['nom'] && !isAdmin()) {
+  // On pourrait ajouter un message d'erreur ici
   header('Location: notes.php');
   exit;
 }
@@ -65,7 +82,7 @@ if (!$note) {
     </select>
     
     <label for="nom_professeur">Professeur:</label>
-    <input type="text" name="nom_professeur" id="nom_professeur" value="<?= htmlspecialchars($note['nom_professeur']) ?>" required>
+    <input type="text" name="nom_professeur" id="nom_professeur" value="<?= htmlspecialchars($note['nom_professeur']) ?>" readonly>
     
     <label for="note">Note:</label>
     <input type="number" name="note" id="note" max="20" min="0" step="0.1" value="<?= $note['note'] ?>" required>
@@ -82,11 +99,10 @@ if (!$note) {
 
 <?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $stmt = $pdo->prepare('UPDATE notes SET nom_eleve = ?, nom_matiere = ?, nom_professeur = ?, note = ?, date_ajout = ?, classe = ? WHERE id = ?');
+  $stmt = $pdo->prepare('UPDATE notes SET nom_eleve = ?, nom_matiere = ?, note = ?, date_ajout = ?, classe = ? WHERE id = ?');
   $stmt->execute([
     $_POST['nom_eleve'],
     $_POST['nom_matiere'],
-    $_POST['nom_professeur'],
     $_POST['note'],
     $_POST['date_ajout'],
     $_POST['classe'],

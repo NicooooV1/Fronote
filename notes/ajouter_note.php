@@ -1,8 +1,8 @@
 <?php
-session_start();
+// Nous n'avons plus besoin de démarrer la session, car c'est fait dans Auth
 include 'includes/header.php'; 
 include 'includes/db.php';
-include 'includes/auth.php'; // Pour vérifier l'authentification
+include 'includes/auth.php';
 
 // Vérifier si l'utilisateur est un professeur
 if (!isTeacher()) {
@@ -10,8 +10,12 @@ if (!isTeacher()) {
   exit;
 }
 
+// Utiliser les données utilisateur de la session
+$user = $_SESSION['user'];
+$nom_professeur = $user['prenom'] . ' ' . $user['nom'];
+
 // Charger les données depuis le fichier JSON
-$json_file = '../login/data/etablissement.json';
+$json_file = __DIR__ . '/../login/data/etablissement.json';
 $etablissement_data = [];
 
 if (file_exists($json_file)) {
@@ -40,9 +44,10 @@ if (file_exists($json_file)) {
       <?php endif; ?>
     </select>
 
-    <!-- Champ pour l'élève (toujours en texte libre pour l'instant) -->
+    <!-- Champ pour l'élève (maintenant avec autocomplétion) -->
     <label for="nom_eleve">Élève:</label>
     <input type="text" name="nom_eleve" id="nom_eleve" placeholder="Nom de l'élève" required>
+    <div id="eleves_suggestions" class="suggestions-container" style="display: none;"></div>
 
     <!-- Champ pour la matière -->
     <label for="nom_matiere">Matière:</label>
@@ -56,7 +61,7 @@ if (file_exists($json_file)) {
     </select>
 
     <label for="nom_professeur">Professeur:</label>
-    <input type="text" name="nom_professeur" id="nom_professeur" placeholder="Nom du professeur" required>
+    <input type="text" name="nom_professeur" id="nom_professeur" value="<?= htmlspecialchars($nom_professeur) ?>" readonly>
     
     <label for="note">Note:</label>
     <input type="number" name="note" id="note" max="20" min="0" step="0.1" placeholder="Note sur 20" required>
@@ -70,6 +75,18 @@ if (file_exists($json_file)) {
     </div>
   </form>
 </div>
+
+<script>
+// Script pour récupérer la liste des élèves par classe
+document.getElementById('classe').addEventListener('change', function() {
+  const classe = this.value;
+  if (!classe) return;
+  
+  // Ici, on pourrait ajouter un appel Ajax pour récupérer les élèves de la classe sélectionnée
+  // et les afficher dans une liste de suggestions
+  // Pour l'instant, nous laissons cette fonctionnalité pour une future amélioration
+});
+</script>
 
 <?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

@@ -1,8 +1,8 @@
 <?php
+// api/devoir_status/index.php - API pour la gestion des statuts de devoirs
 header('Content-Type: application/json');
-session_start();
-include '../../config.php'; 
-require_once '../../login/src/auth.php'; 
+require_once '../../config.php';
+require_once '../../login/src/auth.php';
 
 // Vérification de l'authentification
 $auth = new Auth($pdo);
@@ -23,13 +23,23 @@ $id = $path[0] ?? null;
 if ($method === 'GET') {
     if ($userProfile === 'eleve') {
         // Un élève ne voit que ses propres statuts
-        $stmt = $pdo->prepare('
+        $sql = '
             SELECT ds.*, d.titre, d.matiere, d.classe, d.date_remise 
             FROM devoirs_status ds
             JOIN devoirs d ON ds.id_devoir = d.id
             WHERE ds.id_eleve = ?
-        ');
-        $stmt->execute([$userId]);
+        ';
+        $params = [$userId];
+        
+        // Filtrage par devoir si spécifié
+        if (isset($_GET['id_devoir'])) {
+            $sql .= ' AND ds.id_devoir = ?';
+            $params[] = $_GET['id_devoir'];
+        }
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        echo json_encode($stmt->fetchAll());
     } elseif ($userProfile === 'professeur') {
         // Un professeur voit les statuts des élèves pour ses devoirs
         if (isset($_GET['id_devoir'])) {
@@ -41,10 +51,10 @@ if ($method === 'GET') {
                 WHERE d.id = ? AND d.id_professeur = ?
             ');
             $stmt->execute([$_GET['id_devoir'], $userId]);
+            echo json_encode($stmt->fetchAll());
         } else {
             http_response_code(400);
             echo json_encode(['error' => 'Paramètre id_devoir requis']);
-            exit;
         }
     } elseif ($userProfile === 'administrateur') {
         // Un administrateur peut tout voir
@@ -67,21 +77,32 @@ if ($method === 'GET') {
             ');
             $stmt->execute();
         }
+        echo json_encode($stmt->fetchAll());
     } else {
         http_response_code(403);
         echo json_encode(['error' => 'Accès non autorisé']);
-        exit;
     }
-    
-    echo json_encode($stmt->fetchAll());
 }
 
 if ($method === 'POST' || $method === 'PUT') {
-    $data = json_decode(file_get_contents('php://input'), true);
+    // Accepter JSON ou form data
+    $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+    
+    if (strpos($contentType, 'application/json') !== false) {
+        $data = json_decode(file_get_contents('php://input'), true);
+    } else {
+        $data = $_POST;
+    }
     
     if (empty($data['id_devoir'])) {
         http_response_code(400);
         echo json_encode(['error' => 'Paramètre id_devoir requis']);
+        exit;
+    }
+    
+    if (empty($data['status']) || !in_array($data['status'], ['non_fait', 'en_cours', 'termine'])) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Statut invalide']);
         exit;
     }
     
@@ -94,6 +115,15 @@ if ($method === 'POST' || $method === 'PUT') {
         exit;
     }
     
+    // Vérifier si le devoir existe
+    $stmt = $pdo->prepare('SELECT id FROM devoirs WHERE id = ?');
+    $stmt->execute([$data['id_devoir']]);
+    if (!$stmt->fetch()) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Devoir non trouvé']);
+        exit;
+    }
+    
     // Vérifier si l'entrée existe déjà
     $stmt = $pdo->prepare('SELECT id FROM devoirs_status WHERE id_devoir = ? AND id_eleve = ?');
     $stmt->execute([$data['id_devoir'], $id_eleve]);
@@ -101,7 +131,7 @@ if ($method === 'POST' || $method === 'PUT') {
     
     if ($existingStatus) {
         // Mise à jour
-        $stmt = $pdo->prepare('UPDATE devoirs_status SET status = ? WHERE id_devoir = ? AND id_eleve = ?');
+        $stmt = $pdo->prepare('UPDATE devoirs_status SET status = ?, date_derniere_modif = NOW() WHERE id_devoir = ? AND id_eleve = ?');
         $result = $stmt->execute([$data['status'], $data['id_devoir'], $id_eleve]);
         
         if ($result) {
@@ -112,7 +142,7 @@ if ($method === 'POST' || $method === 'PUT') {
         }
     } else {
         // Création
-        $stmt = $pdo->prepare('INSERT INTO devoirs_status (id_devoir, id_eleve, status) VALUES (?, ?, ?)');
+        $stmt = $pdo->prepare('INSERT INTO devoirs_status (id_devoir, id_eleve, status, date_derniere_modif) VALUES (?, ?, ?, NOW())');
         $result = $stmt->execute([$data['id_devoir'], $id_eleve, $data['status']]);
         
         if ($result) {
@@ -122,5 +152,7 @@ if ($method === 'POST' || $method === 'PUT') {
             echo json_encode(['error' => 'Erreur lors de la création']);
         }
     }
+} else if ($method !== 'GET') {
+    http_response_code(405);
+    echo json_encode(['error' => 'Méthode non autorisée']);
 }
-?>

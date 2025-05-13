@@ -1,4 +1,4 @@
-/* pronote-style.css - Style principal inspiré de Pronote */
+/* assets/css/pronote-style.css - Style principal inspiré de Pronote */
 
 :root {
   --pronote-blue: #0072b1;
@@ -85,6 +85,7 @@ a {
   padding: 6px 12px;
   border-radius: 4px;
   transition: background-color 0.2s;
+  color: white;
 }
 
 .pronote-logout:hover {
@@ -129,6 +130,15 @@ a {
   text-align: center;
 }
 
+.pronote-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: inherit;
+  text-decoration: none;
+  width: 100%;
+}
+
 /* Contenu principal */
 .pronote-main {
   grid-area: main;
@@ -158,6 +168,7 @@ a {
   cursor: pointer;
   position: relative;
   color: var(--pronote-dark-gray);
+  text-decoration: none;
 }
 
 .pronote-tab.active {
@@ -184,7 +195,7 @@ a {
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
-  align-items: center;
+  align-items: flex-end;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
@@ -259,6 +270,12 @@ a {
   justify-content: center;
   border-radius: 4px;
   cursor: pointer;
+  background: none;
+  border: none;
+}
+
+.pronote-action-btn:hover {
+  background-color: var(--pronote-light-blue);
 }
 
 /* Vue grille/calendrier */
@@ -387,6 +404,10 @@ a {
   font-weight: bold;
 }
 
+.pronote-calendar-date.other-month {
+  opacity: 0.5;
+}
+
 .pronote-calendar-event {
   background-color: #e1f5fe;
   border-left: 3px solid var(--pronote-blue);
@@ -499,6 +520,7 @@ a {
   border: 1px solid var(--pronote-border);
   border-radius: 4px;
   width: 100%;
+  font-size: 14px;
 }
 
 .pronote-form-textarea {
@@ -692,6 +714,36 @@ a {
     transform: translateX(0);
     opacity: 1;
   }
+}
+
+/* Divers */
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  color: var(--pronote-dark-gray);
+}
+
+.loading::after {
+  content: "";
+  width: 20px;
+  height: 20px;
+  margin-left: 10px;
+  border: 2px solid var(--pronote-blue);
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.overdue {
+  color: var(--pronote-todo);
+  font-weight: 500;
 }
 
 /* Responsive */

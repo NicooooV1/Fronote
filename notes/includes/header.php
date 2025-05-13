@@ -9,4 +9,12 @@
 <body>
   <header>
     <h2>Système de Notes</h2>
+    <nav>
+      <a href="notes.php">Notes</a>
+      <?php if (isset($_SESSION['user']) && $_SESSION['user']['profil'] === 'professeur'): ?>
+        <a href="ajouter_note.php">Ajouter une note</a>
+      <?php endif; ?>
+      <a href="/~u22405372/SAE/Pronote/accueil/accueil.php">Accueil Pronote</a>
+      <a href="/~u22405372/SAE/Pronote/login/public/logout.php">Déconnexion</a>
+    </nav>
   </header>
