@@ -4,6 +4,7 @@ define('BASE_PATH', dirname(__DIR__) . '/');
 define('UPLOAD_DIR', BASE_PATH . 'assets/uploads/');
 define('TEMPLATES_DIR', BASE_PATH . 'templates/');
 define('ASSETS_DIR', BASE_PATH . 'assets/');
+define('LOGS_DIR', BASE_PATH . 'logs/');
 
 // Types d'utilisateurs
 define('USER_TYPE_ELEVE', 'eleve');
@@ -31,3 +32,15 @@ define('FOLDER_CORBEILLE', 'corbeille');
 
 // Redirection login
 define('LOGIN_URL', '/~u22405372/SAE/Pronote/login/public/index.php');
+
+// Créer les répertoires importants s'ils n'existent pas
+$directories = [
+    UPLOAD_DIR, 
+    LOGS_DIR
+];
+
+foreach ($directories as $dir) {
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0755, true);
+    }
+}

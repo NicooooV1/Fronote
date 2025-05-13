@@ -9,5 +9,13 @@ $options = [
     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
 ];
-$pdo = new PDO($dsn, $user, $pass, $options);
+
+try {
+    $pdo = new PDO($dsn, $user, $pass, $options);
+} catch (PDOException $e) {
+    // Enregistrer l'erreur dans un fichier de log au lieu d'afficher
+    file_put_contents(__DIR__ . '/../logs/db_error.log', date('Y-m-d H:i:s') . ' - ' . $e->getMessage() . PHP_EOL, FILE_APPEND);
+    die("Une erreur s'est produite lors de la connexion à la base de données. Veuillez réessayer plus tard.");
+}
+
 session_start();

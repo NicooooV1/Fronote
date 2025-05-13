@@ -9,7 +9,7 @@ require_once __DIR__ . '/config/constants.php';
 require_once __DIR__ . '/core/utils.php';
 require_once __DIR__ . '/core/auth.php';
 require_once __DIR__ . '/controllers/message.php';
-require_once __DIR__ . '/models/message.php'; // Ajout de cette ligne pour corriger l'erreur fatale
+require_once __DIR__ . '/models/message.php';
 
 // Vérifier l'authentification
 $user = requireAuth();
@@ -25,6 +25,43 @@ $pageTitle = 'Nouvelle annonce';
 
 $error = '';
 $success = '';
+
+/**
+ * Récupère les classes disponibles à partir du fichier JSON ou de la base de données
+ * @return array
+ */
+function getAvailableClasses() {
+    global $pdo;
+    
+    $allClasses = [];
+    
+    // Essayer de récupérer les classes depuis le fichier établissement.json
+    $etablissementFile = __DIR__ . '/../login/data/etablissement.json';
+    
+    if (file_exists($etablissementFile)) {
+        $etablissement = json_decode(file_get_contents($etablissementFile), true);
+        
+        // Vérifier si le format JSON est correct et contient des classes
+        if (isset($etablissement['classes']) && is_array($etablissement['classes'])) {
+            // Parcourir la structure imbriquée (collège et lycée)
+            foreach ($etablissement['classes'] as $niveau => $cycles) {
+                foreach ($cycles as $cycle => $classes) {
+                    foreach ($classes as $classe) {
+                        $allClasses[] = $classe;
+                    }
+                }
+            }
+        }
+    } 
+    
+    // Si pas de classes dans le fichier ou fichier inaccessible, récupérer depuis la base de données
+    if (empty($allClasses)) {
+        $query = $pdo->query("SELECT DISTINCT classe FROM eleves ORDER BY classe");
+        $allClasses = $query->fetchAll(PDO::FETCH_COLUMN);
+    }
+    
+    return $allClasses;
+}
 
 // Traitement du formulaire d'envoi d'annonce
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -201,17 +238,16 @@ include 'templates/header.php';
             <i class="fas fa-info-circle"></i> Les annonces importantes sont des messages qui sont mis en évidence dans la messagerie des destinataires.
         </div>
         
-        <form method="post" enctype="multipart/form-data" id="messageForm">
             <div class="form-group">
                 <label for="titre">Titre de l'annonce</label>
-                <input type="text" name="titre" id="titre" required maxlength="100">
+                <input type="text" name="titre" id="titre" value="<?= htmlspecialchars($titre) ?>" required maxlength="100">
                 <div id="title-counter" class="text-muted small">0/100 caractères</div>
             </div>
             
             <div class="form-group">
-                <label for="contenu">Contenu de l'annonce</label>
-                <textarea name="contenu" id="contenu" required></textarea>
-                <div id="char-counter" class="text-muted small">0/10000 caractères</div>
+                <label for="contenu">Message de l'annonce</label>
+                <textarea name="contenu" id="contenu" required><?= htmlspecialchars($contenu) ?></textarea>
+                <div id="char-counter" class="text-muted small"></div>
             </div>
             
             <div class="form-group">
@@ -256,6 +292,7 @@ include 'templates/header.php';
                     </label>
                 </div>
                 <div id="file-list"></div>
+                <div class="text-muted small">Taille maximale: 1Mo par fichier</div>
             </div>
             
             <div class="form-group">

@@ -27,7 +27,6 @@ $destinataires = isset($_POST['destinataires']) ? $_POST['destinataires'] : [];
 $titre = isset($_POST['titre']) ? trim($_POST['titre']) : '';
 $contenu = isset($_POST['contenu']) ? trim($_POST['contenu']) : '';
 $importance = isset($_POST['importance']) ? $_POST['importance'] : 'normal';
-$accuseReception = isset($_POST['accuse_reception']) && $_POST['accuse_reception'] === 'on';
 
 // Traitement du formulaire d'envoi
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -104,7 +103,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $titre = '';
                 $contenu = '';
                 $importance = 'normal';
-                $accuseReception = false;
             } else {
                 $error = $result['message'];
             }
@@ -282,16 +280,6 @@ include 'templates/header.php';
                     </select>
                 </div>
                 <?php endif; ?>
-                
-                <?php if ($user['type'] !== 'eleve'): ?>
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label class="checkbox-container">
-                        <input type="checkbox" name="accuse_reception" id="accuse_reception" <?= $accuseReception ? 'checked' : '' ?>>
-                        <span class="checkmark"></span>
-                        Accusé de réception
-                    </label>
-                </div>
-                <?php endif; ?>
             </div>
             
             <div class="form-group">
@@ -303,6 +291,7 @@ include 'templates/header.php';
                     </label>
                 </div>
                 <div id="file-list"></div>
+                <div class="text-muted small">Taille maximale: 1Mo par fichier</div>
             </div>
             
             <div class="form-footer">

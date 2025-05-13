@@ -88,15 +88,6 @@ if ($inConversationView) {
                 
             <?php if (isset($canReply) && $canReply && !$isSelf): ?>
             <div class="message-actions">
-                <?php if (isset($message['est_lu']) && $message['est_lu']): ?>
-                    <button class="btn-icon mark-unread-btn" data-message-id="<?= (int)$message['id'] ?>">
-                        <i class="fas fa-envelope"></i> Marquer comme non lu
-                    </button>
-                <?php else: ?>
-                    <button class="btn-icon mark-read-btn" data-message-id="<?= (int)$message['id'] ?>">
-                        <i class="fas fa-envelope-open"></i> Marquer comme lu
-                    </button>
-                <?php endif; ?>
                 <button class="btn-icon" onclick="replyToMessage(<?= (int)$message['id'] ?>, '<?= htmlspecialchars(addslashes($message['expediteur_nom'])) ?>')">
                     <i class="fas fa-reply"></i> Répondre
                 </button>
