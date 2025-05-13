@@ -13,45 +13,63 @@ $id = $_GET['id'];
 $stmt = $pdo->prepare('SELECT * FROM notes WHERE id = ?');
 $stmt->execute([$id]);
 $note = $stmt->fetch();
+
+if (!$note) {
+  header('Location: notes.php');
+  exit;
+}
 ?>
 
-<h3>Modifier la note</h3>
-<form method="post">
-  <!-- Champ pour la classe -->
-  <label for="classe">Classe:</label>
-  <select name="classe" id="classe" required>
-    <option value="">Sélectionnez une classe</option>
-    <?php if (!empty($etablissement_data['classes'])): ?>
-      <?php foreach ($etablissement_data['classes'] as $niveau => $niveaux): ?>
-        <optgroup label="<?= ucfirst($niveau) ?>">
-          <?php foreach ($niveaux as $sousniveau => $classes): ?>
-            <?php foreach ($classes as $classe): ?>
-              <option value="<?= $classe ?>" <?= ($note['classe'] == $classe) ? 'selected' : '' ?>><?= $classe ?></option>
+<div class="container">
+  <h3>Modifier la note</h3>
+  
+  <form method="post">
+    <!-- Champ pour la classe -->
+    <label for="classe">Classe:</label>
+    <select name="classe" id="classe" required>
+      <option value="">Sélectionnez une classe</option>
+      <?php if (!empty($etablissement_data['classes'])): ?>
+        <?php foreach ($etablissement_data['classes'] as $niveau => $niveaux): ?>
+          <optgroup label="<?= ucfirst($niveau) ?>">
+            <?php foreach ($niveaux as $sousniveau => $classes): ?>
+              <?php foreach ($classes as $classe): ?>
+                <option value="<?= $classe ?>" <?= ($note['classe'] == $classe) ? 'selected' : '' ?>><?= $classe ?></option>
+              <?php endforeach; ?>
             <?php endforeach; ?>
-          <?php endforeach; ?>
-        </optgroup>
-      <?php endforeach; ?>
-    <?php endif; ?>
-  </select><br>
+          </optgroup>
+        <?php endforeach; ?>
+      <?php endif; ?>
+    </select>
 
-  <input type="text" name="nom_eleve" value="<?= $note['nom_eleve'] ?>" required><br>
-  
-  <!-- Champ pour la matière -->
-  <label for="nom_matiere">Matière:</label>
-  <select name="nom_matiere" id="nom_matiere" required>
-    <option value="">Sélectionnez une matière</option>
-    <?php if (!empty($etablissement_data['matieres'])): ?>
-      <?php foreach ($etablissement_data['matieres'] as $matiere): ?>
-        <option value="<?= $matiere['nom'] ?>" <?= ($note['nom_matiere'] == $matiere['nom']) ? 'selected' : '' ?>><?= $matiere['nom'] ?> (<?= $matiere['code'] ?>)</option>
-      <?php endforeach; ?>
-    <?php endif; ?>
-  </select><br>
-  
-  <input type="text" name="nom_professeur" value="<?= $note['nom_professeur'] ?>" required><br>
-  <input type="number" name="note" max="20" step="0.1" value="<?= $note['note'] ?>" required><br>
-  <input type="date" name="date_ajout" value="<?= $note['date_ajout'] ?>" required><br>
-  <button type="submit">Mettre à jour</button>
-</form>
+    <label for="nom_eleve">Élève:</label>
+    <input type="text" name="nom_eleve" id="nom_eleve" value="<?= htmlspecialchars($note['nom_eleve']) ?>" required>
+    
+    <!-- Champ pour la matière -->
+    <label for="nom_matiere">Matière:</label>
+    <select name="nom_matiere" id="nom_matiere" required>
+      <option value="">Sélectionnez une matière</option>
+      <?php if (!empty($etablissement_data['matieres'])): ?>
+        <?php foreach ($etablissement_data['matieres'] as $matiere): ?>
+          <option value="<?= $matiere['nom'] ?>" <?= ($note['nom_matiere'] == $matiere['nom']) ? 'selected' : '' ?>><?= $matiere['nom'] ?> (<?= $matiere['code'] ?>)</option>
+        <?php endforeach; ?>
+      <?php endif; ?>
+    </select>
+    
+    <label for="nom_professeur">Professeur:</label>
+    <input type="text" name="nom_professeur" id="nom_professeur" value="<?= htmlspecialchars($note['nom_professeur']) ?>" required>
+    
+    <label for="note">Note:</label>
+    <input type="number" name="note" id="note" max="20" min="0" step="0.1" value="<?= $note['note'] ?>" required>
+    
+    <label for="date_ajout">Date:</label>
+    <input type="date" name="date_ajout" id="date_ajout" value="<?= $note['date_ajout'] ?>" required>
+    
+    <div style="display: flex; gap: 10px; margin-top: 10px;">
+      <button type="submit" style="flex: 1;">Mettre à jour</button>
+      <a href="notes.php" class="button button-secondary" style="flex: 1; text-align: center;">Annuler</a>
+    </div>
+  </form>
+</div>
 
 <?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
