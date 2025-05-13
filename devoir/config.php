@@ -8,9 +8,15 @@ define('ROOT_PATH', dirname(__FILE__));
 define('UPLOAD_PATH', ROOT_PATH . '/uploads');
 define('DATA_PATH', ROOT_PATH . '/login/data');
 
-// Connexion à la base de données
+// Inclusion des paramètres de connexion depuis le système de login
+if (!defined('DB_HOST')) {
+    require_once __DIR__ . '/../login/config/database.php';
+}
+
+// Connexion à la base de données avec les paramètres du système de login
 try {
-    $pdo = new PDO('mysql:host=localhost;dbname=pronote_devoirs;charset=utf8', 'user', 'password', [
+    $dsn = sprintf('mysql:host=%s;dbname=%s;charset=utf8mb4', DB_HOST, DB_NAME);
+    $pdo = new PDO($dsn, DB_USER, DB_PASS, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false
@@ -26,9 +32,11 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Fonction pour récupérer le chemin du fichier etablissement.json
 function getEtablissementJsonPath() {
-    $path = DATA_PATH . '/etablissement.json';
+    // Chemin absolu vers login/data/etablissement.json
+    $path = __DIR__ . '/../login/data/etablissement.json';
+    
     if (!file_exists($path)) {
-        die('Erreur: Le fichier etablissement.json est introuvable.');
+        die('Erreur: Le fichier etablissement.json est introuvable à l\'emplacement: ' . $path);
     }
     return $path;
 }

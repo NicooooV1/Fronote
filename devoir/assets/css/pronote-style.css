@@ -1,19 +1,21 @@
 /* assets/css/pronote-style.css - Style principal inspiré de Pronote */
 
 :root {
-  --pronote-blue: #0072b1;
-  --pronote-light-blue: #e6f3f8;
-  --pronote-highlight: #51a7d4;
-  --pronote-done: #4CAF50;
-  --pronote-inprogress: #ff9800;
-  --pronote-todo: #f44336;
-  --pronote-gray: #f5f5f5;
-  --pronote-dark-gray: #777777;
-  --pronote-border: #dddddd;
-  --pronote-text: #333333;
-  --pronote-link: #0072b1;
-  --pronote-header-height: 60px;
-  --pronote-sidebar-width: 250px;
+  /* Palette de couleurs plus fidèle à Pronote */
+  --pronote-blue: #0677ba;          /* Bleu principal plus fidèle */
+  --pronote-light-blue: #eef6fb;    /* Bleu clair légèrement plus pâle */
+  --pronote-highlight: #43a5d6;     /* Bleu de surbrillance légèrement ajusté */
+  --pronote-done: #4CAF50;          /* Vert "terminé" */
+  --pronote-inprogress: #ff9800;    /* Orange "en cours" */
+  --pronote-todo: #e74c3c;          /* Rouge "à faire" légèrement ajusté */
+  --pronote-gray: #f5f5f5;          /* Gris de fond */
+  --pronote-dark-gray: #6c757d;     /* Gris foncé pour texte secondaire */
+  --pronote-border: #dcdfe5;        /* Couleur de bordure ajustée */
+  --pronote-text: #333333;          /* Couleur de texte principale */
+  --pronote-link: #0677ba;          /* Couleur des liens */
+  --pronote-header-height: 56px;    /* Hauteur d'en-tête ajustée */
+  --pronote-sidebar-width: 230px;   /* Largeur de la barre latérale ajustée */
+  --pronote-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); /* Ombre standard */
 }
 
 /* Réinitialisation et styles de base */
@@ -21,12 +23,14 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 body {
-  background-color: #f5f5f5;
+  background-color: #f9f9f9;
   color: var(--pronote-text);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 a {
@@ -54,20 +58,21 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--pronote-shadow);
   z-index: 10;
 }
 
 .pronote-logo {
-  font-size: 1.5rem;
-  font-weight: bold;
+  font-size: 1.4rem;
+  font-weight: 600;
   display: flex;
   align-items: center;
+  letter-spacing: 0.5px;
 }
 
 .pronote-logo img {
-  height: 40px;
-  margin-right: 10px;
+  height: 32px;
+  margin-right: 8px;
 }
 
 .pronote-user-info {
@@ -78,18 +83,20 @@ a {
 
 .pronote-user-name {
   font-weight: 500;
+  font-size: 13px;
 }
 
 .pronote-logout {
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(255, 255, 255, 0.15);
   padding: 6px 12px;
-  border-radius: 4px;
+  border-radius: 3px;
   transition: background-color 0.2s;
   color: white;
+  font-size: 13px;
 }
 
 .pronote-logout:hover {
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: rgba(255, 255, 255, 0.25);
 }
 
 /* Barre latérale */
@@ -97,8 +104,8 @@ a {
   grid-area: sidebar;
   background-color: white;
   border-right: 1px solid var(--pronote-border);
-  padding: 20px 0;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+  padding: 15px 0;
+  box-shadow: var(--pronote-shadow);
 }
 
 .pronote-nav {
@@ -106,34 +113,45 @@ a {
 }
 
 .pronote-nav-item {
-  padding: 12px 20px;
+  margin: 4px 8px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.pronote-nav-item a {
+  padding: 10px 12px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   color: var(--pronote-text);
   transition: background-color 0.2s;
+  border-radius: 4px;
 }
 
-.pronote-nav-item:hover {
+.pronote-nav-item a:hover {
   background-color: var(--pronote-light-blue);
 }
 
-.pronote-nav-item.active {
+.pronote-nav-item.active a {
   background-color: var(--pronote-light-blue);
-  border-left: 4px solid var(--pronote-blue);
   color: var(--pronote-blue);
   font-weight: 500;
 }
 
 .pronote-nav-item i {
-  width: 24px;
+  width: 20px;
   text-align: center;
+  font-size: 15px;
+  color: var(--pronote-dark-gray);
+}
+
+.pronote-nav-item.active i {
+  color: var(--pronote-blue);
 }
 
 .pronote-nav-link {
   display: flex;
   align-items: center;
-  gap: 12px;
   color: inherit;
   text-decoration: none;
   width: 100%;
@@ -144,13 +162,14 @@ a {
   grid-area: main;
   padding: 20px;
   overflow-y: auto;
+  background-color: #f9f9f9;
 }
 
 .pronote-page-title {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   margin-bottom: 20px;
   color: var(--pronote-blue);
-  font-weight: normal;
+  font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -161,19 +180,28 @@ a {
   display: flex;
   border-bottom: 1px solid var(--pronote-border);
   margin-bottom: 20px;
+  background-color: white;
+  border-radius: 4px 4px 0 0;
+  overflow: hidden;
 }
 
 .pronote-tab {
-  padding: 10px 20px;
+  padding: 12px 20px;
   cursor: pointer;
   position: relative;
   color: var(--pronote-dark-gray);
   text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.pronote-tab:hover {
+  background-color: var(--pronote-light-blue);
 }
 
 .pronote-tab.active {
   color: var(--pronote-blue);
   font-weight: 500;
+  background-color: var(--pronote-light-blue);
 }
 
 .pronote-tab.active::after {
@@ -189,14 +217,14 @@ a {
 /* Filtres */
 .pronote-filters {
   background-color: white;
-  padding: 15px;
+  padding: 16px;
   border-radius: 4px;
   margin-bottom: 20px;
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
   align-items: flex-end;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--pronote-shadow);
 }
 
 .pronote-filter-group {
@@ -207,16 +235,26 @@ a {
 }
 
 .pronote-filter-label {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--pronote-dark-gray);
+  font-weight: 500;
 }
 
 .pronote-filter-select,
 .pronote-filter-input {
-  padding: 8px 10px;
+  padding: 8px 12px;
   border: 1px solid var(--pronote-border);
   border-radius: 4px;
   color: var(--pronote-text);
+  background-color: #fff;
+  font-size: 14px;
+}
+
+.pronote-filter-select:focus,
+.pronote-filter-input:focus {
+  outline: none;
+  border-color: var(--pronote-highlight);
+  box-shadow: 0 0 0 2px rgba(67, 165, 214, 0.2);
 }
 
 .pronote-filter-actions {
@@ -235,7 +273,8 @@ a {
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  font-weight: 500;
 }
 
 .pronote-btn-primary {
@@ -258,7 +297,7 @@ a {
 }
 
 .pronote-btn-small {
-  padding: 4px 10px;
+  padding: 5px 10px;
   font-size: 12px;
 }
 
@@ -272,6 +311,7 @@ a {
   cursor: pointer;
   background: none;
   border: none;
+  transition: background-color 0.2s;
 }
 
 .pronote-action-btn:hover {
@@ -281,11 +321,12 @@ a {
 /* Vue grille/calendrier */
 .pronote-view-toggle {
   display: flex;
-  gap: 1px;
+  gap: 0;
   border: 1px solid var(--pronote-border);
   border-radius: 4px;
   overflow: hidden;
   margin-left: auto;
+  background-color: white;
 }
 
 .pronote-view-btn {
@@ -293,6 +334,7 @@ a {
   border: none;
   padding: 8px 12px;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
 .pronote-view-btn.active {
@@ -305,7 +347,7 @@ a {
   background-color: white;
   border-radius: 4px;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--pronote-shadow);
 }
 
 .pronote-table {
@@ -324,6 +366,7 @@ a {
   background-color: var(--pronote-light-blue);
   color: var(--pronote-blue);
   font-weight: 500;
+  font-size: 14px;
 }
 
 .pronote-table tr:last-child td {
@@ -385,13 +428,16 @@ a {
   border: 1px solid var(--pronote-border);
   padding: 5px;
   position: relative;
+  box-shadow: var(--pronote-shadow);
 }
 
 .pronote-calendar-date-header {
   text-align: right;
   padding: 5px;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--pronote-dark-gray);
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 5px;
 }
 
 .pronote-calendar-date.today {
@@ -411,10 +457,10 @@ a {
 .pronote-calendar-event {
   background-color: #e1f5fe;
   border-left: 3px solid var(--pronote-blue);
-  padding: 5px;
+  padding: 6px 8px;
   margin-bottom: 5px;
-  border-radius: 2px;
-  font-size: 13px;
+  border-radius: 3px;
+  font-size: 12px;
   cursor: pointer;
   transition: background-color 0.2s;
 }
@@ -459,7 +505,7 @@ a {
 }
 
 .pronote-modal-title {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 500;
 }
 
@@ -467,7 +513,7 @@ a {
   background: none;
   border: none;
   color: white;
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   cursor: pointer;
   width: 24px;
   height: 24px;
@@ -487,6 +533,7 @@ a {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+  border-top: 1px solid var(--pronote-border);
 }
 
 /* Formulaires */
@@ -505,6 +552,7 @@ a {
 .pronote-form-label {
   font-weight: 500;
   color: var(--pronote-text);
+  font-size: 14px;
 }
 
 .pronote-form-hint {
@@ -532,7 +580,8 @@ a {
 .pronote-form-select:focus,
 .pronote-form-textarea:focus {
   outline: none;
-  border-color: var(--pronote-blue);
+  border-color: var(--pronote-highlight);
+  box-shadow: 0 0 0 2px rgba(67, 165, 214, 0.2);
 }
 
 .pronote-form-required::after {
@@ -545,22 +594,22 @@ a {
 .pronote-lesson {
   background-color: white;
   border-radius: 4px;
-  padding: 15px;
+  padding: 16px;
   margin-bottom: 15px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--pronote-shadow);
 }
 
 .pronote-lesson-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 10px;
-  padding-bottom: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--pronote-border);
 }
 
 .pronote-lesson-subject {
-  font-weight: 500;
+  font-weight: 600;
   font-size: 1.1rem;
   color: var(--pronote-blue);
 }
@@ -568,18 +617,38 @@ a {
 .pronote-lesson-meta {
   display: flex;
   gap: 15px;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--pronote-dark-gray);
+  align-items: center;
+}
+
+.pronote-lesson-meta span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pronote-lesson-meta i {
+  font-size: 12px;
 }
 
 .pronote-lesson-content {
-  line-height: 1.5;
+  line-height: 1.6;
+  color: #444;
+  font-size: 14px;
 }
 
 .pronote-lesson-files {
   margin-top: 15px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--pronote-border);
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.pronote-lesson-files h4 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #555;
 }
 
 .pronote-file-link {
@@ -588,6 +657,11 @@ a {
   gap: 8px;
   padding: 5px 0;
   color: var(--pronote-blue);
+  font-size: 13px;
+}
+
+.pronote-file-link:hover {
+  text-decoration: underline;
 }
 
 .pronote-file-link i {
@@ -597,14 +671,16 @@ a {
 .pronote-homework-section {
   margin-top: 15px;
   background-color: var(--pronote-light-blue);
-  padding: 10px;
+  padding: 12px;
   border-radius: 4px;
+  border-left: 3px solid var(--pronote-blue);
 }
 
 .pronote-homework-header {
-  font-weight: 500;
+  font-weight: 600;
   color: var(--pronote-blue);
-  margin-bottom: 5px;
+  margin-bottom: 8px;
+  font-size: 14px;
 }
 
 .pronote-homework-item {
@@ -615,17 +691,21 @@ a {
 }
 
 .pronote-checkbox {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   accent-color: var(--pronote-blue);
 }
 
 /* Vue semaine pour cahier de texte */
 .pronote-week-view {
   display: grid;
-  grid-template-columns: 100px repeat(5, 1fr);
+  grid-template-columns: 80px repeat(5, 1fr);
   gap: 10px;
   margin-bottom: 20px;
+  background-color: white;
+  border-radius: 4px;
+  padding: 10px;
+  box-shadow: var(--pronote-shadow);
 }
 
 .pronote-time-slots {
@@ -638,13 +718,14 @@ a {
   align-items: center;
   justify-content: center;
   color: var(--pronote-dark-gray);
-  font-size: 14px;
+  font-size: 12px;
+  border-right: 1px solid #f0f0f0;
 }
 
 .pronote-day-column {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 5px;
 }
 
 .pronote-day-header {
@@ -654,30 +735,34 @@ a {
   padding: 10px;
   background-color: var(--pronote-light-blue);
   border-radius: 4px;
+  margin-bottom: 5px;
+  font-size: 13px;
 }
 
 .pronote-class-block {
-  background-color: white;
+  background-color: #e1f5fe;
   border-radius: 4px;
-  padding: 10px;
+  padding: 8px 10px;
   border-left: 4px solid var(--pronote-blue);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   min-height: 60px;
   cursor: pointer;
   transition: background-color 0.2s;
+  font-size: 13px;
 }
 
 .pronote-class-block:hover {
-  background-color: var(--pronote-light-blue);
+  background-color: #b3e5fc;
 }
 
 .pronote-class-name {
-  font-weight: 500;
-  margin-bottom: 5px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--pronote-blue);
 }
 
 .pronote-class-time {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--pronote-dark-gray);
 }
 
@@ -688,21 +773,30 @@ a {
   right: 20px;
   background-color: white;
   border-radius: 4px;
-  padding: 15px 20px;
+  padding: 12px 16px;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
   gap: 10px;
   z-index: 90;
   animation: slideIn 0.3s ease-out forwards;
+  font-size: 14px;
 }
 
 .pronote-notification-success {
   border-left: 4px solid var(--pronote-done);
 }
 
+.pronote-notification-success i {
+  color: var(--pronote-done);
+}
+
 .pronote-notification-error {
   border-left: 4px solid var(--pronote-todo);
+}
+
+.pronote-notification-error i {
+  color: var(--pronote-todo);
 }
 
 @keyframes slideIn {
@@ -723,12 +817,13 @@ a {
   align-items: center;
   padding: 20px;
   color: var(--pronote-dark-gray);
+  font-size: 14px;
 }
 
 .loading::after {
   content: "";
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   margin-left: 10px;
   border: 2px solid var(--pronote-blue);
   border-top: 2px solid transparent;
@@ -746,6 +841,55 @@ a {
   font-weight: 500;
 }
 
+/* Amélioration des composants */
+/* Séparateur d'informations */
+.pronote-info-divider {
+  color: #ccc;
+  margin: 0 5px;
+}
+
+/* Badge numérique */
+.pronote-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background-color: var(--pronote-blue);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Bouton flottant */
+.pronote-fab {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: var(--pronote-blue);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.pronote-fab:hover {
+  background-color: var(--pronote-highlight);
+}
+
+.pronote-fab i {
+  font-size: 20px;
+}
+
 /* Responsive */
 @media (max-width: 992px) {
   :root {
@@ -756,14 +900,14 @@ a {
     display: none;
   }
   
-  .pronote-nav-item {
+  .pronote-nav-item a {
     justify-content: center;
-    padding: 15px 0;
+    padding: 12px 0;
   }
   
   .pronote-nav-item.active {
     border-left: none;
-    border-bottom: 4px solid var(--pronote-blue);
+    border-radius: 0;
   }
   
   .pronote-calendar {
@@ -798,6 +942,11 @@ a {
   
   .pronote-nav-item {
     flex: 1;
+    margin: 0;
+    border-radius: 0;
+  }
+  
+  .pronote-nav-item a {
     padding: 10px 0;
   }
   
@@ -831,7 +980,8 @@ a {
   .pronote-filters,
   .pronote-tabs,
   .pronote-modal-backdrop,
-  .pronote-btn {
+  .pronote-btn,
+  .pronote-fab {
     display: none !important;
   }
   
@@ -841,6 +991,7 @@ a {
   
   .pronote-main {
     padding: 0;
+    background-color: white;
   }
   
   .pronote-table-container,

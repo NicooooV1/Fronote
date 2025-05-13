@@ -16,6 +16,7 @@ unset($_SESSION['notification']); // Effacer après lecture
     <title>Pronote - <?= htmlspecialchars($pageTitle ?? 'Espace élèves') ?></title>
     <link rel="stylesheet" href="/assets/css/pronote-style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" href="/assets/img/favicon.ico" type="image/x-icon">
 </head>
 <body>
     <div class="pronote-container">
@@ -26,7 +27,13 @@ unset($_SESSION['notification']); // Effacer après lecture
                 <span>PRONOTE</span>
             </div>
             <div class="pronote-user-info">
-                <span class="pronote-user-name"><?= htmlspecialchars(getUserName()) ?></span>
-                <a href="/login/logout.php" class="pronote-logout">Déconnexion</a>
+                <div class="pronote-user-name">
+                    <i class="fas fa-user-circle"></i>
+                    <?= htmlspecialchars(getUserName()) ?>
+                </div>
+                <a href="/login/logout.php" class="pronote-logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Déconnexion
+                </a>
             </div>
         </header>

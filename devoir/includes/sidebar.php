@@ -28,6 +28,9 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 <a href="/cahier_texte.php" class="pronote-nav-link">
                     <i class="fas fa-book"></i>
                     <span>Cahier de texte</span>
+                    <?php if (getUnreadHomeWorksCount() > 0): ?>
+                    <div class="pronote-badge"><?= getUnreadHomeWorksCount() ?></div>
+                    <?php endif; ?>
                 </a>
             </li>
             <li class="pronote-nav-item <?= $currentPage === 'notes.php' ? 'active' : '' ?>">
