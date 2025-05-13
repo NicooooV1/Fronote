@@ -14,6 +14,15 @@ unset($_SESSION['notification']); // Effacer après lecture
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pronote - <?= htmlspecialchars($pageTitle ?? 'Espace élèves') ?></title>
+    <style>
+        /* Variables CSS pour l'harmonisation avec les autres modules */
+        :root {
+            --pronote-primary: #009b72;       /* Vert principal */
+            --pronote-hover: #008a65;         /* Vert hover */
+            --pronote-light-bg: #f8f9fa;      /* Fond clair */
+            --pronote-highlight: #009b72;     /* Surbrillance harmonisée */
+        }
+    </style>
     <link rel="stylesheet" href="/assets/css/pronote-style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" href="/assets/img/favicon.ico" type="image/x-icon">

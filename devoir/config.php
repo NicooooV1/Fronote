@@ -56,23 +56,50 @@ function isAuthenticated() {
     return isset($_SESSION['user']);
 }
 
+// Fonctions pour le profil utilisateur à ajouter à config.php si elles ne sont pas définies
+
+/**
+ * Récupère le profil de l'utilisateur connecté
+ * 
+ * @return string|null Le profil utilisateur ou null si non connecté
+ */
 function getUserProfile() {
     return isset($_SESSION['user']) ? $_SESSION['user']['profil'] : null;
 }
 
+/**
+ * Vérifie si l'utilisateur connecté est un enseignant ou un administrateur
+ * 
+ * @return bool True si l'utilisateur est un enseignant ou administrateur
+ */
 function isTeacher() {
     $profile = getUserProfile();
     return $profile === 'professeur' || $profile === 'administrateur';
 }
 
+/**
+ * Vérifie si l'utilisateur connecté est un administrateur
+ * 
+ * @return bool True si l'utilisateur est un administrateur
+ */
 function isAdmin() {
     return getUserProfile() === 'administrateur';
 }
 
+/**
+ * Récupère l'ID de l'utilisateur connecté
+ * 
+ * @return int|null L'ID de l'utilisateur ou null si non connecté
+ */
 function getUserId() {
     return isset($_SESSION['user']) ? $_SESSION['user']['id'] : null;
 }
 
+/**
+ * Récupère le nom complet de l'utilisateur connecté
+ * 
+ * @return string Le nom complet de l'utilisateur ou chaîne vide si non connecté
+ */
 function getUserName() {
     if (!isset($_SESSION['user'])) return '';
     return $_SESSION['user']['prenom'] . ' ' . $_SESSION['user']['nom'];

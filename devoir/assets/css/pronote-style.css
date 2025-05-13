@@ -1,18 +1,25 @@
-/* assets/css/pronote-style.css - Style principal fidèle à Pronote */
+/* assets/css/pronote-style.css - Style principal harmonisé */
 
 :root {
-  /* Palette de couleurs Pronote */
-  --pronote-blue: #0063a7;          /* Bleu principal Pronote */
-  --pronote-light-blue: #e8f1f9;    /* Bleu clair pour les fonds */
-  --pronote-highlight: #3a8dcc;     /* Bleu de surbrillance */
+  /* Palette de couleurs Pronote harmonisée */
+  --pronote-primary: #009b72;       /* Vert principal (au lieu du bleu) */
+  --pronote-hover: #008a65;         /* Vert hover */
+  --pronote-light-bg: #f8f9fa;      /* Fond clair harmonisé */
+  --pronote-highlight: #009b72;     /* Surbrillance harmonisée */
+  
+  /* Couleurs de statut (conservées) */
   --pronote-done: #4CAF50;          /* Vert "terminé" */
   --pronote-inprogress: #ff9800;    /* Orange "en cours" */
   --pronote-todo: #e53935;          /* Rouge "à faire" */
+  
+  /* Couleurs de fond et texte */
   --pronote-gray: #f0f0f0;          /* Gris de fond */
   --pronote-dark-gray: #616161;     /* Gris foncé pour texte secondaire */
-  --pronote-border: #dcdfe5;        /* Couleur de bordure */
-  --pronote-text: #333333;          /* Couleur de texte principale */
-  --pronote-link: #0063a7;          /* Couleur des liens */
+  --pronote-border: #e9ecef;        /* Couleur de bordure harmonisée */
+  --pronote-text: #495057;          /* Couleur de texte principale */
+  --pronote-link: #009b72;          /* Couleur des liens harmonisée */
+  
+  /* Dimensions (conservées) */
   --pronote-header-height: 50px;    /* Hauteur d'en-tête */
   --pronote-subheader-height: 30px; /* Hauteur du sous-en-tête */
   --pronote-sidebar-width: 220px;   /* Largeur de la barre latérale */
@@ -59,7 +66,7 @@ a {
 /* En-tête principal */
 .pronote-header {
   grid-area: header;
-  background-color: var(--pronote-blue);
+  background-color: var(--pronote-primary);
   color: white;
   padding: 0 20px;
   display: flex;
@@ -160,14 +167,14 @@ a {
 }
 
 .pronote-nav-item a:hover {
-  background-color: var(--pronote-light-blue);
+  background-color: var(--pronote-light-bg);
 }
 
 .pronote-nav-item.active a {
-  background-color: var(--pronote-light-blue);
-  color: var(--pronote-blue);
+  background-color: var(--pronote-light-bg);
+  color: var(--pronote-primary);
   font-weight: 500;
-  border-left: 3px solid var(--pronote-blue);
+  border-left: 3px solid var(--pronote-primary);
 }
 
 .pronote-nav-item i {
@@ -177,7 +184,7 @@ a {
 }
 
 .pronote-nav-item.active i {
-  color: var(--pronote-blue);
+  color: var(--pronote-primary);
 }
 
 .pronote-nav-item .pronote-badge {
@@ -195,7 +202,7 @@ a {
 .pronote-page-title {
   font-size: 1.15rem;
   margin-bottom: 15px;
-  color: var(--pronote-blue);
+  color: var(--pronote-primary);
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -223,13 +230,13 @@ a {
 }
 
 .pronote-tab:hover {
-  color: var(--pronote-blue);
+  color: var(--pronote-primary);
 }
 
 .pronote-tab.active {
-  color: var(--pronote-blue);
+  color: var(--pronote-primary);
   font-weight: 500;
-  background-color: var(--pronote-light-blue);
+  background-color: var(--pronote-light-bg);
 }
 
 .pronote-tab.active::after {
@@ -239,7 +246,7 @@ a {
   left: 0;
   right: 0;
   height: 3px;
-  background-color: var(--pronote-blue);
+  background-color: var(--pronote-primary);
 }
 
 /* Filtres */
@@ -281,8 +288,8 @@ a {
 .pronote-filter-select:focus,
 .pronote-filter-input:focus {
   outline: none;
-  border-color: var(--pronote-highlight);
-  box-shadow: 0 0 0 2px rgba(58, 141, 204, 0.15);
+  border-color: var(--pronote-primary);
+  box-shadow: 0 0 0 2px rgba(0, 155, 114, 0.15);
 }
 
 .pronote-filter-actions {
@@ -307,12 +314,12 @@ a {
 }
 
 .pronote-btn-primary {
-  background-color: var(--pronote-blue);
+  background-color: var(--pronote-primary);
   color: white;
 }
 
 .pronote-btn-primary:hover {
-  background-color: var(--pronote-highlight);
+  background-color: var(--pronote-hover);
 }
 
 .pronote-btn-secondary {
@@ -345,7 +352,7 @@ a {
 }
 
 .pronote-action-btn:hover {
-  background-color: var(--pronote-light-blue);
+  background-color: var(--pronote-light-bg);
 }
 
 /* Vue grille/calendrier */
@@ -368,8 +375,8 @@ a {
 }
 
 .pronote-view-btn.active {
-  background-color: var(--pronote-light-blue);
-  color: var(--pronote-blue);
+  background-color: var(--pronote-light-bg);
+  color: var(--pronote-primary);
 }
 
 /* Tableaux */
@@ -394,8 +401,8 @@ a {
 }
 
 .pronote-table th {
-  background-color: var(--pronote-light-blue);
-  color: var(--pronote-blue);
+  background-color: var(--pronote-light-bg);
+  color: var(--pronote-primary);
   font-weight: 500;
   white-space: nowrap;
   font-size: 13px;
@@ -474,12 +481,12 @@ a {
 }
 
 .pronote-calendar-date.today {
-  border-color: var(--pronote-blue);
-  background-color: var(--pronote-light-blue);
+  border-color: var(--pronote-primary);
+  background-color: var(--pronote-light-bg);
 }
 
 .pronote-calendar-date.today .pronote-calendar-date-header {
-  color: var(--pronote-blue);
+  color: var(--pronote-primary);
   font-weight: bold;
 }
 
@@ -488,8 +495,8 @@ a {
 }
 
 .pronote-calendar-event {
-  background-color: #e1f5fe;
-  border-left: 3px solid var(--pronote-blue);
+  background-color: rgba(0, 155, 114, 0.1);
+  border-left: 3px solid var(--pronote-primary);
   padding: 4px 6px;
   margin-bottom: 3px;
   border-radius: 2px;
@@ -499,7 +506,7 @@ a {
 }
 
 .pronote-calendar-event:hover {
-  background-color: #b3e5fc;
+  background-color: rgba(0, 155, 114, 0.2);
 }
 
 /* Modals */
@@ -518,7 +525,7 @@ a {
 
 .pronote-modal {
   background-color: white;
-  border-radius: 3px;
+  border-radius: 8px;
   width: 100%;
   max-width: 600px;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
@@ -530,7 +537,7 @@ a {
 
 .pronote-modal-header {
   padding: 12px 15px;
-  background-color: var(--pronote-blue);
+  background-color: var(--pronote-primary);
   color: white;
   display: flex;
   align-items: center;
@@ -613,8 +620,8 @@ a {
 .pronote-form-select:focus,
 .pronote-form-textarea:focus {
   outline: none;
-  border-color: var(--pronote-highlight);
-  box-shadow: 0 0 0 2px rgba(58, 141, 204, 0.15);
+  border-color: var(--pronote-primary);
+  box-shadow: 0 0 0 2px rgba(0, 155, 114, 0.15);
 }
 
 .pronote-form-required::after {
@@ -644,7 +651,7 @@ a {
 .pronote-lesson-subject {
   font-weight: 600;
   font-size: 15px;
-  color: var(--pronote-blue);
+  color: var(--pronote-primary);
 }
 
 .pronote-lesson-meta {
@@ -689,7 +696,7 @@ a {
   align-items: center;
   gap: 6px;
   padding: 4px 0;
-  color: var(--pronote-blue);
+  color: var(--pronote-primary);
   font-size: 12px;
 }
 
@@ -703,15 +710,15 @@ a {
 
 .pronote-homework-section {
   margin-top: 12px;
-  background-color: var(--pronote-light-blue);
+  background-color: var(--pronote-light-bg);
   padding: 10px;
   border-radius: 3px;
-  border-left: 3px solid var(--pronote-blue);
+  border-left: 3px solid var(--pronote-primary);
 }
 
 .pronote-homework-header {
   font-weight: 600;
-  color: var(--pronote-blue);
+  color: var(--pronote-primary);
   margin-bottom: 6px;
   font-size: 13px;
 }
@@ -727,7 +734,7 @@ a {
 .pronote-checkbox {
   width: 14px;
   height: 14px;
-  accent-color: var(--pronote-blue);
+  accent-color: var(--pronote-primary);
 }
 
 /* Vue semaine pour cahier de texte */
@@ -765,19 +772,19 @@ a {
 .pronote-day-header {
   text-align: center;
   font-weight: 500;
-  color: var(--pronote-blue);
+  color: var(--pronote-primary);
   padding: 8px;
-  background-color: var(--pronote-light-blue);
+  background-color: var(--pronote-light-bg);
   border-radius: 3px;
   margin-bottom: 3px;
   font-size: 12px;
 }
 
 .pronote-class-block {
-  background-color: #e1f5fe;
+  background-color: rgba(0, 155, 114, 0.1);
   border-radius: 3px;
   padding: 6px 8px;
-  border-left: 3px solid var(--pronote-blue);
+  border-left: 3px solid var(--pronote-primary);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   min-height: 50px;
   cursor: pointer;
@@ -786,13 +793,13 @@ a {
 }
 
 .pronote-class-block:hover {
-  background-color: #b3e5fc;
+  background-color: rgba(0, 155, 114, 0.2);
 }
 
 .pronote-class-name {
   font-weight: 600;
   margin-bottom: 3px;
-  color: var(--pronote-blue);
+  color: var(--pronote-primary);
 }
 
 .pronote-class-time {
@@ -859,7 +866,7 @@ a {
   width: 16px;
   height: 16px;
   margin-left: 8px;
-  border: 2px solid var(--pronote-blue);
+  border: 2px solid var(--pronote-primary);
   border-top: 2px solid transparent;
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -902,7 +909,7 @@ a {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background-color: var(--pronote-blue);
+  background-color: var(--pronote-primary);
   color: white;
   display: flex;
   align-items: center;
@@ -914,7 +921,7 @@ a {
 }
 
 .pronote-fab:hover {
-  background-color: var(--pronote-highlight);
+  background-color: var(--pronote-hover);
 }
 
 .pronote-fab i {
@@ -942,7 +949,7 @@ a {
   padding-bottom: 8px;
   margin-bottom: 10px;
   font-weight: 500;
-  color: var(--pronote-blue);
+  color: var(--pronote-primary);
   font-size: 14px;
   display: flex;
   justify-content: space-between;
