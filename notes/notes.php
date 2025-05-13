@@ -6,8 +6,9 @@
 $stmt = $pdo->query('SELECT * FROM notes ORDER BY date_ajout DESC');
 while ($note = $stmt->fetch()) {
   echo "<div class='note'>
-    <strong>Matière :</strong> {$note['nom_matiere']}<br>
+    <strong>Classe :</strong> {$note['classe']}<br>
     <strong>Élève :</strong> {$note['nom_eleve']}<br>
+    <strong>Matière :</strong> {$note['nom_matiere']}<br>
     <strong>Professeur :</strong> {$note['nom_professeur']}<br>
     <strong>Date :</strong> {$note['date_ajout']}<br>
     <strong>Note :</strong> {$note['note']}/20<br>
