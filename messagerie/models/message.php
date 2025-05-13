@@ -332,15 +332,13 @@ function getMessageById($messageId) {
  * @param string $importance
  * @param bool $estAnnonce
  * @param bool $notificationObligatoire
- * @param bool $accuseReception
  * @param int|null $parentMessageId
  * @param string $typeMessage
  * @param array $filesData
  * @return int
  */
 function addMessage($convId, $senderId, $senderType, $content, $importance = 'normal', 
-                   $estAnnonce = false, $notificationObligatoire = false, 
-                   $accuseReception = false, 
+                   $estAnnonce = false, $notificationObligatoire = false,
                    $parentMessageId = null, $typeMessage = 'standard', $filesData = []) {
     global $pdo;
     

@@ -96,12 +96,13 @@ if ($inConversationView) {
                     <button class="btn-icon mark-read-btn" data-message-id="<?= (int)$message['id'] ?>">
                         <i class="fas fa-envelope-open"></i> Marquer comme lu
                     </button>
+                <?php if (isset($canReply) && $canReply && !$isSelf): ?>
+                    <div class="message-actions">
+                        <button class="btn-icon" onclick="replyToMessage(<?= (int)$message['id'] ?>, '<?= htmlspecialchars(addslashes($message['expediteur_nom'])) ?>')">
+                            <i class="fas fa-reply"></i> Répondre
+                        </button>
+                    </div>
                 <?php endif; ?>
-                <button class="btn-icon" onclick="replyToMessage(<?= (int)$message['id'] ?>, '<?= htmlspecialchars(addslashes($message['expediteur_nom'])) ?>')">
-                    <i class="fas fa-reply"></i> Répondre
-                </button>
-            </div>
-            <?php endif; ?>
         </div>
     </div>
     <?php

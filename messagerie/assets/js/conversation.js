@@ -310,23 +310,6 @@ function initReadTracker() {
     // Démarrer le polling AJAX
     startPolling();
     
-    // Ajouter des gestionnaires d'événements pour les boutons de marquage
-    document.addEventListener('click', function(e) {
-        // Bouton "Marquer comme lu"
-        if (e.target.closest('.mark-read-btn')) {
-            const btn = e.target.closest('.mark-read-btn');
-            const messageId = btn.dataset.messageId;
-            markMessageAsRead(messageId);
-        }
-        
-        // Bouton "Marquer comme non lu"
-        if (e.target.closest('.mark-unread-btn')) {
-            const btn = e.target.closest('.mark-unread-btn');
-            const messageId = btn.dataset.messageId;
-            markMessageAsUnread(messageId);
-        }
-    });
-    
     // Marque un message comme non lu
     function markMessageAsUnread(messageId) {
         if (isMarkingMessage) return;

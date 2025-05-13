@@ -50,7 +50,6 @@ function handleSendMessage($convId, $user, $contenu, $importance = 'normal', $pa
             $importance,
             false, // Est annonce
             false, // Notification obligatoire
-            false, // Accusé de réception
             $parentMessageId,
             'standard',
             $filesData

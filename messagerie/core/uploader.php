@@ -37,15 +37,27 @@ function handleFileUploads($filesData) {
         mkdir($uploadDir, 0755, true);
     }
     
-    // Vérifier que le dossier est accessible en écriture
-    // Retirez cette partie si vous n'avez pas les droits
-    // if (!is_writable($uploadDir)) {
-    //     chmod($uploadDir, 0755);
-    // }
+    // Limite de taille: 1MB
+    $maxFileSize = 1048576; // 1MB en octets
     
     foreach ($filesData['name'] as $key => $name) {
         if ($filesData['error'][$key] === UPLOAD_ERR_OK) {
-            // Reste du code...
+            // Vérifier la taille du fichier
+            if ($filesData['size'][$key] > $maxFileSize) {
+                throw new Exception("Le fichier " . htmlspecialchars($name) . " dépasse la limite de 1Mo autorisée.");
+            }
+            
+            // Générer un nom de fichier unique
+            $fileName = time() . '_' . bin2hex(random_bytes(8)) . '_' . $name;
+            $filePath = $uploadDir . $fileName;
+            
+            // Déplacer le fichier téléchargé vers le répertoire cible
+            if (move_uploaded_file($filesData['tmp_name'][$key], $filePath)) {
+                $uploadedFiles[] = [
+                    'name' => $name,
+                    'path' => str_replace(BASE_PATH, '/', $filePath)
+                ];
+            }
         }
     }
     
