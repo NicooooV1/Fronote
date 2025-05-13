@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cahier de texte numérique</title>
+    <link rel="stylesheet" href="css/devoirs.css">
+    <style>
+        /* Styles supplémentaires pour le cahier de texte */
+        .cahier-entry {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .cahier-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .cahier-meta {
+            display: flex;
+            gap: 15px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .cahier-content {
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        
+        .cahier-docs {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #eee;
+        }
+        
+        .cahier-devoirs {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .status-todo {
+            background-color: #ffecb3;
+            color: #ff8f00;
+        }
+        
+        .status-in-progress {
+            background-color: #bbdefb;
+            color: #1565c0;
+        }
+        
+        .status-done {
+            background-color: #c8e6c9;
+            color: #2e7d32;
+        }
+        
+        .teacher-only {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Cahier de texte numérique</h1>
+        <div>
+            <button id="btn-retour-devoirs">Voir les devoirs</button>
+            <button id="btn-creer-seance" class="teacher-only">Nouvelle séance</button>
+        </div>
+    </header>
+    
+    <div id="filtres">
+        <select id="filtre-matiere">
+            <option value="">Toutes matières</option>
+            <!-- Les options seront chargées dynamiquement -->
+        </select>
+        
+        <select id="filtre-classe">
+            <option value="">Toutes classes</option>
+            <!-- Les options seront chargées dynamiquement -->
+        </select>
+        
+        <input type="date" id="filtre-date" placeholder="Date du cours">
+        
+        <button id="btn-filtrer">Filtrer</button>
+    </div>
+    
+    <div id="cahier-container">
+        <!-- Les entrées du cahier de texte seront chargées ici -->
+        <div class="loading">Chargement...</div>
+    </div>
+    
+    <!-- Modal pour créer/modifier une séance -->
+    <div id="modal-seance" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Nouvelle séance</h2>
+                <button id="btn-fermer">×</button>
+            </div>
+            <form id="form-seance">
+                <input type="hidden" name="id">
+                
+                <div>
+                    <label for="matiere">Matière *</label>
+                    <select name="matiere" required>
+                        <option value="">Sélectionnez une matière</option>
+                        <!-- Les options seront chargées dynamiquement -->
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="classe">Classe *</label>
+                    <select name="classe" required>
+                        <option value="">Sélectionnez une classe</option>
+                        <!-- Les options seront chargées dynamiquement -->
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="date_cours">Date du cours *</label>
+                    <input type="date" name="date_cours" required>
+                </div>
+                
+                <div>
+                    <label for="contenu">Contenu de la séance *</label>
+                    <textarea name="contenu" rows="6" required></textarea>
+                </div>
+                
+                <div>
+                    <label for="documents">Documents (URLs séparées par des virgules)</label>
+                    <input type="text" name="documents" placeholder="http://exemple.com/doc1.pdf, http://exemple.com/doc2.pdf">
+                </div>
+                
+                <div id="devoirs-associes">
+                    <label>Devoirs associés</label>
+                    <!-- Les devoirs seront chargés dynamiquement -->
+                    <div class="loading">Chargement des devoirs...</div>
+                </div>
+                
+                <button type="submit">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+    
+    <script src="js/cahier_texte.js"></script>
+</body>
+</html>

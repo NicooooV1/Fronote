@@ -248,3 +248,56 @@ button:hover, .btn-action:hover {
     margin-bottom: 10px;
     border-radius: 4px;
 }
+
+/* Styles pour les statuts de devoirs */
+.status {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.status-todo {
+    background-color: #ffecb3;
+    color: #ff8f00;
+}
+
+.status-in-progress {
+    background-color: #bbdefb;
+    color: #1565c0;
+}
+
+.status-done {
+    background-color: #c8e6c9;
+    color: #2e7d32;
+}
+
+.devoir-actions {
+    display: flex;
+    gap: 5px;
+    margin-top: 5px;
+}
+
+.btn-status-update {
+    cursor: pointer;
+    border: none;
+    padding: 3px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.btn-status-todo {
+    background-color: #ffecb3;
+    color: #ff8f00;
+}
+
+.btn-status-in-progress {
+    background-color: #bbdefb;
+    color: #1565c0;
+}
+
+.btn-status-done {
+    background-color: #c8e6c9;
+    color: #2e7d32;
+}

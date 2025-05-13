@@ -127,11 +127,110 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     tbody.appendChild(tr);
                 });
+                
+                // Charger les statuts pour les élèves
+                if (userProfile === 'eleve') {
+                    loadDevoirStatus();
+                }
             })
             .catch(error => {
                 console.error('Erreur:', error);
                 tbody.innerHTML = '<tr><td colspan="5">Erreur lors du chargement des devoirs</td></tr>';
             });
+    }
+    
+    // Charger et afficher le statut des devoirs pour les élèves
+    function loadDevoirStatus() {
+        if (userProfile !== 'eleve') return;
+        
+        const statusHeaders = document.querySelectorAll('.status-header');
+        if (statusHeaders.length === 0) {
+            // Ajouter l'en-tête de colonne pour le statut
+            const headerRow = document.querySelector('thead tr');
+            const statusHeader = document.createElement('th');
+            statusHeader.className = 'status-header';
+            statusHeader.textContent = 'Statut';
+            headerRow.insertBefore(statusHeader, headerRow.lastElementChild);
+        }
+        
+        // Ajouter la colonne de statut à chaque ligne
+        document.querySelectorAll('tbody tr').forEach(tr => {
+            if (tr.querySelector('.devoir-status')) return; // Déjà traité
+            
+            const devoirId = tr.querySelector('[data-id]')?.dataset.id;
+            if (!devoirId) return;
+            
+            const statusCell = document.createElement('td');
+            statusCell.className = 'devoir-status';
+            statusCell.innerHTML = '<div class="loading">Chargement...</div>';
+            
+            const actionsCell = tr.querySelector('td:last-child');
+            tr.insertBefore(statusCell, actionsCell);
+            
+            // Charger le statut depuis l'API
+            fetch(`/api/devoir_status?id_devoir=${devoirId}`)
+                .then(r => r.json())
+                .then(data => {
+                    let statusHTML = '';
+                    
+                    if (data.length > 0) {
+                        const status = data[0].status;
+                        
+                        if (status === 'non_fait') {
+                            statusHTML = '<span class="status status-todo">À faire</span>';
+                        } else if (status === 'en_cours') {
+                            statusHTML = '<span class="status status-in-progress">En cours</span>';
+                        } else if (status === 'termine') {
+                            statusHTML = '<span class="status status-done">Terminé</span>';
+                        }
+                    }
+                    
+                    // Ajouter les boutons pour changer le statut
+                    statusHTML += `
+                        <div class="devoir-actions">
+                            <button class="btn-status-update btn-status-todo" data-id="${devoirId}" data-status="non_fait">À faire</button>
+                            <button class="btn-status-update btn-status-in-progress" data-id="${devoirId}" data-status="en_cours">En cours</button>
+                            <button class="btn-status-update btn-status-done" data-id="${devoirId}" data-status="termine">Terminé</button>
+                        </div>
+                    `;
+                    
+                    statusCell.innerHTML = statusHTML;
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    statusCell.innerHTML = '<div class="error">Erreur</div>';
+                });
+        });
+    }
+    
+    // Fonction pour mettre à jour le statut d'un devoir
+    function updateDevoirStatus(devoirId, status) {
+        const data = {
+            id_devoir: devoirId,
+            status: status
+        };
+        
+        fetch('/api/devoir_status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erreur lors de la mise à jour du statut');
+            }
+            return response.json();
+        })
+        .then(() => {
+            // Recharger la liste des devoirs pour afficher le nouveau statut
+            loadDevoirs();
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de la mise à jour du statut');
+        });
     }
     
     // Ouvrir modal création
@@ -288,4 +387,18 @@ document.addEventListener('DOMContentLoaded', () => {
         loadDevoirs();
     });
     document.getElementById('filtres').appendChild(btnClearFilters);
+    
+    // Lien vers le cahier de texte
+    document.getElementById('btn-cahier-texte').addEventListener('click', () => {
+        window.location.href = '/cahier_texte.html';
+    });
+    
+    // Gestionnaire pour les boutons de statut
+    document.addEventListener('click', e => {
+        if (e.target.classList.contains('btn-status-update')) {
+            const devoirId = e.target.dataset.id;
+            const status = e.target.dataset.status;
+            updateDevoirStatus(devoirId, status);
+        }
+    });
 });
