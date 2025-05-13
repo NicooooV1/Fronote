@@ -7,9 +7,28 @@ require_once __DIR__ . '/../controllers/message.php';
 require_once __DIR__ . '/../models/message.php';
 require_once __DIR__ . '/../core/auth.php';
 
-// Désactiver l'affichage des erreurs pour éviter de corrompre le JSON
-ini_set('display_errors', 0);
-error_reporting(0);
+// Pour le débogage, activer temporairement l'affichage des erreurs
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+// Assurer que le dossier de logs existe
+$logDir = __DIR__ . '/../logs';
+if (!is_dir($logDir)) {
+    mkdir($logDir, 0755, true);
+}
+
+// Fonction de journalisation
+function logApiMessage($message, $data = null) {
+    $logFile = __DIR__ . '/../logs/api_messages_' . date('Y-m-d') . '.log';
+    $timestamp = date('Y-m-d H:i:s');
+    $logMessage = "[{$timestamp}] {$message}";
+    
+    if ($data !== null) {
+        $logMessage .= " - Data: " . json_encode($data);
+    }
+    
+    file_put_contents($logFile, $logMessage . PHP_EOL, FILE_APPEND);
+}
 
 // Toujours répondre en JSON
 header('Content-Type: application/json');
@@ -24,6 +43,8 @@ if (!$user) {
 // Envoi d'un nouveau message via AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'send_message') {
     try {
+        logApiMessage("Démarrage de l'envoi de message", $_POST);
+        
         $convId = isset($_POST['conversation_id']) ? (int)$_POST['conversation_id'] : 0;
         $contenu = isset($_POST['contenu']) ? trim($_POST['contenu']) : '';
         $importance = isset($_POST['importance']) ? $_POST['importance'] : 'normal';
@@ -38,10 +59,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             throw new Exception("Le message ne peut pas être vide");
         }
         
-        // Traiter les pièces jointes
+        // Vérification des fichiers reçus
         $filesData = isset($_FILES['attachments']) ? $_FILES['attachments'] : [];
         
+        // Vérification directe des fichiers et des permissions
+        if (!empty($filesData) && isset($filesData['name']) && !empty($filesData['name'][0])) {
+            logApiMessage("Fichiers reçus:", $filesData);
+            
+            // Vérifier si le répertoire d'upload existe et est accessible en écriture
+            $uploadDir = __DIR__ . '/../assets/uploads/';
+            
+            if (!is_dir($uploadDir)) {
+                logApiMessage("Le répertoire d'upload n'existe pas: " . $uploadDir);
+                $created = @mkdir($uploadDir, 0755, true);
+                logApiMessage("Tentative de création du répertoire: " . ($created ? "Réussi" : "Échec"));
+            }
+            
+            if (is_dir($uploadDir) && !is_writable($uploadDir)) {
+                logApiMessage("Le répertoire d'upload n'est pas accessible en écriture: " . $uploadDir);
+            }
+        }
+        
+        // Envoyer le message
         $result = handleSendMessage($convId, $user, $contenu, $importance, $parentMessageId, $filesData);
+        logApiMessage("Résultat de l'envoi:", $result);
         
         if ($result['success'] && isset($result['messageId'])) {
             // Récupérer les informations du message créé pour les renvoyer
@@ -55,6 +96,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             echo json_encode($result);
         }
     } catch (Exception $e) {
+        logApiMessage("Exception lors de l'envoi de message: " . $e->getMessage(), [
+            'trace' => $e->getTraceAsString()
+        ]);
+        
         echo json_encode([
             'success' => false,
             'error' => $e->getMessage()
@@ -144,6 +189,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
             'messages' => $messages
         ]);
     } catch (Exception $e) {
+        logApiMessage("Exception lors de la récupération des messages: " . $e->getMessage());
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
     exit;

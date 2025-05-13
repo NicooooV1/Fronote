@@ -6,6 +6,7 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../models/message.php';
 require_once __DIR__ . '/../models/conversation.php';
 require_once __DIR__ . '/../core/utils.php';
+require_once __DIR__ . '/../core/uploader.php';
 
 /**
  * Gère l'envoi d'un nouveau message
@@ -19,9 +20,13 @@ require_once __DIR__ . '/../core/utils.php';
  */
 function handleSendMessage($convId, $user, $contenu, $importance = 'normal', $parentMessageId = null, $filesData = []) {
     try {
+        // Log le début de l'opération
+        logUpload("Début de handleSendMessage pour user {$user['id']} (type {$user['type']}) - Conv #{$convId}");
+        
         // Vérifier que l'utilisateur peut répondre à cette conversation
         $conversation = getConversationInfo($convId);
         if (!$conversation) {
+            logUpload("Conversation #{$convId} introuvable");
             return [
                 'success' => false,
                 'message' => "Conversation introuvable"
@@ -30,6 +35,7 @@ function handleSendMessage($convId, $user, $contenu, $importance = 'normal', $pa
         
         // Vérifier si l'utilisateur peut répondre à une annonce
         if (!canReplyToAnnouncement($user['id'], $user['type'], $convId, $conversation['type'])) {
+            logUpload("L'utilisateur ne peut pas répondre à cette annonce");
             return [
                 'success' => false,
                 'message' => "Vous n'êtes pas autorisé à répondre à cette annonce"
@@ -41,33 +47,72 @@ function handleSendMessage($convId, $user, $contenu, $importance = 'normal', $pa
             $importance = 'normal';
         }
         
-        // Ajouter le message
-        $messageId = addMessage(
-            $convId,
-            $user['id'],
-            $user['type'],
-            $contenu,
-            $importance,
-            false, // Est annonce
-            false, // Notification obligatoire
-            $parentMessageId,
-            'standard',
-            $filesData
-        );
+        // Vérifier les pièces jointes avant de commencer la transaction
+        $uploadedFiles = [];
+        if (!empty($filesData) && isset($filesData['name']) && !empty($filesData['name'][0])) {
+            try {
+                logUpload("Traitement des pièces jointes pour le message");
+                $uploadedFiles = handleFileUploads($filesData);
+                logUpload("Pièces jointes traitées avec succès", $uploadedFiles);
+            } catch (Exception $e) {
+                logUpload("Erreur lors du traitement des pièces jointes: " . $e->getMessage());
+                return [
+                    'success' => false,
+                    'message' => "Erreur lors du traitement des pièces jointes: " . $e->getMessage()
+                ];
+            }
+        }
         
-        if ($messageId) {
+        // Ajouter le message
+        global $pdo;
+        $pdo->beginTransaction();
+        
+        try {
+            // Insérer le message en base de données
+            logUpload("Insertion du message en base de données");
+            $messageId = addMessage(
+                $convId,
+                $user['id'],
+                $user['type'],
+                $contenu,
+                $importance,
+                false, // Est annonce
+                false, // Notification obligatoire
+                $parentMessageId,
+                'standard',
+                [] // On traite les fichiers séparément
+            );
+            
+            if (!$messageId) {
+                throw new Exception("Échec de l'insertion du message en base de données");
+            }
+            
+            // Sauvegarder les pièces jointes en base de données
+            if (!empty($uploadedFiles)) {
+                logUpload("Sauvegarde des métadonnées des pièces jointes en base de données");
+                if (!saveAttachments($pdo, $messageId, $uploadedFiles)) {
+                    throw new Exception("Échec de la sauvegarde des pièces jointes en base de données");
+                }
+            }
+            
+            $pdo->commit();
+            
+            logUpload("Message #{$messageId} envoyé avec succès");
             return [
                 'success' => true,
                 'message' => "Message envoyé avec succès",
                 'messageId' => $messageId
             ];
-        } else {
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            logUpload("Exception lors de l'envoi du message: " . $e->getMessage());
             return [
                 'success' => false,
-                'message' => "Erreur lors de l'envoi du message"
+                'message' => $e->getMessage()
             ];
         }
     } catch (Exception $e) {
+        logUpload("Exception externe dans handleSendMessage: " . $e->getMessage());
         return [
             'success' => false,
             'message' => $e->getMessage()
@@ -87,53 +132,98 @@ function handleSendMessage($convId, $user, $contenu, $importance = 'normal', $pa
  */
 function handleSendAnnouncement($user, $titre, $contenu, $participants, $notificationObligatoire = true, $filesData = []) {
     try {
+        logUpload("Début de handleSendAnnouncement pour user {$user['id']} (type {$user['type']})");
+        
         // Vérifier que l'utilisateur a le droit de créer des annonces
         $canSendAnnouncement = in_array($user['type'], ['vie_scolaire', 'administrateur']);
         if (!$canSendAnnouncement) {
+            logUpload("L'utilisateur n'est pas autorisé à créer des annonces");
             return [
                 'success' => false,
                 'message' => "Vous n'êtes pas autorisé à créer des annonces"
             ];
         }
         
-        // Création de la conversation
-        $convId = createConversation(
-            $titre,
-            'annonce',
-            $user['id'],
-            $user['type'],
-            $participants
-        );
+        // Vérifier les pièces jointes avant de commencer la transaction
+        $uploadedFiles = [];
+        if (!empty($filesData) && isset($filesData['name']) && !empty($filesData['name'][0])) {
+            try {
+                logUpload("Traitement des pièces jointes pour l'annonce");
+                $uploadedFiles = handleFileUploads($filesData);
+                logUpload("Pièces jointes traitées avec succès", $uploadedFiles);
+            } catch (Exception $e) {
+                logUpload("Erreur lors du traitement des pièces jointes: " . $e->getMessage());
+                return [
+                    'success' => false,
+                    'message' => "Erreur lors du traitement des pièces jointes: " . $e->getMessage()
+                ];
+            }
+        }
         
-        // Envoi du message d'annonce
-        $messageId = addMessage(
-            $convId,
-            $user['id'],
-            $user['type'],
-            $contenu,
-            'important', // Importance
-            true, // Est annonce
-            $notificationObligatoire, // Notification obligatoire
-            false, // Accusé de réception
-            null, // Parent message ID 
-            'annonce', // Type message
-            $filesData
-        );
+        global $pdo;
+        $pdo->beginTransaction();
         
-        if ($messageId) {
+        try {
+            // Création de la conversation
+            logUpload("Création de la conversation d'annonce");
+            $convId = createConversation(
+                $titre,
+                'annonce',
+                $user['id'],
+                $user['type'],
+                $participants
+            );
+            
+            if (!$convId) {
+                throw new Exception("Échec de la création de la conversation d'annonce");
+            }
+            
+            // Envoi du message d'annonce
+            logUpload("Insertion du message d'annonce en base de données");
+            $messageId = addMessage(
+                $convId,
+                $user['id'],
+                $user['type'],
+                $contenu,
+                'important', // Importance
+                true, // Est annonce
+                $notificationObligatoire, // Notification obligatoire
+                null, // Parent message ID 
+                'annonce', // Type message
+                [] // On traite les fichiers séparément
+            );
+            
+            if (!$messageId) {
+                throw new Exception("Échec de l'insertion du message d'annonce en base de données");
+            }
+            
+            // Sauvegarder les pièces jointes en base de données
+            if (!empty($uploadedFiles)) {
+                logUpload("Sauvegarde des métadonnées des pièces jointes en base de données");
+                if (!saveAttachments($pdo, $messageId, $uploadedFiles)) {
+                    throw new Exception("Échec de la sauvegarde des pièces jointes en base de données");
+                }
+            }
+            
+            $pdo->commit();
+            
+            logUpload("Annonce #{$messageId} envoyée avec succès à " . count($participants) . " destinataires");
             return [
                 'success' => true,
                 'message' => "L'annonce a été envoyée avec succès à " . count($participants) . " destinataire(s)",
                 'convId' => $convId,
                 'messageId' => $messageId
             ];
-        } else {
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            logUpload("Exception lors de l'envoi de l'annonce: " . $e->getMessage());
             return [
                 'success' => false,
-                'message' => "Erreur lors de l'envoi de l'annonce"
+                'message' => $e->getMessage()
             ];
         }
     } catch (Exception $e) {
+        logUpload("Exception externe dans handleSendAnnouncement: " . $e->getMessage());
         return [
             'success' => false,
             'message' => $e->getMessage()
@@ -155,39 +245,95 @@ function handleSendAnnouncement($user, $titre, $contenu, $participants, $notific
  */
 function handleSendClassMessage($user, $classe, $titre, $contenu, $importance = 'normal', $notificationObligatoire = false, $includeParents = false, $filesData = []) {
     try {
+        logUpload("Début de handleSendClassMessage pour user {$user['id']} (type {$user['type']}) - Classe: {$classe}");
+        
         // Vérifier que l'utilisateur est un professeur
         if ($user['type'] !== 'professeur') {
+            logUpload("L'utilisateur n'est pas autorisé à envoyer des messages à des classes");
             return [
                 'success' => false,
                 'message' => "Vous n'êtes pas autorisé à envoyer des messages à des classes"
             ];
         }
         
-        // Envoi du message à la classe
-        $convId = sendMessageToClass(
-            $user['id'],
-            $classe,
-            $titre,
-            $contenu,
-            $importance,
-            $notificationObligatoire,
-            $includeParents,
-            $filesData
-        );
+        // Vérifier les pièces jointes avant de commencer la transaction
+        $uploadedFiles = [];
+        if (!empty($filesData) && isset($filesData['name']) && !empty($filesData['name'][0])) {
+            try {
+                logUpload("Traitement des pièces jointes pour le message à la classe");
+                $uploadedFiles = handleFileUploads($filesData);
+                logUpload("Pièces jointes traitées avec succès", $uploadedFiles);
+            } catch (Exception $e) {
+                logUpload("Erreur lors du traitement des pièces jointes: " . $e->getMessage());
+                return [
+                    'success' => false,
+                    'message' => "Erreur lors du traitement des pièces jointes: " . $e->getMessage()
+                ];
+            }
+        }
         
-        if ($convId) {
+        global $pdo;
+        $pdo->beginTransaction();
+        
+        try {
+            // Envoyer le message à la classe
+            logUpload("Création de la conversation pour la classe");
+            $convId = sendMessageToClass(
+                $user['id'],
+                $classe,
+                $titre,
+                $contenu,
+                $importance,
+                $notificationObligatoire,
+                $includeParents,
+                [] // On traite les fichiers séparément
+            );
+            
+            if (!$convId) {
+                throw new Exception("Échec de la création de la conversation pour la classe");
+            }
+            
+            // Récupérer l'ID du message créé
+            $messageStmt = $pdo->prepare("
+                SELECT id FROM messages
+                WHERE conversation_id = ?
+                ORDER BY created_at DESC
+                LIMIT 1
+            ");
+            $messageStmt->execute([$convId]);
+            $messageId = $messageStmt->fetchColumn();
+            
+            if (!$messageId) {
+                throw new Exception("Échec de la récupération de l'ID du message");
+            }
+            
+            // Sauvegarder les pièces jointes en base de données
+            if (!empty($uploadedFiles)) {
+                logUpload("Sauvegarde des métadonnées des pièces jointes en base de données");
+                if (!saveAttachments($pdo, $messageId, $uploadedFiles)) {
+                    throw new Exception("Échec de la sauvegarde des pièces jointes en base de données");
+                }
+            }
+            
+            $pdo->commit();
+            
+            logUpload("Message à la classe #{$messageId} envoyé avec succès");
             return [
                 'success' => true,
                 'message' => "Votre message a été envoyé avec succès à la classe " . htmlspecialchars($classe),
-                'convId' => $convId
+                'convId' => $convId,
+                'messageId' => $messageId
             ];
-        } else {
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            logUpload("Exception lors de l'envoi du message à la classe: " . $e->getMessage());
             return [
                 'success' => false,
-                'message' => "Erreur lors de l'envoi du message à la classe"
+                'message' => $e->getMessage()
             ];
         }
     } catch (Exception $e) {
+        logUpload("Exception externe dans handleSendClassMessage: " . $e->getMessage());
         return [
             'success' => false,
             'message' => $e->getMessage()
