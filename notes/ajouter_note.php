@@ -1,8 +1,15 @@
-<?php ob_start(); ?>
-
-<?php include 'includes/header.php'; include 'includes/db.php'; ?>
-
 <?php
+session_start();
+include 'includes/header.php'; 
+include 'includes/db.php';
+include 'includes/auth.php'; // Pour vérifier l'authentification
+
+// Vérifier si l'utilisateur est un professeur
+if (!isTeacher()) {
+  header('Location: notes.php');
+  exit;
+}
+
 // Charger les données depuis le fichier JSON
 $json_file = '../login/data/etablissement.json';
 $etablissement_data = [];
@@ -57,7 +64,10 @@ if (file_exists($json_file)) {
     <label for="date_ajout">Date:</label>
     <input type="date" name="date_ajout" id="date_ajout" value="<?= date('Y-m-d') ?>" required>
     
-    <button type="submit">Ajouter la note</button>
+    <div style="display: flex; gap: 10px; margin-top: 10px;">
+      <button type="submit">Ajouter la note</button>
+      <a href="notes.php" class="button button-secondary" style="flex: 1; text-align: center;">Annuler</a>
+    </div>
   </form>
 </div>
 
@@ -77,5 +87,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 </body>
 </html>
-
-<?php ob_end_flush(); ?>

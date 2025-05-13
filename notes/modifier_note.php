@@ -1,6 +1,15 @@
-<?php include 'includes/header.php'; include 'includes/db.php'; ?>
-
 <?php
+session_start();
+include 'includes/header.php'; 
+include 'includes/db.php';
+include 'includes/auth.php'; // Pour vérifier l'authentification
+
+// Vérifier si l'utilisateur est un professeur
+if (!isTeacher()) {
+  header('Location: notes.php');
+  exit;
+}
+
 // Charger les données depuis le fichier JSON
 $json_file = '../login/data/etablissement.json';
 $etablissement_data = [];
