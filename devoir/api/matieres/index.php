@@ -10,12 +10,18 @@ if (!isset($_SESSION['user'])) {
 }
 
 // Récupérer les matières du fichier JSON de l'établissement
-$jsonFile = __DIR__ . '/~u22405372/SAE/Pronote/login/data/etablissement.json';
+$etablissementFile = __DIR__ . '/../login/data/etablissement.json';
 
-if (!file_exists($jsonFile)) {
-    echo json_encode([]);
-    exit;
+// Vérifier si le fichier existe
+if (!file_exists($etablissementFile)) {
+    // Si le fichier n'existe pas, essayer avec un autre chemin
+    $etablissementFile = __DIR__ . '/../../login/data/etablissement.json';
+    
+    if (!file_exists($etablissementFile)) {
+        echo json_encode([]);
+        exit;
+    }
 }
 
-$data = json_decode(file_get_contents($jsonFile), true);
+$data = json_decode(file_get_contents($etablissementFile), true);
 echo json_encode($data['matieres'] ?? []);
