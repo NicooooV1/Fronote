@@ -238,17 +238,16 @@ include 'templates/header.php';
             <i class="fas fa-info-circle"></i> Les annonces importantes sont des messages qui sont mis en évidence dans la messagerie des destinataires.
         </div>
         
-        <form method="post" enctype="multipart/form-data" id="messageForm">
             <div class="form-group">
                 <label for="titre">Titre de l'annonce</label>
-                <input type="text" name="titre" id="titre" required maxlength="100">
+                <input type="text" name="titre" id="titre" value="<?= htmlspecialchars($titre) ?>" required maxlength="100">
                 <div id="title-counter" class="text-muted small">0/100 caractères</div>
             </div>
             
             <div class="form-group">
-                <label for="contenu">Contenu de l'annonce</label>
-                <textarea name="contenu" id="contenu" required></textarea>
-                <div id="char-counter" class="text-muted small">0/10000 caractères</div>
+                <label for="contenu">Message de l'annonce</label>
+                <textarea name="contenu" id="contenu" required><?= htmlspecialchars($contenu) ?></textarea>
+                <div id="char-counter" class="text-muted small"></div>
             </div>
             
             <div class="form-group">
