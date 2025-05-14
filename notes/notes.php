@@ -15,7 +15,7 @@ $user_role = $user['profil'];
     <p>Connecté en tant que: <?= htmlspecialchars($user_fullname) ?> (<?= htmlspecialchars($user_role) ?>)</p>
   </div>
 
-  <?php if (isTeacher()): ?>
+  <?php if (canManageNotes()): ?>
   <div class="actions">
     <a href="ajouter_note.php" class="button">Ajouter une note</a>
   </div>
@@ -36,8 +36,9 @@ $user_role = $user['profil'];
     
     // Si c'est un élève, on ne montre que ses propres notes
     if (isStudent()) {
-      // Pour les élèves, on utilise le nom complet stocké dans la session
-      $student_name = $user_fullname;
+      // Pour les élèves, on utilise seulement le prénom stocké dans la session
+      // car dans la table notes, seul le prénom est enregistré
+      $student_firstname = $user['prenom'];
       
       switch ($order) {
         case 'matiere':
@@ -48,7 +49,7 @@ $user_role = $user['profil'];
       }
       
       $stmt = $pdo->prepare($sql);
-      $stmt->execute([$student_name]);
+      $stmt->execute([$student_firstname]);
     }
     // Si c'est un parent, on pourrait montrer les notes de ses enfants (à implémenter)
     // elseif (isParent()) {
@@ -73,7 +74,7 @@ $user_role = $user['profil'];
       $stmt = $pdo->prepare($sql);
       $stmt->execute([$user_fullname]);
     }
-    // Sinon (administrateur ou autre), on montre toutes les notes
+    // Sinon (administrateur, vie scolaire ou autre), on montre toutes les notes
     else {
       switch ($order) {
         case 'matiere':
@@ -118,13 +119,15 @@ $user_role = $user['profil'];
           </div>
         </div>";
         
-        // Afficher les boutons de modification et suppression uniquement pour les professeurs
-        // qui ont ajouté la note ou pour les administrateurs
-        if ((isTeacher() && $note['nom_professeur'] == $user_fullname) || isAdmin()) {
-          echo "<div style='margin-top: 10px; display: flex; gap: 10px;'>
-            <a href='modifier_note.php?id={$note['id']}' class='button button-secondary'>Modifier</a>
-            <a href='supprimer_note.php?id={$note['id']}' class='button button-secondary' onclick='return confirm(\"Êtes-vous sûr de vouloir supprimer cette note ?\");'>Supprimer</a>
-          </div>";
+        // Afficher les boutons de modification et suppression pour les rôles autorisés
+        if (canManageNotes()) {
+          // Si c'est un professeur, vérifier qu'il a créé la note
+          if (!isTeacher() || (isTeacher() && $note['nom_professeur'] == $user_fullname)) {
+            echo "<div style='margin-top: 10px; display: flex; gap: 10px;'>
+              <a href='modifier_note.php?id={$note['id']}' class='button button-secondary'>Modifier</a>
+              <a href='supprimer_note.php?id={$note['id']}' class='button button-secondary' onclick='return confirm(\"Êtes-vous sûr de vouloir supprimer cette note ?\");'>Supprimer</a>
+            </div>";
+          }
         }
         
       echo "</div>";

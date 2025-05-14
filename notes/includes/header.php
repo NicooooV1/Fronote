@@ -11,7 +11,7 @@
     <h2>Système de Notes</h2>
     <nav>
       <a href="notes.php">Notes</a>
-      <?php if (isset($_SESSION['user']) && $_SESSION['user']['profil'] === 'professeur'): ?>
+      <?php if (isset($_SESSION['user']) && (in_array($_SESSION['user']['profil'], ['professeur', 'administrateur', 'vie_scolaire']))): ?>
         <a href="ajouter_note.php">Ajouter une note</a>
       <?php endif; ?>
       <a href="/~u22405372/SAE/Pronote/accueil/accueil.php">Accueil Pronote</a>

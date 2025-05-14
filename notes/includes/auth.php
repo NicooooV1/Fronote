@@ -66,6 +66,25 @@ function isAdmin() {
 }
 
 /**
+ * Vérifie si l'utilisateur actuel est du personnel de vie scolaire
+ * 
+ * @return bool
+ */
+function isVieScolaire() {
+    global $auth;
+    return $auth->isLoggedIn() && $auth->hasRole('vie_scolaire');
+}
+
+/**
+ * Vérifie si l'utilisateur a le droit de modifier les notes
+ * 
+ * @return bool
+ */
+function canManageNotes() {
+    return isTeacher() || isAdmin() || isVieScolaire();
+}
+
+/**
  * Redirige vers la page de connexion si l'utilisateur n'est pas connecté
  */
 function requireLogin() {

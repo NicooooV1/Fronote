@@ -2,8 +2,8 @@
 include 'includes/db.php';
 include 'includes/auth.php';
 
-// Vérifier si l'utilisateur est un professeur
-if (!isTeacher() && !isAdmin()) {
+// Vérifier si l'utilisateur a les permissions pour supprimer des notes
+if (!canManageNotes()) {
   header('Location: notes.php');
   exit;
 }
@@ -20,9 +20,9 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 
 $id = $_GET['id'];
 
-// Vérifier que la note existe et appartient au professeur connecté
-// ou que l'utilisateur est un administrateur
-if (isTeacher() && !isAdmin()) {
+// Si l'utilisateur est un professeur (et pas un admin ou vie scolaire), 
+// il peut seulement supprimer ses propres notes
+if (isTeacher() && !isAdmin() && !isVieScolaire()) {
   $stmt = $pdo->prepare('SELECT * FROM notes WHERE id = ? AND nom_professeur = ?');
   $stmt->execute([$id, $user_fullname]);
   

@@ -4,8 +4,8 @@ include 'includes/header.php';
 include 'includes/db.php';
 include 'includes/auth.php';
 
-// Vérifier si l'utilisateur est un professeur
-if (!isTeacher()) {
+// Vérifier si l'utilisateur a les permissions pour ajouter des notes
+if (!canManageNotes()) {
   header('Location: notes.php');
   exit;
 }
@@ -20,6 +20,23 @@ $etablissement_data = [];
 
 if (file_exists($json_file)) {
   $etablissement_data = json_decode(file_get_contents($json_file), true);
+}
+
+// Récupérer la liste des élèves depuis la base de données
+$stmt_eleves = $pdo->query('SELECT id, nom, prenom, classe FROM eleves ORDER BY nom, prenom');
+$eleves = $stmt_eleves->fetchAll();
+
+// Récupérer la liste des professeurs depuis la base de données
+$stmt_profs = $pdo->query('SELECT id, nom, prenom, matiere FROM professeurs ORDER BY nom, prenom');
+$professeurs = $stmt_profs->fetchAll();
+
+// Si c'est un professeur, récupérer sa matière
+$prof_matiere = '';
+if (isTeacher()) {
+  $stmt_prof = $pdo->prepare('SELECT matiere FROM professeurs WHERE nom = ? AND prenom = ?');
+  $stmt_prof->execute([$user['nom'], $user['prenom']]);
+  $prof_data = $stmt_prof->fetch();
+  $prof_matiere = $prof_data ? $prof_data['matiere'] : '';
 }
 ?>
 
@@ -42,26 +59,66 @@ if (file_exists($json_file)) {
           </optgroup>
         <?php endforeach; ?>
       <?php endif; ?>
-    </select>
-
-    <!-- Champ pour l'élève (maintenant avec autocomplétion) -->
-    <label for="nom_eleve">Élève:</label>
-    <input type="text" name="nom_eleve" id="nom_eleve" placeholder="Nom de l'élève" required>
-    <div id="eleves_suggestions" class="suggestions-container" style="display: none;"></div>
-
-    <!-- Champ pour la matière -->
-    <label for="nom_matiere">Matière:</label>
-    <select name="nom_matiere" id="nom_matiere" required>
-      <option value="">Sélectionnez une matière</option>
-      <?php if (!empty($etablissement_data['matieres'])): ?>
-        <?php foreach ($etablissement_data['matieres'] as $matiere): ?>
-          <option value="<?= $matiere['nom'] ?>"><?= $matiere['nom'] ?> (<?= $matiere['code'] ?>)</option>
-        <?php endforeach; ?>
+      
+      <!-- Ajout des classes primaires si elles existent -->
+      <?php if (!empty($etablissement_data['primaire'])): ?>
+        <optgroup label="Primaire">
+          <?php foreach ($etablissement_data['primaire'] as $niveau => $classes): ?>
+            <?php foreach ($classes as $classe): ?>
+              <option value="<?= $classe ?>"><?= $classe ?></option>
+            <?php endforeach; ?>
+          <?php endforeach; ?>
+        </optgroup>
       <?php endif; ?>
     </select>
 
+    <!-- Champ pour l'élève (sélection depuis la base de données) -->
+    <label for="nom_eleve">Élève:</label>
+    <select name="nom_eleve" id="nom_eleve" required>
+      <option value="">Sélectionnez un élève</option>
+      <?php foreach ($eleves as $eleve): ?>
+        <option value="<?= htmlspecialchars($eleve['prenom']) ?>" data-classe="<?= htmlspecialchars($eleve['classe']) ?>"><?= htmlspecialchars($eleve['prenom'] . ' ' . $eleve['nom']) ?> (<?= htmlspecialchars($eleve['classe']) ?>)</option>
+      <?php endforeach; ?>
+    </select>
+
+    <!-- Champ pour la matière -->
+    <label for="nom_matiere">Matière:</label>
+    <?php if (isTeacher()): ?>
+      <!-- Si c'est un professeur, on présélectionne sa matière -->
+      <select name="nom_matiere" id="nom_matiere" required>
+        <option value="">Sélectionnez une matière</option>
+        <?php if (!empty($etablissement_data['matieres'])): ?>
+          <?php foreach ($etablissement_data['matieres'] as $matiere): ?>
+            <option value="<?= $matiere['nom'] ?>" <?= ($prof_matiere == $matiere['nom']) ? 'selected' : '' ?>><?= $matiere['nom'] ?> (<?= $matiere['code'] ?>)</option>
+          <?php endforeach; ?>
+        <?php endif; ?>
+      </select>
+    <?php else: ?>
+      <!-- Pour admin/vie scolaire -->
+      <select name="nom_matiere" id="nom_matiere" required>
+        <option value="">Sélectionnez une matière</option>
+        <?php if (!empty($etablissement_data['matieres'])): ?>
+          <?php foreach ($etablissement_data['matieres'] as $matiere): ?>
+            <option value="<?= $matiere['nom'] ?>"><?= $matiere['nom'] ?> (<?= $matiere['code'] ?>)</option>
+          <?php endforeach; ?>
+        <?php endif; ?>
+      </select>
+    <?php endif; ?>
+
+    <!-- Champ pour le professeur (sélection depuis la base de données) -->
     <label for="nom_professeur">Professeur:</label>
-    <input type="text" name="nom_professeur" id="nom_professeur" value="<?= htmlspecialchars($nom_professeur) ?>" readonly>
+    <?php if (isTeacher()): ?>
+      <!-- Si c'est un professeur, il ne peut ajouter que des notes en son nom -->
+      <input type="text" name="nom_professeur" id="nom_professeur" value="<?= htmlspecialchars($nom_professeur) ?>" readonly>
+    <?php else: ?>
+      <!-- Admin et vie scolaire peuvent choisir n'importe quel professeur -->
+      <select name="nom_professeur" id="nom_professeur" required>
+        <option value="">Sélectionnez un professeur</option>
+        <?php foreach ($professeurs as $prof): ?>
+          <option value="<?= htmlspecialchars($prof['prenom'] . ' ' . $prof['nom']) ?>" data-matiere="<?= htmlspecialchars($prof['matiere']) ?>"><?= htmlspecialchars($prof['prenom'] . ' ' . $prof['nom']) ?></option>
+        <?php endforeach; ?>
+      </select>
+    <?php endif; ?>
     
     <label for="note">Note:</label>
     <input type="number" name="note" id="note" max="20" min="0" step="0.1" placeholder="Note sur 20" required>
@@ -77,15 +134,80 @@ if (file_exists($json_file)) {
 </div>
 
 <script>
-// Script pour récupérer la liste des élèves par classe
+// Script pour filtrer les élèves en fonction de la classe sélectionnée
 document.getElementById('classe').addEventListener('change', function() {
-  const classe = this.value;
-  if (!classe) return;
+  const classeSelectionnee = this.value;
+  const selectEleve = document.getElementById('nom_eleve');
+  const options = selectEleve.options;
   
-  // Ici, on pourrait ajouter un appel Ajax pour récupérer les élèves de la classe sélectionnée
-  // et les afficher dans une liste de suggestions
-  // Pour l'instant, nous laissons cette fonctionnalité pour une future amélioration
+  // Réinitialiser le sélecteur d'élève
+  selectEleve.selectedIndex = 0;
+  
+  // Afficher/cacher les options en fonction de la classe
+  for (let i = 1; i < options.length; i++) {
+    const classeEleve = options[i].getAttribute('data-classe');
+    if (classeSelectionnee === '' || classeEleve === classeSelectionnee) {
+      options[i].style.display = '';
+    } else {
+      options[i].style.display = 'none';
+    }
+  }
 });
+
+// Script pour définir automatiquement la classe lorsqu'un élève est sélectionné
+document.getElementById('nom_eleve').addEventListener('change', function() {
+  if (this.selectedIndex > 0) {
+    const classeEleve = this.options[this.selectedIndex].getAttribute('data-classe');
+    const selectClasse = document.getElementById('classe');
+    
+    // Parcourir toutes les options pour trouver la classe correspondante
+    for (let i = 0; i < selectClasse.options.length; i++) {
+      if (selectClasse.options[i].value === classeEleve) {
+        selectClasse.selectedIndex = i;
+        break;
+      }
+    }
+  }
+});
+
+<?php if (!isTeacher()): ?>
+// Filtrer les professeurs en fonction de la matière sélectionnée
+document.getElementById('nom_matiere').addEventListener('change', function() {
+  const matiereSelectionnee = this.value;
+  const selectProf = document.getElementById('nom_professeur');
+  const options = selectProf.options;
+  
+  // Réinitialiser le sélecteur de professeur
+  selectProf.selectedIndex = 0;
+  
+  // Afficher/cacher les options en fonction de la matière
+  for (let i = 1; i < options.length; i++) {
+    const matiereProf = options[i].getAttribute('data-matiere');
+    if (matiereSelectionnee === '' || matiereProf === matiereSelectionnee) {
+      options[i].style.display = '';
+    } else {
+      options[i].style.display = 'none';
+    }
+  }
+});
+
+// Si un administrateur ou vie scolaire sélectionne un professeur, 
+// sélectionner automatiquement sa matière
+document.getElementById('nom_professeur').addEventListener('change', function() {
+  if (this.selectedIndex > 0) {
+    const matiereProf = this.options[this.selectedIndex].getAttribute('data-matiere');
+    const selectMatiere = document.getElementById('nom_matiere');
+    
+    // Parcourir toutes les options pour trouver la matière correspondante
+    for (let i = 0; i < selectMatiere.options.length; i++) {
+      if (selectMatiere.options[i].value === matiereProf) {
+        selectMatiere.selectedIndex = i;
+        break;
+      }
+    }
+  }
+});
+<?php endif; ?>
 </script>
 
 <?php
