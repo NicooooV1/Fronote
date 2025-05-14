@@ -39,8 +39,8 @@ include 'includes/sidebar.php';
 
     <!-- Onglets -->
     <div class="pronote-tabs">
-        <a href="/cahier_texte.php" class="pronote-tab active">Contenu des séances</a>
-        <a href="/devoirs.php" class="pronote-tab">Travail à faire</a>
+        <a href="cahier_texte.php" class="pronote-tab active">Contenu des séances</a>
+        <a href="devoirs.php" class="pronote-tab">Travail à faire</a>
     </div>
 
     <!-- Filtres -->
@@ -222,8 +222,8 @@ include 'includes/sidebar.php';
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     // Éléments DOM
-    const apiCahierTexte = '/api/cahier_texte';
-    const apiDevoirs = '/api/devoirs';
+    const apiCahierTexte = 'api/cahier_texte'; // Chemin modifié pour être relatif
+    const apiDevoirs = 'api/devoirs'; // Chemin modifié pour être relatif
     const listView = document.getElementById('list-view');
     const weekView = document.getElementById('week-view');
     const listViewBtn = document.getElementById('list-view-btn');
@@ -239,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnFiltrer = document.getElementById('btn-filtrer');
     const btnReinitialiser = document.getElementById('btn-reinitialiser');
     
-    // Variables d'état - Utilisez des valeurs directes au lieu de variables PHP
+    // Variables d'état
     const userProfile = '<?php echo $userProfile; ?>';
     const isTeacher = <?php echo $isTeacher ? 'true' : 'false'; ?>;
     let currentView = 'list';
@@ -264,15 +264,33 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // Fonction pour gérer les erreurs de fetch
+    async function handleResponse(response) {
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({
+                error: `Erreur ${response.status}: ${response.statusText}`
+            }));
+            throw new Error(errorData.error || `Erreur ${response.status}: ${response.statusText}`);
+        }
+        return await response.json();
+    }
+    
     // Chargement du cahier de texte
     async function loadCahierTexte(params = '') {
         try {
             listView.innerHTML = '<div class="loading">Chargement...</div>';
             
             const response = await fetch(apiCahierTexte + params);
-            if (!response.ok) throw new Error('Erreur lors du chargement du cahier de texte');
+            let data;
             
-            const data = await response.json();
+            try {
+                data = await handleResponse(response);
+            } catch (error) {
+                console.error('Erreur API:', error);
+                listView.innerHTML = `<p>Erreur lors du chargement du cahier de texte: ${error.message}</p>`;
+                showNotification(`Erreur lors du chargement du cahier de texte: ${error.message}`, 'error');
+                return;
+            }
             
             if (data.length === 0) {
                 listView.innerHTML = '<p>Aucune séance trouvée dans le cahier de texte.</p>';
@@ -291,77 +309,86 @@ document.addEventListener('DOMContentLoaded', () => {
                 const div = document.createElement('div');
                 div.className = 'pronote-lesson';
                 
-                // Formater la date
-                const dateCours = new Date(seance.date_cours);
-                const options = { 
-                    weekday: 'long', 
-                    day: 'numeric', 
-                    month: 'long', 
-                    year: 'numeric'
-                };
-                const formattedDate = dateCours.toLocaleDateString('fr-FR', options);
-                
-                // Horaire (si disponible)
-                let horaireText = '';
-                if (seance.heure_debut && seance.heure_fin) {
-                    horaireText = ` (${seance.heure_debut}-${seance.heure_fin})`;
-                }
-                
-                // Boutons d'action pour les enseignants
-                let actionButtons = '';
-                if (isTeacher) {
-                    actionButtons = `
-                        <button class="pronote-btn pronote-btn-small pronote-btn-secondary btn-edit" data-id="${seance.id}">
-                            <i class="fas fa-edit"></i>
-                            <span>Modifier</span>
-                        </button>
-                        <button class="pronote-btn pronote-btn-small btn-delete" style="background-color: #f44336; color: white;" data-id="${seance.id}">
-                            <i class="fas fa-trash"></i>
-                            <span>Supprimer</span>
-                        </button>
-                    `;
-                }
-                
-                // Documents joints
-                let documentsHTML = '';
-                if (seance.documents) {
-                    documentsHTML = '<div class="pronote-lesson-files"><h4>Documents joints :</h4>';
+                try {
+                    // Formater la date
+                    const dateCours = new Date(seance.date_cours);
+                    const options = { 
+                        weekday: 'long', 
+                        day: 'numeric', 
+                        month: 'long', 
+                        year: 'numeric'
+                    };
+                    const formattedDate = dateCours.toLocaleDateString('fr-FR', options);
                     
-                    const docs = Array.isArray(seance.documents) 
-                        ? seance.documents 
-                        : seance.documents.split(',').map(doc => doc.trim());
+                    // Horaire (si disponible)
+                    let horaireText = '';
+                    if (seance.heure_debut && seance.heure_fin) {
+                        horaireText = ` (${seance.heure_debut}-${seance.heure_fin})`;
+                    }
                     
-                    docs.forEach(doc => {
-                        // Déterminer le type d'icône en fonction de l'extension
-                        let iconClass = 'fa-file';
-                        const ext = doc.split('.').pop().toLowerCase();
-                        
-                        if (['pdf'].includes(ext)) iconClass = 'fa-file-pdf';
-                        else if (['doc', 'docx'].includes(ext)) iconClass = 'fa-file-word';
-                        else if (['ppt', 'pptx'].includes(ext)) iconClass = 'fa-file-powerpoint';
-                        else if (['xls', 'xlsx'].includes(ext)) iconClass = 'fa-file-excel';
-                        else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) iconClass = 'fa-file-image';
-                        
-                        documentsHTML += `
-                            <a href="${doc}" class="pronote-file-link" target="_blank">
-                                <i class="fas ${iconClass}"></i>
-                                <span>${doc.split('/').pop()}</span>
-                            </a>
+                    // Boutons d'action pour les enseignants
+                    let actionButtons = '';
+                    if (isTeacher) {
+                        actionButtons = `
+                            <button class="pronote-btn pronote-btn-small pronote-btn-secondary btn-edit" data-id="${seance.id}">
+                                <i class="fas fa-edit"></i>
+                                <span>Modifier</span>
+                            </button>
+                            <button class="pronote-btn pronote-btn-small btn-delete" style="background-color: #f44336; color: white;" data-id="${seance.id}">
+                                <i class="fas fa-trash"></i>
+                                <span>Supprimer</span>
+                            </button>
                         `;
-                    });
+                    }
                     
-                    documentsHTML += '</div>';
-                }
-                
-                // Devoirs associés
-                let devoirsHTML = '';
-                
-                // Récupérer les devoirs associés à cette séance
-                if (seance.id) {
-                    try {
-                        const devoirsResponse = await fetch(`${apiDevoirs}?id_cahier_texte=${seance.id}`);
-                        if (devoirsResponse.ok) {
-                            const devoirs = await devoirsResponse.json();
+                    // Documents joints
+                    let documentsHTML = '';
+                    if (seance.documents) {
+                        documentsHTML = '<div class="pronote-lesson-files"><h4>Documents joints :</h4>';
+                        
+                        let docs = [];
+                        if (typeof seance.documents === 'string') {
+                            try {
+                                // Essayer de parser le JSON si c'est une chaîne
+                                docs = JSON.parse(seance.documents);
+                            } catch (e) {
+                                // Si ce n'est pas du JSON valide, considérer comme une liste séparée par des virgules
+                                docs = seance.documents.split(',').map(doc => doc.trim());
+                            }
+                        } else if (Array.isArray(seance.documents)) {
+                            docs = seance.documents;
+                        }
+                        
+                        docs.forEach(doc => {
+                            // Déterminer le type d'icône en fonction de l'extension
+                            let iconClass = 'fa-file';
+                            const ext = (typeof doc === 'string' ? doc.split('.').pop().toLowerCase() : '');
+                            
+                            if (['pdf'].includes(ext)) iconClass = 'fa-file-pdf';
+                            else if (['doc', 'docx'].includes(ext)) iconClass = 'fa-file-word';
+                            else if (['ppt', 'pptx'].includes(ext)) iconClass = 'fa-file-powerpoint';
+                            else if (['xls', 'xlsx'].includes(ext)) iconClass = 'fa-file-excel';
+                            else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) iconClass = 'fa-file-image';
+                            
+                            documentsHTML += `
+                                <a href="${doc}" class="pronote-file-link" target="_blank">
+                                    <i class="fas ${iconClass}"></i>
+                                    <span>${doc.split('/').pop()}</span>
+                                </a>
+                            `;
+                        });
+                        
+                        documentsHTML += '</div>';
+                    }
+                    
+                    // Devoirs associés
+                    let devoirsHTML = '';
+                    
+                    // Récupérer les devoirs associés à cette séance
+                    if (seance.id) {
+                        try {
+                            const devoirsResponse = await fetch(`${apiDevoirs}?id_cahier_texte=${seance.id}`);
+                            const devoirs = await handleResponse(devoirsResponse);
                             
                             if (devoirs.length > 0) {
                                 devoirsHTML = '<div class="pronote-homework-section"><h4 class="pronote-homework-header">Travail à faire pour la prochaine séance :</h4>';
@@ -381,47 +408,152 @@ document.addEventListener('DOMContentLoaded', () => {
                                 
                                 devoirsHTML += '</div>';
                             }
+                        } catch (error) {
+                            console.error('Erreur récupération devoirs:', error);
                         }
-                    } catch (error) {
-                        console.error('Erreur récupération devoirs:', error);
                     }
-                }
-                
-                // Assembler la carte
-                div.innerHTML = `
-                    <div class="pronote-lesson-header">
-                        <div>
-                            <div class="pronote-lesson-subject">${seance.matiere}</div>
-                            <div class="pronote-lesson-meta">
-                                <span>${seance.classe}</span>
-                                <span>${formattedDate}${horaireText}</span>
+                    
+                    // Assembler la carte
+                    div.innerHTML = `
+                        <div class="pronote-lesson-header">
+                            <div>
+                                <div class="pronote-lesson-subject">${seance.matiere}</div>
+                                <div class="pronote-lesson-meta">
+                                    <span>${seance.classe}</span>
+                                    <span>${formattedDate}${horaireText}</span>
+                                </div>
+                            </div>
+                            <div>
+                                ${actionButtons}
                             </div>
                         </div>
-                        <div>
-                            ${actionButtons}
+                        <div class="pronote-lesson-content">
+                            ${seance.contenu}
                         </div>
-                    </div>
-                    <div class="pronote-lesson-content">
-                        ${seance.contenu}
-                    </div>
-                    ${documentsHTML}
-                    ${devoirsHTML}
-                `;
-                
-                listView.appendChild(div);
+                        ${documentsHTML}
+                        ${devoirsHTML}
+                    `;
+                    
+                    listView.appendChild(div);
+                } catch (error) {
+                    console.error('Erreur lors du rendu de la séance:', error);
+                    div.innerHTML = `<div class="pronote-lesson-header">
+                        <div>Erreur d'affichage de la séance</div>
+                    </div>`;
+                    listView.appendChild(div);
+                }
             });
             
             // Mettre à jour la vue semaine
             updateWeekView(data);
             
         } catch (error) {
-            console.error('Erreur:', error);
-            listView.innerHTML = '<p>Erreur lors du chargement du cahier de texte.</p>';
-            showNotification('Erreur lors du chargement du cahier de texte', 'error');
+            console.error('Erreur générale:', error);
+            listView.innerHTML = `<p>Erreur lors du chargement du cahier de texte: ${error.message}</p>`;
+            showNotification(`Erreur lors du chargement du cahier de texte: ${error.message}`, 'error');
         }
     }
     
-    // Le reste du code JavaScript reste inchangé...
+    // Fonction de mise à jour de la vue semaine
+    function updateWeekView(data) {
+        // Implémentation de la mise à jour de vue semaine
+        // Code à compléter selon vos besoins
+    }
+    
+    // Changer de vue liste/semaine
+    listViewBtn.addEventListener('click', () => {
+        listViewBtn.classList.add('active');
+        weekViewBtn.classList.remove('active');
+        listView.style.display = 'block';
+        weekView.style.display = 'none';
+        currentView = 'list';
+    });
+    
+    weekViewBtn.addEventListener('click', () => {
+        weekViewBtn.classList.add('active');
+        listViewBtn.classList.remove('active');
+        weekView.style.display = 'block';
+        listView.style.display = 'none';
+        currentView = 'week';
+    });
+    
+    // Filtres
+    filtrePeriode.addEventListener('change', function() {
+        if (this.value === 'custom') {
+            dateFilterContainer.style.display = 'flex';
+        } else {
+            dateFilterContainer.style.display = 'none';
+        }
+    });
+    
+    btnFiltrer.addEventListener('click', function() {
+        const params = [];
+        
+        if (filtreMatiere.value) {
+            params.push(`matiere=${encodeURIComponent(filtreMatiere.value)}`);
+        }
+        
+        if (filtreClasse.value) {
+            params.push(`classe=${encodeURIComponent(filtreClasse.value)}`);
+        }
+        
+        // Gestion de la période
+        const now = new Date();
+        let dateDebut, dateFin;
+        
+        switch (filtrePeriode.value) {
+            case 'semaine':
+                // Début de la semaine (lundi)
+                dateDebut = new Date(now);
+                dateDebut.setDate(now.getDate() - now.getDay() + 1);
+                params.push(`date_debut=${dateDebut.toISOString().split('T')[0]}`);
+                
+                // Fin de la semaine (dimanche)
+                dateFin = new Date(dateDebut);
+                dateFin.setDate(dateDebut.getDate() + 6);
+                params.push(`date_fin=${dateFin.toISOString().split('T')[0]}`);
+                break;
+                
+            case 'mois':
+                // Début du mois
+                dateDebut = new Date(now.getFullYear(), now.getMonth(), 1);
+                params.push(`date_debut=${dateDebut.toISOString().split('T')[0]}`);
+                
+                // Fin du mois
+                dateFin = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                params.push(`date_fin=${dateFin.toISOString().split('T')[0]}`);
+                break;
+                
+            case 'trimestre':
+                // Début du trimestre
+                const trimestre = Math.floor(now.getMonth() / 3);
+                dateDebut = new Date(now.getFullYear(), trimestre * 3, 1);
+                params.push(`date_debut=${dateDebut.toISOString().split('T')[0]}`);
+                
+                // Fin du trimestre
+                dateFin = new Date(now.getFullYear(), (trimestre + 1) * 3, 0);
+                params.push(`date_fin=${dateFin.toISOString().split('T')[0]}`);
+                break;
+                
+            case 'custom':
+                if (filtreDate.value) {
+                    params.push(`date_cours=${filtreDate.value}`);
+                }
+                break;
+        }
+        
+        loadCahierTexte(params.length ? `?${params.join('&')}` : '');
+    });
+    
+    btnReinitialiser.addEventListener('click', function() {
+        filtreMatiere.value = '';
+        filtreClasse.value = '';
+        filtrePeriode.value = 'semaine';
+        filtreDate.value = '';
+        dateFilterContainer.style.display = 'none';
+        
+        loadCahierTexte();
+    });
     
     // Initialisation
     loadCahierTexte();

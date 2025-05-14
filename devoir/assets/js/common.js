@@ -55,6 +55,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const date = dateStr instanceof Date ? dateStr : new Date(dateStr);
         
+        // Vérification que la date est valide
+        if (isNaN(date.getTime())) {
+            console.error(`Date invalide: ${dateStr}`);
+            return 'Date invalide';
+        }
+        
         // Tableaux pour la traduction
         const jours = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
         const mois = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
@@ -100,6 +106,38 @@ document.addEventListener('DOMContentLoaded', function() {
     window.confirmAction = function(message, onConfirm) {
         if (confirm(message)) {
             onConfirm();
+        }
+    };
+    
+    /**
+     * Vérification et gestion des erreurs AJAX
+     * @param {Response} response - Réponse fetch
+     * @returns {Promise} Promise contenant les données ou rejetant une erreur
+     */
+    window.handleFetchResponse = async function(response) {
+        if (!response.ok) {
+            // Essayer de récupérer le message d'erreur au format JSON
+            try {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `Erreur ${response.status}: ${response.statusText}`);
+            } catch (e) {
+                // Si impossible de parser le JSON, utiliser un message d'erreur standard
+                throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+            }
+        }
+        
+        // Vérifier si la réponse est vide
+        const text = await response.text();
+        if (!text.trim()) {
+            return {}; // Retourner un objet vide pour les réponses vides
+        }
+        
+        // Parser le JSON
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.error('Erreur de parsing JSON:', e);
+            throw new Error('Format de réponse invalide');
         }
     };
 });

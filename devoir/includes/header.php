@@ -14,6 +14,7 @@ unset($_SESSION['notification']); // Effacer après lecture
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pronote - <?= htmlspecialchars($pageTitle ?? 'Espace élèves') ?></title>
+    <base href="/devoir/"> <!-- Ajout de la balise base pour résoudre les problèmes de chemin -->
     <style>
         /* Variables CSS pour l'harmonisation avec les autres modules */
         :root {
@@ -23,16 +24,16 @@ unset($_SESSION['notification']); // Effacer après lecture
             --pronote-highlight: #009b72;     /* Surbrillance harmonisée */
         }
     </style>
-    <link rel="stylesheet" href="/assets/css/pronote-style.css">
+    <link rel="stylesheet" href="assets/css/pronote-style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="icon" href="/assets/img/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="assets/img/favicon.ico" type="image/x-icon">
 </head>
 <body>
     <div class="pronote-container">
         <!-- En-tête -->
         <header class="pronote-header">
             <div class="pronote-logo">
-                <img src="/assets/img/pronote-logo.png" alt="Pronote Logo">
+                <img src="assets/img/pronote-logo.png" alt="Pronote Logo">
                 <span>PRONOTE</span>
             </div>
             <div class="pronote-user-info">
@@ -40,7 +41,7 @@ unset($_SESSION['notification']); // Effacer après lecture
                     <i class="fas fa-user-circle"></i>
                     <?= htmlspecialchars(getUserName()) ?>
                 </div>
-                <a href="/login/logout.php" class="pronote-logout">
+                <a href="login/logout.php" class="pronote-logout">
                     <i class="fas fa-sign-out-alt"></i>
                     Déconnexion
                 </a>
