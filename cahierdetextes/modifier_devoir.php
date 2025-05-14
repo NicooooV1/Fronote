@@ -7,9 +7,9 @@ include 'includes/header.php';
 include 'includes/db.php';
 include 'includes/auth.php';
 
-// Vérifier si l'utilisateur a les permissions pour modifier des notes
-if (!canManageNotes()) {
-  header('Location: notes.php');
+// Vérifier si l'utilisateur a les permissions pour modifier des devoirs
+if (!canManageDevoirs()) {
+  header('Location: cahierdetextes.php');
   exit;
 }
 
@@ -27,33 +27,29 @@ if (file_exists($json_file)) {
 
 // Vérifier que l'ID est fourni
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-  header('Location: notes.php');
+  header('Location: cahierdetextes.php');
   exit;
 }
 
 $id = $_GET['id'];
-$stmt = $pdo->prepare('SELECT * FROM notes WHERE id = ?');
+$stmt = $pdo->prepare('SELECT * FROM devoirs WHERE id = ?');
 $stmt->execute([$id]);
-$note = $stmt->fetch();
+$devoir = $stmt->fetch();
 
-if (!$note) {
-  header('Location: notes.php');
+if (!$devoir) {
+  header('Location: cahierdetextes.php');
   exit;
 }
 
 // Si l'utilisateur est un professeur (et pas un admin ou vie scolaire), 
-// il peut seulement modifier ses propres notes
+// il peut seulement modifier ses propres devoirs
 if (isTeacher() && !isAdmin() && !isVieScolaire()) {
-  if ($note['nom_professeur'] !== $nom_professeur) {
-    // Le professeur tente de modifier une note qu'il n'a pas créée
-    header('Location: notes.php');
+  if ($devoir['nom_professeur'] !== $nom_professeur) {
+    // Le professeur tente de modifier un devoir qu'il n'a pas créé
+    header('Location: cahierdetextes.php');
     exit;
   }
 }
-
-// Récupérer la liste des élèves depuis la base de données
-$stmt_eleves = $pdo->query('SELECT id, nom, prenom, classe FROM eleves ORDER BY nom, prenom');
-$eleves = $stmt_eleves->fetchAll();
 
 // Récupérer la liste des professeurs depuis la base de données
 $stmt_profs = $pdo->query('SELECT id, nom, prenom, matiere FROM professeurs ORDER BY nom, prenom');
@@ -70,9 +66,12 @@ if (isTeacher()) {
 ?>
 
 <div class="container">
-  <h3>Modifier la note</h3>
+  <h3>Modifier le devoir</h3>
   
   <form method="post">
+    <label for="titre">Titre:</label>
+    <input type="text" name="titre" id="titre" value="<?= htmlspecialchars($devoir['titre']) ?>" required>
+
     <!-- Champ pour la classe -->
     <label for="classe">Classe:</label>
     <select name="classe" id="classe" required>
@@ -82,7 +81,7 @@ if (isTeacher()) {
           <optgroup label="<?= ucfirst($niveau) ?>">
             <?php foreach ($niveaux as $sousniveau => $classes): ?>
               <?php foreach ($classes as $classe): ?>
-                <option value="<?= $classe ?>" <?= ($note['classe'] == $classe) ? 'selected' : '' ?>><?= $classe ?></option>
+                <option value="<?= $classe ?>" <?= ($devoir['classe'] == $classe) ? 'selected' : '' ?>><?= $classe ?></option>
               <?php endforeach; ?>
             <?php endforeach; ?>
           </optgroup>
@@ -94,42 +93,29 @@ if (isTeacher()) {
         <optgroup label="Primaire">
           <?php foreach ($etablissement_data['primaire'] as $niveau => $classes): ?>
             <?php foreach ($classes as $classe): ?>
-              <option value="<?= $classe ?>" <?= ($note['classe'] == $classe) ? 'selected' : '' ?>><?= $classe ?></option>
+              <option value="<?= $classe ?>" <?= ($devoir['classe'] == $classe) ? 'selected' : '' ?>><?= $classe ?></option>
             <?php endforeach; ?>
           <?php endforeach; ?>
         </optgroup>
       <?php endif; ?>
     </select>
 
-    <!-- Champ pour l'élève (sélection depuis la base de données) -->
-    <label for="nom_eleve">Élève:</label>
-    <select name="nom_eleve" id="nom_eleve" required>
-      <option value="">Sélectionnez un élève</option>
-      <?php foreach ($eleves as $eleve): ?>
-        <option value="<?= htmlspecialchars($eleve['prenom']) ?>" 
-                data-classe="<?= htmlspecialchars($eleve['classe']) ?>" 
-                <?= ($note['nom_eleve'] == $eleve['prenom']) ? 'selected' : '' ?>>
-          <?= htmlspecialchars($eleve['prenom'] . ' ' . $eleve['nom']) ?> (<?= htmlspecialchars($eleve['classe']) ?>)
-        </option>
-      <?php endforeach; ?>
-    </select>
-    
     <!-- Champ pour la matière -->
     <label for="nom_matiere">Matière:</label>
     <select name="nom_matiere" id="nom_matiere" required>
       <option value="">Sélectionnez une matière</option>
       <?php if (!empty($etablissement_data['matieres'])): ?>
         <?php foreach ($etablissement_data['matieres'] as $matiere): ?>
-          <option value="<?= $matiere['nom'] ?>" <?= ($note['nom_matiere'] == $matiere['nom']) ? 'selected' : '' ?>><?= $matiere['nom'] ?> (<?= $matiere['code'] ?>)</option>
+          <option value="<?= $matiere['nom'] ?>" <?= ($devoir['nom_matiere'] == $matiere['nom']) ? 'selected' : '' ?>><?= $matiere['nom'] ?> (<?= $matiere['code'] ?>)</option>
         <?php endforeach; ?>
       <?php endif; ?>
     </select>
-    
+
     <!-- Champ pour le professeur -->
     <label for="nom_professeur">Professeur:</label>
     <?php if (isTeacher() && !isAdmin() && !isVieScolaire()): ?>
       <!-- Si c'est un professeur, il ne peut pas changer le nom du professeur -->
-      <input type="text" name="nom_professeur" id="nom_professeur" value="<?= htmlspecialchars($note['nom_professeur']) ?>" readonly>
+      <input type="text" name="nom_professeur" id="nom_professeur" value="<?= htmlspecialchars($devoir['nom_professeur']) ?>" readonly>
     <?php else: ?>
       <!-- Admin et vie scolaire peuvent choisir n'importe quel professeur -->
       <select name="nom_professeur" id="nom_professeur" required>
@@ -138,69 +124,48 @@ if (isTeacher()) {
           <?php $prof_fullname = $prof['prenom'] . ' ' . $prof['nom']; ?>
           <option value="<?= htmlspecialchars($prof_fullname) ?>" 
                   data-matiere="<?= htmlspecialchars($prof['matiere']) ?>"
-                  <?= ($note['nom_professeur'] == $prof_fullname) ? 'selected' : '' ?>>
+                  <?= ($devoir['nom_professeur'] == $prof_fullname) ? 'selected' : '' ?>>
             <?= htmlspecialchars($prof_fullname) ?>
           </option>
         <?php endforeach; ?>
       </select>
     <?php endif; ?>
     
-    <label for="note">Note:</label>
-    <input type="number" name="note" id="note" max="20" min="0" step="0.1" value="<?= $note['note'] ?>" required>
+    <label for="description">Description:</label>
+    <textarea name="description" id="description" rows="6" required><?= htmlspecialchars($devoir['description']) ?></textarea>
     
-    <label for="date_ajout">Date:</label>
-    <input type="date" name="date_ajout" id="date_ajout" value="<?= $note['date_ajout'] ?>" required>
+    <label for="date_ajout">Date d'ajout:</label>
+    <input type="date" name="date_ajout" id="date_ajout" value="<?= $devoir['date_ajout'] ?>" required>
+    
+    <label for="date_rendu">Date de rendu:</label>
+    <input type="date" name="date_rendu" id="date_rendu" value="<?= $devoir['date_rendu'] ?>" required>
     
     <div style="display: flex; gap: 10px; margin-top: 10px;">
       <button type="submit" style="flex: 1;">Mettre à jour</button>
-      <a href="notes.php" class="button button-secondary" style="flex: 1; text-align: center;">Annuler</a>
+      <a href="cahierdetextes.php" class="button button-secondary" style="flex: 1; text-align: center;">Annuler</a>
     </div>
   </form>
 </div>
 
 <script>
-// Script pour filtrer les élèves en fonction de la classe sélectionnée
-document.getElementById('classe').addEventListener('change', function() {
-  const classeSelectionnee = this.value;
-  const selectEleve = document.getElementById('nom_eleve');
-  const options = selectEleve.options;
-  
-  // Réinitialiser le sélecteur d'élève si la classe change
-  if (selectEleve.selectedIndex > 0) {
-    const classeEleve = options[selectEleve.selectedIndex].getAttribute('data-classe');
-    if (classeEleve !== classeSelectionnee) {
-      selectEleve.selectedIndex = 0;
-    }
-  }
-  
-  // Afficher/cacher les options en fonction de la classe
-  for (let i = 1; i < options.length; i++) {
-    const classeEleve = options[i].getAttribute('data-classe');
-    if (classeSelectionnee === '' || classeEleve === classeSelectionnee) {
-      options[i].style.display = '';
-    } else {
-      options[i].style.display = 'none';
-    }
-  }
-});
-
-// Script pour définir automatiquement la classe lorsqu'un élève est sélectionné
-document.getElementById('nom_eleve').addEventListener('change', function() {
+// Si un administrateur ou vie scolaire sélectionne un professeur, 
+// sélectionner automatiquement sa matière
+<?php if (!isTeacher() || isAdmin() || isVieScolaire()): ?>
+document.getElementById('nom_professeur').addEventListener('change', function() {
   if (this.selectedIndex > 0) {
-    const classeEleve = this.options[this.selectedIndex].getAttribute('data-classe');
-    const selectClasse = document.getElementById('classe');
+    const matiereProf = this.options[this.selectedIndex].getAttribute('data-matiere');
+    const selectMatiere = document.getElementById('nom_matiere');
     
-    // Parcourir toutes les options pour trouver la classe correspondante
-    for (let i = 0; i < selectClasse.options.length; i++) {
-      if (selectClasse.options[i].value === classeEleve) {
-        selectClasse.selectedIndex = i;
+    // Parcourir toutes les options pour trouver la matière correspondante
+    for (let i = 0; i < selectMatiere.options.length; i++) {
+      if (selectMatiere.options[i].value === matiereProf) {
+        selectMatiere.selectedIndex = i;
         break;
       }
     }
   }
 });
 
-<?php if (!isTeacher() || isAdmin() || isVieScolaire()): ?>
 // Filtrer les professeurs en fonction de la matière sélectionnée
 document.getElementById('nom_matiere').addEventListener('change', function() {
   const matiereSelectionnee = this.value;
@@ -226,23 +191,6 @@ document.getElementById('nom_matiere').addEventListener('change', function() {
   }
 });
 
-// Si un administrateur ou vie scolaire sélectionne un professeur, 
-// sélectionner automatiquement sa matière
-document.getElementById('nom_professeur').addEventListener('change', function() {
-  if (this.selectedIndex > 0) {
-    const matiereProf = this.options[this.selectedIndex].getAttribute('data-matiere');
-    const selectMatiere = document.getElementById('nom_matiere');
-    
-    // Parcourir toutes les options pour trouver la matière correspondante
-    for (let i = 0; i < selectMatiere.options.length; i++) {
-      if (selectMatiere.options[i].value === matiereProf) {
-        selectMatiere.selectedIndex = i;
-        break;
-      }
-    }
-  }
-});
-
 // Déclencher l'événement au chargement pour synchroniser la matière avec le professeur sélectionné
 window.addEventListener('load', function() {
   const selectProf = document.getElementById('nom_professeur');
@@ -252,25 +200,32 @@ window.addEventListener('load', function() {
 });
 <?php endif; ?>
 
-// Déclencher l'événement de changement de classe au chargement pour filtrer les élèves
-window.addEventListener('load', function() {
-  document.getElementById('classe').dispatchEvent(new Event('change'));
+// Valider que la date de rendu est ultérieure à la date d'ajout
+document.querySelector('form').addEventListener('submit', function(e) {
+  const dateAjout = new Date(document.getElementById('date_ajout').value);
+  const dateRendu = new Date(document.getElementById('date_rendu').value);
+  
+  if (dateRendu < dateAjout) {
+    e.preventDefault();
+    alert("La date de rendu doit être ultérieure à la date d'ajout.");
+  }
 });
 </script>
 
 <?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $stmt = $pdo->prepare('UPDATE notes SET nom_eleve = ?, nom_matiere = ?, nom_professeur = ?, note = ?, date_ajout = ?, classe = ? WHERE id = ?');
+  $stmt = $pdo->prepare('UPDATE devoirs SET titre = ?, description = ?, classe = ?, nom_matiere = ?, nom_professeur = ?, date_ajout = ?, date_rendu = ? WHERE id = ?');
   $stmt->execute([
-    $_POST['nom_eleve'],
+    $_POST['titre'],
+    $_POST['description'],
+    $_POST['classe'],
     $_POST['nom_matiere'],
     $_POST['nom_professeur'],
-    $_POST['note'],
     $_POST['date_ajout'],
-    $_POST['classe'],
+    $_POST['date_rendu'],
     $id
   ]);
-  header('Location: notes.php');
+  header('Location: cahierdetextes.php');
   exit;
 }
 

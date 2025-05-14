@@ -5,9 +5,9 @@ ob_start();
 include 'includes/db.php';
 include 'includes/auth.php';
 
-// Vérifier si l'utilisateur a les permissions pour supprimer des notes
-if (!canManageNotes()) {
-  header('Location: notes.php');
+// Vérifier si l'utilisateur a les permissions pour supprimer des devoirs
+if (!canManageDevoirs()) {
+  header('Location: cahierdetextes.php');
   exit;
 }
 
@@ -17,30 +17,30 @@ $user_fullname = $user['prenom'] . ' ' . $user['nom'];
 
 // Vérifier que l'ID est fourni
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-  header('Location: notes.php');
+  header('Location: cahierdetextes.php');
   exit;
 }
 
 $id = $_GET['id'];
 
 // Si l'utilisateur est un professeur (et pas un admin ou vie scolaire), 
-// il peut seulement supprimer ses propres notes
+// il peut seulement supprimer ses propres devoirs
 if (isTeacher() && !isAdmin() && !isVieScolaire()) {
-  $stmt = $pdo->prepare('SELECT * FROM notes WHERE id = ? AND nom_professeur = ?');
+  $stmt = $pdo->prepare('SELECT * FROM devoirs WHERE id = ? AND nom_professeur = ?');
   $stmt->execute([$id, $user_fullname]);
   
   if ($stmt->rowCount() === 0) {
-    // La note n'existe pas ou n'appartient pas au professeur connecté
-    header('Location: notes.php');
+    // Le devoir n'existe pas ou n'appartient pas au professeur connecté
+    header('Location: cahierdetextes.php');
     exit;
   }
 }
 
-// Supprimer la note
-$stmt = $pdo->prepare('DELETE FROM notes WHERE id = ?');
+// Supprimer le devoir
+$stmt = $pdo->prepare('DELETE FROM devoirs WHERE id = ?');
 $stmt->execute([$id]);
 
-header('Location: notes.php');
+header('Location: cahierdetextes.php');
 exit;
 
 // Terminer la mise en mémoire tampon et envoyer la sortie

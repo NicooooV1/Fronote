@@ -1,4 +1,7 @@
 <?php
+// Démarrer la mise en mémoire tampon de sortie pour éviter l'erreur "headers already sent"
+ob_start();
+
 // Nous n'avons plus besoin de démarrer la session, car c'est fait dans Auth
 include 'includes/header.php'; 
 include 'includes/db.php';
@@ -142,3 +145,8 @@ $user_role = $user['profil'];
 
 </body>
 </html>
+
+<?php
+// Terminer la mise en mémoire tampon et envoyer la sortie
+ob_end_flush();
+?>
