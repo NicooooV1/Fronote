@@ -2,6 +2,10 @@
 // Démarrer la mise en mémoire tampon de sortie pour éviter l'erreur "headers already sent"
 ob_start();
 
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 // Inclusion des fichiers nécessaires
 include 'includes/db.php';
 include 'includes/auth.php';
@@ -26,14 +30,28 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 
 $id = $_GET['id'];
 
-// Récupérer les détails de l'événement
-$stmt = $pdo->prepare('SELECT * FROM evenements WHERE id = ?');
-$stmt->execute([$id]);
-$evenement = $stmt->fetch(PDO::FETCH_ASSOC);
+// Vérifier si la colonne 'personnes_concernees' existe
+try {
+    $stmt_check_column = $pdo->query("SHOW COLUMNS FROM evenements LIKE 'personnes_concernees'");
+    $personnes_concernees_exists = $stmt_check_column && $stmt_check_column->rowCount() > 0;
+} catch (PDOException $e) {
+    // La colonne n'existe probablement pas
+    $personnes_concernees_exists = false;
+}
 
-// Vérifier que l'événement existe
-if (!$evenement) {
-    header('Location: agenda.php');
+// Récupérer les détails de l'événement
+try {
+    $stmt = $pdo->prepare('SELECT * FROM evenements WHERE id = ?');
+    $stmt->execute([$id]);
+    $evenement = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    // Vérifier que l'événement existe
+    if (!$evenement) {
+        header('Location: agenda.php');
+        exit;
+    }
+} catch (PDOException $e) {
+    echo "Erreur lors de la récupération de l'événement : " . $e->getMessage();
     exit;
 }
 
@@ -161,6 +179,12 @@ $ical_link = "export_ical.php?id=" . $evenement['id'] . "&filename=" . $ical_fil
 
 // Générer un lien de partage
 $share_link = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+
+// Personnes concernées (si la colonne existe)
+$personnes_concernees_array = [];
+if ($personnes_concernees_exists && !empty($evenement['personnes_concernees'])) {
+    $personnes_concernees_array = explode(',', $evenement['personnes_concernees']);
+}
 ?>
 <!DOCTYPE html>
 <html>
@@ -170,399 +194,206 @@ $share_link = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" 
   <title><?= htmlspecialchars($evenement['titre']) ?> - Agenda Pronote</title>
   <link rel="stylesheet" href="assets/css/calendar.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <style>
-    /* Styles spécifiques pour la page de détails d'événement */
-    .event-details-container {
-      max-width: 800px;
-      margin: 20px auto;
-      background-color: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      overflow: hidden;
-    }
-    
-    .event-header {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 25px;
-      border-bottom: 1px solid #eee;
-      position: relative;
-    }
-    
-    .event-header-top {
-      display: flex;
-      width: 100%;
-      justify-content: space-between;
-      align-items: flex-start;
-    }
-    
-    .event-status {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      display: flex;
-      align-items: center;
-      font-size: 14px;
-      font-weight: 500;
-      padding: 4px 8px;
-      border-radius: 4px;
-    }
-    
-    .event-status.active {
-      background-color: #e0f2e9;
-      color: #00843d;
-    }
-    
-    .event-status.cancelled {
-      background-color: #fee8e7;
-      color: #f44336;
-    }
-    
-    .event-status.postponed {
-      background-color: #fff8e1;
-      color: #ff9800;
-    }
-    
-    .event-title-container {
-      max-width: 80%;
-    }
-    
-    .event-title {
-      font-size: 24px;
-      font-weight: 500;
-      color: #333;
-      margin: 0;
-    }
-    
-    .event-subtitle {
-      color: #666;
-      margin-top: 5px;
-      font-size: 14px;
-    }
-    
-    .event-type {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 5px 10px;
-      border-radius: 20px;
-      font-size: 14px;
-      font-weight: 500;
-      color: white;
-    }
-    
-    .event-timing {
-      margin-top: 15px;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-    
-    .event-date-display {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 16px;
-    }
-    
-    .event-badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: 500;
-      margin-left: 10px;
-    }
-    
-    .event-badge.today {
-      background-color: #e0f2e9;
-      color: #00843d;
-    }
-    
-    .event-badge.tomorrow {
-      background-color: #e3f2fd;
-      color: #2196f3;
-    }
-    
-    .event-badge.future {
-      background-color: #f1f3f4;
-      color: #5f6368;
-    }
-    
-    .event-badge.past {
-      background-color: #eeeeee;
-      color: #757575;
-    }
-    
-    .event-body {
-      padding: 25px;
-    }
-    
-    .event-section {
-      margin-bottom: 25px;
-      position: relative;
-    }
-    
-    .event-section:last-child {
-      margin-bottom: 0;
-    }
-    
-    .section-title {
-      font-size: 16px;
-      font-weight: 500;
-      margin-bottom: 15px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: #444;
-    }
-    
-    .section-title i {
-      color: #777;
-    }
-    
-    .section-content {
-      color: #555;
-      line-height: 1.5;
-    }
-    
-    .section-content.description {
-      background-color: #f9f9f9;
-      padding: 15px;
-      border-radius: 4px;
-      white-space: pre-line;
-    }
-    
-    .info-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 15px;
-    }
-    
-    .info-item {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-    
-    .info-label {
-      font-size: 13px;
-      color: #777;
-    }
-    
-    .info-value {
-      font-weight: 500;
-      color: #444;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    .info-value i {
-      color: #666;
-      width: 16px;
-    }
-    
-    .tags-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 10px;
-    }
-    
-    .tag {
-      background-color: #f1f3f4;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 13px;
-      color: #5f6368;
-    }
-    
-    .event-actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 30px;
-      padding-top: 20px;
-      border-top: 1px solid #eee;
-    }
-    
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 16px;
-      border-radius: 4px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      border: none;
-      text-decoration: none;
-      transition: all 0.2s;
-    }
-    
-    .btn-primary {
-      background-color: #00843d;
-      color: white;
-    }
-    
-    .btn-primary:hover {
-      background-color: #006e32;
-    }
-    
-    .btn-secondary {
-      background-color: #f1f3f4;
-      color: #444;
-    }
-    
-    .btn-secondary:hover {
-      background-color: #e0e0e0;
-    }
-    
-    .btn-danger {
-      background-color: #fce8e6;
-      color: #d93025;
-    }
-    
-    .btn-danger:hover {
-      background-color: #f9d1cd;
-    }
-    
-    .btn-outline {
-      background-color: transparent;
-      border: 1px solid #ddd;
-      color: #444;
-    }
-    
-    .btn-outline:hover {
-      background-color: #f9f9f9;
-    }
-    
-    .share-dropdown {
-      position: relative;
-      display: inline-block;
-    }
-    
-    .share-menu {
-      position: absolute;
-      top: 100%;
-      right: 0;
-      margin-top: 5px;
-      background-color: white;
-      border-radius: 4px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      width: 200px;
-      z-index: 100;
-      padding: 8px;
-      display: none;
-    }
-    
-    .share-option {
-      padding: 8px 12px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      cursor: pointer;
-      border-radius: 4px;
-      transition: background-color 0.2s;
-    }
-    
-    .share-option:hover {
-      background-color: #f5f5f5;
-    }
-    
-    .copy-link-success {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: #323232;
-      color: white;
-      padding: 10px 20px;
-      border-radius: 4px;
-      font-size: 14px;
-      display: none;
-      z-index: 1000;
-    }
-    
-    /* Modal de confirmation */
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: rgba(0,0,0,0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      display: none;
-    }
-    
-    .modal-container {
-      background-color: white;
-      border-radius: 8px;
-      padding: 20px;
-      width: 100%;
-      max-width: 400px;
-    }
-    
-    .modal-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 15px;
-    }
-    
-    .modal-title {
-      font-size: 18px;
-      font-weight: 500;
-      color: #333;
-    }
-    
-    .modal-body {
-      margin-bottom: 20px;
-      color: #555;
-    }
-    
-    .modal-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-    }
-    
-    /* Responsive */
-    @media (max-width: 768px) {
-      .event-header {
-        padding: 20px 15px;
-      }
+  <!-- Rest of your head content -->
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <a href="../accueil/accueil.php" class="logo-container">
+        <div class="app-logo">P</div>
+        <div class="app-title">Pronote Agenda</div>
+      </a>
       
-      .event-title {
-        font-size: 20px;
-      }
+      <!-- Mini-calendrier pour la navigation -->
+      <div class="mini-calendar">
+        <!-- Le mini-calendrier sera généré dynamiquement -->
+      </div>
       
-      .event-status {
-        top: 15px;
-        right: 15px;
-      }
+      <!-- Créer un événement -->
+      <div class="sidebar-section">
+        <a href="ajouter_evenement.php" class="create-button">
+          <span>+</span> Créer un événement
+        </a>
+      </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Header -->
+      <div class="top-header">
+        <div class="calendar-navigation">
+          <a href="agenda.php" class="back-button">
+            <span class="back-icon">
+              <i class="fas fa-arrow-left"></i>
+            </span>
+            Retour à l'agenda
+          </a>
+        </div>
+        
+        <div class="header-actions">
+          <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">⏻</a>
+          <div class="user-avatar"><?= $user_initials ?></div>
+        </div>
+      </div>
       
-      .event-body {
-        padding: 20px 15px;
-      }
-      
-      .info-grid {
-        grid-template-columns: 1fr;
-      }
-      
-      .event-actions {
-        flex-wrap: wrap;
-      }
-      
-      .btn {
-        flex: 1;
-        min-width: 120px;
-        justify-content: center;
-      }
-    }
+      <!-- Container principal -->
+      <div class="calendar-container">
+        <div class="event-details-container">
+          <div class="event-header">
+            <div class="event-header-top">
+              <div class="event-title-container">
+                <h1 class="event-title"><?= htmlspecialchars($evenement['titre']) ?></h1>
+                <div class="event-subtitle">Créé par <?= htmlspecialchars($evenement['createur']) ?></div>
+              </div>
+              
+              <?php if ($evenement['statut'] !== 'actif'): ?>
+                <div class="event-status <?= $evenement['statut'] === 'annulé' ? 'cancelled' : 'postponed' ?>">
+                  <i class="fas fa-<?= $evenement['statut'] === 'annulé' ? 'ban' : 'clock' ?>"></i>
+                  <?= $evenement['statut'] === 'annulé' ? 'Annulé' : 'Reporté' ?>
+                </div>
+              <?php endif; ?>
+            </div>
+            
+            <div class="event-type" style="background-color: <?= $type_info['couleur'] ?>;">
+              <i class="fas fa-<?= $type_info['icone'] ?>"></i>
+              <?= $type_info['nom'] ?>
+            </div>
+            
+            <div class="event-timing">
+              <div class="event-date-display">
+                <i class="far fa-calendar-alt"></i>
+                <?php if ($date_debut->format('Y-m-d') === $date_fin->format('Y-m-d')): ?>
+                  <?= $date_debut->format($format_date) ?>
+                <?php else: ?>
+                  Du <?= $date_debut->format($format_date) ?> au <?= $date_fin->format($format_date) ?>
+                <?php endif; ?>
+                
+                <?php if ($is_today): ?>
+                  <span class="event-badge today">Aujourd'hui</span>
+                <?php elseif ($is_tomorrow): ?>
+                  <span class="event-badge tomorrow">Demain</span>
+                <?php elseif ($is_future): ?>
+                  <span class="event-badge future">Dans <?= $days_until ?> jour<?= $days_until > 1 ? 's' : '' ?></span>
+                <?php elseif ($is_past): ?>
+                  <span class="event-badge past">Passé</span>
+                <?php endif; ?>
+              </div>
+              
+              <div class="event-date-display">
+                <i class="far fa-clock"></i>
+                <?php if ($date_debut->format('Y-m-d') === $date_fin->format('Y-m-d')): ?>
+                  De <?= $date_debut->format($format_heure) ?> à <?= $date_fin->format($format_heure) ?>
+                <?php else: ?>
+                  De <?= $date_debut->format($format_date . ' à ' . $format_heure) ?> à <?= $date_fin->format($format_date . ' à ' . $format_heure) ?>
+                <?php endif; ?>
+              </div>
+            </div>
+          </div>
+          
+          <div class="event-body">
+            <!-- Description -->
+            <?php if (!empty($evenement['description'])): ?>
+            <div class="event-section">
+              <h3 class="section-title">
+                <i class="fas fa-align-left"></i>
+                Description
+              </h3>
+              <div class="section-content description">
+                <?= nl2br(htmlspecialchars($evenement['description'])) ?>
+              </div>
+            </div>
+            <?php endif; ?>
+            
+            <!-- Informations supplémentaires -->
+            <div class="event-section">
+              <h3 class="section-title">
+                <i class="fas fa-info-circle"></i>
+                Informations
+              </h3>
+              <div class="info-grid">
+                <?php if (!empty($evenement['lieu'])): ?>
+                <div class="info-item">
+                  <div class="info-label">Lieu</div>
+                  <div class="info-value">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <?= htmlspecialchars($evenement['lieu']) ?>
+                  </div>
+                </div>
+                <?php endif; ?>
+                
+                <div class="info-item">
+                  <div class="info-label">Visibilité</div>
+                  <div class="info-value">
+                    <i class="fas fa-<?= $visibilite_icone ?>"></i>
+                    <?= $visibilite_texte ?>
+                  </div>
+                </div>
+                
+                <?php if (!empty($evenement['matieres'])): ?>
+                <div class="info-item">
+                  <div class="info-label">Matière</div>
+                  <div class="info-value">
+                    <i class="fas fa-book"></i>
+                    <?= htmlspecialchars($evenement['matieres']) ?>
+                  </div>
+                </div>
+                <?php endif; ?>
+              </div>
+              
+              <?php if (!empty($classes_array)): ?>
+              <div class="tags-container">
+                <?php foreach ($classes_array as $classe): ?>
+                  <div class="tag"><?= htmlspecialchars($classe) ?></div>
+                <?php endforeach; ?>
+              </div>
+              <?php endif; ?>
+            </div>
+            
+            <?php if ($personnes_concernees_exists && !empty($personnes_concernees_array)): ?>
+            <div class="event-section">
+              <h3 class="section-title">
+                <i class="fas fa-users"></i>
+                Personnes concernées
+              </h3>
+              <div class="tags-container">
+                <?php foreach ($personnes_concernees_array as $personne): ?>
+                  <div class="tag"><?= htmlspecialchars($personne) ?></div>
+                <?php endforeach; ?>
+              </div>
+            </div>
+            <?php endif; ?>
+            
+            <!-- Actions -->
+            <div class="event-actions">
+              <a href="agenda.php" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i>
+                Retour à l'agenda
+              </a>
+              
+              <?php if ($can_edit): ?>
+              <a href="modifier_evenement.php?id=<?= $id ?>" class="btn btn-primary">
+                <i class="fas fa-edit"></i>
+                Modifier
+              </a>
+              <?php endif; ?>
+              
+              <?php if ($can_delete): ?>
+              <a href="supprimer_evenement.php?id=<?= $id ?>" class="btn btn-danger">
+                <i class="fas fa-trash-alt"></i>
+                Supprimer
+              </a>
+              <?php endif; ?>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+
+<?php
+// Terminer la mise en mémoire tampon et envoyer la sortie
+ob_end_flush();
+?>

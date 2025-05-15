@@ -26,6 +26,9 @@ $date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
 $filter_types = isset($_GET['types']) ? (is_array($_GET['types']) ? $_GET['types'] : [$_GET['types']]) : [];
 $filter_classes = isset($_GET['classes']) ? (is_array($_GET['classes']) ? $_GET['classes'] : [$_GET['classes']]) : [];
 
+// Garder une trace si les filtres ont été explicitement définis dans l'URL
+$filters_explicitly_set = isset($_GET['types']) || isset($_GET['filter_set']);
+
 // Assurer que le mois est entre 1 et 12
 if ($month < 1) {
     $month = 12;
@@ -142,6 +145,27 @@ if (!$table_exists) {
     }
 }
 
+// Vérifier si la colonne 'personnes_concernees' existe
+$personnes_concernees_exists = false;
+try {
+    $stmt_check_column = $pdo->query("SHOW COLUMNS FROM evenements LIKE 'personnes_concernees'");
+    $personnes_concernees_exists = $stmt_check_column && $stmt_check_column->rowCount() > 0;
+} catch (PDOException $e) {
+    // La colonne n'existe probablement pas
+    $personnes_concernees_exists = false;
+}
+
+// Si la colonne n'existe pas, l'ajouter
+if ($table_exists && !$personnes_concernees_exists) {
+    try {
+        $pdo->exec("ALTER TABLE evenements ADD COLUMN personnes_concernees TEXT AFTER visibilite");
+        $personnes_concernees_exists = true;
+    } catch (PDOException $e) {
+        // Erreur lors de l'ajout de la colonne
+        echo "Erreur lors de l'ajout de la colonne personnes_concernees: " . $e->getMessage();
+    }
+}
+
 // Si la table existe, récupérer les événements en fonction de la vue
 if ($table_exists) {
     // Paramètres de filtrage
@@ -194,33 +218,59 @@ if ($table_exists) {
         // Pour un élève, récupérer ses événements et ceux de sa classe
         $classe = ''; // Classe de l'élève (à adapter)
         
-        $where_clauses[] = "(visibilite = 'public' 
+        $where_clause = "(visibilite = 'public' 
                 OR visibilite = 'eleves' 
                 OR visibilite LIKE '%élèves%'
                 OR classes LIKE ? 
-                OR createur = ?
-                OR personnes_concernees LIKE ?)";
+                OR createur = ?";
+                
         $params[] = "%$classe%";
         $params[] = $user_fullname;
-        $params[] = "%$user_fullname%";
+        
+        // Ajouter la condition personnes_concernees seulement si la colonne existe
+        if ($personnes_concernees_exists) {
+            $where_clause .= " OR personnes_concernees LIKE ?";
+            $params[] = "%$user_fullname%";
+        }
+        
+        $where_clause .= ")";
+        $where_clauses[] = $where_clause;
+        
     } elseif ($user_role === 'professeur') {
         // Pour un professeur, récupérer ses événements et les événements publics/professeurs
-        $where_clauses[] = "(visibilite = 'public' 
+        $where_clause = "(visibilite = 'public' 
                 OR visibilite = 'professeurs' 
                 OR visibilite LIKE '%professeurs%'
-                OR createur = ?
-                OR personnes_concernees LIKE ?)";
+                OR createur = ?";
+                
         $params[] = $user_fullname;
-        $params[] = "%$user_fullname%";
+        
+        // Ajouter la condition personnes_concernees seulement si la colonne existe
+        if ($personnes_concernees_exists) {
+            $where_clause .= " OR personnes_concernees LIKE ?";
+            $params[] = "%$user_fullname%";
+        }
+        
+        $where_clause .= ")";
+        $where_clauses[] = $where_clause;
+        
     } elseif ($user_role === 'personnel' || $user_role === 'administration') {
         // Pour le personnel et l'administration
-        $where_clauses[] = "(visibilite = 'public' 
+        $where_clause = "(visibilite = 'public' 
                 OR visibilite = 'personnel' 
                 OR visibilite = 'administration'
-                OR createur = ?
-                OR personnes_concernees LIKE ?)";
+                OR createur = ?";
+                
         $params[] = $user_fullname;
-        $params[] = "%$user_fullname%";
+        
+        // Ajouter la condition personnes_concernees seulement si la colonne existe
+        if ($personnes_concernees_exists) {
+            $where_clause .= " OR personnes_concernees LIKE ?";
+            $params[] = "%$user_fullname%";
+        }
+        
+        $where_clause .= ")";
+        $where_clauses[] = $where_clause;
     }
     // Pour les autres rôles (admin, vie scolaire), aucun filtrage supplémentaire
     
@@ -257,14 +307,15 @@ foreach ($events as $event) {
     }
 }
 
-// Si aucun filtre n'est appliqué, sélectionner tous les types disponibles par défaut
-if (empty($filter_types)) {
+// Si aucun filtre n'est appliqué et que les filtres n'ont pas été explicitement définis,
+// sélectionner tous les types disponibles par défaut. Sinon respecter la sélection de l'utilisateur.
+if (empty($filter_types) && !$filters_explicitly_set) {
     $filter_types = $available_event_types;
 }
 
 // Mini-calendrier pour le mois actuel
 function generateMiniCalendar($month, $year, $selected_date = null) {
-    global $day_names, $month_names;
+    global $day_names, $month_names, $filters_explicitly_set, $filter_types;
     
     $num_days = cal_days_in_month(CAL_GREGORIAN, $month, $year);
     $first_day_timestamp = mktime(0, 0, 0, $month, 1, $year);
@@ -281,8 +332,19 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
     $html = '<div class="mini-calendar-header">';
     $html .= '<span class="mini-calendar-title">' . $month_names[$month] . ' ' . $year . '</span>';
     $html .= '<div class="mini-calendar-nav">';
-    $html .= '<button class="mini-calendar-nav-btn prev" data-month="' . ($month-1) . '" data-year="' . ($month==1 ? $year-1 : $year) . '">◀</button>';
-    $html .= '<button class="mini-calendar-nav-btn next" data-month="' . ($month+1) . '" data-year="' . ($month==12 ? $year+1 : $year) . '">▶</button>';
+    
+    // Add filter_set parameter if filters were explicitly set
+    $filter_params = $filters_explicitly_set ? '&filter_set=1' : '';
+    
+    // Add type filters if explicitly set
+    if ($filters_explicitly_set && !empty($filter_types)) {
+        foreach ($filter_types as $type) {
+            $filter_params .= '&types[]=' . urlencode($type);
+        }
+    }
+    
+    $html .= '<button class="mini-calendar-nav-btn prev" data-month="' . ($month-1) . '" data-year="' . ($month==1 ? $year-1 : $year) . '" data-filters="' . htmlspecialchars($filter_params) . '">◀</button>';
+    $html .= '<button class="mini-calendar-nav-btn next" data-month="' . ($month+1) . '" data-year="' . ($month==12 ? $year+1 : $year) . '" data-filters="' . htmlspecialchars($filter_params) . '">▶</button>';
     $html .= '</div>';
     $html .= '</div>';
     
@@ -715,6 +777,9 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
         </div>
       </div>
       <?php endif; ?>
+
+      <!-- Hidden input to preserve filter state -->
+      <input type="hidden" id="filter-set-flag" value="1">
       
       <!-- Filtres par classe -->
       <div class="sidebar-section">
@@ -1004,8 +1069,15 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
       btn.addEventListener('click', function() {
         const month = this.getAttribute('data-month');
         const year = this.getAttribute('data-year');
+        const filterParams = this.getAttribute('data-filters');
+        
         let url = `?view=month&month=${month}&year=${year}`;
-        url += getFilterParams();
+        if (filterParams) {
+          url += filterParams;
+        } else {
+          url += getFilterParams();
+        }
+        
         window.location.href = url;
       });
     });
@@ -1033,7 +1105,7 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
     }
     
     function getFilterParams() {
-      let params = '';
+      let params = '&filter_set=1';  // Add this parameter to indicate filters were explicitly set
       
       // Filtres de type
       const typeCheckboxes = document.querySelectorAll('.filter-checkbox[data-filter-type="type"]:checked');
