@@ -12,8 +12,8 @@ if (!canManageDevoirs()) {
 }
 
 // Récupérer les informations de l'utilisateur connecté
-$user = $_SESSION['user'];
-$user_fullname = $user['prenom'] . ' ' . $user['nom'];
+$user = getCurrentUser();
+$user_fullname = getUserFullName();
 
 // Vérifier que l'ID est fourni
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {

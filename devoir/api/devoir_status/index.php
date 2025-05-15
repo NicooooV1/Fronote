@@ -1,20 +1,19 @@
 <?php
-// api/devoir_status/index.php - API pour la gestion des statuts de devoirs
+// api/devoir_status/index.php - API for homework status management
 header('Content-Type: application/json');
 require_once '../../config.php';
-require_once '../../login/src/auth.php';
+require_once __DIR__ . '/../../../../API/auth.php';
 
-// Vérification de l'authentification
-$auth = new Auth($pdo);
-if (!$auth->isLoggedIn()) {
+// Authentication check
+if (!isLoggedIn()) {
     http_response_code(401);
-    echo json_encode(['error' => 'Non authentifié']);
+    echo json_encode(['error' => 'Not authenticated']);
     exit;
 }
 
-// Récupérer le profil de l'utilisateur
-$userProfile = $_SESSION['user']['profil'];
-$userId = $_SESSION['user']['id'];
+// Get user profile information
+$userProfile = getUserRole();
+$userId = getUserId();
 
 $method = $_SERVER['REQUEST_METHOD'];
 $path = explode('/', trim($_SERVER['PATH_INFO'] ?? '', '/'));

@@ -1,34 +1,35 @@
 <?php
-// api/etablissement/index.php - API centralisée pour les classes et matières
+// api/etablissement/index.php - Centralized API for classes and subjects
 header('Content-Type: application/json');
 require_once '../../config.php';
+require_once __DIR__ . '/../../../../API/data.php';
 
-// Vérification de l'authentification
-if (!isAuthenticated()) {
+// Authentication check
+if (!isLoggedIn()) {
     http_response_code(401);
-    echo json_encode(['error' => 'Non authentifié']);
+    echo json_encode(['error' => 'Not authenticated']);
     exit;
 }
 
-// Récupération du fichier etablissement.json
+// Get establishment data from the API
 $etablissementData = getEtablissementData();
 
 if (!$etablissementData) {
     http_response_code(500);
-    echo json_encode(['error' => 'Erreur de lecture du fichier etablissement.json']);
+    echo json_encode(['error' => 'Error reading etablissement.json file']);
     exit;
 }
 
-// Déterminer quelle ressource est demandée
+// Determine which resource is requested
 $type = $_GET['type'] ?? '';
 
 if ($type === 'classes') {
-    // Renvoyer uniquement les classes
-    echo json_encode($etablissementData['classes'] ?? []);
+    // Return only classes
+    echo json_encode(getAvailableClasses());
 } elseif ($type === 'matieres') {
-    // Renvoyer uniquement les matières
-    echo json_encode($etablissementData['matieres'] ?? []);
+    // Return only subjects
+    echo json_encode(getAvailableMatieres());
 } else {
-    // Renvoyer toutes les données par défaut
+    // Return all data by default
     echo json_encode($etablissementData);
 }

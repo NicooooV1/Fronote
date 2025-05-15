@@ -1,31 +1,21 @@
 <?php
-// Démarrer la mise en mémoire tampon de sortie pour éviter l'erreur "headers already sent"
 ob_start();
 
-// Nous n'avons plus besoin de démarrer la session, car c'est fait dans Auth
 include 'includes/header.php'; 
 include 'includes/db.php';
 include 'includes/auth.php';
 
-// Vérifier si l'utilisateur a les permissions pour modifier des devoirs
 if (!canManageDevoirs()) {
   header('Location: cahierdetextes.php');
   exit;
 }
 
-// Utiliser les données utilisateur de la session
-$user = $_SESSION['user'];
-$nom_professeur = $user['prenom'] . ' ' . $user['nom'];
+$user = getCurrentUser();
+$nom_professeur = getUserFullName();
 
-// Charger les données depuis le fichier JSON
-$json_file = __DIR__ . '/../login/data/etablissement.json';
-$etablissement_data = [];
+require_once __DIR__ . '/../../API/data.php';
+$etablissement_data = getEtablissementData();
 
-if (file_exists($json_file)) {
-  $etablissement_data = json_decode(file_get_contents($json_file), true);
-}
-
-// Vérifier que l'ID est fourni
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
   header('Location: cahierdetextes.php');
   exit;
@@ -41,21 +31,16 @@ if (!$devoir) {
   exit;
 }
 
-// Si l'utilisateur est un professeur (et pas un admin ou vie scolaire), 
-// il peut seulement modifier ses propres devoirs
 if (isTeacher() && !isAdmin() && !isVieScolaire()) {
   if ($devoir['nom_professeur'] !== $nom_professeur) {
-    // Le professeur tente de modifier un devoir qu'il n'a pas créé
     header('Location: cahierdetextes.php');
     exit;
   }
 }
 
-// Récupérer la liste des professeurs depuis la base de données
 $stmt_profs = $pdo->query('SELECT id, nom, prenom, matiere FROM professeurs ORDER BY nom, prenom');
 $professeurs = $stmt_profs->fetchAll();
 
-// Si c'est un professeur, récupérer sa matière
 $prof_matiere = '';
 if (isTeacher()) {
   $stmt_prof = $pdo->prepare('SELECT matiere FROM professeurs WHERE nom = ? AND prenom = ?');
@@ -72,7 +57,6 @@ if (isTeacher()) {
     <label for="titre">Titre:</label>
     <input type="text" name="titre" id="titre" value="<?= htmlspecialchars($devoir['titre']) ?>" required>
 
-    <!-- Champ pour la classe -->
     <label for="classe">Classe:</label>
     <select name="classe" id="classe" required>
       <option value="">Sélectionnez une classe</option>
@@ -88,7 +72,6 @@ if (isTeacher()) {
         <?php endforeach; ?>
       <?php endif; ?>
       
-      <!-- Ajout des classes primaires si elles existent -->
       <?php if (!empty($etablissement_data['primaire'])): ?>
         <optgroup label="Primaire">
           <?php foreach ($etablissement_data['primaire'] as $niveau => $classes): ?>
@@ -100,7 +83,6 @@ if (isTeacher()) {
       <?php endif; ?>
     </select>
 
-    <!-- Champ pour la matière -->
     <label for="nom_matiere">Matière:</label>
     <select name="nom_matiere" id="nom_matiere" required>
       <option value="">Sélectionnez une matière</option>
@@ -111,13 +93,10 @@ if (isTeacher()) {
       <?php endif; ?>
     </select>
 
-    <!-- Champ pour le professeur -->
     <label for="nom_professeur">Professeur:</label>
     <?php if (isTeacher() && !isAdmin() && !isVieScolaire()): ?>
-      <!-- Si c'est un professeur, il ne peut pas changer le nom du professeur -->
       <input type="text" name="nom_professeur" id="nom_professeur" value="<?= htmlspecialchars($devoir['nom_professeur']) ?>" readonly>
     <?php else: ?>
-      <!-- Admin et vie scolaire peuvent choisir n'importe quel professeur -->
       <select name="nom_professeur" id="nom_professeur" required>
         <option value="">Sélectionnez un professeur</option>
         <?php foreach ($professeurs as $prof): ?>
@@ -148,15 +127,12 @@ if (isTeacher()) {
 </div>
 
 <script>
-// Si un administrateur ou vie scolaire sélectionne un professeur, 
-// sélectionner automatiquement sa matière
 <?php if (!isTeacher() || isAdmin() || isVieScolaire()): ?>
 document.getElementById('nom_professeur').addEventListener('change', function() {
   if (this.selectedIndex > 0) {
     const matiereProf = this.options[this.selectedIndex].getAttribute('data-matiere');
     const selectMatiere = document.getElementById('nom_matiere');
     
-    // Parcourir toutes les options pour trouver la matière correspondante
     for (let i = 0; i < selectMatiere.options.length; i++) {
       if (selectMatiere.options[i].value === matiereProf) {
         selectMatiere.selectedIndex = i;
@@ -166,13 +142,11 @@ document.getElementById('nom_professeur').addEventListener('change', function() 
   }
 });
 
-// Filtrer les professeurs en fonction de la matière sélectionnée
 document.getElementById('nom_matiere').addEventListener('change', function() {
   const matiereSelectionnee = this.value;
   const selectProf = document.getElementById('nom_professeur');
   const options = selectProf.options;
   
-  // Réinitialiser le sélecteur de professeur si la matière change
   if (selectProf.selectedIndex > 0) {
     const matiereProf = options[selectProf.selectedIndex].getAttribute('data-matiere');
     if (matiereProf !== matiereSelectionnee) {
@@ -180,7 +154,6 @@ document.getElementById('nom_matiere').addEventListener('change', function() {
     }
   }
   
-  // Afficher/cacher les options en fonction de la matière
   for (let i = 1; i < options.length; i++) {
     const matiereProf = options[i].getAttribute('data-matiere');
     if (matiereSelectionnee === '' || matiereProf === matiereSelectionnee) {
@@ -191,7 +164,6 @@ document.getElementById('nom_matiere').addEventListener('change', function() {
   }
 });
 
-// Déclencher l'événement au chargement pour synchroniser la matière avec le professeur sélectionné
 window.addEventListener('load', function() {
   const selectProf = document.getElementById('nom_professeur');
   if (selectProf.tagName === 'SELECT' && selectProf.selectedIndex > 0) {
@@ -200,7 +172,6 @@ window.addEventListener('load', function() {
 });
 <?php endif; ?>
 
-// Valider que la date de rendu est ultérieure à la date d'ajout
 document.querySelector('form').addEventListener('submit', function(e) {
   const dateAjout = new Date(document.getElementById('date_ajout').value);
   const dateRendu = new Date(document.getElementById('date_rendu').value);
@@ -229,6 +200,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   exit;
 }
 
-// Terminer la mise en mémoire tampon et envoyer la sortie
 ob_end_flush();
 ?>

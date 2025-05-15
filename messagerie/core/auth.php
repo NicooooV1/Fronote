@@ -1,9 +1,10 @@
 <?php
 /**
- * Fonctions d'authentification
+ * Authentication functions for messagerie module
  */
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/constants.php';
+require_once __DIR__ . '/../../../API/auth.php';
 
 /**
  * Vérifie si l'utilisateur est connecté
@@ -14,7 +15,7 @@ function isLoggedIn() {
 }
 
 /**
- * Vérifie l'authentification et retourne les infos utilisateur
+ * Check authentication and return user info
  * @return array|false
  */
 function checkAuth() {
@@ -24,13 +25,13 @@ function checkAuth() {
 
     $user = $_SESSION['user'];
     
-    // Adaptation: utiliser 'profil' comme 'type' si 'type' n'existe pas
+    // Adapt: use 'profil' as 'type' if 'type' doesn't exist
     if (!isset($user['type']) && isset($user['profil'])) {
         $user['type'] = $user['profil'];
         $_SESSION['user']['type'] = $user['profil'];
     }
 
-    // Vérifier que le type est défini
+    // Check that type is defined
     if (!isset($user['type'])) {
         return false;
     }
@@ -39,16 +40,13 @@ function checkAuth() {
 }
 
 /**
- * Redirige vers la page de connexion si non authentifié
- * @return array
+ * Require authentication or redirect to login
  */
 function requireAuth() {
     $user = checkAuth();
-    
     if (!$user) {
         redirect(LOGIN_URL);
     }
-    
     return $user;
 }
 
@@ -95,3 +93,4 @@ function requireRole($user, $roles, $redirectUrl = 'index.php') {
         redirect($redirectUrl);
     }
 }
+?>

@@ -1,36 +1,30 @@
 <?php
-// api/devoirs/index.php - API pour la gestion des devoirs
+// api/devoirs/index.php - API for homework management
 header('Content-Type: application/json');
 require_once '../../config.php';
-require_once '../../login/src/auth.php';
+require_once __DIR__ . '/../../../../API/auth.php';
 
-// Vérification de l'authentification
-$auth = new Auth($pdo);
-if (!$auth->isLoggedIn()) {
+if (!isLoggedIn()) {
     http_response_code(401);
-    echo json_encode(['error' => 'Non authentifié']);
+    echo json_encode(['error' => 'Not authenticated']);
     exit;
 }
 
-// Récupérer le profil de l'utilisateur
-$userProfile = $_SESSION['user']['profil'];
-$userId = $_SESSION['user']['id'];
+$userProfile = getUserRole();
+$userId = getUserId();
 
 $method = $_SERVER['REQUEST_METHOD'];
 $path = explode('/', trim($_SERVER['PATH_INFO'] ?? '', '/'));
 $id = $path[0] ?? null;
 
-// Vérification des droits pour les opérations de modification
 function canModifyDevoirs() {
     global $userProfile;
     return in_array($userProfile, ['professeur', 'administrateur']);
 }
 
-// Fonction pour envoyer une notification
 function sendNotification($type, $devoir) {
     global $pdo;
     
-    // Créer une notification dans la base de données
     $stmt = $pdo->prepare("
         INSERT INTO notifications (type, id_devoir, statut, date_creation)
         VALUES (?, ?, 'en_attente', NOW())
@@ -40,14 +34,12 @@ function sendNotification($type, $devoir) {
 }
 
 if ($method === 'GET') {
-    if ($id) { // retourner un seul devoir
+    if ($id) { // Return a single homework
         $stmt = $pdo->prepare('SELECT * FROM devoirs WHERE id=?');
         $stmt->execute([$id]);
         $devoir = $stmt->fetch();
         
-        // Vérifier si le professeur peut accéder à ce devoir spécifique
         if ($userProfile === 'professeur' && $devoir['id_professeur'] != $userId && !$auth->hasRole('administrateur')) {
-            // Un professeur ne peut voir que ses propres devoirs (sauf admin)
             http_response_code(403);
             echo json_encode(['error' => 'Accès non autorisé']);
             exit;
@@ -55,17 +47,17 @@ if ($method === 'GET') {
         
         echo json_encode($devoir);
     } else {
-        // Filtrage
+        // Filtering
         $where = []; 
         $params = [];
         
-        // Les professeurs ne voient que leurs devoirs (sauf admin)
+        // Teachers only see their homeworks (except admins)
         if ($userProfile === 'professeur' && !$auth->hasRole('administrateur')) {
             $where[] = 'id_professeur=?';
             $params[] = $userId;
         }
         
-        // Filtres standards
+        // Standard filters
         if (isset($_GET['matiere']) && $_GET['matiere'] !== '') {
             $where[] = 'matiere=?';
             $params[] = $_GET['matiere'];
@@ -93,7 +85,6 @@ if ($method === 'GET') {
             $sql .= ' WHERE ' . implode(' AND ', $where);
         }
         
-        // Tri par date de remise (plus récents en premier)
         $sql .= ' ORDER BY date_remise DESC';
         
         $stmt = $pdo->prepare($sql);
@@ -103,31 +94,30 @@ if ($method === 'GET') {
 }
 
 if (($method === 'POST' || $method === 'PUT') && canModifyDevoirs()) {
-    // Validation du formulaire
+    // Form validation
     $titre = $_POST['titre'] ?? '';
     $matiere = $_POST['matiere'] ?? '';
     $classe = $_POST['classe'] ?? '';
     $date_remise = $_POST['date_remise'] ?? '';
     $description = $_POST['description'] ?? '';
     
-    // Validation de base
+    // Basic validation
     if (empty($titre) || empty($matiere) || empty($classe) || empty($date_remise)) {
         http_response_code(400);
         echo json_encode(['error' => 'Tous les champs obligatoires doivent être remplis']);
         exit;
     }
     
-    // Fonction pour uploader un fichier avec vérification
     function upload($key) {
         if (!empty($_FILES[$key]['name'])) {
-            // Vérification de la taille (5 Mo max)
+            // Check file size (5 MB max)
             if ($_FILES[$key]['size'] > 5 * 1024 * 1024) {
                 http_response_code(400);
                 echo json_encode(['error' => 'Le fichier ne doit pas dépasser 5 Mo']);
                 exit;
             }
             
-            // Vérification du type MIME
+            // Check MIME type
             $allowedTypes = [
                 'application/pdf', 
                 'image/jpeg', 
@@ -157,11 +147,10 @@ if (($method === 'POST' || $method === 'PUT') && canModifyDevoirs()) {
         return null;
     }
     
-    // Upload des fichiers
     $sujet = upload('fichier_sujet');
     $corrige = upload('fichier_corrige');
     
-    // En mode création, le sujet est obligatoire
+    // In creation mode, subject file is required
     if ($method === 'POST' && !$sujet) {
         http_response_code(400);
         echo json_encode(['error' => 'Le fichier sujet est obligatoire']);
@@ -169,7 +158,7 @@ if (($method === 'POST' || $method === 'PUT') && canModifyDevoirs()) {
     }
     
     if ($method === 'POST') {
-        // Vérifier si le devoir doit être associé à un cahier de texte
+        // Check if homework should be associated with a text notebook
         $id_cahier_texte = isset($_POST['id_cahier_texte']) ? $_POST['id_cahier_texte'] : null;
         
         $stmt = $pdo->prepare('INSERT INTO devoirs (titre, matiere, classe, date_remise, fichier_sujet, fichier_corrige, id_professeur, date_publication, description, id_cahier_texte) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)');
@@ -178,24 +167,22 @@ if (($method === 'POST' || $method === 'PUT') && canModifyDevoirs()) {
         if ($success) {
             $devoirId = $pdo->lastInsertId();
             
-            // Récupérer les infos du devoir créé pour les notifications
+            // Get created homework info for notifications
             $stmt = $pdo->prepare('SELECT * FROM devoirs WHERE id = ?');
             $stmt->execute([$devoirId]);
             $devoir = $stmt->fetch();
             
-            // Envoi de notification
             sendNotification('creation', $devoir);
             
-            // Réponse
             echo json_encode(['id' => $devoirId, 'status' => 'created']);
         } else {
             http_response_code(500);
             echo json_encode(['error' => 'Erreur lors de la création du devoir']);
         }
     } else {
-        $id = $id ?: $_POST['id']; // Utiliser l'ID de l'URL ou du formulaire
+        $id = $id ?: $_POST['id']; // Use ID from URL or form
         
-        // Vérifier que le professeur est le propriétaire de ce devoir
+        // Check if the teacher owns this homework
         if (!$auth->hasRole('administrateur')) {
             $stmt = $pdo->prepare('SELECT id_professeur FROM devoirs WHERE id = ?');
             $stmt->execute([$id]);
@@ -234,7 +221,7 @@ if (($method === 'POST' || $method === 'PUT') && canModifyDevoirs()) {
         }
     }
 } elseif ($method === 'DELETE' && canModifyDevoirs()) {
-    // Vérifier que le professeur est le propriétaire de ce devoir
+    // Check if the teacher owns this homework
     if (!$auth->hasRole('administrateur')) {
         $stmt = $pdo->prepare('SELECT id_professeur FROM devoirs WHERE id = ?');
         $stmt->execute([$id]);
@@ -247,17 +234,17 @@ if (($method === 'POST' || $method === 'PUT') && canModifyDevoirs()) {
         }
     }
     
-    // Récupérer les noms des fichiers avant la suppression
+    // Get file names before deletion
     $stmt = $pdo->prepare('SELECT fichier_sujet, fichier_corrige FROM devoirs WHERE id = ?');
     $stmt->execute([$id]);
     $files = $stmt->fetch();
     
-    // Supprimer le devoir de la base
+    // Delete homework from database
     $stmt = $pdo->prepare('DELETE FROM devoirs WHERE id = ?');
     $result = $stmt->execute([$id]);
     
     if ($result) {
-        // Supprimer les fichiers associés
+        // Delete associated files
         if ($files['fichier_sujet']) {
             $path = ROOT_PATH . '/uploads/' . $files['fichier_sujet'];
             if (file_exists($path)) {
@@ -280,3 +267,4 @@ if (($method === 'POST' || $method === 'PUT') && canModifyDevoirs()) {
     http_response_code(403);
     echo json_encode(['error' => 'Opération non autorisée']);
 }
+?>

@@ -1,11 +1,10 @@
 <?php
 /**
- * Réutilisation de la connexion à la base de données du système principal
+ * Database connection for cahier de textes module
+ * Using the centralized API connection
  */
 
-// Inclure le fichier de configuration de la base de données
-require_once __DIR__ . '/../../login/config/database.php';
+require_once __DIR__ . '/../../../API/core.php';
 
-// La connexion $pdo est maintenant disponible
-// Pas besoin de redéfinir les paramètres de connexion puisqu'ils sont déjà définis dans database.php
+// $pdo is now available from the API/core.php file
 ?>

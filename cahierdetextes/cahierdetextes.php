@@ -1,16 +1,13 @@
 <?php
-// Démarrer la mise en mémoire tampon de sortie pour éviter l'erreur "headers already sent"
 ob_start();
 
-// Nous n'avons plus besoin de démarrer la session, car c'est fait dans Auth
 include 'includes/header.php'; 
 include 'includes/db.php';
 include 'includes/auth.php';
 
-// Récupérer les informations de l'utilisateur connecté
-$user = $_SESSION['user'];
-$user_fullname = $user['prenom'] . ' ' . $user['nom'];
-$user_role = $user['profil']; 
+$user = getCurrentUser();
+$user_fullname = getUserFullName();
+$user_role = getUserRole(); 
 ?>
 
 <div class="container">
@@ -37,18 +34,13 @@ $user_role = $user['profil'];
     <?php
     $order = isset($_GET['order']) ? $_GET['order'] : 'date_rendu';
     
-    // Si c'est un élève ou un parent, on ne montre que les devoirs de la classe de l'élève
+    // If student or parent, only show homeworks for the student's class
     if (isStudent()) {
-      // Pour les élèves, on utilise leur classe
       $stmt_eleve = $pdo->prepare('SELECT classe FROM eleves WHERE prenom = ? AND nom = ?');
       $stmt_eleve->execute([$user['prenom'], $user['nom']]);
       $eleve_data = $stmt_eleve->fetch();
       $classe_eleve = $eleve_data ? $eleve_data['classe'] : '';
       
-      // Debug : afficher la classe de l'élève pour vérification
-      // echo "<p>Classe de l'élève: " . htmlspecialchars($classe_eleve) . "</p>";
-      
-      // Si aucune classe n'est trouvée, afficher tous les devoirs (fallback)
       if (empty($classe_eleve)) {
         switch ($order) {
           case 'matiere':
@@ -78,10 +70,8 @@ $user_role = $user['profil'];
         $stmt->execute([$classe_eleve]);
       }
     }
-    // Si c'est un parent, on pourrait montrer les devoirs des classes de ses enfants (à implémenter)
     elseif (isParent()) {
-      // TODO: Récupérer les enfants du parent et leurs classes
-      // Pour l'instant, afficher tous les devoirs comme fallback
+      // Future implementation: get children's classes
       switch ($order) {
         case 'matiere':
           $sql = 'SELECT * FROM devoirs ORDER BY nom_matiere ASC, date_rendu ASC';
@@ -98,7 +88,6 @@ $user_role = $user['profil'];
       
       $stmt = $pdo->query($sql);
     }
-    // Si c'est un professeur, on montre tous les devoirs qu'il a ajoutés
     elseif (isTeacher()) {
       switch ($order) {
         case 'matiere':
@@ -117,7 +106,6 @@ $user_role = $user['profil'];
       $stmt = $pdo->prepare($sql);
       $stmt->execute([$user_fullname]);
     }
-    // Sinon (administrateur, vie scolaire ou autre), on montre tous les devoirs
     else {
       switch ($order) {
         case 'matiere':
@@ -136,7 +124,7 @@ $user_role = $user['profil'];
       $stmt = $pdo->query($sql);
     }
     
-    // Afficher les devoirs
+    // Display homework assignments
     while ($devoir = $stmt->fetch()) {
       echo "<div class='note'>
         <div class='note-header'>
@@ -166,9 +154,9 @@ $user_role = $user['profil'];
           <p>" . nl2br(htmlspecialchars($devoir['description'])) . "</p>
         </div>";
         
-        // Afficher les boutons de modification et suppression pour les rôles autorisés
+        // Display edit and delete buttons for authorized roles
         if (canManageDevoirs()) {
-          // Si c'est un professeur, vérifier qu'il a créé le devoir
+          // If teacher, check if they created this homework
           if (!isTeacher() || (isTeacher() && $devoir['nom_professeur'] == $user_fullname)) {
             echo "<div style='margin-top: 10px; display: flex; gap: 10px;'>
               <a href='modifier_devoir.php?id={$devoir['id']}' class='button button-secondary'>Modifier</a>
@@ -191,6 +179,5 @@ $user_role = $user['profil'];
 </html>
 
 <?php
-// Terminer la mise en mémoire tampon et envoyer la sortie
 ob_end_flush();
 ?>

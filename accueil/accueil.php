@@ -1,8 +1,21 @@
 <?php
-// Données simulées
-$eleve_nom = "Jean Dupont";
-$classe = "3e A";
+// Include the API core
+require_once __DIR__ . '/../../API/core.php';
+require_once __DIR__ . '/../../API/auth.php';
+require_once __DIR__ . '/../../API/data.php';
 
+// Check if user is logged in
+if (!isLoggedIn()) {
+    header('Location: /~u22405372/SAE/Pronote/login/public/index.php');
+    exit;
+}
+
+// Get user data
+$user = getCurrentUser();
+$eleve_nom = $user['prenom'] . ' ' . $user['nom'];
+$classe = isset($user['classe']) ? $user['classe'] : '3e A';
+
+// Simulated data
 $edt = [
   ["heure" => "9h00", "matiere" => "Français", "prof" => "Gallet B.", "salle" => "105", "couleur" => "#3498db"],
   ["heure" => "10h00", "matiere" => "Histoire-Géo", "prof" => "Moreau C.", "salle" => "206", "couleur" => "#e67e22"],

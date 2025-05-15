@@ -1,24 +1,19 @@
 <?php
-// Démarrer la mise en mémoire tampon de sortie pour éviter l'erreur "headers already sent"
 ob_start();
 
-// Inclusion des fichiers nécessaires
 include 'includes/db.php';
 include 'includes/auth.php';
 
-// Vérifier que l'utilisateur est connecté
 if (!isLoggedIn()) {
     header('Location: ../login/public/login.php');
     exit;
 }
 
-// Récupérer les informations de l'utilisateur connecté
-$user = $_SESSION['user'];
-$user_fullname = $user['prenom'] . ' ' . $user['nom'];
-$user_role = $user['profil'];
+$user = getCurrentUser();
+$user_fullname = getUserFullName();
+$user_role = getUserRole();
 $user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
 
-// Vérifier que l'ID est fourni
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     header('Location: agenda.php');
     exit;
@@ -26,25 +21,20 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 
 $id = $_GET['id'];
 
-// Récupérer les détails de l'événement
 $stmt = $pdo->prepare('SELECT * FROM evenements WHERE id = ?');
 $stmt->execute([$id]);
 $evenement = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// Vérifier que l'événement existe
 if (!$evenement) {
     header('Location: agenda.php');
     exit;
 }
 
-// Vérifier que l'utilisateur a le droit de supprimer cet événement
 $can_delete = false;
 
-// Administrateurs et vie scolaire peuvent tout supprimer
 if (isAdmin() || isVieScolaire()) {
     $can_delete = true;
 } 
-// Les professeurs ne peuvent supprimer que leurs propres événements
 elseif (isTeacher() && $evenement['createur'] === $user_fullname) {
     $can_delete = true;
 }
@@ -54,13 +44,11 @@ if (!$can_delete) {
     exit;
 }
 
-// Formater les dates pour l'affichage
 $date_debut = new DateTime($evenement['date_debut']);
 $date_fin = new DateTime($evenement['date_fin']);
 $format_date = 'd/m/Y';
 $format_heure = 'H:i';
 
-// Déterminer le type d'événement pour l'affichage
 $types_evenements = [
     'cours' => ['nom' => 'Cours', 'icone' => 'book', 'couleur' => '#00843d'],
     'devoirs' => ['nom' => 'Devoirs', 'icone' => 'pencil', 'couleur' => '#4285f4'],
@@ -74,7 +62,6 @@ $type_info = isset($types_evenements[$evenement['type_evenement']])
             ? $types_evenements[$evenement['type_evenement']] 
             : $types_evenements['autre'];
 
-// Traitement de la suppression
 $message = '';
 $erreur = '';
 $deleted = false;
@@ -88,7 +75,6 @@ if (isset($_POST['confirm_delete']) && $_POST['confirm_delete'] === 'yes') {
             $deleted = true;
             $message = "L'événement a été supprimé avec succès.";
             
-            // Redirection après 2 secondes
             header("refresh:2;url=agenda.php");
         } else {
             $erreur = "Erreur lors de la suppression de l'événement.";
@@ -107,7 +93,6 @@ if (isset($_POST['confirm_delete']) && $_POST['confirm_delete'] === 'yes') {
   <link rel="stylesheet" href="assets/css/calendar.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
-    /* Styles spécifiques pour la page de suppression */
     .event-delete-container {
       max-width: 600px;
       margin: 20px auto;
@@ -268,7 +253,6 @@ if (isset($_POST['confirm_delete']) && $_POST['confirm_delete'] === 'yes') {
       background-color: #c5221f;
     }
     
-    /* Responsive */
     @media (max-width: 768px) {
       .delete-actions {
         flex-direction: column;
@@ -282,21 +266,16 @@ if (isset($_POST['confirm_delete']) && $_POST['confirm_delete'] === 'yes') {
   </style>
 </head>
 <body>
-  <!-- Header avec navigation vers l'agenda -->
   <div class="app-container">
-    <!-- Sidebar -->
     <div class="sidebar">
       <a href="../accueil/accueil.php" class="logo-container">
         <div class="app-logo">P</div>
         <div class="app-title">Pronote Agenda</div>
       </a>
       
-      <!-- Mini-calendrier pour la navigation -->
       <div class="mini-calendar">
-        <!-- Insérer ici le mini-calendrier -->
       </div>
       
-      <!-- Créer un événement -->
       <div class="sidebar-section">
         <a href="ajouter_evenement.php" class="create-button">
           <span>+</span> Créer un événement
@@ -304,9 +283,7 @@ if (isset($_POST['confirm_delete']) && $_POST['confirm_delete'] === 'yes') {
       </div>
     </div>
     
-    <!-- Main Content -->
     <div class="main-content">
-      <!-- Header -->
       <div class="top-header">
         <div class="calendar-navigation">
           <a href="details_evenement.php?id=<?= $id ?>" class="back-button">
@@ -323,7 +300,6 @@ if (isset($_POST['confirm_delete']) && $_POST['confirm_delete'] === 'yes') {
         </div>
       </div>
       
-      <!-- Container principal -->
       <div class="calendar-container">
         <div class="event-delete-container">
           <div class="event-delete-header">
@@ -440,6 +416,5 @@ if (isset($_POST['confirm_delete']) && $_POST['confirm_delete'] === 'yes') {
 </html>
 
 <?php
-// Terminer la mise en mémoire tampon et envoyer la sortie
 ob_end_flush();
 ?>
