@@ -10,8 +10,18 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Include database configuration from login system
-if (!defined('DB_HOST')) {
-    require_once __DIR__ . '/../login/config/database.php';
+$db_config_file = __DIR__ . '/../login/config/database.php';
+
+if (file_exists($db_config_file)) {
+    require_once $db_config_file;
+} else {
+    // Fallback database configurations
+    if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
+    if (!defined('DB_NAME')) define('DB_NAME', 'db_MASSE');
+    if (!defined('DB_USER')) define('DB_USER', '22405372');
+    if (!defined('DB_PASS')) define('DB_PASS', '807014');
+    
+    error_log("Database config file not found at expected location: $db_config_file");
 }
 
 // Create a single PDO connection if it doesn't exist already
@@ -35,11 +45,9 @@ if (!isset($GLOBALS['pdo'])) {
 // Expose the PDO connection
 $pdo = $GLOBALS['pdo'];
 
-/**
- * Include the authentication system
- * If the inclusion fails due to auth.php not being loaded yet, load it
- */
-if (!function_exists('isLoggedIn')) {
-    require_once __DIR__ . '/auth.php';
+// Check for auth.php
+$auth_path = __DIR__ . '/auth.php';
+if (file_exists($auth_path) && !function_exists('isLoggedIn')) {
+    require_once $auth_path;
 }
 ?>

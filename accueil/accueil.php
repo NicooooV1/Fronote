@@ -1,17 +1,41 @@
 <?php
-// Determine the correct path whether we're in local dev or on server
-$base_dir = dirname(dirname(__DIR__));
-$api_dir = $base_dir . '/API';
+// Locate and include the API path helper
+$path_helper = null;
+$possible_paths = [
+    dirname(dirname(__DIR__)) . '/API/path_helper.php', // Standard path
+    dirname(__DIR__) . '/API/path_helper.php', // Alternate path
+    dirname(dirname(dirname(__DIR__))) . '/API/path_helper.php', // Another possible path
+];
 
-// Si nous sommes sur le serveur, le chemin pourrait être différent
-if (!file_exists($api_dir)) {
-    $api_dir = dirname(__DIR__) . '/API';
+foreach ($possible_paths as $path) {
+    if (file_exists($path)) {
+        $path_helper = $path;
+        break;
+    }
 }
 
-// Include the API core
-require_once $api_dir . '/core.php';
-require_once $api_dir . '/auth.php';
-require_once $api_dir . '/data.php';
+if ($path_helper) {
+    // Define ABSPATH for security check in path_helper.php
+    if (!defined('ABSPATH')) define('ABSPATH', dirname(__FILE__));
+    require_once $path_helper;
+    require_once API_CORE_PATH;
+    require_once API_AUTH_PATH;
+    require_once API_DATA_PATH;
+} else {
+    // Fallback for direct inclusion if path_helper is not found
+    $base_dir = dirname(dirname(__DIR__));
+    $api_dir = $base_dir . '/API';
+
+    // Si nous sommes sur le serveur, le chemin pourrait être différent
+    if (!file_exists($api_dir)) {
+        $api_dir = dirname(__DIR__) . '/API';
+    }
+
+    // Include the API core
+    require_once $api_dir . '/core.php';
+    require_once $api_dir . '/auth.php';
+    require_once $api_dir . '/data.php';
+}
 
 // Check if user is logged in
 if (!isLoggedIn()) {
