@@ -12,10 +12,6 @@
   <header>
     <h2>Agenda Pronote</h2>
     <nav>
-      <a href="agenda.php">Calendrier</a>
-      <a href="agenda_jour.php">Vue Jour</a>
-      <a href="agenda_semaine.php">Vue Semaine</a>
-      <a href="agenda_liste.php">Vue Liste</a>
       <?php if (isset($_SESSION['user']) && (in_array($_SESSION['user']['profil'], ['professeur', 'administrateur', 'vie_scolaire']))): ?>
         <a href="ajouter_evenement.php">Ajouter un événement</a>
       <?php endif; ?>
@@ -24,3 +20,5 @@
       <a href="../login/public/logout.php">Déconnexion</a>
     </nav>
   </header>
+  
+  <div class="main-container">
