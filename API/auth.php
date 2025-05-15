@@ -5,7 +5,7 @@
  */
 
 // Include the core API if not already included
-if (!isset($pdo)) {
+if (!isset($GLOBALS['pdo'])) {
     require_once __DIR__ . '/core.php';
 }
 
@@ -13,7 +13,10 @@ if (!isset($pdo)) {
 require_once __DIR__ . '/../login/src/auth.php';
 
 // Initialize Auth object with the database connection
-$auth = new Auth($pdo);
+if (!isset($GLOBALS['auth'])) {
+    $GLOBALS['auth'] = new Auth($GLOBALS['pdo']);
+}
+$auth = $GLOBALS['auth'];
 
 /**
  * Check if user is logged in
@@ -22,7 +25,13 @@ $auth = new Auth($pdo);
  */
 function isLoggedIn() {
     global $auth;
-    return $auth->isLoggedIn();
+    try {
+        return $auth->isLoggedIn();
+    } catch (Exception $e) {
+        error_log("Auth error in isLoggedIn: " . $e->getMessage());
+        // Default to not logged in if there's an error
+        return false;
+    }
 }
 
 /**
@@ -38,13 +47,19 @@ function requireLogin() {
 
 /**
  * Check if current user has specific role
+ * Safe handling to avoid SQL errors
  * 
  * @param string $role The role to check
  * @return bool
  */
 function hasRole($role) {
     global $auth;
-    return isLoggedIn() && $auth->hasRole($role);
+    try {
+        return isLoggedIn() && $auth->hasRole($role);
+    } catch (Exception $e) {
+        error_log("Auth error in hasRole: " . $e->getMessage());
+        return false;
+    }
 }
 
 /**
@@ -130,11 +145,24 @@ function canViewAllEvents() {
 
 /**
  * Get logged in user data
+ * Returns cached version if available to reduce database calls
  * 
  * @return array|null User data or null if not logged in
  */
 function getCurrentUser() {
-    return isset($_SESSION['user']) ? $_SESSION['user'] : null;
+    static $cached_user = null;
+    
+    if ($cached_user !== null) {
+        return $cached_user;
+    }
+    
+    if (!isset($_SESSION['user'])) {
+        return null;
+    }
+    
+    // Cache user data to reduce database load
+    $cached_user = $_SESSION['user'];
+    return $cached_user;
 }
 
 /**

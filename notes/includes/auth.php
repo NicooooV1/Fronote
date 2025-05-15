@@ -1,10 +1,23 @@
 <?php
 /**
- * Authentication for notes module
- * Using the centralized API authentication
+ * Authentication functions for notes module
  */
 
-require_once __DIR__ . '/../../../API/auth.php';
+// Include the path helper and auth
+require_once dirname(dirname(dirname(__DIR__))) . '/API/path_helper.php';
+require_once API_AUTH_PATH;
 
-// All authentication functions are now available from the API/auth.php file
+// No need to redefine core authentication functions since they're in the API
+// Add only module-specific functions here
+
+/**
+ * Check if user can manage notes
+ * 
+ * @return bool
+ */
+function canManageNotes() {
+    return isTeacher() || isAdmin() || isVieScolaire();
+}
+
+// Other module-specific auth functions...
 ?>
