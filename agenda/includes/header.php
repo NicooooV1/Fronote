@@ -3,18 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Système de Notes</title>
-  <link rel="stylesheet" href="assets/css/style.css">
+  <title>Agenda - Pronote</title>
+  <link rel="stylesheet" href="assets/css/calendar.css">
+  <!-- Inclure les styles du système principal si besoin -->
+  <link rel="stylesheet" href="../notes/assets/css/style.css">
 </head>
 <body>
   <header>
-    <h2>Système de Notes</h2>
+    <h2>Agenda Pronote</h2>
     <nav>
-      <a href="notes.php">Notes</a>
+      <a href="agenda.php">Calendrier</a>
+      <a href="agenda_jour.php">Vue Jour</a>
+      <a href="agenda_semaine.php">Vue Semaine</a>
+      <a href="agenda_liste.php">Vue Liste</a>
       <?php if (isset($_SESSION['user']) && (in_array($_SESSION['user']['profil'], ['professeur', 'administrateur', 'vie_scolaire']))): ?>
-        <a href="ajouter_note.php">Ajouter une note</a>
+        <a href="ajouter_evenement.php">Ajouter un événement</a>
       <?php endif; ?>
-      <a href="/~u22405372/SAE/Pronote/accueil/accueil.php">Accueil Pronote</a>
-      <a href="/~u22405372/SAE/Pronote/login/public/logout.php">Déconnexion</a>
+      <a href="../notes/notes.php">Système de Notes</a>
+      <a href="../accueil/accueil.php">Accueil Pronote</a>
+      <a href="../login/public/logout.php">Déconnexion</a>
     </nav>
   </header>

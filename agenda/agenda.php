@@ -3,12 +3,11 @@
 ob_start();
 
 // Inclusion des fichiers nécessaires
-include 'includes/header.php'; 
 include 'includes/db.php';
 include 'includes/auth.php';
+include 'includes/header.php';
 
-// Vérifier que l'utilisateur est connecté
-requireLogin();
+// L'authentification est déjà vérifiée dans auth.php
 
 // Récupérer les informations de l'utilisateur connecté
 $user = $_SESSION['user'];
@@ -48,48 +47,88 @@ $day_names = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 // Récupérer les événements pour ce mois
 $events = [];
 
-// Construire la requête SQL en fonction du rôle de l'utilisateur
-if (isStudent()) {
-    // Pour un élève, récupérer ses événements et ceux de sa classe
-    $classe = ''; // On suppose que la classe de l'élève est stockée quelque part
-    
-    // Cette requête devra être ajustée selon votre modèle de données final
-    $sql = "SELECT * FROM evenements 
-            WHERE (MONTH(date_debut) = ? AND YEAR(date_debut) = ?) 
-            AND (visibilite = 'public' 
-                OR visibilite = 'eleves' 
-                OR visibilite LIKE '%élèves%'
-                OR classes LIKE ? 
-                OR createur = ?)
-            ORDER BY date_debut";
-    
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([$month, $year, "%$classe%", $user_fullname]);
-    $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-} elseif (isTeacher()) {
-    // Pour un professeur, récupérer ses événements et les événements publics
-    $sql = "SELECT * FROM evenements 
-            WHERE (MONTH(date_debut) = ? AND YEAR(date_debut) = ?) 
-            AND (visibilite = 'public' 
-                OR visibilite = 'professeurs' 
-                OR visibilite LIKE '%professeurs%'
-                OR createur = ?)
-            ORDER BY date_debut";
-    
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([$month, $year, $user_fullname]);
-    $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-} else {
-    // Pour les administrateurs, vie scolaire et autres rôles, montrer tous les événements
-    $sql = "SELECT * FROM evenements 
-            WHERE (MONTH(date_debut) = ? AND YEAR(date_debut) = ?) 
-            ORDER BY date_debut";
-    
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([$month, $year]);
-    $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// Vérifier si la table evenements existe
+$table_exists = false;
+try {
+    $stmt_check = $pdo->query("SHOW TABLES LIKE 'evenements'");
+    $table_exists = $stmt_check->rowCount() > 0;
+} catch (PDOException $e) {
+    // La table n'existe probablement pas
+    $table_exists = false;
+}
+
+// Si la table n'existe pas, essayer de la créer
+if (!$table_exists) {
+    try {
+        $sql = "CREATE TABLE IF NOT EXISTS evenements (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            titre VARCHAR(100) NOT NULL,
+            description TEXT,
+            date_debut DATETIME NOT NULL,
+            date_fin DATETIME NOT NULL,
+            type_evenement VARCHAR(50) NOT NULL,
+            statut VARCHAR(30) DEFAULT 'actif',
+            createur VARCHAR(100) NOT NULL,
+            visibilite VARCHAR(255) NOT NULL,
+            lieu VARCHAR(100),
+            classes VARCHAR(255),
+            matieres VARCHAR(100),
+            date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            date_modification TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )";
+        $pdo->exec($sql);
+        $table_exists = true;
+    } catch (PDOException $e) {
+        // Erreur lors de la création de la table
+        echo "Erreur lors de la création de la table: " . $e->getMessage();
+    }
+}
+
+// Si la table existe, récupérer les événements
+if ($table_exists) {
+    // Construire la requête SQL en fonction du rôle de l'utilisateur
+    if ($user_role === 'eleve') {
+        // Pour un élève, récupérer ses événements et ceux de sa classe
+        $classe = ''; // On suppose que la classe de l'élève est stockée quelque part
+        
+        // Cette requête devra être ajustée selon votre modèle de données final
+        $sql = "SELECT * FROM evenements 
+                WHERE (MONTH(date_debut) = ? AND YEAR(date_debut) = ?) 
+                AND (visibilite = 'public' 
+                    OR visibilite = 'eleves' 
+                    OR visibilite LIKE '%élèves%'
+                    OR classes LIKE ? 
+                    OR createur = ?)
+                ORDER BY date_debut";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$month, $year, "%$classe%", $user_fullname]);
+        $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+    } elseif ($user_role === 'professeur') {
+        // Pour un professeur, récupérer ses événements et les événements publics
+        $sql = "SELECT * FROM evenements 
+                WHERE (MONTH(date_debut) = ? AND YEAR(date_debut) = ?) 
+                AND (visibilite = 'public' 
+                    OR visibilite = 'professeurs' 
+                    OR visibilite LIKE '%professeurs%'
+                    OR createur = ?)
+                ORDER BY date_debut";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$month, $year, $user_fullname]);
+        $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+    } else {
+        // Pour les administrateurs, vie scolaire et autres rôles, montrer tous les événements
+        $sql = "SELECT * FROM evenements 
+                WHERE (MONTH(date_debut) = ? AND YEAR(date_debut) = ?) 
+                ORDER BY date_debut";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$month, $year]);
+        $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
 
 // Organiser les événements par jour
@@ -108,7 +147,7 @@ foreach ($events as $event) {
         <p>Connecté en tant que: <?= htmlspecialchars($user_fullname) ?> (<?= htmlspecialchars($user_role) ?>)</p>
     </div>
 
-    <?php if (canManageEvents()): // Cette fonction devra être définie dans auth.php ?>
+    <?php if (canManageEvents()): ?>
     <div class="actions">
         <a href="ajouter_evenement.php" class="button">Ajouter un événement</a>
     </div>
@@ -199,6 +238,9 @@ document.querySelectorAll('.calendar-day').forEach(day => {
     }
 });
 </script>
+
+</body>
+</html>
 
 <?php
 // Terminer la mise en mémoire tampon et envoyer la sortie
