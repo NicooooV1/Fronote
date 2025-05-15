@@ -6,7 +6,11 @@ ob_start();
 include 'includes/db.php';
 include 'includes/auth.php';
 
-// L'authentification est déjà vérifiée dans auth.php
+// Vérifier que l'utilisateur est connecté
+if (!isLoggedIn()) {
+    header('Location: ../login/public/login.php');
+    exit;
+}
 
 // Récupérer les informations de l'utilisateur connecté
 $user = $_SESSION['user'];
@@ -119,9 +123,11 @@ if (!$table_exists) {
             date_debut DATETIME NOT NULL,
             date_fin DATETIME NOT NULL,
             type_evenement VARCHAR(50) NOT NULL,
+            type_personnalise VARCHAR(100) DEFAULT NULL,
             statut VARCHAR(30) DEFAULT 'actif',
             createur VARCHAR(100) NOT NULL,
             visibilite VARCHAR(255) NOT NULL,
+            personnes_concernees TEXT,
             lieu VARCHAR(100),
             classes VARCHAR(255),
             matieres VARCHAR(100),
@@ -192,16 +198,29 @@ if ($table_exists) {
                 OR visibilite = 'eleves' 
                 OR visibilite LIKE '%élèves%'
                 OR classes LIKE ? 
-                OR createur = ?)";
+                OR createur = ?
+                OR personnes_concernees LIKE ?)";
         $params[] = "%$classe%";
         $params[] = $user_fullname;
+        $params[] = "%$user_fullname%";
     } elseif ($user_role === 'professeur') {
         // Pour un professeur, récupérer ses événements et les événements publics/professeurs
         $where_clauses[] = "(visibilite = 'public' 
                 OR visibilite = 'professeurs' 
                 OR visibilite LIKE '%professeurs%'
-                OR createur = ?)";
+                OR createur = ?
+                OR personnes_concernees LIKE ?)";
         $params[] = $user_fullname;
+        $params[] = "%$user_fullname%";
+    } elseif ($user_role === 'personnel' || $user_role === 'administration') {
+        // Pour le personnel et l'administration
+        $where_clauses[] = "(visibilite = 'public' 
+                OR visibilite = 'personnel' 
+                OR visibilite = 'administration'
+                OR createur = ?
+                OR personnes_concernees LIKE ?)";
+        $params[] = $user_fullname;
+        $params[] = "%$user_fullname%";
     }
     // Pour les autres rôles (admin, vie scolaire), aucun filtrage supplémentaire
     
@@ -230,6 +249,19 @@ if ($view === 'month') {
     }
 }
 
+// Déterminer les types d'événements disponibles dans les résultats pour les filtres
+$available_event_types = [];
+foreach ($events as $event) {
+    if (!in_array($event['type_evenement'], $available_event_types)) {
+        $available_event_types[] = $event['type_evenement'];
+    }
+}
+
+// Si aucun filtre n'est appliqué, sélectionner tous les types disponibles par défaut
+if (empty($filter_types)) {
+    $filter_types = $available_event_types;
+}
+
 // Mini-calendrier pour le mois actuel
 function generateMiniCalendar($month, $year, $selected_date = null) {
     global $day_names, $month_names;
@@ -249,8 +281,8 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
     $html = '<div class="mini-calendar-header">';
     $html .= '<span class="mini-calendar-title">' . $month_names[$month] . ' ' . $year . '</span>';
     $html .= '<div class="mini-calendar-nav">';
-    $html .= '<button class="mini-calendar-nav-btn prev" data-month="' . ($month-1) . '" data-year="' . ($month==1 ? $year-1 : $year) . '">&lt;</button>';
-    $html .= '<button class="mini-calendar-nav-btn next" data-month="' . ($month+1) . '" data-year="' . ($month==12 ? $year+1 : $year) . '">&gt;</button>';
+    $html .= '<button class="mini-calendar-nav-btn prev" data-month="' . ($month-1) . '" data-year="' . ($month==1 ? $year-1 : $year) . '">◀</button>';
+    $html .= '<button class="mini-calendar-nav-btn next" data-month="' . ($month+1) . '" data-year="' . ($month==12 ? $year+1 : $year) . '">▶</button>';
     $html .= '</div>';
     $html .= '</div>';
     
@@ -310,15 +342,341 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Agenda Pronote</title>
   <link rel="stylesheet" href="assets/css/calendar.css">
+  <style>
+    /* Styles mis à jour basés sur les retours */
+    
+    /* Structure principale */
+    .app-container {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    
+    .sidebar {
+      width: 250px;
+      background-color: white;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      z-index: 10;
+      overflow-y: auto;
+    }
+    
+    .main-content {
+      flex: 1;
+      overflow-y: auto;
+      background-color: #f5f5f5;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .top-header {
+      background-color: white;
+      padding: 15px 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 5;
+    }
+    
+    /* Logo et accueil */
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      padding: 15px 20px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .logo-container:hover {
+      background-color: #f5f5f5;
+    }
+    
+    .app-logo {
+      width: 32px;
+      height: 32px;
+      background-color: #00843d;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+    }
+    
+    .app-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: #333;
+    }
+    
+    /* Boutons d'action */
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    
+    .logout-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #666;
+      font-size: 24px;
+      padding: 5px;
+      border-radius: 50%;
+      transition: background-color 0.2s;
+    }
+    
+    .logout-button:hover {
+      background-color: #f0f0f0;
+      color: #333;
+    }
+    
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      background-color: #00843d;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 500;
+    }
+    
+    /* Mini-calendrier amélioré */
+    .mini-calendar {
+      padding: 15px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .mini-calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .mini-calendar-title {
+      font-weight: 500;
+      font-size: 16px;
+    }
+    
+    .mini-calendar-nav {
+      display: flex;
+      gap: 5px;
+    }
+    
+    .mini-calendar-nav-btn {
+      background: none;
+      border: none;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border-radius: 50%;
+      font-size: 12px;
+      color: #666;
+      transition: background-color 0.2s;
+    }
+    
+    .mini-calendar-nav-btn:hover {
+      background-color: #f0f0f0;
+      color: #333;
+    }
+    
+    .mini-calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+    }
+    
+    .mini-calendar-day-name {
+      text-align: center;
+      font-size: 12px;
+      color: #777;
+      padding: 5px 0;
+    }
+    
+    .mini-calendar-day {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .mini-calendar-day:hover {
+      background-color: #f0f0f0;
+    }
+    
+    .mini-calendar-day.other-month {
+      color: #bbb;
+    }
+    
+    .mini-calendar-day.today {
+      background-color: #00843d;
+      color: white;
+      font-weight: 500;
+    }
+    
+    .mini-calendar-day.selected {
+      background-color: #e0f2e9;
+      color: #00843d;
+      font-weight: 500;
+    }
+    
+    /* Filtres d'événements */
+    .sidebar-section {
+      padding: 15px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .sidebar-section-header {
+      font-weight: 500;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .toggle-button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      color: #777;
+    }
+    
+    .calendar-filters {
+      margin-top: 10px;
+    }
+    
+    .filter-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      cursor: pointer;
+    }
+    
+    .color-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    
+    .filter-label {
+      font-size: 14px;
+      flex: 1;
+    }
+    
+    .filter-checkbox {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+    
+    /* Bouton créer */
+    .create-button {
+      width: 100%;
+      background-color: #00843d;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 500;
+      margin-top: 10px;
+      transition: background-color 0.2s;
+    }
+    
+    .create-button:hover {
+      background-color: #006e32;
+    }
+    
+    /* Filtres de classe */
+    .classes-dropdown-toggle {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: white;
+      cursor: pointer;
+      text-align: left;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+    }
+    
+    /* Vue principale du calendrier */
+    .calendar-container {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    
+    /* Bouton retour */
+    .back-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background-color: #f5f5f5;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #555;
+      transition: background-color 0.2s;
+    }
+    
+    .back-button:hover {
+      background-color: #e0e0e0;
+    }
+    
+    .back-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+    }
+  </style>
 </head>
 <body>
   <div class="app-container">
     <!-- Sidebar -->
     <div class="sidebar">
-      <div class="logo-container">
+      <a href="../accueil/accueil.php" class="logo-container">
         <div class="app-logo">P</div>
         <div class="app-title">Pronote Agenda</div>
-      </div>
+      </a>
       
       <!-- Mini-calendrier pour la navigation -->
       <div class="mini-calendar">
@@ -333,6 +691,7 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
       </div>
       
       <!-- Filtres par type d'événement -->
+      <?php if (!empty($available_event_types)): ?>
       <div class="sidebar-section">
         <div class="sidebar-section-header">
           <span>Types d'événements</span>
@@ -340,19 +699,22 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
         </div>
         <div class="calendar-filters">
           <?php foreach ($types_evenements as $code => $nom): ?>
-            <div class="filter-option">
-              <span class="color-dot color-<?= $code ?>"></span>
-              <span class="filter-label"><?= $nom ?></span>
-              <input type="checkbox" class="filter-checkbox" 
-                     id="filter-<?= $code ?>" 
-                     name="types[]" 
-                     value="<?= $code ?>" 
-                     <?= in_array($code, $filter_types) || empty($filter_types) ? 'checked' : '' ?> 
-                     data-filter-type="type">
-            </div>
+            <?php if (in_array($code, $available_event_types)): ?>
+              <div class="filter-option">
+                <span class="color-dot color-<?= $code ?>"></span>
+                <span class="filter-label"><?= $nom ?></span>
+                <input type="checkbox" class="filter-checkbox" 
+                       id="filter-<?= $code ?>" 
+                       name="types[]" 
+                       value="<?= $code ?>" 
+                       <?= in_array($code, $filter_types) ? 'checked' : '' ?> 
+                       data-filter-type="type">
+              </div>
+            <?php endif; ?>
           <?php endforeach; ?>
         </div>
       </div>
+      <?php endif; ?>
       
       <!-- Filtres par classe -->
       <div class="sidebar-section">
@@ -398,12 +760,6 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
           </div>
         </div>
       </div>
-      
-      <div class="sidebar-section">
-        <a href="/~u22405372/SAE/Pronote/notes/notes.php" class="menu-item">Système de Notes</a>
-        <a href="/~u22405372/SAE/Pronote/accueil/accueil.php" class="menu-item">Accueil Pronote</a>
-        <a href="/~u22405372/SAE/Pronote/login/public/logout.php" class="menu-item">Déconnexion</a>
-      </div>
     </div>
     
     <!-- Main Content -->
@@ -411,6 +767,15 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
       <!-- Header -->
       <div class="top-header">
         <div class="calendar-navigation">
+          <button class="back-button" onclick="window.history.back()">
+            <span class="back-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10 19L3 12L10 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M3 12H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            Retour
+          </button>
           <button class="nav-button prev-button" onclick="navigateToPrevious()">&lt;</button>
           <button class="nav-button next-button" onclick="navigateToNext()">&gt;</button>
           <button class="today-button" onclick="navigateToToday()">Aujourd'hui</button>
@@ -440,7 +805,8 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
           <a href="?view=list" class="view-toggle-option <?= $view === 'list' ? 'active' : '' ?>">Liste</a>
         </div>
         
-        <div class="user-info">
+        <div class="header-actions">
+          <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">⏻</a>
           <div class="user-avatar"><?= $user_initials ?></div>
         </div>
       </div>
