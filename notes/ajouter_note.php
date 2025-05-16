@@ -126,8 +126,16 @@ if (isTeacher()) {
     <label for="note">Note:</label>
     <input type="number" name="note" id="note" max="20" min="0" step="0.1" placeholder="Note sur 20" required>
     
+    <!-- Nouveau champ pour le coefficient -->
+    <label for="coefficient">Coefficient:</label>
+    <input type="number" name="coefficient" id="coefficient" min="1" max="10" step="1" value="1" required>
+    
     <label for="date_ajout">Date:</label>
     <input type="date" name="date_ajout" id="date_ajout" value="<?= date('Y-m-d') ?>" required>
+    
+    <!-- Champ pour ajouter une description (intitulé de l'évaluation) -->
+    <label for="description">Intitulé de l'évaluation:</label>
+    <input type="text" name="description" id="description" placeholder="Ex: Contrôle évaluation trimestre" required>
     
     <div style="display: flex; gap: 10px; margin-top: 10px;">
       <button type="submit">Ajouter la note</button>
@@ -215,14 +223,16 @@ document.getElementById('nom_professeur').addEventListener('change', function() 
 
 <?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $stmt = $pdo->prepare('INSERT INTO notes (nom_eleve, nom_matiere, nom_professeur, note, date_ajout, classe) VALUES (?, ?, ?, ?, ?, ?)');
+  $stmt = $pdo->prepare('INSERT INTO notes (nom_eleve, nom_matiere, nom_professeur, note, date_ajout, classe, coefficient, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
   $stmt->execute([
     $_POST['nom_eleve'],
     $_POST['nom_matiere'],
     $_POST['nom_professeur'],
     $_POST['note'],
     $_POST['date_ajout'],
-    $_POST['classe']
+    $_POST['classe'],
+    $_POST['coefficient'],
+    $_POST['description']
   ]);
   header('Location: notes.php');
   exit;
