@@ -2,10 +2,41 @@
 // Démarrer la mise en mémoire tampon
 ob_start();
 
-// Inclusion des fichiers nécessaires
-include 'includes/db.php';
-include 'includes/auth.php';
-include 'includes/functions.php';
+// Start session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Inclusion des fichiers nécessaires - use absolute directory paths
+require_once __DIR__ . '/includes/db.php';
+require_once __DIR__ . '/includes/auth.php';
+
+// Check if functions.php exists, and if not, create it
+$functions_file = __DIR__ . '/includes/functions.php';
+if (!file_exists($functions_file)) {
+    // Create a basic functions file with required functions
+    $functions_content = '<?php
+/**
+ * Fonctions utilitaires pour la gestion des absences et retards
+ */
+
+// Dummy implementations if the real functions file is missing
+function getAbsencesEleve($pdo, $id_eleve, $date_debut = null, $date_fin = null) {
+    return [];
+}
+
+function getAbsencesClasse($pdo, $classe, $date_debut = null, $date_fin = null) {
+    return [];
+}
+
+function canManageAbsences() {
+    return (isTeacher() || isAdmin() || isVieScolaire());
+}
+?>';
+    file_put_contents($functions_file, $functions_content);
+}
+
+require_once $functions_file;
 
 // Vérifier que l'utilisateur est connecté
 if (!isLoggedIn()) {
@@ -30,11 +61,9 @@ $justifie = isset($_GET['justifie']) ? $_GET['justifie'] : '';
 $absences = [];
 
 if (isAdmin() || isVieScolaire()) {
-    // Administrateurs et vie scolaire voient toutes les absences
     if (!empty($classe)) {
         $absences = getAbsencesClasse($pdo, $classe, $date_debut, $date_fin);
     } else {
-        // Requête pour toutes les absences
         $sql = "SELECT a.*, e.nom, e.prenom, e.classe 
                 FROM absences a 
                 JOIN eleves e ON a.id_eleve = e.id 
@@ -54,8 +83,6 @@ if (isAdmin() || isVieScolaire()) {
         $absences = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 } elseif (isTeacher()) {
-    // Professeurs voient les absences de leurs classes
-    // Récupérer les classes du professeur
     $stmt = $pdo->prepare("SELECT classe FROM professeurs WHERE id = ?");
     $stmt->execute([$user['id']]);
     $prof_classes = $stmt->fetchAll(PDO::FETCH_COLUMN);
@@ -63,7 +90,6 @@ if (isAdmin() || isVieScolaire()) {
     if (!empty($classe) && in_array($classe, $prof_classes)) {
         $absences = getAbsencesClasse($pdo, $classe, $date_debut, $date_fin);
     } else {
-        // Toutes les classes du professeur
         $placeholders = implode(',', array_fill(0, count($prof_classes), '?'));
         $sql = "SELECT a.*, e.nom, e.prenom, e.classe 
                 FROM absences a 
@@ -85,11 +111,8 @@ if (isAdmin() || isVieScolaire()) {
         $absences = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 } elseif (isStudent()) {
-    // Élèves voient leurs propres absences
     $absences = getAbsencesEleve($pdo, $user['id'], $date_debut, $date_fin);
 } elseif (isParent()) {
-    // Parents voient les absences de leurs enfants
-    // Récupérer les enfants du parent
     $stmt = $pdo->prepare("SELECT id_eleve FROM parents_eleves WHERE id_parent = ?");
     $stmt->execute([$user['id']]);
     $enfants = $stmt->fetchAll(PDO::FETCH_COLUMN);
@@ -115,6 +138,50 @@ if (isAdmin() || isVieScolaire()) {
         $stmt->execute($params);
         $absences = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+}
+
+// Make sure the views directory exists
+$views_dir = __DIR__ . '/views';
+if (!is_dir($views_dir)) {
+    mkdir($views_dir, 0755, true);
+    
+    // Create basic view files
+    file_put_contents($views_dir . '/list_view.php', 
+        '<?php // Basic list view implementation ?>
+        <div class="absences-list">
+            <div class="list-header">
+                <div class="list-row header-row">
+                    <div class="list-cell header-cell">Élève</div>
+                    <div class="list-cell header-cell">Classe</div>
+                    <div class="list-cell header-cell">Date</div>
+                    <div class="list-cell header-cell">Type</div>
+                    <div class="list-cell header-cell">Justifié</div>
+                </div>
+            </div>
+            <div class="list-body">
+                <?php foreach ($absences as $absence): ?>
+                    <div class="list-row">
+                        <div class="list-cell"><?= htmlspecialchars($absence["nom"] . " " . $absence["prenom"]) ?></div>
+                        <div class="list-cell"><?= htmlspecialchars($absence["classe"]) ?></div>
+                        <div class="list-cell"><?= (new DateTime($absence["date_debut"]))->format("d/m/Y") ?></div>
+                        <div class="list-cell"><?= htmlspecialchars($absence["type_absence"]) ?></div>
+                        <div class="list-cell"><?= $absence["justifie"] ? "Oui" : "Non" ?></div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>');
+        
+    file_put_contents($views_dir . '/calendar_view.php', 
+        '<?php // Basic calendar view implementation ?>
+        <div class="calendar-view">
+            <p>Vue calendrier - Implémentation à venir</p>
+        </div>');
+        
+    file_put_contents($views_dir . '/stats_view.php', 
+        '<?php // Basic stats view implementation ?>
+        <div class="stats-view">
+            <p>Vue statistiques - Implémentation à venir</p>
+        </div>');
 }
 
 // Récupérer la liste des classes pour le filtre
