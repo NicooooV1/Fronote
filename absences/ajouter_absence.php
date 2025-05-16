@@ -2,6 +2,10 @@
 // Démarrer la mise en mémoire tampon
 ob_start();
 
+// Enable error reporting for debugging
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 // Inclusion des fichiers nécessaires
 include 'includes/db.php';
 include 'includes/auth.php';
@@ -40,13 +44,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             // Préparer les données pour l'insertion
             $data = [
-                'id_eleve' => $_POST['id_eleve'],
+                'id_eleve' => intval($_POST['id_eleve']),
                 'date_debut' => $date_debut,
                 'date_fin' => $date_fin,
                 'type_absence' => $_POST['type_absence'],
-                'motif' => $_POST['motif'] ?? '',
-                'justifie' => isset($_POST['justifie']) ? true : false,
-                'commentaire' => $_POST['commentaire'] ?? '',
+                'motif' => !empty($_POST['motif']) ? $_POST['motif'] : null,
+                'justifie' => isset($_POST['justifie']),
+                'commentaire' => !empty($_POST['commentaire']) ? $_POST['commentaire'] : null,
                 'signale_par' => $user_fullname
             ];
             
@@ -58,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Redirection après un court délai
                 header('refresh:2;url=absences.php');
             } else {
-                $erreur = "Une erreur est survenue lors de l'ajout de l'absence.";
+                $erreur = "Une erreur est survenue lors de l'ajout de l'absence. Veuillez vérifier les logs pour plus de détails.";
             }
         }
     }

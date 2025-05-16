@@ -77,37 +77,67 @@ function getAbsencesClasse($pdo, $classe, $date_debut = null, $date_fin = null) 
  * @return bool|int ID de l'absence créée ou false en cas d'erreur
  */
 function ajouterAbsence($pdo, $data) {
-    $sql = "INSERT INTO absences (
-                id_eleve, 
-                date_debut, 
-                date_fin, 
-                type_absence, 
-                motif, 
-                justifie, 
-                commentaire, 
-                signale_par
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-    
     try {
+        // Enable PDO error mode for debugging
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        
+        // Check if all required fields are present
+        $required_fields = ['id_eleve', 'date_debut', 'date_fin', 'type_absence', 'signale_par'];
+        foreach ($required_fields as $field) {
+            if (empty($data[$field])) {
+                error_log("Missing required field for absence: $field");
+                return false;
+            }
+        }
+        
+        // Set default values for optional fields
+        $data['motif'] = isset($data['motif']) ? $data['motif'] : null;
+        $data['justifie'] = isset($data['justifie']) ? $data['justifie'] : false;
+        $data['commentaire'] = isset($data['commentaire']) ? $data['commentaire'] : null;
+        
+        // Verify the SQL table structure and adjust the query accordingly
+        $sql = "INSERT INTO absences (
+                    id_eleve, 
+                    date_debut, 
+                    date_fin, 
+                    type_absence, 
+                    motif, 
+                    justifie, 
+                    commentaire, 
+                    signale_par
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        
         $stmt = $pdo->prepare($sql);
+        
+        // Log the data we're trying to insert
+        error_log("Attempting to add absence with data: " . json_encode($data));
+        
         $success = $stmt->execute([
             $data['id_eleve'],
             $data['date_debut'],
             $data['date_fin'],
             $data['type_absence'],
-            $data['motif'] ?? null,
-            isset($data['justifie']) ? $data['justifie'] : false,
-            $data['commentaire'] ?? null,
+            $data['motif'],
+            $data['justifie'] ? 1 : 0, // Convert boolean to int for MySQL
+            $data['commentaire'],
             $data['signale_par']
         ]);
         
         if ($success) {
-            return $pdo->lastInsertId();
+            $id = $pdo->lastInsertId();
+            error_log("Successfully added absence with ID: $id");
+            return $id;
         } else {
+            error_log("Failed to add absence: " . json_encode($stmt->errorInfo()));
             return false;
         }
     } catch (PDOException $e) {
-        error_log("Erreur lors de l'ajout d'une absence: " . $e->getMessage());
+        error_log("PDO Exception when adding absence: " . $e->getMessage());
+        // Display more detailed error for development
+        error_log("Error details: " . $e->getTraceAsString());
+        return false;
+    } catch (Exception $e) {
+        error_log("General Exception when adding absence: " . $e->getMessage());
         return false;
     }
 }
@@ -196,6 +226,39 @@ function ajouterRetard($pdo, $data) {
 }
 
 /**
+ * Récupère les retards pour une classe
+ * 
+ * @param PDO $pdo Connexion à la base de données
+ * @param string $classe Classe concernée
+ * @param string $date_debut Date de début (optionnel)
+ * @param string $date_fin Date de fin (optionnel)
+ * @return array Liste des retards
+ */
+function getRetardsClasse($pdo, $classe, $date_debut = null, $date_fin = null) {
+    $params = [$classe];
+    $sql = "SELECT r.*, e.nom, e.prenom, e.classe 
+            FROM retards r 
+            JOIN eleves e ON r.id_eleve = e.id 
+            WHERE e.classe = ?";
+    
+    if ($date_debut) {
+        $sql .= " AND r.date >= ?";
+        $params[] = $date_debut;
+    }
+    
+    if ($date_fin) {
+        $sql .= " AND r.date <= ?";
+        $params[] = $date_fin;
+    }
+    
+    $sql .= " ORDER BY e.nom, e.prenom, r.date DESC";
+    
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+/**
  * Fonctions pour les justificatifs
  */
 function ajouterJustificatif($pdo, $data) {
@@ -226,5 +289,68 @@ function canManageAbsences() {
 function calculerStatistiquesAbsences($pdo, $id_eleve, $periode = 'annee') {
     // Code pour calculer les statistiques d'absences
     // (nombre d'absences, durée totale, par matière, etc.)
+}
+
+/**
+ * Crée une table absences dans la base de données si elle n'existe pas
+ * 
+ * @param PDO $pdo Connexion à la base de données
+ * @return bool Succès de la création
+ */
+function createAbsencesTableIfNotExists($pdo) {
+    try {
+        $sql = "CREATE TABLE IF NOT EXISTS absences (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            id_eleve INT NOT NULL,
+            date_debut DATETIME NOT NULL,
+            date_fin DATETIME NOT NULL,
+            type_absence VARCHAR(20) NOT NULL,
+            motif VARCHAR(100) NULL,
+            justifie BOOLEAN DEFAULT FALSE,
+            commentaire TEXT NULL,
+            signale_par VARCHAR(100) NOT NULL,
+            date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )";
+        
+        return $pdo->exec($sql) !== false;
+    } catch (PDOException $e) {
+        error_log("Error creating absences table: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Crée une table retards dans la base de données si elle n'existe pas
+ * 
+ * @param PDO $pdo Connexion à la base de données
+ * @return bool Succès de la création
+ */
+function createRetardsTableIfNotExists($pdo) {
+    try {
+        $sql = "CREATE TABLE IF NOT EXISTS retards (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            id_eleve INT NOT NULL,
+            date DATETIME NOT NULL,
+            duree INT NOT NULL,
+            motif VARCHAR(100) NULL,
+            justifie BOOLEAN DEFAULT FALSE,
+            commentaire TEXT NULL,
+            signale_par VARCHAR(100) NOT NULL,
+            date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )";
+        
+        return $pdo->exec($sql) !== false;
+    } catch (PDOException $e) {
+        error_log("Error creating retards table: " . $e->getMessage());
+        return false;
+    }
+}
+
+// Try to create tables on include
+try {
+    createAbsencesTableIfNotExists($pdo);
+    createRetardsTableIfNotExists($pdo);
+} catch (Exception $e) {
+    error_log("Error initializing tables: " . $e->getMessage());
 }
 ?>
