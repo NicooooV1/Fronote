@@ -3,59 +3,49 @@
  * Authentication functions for notes module
  */
 
-/**
- * Vérifie si l'utilisateur est connecté
- * 
- * @return bool
- */
-function isLoggedIn() {
-    return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
-}
+// Locate and include the API path helper
+$path_helper = null;
+$possible_paths = [
+    dirname(dirname(dirname(__DIR__))) . '/API/path_helper.php', // Standard path
+    dirname(dirname(__DIR__)) . '/API/path_helper.php', // Alternate path
+    dirname(dirname(dirname(dirname(__DIR__)))) . '/API/path_helper.php', // Another possible path
+];
 
-/**
- * Vérifie si l'utilisateur actuel est un professeur
- * 
- * @return bool
- */
-function isTeacher() {
-    // Pour test : si le système de rôles n'est pas configuré, considérer tous les utilisateurs connectés comme professeurs
-    if (isset($_SESSION['user_role'])) {
-        return $_SESSION['user_role'] === 'professeur';
+foreach ($possible_paths as $path) {
+    if (file_exists($path)) {
+        $path_helper = $path;
+        break;
     }
-    // Temporairement - considérer tous les utilisateurs comme professeurs jusqu'à la mise en place complète
-    return isLoggedIn(); 
 }
 
-/**
- * Vérifie si l'utilisateur actuel est un élève
- * 
- * @return bool
- */
-function isStudent() {
-    // Pour test : si le système de rôles n'est pas configuré, considérer que personne n'est élève
-    if (isset($_SESSION['user_role'])) {
-        return $_SESSION['user_role'] === 'eleve';
+if ($path_helper) {
+    // Define ABSPATH for security check in path_helper.php
+    if (!defined('ABSPATH')) define('ABSPATH', dirname(dirname(__FILE__)));
+    require_once $path_helper;
+    
+    // Include the centralized API auth file
+    require_once API_AUTH_PATH;
+} else {
+    // Fallback to direct inclusion if path_helper.php is not found
+    $api_dir = dirname(dirname(dirname(__DIR__))) . '/API';
+    if (file_exists($api_dir . '/auth.php')) {
+        require_once $api_dir . '/auth.php';
+    } else {
+        die("Cannot locate the API auth file. Please check your installation.");
     }
-    return false;
 }
 
-/**
- * Redirige vers la page de connexion si l'utilisateur n'est pas connecté
- */
-function requireLogin() {
-    // Pour tests - ne pas rediriger pour l'instant
-    // si désactivé, cela permet d'accéder au système même sans session configurée
-    /*
-    if (!isLoggedIn()) {
-        header('Location: ../login/login.php');
-        exit;
+// Only declare these functions if they don't already exist
+// This avoids redeclaration errors with the central API
+
+if (!function_exists('canManageNotes')) {
+    /**
+     * Check if user can manage notes
+     * 
+     * @return bool
+     */
+    function canManageNotes() {
+        return isTeacher() || isAdmin() || isVieScolaire();
     }
-    */
 }
-
-// No need to redefine functions that already exist in the API
-// Only declare functions that are specific to this module that aren't already defined
-
-// Module-specific functions can be added here, checking if they already exist first
-// (though they should typically be added to the central API instead)
 ?>

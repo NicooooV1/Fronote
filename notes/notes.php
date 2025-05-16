@@ -49,10 +49,15 @@ $user_role = $user['profil'];
       $stmt->execute([$student_name]);
     } else {
       // Pour les professeurs ou si le système de session n'est pas encore configuré
+      $sql = '';
       if ($order == 'matiere') {
-        $stmt = $pdo->query('SELECT * FROM notes ORDER BY nom_matiere ASC, date_ajout DESC');
+        $sql = 'SELECT * FROM notes ORDER BY nom_matiere ASC, date_ajout DESC';
+      } elseif ($order == 'classe') {
+        $sql = 'SELECT * FROM notes ORDER BY classe ASC, nom_eleve ASC, date_ajout DESC';
+      } elseif ($order == 'eleve') {
+        $sql = 'SELECT * FROM notes ORDER BY nom_eleve ASC, date_ajout DESC';
       } else {
-        $stmt = $pdo->query('SELECT * FROM notes ORDER BY date_ajout DESC');
+        $sql = 'SELECT * FROM notes ORDER BY date_ajout DESC';
       }
       
       $stmt = $pdo->query($sql);
