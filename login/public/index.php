@@ -53,115 +53,265 @@ $avatarImg = $avatars[$profil] ?? 'student.png';
 $espaceTitle = 'Espace ' . ucfirst($profil) . 's';
 ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pronote - Connexion</title>
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="stylesheet" href="assets/css/styles_login.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/pronote-style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .profile-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+        
+        .profile-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 8px;
+            width: 80px;
+            transition: all 0.2s;
+        }
+        
+        .profile-option:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .profile-option.selected {
+            background-color: #e0f2e9;
+        }
+        
+        .profile-avatar {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            margin-bottom: 8px;
+        }
+        
+        .profile-avatar i {
+            font-size: 20px;
+            color: white;
+        }
+        
+        .profile-name {
+            font-size: 12px;
+            text-align: center;
+            color: #555;
+        }
+        
+        .profile-option.selected .profile-name {
+            color: #009b72;
+            font-weight: 500;
+        }
+        
+        .avatar-eleve { background-color: #4285f4; }
+        .avatar-parent { background-color: #0f9d58; }
+        .avatar-professeur { background-color: #f4b400; }
+        .avatar-vie_scolaire { background-color: #db4437; }
+        .avatar-administrateur { background-color: #4527a0; }
+        
+        .selected-profile-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+        }
+        
+        .selected-profile-avatar {
+            width: 40px;
+            height: 40px;
+            background-color: #009b72;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        
+        .selected-profile-text {
+            flex: 1;
+        }
+        
+        .selected-profile-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .selected-profile-description {
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
 </head>
 <body>
     <div class="login-container">
-        <img src="assets/images/logo-pronote.png" alt="Logo Pronote" class="logo">
-        
-        <h2 id="espaceTitle"><?php echo htmlspecialchars($espaceTitle); ?></h2>
-        
-        <div class="avatar">
-            <img id="avatarImage" src="assets/images/avatars/<?php echo htmlspecialchars($avatarImg); ?>" alt="Avatar">
+        <div class="app-header">
+            <div class="app-logo">P</div>
+            <h1 class="app-title">Pronote</h1>
         </div>
-        
+
         <?php if (!empty($error)): ?>
-            <div class="error-message"><?php echo htmlspecialchars($error); ?></div>
-        <?php endif; ?>
-        
-        <?php if (isset($_GET['from_register']) && isset($_GET['success'])): ?>
-            <div class="success-message">
-                <p>Compte créé avec succès ! Veuillez vous connecter avec l'identifiant et le mot de passe qui vous ont été fournis.</p>
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-circle"></i>
+                <?= htmlspecialchars($error) ?>
             </div>
         <?php endif; ?>
         
-        <form action="index.php<?php echo (isset($_GET['from_register']) && isset($_GET['success'])) ? '?from_register=1&success=1' : ''; ?>" method="post" id="loginForm">
-            <div class="required-notice">* champs obligatoires</div>
+        <form action="index.php<?php echo (isset($_GET['from_register']) && isset($_GET['success'])) ? '?from_register=1&success=1' : ''; ?>" method="post">
+            <div class="profile-selector">
+                <div class="profile-option" data-profile="eleve">
+                    <div class="profile-avatar avatar-eleve">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <div class="profile-name">Élève</div>
+                </div>
+                <div class="profile-option" data-profile="parent">
+                    <div class="profile-avatar avatar-parent">
+                        <i class="fas fa-user-friends"></i>
+                    </div>
+                    <div class="profile-name">Parent</div>
+                </div>
+                <div class="profile-option" data-profile="professeur">
+                    <div class="profile-avatar avatar-professeur">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    </div>
+                    <div class="profile-name">Professeur</div>
+                </div>
+                <div class="profile-option" data-profile="vie_scolaire">
+                    <div class="profile-avatar avatar-vie_scolaire">
+                        <i class="fas fa-clipboard-list"></i>
+                    </div>
+                    <div class="profile-name">Vie scolaire</div>
+                </div>
+                <div class="profile-option" data-profile="administrateur">
+                    <div class="profile-avatar avatar-administrateur">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                    <div class="profile-name">Admin</div>
+                </div>
+            </div>
+            
+            <div class="selected-profile-info">
+                <div id="selectedProfileAvatar" class="selected-profile-avatar avatar-eleve">
+                    <i id="selectedProfileIcon" class="fas fa-user-graduate"></i>
+                </div>
+                <div class="selected-profile-text">
+                    <div id="selectedProfileTitle" class="selected-profile-title">Espace Élèves</div>
+                    <div class="selected-profile-description">Connectez-vous avec votre identifiant et mot de passe</div>
+                </div>
+            </div>
+            
+            <input type="hidden" id="profil" name="profil" value="eleve">
             
             <div class="form-group">
-                <label for="profil">Espace</label>
-                <select name="profil" id="profil" required onchange="updateAvatar()">
-                    <option value="eleve" <?php echo ($profil === 'eleve') ? 'selected' : ''; ?>>Élèves</option>
-                    <option value="parent" <?php echo ($profil === 'parent') ? 'selected' : ''; ?>>Parents</option>
-                    <option value="professeur" <?php echo ($profil === 'professeur') ? 'selected' : ''; ?>>Professeurs</option>
-                    <option value="vie_scolaire" <?php echo ($profil === 'vie_scolaire') ? 'selected' : ''; ?>>Vie Scolaire</option>
-                    <option value="administrateur" <?php echo ($profil === 'administrateur') ? 'selected' : ''; ?>>Administrateur</option>
-                </select>
+                <label for="username">Identifiant</label>
+                <input type="text" id="username" name="identifiant" required>
             </div>
-
+            
             <div class="form-group">
-                <label for="identifiant">Identifiant</label>
-                <input type="text" name="identifiant" id="identifiant" placeholder="nom.prenom" required>
-            </div>
-
-            <div class="form-group">
-                <label for="mot_de_passe">Mot de passe</label>
+                <label for="password">Mot de passe</label>
                 <div class="input-group">
-                    <input type="password" name="mot_de_passe" id="mot_de_passe" required>
+                    <input type="password" id="password" name="mot_de_passe" required>
                     <button type="button" class="visibility-toggle" id="passwordToggle">
-                        <i class="fa-regular fa-eye"></i>
+                        <i class="fas fa-eye"></i>
                     </button>
                 </div>
             </div>
-
-            <button type="submit" class="btn-connect">Se connecter</button>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn-connect">Se connecter</button>
+            </div>
         </form>
+        
+        <div class="additional-links" style="margin-top: 20px; text-align: center;">
+            <a href="forgot_password.php" style="color: #009b72; font-size: 14px; margin-right: 15px;">Mot de passe oublié ?</a>
+            <a href="register.php" style="color: #009b72; font-size: 14px;">S'inscrire</a>
+        </div>
     </div>
-
+    
     <script>
-        // Fonction pour mettre à jour l'avatar et le titre en fonction de l'espace sélectionné
-        function updateAvatar() {
-            const profil = document.getElementById('profil').value;
-            const avatarElement = document.getElementById('avatarImage');
-            const titleElement = document.getElementById('espaceTitle');
-            
-            const avatars = {
-                'eleve': 'student.png',
-                'parent': 'parent.png',
-                'professeur': 'teacher.png',
-                'vie_scolaire': 'staff.png',
-                'administrateur': 'admin.png'
-            };
-            
-            // Mise à jour de l'avatar
-            avatarElement.src = 'assets/images/avatars/' + avatars[profil];
-            
-            // Mise à jour du titre
-            titleElement.textContent = 'Espace ' + profil.charAt(0).toUpperCase() + profil.slice(1) + 's';
-        }
-
-        // Modification du comportement du bouton "afficher mot de passe" pour exiger un appui maintenu
         document.addEventListener('DOMContentLoaded', function() {
-            const passwordInput = document.getElementById('mot_de_passe');
-            const toggleButton = document.getElementById('passwordToggle');
-            const visibilityIcon = toggleButton.querySelector('i');
-
-            // Fonction pour afficher le mot de passe
-            function showPassword() {
-                passwordInput.type = 'text';
-                visibilityIcon.className = 'fa-regular fa-eye-slash';
+            const passwordInput = document.getElementById('password');
+            const passwordToggle = document.getElementById('passwordToggle');
+            const profileOptions = document.querySelectorAll('.profile-option');
+            const profileInput = document.getElementById('profil');
+            const selectedProfileTitle = document.getElementById('selectedProfileTitle');
+            const selectedProfileAvatar = document.getElementById('selectedProfileAvatar');
+            const selectedProfileIcon = document.getElementById('selectedProfileIcon');
+            
+            // Toggle password visibility
+            passwordToggle.addEventListener('click', function() {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                
+                // Change l'icône de l'œil
+                const icon = this.querySelector('i');
+                icon.classList.toggle('fa-eye');
+                icon.classList.toggle('fa-eye-slash');
+            });
+            
+            // Profile selection
+            profileOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    // Remove selected class from all options
+                    profileOptions.forEach(opt => opt.classList.remove('selected'));
+                    
+                    // Add selected class to clicked option
+                    this.classList.add('selected');
+                    
+                    // Update hidden input value
+                    const profile = this.getAttribute('data-profile');
+                    profileInput.value = profile;
+                    
+                    // Update profile info display
+                    const titleMapping = {
+                        'eleve': 'Espace Élèves',
+                        'parent': 'Espace Parents',
+                        'professeur': 'Espace Professeurs',
+                        'vie_scolaire': 'Espace Vie Scolaire',
+                        'administrateur': 'Espace Administration'
+                    };
+                    
+                    const iconMapping = {
+                        'eleve': 'fa-user-graduate',
+                        'parent': 'fa-user-friends',
+                        'professeur': 'fa-chalkboard-teacher',
+                        'vie_scolaire': 'fa-clipboard-list',
+                        'administrateur': 'fa-user-shield'
+                    };
+                    
+                    selectedProfileTitle.textContent = titleMapping[profile] || 'Connexion';
+                    
+                    // Update avatar background
+                    selectedProfileAvatar.className = 'selected-profile-avatar';
+                    selectedProfileAvatar.classList.add('avatar-' + profile);
+                    
+                    // Update icon
+                    selectedProfileIcon.className = 'fas';
+                    selectedProfileIcon.classList.add(iconMapping[profile]);
+                });
+            });
+            
+            // Set default selected profile
+            const defaultProfile = profileInput.value || 'eleve';
+            const defaultOption = document.querySelector(`.profile-option[data-profile="${defaultProfile}"]`);
+            if (defaultOption) {
+                defaultOption.click();
             }
-
-            // Fonction pour masquer le mot de passe
-            function hidePassword() {
-                passwordInput.type = 'password';
-                visibilityIcon.className = 'fa-regular fa-eye';
-            }
-
-            // Écouteurs d'événements pour appui maintenu
-            toggleButton.addEventListener('mousedown', showPassword);
-            toggleButton.addEventListener('mouseup', hidePassword);
-            toggleButton.addEventListener('mouseleave', hidePassword);
-            toggleButton.addEventListener('touchstart', showPassword);
-            toggleButton.addEventListener('touchend', hidePassword);
-            toggleButton.addEventListener('touchcancel', hidePassword);
         });
     </script>
 </body>
