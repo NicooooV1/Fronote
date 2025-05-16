@@ -11,7 +11,7 @@
     <h2>Système de Notes</h2>
     <nav>
       <a href="notes.php">Notes</a>
-      <?php if (function_exists('isTeacher') && isTeacher()): ?>
+      <?php if (function_exists('canManageNotes') && canManageNotes()): ?>
       <a href="ajouter_note.php">Ajouter une note</a>
       <?php endif; ?>
     </nav>

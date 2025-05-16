@@ -346,10 +346,86 @@ function createRetardsTableIfNotExists($pdo) {
     }
 }
 
+/**
+ * Crée une table professeur_classes dans la base de données si elle n'existe pas
+ * 
+ * @param PDO $pdo Connexion à la base de données
+ * @return bool Succès de la création
+ */
+function createProfesseurClassesTableIfNotExists($pdo) {
+    try {
+        $sql = "CREATE TABLE IF NOT EXISTS professeur_classes (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            id_professeur INT NOT NULL,
+            nom_classe VARCHAR(50) NOT NULL,
+            UNIQUE KEY unique_prof_class (id_professeur, nom_classe)
+        )";
+        
+        return $pdo->exec($sql) !== false;
+    } catch (PDOException $e) {
+        error_log("Error creating professeur_classes table: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Vérifie si les classes existent déjà dans la table professeur_classes
+ * Si non, initialise la table avec les données des professeurs
+ * Cette fonction est provisoire pour la migration
+ */
+function initializeProfesseurClasses($pdo) {
+    try {
+        // Check if table is empty
+        $stmt = $pdo->query("SELECT COUNT(*) FROM professeur_classes");
+        $count = $stmt->fetchColumn();
+        
+        if ($count == 0) {
+            // Table is empty, let's get data from professeurs table if it exists
+            try {
+                $stmt = $pdo->query("SHOW COLUMNS FROM professeurs LIKE 'classe'");
+                $column_exists = $stmt->fetch();
+                
+                if ($column_exists) {
+                    // Old structure with 'classe' column
+                    $stmt = $pdo->query("SELECT id, classe FROM professeurs WHERE classe IS NOT NULL AND classe != ''");
+                    $profs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    
+                    foreach ($profs as $prof) {
+                        // A professor might teach multiple classes separated by commas
+                        $classes = explode(',', $prof['classe']);
+                        foreach ($classes as $classe) {
+                            $classe = trim($classe);
+                            if (!empty($classe)) {
+                                $insert = $pdo->prepare("INSERT IGNORE INTO professeur_classes (id_professeur, nom_classe) VALUES (?, ?)");
+                                $insert->execute([$prof['id'], $classe]);
+                            }
+                        }
+                    }
+                    
+                    error_log("Initialized professeur_classes table from professeurs.classe");
+                } else {
+                    // Create a test entry for debugging
+                    error_log("No 'classe' column in professeurs table, creating test data");
+                    $insert = $pdo->prepare("INSERT IGNORE INTO professeur_classes (id_professeur, nom_classe) VALUES (1, '6A'), (1, '5B')");
+                    $insert->execute();
+                }
+            } catch (PDOException $e) {
+                error_log("Error migrating professeur classes: " . $e->getMessage());
+            }
+        }
+        return true;
+    } catch (PDOException $e) {
+        error_log("Error initializing professeur_classes: " . $e->getMessage());
+        return false;
+    }
+}
+
 // Try to create tables on include
 try {
     createAbsencesTableIfNotExists($pdo);
     createRetardsTableIfNotExists($pdo);
+    createProfesseurClassesTableIfNotExists($pdo);
+    initializeProfesseurClasses($pdo);
 } catch (Exception $e) {
     error_log("Error initializing tables: " . $e->getMessage());
 }

@@ -83,9 +83,20 @@ if (isAdmin() || isVieScolaire()) {
         $absences = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 } elseif (isTeacher()) {
-    $stmt = $pdo->prepare("SELECT classe FROM professeurs WHERE id = ?");
+    // Fix the query to get the classes taught by the teacher
+    // The professeurs table doesn't have a 'classe' column directly
+    $stmt = $pdo->prepare("
+        SELECT DISTINCT c.nom_classe as classe
+        FROM professeur_classes c
+        WHERE c.id_professeur = ?
+    ");
     $stmt->execute([$user['id']]);
     $prof_classes = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    // If no classes found for this professor, use an empty array to avoid SQL errors
+    if (empty($prof_classes)) {
+        $prof_classes = [];
+    }
     
     if (!empty($classe) && in_array($classe, $prof_classes)) {
         $absences = getAbsencesClasse($pdo, $classe, $date_debut, $date_fin);

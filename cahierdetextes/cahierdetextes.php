@@ -1,183 +1,335 @@
 <?php
+// Démarrer la mise en mémoire tampon de sortie pour éviter l'erreur "headers already sent"
 ob_start();
 
-include 'includes/header.php'; 
+// Inclusion des fichiers nécessaires
 include 'includes/db.php';
 include 'includes/auth.php';
 
+// Vérifier que l'utilisateur est connecté
+if (!isLoggedIn()) {
+    header('Location: ../login/public/login.php');
+    exit;
+}
+
+// Récupérer les informations de l'utilisateur connecté
 $user = getCurrentUser();
 $user_fullname = getUserFullName();
-$user_role = getUserRole(); 
+$user_role = getUserRole();
+$user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
+
+// Paramètres de filtrage
+$order = isset($_GET['order']) ? $_GET['order'] : 'date_rendu';
 ?>
-
-<div class="container">
-  <div class="user-info">
-    <p>Connecté en tant que: <?= htmlspecialchars($user_fullname) ?> (<?= htmlspecialchars($user_role) ?>)</p>
-  </div>
-
-  <?php if (canManageDevoirs()): ?>
-  <div class="actions">
-    <a href="ajouter_devoir.php" class="button">Ajouter un devoir</a>
-  </div>
-  <?php endif; ?>
-  
-  <div class="filter-buttons">
-    <a href="?order=date_rendu" class="button <?php echo (!isset($_GET['order']) || $_GET['order'] == 'date_rendu') ? '' : 'button-secondary'; ?>">Par date de rendu</a>
-    <a href="?order=date_ajout" class="button <?php echo (isset($_GET['order']) && $_GET['order'] == 'date_ajout') ? '' : 'button-secondary'; ?>">Par date d'ajout</a>
-    <a href="?order=matiere" class="button <?php echo (isset($_GET['order']) && $_GET['order'] == 'matiere') ? '' : 'button-secondary'; ?>">Par matière</a>
-    <?php if (!isStudent() && !isParent()): ?>
-    <a href="?order=classe" class="button <?php echo (isset($_GET['order']) && $_GET['order'] == 'classe') ? '' : 'button-secondary'; ?>">Par classe</a>
-    <?php endif; ?>
-  </div>
-
-  <div class="notes">
-    <?php
-    $order = isset($_GET['order']) ? $_GET['order'] : 'date_rendu';
-    
-    // If student or parent, only show homeworks for the student's class
-    if (isStudent()) {
-      $stmt_eleve = $pdo->prepare('SELECT classe FROM eleves WHERE prenom = ? AND nom = ?');
-      $stmt_eleve->execute([$user['prenom'], $user['nom']]);
-      $eleve_data = $stmt_eleve->fetch();
-      $classe_eleve = $eleve_data ? $eleve_data['classe'] : '';
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cahier de Textes - Pronote</title>
+  <link rel="stylesheet" href="assets/css/cahierdetextes.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <a href="../accueil/accueil.php" class="logo-container">
+        <div class="app-logo">P</div>
+        <div class="app-title">Pronote Cahier de Textes</div>
+      </a>
       
-      if (empty($classe_eleve)) {
-        switch ($order) {
-          case 'matiere':
-            $sql = 'SELECT * FROM devoirs ORDER BY nom_matiere ASC, date_rendu ASC';
-            break;
-          case 'date_ajout':
-            $sql = 'SELECT * FROM devoirs ORDER BY date_ajout DESC';
-            break;
-          default:
-            $sql = 'SELECT * FROM devoirs ORDER BY date_rendu ASC';
-        }
+      <!-- Section des filtres -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Filtres</div>
         
-        $stmt = $pdo->query($sql);
-      } else {
-        switch ($order) {
-          case 'matiere':
-            $sql = 'SELECT * FROM devoirs WHERE classe = ? ORDER BY nom_matiere ASC, date_rendu ASC';
-            break;
-          case 'date_ajout':
-            $sql = 'SELECT * FROM devoirs WHERE classe = ? ORDER BY date_ajout DESC';
-            break;
-          default:
-            $sql = 'SELECT * FROM devoirs WHERE classe = ? ORDER BY date_rendu ASC';
-        }
-        
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$classe_eleve]);
-      }
-    }
-    elseif (isParent()) {
-      // Future implementation: get children's classes
-      switch ($order) {
-        case 'matiere':
-          $sql = 'SELECT * FROM devoirs ORDER BY nom_matiere ASC, date_rendu ASC';
-          break;
-        case 'classe':
-          $sql = 'SELECT * FROM devoirs ORDER BY classe ASC, date_rendu ASC';
-          break;
-        case 'date_ajout':
-          $sql = 'SELECT * FROM devoirs ORDER BY date_ajout DESC';
-          break;
-        default:
-          $sql = 'SELECT * FROM devoirs ORDER BY date_rendu ASC';
-      }
-      
-      $stmt = $pdo->query($sql);
-    }
-    elseif (isTeacher()) {
-      switch ($order) {
-        case 'matiere':
-          $sql = 'SELECT * FROM devoirs WHERE nom_professeur = ? ORDER BY nom_matiere ASC, date_rendu ASC';
-          break;
-        case 'classe':
-          $sql = 'SELECT * FROM devoirs WHERE nom_professeur = ? ORDER BY classe ASC, date_rendu ASC';
-          break;
-        case 'date_ajout':
-          $sql = 'SELECT * FROM devoirs WHERE nom_professeur = ? ORDER BY date_ajout DESC';
-          break;
-        default:
-          $sql = 'SELECT * FROM devoirs WHERE nom_professeur = ? ORDER BY date_rendu ASC';
-      }
-      
-      $stmt = $pdo->prepare($sql);
-      $stmt->execute([$user_fullname]);
-    }
-    else {
-      switch ($order) {
-        case 'matiere':
-          $sql = 'SELECT * FROM devoirs ORDER BY nom_matiere ASC, date_rendu ASC';
-          break;
-        case 'classe':
-          $sql = 'SELECT * FROM devoirs ORDER BY classe ASC, date_rendu ASC';
-          break;
-        case 'date_ajout':
-          $sql = 'SELECT * FROM devoirs ORDER BY date_ajout DESC';
-          break;
-        default:
-          $sql = 'SELECT * FROM devoirs ORDER BY date_rendu ASC';
-      }
-      
-      $stmt = $pdo->query($sql);
-    }
-    
-    // Display homework assignments
-    while ($devoir = $stmt->fetch()) {
-      echo "<div class='note'>
-        <div class='note-header'>
-          <div class='note-title'>{$devoir['titre']}</div>
-          <div class='note-date'>Date d'ajout: {$devoir['date_ajout']}</div>
+        <div class="filter-option">
+          <span class="filter-label">À rendre cette semaine</span>
+          <input type="checkbox" class="filter-checkbox" id="filter-semaine">
         </div>
-        <div class='note-details'>
-          <div class='note-detail'>
-            <div>Classe:</div>
-            <div class='note-value'>{$devoir['classe']}</div>
-          </div>
-          <div class='note-detail'>
-            <div>Matière:</div>
-            <div class='note-value'>{$devoir['nom_matiere']}</div>
-          </div>
-          <div class='note-detail'>
-            <div>Professeur:</div>
-            <div class='note-value'>{$devoir['nom_professeur']}</div>
-          </div>
-          <div class='note-detail'>
-            <div>À rendre pour le:</div>
-            <div class='note-value' style='color: #d33; font-weight: bold;'>{$devoir['date_rendu']}</div>
-          </div>
-        </div>
-        <div class='devoir-description'>
-          <h4>Description:</h4>
-          <p>" . nl2br(htmlspecialchars($devoir['description'])) . "</p>
-        </div>";
         
-        // Display edit and delete buttons for authorized roles
-        if (canManageDevoirs()) {
-          // If teacher, check if they created this homework
-          if (!isTeacher() || (isTeacher() && $devoir['nom_professeur'] == $user_fullname)) {
-            echo "<div style='margin-top: 10px; display: flex; gap: 10px;'>
-              <a href='modifier_devoir.php?id={$devoir['id']}' class='button button-secondary'>Modifier</a>
-              <a href='supprimer_devoir.php?id={$devoir['id']}' class='button button-secondary' onclick='return confirm(\"Êtes-vous sûr de vouloir supprimer ce devoir ?\");'>Supprimer</a>
-            </div>";
+        <div class="filter-option">
+          <span class="filter-label">À rendre ce mois</span>
+          <input type="checkbox" class="filter-checkbox" id="filter-mois">
+        </div>
+        
+        <?php if (!isStudent() && !isParent()): ?>
+        <div class="filter-option">
+          <span class="filter-label">Tous les devoirs</span>
+          <input type="checkbox" class="filter-checkbox" id="filter-tous" checked>
+        </div>
+        <?php endif; ?>
+      </div>
+      
+      <!-- Actions -->
+      <div class="sidebar-section">
+        <?php if (canManageDevoirs()): ?>
+        <a href="ajouter_devoir.php" class="create-button">
+          <i class="fas fa-plus"></i> Ajouter un devoir
+        </a>
+        <?php endif; ?>
+        
+        <a href="../notes/notes.php" class="action-button secondary">
+          <i class="fas fa-graduation-cap"></i> Système de Notes
+        </a>
+        
+        <a href="../accueil/accueil.php" class="action-button secondary">
+          <i class="fas fa-home"></i> Accueil Pronote
+        </a>
+      </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Header -->
+      <div class="top-header">
+        <div class="page-title">
+          <h1>Cahier de Textes</h1>
+        </div>
+        
+        <div class="filter-buttons">
+          <a href="?order=date_rendu" class="button <?php echo (!isset($_GET['order']) || $_GET['order'] == 'date_rendu') ? 'button-primary' : 'button-secondary'; ?>">
+            <i class="fas fa-calendar-day"></i> Par date de rendu
+          </a>
+          <a href="?order=date_ajout" class="button <?php echo (isset($_GET['order']) && $_GET['order'] == 'date_ajout') ? 'button-primary' : 'button-secondary'; ?>">
+            <i class="fas fa-clock"></i> Par date d'ajout
+          </a>
+          <a href="?order=matiere" class="button <?php echo (isset($_GET['order']) && $_GET['order'] == 'matiere') ? 'button-primary' : 'button-secondary'; ?>">
+            <i class="fas fa-book"></i> Par matière
+          </a>
+          <?php if (!isStudent() && !isParent()): ?>
+          <a href="?order=classe" class="button <?php echo (isset($_GET['order']) && $_GET['order'] == 'classe') ? 'button-primary' : 'button-secondary'; ?>">
+            <i class="fas fa-users"></i> Par classe
+          </a>
+          <?php endif; ?>
+        </div>
+        
+        <div class="header-actions">
+          <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">⏻</a>
+          <div class="user-avatar"><?= $user_initials ?></div>
+        </div>
+      </div>
+      
+      <!-- Content -->
+      <div class="content-container">
+        <div class="devoirs-list">
+          <?php
+          // Récupération des devoirs selon le rôle de l'utilisateur
+          if (isStudent()) {
+            $stmt_eleve = $pdo->prepare('SELECT classe FROM eleves WHERE prenom = ? AND nom = ?');
+            $stmt_eleve->execute([$user['prenom'], $user['nom']]);
+            $eleve_data = $stmt_eleve->fetch();
+            $classe_eleve = $eleve_data ? $eleve_data['classe'] : '';
+            
+            if (empty($classe_eleve)) {
+              switch ($order) {
+                case 'matiere':
+                  $sql = 'SELECT * FROM devoirs ORDER BY nom_matiere ASC, date_rendu ASC';
+                  break;
+                case 'date_ajout':
+                  $sql = 'SELECT * FROM devoirs ORDER BY date_ajout DESC';
+                  break;
+                default:
+                  $sql = 'SELECT * FROM devoirs ORDER BY date_rendu ASC';
+              }
+              
+              $stmt = $pdo->query($sql);
+            } else {
+              switch ($order) {
+                case 'matiere':
+                  $sql = 'SELECT * FROM devoirs WHERE classe = ? ORDER BY nom_matiere ASC, date_rendu ASC';
+                  break;
+                case 'date_ajout':
+                  $sql = 'SELECT * FROM devoirs WHERE classe = ? ORDER BY date_ajout DESC';
+                  break;
+                default:
+                  $sql = 'SELECT * FROM devoirs WHERE classe = ? ORDER BY date_rendu ASC';
+              }
+              
+              $stmt = $pdo->prepare($sql);
+              $stmt->execute([$classe_eleve]);
+            }
           }
-        }
-        
-      echo "</div>";
-    }
-    
-    if ($stmt->rowCount() === 0) {
-      echo "<p>Aucun devoir n'a été ajouté pour le moment.</p>";
-    }
-    ?>
+          elseif (isParent()) {
+            // Future implementation: get children's classes
+            switch ($order) {
+              case 'matiere':
+                $sql = 'SELECT * FROM devoirs ORDER BY nom_matiere ASC, date_rendu ASC';
+                break;
+              case 'classe':
+                $sql = 'SELECT * FROM devoirs ORDER BY classe ASC, date_rendu ASC';
+                break;
+              case 'date_ajout':
+                $sql = 'SELECT * FROM devoirs ORDER BY date_ajout DESC';
+                break;
+              default:
+                $sql = 'SELECT * FROM devoirs ORDER BY date_rendu ASC';
+            }
+            
+            $stmt = $pdo->query($sql);
+          }
+          elseif (isTeacher()) {
+            switch ($order) {
+              case 'matiere':
+                $sql = 'SELECT * FROM devoirs WHERE nom_professeur = ? ORDER BY nom_matiere ASC, date_rendu ASC';
+                break;
+              case 'classe':
+                $sql = 'SELECT * FROM devoirs WHERE nom_professeur = ? ORDER BY classe ASC, date_rendu ASC';
+                break;
+              case 'date_ajout':
+                $sql = 'SELECT * FROM devoirs WHERE nom_professeur = ? ORDER BY date_ajout DESC';
+                break;
+              default:
+                $sql = 'SELECT * FROM devoirs WHERE nom_professeur = ? ORDER BY date_rendu ASC';
+            }
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$user_fullname]);
+          }
+          else {
+            switch ($order) {
+              case 'matiere':
+                $sql = 'SELECT * FROM devoirs ORDER BY nom_matiere ASC, date_rendu ASC';
+                break;
+              case 'classe':
+                $sql = 'SELECT * FROM devoirs ORDER BY classe ASC, date_rendu ASC';
+                break;
+              case 'date_ajout':
+                $sql = 'SELECT * FROM devoirs ORDER BY date_ajout DESC';
+                break;
+              default:
+                $sql = 'SELECT * FROM devoirs ORDER BY date_rendu ASC';
+            }
+            
+            $stmt = $pdo->query($sql);
+          }
+          
+          // Afficher les devoirs
+          if ($stmt->rowCount() === 0) {
+            echo '<div class="alert alert-info">
+              <i class="fas fa-info-circle"></i>
+              <div>Aucun devoir n\'a été ajouté pour le moment.</div>
+            </div>';
+          } else {
+            // Afficher les devoirs
+            while ($devoir = $stmt->fetch()) {
+              // Vérifier si le devoir est proche de la date de rendu (dans 3 jours ou moins)
+              $date_rendu = new DateTime($devoir['date_rendu']);
+              $aujourdhui = new DateTime();
+              $diff = $aujourdhui->diff($date_rendu);
+              $urgent = $date_rendu >= $aujourdhui && $diff->days <= 3;
+              $expire = $date_rendu < $aujourdhui;
+              
+              echo '<div class="devoir-item' . ($urgent ? ' urgent' : '') . ($expire ? ' expired' : '') . '">
+                <div class="devoir-header">
+                  <div class="devoir-title">' . htmlspecialchars($devoir['titre']) . '</div>
+                  <div class="devoir-date">Ajouté le: ' . date('d/m/Y', strtotime($devoir['date_ajout'])) . '</div>
+                </div>
+                
+                <div class="devoir-details">
+                  <div class="devoir-detail">
+                    <div>Classe:</div>
+                    <div class="devoir-value">' . htmlspecialchars($devoir['classe']) . '</div>
+                  </div>
+                  
+                  <div class="devoir-detail">
+                    <div>Matière:</div>
+                    <div class="devoir-value">' . htmlspecialchars($devoir['nom_matiere']) . '</div>
+                  </div>
+                  
+                  <div class="devoir-detail">
+                    <div>Professeur:</div>
+                    <div class="devoir-value">' . htmlspecialchars($devoir['nom_professeur']) . '</div>
+                  </div>
+                  
+                  <div class="devoir-detail">
+                    <div>À rendre pour le:</div>
+                    <div class="devoir-value" style="color: ' . ($urgent ? '#e74c3c' : ($expire ? '#777' : '#d33')) . '; font-weight: bold;">
+                      ' . date('d/m/Y', strtotime($devoir['date_rendu'])) . '
+                      ' . ($urgent ? '<span class="badge badge-danger">Urgent</span>' : '') . '
+                      ' . ($expire ? '<span class="badge badge-secondary">Expiré</span>' : '') . '
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="devoir-description">
+                  <h4>Description:</h4>
+                  <p>' . nl2br(htmlspecialchars($devoir['description'])) . '</p>
+                </div>';
+                
+                // Afficher les boutons de modification/suppression pour les utilisateurs autorisés
+                if (canManageDevoirs()) {
+                  // Si c'est un professeur, vérifier qu'il est bien l'auteur du devoir
+                  if (!isTeacher() || (isTeacher() && $devoir['nom_professeur'] == $user_fullname)) {
+                    echo '<div class="devoir-actions">
+                      <a href="modifier_devoir.php?id=' . $devoir['id'] . '" class="button button-secondary">
+                        <i class="fas fa-edit"></i> Modifier
+                      </a>
+                      <a href="supprimer_devoir.php?id=' . $devoir['id'] . '" class="button button-danger" 
+                         onclick="return confirm(\'Êtes-vous sûr de vouloir supprimer ce devoir ?\');">
+                        <i class="fas fa-trash"></i> Supprimer
+                      </a>
+                    </div>';
+                  }
+                }
+                
+              echo '</div>';
+            }
+          }
+          ?>
+        </div>
+      </div>
+    </div>
   </div>
-</div>
-
+  
+  <script>
+    // Filtrage des devoirs par semaine/mois
+    document.addEventListener('DOMContentLoaded', function() {
+      const filterSemaine = document.getElementById('filter-semaine');
+      const filterMois = document.getElementById('filter-mois');
+      const filterTous = document.getElementById('filter-tous');
+      const devoirItems = document.querySelectorAll('.devoir-item');
+      
+      // Fonction pour appliquer les filtres
+      function applyFilters() {
+        const today = new Date();
+        const endOfWeek = new Date(today);
+        endOfWeek.setDate(today.getDate() + (7 - today.getDay()));
+        
+        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        
+        devoirItems.forEach(item => {
+          const dateRenduText = item.querySelector('.devoir-detail:nth-child(4) .devoir-value').textContent.trim().split(' ')[0];
+          const dateParts = dateRenduText.split('/');
+          const dateRendu = new Date(dateParts[2], dateParts[1] - 1, dateParts[0]);
+          
+          if (filterSemaine.checked && dateRendu <= endOfWeek && dateRendu >= today) {
+            item.style.display = '';
+          } else if (filterMois.checked && dateRendu <= endOfMonth && dateRendu >= today) {
+            item.style.display = '';
+          } else if (filterTous && filterTous.checked) {
+            item.style.display = '';
+          } else if (!filterSemaine.checked && !filterMois.checked && (!filterTous || !filterTous.checked)) {
+            item.style.display = '';
+          } else {
+            item.style.display = 'none';
+          }
+        });
+      }
+      
+      // Ajouter les écouteurs d'événements
+      if (filterSemaine) filterSemaine.addEventListener('change', applyFilters);
+      if (filterMois) filterMois.addEventListener('change', applyFilters);
+      if (filterTous) filterTous.addEventListener('change', applyFilters);
+      
+      // Appliquer les filtres au chargement
+      applyFilters();
+    });
+  </script>
 </body>
 </html>
 
 <?php
+// Terminer la mise en mémoire tampon et envoyer la sortie
 ob_end_flush();
 ?>

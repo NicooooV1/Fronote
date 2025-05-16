@@ -291,13 +291,16 @@ $trimestre_actuel = isset($_GET['trimestre']) ? intval($_GET['trimestre']) : get
                               ? $note['moyenne_classe'] 
                               : '-';
             
+            // Coefficient
+            $coef = isset($note['coefficient']) ? $note['coefficient'] : 1;
+            
             echo "<div class='note-item'>
                     <div class='note-date-box'>
                       <div class='note-date-day'>{$jour}</div>
                       <div class='note-date-month'>{$mois_abrege}</div>
                     </div>
                     <div class='note-info'>
-                      <div class='note-title'>{$description}</div>
+                      <div class='note-title'>{$description} " . ($coef > 1 ? "(coef. $coef)" : "") . "</div>
                       <div class='note-moyenne-classe'>Moyenne classe: {$moyenne_classe}</div>
                     </div>
                     <div class='note-score'>{$note['note']}</div>";
@@ -307,7 +310,7 @@ $trimestre_actuel = isset($_GET['trimestre']) ? intval($_GET['trimestre']) : get
               if (!isTeacher() || (isTeacher() && $note['nom_professeur'] == $user_fullname)) {
                 echo "<div class='note-actions'>
                         <a href='modifier_note.php?id={$note['id']}' class='button button-small'>Modifier</a>
-                        <a href='supprimer_note.php?id={$note['id']}' class='button button-small' onclick='return confirm(\"Êtes-vous sûr de vouloir supprimer cette note ?\");'>Supprimer</a>
+                        <a href='supprimer_note.php?id={$note['id']}' class='button button-small button-danger' onclick='return confirm(\"Êtes-vous sûr de vouloir supprimer cette note ?\");'>Supprimer</a>
                       </div>";
               }
             }
@@ -337,6 +340,9 @@ $trimestre_actuel = isset($_GET['trimestre']) ? intval($_GET['trimestre']) : get
                             ? $note['moyenne_classe'] 
                             : '-';
           
+          // Coefficient
+          $coef = isset($note['coefficient']) ? $note['coefficient'] : 1;
+          
           echo "<div class='note'>
                   <div class='matiere-color color-{$matiere_color}'></div>
                   <div class='note-date-container'>
@@ -345,17 +351,17 @@ $trimestre_actuel = isset($_GET['trimestre']) ? intval($_GET['trimestre']) : get
                   </div>
                   <div class='note-content'>
                     <div class='note-matiere'>{$note['nom_matiere']}</div>
-                    <div class='note-eval'>{$description}</div>
+                    <div class='note-eval'>{$description} " . ($coef > 1 ? "(coef. $coef)" : "") . "</div>
                     <div class='note-moyenne'>Moyenne classe: {$moyenne_classe}</div>
                   </div>
-                  <div class='note-value'>{$note['note']}</div>";
+                  <div class='note-value'>{$note['note']}/20</div>";
           
           // Afficher les boutons de modification et suppression pour les rôles autorisés
           if (canManageNotes()) {
             if (!isTeacher() || (isTeacher() && $note['nom_professeur'] == $user_fullname)) {
-              echo "<div style='margin-left: 10px;'>
+              echo "<div class='action-buttons' style='margin-left: 10px;'>
                       <a href='modifier_note.php?id={$note['id']}' class='button button-small'>Modifier</a>
-                      <a href='supprimer_note.php?id={$note['id']}' class='button button-small' onclick='return confirm(\"Êtes-vous sûr de vouloir supprimer cette note ?\");'>Supprimer</a>
+                      <a href='supprimer_note.php?id={$note['id']}' class='button button-small button-danger' onclick='return confirm(\"Êtes-vous sûr de vouloir supprimer cette note ?\");'>Supprimer</a>
                     </div>";
             }
           }
