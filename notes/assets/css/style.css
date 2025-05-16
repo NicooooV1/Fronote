@@ -48,62 +48,203 @@ nav a:hover:after {
   padding: 0 20px;
 }
 
+.user-info {
+  margin-bottom: 20px;
+  color: #666;
+}
+
 .notes {
   margin-top: 20px;
 }
 
+/* Nouveau style pour les notes (style Pronote) */
 .note {
   background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  margin-bottom: 1px;
   padding: 15px;
-  margin-bottom: 15px;
-  border-left: 4px solid #00843d;
-}
-
-.note-header {
   display: flex;
-  justify-content: space-between;
-  margin-bottom: 10px;
-  padding-bottom: 10px;
+  align-items: center;
   border-bottom: 1px solid #eee;
+  position: relative;
 }
 
-.note-title {
-  font-size: 18px;
-  font-weight: 500;
-  color: #00843d;
+.note-date-container {
+  width: 60px;
+  text-align: center;
+  margin-right: 15px;
 }
 
-.note-date {
-  color: #888;
+.note-day {
+  background-color: #f0f0f0;
+  border-radius: 5px 5px 0 0;
+  padding: 5px;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.note-month {
+  background-color: #f0f0f0;
+  border-radius: 0 0 5px 5px;
+  padding: 5px;
   font-size: 14px;
+  color: #666;
+  text-transform: lowercase;
 }
 
-.note-details {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 10px;
+.note-content {
+  flex: 1;
 }
 
-.note-detail {
+.note-matiere {
+  font-weight: bold;
+  font-size: 18px;
+  color: #333;
   margin-bottom: 5px;
 }
 
+.note-eval {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.note-moyenne {
+  font-size: 14px;
+  color: #888;
+}
+
 .note-value {
+  font-size: 22px;
   font-weight: bold;
+  width: 60px;
+  text-align: right;
+  color: #333;
+}
+
+/* Style pour la couleur de la matière */
+.matiere-color {
+  width: 4px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+}
+
+.color-anglais { background-color: #4caf50; }
+.color-mathematiques { background-color: #2196f3; }
+.color-francais { background-color: #3f51b5; }
+.color-histoire-geographie { background-color: #ff9800; }
+.color-physique-chimie { background-color: #00bcd4; }
+.color-svt { background-color: #8bc34a; }
+.color-eps { background-color: #f44336; }
+.color-arts { background-color: #9c27b0; }
+.color-latin { background-color: #673ab7; }
+.color-lv2 { background-color: #795548; }
+.color-technologie { background-color: #607d8b; }
+
+/* Affichage par matière */
+.matiere-bloc {
+  background-color: white;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.matiere-header {
+  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+  position: relative;
+}
+
+.matiere-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.moyenne-matiere {
+  font-size: 22px;
+  font-weight: bold;
+  color: #00843d;
+}
+
+.matiere-color-indicator {
+  width: 4px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+}
+
+.matiere-notes {
+  padding: 0;
+}
+
+.note-item {
+  padding: 12px 15px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.note-item:last-child {
+  border-bottom: none;
+}
+
+.note-date-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+  width: 45px;
+  height: 45px;
+  margin-right: 15px;
+  border-radius: 4px;
+}
+
+.note-date-day {
+  font-weight: bold;
+  font-size: 15px;
+}
+
+.note-date-month {
+  font-size: 13px;
+  color: #666;
+}
+
+.note-info {
+  flex: 1;
+}
+
+.note-title {
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.note-moyenne-classe {
+  font-size: 13px;
+  color: #888;
 }
 
 .note-score {
-  font-size: 18px;
-  color: #00843d;
   font-weight: bold;
+  font-size: 20px;
+  margin-left: 15px;
+  width: 40px;
+  text-align: right;
 }
 
-.actions {
+.note-actions {
+  display: none;
+  margin-left: 10px;
+}
+
+.note-item:hover .note-actions {
   display: flex;
-  justify-content: space-between;
-  margin: 20px 0;
+  gap: 5px;
 }
 
 .button {
@@ -137,6 +278,12 @@ nav a:hover:after {
   font-size: 12px;
 }
 
+.actions {
+  display: flex;
+  justify-content: space-between;
+  margin: 20px 0;
+}
+
 .filter-area {
   margin-bottom: 20px;
 }
@@ -144,18 +291,24 @@ nav a:hover:after {
 .filter-buttons {
   display: flex;
   gap: 10px;
-  margin-bottom: 20px;
+  margin: 15px 0;
 }
 
 .trimestre-selector {
   display: flex;
   align-items: center;
   margin-bottom: 15px;
+  background-color: white;
+  padding: 10px 15px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .trimestre-selector h3 {
   margin: 0;
   margin-right: 15px;
+  font-size: 18px;
+  font-weight: 500;
 }
 
 #trimestre-select {
@@ -165,108 +318,27 @@ nav a:hover:after {
   font-family: inherit;
 }
 
-/* Style pour le bloc matière */
-.matiere-bloc {
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  margin-bottom: 20px;
-  overflow: hidden;
-}
-
-.matiere-header {
-  background-color: #f9f9f9;
-  padding: 15px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #eee;
-}
-
-.matiere-header h3 {
-  margin: 0;
-  color: #00843d;
-  font-size: 20px;
-}
-
-.moyenne-matiere {
-  font-size: 24px;
-  font-weight: bold;
-  color: #00843d;
-}
-
-.matiere-stats {
-  display: flex;
-  justify-content: space-between;
-  background-color: #f5f5f5;
-  padding: 10px 15px;
-  font-size: 14px;
-  color: #666;
-}
-
-.matiere-notes {
-  padding: 0 15px;
-}
-
-.note-item {
-  display: flex;
-  padding: 12px 0;
-  border-bottom: 1px solid #eee;
-  align-items: center;
-}
-
-.note-item:last-child {
-  border-bottom: none;
-}
-
-.note-date {
-  width: 70px;
-  color: #777;
-  font-size: 14px;
-}
-
-.note-description {
-  flex: 1;
-  font-size: 14px;
-}
-
-.note-moyenne-classe {
-  width: 150px;
-  color: #777;
-  font-size: 14px;
-}
-
-.note-actions {
-  display: flex;
-  gap: 5px;
-  margin-left: 10px;
-}
-
-/* Style pour la moyenne générale */
+/* Moyenne générale */
 .moyenne-generale {
-  background-color: #00843d;
-  color: white;
-  padding: 10px 20px;
-  border-radius: 8px;
+  background-color: white;
+  padding: 15px 20px;
+  border-radius: 4px;
   margin-bottom: 20px;
-  text-align: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .moyenne-generale h3 {
   margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.moyenne-generale-value {
   font-size: 22px;
-}
-
-/* Style pour le groupement de notes */
-.notes-group {
-  margin-bottom: 30px;
-}
-
-.notes-group h3 {
-  margin-top: 0;
-  margin-bottom: 15px;
-  padding-bottom: 5px;
-  border-bottom: 2px solid #00843d;
+  font-weight: bold;
   color: #00843d;
 }
 
@@ -321,22 +393,21 @@ button[type="submit"]:hover {
 
 /* Responsive design */
 @media (max-width: 768px) {
-  .note-details {
-    grid-template-columns: 1fr;
-  }
-  
-  .matiere-stats {
-    flex-direction: column;
-    gap: 5px;
-  }
-  
   .note-item {
     flex-wrap: wrap;
   }
   
-  .note-date, .note-description, .note-moyenne-classe {
+  .note-date-box {
+    margin-bottom: 10px;
+  }
+  
+  .note-info {
     width: 100%;
-    margin-bottom: 5px;
+    margin-bottom: 10px;
+  }
+  
+  .note-score {
+    margin-left: auto;
   }
   
   .filter-buttons {
