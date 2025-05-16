@@ -21,9 +21,9 @@ include 'includes/auth.php'; // Pour vérifier l'authentification
     <?php
     $order = isset($_GET['order']) ? $_GET['order'] : 'date';
     
-    // Si c'est un élève, on ne montre que ses propres notes
-    if (isStudent()) {
-      $student_name = $_SESSION['user_name']; // Supposons que le nom de l'élève est stocké dans la session
+    // Déterminer si on doit filtrer par élève ou afficher toutes les notes
+    if (isStudent() && isset($_SESSION['user_name'])) {
+      $student_name = $_SESSION['user_name'];
       
       if ($order == 'matiere') {
         $stmt = $pdo->prepare('SELECT * FROM notes WHERE nom_eleve = ? ORDER BY nom_matiere ASC, date_ajout DESC');
@@ -32,7 +32,7 @@ include 'includes/auth.php'; // Pour vérifier l'authentification
       }
       $stmt->execute([$student_name]);
     } else {
-      // Si c'est un professeur ou un administrateur, on montre toutes les notes
+      // Pour les professeurs ou si le système de session n'est pas encore configuré
       if ($order == 'matiere') {
         $stmt = $pdo->query('SELECT * FROM notes ORDER BY nom_matiere ASC, date_ajout DESC');
       } else {
@@ -40,6 +40,7 @@ include 'includes/auth.php'; // Pour vérifier l'authentification
       }
     }
     
+    // Affichage des notes
     while ($note = $stmt->fetch()) {
       echo "<div class='note'>
         <div class='note-header'>

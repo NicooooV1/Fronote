@@ -9,4 +9,10 @@
 <body>
   <header>
     <h2>Système de Notes</h2>
+    <nav>
+      <a href="notes.php">Notes</a>
+      <?php if (function_exists('isTeacher') && isTeacher()): ?>
+      <a href="ajouter_note.php">Ajouter une note</a>
+      <?php endif; ?>
+    </nav>
   </header>
