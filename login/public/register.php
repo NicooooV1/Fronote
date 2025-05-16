@@ -201,6 +201,11 @@ $espaceTitle = 'Création compte ' . ucfirst($profil);
                             <!-- Options générées dynamiquement -->
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label for="adresse">Adresse</label>
+                        <input type="text" id="adresse" name="adresse" required>
+                        <div id="adressesSuggestions" class="suggestions-container"></div>
+                    </div>
                 `,
                 'parent': `
                     <div class="form-group">
@@ -213,8 +218,8 @@ $espaceTitle = 'Création compte ' . ucfirst($profil);
                         <input type="text" id="telephone" name="telephone" required>
                     </div>
                     <div class="form-group">
-                        <label for="profession">Profession</label>
-                        <input type="text" id="profession" name="profession">
+                        <label for="metier">Profession</label>
+                        <input type="text" id="metier" name="metier">
                     </div>
                 `,
                 'professeur': `
@@ -226,6 +231,11 @@ $espaceTitle = 'Création compte ' . ucfirst($profil);
                         </select>
                     </div>
                     <div class="form-group">
+                        <label for="adresse">Adresse</label>
+                        <input type="text" id="adresse" name="adresse" required>
+                        <div id="adressesSuggestions" class="suggestions-container"></div>
+                    </div>
+                    <div class="form-group">
                         <label for="telephone">Téléphone</label>
                         <input type="text" id="telephone" name="telephone" required>
                     </div>
@@ -235,14 +245,14 @@ $espaceTitle = 'Création compte ' . ucfirst($profil);
                         <label for="est_CPE">CPE</label>
                         <select id="est_CPE" name="est_CPE">
                             <option value="oui">Oui</option>
-                            <option value="non">Non</option>
+                            <option value="non" selected>Non</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="est_infirmerie">Infirmerie</label>
                         <select id="est_infirmerie" name="est_infirmerie">
                             <option value="oui">Oui</option>
-                            <option value="non">Non</option>
+                            <option value="non" selected>Non</option>
                         </select>
                     </div>
                 `,
@@ -263,8 +273,10 @@ $espaceTitle = 'Création compte ' . ucfirst($profil);
                     if (profil === 'eleve') {
                         loadClasses();
                         setupVilleAutocomplete();
+                        setupAdresseAutocomplete();
                     } else if (profil === 'professeur') {
                         loadMatieres();
+                        setupAdresseAutocomplete();
                     } else if (profil === 'parent') {
                         setupAdresseAutocomplete();
                     }
@@ -277,25 +289,50 @@ $espaceTitle = 'Création compte ' . ucfirst($profil);
             function loadClasses() {
                 const classeSelect = document.getElementById('classe');
                 if (classeSelect) {
-                    // Simuler le chargement des classes (à remplacer par un appel AJAX)
-                    const classes = [
-                        { niveau: 'Collège', classes: ['6A', '6B', '5A', '5B', '4A', '4B', '3A', '3B'] },
-                        { niveau: 'Lycée', classes: ['2ndA', '2ndB', '1èreA', '1èreB', 'TermA', 'TermB'] }
-                    ];
-                    
-                    classes.forEach(niveau => {
-                        const optgroup = document.createElement('optgroup');
-                        optgroup.label = niveau.niveau;
-                        
-                        niveau.classes.forEach(classe => {
-                            const option = document.createElement('option');
-                            option.value = classe;
-                            option.textContent = classe;
-                            optgroup.appendChild(option);
-                        });
-                        
-                        classeSelect.appendChild(optgroup);
-                    });
+                    // Vérifier si l'élément a déjà été chargé
+                    if (classeSelect.options.length <= 1) {
+                        // Tenter d'utiliser les données de l'établissement chargées par PHP
+                        <?php if (!empty($etablissementData) && isset($etablissementData['classes'])): ?>
+                            // Utiliser les données chargées par PHP
+                            const classes = <?php echo json_encode($etablissementData['classes']); ?>;
+                            
+                            // Parcourir les niveaux
+                            Object.keys(classes).forEach(niveau => {
+                                const optgroup = document.createElement('optgroup');
+                                optgroup.label = niveau;
+                                
+                                // Ajouter les classes de ce niveau
+                                classes[niveau].forEach(classe => {
+                                    const option = document.createElement('option');
+                                    option.value = classe;
+                                    option.textContent = classe;
+                                    optgroup.appendChild(option);
+                                });
+                                
+                                classeSelect.appendChild(optgroup);
+                            });
+                        <?php else: ?>
+                            // Fallback: données statiques
+                            const classes = [
+                                { niveau: 'Collège', classes: ['6A', '6B', '5A', '5B', '4A', '4B', '3A', '3B'] },
+                                { niveau: 'Lycée', classes: ['2ndA', '2ndB', '1èreA', '1èreB', 'TermA', 'TermB'] }
+                            ];
+                            
+                            classes.forEach(niveau => {
+                                const optgroup = document.createElement('optgroup');
+                                optgroup.label = niveau.niveau;
+                                
+                                niveau.classes.forEach(classe => {
+                                    const option = document.createElement('option');
+                                    option.value = classe;
+                                    option.textContent = classe;
+                                    optgroup.appendChild(option);
+                                });
+                                
+                                classeSelect.appendChild(optgroup);
+                            });
+                        <?php endif; ?>
+                    }
                 }
             }
             
@@ -303,29 +340,45 @@ $espaceTitle = 'Création compte ' . ucfirst($profil);
             function loadMatieres() {
                 const matiereSelect = document.getElementById('matiere');
                 if (matiereSelect) {
-                    // Simuler le chargement des matières (à remplacer par un appel AJAX)
-                    const matieres = [
-                        'Mathématiques', 
-                        'Français', 
-                        'Histoire-Géographie', 
-                        'Sciences Physiques', 
-                        'SVT', 
-                        'Anglais', 
-                        'Espagnol', 
-                        'Allemand', 
-                        'EPS', 
-                        'Arts Plastiques', 
-                        'Musique', 
-                        'Technologie', 
-                        'Sciences Économiques'
-                    ];
-                    
-                    matieres.forEach(matiere => {
-                        const option = document.createElement('option');
-                        option.value = matiere;
-                        option.textContent = matiere;
-                        matiereSelect.appendChild(option);
-                    });
+                    // Vérifier si l'élément a déjà été chargé
+                    if (matiereSelect.options.length <= 1) {
+                        <?php if (!empty($etablissementData) && isset($etablissementData['matieres'])): ?>
+                            // Utiliser les données chargées par PHP
+                            const matieres = <?php echo json_encode(array_column($etablissementData['matieres'], 'nom')); ?>;
+                            
+                            // Ajouter les options
+                            matieres.forEach(matiere => {
+                                const option = document.createElement('option');
+                                option.value = matiere;
+                                option.textContent = matiere;
+                                matiereSelect.appendChild(option);
+                            });
+                        <?php else: ?>
+                            // Fallback: données statiques
+                            const matieres = [
+                                'Mathématiques', 
+                                'Français', 
+                                'Histoire-Géographie', 
+                                'Sciences Physiques', 
+                                'SVT', 
+                                'Anglais', 
+                                'Espagnol', 
+                                'Allemand', 
+                                'EPS', 
+                                'Arts Plastiques', 
+                                'Musique', 
+                                'Technologie', 
+                                'Sciences Économiques'
+                            ];
+                            
+                            matieres.forEach(matiere => {
+                                const option = document.createElement('option');
+                                option.value = matiere;
+                                option.textContent = matiere;
+                                matiereSelect.appendChild(option);
+                            });
+                        <?php endif; ?>
+                    }
                 }
             }
             
@@ -342,35 +395,57 @@ $espaceTitle = 'Création compte ' . ucfirst($profil);
                             return;
                         }
                         
-                        // Simuler la recherche (à remplacer par un appel AJAX)
-                        setTimeout(() => {
-                            // Exemples de villes
-                            const villes = [
-                                'Paris', 'Marseille', 'Lyon', 'Toulouse', 'Nice', 'Nantes', 
-                                'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille'
-                            ];
-                            
-                            const filteredVilles = villes.filter(ville => 
-                                ville.toLowerCase().includes(query.toLowerCase())
-                            );
-                            
-                            if (filteredVilles.length > 0) {
-                                villesSuggestions.innerHTML = '';
-                                filteredVilles.forEach(ville => {
-                                    const div = document.createElement('div');
-                                    div.className = 'suggestion-item';
-                                    div.textContent = ville;
-                                    div.addEventListener('click', function() {
-                                        lieuNaissanceInput.value = ville;
-                                        villesSuggestions.style.display = 'none';
+                        // API gouvernementale pour les communes françaises
+                        fetch(`https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(query)}&boost=population&limit=5`)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.length > 0) {
+                                    villesSuggestions.innerHTML = '';
+                                    data.forEach(ville => {
+                                        const div = document.createElement('div');
+                                        div.className = 'suggestion-item';
+                                        div.textContent = `${ville.nom} (${ville.codeDepartement})`;
+                                        div.addEventListener('click', function() {
+                                            lieuNaissanceInput.value = `${ville.nom} (${ville.codeDepartement})`;
+                                            villesSuggestions.style.display = 'none';
+                                        });
+                                        villesSuggestions.appendChild(div);
                                     });
-                                    villesSuggestions.appendChild(div);
-                                });
-                                villesSuggestions.style.display = 'block';
-                            } else {
-                                villesSuggestions.style.display = 'none';
-                            }
-                        }, 300);
+                                    villesSuggestions.style.display = 'block';
+                                } else {
+                                    villesSuggestions.style.display = 'none';
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Erreur lors de la récupération des villes:', error);
+                                // Fallback avec données statiques en cas d'échec de l'API
+                                const villes = [
+                                    'Paris (75)', 'Marseille (13)', 'Lyon (69)', 'Toulouse (31)', 
+                                    'Nice (06)', 'Nantes (44)', 'Strasbourg (67)', 'Montpellier (34)', 
+                                    'Bordeaux (33)', 'Lille (59)'
+                                ];
+                                
+                                const filteredVilles = villes.filter(ville => 
+                                    ville.toLowerCase().includes(query.toLowerCase())
+                                );
+                                
+                                if (filteredVilles.length > 0) {
+                                    villesSuggestions.innerHTML = '';
+                                    filteredVilles.forEach(ville => {
+                                        const div = document.createElement('div');
+                                        div.className = 'suggestion-item';
+                                        div.textContent = ville;
+                                        div.addEventListener('click', function() {
+                                            lieuNaissanceInput.value = ville;
+                                            villesSuggestions.style.display = 'none';
+                                        });
+                                        villesSuggestions.appendChild(div);
+                                    });
+                                    villesSuggestions.style.display = 'block';
+                                } else {
+                                    villesSuggestions.style.display = 'none';
+                                }
+                            });
                     });
                 }
             }
@@ -381,60 +456,98 @@ $espaceTitle = 'Création compte ' . ucfirst($profil);
                 const adressesSuggestions = document.getElementById('adressesSuggestions');
                 
                 if (adresseInput && adressesSuggestions) {
+                    // Ajouter un délai pour éviter trop de requêtes
+                    let typingTimer;
+                    const doneTypingInterval = 300;
+                    
                     adresseInput.addEventListener('input', function() {
                         const query = this.value.trim();
+                        
+                        // Réinitialiser le timer à chaque frappe
+                        clearTimeout(typingTimer);
+                        
                         if (query.length < 3) {
                             adressesSuggestions.style.display = 'none';
                             return;
                         }
                         
-                        // Simuler la recherche (à remplacer par un appel AJAX)
-                        setTimeout(() => {
-                            // Exemples d'adresses
-                            const adresses = [
-                                '1 Rue de la Paix, 75002 Paris',
-                                '15 Avenue des Champs-Élysées, 75008 Paris',
-                                '25 Rue du Faubourg Saint-Honoré, 75008 Paris',
-                                '10 Place de la Concorde, 75001 Paris',
-                                '7 Boulevard Haussmann, 75009 Paris'
-                            ];
-                            
-                            const filteredAdresses = adresses.filter(adresse => 
-                                adresse.toLowerCase().includes(query.toLowerCase())
-                            );
-                            
-                            if (filteredAdresses.length > 0) {
-                                adressesSuggestions.innerHTML = '';
-                                filteredAdresses.forEach(adresse => {
-                                    const div = document.createElement('div');
-                                    div.className = 'suggestion-item';
-                                    div.textContent = adresse;
-                                    div.addEventListener('click', function() {
-                                        adresseInput.value = adresse;
+                        // Configurer un nouveau timer
+                        typingTimer = setTimeout(() => {
+                            // API Adresse du gouvernement français
+                            fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5`)
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.features && data.features.length > 0) {
+                                        adressesSuggestions.innerHTML = '';
+                                        data.features.forEach(feature => {
+                                            const div = document.createElement('div');
+                                            div.className = 'suggestion-item';
+                                            div.textContent = feature.properties.label;
+                                            div.addEventListener('click', function() {
+                                                adresseInput.value = feature.properties.label;
+                                                adressesSuggestions.style.display = 'none';
+                                            });
+                                            adressesSuggestions.appendChild(div);
+                                        });
+                                        adressesSuggestions.style.display = 'block';
+                                    } else {
                                         adressesSuggestions.style.display = 'none';
-                                    });
-                                    adressesSuggestions.appendChild(div);
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Erreur lors de la récupération des adresses:', error);
+                                    // Fallback avec données statiques en cas d'échec de l'API
+                                    const adresses = [
+                                        '1 Rue de la Paix, 75002 Paris',
+                                        '15 Avenue des Champs-Élysées, 75008 Paris',
+                                        '25 Rue du Faubourg Saint-Honoré, 75008 Paris',
+                                        '10 Place de la Concorde, 75001 Paris',
+                                        '7 Boulevard Haussmann, 75009 Paris'
+                                    ];
+                                    
+                                    const filteredAdresses = adresses.filter(adresse => 
+                                        adresse.toLowerCase().includes(query.toLowerCase())
+                                    );
+                                    
+                                    if (filteredAdresses.length > 0) {
+                                        adressesSuggestions.innerHTML = '';
+                                        filteredAdresses.forEach(adresse => {
+                                            const div = document.createElement('div');
+                                            div.className = 'suggestion-item';
+                                            div.textContent = adresse;
+                                            div.addEventListener('click', function() {
+                                                adresseInput.value = adresse;
+                                                adressesSuggestions.style.display = 'none';
+                                            });
+                                            adressesSuggestions.appendChild(div);
+                                        });
+                                        adressesSuggestions.style.display = 'block';
+                                    } else {
+                                        adressesSuggestions.style.display = 'none';
+                                    }
                                 });
-                                adressesSuggestions.style.display = 'block';
-                            } else {
-                                adressesSuggestions.style.display = 'none';
-                            }
-                        }, 300);
+                        }, doneTypingInterval);
                     });
                 }
             }
             
-            function initAutocompletion() {
-                document.addEventListener('click', function(e) {
-                    if (villesSuggestions && lieuNaissanceInput && !lieuNaissanceInput.contains(e.target) && !villesSuggestions.contains(e.target)) {
-                        villesSuggestions.style.display = 'none';
-                    }
-                    
-                    if (adressesSuggestions && adresseInput && !adresseInput.contains(e.target) && !adressesSuggestions.contains(e.target)) {
-                        adressesSuggestions.style.display = 'none';
-                    }
-                });
-            }
+            // Fermer les suggestions en cas de clic en dehors
+            document.addEventListener('click', function(e) {
+                const villesSuggestions = document.getElementById('villesSuggestions');
+                const adressesSuggestions = document.getElementById('adressesSuggestions');
+                const lieuNaissanceInput = document.getElementById('lieu_naissance');
+                const adresseInput = document.getElementById('adresse');
+                
+                if (villesSuggestions && lieuNaissanceInput && 
+                    !lieuNaissanceInput.contains(e.target) && !villesSuggestions.contains(e.target)) {
+                    villesSuggestions.style.display = 'none';
+                }
+                
+                if (adressesSuggestions && adresseInput && 
+                    !adresseInput.contains(e.target) && !adressesSuggestions.contains(e.target)) {
+                    adressesSuggestions.style.display = 'none';
+                }
+            });
             
             // Écouter les changements sur le sélecteur de profil
             document.getElementById('profil').addEventListener('change', updateFormFields);
