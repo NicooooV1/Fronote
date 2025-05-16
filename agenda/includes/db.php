@@ -1,6 +1,6 @@
 <?php
 /**
- * Database connection for notes module
+ * Database connection for agenda module
  */
 
 // Locate and include the API path helper

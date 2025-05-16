@@ -7,9 +7,9 @@ include 'includes/header.php';
 include 'includes/db.php';
 include 'includes/auth.php';
 
-// Vérifier si l'utilisateur a les permissions pour ajouter des notes
-if (!canManageNotes()) {
-  header('Location: notes.php');
+// Vérifier si l'utilisateur a les permissions pour ajouter des devoirs
+if (!canManageDevoirs()) {
+  header('Location: cahierdetextes.php');
   exit;
 }
 
@@ -24,10 +24,6 @@ $etablissement_data = [];
 if (file_exists($json_file)) {
   $etablissement_data = json_decode(file_get_contents($json_file), true);
 }
-
-// Récupérer la liste des élèves depuis la base de données
-$stmt_eleves = $pdo->query('SELECT id, nom, prenom, classe FROM eleves ORDER BY nom, prenom');
-$eleves = $stmt_eleves->fetchAll();
 
 // Récupérer la liste des professeurs depuis la base de données
 $stmt_profs = $pdo->query('SELECT id, nom, prenom, matiere FROM professeurs ORDER BY nom, prenom');
@@ -44,9 +40,12 @@ if (isTeacher()) {
 ?>
 
 <div class="container">
-  <h3>Ajouter une note</h3>
+  <h3>Ajouter un devoir</h3>
   
   <form method="post">
+    <label for="titre">Titre:</label>
+    <input type="text" name="titre" id="titre" placeholder="Titre du devoir" required>
+
     <!-- Champ pour la classe -->
     <label for="classe">Classe:</label>
     <select name="classe" id="classe" required>
@@ -73,15 +72,6 @@ if (isTeacher()) {
           <?php endforeach; ?>
         </optgroup>
       <?php endif; ?>
-    </select>
-
-    <!-- Champ pour l'élève (sélection depuis la base de données) -->
-    <label for="nom_eleve">Élève:</label>
-    <select name="nom_eleve" id="nom_eleve" required>
-      <option value="">Sélectionnez un élève</option>
-      <?php foreach ($eleves as $eleve): ?>
-        <option value="<?= htmlspecialchars($eleve['prenom']) ?>" data-classe="<?= htmlspecialchars($eleve['classe']) ?>"><?= htmlspecialchars($eleve['prenom'] . ' ' . $eleve['nom']) ?> (<?= htmlspecialchars($eleve['classe']) ?>)</option>
-      <?php endforeach; ?>
     </select>
 
     <!-- Champ pour la matière -->
@@ -111,7 +101,7 @@ if (isTeacher()) {
     <!-- Champ pour le professeur (sélection depuis la base de données) -->
     <label for="nom_professeur">Professeur:</label>
     <?php if (isTeacher()): ?>
-      <!-- Si c'est un professeur, il ne peut ajouter que des notes en son nom -->
+      <!-- Si c'est un professeur, il ne peut ajouter que des devoirs en son nom -->
       <input type="text" name="nom_professeur" id="nom_professeur" value="<?= htmlspecialchars($nom_professeur) ?>" readonly>
     <?php else: ?>
       <!-- Admin et vie scolaire peuvent choisir n'importe quel professeur -->
@@ -123,57 +113,41 @@ if (isTeacher()) {
       </select>
     <?php endif; ?>
     
-    <label for="note">Note:</label>
-    <input type="number" name="note" id="note" max="20" min="0" step="0.1" placeholder="Note sur 20" required>
+    <label for="description">Description:</label>
+    <textarea name="description" id="description" rows="6" placeholder="Description détaillée du devoir" required></textarea>
     
-    <label for="date_ajout">Date:</label>
+    <label for="date_ajout">Date d'ajout:</label>
     <input type="date" name="date_ajout" id="date_ajout" value="<?= date('Y-m-d') ?>" required>
     
+    <label for="date_rendu">Date de rendu:</label>
+    <input type="date" name="date_rendu" id="date_rendu" required>
+    
     <div style="display: flex; gap: 10px; margin-top: 10px;">
-      <button type="submit">Ajouter la note</button>
-      <a href="notes.php" class="button button-secondary" style="flex: 1; text-align: center;">Annuler</a>
+      <button type="submit">Ajouter le devoir</button>
+      <a href="cahierdetextes.php" class="button button-secondary" style="flex: 1; text-align: center;">Annuler</a>
     </div>
   </form>
 </div>
 
 <script>
-// Script pour filtrer les élèves en fonction de la classe sélectionnée
-document.getElementById('classe').addEventListener('change', function() {
-  const classeSelectionnee = this.value;
-  const selectEleve = document.getElementById('nom_eleve');
-  const options = selectEleve.options;
-  
-  // Réinitialiser le sélecteur d'élève
-  selectEleve.selectedIndex = 0;
-  
-  // Afficher/cacher les options en fonction de la classe
-  for (let i = 1; i < options.length; i++) {
-    const classeEleve = options[i].getAttribute('data-classe');
-    if (classeSelectionnee === '' || classeEleve === classeSelectionnee) {
-      options[i].style.display = '';
-    } else {
-      options[i].style.display = 'none';
-    }
-  }
-});
-
-// Script pour définir automatiquement la classe lorsqu'un élève est sélectionné
-document.getElementById('nom_eleve').addEventListener('change', function() {
+// Si un administrateur ou vie scolaire sélectionne un professeur, 
+// sélectionner automatiquement sa matière
+<?php if (!isTeacher()): ?>
+document.getElementById('nom_professeur').addEventListener('change', function() {
   if (this.selectedIndex > 0) {
-    const classeEleve = this.options[this.selectedIndex].getAttribute('data-classe');
-    const selectClasse = document.getElementById('classe');
+    const matiereProf = this.options[this.selectedIndex].getAttribute('data-matiere');
+    const selectMatiere = document.getElementById('nom_matiere');
     
-    // Parcourir toutes les options pour trouver la classe correspondante
-    for (let i = 0; i < selectClasse.options.length; i++) {
-      if (selectClasse.options[i].value === classeEleve) {
-        selectClasse.selectedIndex = i;
+    // Parcourir toutes les options pour trouver la matière correspondante
+    for (let i = 0; i < selectMatiere.options.length; i++) {
+      if (selectMatiere.options[i].value === matiereProf) {
+        selectMatiere.selectedIndex = i;
         break;
       }
     }
   }
 });
 
-<?php if (!isTeacher()): ?>
 // Filtrer les professeurs en fonction de la matière sélectionnée
 document.getElementById('nom_matiere').addEventListener('change', function() {
   const matiereSelectionnee = this.value;
@@ -193,38 +167,33 @@ document.getElementById('nom_matiere').addEventListener('change', function() {
     }
   }
 });
+<?php endif; ?>
 
-// Si un administrateur ou vie scolaire sélectionne un professeur, 
-// sélectionner automatiquement sa matière
-document.getElementById('nom_professeur').addEventListener('change', function() {
-  if (this.selectedIndex > 0) {
-    const matiereProf = this.options[this.selectedIndex].getAttribute('data-matiere');
-    const selectMatiere = document.getElementById('nom_matiere');
-    
-    // Parcourir toutes les options pour trouver la matière correspondante
-    for (let i = 0; i < selectMatiere.options.length; i++) {
-      if (selectMatiere.options[i].value === matiereProf) {
-        selectMatiere.selectedIndex = i;
-        break;
-      }
-    }
+// Valider que la date de rendu est ultérieure à la date d'ajout
+document.querySelector('form').addEventListener('submit', function(e) {
+  const dateAjout = new Date(document.getElementById('date_ajout').value);
+  const dateRendu = new Date(document.getElementById('date_rendu').value);
+  
+  if (dateRendu < dateAjout) {
+    e.preventDefault();
+    alert("La date de rendu doit être ultérieure à la date d'ajout.");
   }
 });
-<?php endif; ?>
 </script>
 
 <?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $stmt = $pdo->prepare('INSERT INTO notes (nom_eleve, nom_matiere, nom_professeur, note, date_ajout, classe) VALUES (?, ?, ?, ?, ?, ?)');
+  $stmt = $pdo->prepare('INSERT INTO devoirs (titre, description, classe, nom_matiere, nom_professeur, date_ajout, date_rendu) VALUES (?, ?, ?, ?, ?, ?, ?)');
   $stmt->execute([
-    $_POST['nom_eleve'],
+    $_POST['titre'],
+    $_POST['description'],
+    $_POST['classe'],
     $_POST['nom_matiere'],
     $_POST['nom_professeur'],
-    $_POST['note'],
     $_POST['date_ajout'],
-    $_POST['classe']
+    $_POST['date_rendu']
   ]);
-  header('Location: notes.php');
+  header('Location: cahierdetextes.php');
   exit;
 }
 

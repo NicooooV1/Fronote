@@ -1,12 +1,24 @@
 <?php
-session_start();
+// Démarrer la mise en mémoire tampon de sortie pour éviter l'erreur "headers already sent"
+ob_start();
+
+// Nous n'avons plus besoin de démarrer la session, car c'est fait dans Auth
 include 'includes/header.php'; 
 include 'includes/db.php';
-include 'includes/auth.php'; // Pour vérifier l'authentification
+include 'includes/auth.php';
+
+// Récupérer les informations de l'utilisateur connecté
+$user = $_SESSION['user'];
+$user_fullname = $user['prenom'] . ' ' . $user['nom'];
+$user_role = $user['profil']; 
 ?>
 
 <div class="container">
-  <?php if (isTeacher()): ?>
+  <div class="user-info">
+    <p>Connecté en tant que: <?= htmlspecialchars($user_fullname) ?> (<?= htmlspecialchars($user_role) ?>)</p>
+  </div>
+
+  <?php if (canManageNotes()): ?>
   <div class="actions">
     <a href="ajouter_note.php" class="button">Ajouter une note</a>
   </div>
@@ -15,6 +27,10 @@ include 'includes/auth.php'; // Pour vérifier l'authentification
   <div class="filter-buttons">
     <a href="?order=date" class="button <?php echo (!isset($_GET['order']) || $_GET['order'] == 'date') ? '' : 'button-secondary'; ?>">Par date</a>
     <a href="?order=matiere" class="button <?php echo (isset($_GET['order']) && $_GET['order'] == 'matiere') ? '' : 'button-secondary'; ?>">Par matière</a>
+    <?php if (!isStudent()): ?>
+    <a href="?order=classe" class="button <?php echo (isset($_GET['order']) && $_GET['order'] == 'classe') ? '' : 'button-secondary'; ?>">Par classe</a>
+    <a href="?order=eleve" class="button <?php echo (isset($_GET['order']) && $_GET['order'] == 'eleve') ? '' : 'button-secondary'; ?>">Par élève</a>
+    <?php endif; ?>
   </div>
 
   <div class="notes">
@@ -38,6 +54,8 @@ include 'includes/auth.php'; // Pour vérifier l'authentification
       } else {
         $stmt = $pdo->query('SELECT * FROM notes ORDER BY date_ajout DESC');
       }
+      
+      $stmt = $pdo->query($sql);
     }
     
     // Affichage des notes
@@ -66,12 +84,15 @@ include 'includes/auth.php'; // Pour vérifier l'authentification
           </div>
         </div>";
         
-        // Afficher les boutons de modification et suppression uniquement pour les professeurs
-        if (isTeacher()) {
-          echo "<div style='margin-top: 10px; display: flex; gap: 10px;'>
-            <a href='modifier_note.php?id={$note['id']}' class='button button-secondary'>Modifier</a>
-            <a href='supprimer_note.php?id={$note['id']}' class='button button-secondary' onclick='return confirm(\"Êtes-vous sûr de vouloir supprimer cette note ?\");'>Supprimer</a>
-          </div>";
+        // Afficher les boutons de modification et suppression pour les rôles autorisés
+        if (canManageNotes()) {
+          // Si c'est un professeur, vérifier qu'il a créé la note
+          if (!isTeacher() || (isTeacher() && $note['nom_professeur'] == $user_fullname)) {
+            echo "<div style='margin-top: 10px; display: flex; gap: 10px;'>
+              <a href='modifier_note.php?id={$note['id']}' class='button button-secondary'>Modifier</a>
+              <a href='supprimer_note.php?id={$note['id']}' class='button button-secondary' onclick='return confirm(\"Êtes-vous sûr de vouloir supprimer cette note ?\");'>Supprimer</a>
+            </div>";
+          }
         }
         
       echo "</div>";
@@ -86,3 +107,8 @@ include 'includes/auth.php'; // Pour vérifier l'authentification
 
 </body>
 </html>
+
+<?php
+// Terminer la mise en mémoire tampon et envoyer la sortie
+ob_end_flush();
+?>

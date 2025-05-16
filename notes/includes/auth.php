@@ -1,6 +1,6 @@
 <?php
 /**
- * Fichier de gestion des fonctions d'authentification
+ * Authentication functions for notes module
  */
 
 /**
@@ -53,6 +53,9 @@ function requireLogin() {
     */
 }
 
-// Vérifie que l'utilisateur est connecté pour accéder à toutes les pages du système de notes
-requireLogin();
+// No need to redefine functions that already exist in the API
+// Only declare functions that are specific to this module that aren't already defined
+
+// Module-specific functions can be added here, checking if they already exist first
+// (though they should typically be added to the central API instead)
 ?>
