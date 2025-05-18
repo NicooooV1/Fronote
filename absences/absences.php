@@ -2,20 +2,20 @@
 // Démarrer la mise en mémoire tampon
 ob_start();
 
-// Inclure les fichiers nécessaires - use absolute directory paths
+// Inclure les fichiers nécessaires
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/db.php';
 
-// Check if functions.php exists, and if not, create it
+// Vérifier si functions.php existe, et sinon, créer un fichier de base
 $functions_file = __DIR__ . '/includes/functions.php';
 if (!file_exists($functions_file)) {
-    // Create a basic functions file with required functions
+    // Créer un fichier de fonctions de base
     $functions_content = '<?php
 /**
  * Fonctions utilitaires pour la gestion des absences et retards
  */
 
-// Dummy implementations if the real functions file is missing
+// Implémentations de base si le fichier de fonctions réel est manquant
 function getAbsencesEleve($pdo, $id_eleve, $date_debut = null, $date_fin = null) {
     return [];
 }
@@ -29,10 +29,19 @@ function getAbsencesClasse($pdo, $classe, $date_debut = null, $date_fin = null) 
 
 require_once $functions_file;
 
-// Vérifier que l'utilisateur est connecté
-$user = requireLogin();
+// Vérifier que l'utilisateur est connecté - en utilisant isLoggedIn() au lieu de requireLogin()
+if (!isLoggedIn()) {
+    header('Location: /~u22405372/SAE/Pronote/login/public/index.php');
+    exit;
+}
 
 // Récupérer les informations de l'utilisateur connecté
+$user = $_SESSION['user'] ?? null;
+if (!$user) {
+    header('Location: /~u22405372/SAE/Pronote/login/public/index.php');
+    exit;
+}
+
 $user_fullname = $user['prenom'] . ' ' . $user['nom'];
 $user_role = $user['profil'];
 $user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));

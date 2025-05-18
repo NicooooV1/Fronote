@@ -6,10 +6,20 @@ ob_start();
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/db.php';
 
-// Vérifier que l'utilisateur est connecté
-$user = requireLogin();
+// Vérifier que l'utilisateur est connecté - en utilisant isLoggedIn() au lieu de requireLogin()
+if (!isLoggedIn()) {
+    // Rediriger vers la page de connexion
+    header('Location: /~u22405372/SAE/Pronote/login/public/index.php');
+    exit;
+}
 
 // Récupérer les informations de l'utilisateur connecté
+$user = $_SESSION['user'] ?? null;
+if (!$user) {
+    header('Location: /~u22405372/SAE/Pronote/login/public/index.php');
+    exit;
+}
+
 $user_fullname = $user['prenom'] . ' ' . $user['nom'];
 $user_role = $user['profil'];
 $user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));

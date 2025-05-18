@@ -3,8 +3,8 @@
 ob_start();
 
 // Inclure les fichiers nécessaires
-include_once 'includes/db.php';
-include_once 'includes/auth.php';
+require_once 'includes/auth.php';
+require_once 'includes/db.php';
 
 // Vérifier si l'utilisateur est connecté
 if (!isLoggedIn()) {
@@ -27,14 +27,17 @@ $user_role = $user['profil'];
 $user_fullname = $user['prenom'] . ' ' . $user['nom'];
 $user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
 
+// Initialiser les variables pour éviter les notices
+$order = [];
+$order['field'] = isset($_GET['order']) ? $_GET['order'] : 'date_rendu';
+$order['direction'] = isset($_GET['dir']) && $_GET['dir'] === 'asc' ? 'asc' : 'desc';
+$filterClass = isset($_GET['classe']) ? $_GET['classe'] : '';
+$filterMatiere = isset($_GET['matiere']) ? $_GET['matiere'] : '';
+$filterProfesseur = isset($_GET['professeur']) ? $_GET['professeur'] : '';
+$displayMode = isset($_GET['mode']) ? $_GET['mode'] : 'list';
+
 // Charger la liste des devoirs
-$devoirs = [];
 try {
-    $sql = "SELECT * FROM devoirs";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute();
-    $devoirs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
     // Vérifier si la table existe
     $tableExists = false;
     try {
@@ -46,48 +49,96 @@ try {
     
     if (!$tableExists) {
         // Créer la table si elle n'existe pas
-        try {
-            $pdo->exec("
-                CREATE TABLE devoirs (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    titre VARCHAR(255) NOT NULL,
-                    description TEXT,
-                    classe VARCHAR(50) NOT NULL,
-                    nom_matiere VARCHAR(100) NOT NULL,
-                    nom_professeur VARCHAR(100) NOT NULL,
-                    date_ajout DATE NOT NULL,
-                    date_rendu DATE NOT NULL,
-                    date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ");
-            
-            // Réessayer de charger les devoirs (la table est maintenant vide)
-            $stmt = $pdo->query("SELECT * FROM devoirs");
-            $devoirs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $createError) {
-            // Échec de la création de la table
-            error_log("Erreur lors de la création de la table devoirs: " . $createError->getMessage());
-        }
-    } else {
-        // Autre erreur avec la table existante
-        error_log("Erreur lors de la récupération des devoirs: " . $e->getMessage());
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS devoirs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                titre VARCHAR(255) NOT NULL,
+                description TEXT,
+                classe VARCHAR(50) NOT NULL,
+                nom_matiere VARCHAR(100) NOT NULL,
+                nom_professeur VARCHAR(100) NOT NULL,
+                date_ajout DATE NOT NULL,
+                date_rendu DATE NOT NULL,
+                date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ");
     }
+    
+    // Construire la requête SQL en fonction des filtres
+    $sql = "SELECT * FROM devoirs WHERE 1=1";
+    $params = [];
+    
+    if (!empty($filterClass)) {
+        $sql .= " AND classe = ?";
+        $params[] = $filterClass;
+    }
+    
+    if (!empty($filterMatiere)) {
+        $sql .= " AND nom_matiere = ?";
+        $params[] = $filterMatiere;
+    }
+    
+    if (!empty($filterProfesseur)) {
+        $sql .= " AND nom_professeur = ?";
+        $params[] = $filterProfesseur;
+    }
+    
+    // Tri
+    $validFields = ['date_rendu', 'titre', 'nom_matiere', 'classe', 'nom_professeur'];
+    $orderField = in_array($order['field'], $validFields) ? $order['field'] : 'date_rendu';
+    $orderDir = strtoupper($order['direction']) === 'ASC' ? 'ASC' : 'DESC';
+    
+    $sql .= " ORDER BY " . $orderField . " " . $orderDir;
+    
+    // Exécuter la requête
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $devoirs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+} catch (PDOException $e) {
+    // Journal d'erreurs
+    error_log("Erreur dans cahierdetextes.php: " . $e->getMessage());
+    $devoirs = [];
 }
 
-// Variable globale pour vérifier les fonctions disponibles
-$functionsAvailable = [
-    'canManageDevoirs' => function_exists('canManageDevoirs'),
-    'canManageCahierTextes' => function_exists('canManageCahierTextes')
-];
+// Définir les variables pour les filtres de l'interface utilisateur
+$classes = [];
+$matieres = [];
+$professeurs = [];
 
-// Fonction de secours si la fonction canManageDevoirs n'est pas disponible
+// Si des devoirs existent, extraire les valeurs uniques pour les filtres
+if (!empty($devoirs)) {
+    foreach ($devoirs as $devoir) {
+        if (!in_array($devoir['classe'], $classes)) {
+            $classes[] = $devoir['classe'];
+        }
+        
+        if (!in_array($devoir['nom_matiere'], $matieres)) {
+            $matieres[] = $devoir['nom_matiere'];
+        }
+        
+        if (!in_array($devoir['nom_professeur'], $professeurs)) {
+            $professeurs[] = $devoir['nom_professeur'];
+        }
+    }
+    
+    // Trier les listes pour une meilleure présentation
+    sort($classes);
+    sort($matieres);
+    sort($professeurs);
+}
+
+// Fonction pour vérifier l'existence des fonctions d'autorisation
 if (!function_exists('canManageDevoirs')) {
     function canManageDevoirs() {
         $role = isset($_SESSION['user']) ? $_SESSION['user']['profil'] : '';
         return in_array($role, ['administrateur', 'professeur', 'vie_scolaire']);
     }
 }
+
+include_once 'includes/header.php';
 ?>
+
 <!DOCTYPE html>
 <html>
 <head>

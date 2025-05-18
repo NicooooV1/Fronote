@@ -32,18 +32,114 @@ if (!$user) {
 $user_fullname = $user['prenom'] . ' ' . $user['nom'];
 $user_role = $user['profil']; 
 
-// Récupérer toutes les classes disponibles
-$stmt_classes = $pdo->query('SELECT DISTINCT classe FROM notes ORDER BY classe');
-$classes = $stmt_classes->fetchAll(PDO::FETCH_COLUMN);
+// Vérifier si la table notes existe
+try {
+    $check_table = $pdo->query("SHOW TABLES LIKE 'notes'");
+    $table_exists = $check_table && $check_table->rowCount() > 0;
+} catch (PDOException $e) {
+    $table_exists = false;
+}
+
+// Si la table n'existe pas, la créer avec la structure correcte
+if (!$table_exists) {
+    try {
+        $create_table = "CREATE TABLE IF NOT EXISTS `notes` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `eleve_id` INT NOT NULL,
+            `nom_eleve` VARCHAR(100) NOT NULL,
+            `classe` VARCHAR(50) NOT NULL,
+            `matiere` VARCHAR(100) NOT NULL,
+            `note` FLOAT NOT NULL,
+            `note_sur` FLOAT NOT NULL DEFAULT 20,
+            `commentaire` TEXT,
+            `nom_professeur` VARCHAR(100) NOT NULL,
+            `date_creation` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `date_evaluation` DATE DEFAULT NULL
+        )";
+        $pdo->exec($create_table);
+        $table_exists = true;
+    } catch (PDOException $e) {
+        error_log("Erreur lors de la création de la table notes: " . $e->getMessage());
+    }
+}
+
+// Vérifier et ajouter les colonnes nécessaires si elles n'existent pas
+if ($table_exists) {
+    $required_columns = [
+        'matiere' => 'VARCHAR(100) NOT NULL',
+        'date_evaluation' => 'DATE DEFAULT NULL',
+        'date_creation' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+    ];
+    
+    foreach ($required_columns as $column => $definition) {
+        try {
+            $check_column = $pdo->query("SHOW COLUMNS FROM notes LIKE '$column'");
+            $column_exists = $check_column && $check_column->rowCount() > 0;
+            
+            if (!$column_exists) {
+                $pdo->exec("ALTER TABLE notes ADD COLUMN $column $definition");
+                error_log("Colonne '$column' ajoutée à la table notes");
+            }
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la vérification ou ajout de la colonne $column: " . $e->getMessage());
+        }
+    }
+}
+
+// Récupérer toutes les classes disponibles après s'être assuré que la table existe
+$classes = [];
+try {
+    if ($table_exists) {
+        $stmt_classes = $pdo->query('SELECT DISTINCT classe FROM notes ORDER BY classe');
+        $classes = $stmt_classes->fetchAll(PDO::FETCH_COLUMN);
+    }
+} catch (PDOException $e) {
+    error_log("Erreur lors de la récupération des classes: " . $e->getMessage());
+}
 
 // Définir la classe sélectionnée (si présente dans l'URL ou par défaut la première)
 $selected_class = isset($_GET['classe']) ? $_GET['classe'] : ($classes[0] ?? '');
+$classe_selectionnee = $selected_class; // Ajouter cette variable pour corriger l'erreur
+
+// Définir le trimestre sélectionné (si présent dans l'URL ou par défaut le premier)
+$trimestre_selectionne = isset($_GET['trimestre']) ? $_GET['trimestre'] : 1;
 
 // Définir la matière sélectionnée (si présente dans l'URL ou vide par défaut)
 $selected_subject = isset($_GET['matiere']) ? $_GET['matiere'] : '';
 
-// Définir le filtre de date
+// Définir le filtre de date - vérifier d'abord si les colonnes existent
 $date_filter = isset($_GET['date']) ? $_GET['date'] : '';
+
+// Déterminer les colonnes à utiliser pour le tri
+try {
+    $check_date_evaluation = $pdo->query("SHOW COLUMNS FROM notes LIKE 'date_evaluation'");
+    $date_evaluation_exists = $check_date_evaluation && $check_date_evaluation->rowCount() > 0;
+    
+    $check_date_creation = $pdo->query("SHOW COLUMNS FROM notes LIKE 'date_creation'");
+    $date_creation_exists = $check_date_creation && $check_date_creation->rowCount() > 0;
+    
+    $check_matiere = $pdo->query("SHOW COLUMNS FROM notes LIKE 'matiere'");
+    $matiere_exists = $check_matiere && $check_matiere->rowCount() > 0;
+} catch (PDOException $e) {
+    $date_evaluation_exists = false;
+    $date_creation_exists = false;
+    $matiere_exists = false;
+    error_log("Erreur lors de la vérification des colonnes: " . $e->getMessage());
+}
+
+// Déterminer la colonne de date à utiliser pour le tri
+$date_column = $date_evaluation_exists ? 'date_evaluation' : ($date_creation_exists ? 'date_creation' : 'id');
+
+// Récupérer toutes les matières disponibles
+$matieres = [];
+if ($matiere_exists) {
+    try {
+        $stmt_matieres = $pdo->query('SELECT DISTINCT matiere FROM notes ORDER BY matiere');
+        $matieres = $stmt_matieres->fetchAll(PDO::FETCH_COLUMN);
+    } catch (PDOException $e) {
+        error_log("Erreur lors de la récupération des matières: " . $e->getMessage());
+    }
+}
 
 // Construire la requête de base
 $query = 'SELECT * FROM notes WHERE 1=1';
@@ -55,14 +151,19 @@ if (!empty($selected_class)) {
     $params[] = $selected_class;
 }
 
-if (!empty($selected_subject)) {
+if (!empty($selected_subject) && $matiere_exists) {
     $query .= ' AND matiere = ?';
     $params[] = $selected_subject;
 }
 
 if (!empty($date_filter)) {
-    $query .= ' AND date_evaluation = ?';
-    $params[] = $date_filter;
+    if ($date_evaluation_exists) {
+        $query .= " AND date_evaluation = ?";
+        $params[] = $date_filter;
+    } else if ($date_creation_exists) {
+        $query .= " AND DATE(date_creation) = ?";
+        $params[] = $date_filter;
+    }
 }
 
 // Si l'utilisateur est un professeur (et pas un admin), limiter aux notes qu'il a créées
@@ -80,466 +181,180 @@ if (isStudent()) {
 // Si l'utilisateur est un parent, limiter aux notes concernant son/ses enfant(s)
 if (isParent()) {
     // Récupérer les IDs des enfants
-    $stmt_enfants = $pdo->prepare('SELECT eleve_id FROM parents_eleves WHERE parent_id = ?');
-    $stmt_enfants->execute([$user['id']]);
-    $enfants = $stmt_enfants->fetchAll(PDO::FETCH_COLUMN);
-    
-    if (!empty($enfants)) {
-        $placeholders = implode(',', array_fill(0, count($enfants), '?'));
-        $query .= ' AND eleve_id IN (' . $placeholders . ')';
-        $params = array_merge($params, $enfants);
-    } else {
-        // Si le parent n'a pas d'enfant enregistré, ne rien afficher
+    try {
+        $stmt_enfants = $pdo->prepare('SELECT eleve_id FROM parents_eleves WHERE parent_id = ?');
+        $stmt_enfants->execute([$user['id']]);
+        $enfants = $stmt_enfants->fetchAll(PDO::FETCH_COLUMN);
+        
+        if (!empty($enfants)) {
+            $placeholders = implode(',', array_fill(0, count($enfants), '?'));
+            $query .= ' AND eleve_id IN (' . $placeholders . ')';
+            $params = array_merge($params, $enfants);
+        } else {
+            // Si le parent n'a pas d'enfant enregistré, ne rien afficher
+            $query .= ' AND 1=0';
+        }
+    } catch (PDOException $e) {
+        error_log("Erreur lors de la récupération des enfants: " . $e->getMessage());
+        // En cas d'erreur, ne rien afficher par défaut
         $query .= ' AND 1=0';
     }
 }
 
-// Ajouter l'ordre
-$query .= ' ORDER BY date_evaluation DESC, matiere ASC';
+// Ajouter l'ordre en s'assurant que les colonnes existent
+if ($matiere_exists && $date_column !== 'id') {
+    $query .= " ORDER BY $date_column DESC, matiere ASC";
+} else if ($date_column !== 'id') {
+    $query .= " ORDER BY $date_column DESC";
+} else {
+    $query .= " ORDER BY id DESC";
+}
 
 // Préparer et exécuter la requête
-$stmt = $pdo->prepare($query);
-$stmt->execute($params);
-$notes = $stmt->fetchAll();
-
-// Récupérer les matières disponibles
-$stmt_matieres = $pdo->query('SELECT DISTINCT matiere FROM notes ORDER BY matiere');
-$matieres = $stmt_matieres->fetchAll(PDO::FETCH_COLUMN);
+try {
+    $stmt = $pdo->prepare($query);
+    $stmt->execute($params);
+    $notes = $stmt->fetchAll();
+} catch (PDOException $e) {
+    error_log("Erreur lors de l'exécution de la requête: " . $e->getMessage());
+    $notes = [];
+}
 
 // Récupérer les dates d'évaluation disponibles
-$stmt_dates = $pdo->query('SELECT DISTINCT date_evaluation FROM notes ORDER BY date_evaluation DESC');
-$dates = $stmt_dates->fetchAll(PDO::FETCH_COLUMN);
+$dates = [];
+try {
+    if ($date_evaluation_exists) {
+        $sql_dates = "SELECT DISTINCT date_evaluation FROM notes WHERE date_evaluation IS NOT NULL ORDER BY date_evaluation DESC";
+        $stmt_dates = $pdo->query($sql_dates);
+        $dates = $stmt_dates->fetchAll(PDO::FETCH_COLUMN);
+    } else if ($date_creation_exists) {
+        $sql_dates = "SELECT DISTINCT DATE(date_creation) as date FROM notes ORDER BY date DESC";
+        $stmt_dates = $pdo->query($sql_dates);
+        $dates = $stmt_dates->fetchAll(PDO::FETCH_COLUMN);
+    }
+} catch (PDOException $e) {
+    error_log("Erreur lors de la récupération des dates: " . $e->getMessage());
+}
 ?>
 
-<div class="container">
-  <!-- En-tête avec barre verte -->
-  <div class="header-bar"></div>
-  
-  <!-- Menu supérieur et filtres -->
-  <div class="main-header">
-    <h2>Classes de l'établissement</h2>
-    <div class="classes-buttons">
-      <?php foreach ($classes as $classe): ?>
-        <a href="?classe=<?= $classe ?>&trimestre=<?= $trimestre_selectionne ?>" 
-           class="classe-btn <?= $classe == $classe_selectionnee ? 'active' : '' ?>">
-          <?= $classe ?>
-        </a>
-      <?php endforeach; ?>
-    </div>
-    
-    <div class="filters-row">
-      <div class="filter-controls">
-        <select id="trimestre-select" onchange="window.location.href='?classe=<?= $classe_selectionnee ?>&trimestre='+this.value<?= $eleve_selectionne ? '&eleve='.urlencode($eleve_selectionne) : '' ?>'">
-          <option value="1" <?= $trimestre_selectionne == 1 ? 'selected' : '' ?>>Trimestre 1</option>
-          <option value="2" <?= $trimestre_selectionne == 2 ? 'selected' : '' ?>>Trimestre 2</option>
-          <option value="3" <?= $trimestre_selectionne == 3 ? 'selected' : '' ?>>Trimestre 3</option>
-        </select>
-      </div>
-    </div>
-  </div>
-  
-  <!-- Bouton Ajouter une note -->
-  <?php if (canManageNotes()): ?>
-  <div class="actions-bar">
-    <a href="ajouter_note.php" class="btn-add-note">Ajouter une note</a>
-  </div>
-  <?php endif; ?>
-  
-  <?php if ($classe_selectionnee): ?>
-    <!-- Récupérer tous les élèves de la classe sélectionnée -->
-    <?php
-    $stmt_eleves = $pdo->prepare("SELECT DISTINCT nom_eleve FROM notes WHERE classe = ? ORDER BY nom_eleve");
-    $stmt_eleves->execute([$classe_selectionnee]);
-    $eleves = $stmt_eleves->fetchAll(PDO::FETCH_COLUMN);
-    ?>
-    
-    <?php if (!$eleve_selectionne): ?>
-      <!-- Affichage amélioré de la liste des élèves -->
-      <div class="eleves-section">
-        <div class="eleves-grid">
-          <?php foreach ($eleves as $eleve): ?>
-            <a href="?classe=<?= $classe_selectionnee ?>&trimestre=<?= $trimestre_selectionne ?>&eleve=<?= urlencode($eleve) ?>" class="eleve-item">
-              <span class="eleve-bullet"></span>
-              <span class="eleve-nom"><?= htmlspecialchars($eleve) ?></span>
+<!-- Structure HTML de la page -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notes - Pronote</title>
+    <link rel="stylesheet" href="../agenda/assets/css/calendar.css">
+    <link rel="stylesheet" href="assets/css/notes.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <div class="sidebar">
+            <a href="../accueil/accueil.php" class="logo-container">
+                <div class="app-logo">P</div>
+                <div class="app-title">Pronote Notes</div>
             </a>
-          <?php endforeach; ?>
-        </div>
-      </div>
-    <?php else: ?>
-      <!-- Affichage détaillé d'un élève spécifique -->
-      <?php
-      // Vérifier si l'élève existe dans cette classe
-      if (!in_array($eleve_selectionne, $eleves)) {
-        echo "<div class='error-message'>Cet élève n'existe pas dans cette classe.</div>";
-      } else {
-        // Récupérer toutes les notes de l'élève pour ce trimestre
-        $stmt_notes = $pdo->prepare("SELECT * FROM notes 
-                              WHERE nom_eleve = ? AND classe = ? AND date_ajout BETWEEN ? AND ? 
-                              ORDER BY nom_matiere");
-        $stmt_notes->execute([$eleve_selectionne, $classe_selectionnee, $date_debut, $date_fin]);
-        $notes_eleve = $stmt_notes->fetchAll();
-        
-        // Regrouper les notes par matière
-        $notes_par_matiere = [];
-        foreach ($notes_eleve as $note) {
-          $matiere = $note['nom_matiere'];
-          if (!isset($notes_par_matiere[$matiere])) {
-            $notes_par_matiere[$matiere] = [];
-          }
-          $notes_par_matiere[$matiere][] = $note;
-        }
-        
-        // Calculer la moyenne générale et par matière
-        $moyennes_matieres = [];
-        $coefficients_matieres = [];
-        
-        foreach ($notes_par_matiere as $matiere => $notes) {
-          $moyennes_matieres[$matiere] = calculerMoyenne($notes);
-          
-          // Calculer le coefficient total pour cette matière
-          $coef_total = 0;
-          foreach ($notes as $note) {
-            $coef_total += isset($note['coefficient']) ? intval($note['coefficient']) : 1;
-          }
-          $coefficients_matieres[$matiere] = $coef_total;
-        }
-        
-        // Calculer la moyenne générale
-        $somme_ponderee = 0;
-        $somme_coef = 0;
-        
-        foreach ($moyennes_matieres as $matiere => $moyenne) {
-          $coef = $coefficients_matieres[$matiere];
-          $somme_ponderee += $moyenne * $coef;
-          $somme_coef += $coef;
-        }
-        
-        $moyenne_generale = $somme_coef > 0 ? round($somme_ponderee / $somme_coef, 2) : 0;
-        ?>
-        
-        <div class="eleve-detail">
-          <h2 class="eleve-heading">Notes de <?= htmlspecialchars($eleve_selectionne) ?> - Trimestre <?= $trimestre_selectionne ?></h2>
-          
-          <div class="moyenne-generale-box">
-            <p>Moyenne générale: <?= $moyenne_generale ?></p>
-          </div>
-          
-          <?php if (empty($notes_eleve)): ?>
-            <p>Aucune note trouvée pour cet élève ce trimestre.</p>
-          <?php else: ?>
-            <?php foreach ($notes_par_matiere as $matiere => $notes): ?>
-              <div class="matiere-section">
-                <h3 class="matiere-heading"><?= htmlspecialchars($matiere) ?></h3>
-                
-                <?php foreach ($notes as $note): ?>
-                  <?php
-                  $date_obj = new DateTime($note['date_ajout']);
-                  $date_format = $date_obj->format('d/m/Y');
-                  
-                  $description = isset($note['description']) && !empty($note['description']) 
-                               ? htmlspecialchars($note['description']) 
-                               : 'Évaluation';
-                               
-                  $coef = isset($note['coefficient']) ? $note['coefficient'] : 1;
-                  ?>
-                  
-                  <div class="note-row">
-                    <div class="note-value"><?= $note['note'] ?></div>
-                    <div class="note-date"><?= $date_format ?></div>
-                    <div class="note-description"><?= $description ?></div>
-                    <div class="note-prof"><?= htmlspecialchars($note['nom_professeur']) ?></div>
-                    <div class="note-coef">Coef. <?= $coef ?></div>
-                    <div class="note-sur"><?= $note['note'] ?>/20</div>
+            
+            <div class="sidebar-section">
+                <div class="section-title">Filtres</div>
+                <form method="get" action="notes.php">
+                    <div class="form-group">
+                        <label for="classe">Classe</label>
+                        <select id="classe" name="classe" onchange="this.form.submit()">
+                            <?php foreach ($classes as $classe): ?>
+                            <option value="<?= htmlspecialchars($classe) ?>" <?= $classe_selectionnee === $classe ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($classe) ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                     
-                    <?php if (canManageNotes()): ?>
-                      <div class="note-actions">
-                        <a href="modifier_note.php?id=<?= $note['id'] ?>" class="btn-modifier">Modifier</a>
-                        <a href="supprimer_note.php?id=<?= $note['id'] ?>" class="btn-supprimer" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette note ?');">Supprimer</a>
-                      </div>
+                    <div class="form-group">
+                        <label for="trimestre">Trimestre</label>
+                        <select id="trimestre" name="trimestre" onchange="this.form.submit()">
+                            <option value="1" <?= $trimestre_selectionne == 1 ? 'selected' : '' ?>>Trimestre 1</option>
+                            <option value="2" <?= $trimestre_selectionne == 2 ? 'selected' : '' ?>>Trimestre 2</option>
+                            <option value="3" <?= $trimestre_selectionne == 3 ? 'selected' : '' ?>>Trimestre 3</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="matiere">Matière</label>
+                        <select id="matiere" name="matiere" onchange="this.form.submit()">
+                            <option value="">Toutes les matières</option>
+                            <?php foreach ($matieres as $matiere): ?>
+                            <option value="<?= htmlspecialchars($matiere) ?>" <?= $selected_subject === $matiere ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($matiere) ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
+                    <?php if (!empty($dates)): ?>
+                    <div class="form-group">
+                        <label for="date">Date d'évaluation</label>
+                        <select id="date" name="date" onchange="this.form.submit()">
+                            <option value="">Toutes les dates</option>
+                            <?php foreach ($dates as $date): ?>
+                            <option value="<?= htmlspecialchars($date) ?>" <?= $date_filter === $date ? 'selected' : '' ?>>
+                                <?= htmlspecialchars(date('d/m/Y', strtotime($date))) ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                     <?php endif; ?>
-                  </div>
-                <?php endforeach; ?>
-              </div>
-            <?php endforeach; ?>
-          <?php endif; ?>
+                </form>
+            </div>
+            
+            <?php if (canManageNotes()): ?>
+            <div class="sidebar-section">
+                <div class="section-title">Actions</div>
+                <a href="ajouter_note.php" class="sidebar-button">
+                    <i class="fas fa-plus"></i>
+                    Ajouter une note
+                </a>
+                <a href="statistiques.php" class="sidebar-button">
+                    <i class="fas fa-chart-bar"></i>
+                    Statistiques
+                </a>
+            </div>
+            <?php endif; ?>
         </div>
-      <?php
-      }
-      ?>
-    <?php endif; ?>
-  <?php else: ?>
-    <div class="info-message">
-      <p>Veuillez sélectionner une classe.</p>
+
+        <div class="main-content">
+            <div class="top-header">
+                <div class="page-title">
+                    <h1>Notes et évaluations</h1>
+                    <p class="subtitle">
+                        <?php if ($classe_selectionnee): ?>
+                            Classe <?= htmlspecialchars($classe_selectionnee) ?> -
+                        <?php endif; ?>
+                        
+                        <?php if ($selected_subject): ?>
+                            <?= htmlspecialchars($selected_subject) ?> -
+                        <?php endif; ?>
+                        
+                        Trimestre <?= htmlspecialchars($trimestre_selectionne) ?>
+                    </p>
+                </div>
+                
+                <div class="user-profile">
+                    <div class="logout-button" title="Déconnexion">
+                        <a href="../login/public/logout.php">
+                            <i class="fas fa-power-off"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Reste du contenu -->
+
+        </div>
     </div>
-  <?php endif; ?>
-</div>
-
-<!-- CSS spécifique à cette page -->
-<style>
-  /* Conteneur principal */
-  body {
-    background-color: #f8f9fa;
-    margin: 0;
-    padding: 0;
-    font-family: Arial, sans-serif;
-  }
-  
-  .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 15px;
-  }
-  
-  /* Barre verte en haut */
-  .header-bar {
-    height: 5px;
-    background-color: #198754;
-    margin-bottom: 20px;
-  }
-  
-  /* En-tête et filtres */
-  .main-header {
-    margin-bottom: 20px;
-  }
-  
-  .main-header h2 {
-    font-size: 20px;
-    margin-top: 0;
-    margin-bottom: 15px;
-    color: #333;
-  }
-  
-  .classes-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 15px;
-  }
-  
-  .classe-btn {
-    padding: 8px 15px;
-    background-color: #f8f9fa;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    color: #0d6efd;
-    text-decoration: none;
-    font-size: 14px;
-    text-align: center;
-    min-width: 50px;
-  }
-  
-  .classe-btn.active {
-    background-color: #0d6efd;
-    color: white;
-    font-weight: bold;
-  }
-  
-  .filters-row {
-    margin-top: 15px;
-  }
-  
-  .filter-controls {
-    display: flex;
-    gap: 15px;
-  }
-  
-  .filter-controls select {
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    min-width: 200px;
-    background-color: white;
-  }
-  
-  /* Bouton d'ajout de note */
-  .actions-bar {
-    margin-bottom: 20px;
-  }
-  
-  .btn-add-note {
-    display: inline-block;
-    padding: 8px 15px;
-    background-color: #198754;
-    color: white;
-    border-radius: 4px;
-    text-decoration: none;
-    font-weight: bold;
-  }
-  
-  .btn-add-note:hover {
-    background-color: #0f5132;
-  }
-  
-  /* Liste des élèves améliorée */
-  .eleves-section {
-    margin-bottom: 30px;
-  }
-  
-  .eleves-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-  
-  .eleve-item {
-    display: flex;
-    align-items: center;
-    padding: 5px 0;
-    color: #0d6efd;
-    text-decoration: none;
-  }
-  
-  .eleve-bullet {
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    background-color: #0d6efd;
-    border-radius: 50%;
-    margin-right: 10px;
-  }
-  
-  .eleve-nom {
-    font-size: 16px;
-  }
-  
-  .eleve-item:hover .eleve-nom {
-    text-decoration: underline;
-  }
-  
-  /* Vue détaillée élève */
-  .eleve-detail {
-    background-color: #f8f9fa;
-    padding: 20px;
-    border-radius: 4px;
-  }
-  
-  .eleve-heading {
-    font-size: 22px;
-    margin-top: 0;
-    margin-bottom: 20px;
-    color: #333;
-  }
-  
-  .moyenne-generale-box {
-    background-color: white;
-    padding: 15px;
-    border-radius: 4px;
-    margin-bottom: 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  }
-  
-  .moyenne-generale-box p {
-    font-size: 18px;
-    margin: 0;
-    font-weight: bold;
-  }
-  
-  .matiere-section {
-    margin-bottom: 30px;
-  }
-  
-  .matiere-heading {
-    color: #0d6efd;
-    font-size: 20px;
-    margin-bottom: 15px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #dee2e6;
-  }
-  
-  .note-row {
-    display: flex;
-    align-items: center;
-    padding: 12px 0;
-    border-bottom: 1px solid #eee;
-  }
-  
-  .note-row:last-child {
-    border-bottom: none;
-  }
-  
-  .note-value {
-    font-weight: bold;
-    font-size: 18px;
-    width: 40px;
-  }
-  
-  .note-date {
-    width: 100px;
-    color: #6c757d;
-  }
-  
-  .note-description {
-    flex: 1;
-    font-weight: 500;
-  }
-  
-  .note-prof {
-    width: 150px;
-    color: #6c757d;
-  }
-  
-  .note-coef {
-    width: 70px;
-    color: #6c757d;
-  }
-  
-  .note-sur {
-    width: 60px;
-    font-weight: bold;
-  }
-  
-  .note-actions {
-    display: flex;
-    gap: 10px;
-    margin-left: 15px;
-  }
-  
-  .btn-modifier, .btn-supprimer {
-    padding: 5px 10px;
-    border-radius: 4px;
-    color: white;
-    text-decoration: none;
-    font-size: 14px;
-  }
-  
-  .btn-modifier {
-    background-color: #198754;
-  }
-  
-  .btn-modifier:hover {
-    background-color: #0f5132;
-  }
-  
-  .btn-supprimer {
-    background-color: #dc3545;
-  }
-  
-  .btn-supprimer:hover {
-    background-color: #b02a37;
-  }
-  
-  /* Messages */
-  .info-message, .error-message {
-    padding: 15px;
-    margin-bottom: 20px;
-    border-radius: 4px;
-  }
-  
-  .info-message {
-    background-color: #cfe2ff;
-    color: #084298;
-  }
-  
-  .error-message {
-    background-color: #f8d7da;
-    color: #842029;
-  }
-</style>
-
 </body>
 </html>
-
 <?php
-// Terminer la mise en mémoire tampon
+// Vider la mémoire tampon
 ob_end_flush();
 ?>

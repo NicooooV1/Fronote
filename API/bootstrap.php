@@ -1,143 +1,197 @@
 <?php
 /**
- * Bootstrap de l'application
- * Ce fichier charge toutes les dépendances et initialise l'application
+ * Bootstrap pour l'application Pronote
  */
 
-// Activer la mise en mémoire tampon pour éviter les erreurs "headers already sent"
-ob_start();
-
-// Détection automatique du chemin racine de l'application
-if (!defined('APP_ROOT')) {
-    define('APP_ROOT', realpath(dirname(__FILE__) . '/../'));
+// Charger les fichiers de configuration
+if (file_exists(__DIR__ . '/config/config.php')) {
+    require_once __DIR__ . '/config/config.php';
+} else {
+    // Définir des valeurs par défaut si la config n'est pas disponible
+    if (!defined('BASE_URL')) define('BASE_URL', '/~u22405372/SAE/Pronote');
+    if (!defined('APP_ENV')) define('APP_ENV', 'development');
 }
 
-// Vérifier si le fichier d'environnement existe et le charger en premier
-$envFile = __DIR__ . '/config/env.php';
-if (file_exists($envFile)) {
-    require_once $envFile;
+// Gestion des erreurs selon l'environnement
+if (defined('APP_ENV') && APP_ENV === 'development') {
+    ini_set('display_errors', 1);
+    ini_set('display_startup_errors', 1);
+    error_reporting(E_ALL);
+} else {
+    ini_set('display_errors', 0);
+    ini_set('display_startup_errors', 0);
+    error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED);
 }
 
-// Chargement des fichiers de configuration dans cet ordre
-require_once __DIR__ . '/config/config.php';
-require_once __DIR__ . '/config/constants.php';
-
-// Chemins relatifs à la racine de l'application - vérification avant définition
-if (!defined('API_DIR')) define('API_DIR', APP_ROOT . '/API');
-if (!defined('UPLOADS_PATH')) define('UPLOADS_PATH', APP_ROOT . '/uploads');
-if (!defined('LOGS_PATH')) define('LOGS_PATH', API_DIR . '/logs');
-
-// Créer les répertoires nécessaires s'ils n'existent pas
-$directories = [
-    LOGS_PATH,
-    UPLOADS_PATH
-];
-
-foreach ($directories as $dir) {
-    if (!is_dir($dir)) {
-        @mkdir($dir, 0755, true);
-    }
-}
-
-// Charger les classes de base
-require_once __DIR__ . '/core/Autoloader.php';
-require_once __DIR__ . '/core/Session.php';
-require_once __DIR__ . '/core/Database.php';
-require_once __DIR__ . '/core/Logger.php';
-require_once __DIR__ . '/core/Security.php';
-
-// Enregistrer l'autoloader
-Autoloader::register();
-
-// Initialiser la session
-Session::init();
-
-// Vérifier les extensions requises
-$requiredExtensions = ['pdo', 'pdo_mysql', 'json', 'mbstring'];
-$missingExtensions = [];
-
-foreach ($requiredExtensions as $ext) {
-    if (!extension_loaded($ext)) {
-        $missingExtensions[] = $ext;
-    }
-}
-
-if (!empty($missingExtensions)) {
-    Logger::error('Extensions PHP requises manquantes : ' . implode(', ', $missingExtensions));
-    if (defined('APP_ENV') && APP_ENV === 'development') {
-        die('Extensions PHP requises manquantes : ' . implode(', ', $missingExtensions));
-    }
-}
-
-// Gestionnaires d'erreurs et d'exceptions
-function handleFatalErrors() {
-    $error = error_get_last();
-    if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
-        Logger::error('Fatal error: ' . $error['message'] . ' in ' . $error['file'] . ' on line ' . $error['line']);
+// Initialiser la connexion à la base de données
+if (defined('DB_HOST') && defined('DB_NAME') && defined('DB_USER') && defined('DB_PASS')) {
+    try {
+        $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . (defined('DB_CHARSET') ? DB_CHARSET : 'utf8mb4');
+        $options = [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false
+        ];
         
-        if (defined('APP_ENV') && APP_ENV === 'development') {
-            echo '<div style="background-color:#f8d7da;color:#721c24;padding:10px;margin:10px;border-radius:5px;">';
-            echo '<h3>Une erreur fatale est survenue</h3>';
-            echo '<p><strong>Message:</strong> ' . htmlspecialchars($error['message']) . '</p>';
-            echo '<p><strong>Fichier:</strong> ' . htmlspecialchars($error['file']) . '</p>';
-            echo '<p><strong>Ligne:</strong> ' . $error['line'] . '</p>';
-            echo '</div>';
-        } else {
-            // En production, afficher un message générique
-            echo '<div style="text-align:center;padding:50px;">';
-            echo '<h2>Une erreur est survenue</h2>';
-            echo '<p>Nous sommes désolés pour ce désagrément. Veuillez réessayer plus tard.</p>';
-            echo '</div>';
+        $GLOBALS['pdo'] = new PDO($dsn, DB_USER, DB_PASS, $options);
+    } catch (PDOException $e) {
+        error_log("Erreur de connexion à la base de données: " . $e->getMessage());
+    }
+}
+
+// Définir la classe Session pour gérer les sessions de manière sécurisée
+class Session {
+    /**
+     * Initialise une session sécurisée
+     */
+    public static function start() {
+        if (session_status() === PHP_SESSION_NONE) {
+            // Configuration sécurisée des cookies de session
+            $lifetime = defined('SESSION_LIFETIME') ? SESSION_LIFETIME : 3600;
+            $path = defined('SESSION_PATH') ? SESSION_PATH : '/';
+            $domain = '';
+            $secure = defined('SESSION_SECURE') ? SESSION_SECURE : false;
+            $httponly = defined('SESSION_HTTPONLY') ? SESSION_HTTPONLY : true;
+            
+            session_set_cookie_params([
+                'lifetime' => $lifetime,
+                'path' => $path,
+                'domain' => $domain,
+                'secure' => $secure,
+                'httponly' => $httponly,
+                'samesite' => 'Lax'
+            ]);
+            
+            session_start();
+            
+            // Régénérer l'ID de session pour empêcher la fixation de session
+            if (!isset($_SESSION['_session_started'])) {
+                session_regenerate_id(true);
+                $_SESSION['_session_started'] = time();
+                $_SESSION['_client_ip'] = $_SERVER['REMOTE_ADDR'];
+                $_SESSION['_user_agent'] = $_SERVER['HTTP_USER_AGENT'];
+            }
         }
     }
+    
+    /**
+     * Vérifie si une variable existe dans la session
+     * @param string $key La clé à vérifier
+     * @return bool True si la clé existe
+     */
+    public static function has($key) {
+        return isset($_SESSION[$key]);
+    }
+    
+    /**
+     * Récupère une valeur de la session
+     * @param string $key La clé à récupérer
+     * @param mixed $default Valeur par défaut si la clé n'existe pas
+     * @return mixed La valeur ou la valeur par défaut
+     */
+    public static function get($key, $default = null) {
+        return isset($_SESSION[$key]) ? $_SESSION[$key] : $default;
+    }
+    
+    /**
+     * Définit une valeur dans la session
+     * @param string $key La clé à définir
+     * @param mixed $value La valeur à stocker
+     */
+    public static function set($key, $value) {
+        $_SESSION[$key] = $value;
+    }
+    
+    /**
+     * Supprime une valeur de la session
+     * @param string $key La clé à supprimer
+     */
+    public static function remove($key) {
+        if (isset($_SESSION[$key])) {
+            unset($_SESSION[$key]);
+        }
+    }
+    
+    /**
+     * Définit un message flash
+     * @param string $type Type de message (success, error, warning, info)
+     * @param string $message Le contenu du message
+     */
+    public static function setFlash($type, $message) {
+        if (!isset($_SESSION['flash'])) {
+            $_SESSION['flash'] = [];
+        }
+        if (!isset($_SESSION['flash'][$type])) {
+            $_SESSION['flash'][$type] = [];
+        }
+        $_SESSION['flash'][$type][] = $message;
+    }
+    
+    /**
+     * Récupère les messages flash
+     * @param string|null $type Type de message à récupérer (null pour tous)
+     * @return array Messages flash
+     */
+    public static function getFlash($type = null) {
+        if (!isset($_SESSION['flash'])) {
+            return [];
+        }
+        
+        if ($type === null) {
+            $messages = $_SESSION['flash'];
+            unset($_SESSION['flash']);
+            return $messages;
+        }
+        
+        if (!isset($_SESSION['flash'][$type])) {
+            return [];
+        }
+        
+        $messages = $_SESSION['flash'][$type];
+        unset($_SESSION['flash'][$type]);
+        return $messages;
+    }
+    
+    /**
+     * Vérifie si des messages flash existent
+     * @param string|null $type Type de message à vérifier (null pour tous)
+     * @return bool True si des messages existent
+     */
+    public static function hasFlash($type = null) {
+        if (!isset($_SESSION['flash'])) {
+            return false;
+        }
+        
+        if ($type === null) {
+            return !empty($_SESSION['flash']);
+        }
+        
+        return isset($_SESSION['flash'][$type]) && !empty($_SESSION['flash'][$type]);
+    }
+    
+    /**
+     * Détruit la session
+     */
+    public static function destroy() {
+        $_SESSION = [];
+        
+        // Détruire le cookie de session
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(
+                session_name(),
+                '',
+                time() - 42000,
+                $params["path"],
+                $params["domain"],
+                $params["secure"],
+                $params["httponly"]
+            );
+        }
+        
+        session_destroy();
+    }
 }
 
-register_shutdown_function('handleFatalErrors');
-
-set_exception_handler(function($exception) {
-    Logger::error('Uncaught exception: ' . $exception->getMessage() . ' in ' . $exception->getFile() . ' on line ' . $exception->getLine());
-    
-    if (defined('APP_ENV') && APP_ENV === 'development') {
-        echo '<div style="background-color:#f8d7da;color:#721c24;padding:10px;margin:10px;border-radius:5px;">';
-        echo '<h3>Exception non capturée</h3>';
-        echo '<p><strong>Message:</strong> ' . htmlspecialchars($exception->getMessage()) . '</p>';
-        echo '<p><strong>Fichier:</strong> ' . htmlspecialchars($exception->getFile()) . '</p>';
-        echo '<p><strong>Ligne:</strong> ' . $exception->getLine() . '</p>';
-        echo '<h4>Trace:</h4>';
-        echo '<pre>' . htmlspecialchars($exception->getTraceAsString()) . '</pre>';
-        echo '</div>';
-    } else {
-        // Message générique en production
-        echo '<div style="text-align:center;padding:50px;">';
-        echo '<h2>Une erreur est survenue</h2>';
-        echo '<p>Nous sommes désolés pour ce désagrément. Veuillez réessayer plus tard.</p>';
-        echo '</div>';
-    }
-});
-
-set_error_handler(function($errno, $errstr, $errfile, $errline) {
-    // Ce niveau d'erreur est-il inclus dans error_reporting?
-    if (!(error_reporting() & $errno)) {
-        return false;
-    }
-    
-    switch ($errno) {
-        case E_ERROR:
-        case E_USER_ERROR:
-            Logger::error("Erreur PHP [$errno] $errstr dans $errfile à la ligne $errline");
-            break;
-        case E_WARNING:
-        case E_USER_WARNING:
-            Logger::warning("Avertissement PHP [$errno] $errstr dans $errfile à la ligne $errline");
-            break;
-        case E_NOTICE:
-        case E_USER_NOTICE:
-            Logger::info("Notice PHP [$errno] $errstr dans $errfile à la ligne $errline");
-            break;
-        default:
-            Logger::debug("Erreur inconnue [$errno] $errstr dans $errfile à la ligne $errline");
-    }
-    
-    // Ne pas exécuter le gestionnaire d'erreur interne de PHP
-    return true;
-});
+// Démarrer la session
+Session::start();

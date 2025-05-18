@@ -3,54 +3,69 @@
  * Module d'authentification pour le module Agenda
  */
 
-// Inclure le système d'autoloading
-$autoloadPath = __DIR__ . '/../../API/autoload.php';
-
-if (file_exists($autoloadPath)) {
-    require_once $autoloadPath;
-    
-    // Initialiser l'application avec le système d'autoloading
-    bootstrap();
-} else {
-    // Fallback si le système d'autoloading n'est pas disponible
+// Démarrer la session si elle n'est pas déjà active
+if (session_status() === PHP_SESSION_NONE) {
     session_start();
-    
-    // Fonctions d'authentification de base si le système centralisé n'est pas disponible
-    if (!function_exists('isLoggedIn')) {
-        function isLoggedIn() {
-            return isset($_SESSION['user']) && !empty($_SESSION['user']);
-        }
-    }
-    
-    if (!function_exists('getCurrentUser')) {
-        function getCurrentUser() {
-            return $_SESSION['user'] ?? null;
-        }
-    }
-    
-    if (!function_exists('getUserRole')) {
-        function getUserRole() {
-            $user = getCurrentUser();
-            return $user ? $user['profil'] : null;
-        }
-    }
-    
-    if (!function_exists('requireLogin')) {
-        function requireLogin() {
-            if (!isLoggedIn()) {
-                $loginUrl = '/~u22405372/SAE/Pronote/login/public/index.php';
-                header("Location: $loginUrl");
-                exit;
-            }
-            return getCurrentUser();
-        }
-    }
 }
 
-// Si nécessaire, définir des fonctions spécifiques au module Agenda ici
+// Vérifier si l'utilisateur est connecté
+function isLoggedIn() {
+    return isset($_SESSION['user']) && !empty($_SESSION['user']);
+}
 
-// No need to redefine functions that already exist in the API
-// Only declare functions that are specific to this module that aren't already defined
+// Récupérer l'utilisateur connecté
+function getCurrentUser() {
+    return $_SESSION['user'] ?? null;
+}
+
+// Récupérer le rôle de l'utilisateur
+function getUserRole() {
+    $user = getCurrentUser();
+    return $user ? $user['profil'] : null;
+}
+
+// Vérifier si l'utilisateur est administrateur
+function isAdmin() {
+    return getUserRole() === 'administrateur';
+}
+
+// Vérifier si l'utilisateur est professeur
+function isTeacher() {
+    return getUserRole() === 'professeur';
+}
+
+// Vérifier si l'utilisateur est élève
+function isStudent() {
+    return getUserRole() === 'eleve';
+}
+
+// Vérifier si l'utilisateur est parent
+function isParent() {
+    return getUserRole() === 'parent';
+}
+
+// Vérifier si l'utilisateur est membre de la vie scolaire
+function isVieScolaire() {
+    return getUserRole() === 'vie_scolaire';
+}
+
+// Récupérer le nom complet de l'utilisateur
+function getUserFullName() {
+    $user = getCurrentUser();
+    if ($user) {
+        return $user['prenom'] . ' ' . $user['nom'];
+    }
+    return '';
+}
+
+// Rediriger si l'utilisateur n'est pas connecté
+function requireLogin() {
+    if (!isLoggedIn()) {
+        header('Location: /~u22405372/SAE/Pronote/login/public/index.php');
+        exit;
+    }
+    return getCurrentUser();
+}
 
 /**
  * Fonctions spécifiques pour la gestion des événements dans l'agenda
