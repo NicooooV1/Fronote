@@ -1,7 +1,10 @@
 <?php
 /**
- * Module d'authentification pour le module Absences
+ * Module d'authentification pour le module Absences (bridge vers auth_central)
  */
+
+// Inclure l'authentification centralisée
+require_once __DIR__ . '/../../API/auth_central.php';
 
 // Démarrer la session si elle n'est pas déjà active
 if (session_status() === PHP_SESSION_NONE) {

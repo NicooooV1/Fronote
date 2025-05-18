@@ -148,3 +148,42 @@ function requireLogin() {
     }
     return getCurrentUser();
 }
+
+/**
+ * Pont de compatibilité pour l'authentification centralisée
+ * Permet aux modules existants de continuer à fonctionner avec le nouveau système d'authentification
+ */
+
+// Ce fichier est inclus par auth_central.php
+// Ne pas l'inclure directement dans les modules
+
+// Définir des alias de fonctions si elles n'existent pas encore
+
+// Alias pour isProfesseur (ancienne syntaxe)
+if (!function_exists('isProfesseur')) {
+    function isProfesseur() {
+        return isTeacher();
+    }
+}
+
+// Alias pour l'ancienne fonction requireAuth (utilisée dans certains modules)
+if (!function_exists('requireAuth')) {
+    function requireAuth() {
+        return requireLogin();
+    }
+}
+
+// Alias pour checkAuth (utilisée dans certains modules)
+if (!function_exists('checkAuth')) {
+    function checkAuth() {
+        return getCurrentUser();
+    }
+}
+
+// Compatibilité avec différentes signatures de fonctions
+if (!function_exists('canSendAnnouncement') && function_exists('canSendAnnouncement')) {
+    function canSendAnnouncement($user = null) {
+        if ($user === null) $user = getCurrentUser();
+        return in_array($user['profil'], ['administrateur', 'vie_scolaire']);
+    }
+}

@@ -110,8 +110,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo = new PDO($dsn, $dbUser, $dbPass, $options);
             
             // Créer la base de données si elle n'existe pas
-            $pdo->exec("CREATE DATABASE IF NOT EXISTS `" . $pdo->quote($dbName) . "`");
-            $pdo->exec("USE `" . $pdo->quote($dbName) . "`");
+            $pdo->exec("CREATE DATABASE IF NOT EXISTS `" . str_replace('`', '', $dbName) . "`");
+            $pdo->exec("USE `" . str_replace('`', '', $dbName) . "`");
             
             // Créer le fichier de configuration
             $apiDir = $installDir . '/API';

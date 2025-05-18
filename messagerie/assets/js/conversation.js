@@ -217,7 +217,8 @@ function initReadTracker() {
         // Démarrer immédiatement avec un état initial
         pollForUpdates();
         
-        // Configurer un intervalle régulier au lieu d'un appel récursif
+        // Gestion inefficace des timers avec setInterval
+        // Si une requête prend plus de temps que l'intervalle, on risque d'avoir des requêtes simultanées
         const pollingIntervalId = setInterval(() => {
             // Ne déclencher le polling que si l'indicateur est actif
             if (window.activeConnections && window.activeConnections.readStatusPolling) {

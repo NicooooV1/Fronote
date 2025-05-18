@@ -34,6 +34,7 @@ try {
     }
 } catch (PDOException $e) {
     error_log("Erreur lors de la vérification de la table retards: " . $e->getMessage());
+    // Pas de traitement spécifique en cas d'erreur, l'application continue
 }
 
 // Récupérer la liste des retards selon le rôle de l'utilisateur

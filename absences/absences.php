@@ -128,6 +128,7 @@ if (isAdmin() || isVieScolaire()) {
         }
     } catch (PDOException $e) {
         error_log("absences.php - Erreur dans la requête pour professeur: " . $e->getMessage());
+        // Pas d'action corrective, l'application continue avec $absences vide
     }
 } elseif (isStudent()) {
     error_log("absences.php - Utilisateur élève détecté: ID=" . $user['id']);
@@ -169,10 +170,10 @@ if (isAdmin() || isVieScolaire()) {
 $views_dir = __DIR__ . '/views';
 if (!is_dir($views_dir)) {
     mkdir($views_dir, 0755, true);
+    // Aucune vérification si mkdir réussit
     
-    // Create basic view files
-    file_put_contents($views_dir . '/list_view.php', 
-        '<?php // Basic list view implementation ?>
+    // Écriture de fichiers sans vérification du succès de l'opération
+    file_put_contents($views_dir . '/list_view.php', '<?php // Basic list view implementation ?>
         <div class="absences-list">
             <div class="list-header">
                 <div class="list-row header-row">
