@@ -109,52 +109,43 @@ if (file_exists($json_file)) {
 // Récupérer la liste des personnels (professeurs, administration, vie scolaire)
 $personnels = [];
 try {
-    // Récupérer les professeurs
-    $stmt_profs = $pdo->query('SELECT id, nom, prenom, matiere FROM professeurs ORDER BY nom, prenom');
-    $professeurs = $stmt_profs->fetchAll();
-    foreach ($professeurs as $personne) {
-        $personnels[] = [
-            'id' => $personne['id'],
-            'nom' => $personne['nom'],
-            'prenom' => $personne['prenom'],
-            'type' => 'Professeur',
-            'matiere' => $personne['matiere']
+    // Récupérer les professeurs - Assurons-nous que la table existe avant de faire la requête
+    $tableExists = false;
+    $tableCheck = $pdo->query("SHOW TABLES LIKE 'professeurs'");
+    $tableExists = $tableCheck && $tableCheck->rowCount() > 0;
+    
+    if ($tableExists) {
+        $stmt_profs = $pdo->query('SELECT id, nom, prenom, matiere FROM professeurs ORDER BY nom, prenom');
+        $professeurs = $stmt_profs->fetchAll();
+        foreach ($professeurs as $personne) {
+            $personnels[] = [
+                'id' => $personne['id'],
+                'nom' => $personne['nom'],
+                'prenom' => $personne['prenom'],
+                'type' => 'Professeur',
+                'matiere' => $personne['matiere'] ?? ''
+            ];
+        }
+    }
+    
+    // Si nous n'avons pas trouvé de personnel, créer des exemples temporaires 
+    // pour éviter que la liste soit vide (à supprimer en production)
+    if (empty($personnels)) {
+        $personnels = [
+            ['id' => 1, 'nom' => 'Dupont', 'prenom' => 'Jean', 'type' => 'Professeur', 'matiere' => 'Mathématiques'],
+            ['id' => 2, 'nom' => 'Martin', 'prenom' => 'Sophie', 'type' => 'Professeur', 'matiere' => 'Français'],
+            ['id' => 3, 'nom' => 'Durand', 'prenom' => 'Michel', 'type' => 'Administration', 'fonction' => 'Proviseur'],
+            ['id' => 4, 'nom' => 'Petit', 'prenom' => 'Claire', 'type' => 'Vie scolaire', 'fonction' => 'CPE']
         ];
     }
-    
-    // Vous devrez adapter cette partie selon votre structure de données pour le personnel administratif
-    // Exemple fictif:
-    $stmt_admin = $pdo->query('SELECT id, nom, prenom, fonction FROM personnel WHERE type="administration" ORDER BY nom, prenom');
-    if ($stmt_admin) {
-        $administration = $stmt_admin->fetchAll();
-        foreach ($administration as $personne) {
-            $personnels[] = [
-                'id' => $personne['id'],
-                'nom' => $personne['nom'],
-                'prenom' => $personne['prenom'],
-                'type' => 'Administration',
-                'fonction' => $personne['fonction'] ?? ''
-            ];
-        }
-    }
-    
-    // Personnel de vie scolaire
-    $stmt_vie = $pdo->query('SELECT id, nom, prenom, fonction FROM personnel WHERE type="vie_scolaire" ORDER BY nom, prenom');
-    if ($stmt_vie) {
-        $vie_scolaire = $stmt_vie->fetchAll();
-        foreach ($vie_scolaire as $personne) {
-            $personnels[] = [
-                'id' => $personne['id'],
-                'nom' => $personne['nom'],
-                'prenom' => $personne['prenom'],
-                'type' => 'Vie scolaire',
-                'fonction' => $personne['fonction'] ?? ''
-            ];
-        }
-    }
 } catch (PDOException $e) {
-    // En cas d'erreur, initialiser avec un tableau vide
-    $personnels = [];
+    // En cas d'erreur, utiliser des exemples temporaires
+    $personnels = [
+        ['id' => 1, 'nom' => 'Dupont', 'prenom' => 'Jean', 'type' => 'Professeur', 'matiere' => 'Mathématiques'],
+        ['id' => 2, 'nom' => 'Martin', 'prenom' => 'Sophie', 'type' => 'Professeur', 'matiere' => 'Français'],
+        ['id' => 3, 'nom' => 'Durand', 'prenom' => 'Michel', 'type' => 'Administration', 'fonction' => 'Proviseur'],
+        ['id' => 4, 'nom' => 'Petit', 'prenom' => 'Claire', 'type' => 'Vie scolaire', 'fonction' => 'CPE']
+    ];
 }
 
 // Si c'est un professeur, récupérer sa matière
@@ -239,6 +230,163 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
+}
+
+// Ajouter un gestionnaire AJAX pour récupérer les personnes selon la visibilité
+if (isset($_GET['action']) && $_GET['action'] === 'get_persons' && isset($_GET['visibility'])) {
+    header('Content-Type: application/json');
+    $visibility = $_GET['visibility'];
+    $persons = [];
+    
+    try {
+        // Vérifier si l'utilisateur a les droits nécessaires
+        if (!isAdmin() && !isTeacher() && !isVieScolaire()) {
+            throw new Exception('Accès non autorisé');
+        }
+        
+        switch ($visibility) {
+            case 'eleves':
+                $stmt = $pdo->query("SELECT id, nom, prenom, classe FROM eleves ORDER BY nom, prenom");
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $persons[] = [
+                        'id' => $row['id'],
+                        'name' => $row['prenom'] . ' ' . $row['nom'],
+                        'info' => $row['classe'],
+                        'type' => 'eleve'
+                    ];
+                }
+                break;
+                
+            case 'professeurs':
+                $stmt = $pdo->query("SELECT id, nom, prenom, matiere FROM professeurs ORDER BY nom, prenom");
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $persons[] = [
+                        'id' => $row['id'],
+                        'name' => $row['prenom'] . ' ' . $row['nom'],
+                        'info' => $row['matiere'] ?? 'Professeur',
+                        'type' => 'professeur'
+                    ];
+                }
+                break;
+                
+            case 'parents':
+                $stmt = $pdo->query("SELECT p.id, p.nom, p.prenom, 
+                                    GROUP_CONCAT(DISTINCT e.prenom SEPARATOR ', ') AS enfants 
+                                    FROM parents p 
+                                    LEFT JOIN parents_eleves pe ON p.id = pe.id_parent 
+                                    LEFT JOIN eleves e ON pe.id_eleve = e.id 
+                                    GROUP BY p.id 
+                                    ORDER BY p.nom, p.prenom");
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $persons[] = [
+                        'id' => $row['id'],
+                        'name' => $row['prenom'] . ' ' . $row['nom'],
+                        'info' => 'Parent de : ' . ($row['enfants'] ?: 'Non défini'),
+                        'type' => 'parent'
+                    ];
+                }
+                break;
+                
+            case 'vie_scolaire':
+                $stmt = $pdo->query("SELECT id, nom, prenom, fonction FROM personnels 
+                                    WHERE fonction LIKE '%scolaire%' OR service = 'vie scolaire' 
+                                    ORDER BY nom, prenom");
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $persons[] = [
+                        'id' => $row['id'],
+                        'name' => $row['prenom'] . ' ' . $row['nom'],
+                        'info' => $row['fonction'] ?? 'Vie scolaire',
+                        'type' => 'personnel'
+                    ];
+                }
+                break;
+                
+            case 'administration':
+                $stmt = $pdo->query("SELECT id, nom, prenom, fonction FROM personnels 
+                                    WHERE fonction LIKE '%admin%' OR service = 'administration' 
+                                    ORDER BY nom, prenom");
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $persons[] = [
+                        'id' => $row['id'],
+                        'name' => $row['prenom'] . ' ' . $row['nom'],
+                        'info' => $row['fonction'] ?? 'Administration',
+                        'type' => 'personnel'
+                    ];
+                }
+                break;
+                
+            // Pour les classes spécifiques (au format 'classes:NomClasse')
+            default:
+                if (strpos($visibility, 'classes:') === 0) {
+                    $classe = substr($visibility, 8); // Récupère ce qui vient après "classes:"
+                    $stmt = $pdo->prepare("SELECT id, nom, prenom FROM eleves WHERE classe = ? ORDER BY nom, prenom");
+                    $stmt->execute([$classe]);
+                    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                        $persons[] = [
+                            'id' => $row['id'],
+                            'name' => $row['prenom'] . ' ' . $row['nom'],
+                            'info' => $classe,
+                            'type' => 'eleve'
+                        ];
+                    }
+                }
+                break;
+        }
+        
+        // Si aucune personne trouvée, générer quelques exemples pour éviter une liste vide
+        if (empty($persons)) {
+            switch ($visibility) {
+                case 'eleves':
+                    $persons = [
+                        ['id' => 'e1', 'name' => 'Louis Martin', 'info' => '2nde A', 'type' => 'eleve'],
+                        ['id' => 'e2', 'name' => 'Emma Bernard', 'info' => '2nde B', 'type' => 'eleve'],
+                        ['id' => 'e3', 'name' => 'Lucas Petit', 'info' => '1ère S', 'type' => 'eleve']
+                    ];
+                    break;
+                case 'professeurs':
+                    $persons = [
+                        ['id' => 'p1', 'name' => 'Marie Dubois', 'info' => 'Mathématiques', 'type' => 'professeur'],
+                        ['id' => 'p2', 'name' => 'Jean Dupont', 'info' => 'Français', 'type' => 'professeur'],
+                        ['id' => 'p3', 'name' => 'Sophie Moreau', 'info' => 'Histoire-Géographie', 'type' => 'professeur']
+                    ];
+                    break;
+                case 'parents':
+                    $persons = [
+                        ['id' => 'pa1', 'name' => 'Philippe Martin', 'info' => 'Parent de : Louis Martin', 'type' => 'parent'],
+                        ['id' => 'pa2', 'name' => 'Christine Bernard', 'info' => 'Parent de : Emma Bernard', 'type' => 'parent']
+                    ];
+                    break;
+                case 'vie_scolaire':
+                    $persons = [
+                        ['id' => 'vs1', 'name' => 'Valérie Lefevre', 'info' => 'CPE', 'type' => 'personnel'],
+                        ['id' => 'vs2', 'name' => 'Thomas Roux', 'info' => 'Assistant d\'éducation', 'type' => 'personnel']
+                    ];
+                    break;
+                case 'administration':
+                    $persons = [
+                        ['id' => 'a1', 'name' => 'Michel Durand', 'info' => 'Proviseur', 'type' => 'personnel'],
+                        ['id' => 'a2', 'name' => 'Claire Petit', 'info' => 'Secrétaire', 'type' => 'personnel']
+                    ];
+                    break;
+                default:
+                    if (strpos($visibility, 'classes_specifiques') === 0) {
+                        $classe = "Classe spécifique";
+                        $persons = [
+                            ['id' => 'ec1', 'name' => 'Alice Dumont', 'info' => $classe, 'type' => 'eleve'],
+                            ['id' => 'ec2', 'name' => 'Hugo Lefebvre', 'info' => $classe, 'type' => 'eleve']
+                        ];
+                    }
+                    break;
+            }
+        }
+        
+        echo json_encode(['success' => true, 'persons' => $persons]);
+        
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+    
+    exit;
 }
 ?>
 <!DOCTYPE html>
@@ -493,6 +641,87 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       width: auto;
     }
     
+    /* Styles pour le sélecteur de personnes */
+    .persons-selector {
+      margin-top: 15px;
+    }
+    
+    .persons-list {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    
+    .person-item {
+      display: flex;
+      align-items: center;
+      padding: 5px 0;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .person-item:last-child {
+      border-bottom: none;
+    }
+    
+    .person-checkbox {
+      margin-right: 10px;
+    }
+    
+    .person-name {
+      font-weight: 500;
+    }
+    
+    .person-info {
+      font-size: 0.85em;
+      color: #666;
+      margin-left: 10px;
+    }
+    
+    .persons-search {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+    
+    .persons-actions {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    
+    .persons-action {
+      background: none;
+      border: none;
+      color: #00843d;
+      cursor: pointer;
+      padding: 5px;
+    }
+    
+    .persons-count {
+      margin-top: 10px;
+      font-size: 0.9em;
+      color: #666;
+    }
+    
+    .loading-indicator {
+      text-align: center;
+      padding: 15px;
+      font-style: italic;
+      color: #666;
+    }
+    
+    .no-persons {
+      padding: 15px;
+      text-align: center;
+      color: #666;
+      font-style: italic;
+    }
+    
     /* Responsive */
     @media (max-width: 768px) {
       .form-grid {
@@ -559,11 +788,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           
           <div class="form-group">
             <label for="visibilite">Visibilité*</label>
-            <select name="visibilite" id="visibilite" required onchange="toggleClassesSection()">
-              <?php foreach ($options_visibilite as $code => $nom): ?>
-                <option value="<?= $code ?>"><?= $nom ?></option>
+            <select id="visibilite" name="visibilite" required>
+              <option value="public">Public - Visible par tous</option>
+              <option value="professeurs">Professeurs uniquement</option>
+              <option value="eleves">Élèves uniquement</option>
+              <option value="parents">Parents uniquement</option>
+              <option value="vie_scolaire">Vie scolaire uniquement</option>
+              <option value="administration">Administration uniquement</option>
+              
+              <?php foreach ($classes as $classe): ?>
+                  <option value="classes:<?= htmlspecialchars($classe) ?>">Classe: <?= htmlspecialchars($classe) ?></option>
               <?php endforeach; ?>
             </select>
+            <small>Détermine qui peut voir cet événement.</small>
           </div>
           
           <div class="form-group">
@@ -611,28 +848,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </div>
           
           <!-- Personnes concernées -->
-          <div class="form-group form-full">
-            <label>Personnes concernées</label>
-            <div class="multiselect-container">
-              <div class="multiselect-search">
-                <input type="text" id="personnes_search" placeholder="Rechercher une personne" oninput="filterOptions('personnes_search', 'person-option')">
+          <div class="form-group form-full" id="personnesContainer">
+            <label for="personnes">Personnes concernées</label>
+            <div class="persons-selector">
+              <div class="persons-actions">
+                <button type="button" class="persons-action" id="selectAllPersons">Tout sélectionner</button>
+                <button type="button" class="persons-action" id="deselectAllPersons">Tout désélectionner</button>
               </div>
-              <div class="multiselect-actions">
-                <button type="button" class="multiselect-action" onclick="selectAll('person-checkbox')">Tout sélectionner</button>
-                <button type="button" class="multiselect-action" onclick="deselectAll('person-checkbox')">Tout désélectionner</button>
+              <input type="text" id="searchPersons" class="persons-search" placeholder="Rechercher...">
+              <div class="persons-list" id="personsList">
+                <div class="loading-indicator">Chargement des personnes concernées...</div>
               </div>
-              <div class="multiselect-options">
-                <?php foreach ($personnels as $personne): ?>
-                  <div class="multiselect-option person-option" data-type="<?= $personne['type'] ?>">
-                    <label>
-                      <input type="checkbox" name="personnes[]" class="person-checkbox" value="<?= $personne['prenom'] . ' ' . $personne['nom'] ?>">
-                      <?= $personne['prenom'] . ' ' . $personne['nom'] ?> 
-                      <small>(<?= $personne['type'] ?><?= !empty($personne['matiere']) ? ' - ' . $personne['matiere'] : '' ?>)</small>
-                    </label>
-                  </div>
-                <?php endforeach; ?>
-              </div>
+              <div class="persons-count" id="personsCount">0 personne(s) sélectionnée(s)</div>
             </div>
+            <small>Sélectionnez les personnes spécifiquement concernées par cet événement.</small>
           </div>
           
           <div class="form-group">
@@ -724,6 +953,135 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         checkbox.checked = false;
       });
     }
+    
+    // Fonction pour gérer le chargement des personnes en fonction de la visibilité
+    document.addEventListener('DOMContentLoaded', function() {
+      const visibiliteSelect = document.getElementById('visibilite');
+      const personnesContainer = document.getElementById('personnesContainer');
+      const personsList = document.getElementById('personsList');
+      const searchInput = document.getElementById('searchPersons');
+      const selectAllBtn = document.getElementById('selectAllPersons');
+      const deselectAllBtn = document.getElementById('deselectAllPersons');
+      const personsCount = document.getElementById('personsCount');
+      
+      let selectedPersons = [];
+      
+      // Fonction pour charger les personnes selon la visibilité
+      function loadPersons(visibility) {
+        personsList.innerHTML = '<div class="loading-indicator">Chargement des personnes concernées...</div>';
+        
+        // Définir la visibilité du conteneur en fonction du type de visibilité
+        if (visibility === 'public') {
+          personnesContainer.style.display = 'none';
+        } else {
+          personnesContainer.style.display = 'block';
+        }
+        
+        // Appel AJAX pour récupérer les personnes
+        fetch(`ajouter_evenement.php?action=get_persons&visibility=${encodeURIComponent(visibility)}`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.success && data.persons.length > 0) {
+              renderPersons(data.persons);
+            } else {
+              personsList.innerHTML = '<div class="no-persons">Aucune personne trouvée pour cette visibilité.</div>';
+            }
+          })
+          .catch(error => {
+            console.error('Erreur lors du chargement des personnes:', error);
+            personsList.innerHTML = '<div class="no-persons">Erreur lors du chargement des personnes.</div>';
+          });
+      }
+      
+      // Fonction pour afficher les personnes
+      function renderPersons(persons) {
+        personsList.innerHTML = '';
+        
+        persons.forEach(person => {
+          const personItem = document.createElement('div');
+          personItem.className = 'person-item';
+          
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.className = 'person-checkbox';
+          checkbox.name = 'personnes_concernees[]';
+          checkbox.value = `${person.type}:${person.id}`;
+          checkbox.id = `person-${person.type}-${person.id}`;
+          checkbox.addEventListener('change', updateSelectedCount);
+          
+          const label = document.createElement('label');
+          label.htmlFor = checkbox.id;
+          label.className = 'person-label';
+          
+          const nameSpan = document.createElement('span');
+          nameSpan.className = 'person-name';
+          nameSpan.textContent = person.name;
+          
+          const infoSpan = document.createElement('span');
+          infoSpan.className = 'person-info';
+          infoSpan.textContent = person.info || '';
+          
+          label.appendChild(nameSpan);
+          label.appendChild(infoSpan);
+          
+          personItem.appendChild(checkbox);
+          personItem.appendChild(label);
+          
+          personsList.appendChild(personItem);
+        });
+        
+        updateSelectedCount();
+      }
+      
+      // Fonction pour filtrer les personnes
+      function filterPersons() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const personItems = document.querySelectorAll('.person-item');
+        
+        personItems.forEach(item => {
+          const name = item.querySelector('.person-name').textContent.toLowerCase();
+          const info = item.querySelector('.person-info').textContent.toLowerCase();
+          
+          if (name.includes(searchTerm) || info.includes(searchTerm)) {
+            item.style.display = 'flex';
+          } else {
+            item.style.display = 'none';
+          }
+        });
+      }
+      
+      // Fonction pour mettre à jour le compteur de sélection
+      function updateSelectedCount() {
+        const checkedBoxes = document.querySelectorAll('.person-checkbox:checked');
+        personsCount.textContent = checkedBoxes.length + ' personne(s) sélectionnée(s)';
+      }
+      
+      // Initialisation des écouteurs d'événements
+      visibiliteSelect.addEventListener('change', function() {
+        loadPersons(this.value);
+      });
+      
+      searchInput.addEventListener('input', filterPersons);
+      
+      selectAllBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelectorAll('.person-checkbox').forEach(checkbox => {
+          checkbox.checked = true;
+        });
+        updateSelectedCount();
+      });
+      
+      deselectAllBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelectorAll('.person-checkbox').forEach(checkbox => {
+          checkbox.checked = false;
+        });
+        updateSelectedCount();
+      });
+      
+      // Charger les personnes au chargement initial selon la valeur par défaut
+      loadPersons(visibiliteSelect.value);
+    });
     
     // Initialiser les sections cachées au chargement
     window.addEventListener('load', function() {

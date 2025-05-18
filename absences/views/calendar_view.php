@@ -13,8 +13,8 @@ foreach ($absences as $absence) {
     $interval = $debut_dt->diff($fin_dt);
     $nombre_jours = $interval->days;
     
-    // Si c'est le même jour ou moins d'un jour
-    if ($nombre_jours == 0 || ($nombre_jours == 1 && $debut_dt->format('Y-m-d') != $fin_dt->format('Y-m-d'))) {
+    // Si c'est moins d'un jour
+    if ($nombre_jours == 0) {
         $date_key = $debut_dt->format('Y-m-d');
         if (!isset($absences_par_date[$date_key])) {
             $absences_par_date[$date_key] = [];

@@ -34,128 +34,130 @@ if ($period === 'upcoming') {
     $filtered_events = $events;
 }
 
-// Trier les événements
-if ($period === 'past') {
-    // Événements passés: du plus récent au plus ancien
-    usort($filtered_events, function($a, $b) {
-        return strtotime($b['date_debut']) - strtotime($a['date_debut']);
-    });
-} else {
-    // Événements à venir ou tous: du plus proche au plus éloigné
-    usort($filtered_events, function($a, $b) {
-        return strtotime($a['date_debut']) - strtotime($b['date_debut']);
-    });
-}
-
-// Calculer le nombre total de pages
-$total_events = count($filtered_events);
-$total_pages = ceil($total_events / $per_page);
-
-// S'assurer que la page est dans les limites
-if ($page < 1) $page = 1;
-if ($page > $total_pages && $total_pages > 0) $page = $total_pages;
-
-// Extraire les événements pour la page courante
-$start = ($page - 1) * $per_page;
-$paged_events = array_slice($filtered_events, $start, $per_page);
-
-// Construire les paramètres pour les liens de pagination
-$filter_params = '';
-if (!empty($filter_type)) {
-    $filter_params .= '&type=' . $filter_type;
-}
-if (!empty($filter_classes)) {
-    foreach ($filter_classes as $class) {
-        $filter_params .= '&classes[]=' . urlencode($class);
+// Fonction pour déterminer si l'utilisateur peut modifier un événement
+if (!function_exists('canEditEventLocal')) {
+    function canEditEventLocal($event) {
+        if (function_exists('canEditEvent')) {
+            return canEditEvent($event);
+        }
+        
+        // Fallback si la fonction canEditEvent n'existe pas
+        $user = $_SESSION['user'] ?? null;
+        if (!$user) return false;
+        
+        // Admin/vie scolaire peuvent tout modifier
+        if ($user['profil'] === 'administrateur' || $user['profil'] === 'vie_scolaire') {
+            return true;
+        }
+        
+        // Un prof peut modifier ses propres événements
+        if ($user['profil'] === 'professeur') {
+            $user_fullname = $user['prenom'] . ' ' . $user['nom'];
+            return $event['createur'] === $user_fullname;
+        }
+        
+        return false;
     }
 }
+
+// Fonction pour déterminer si l'utilisateur peut supprimer un événement
+if (!function_exists('canDeleteEventLocal')) {
+    function canDeleteEventLocal($event) {
+        if (function_exists('canDeleteEvent')) {
+            return canDeleteEvent($event);
+        }
+        
+        // Par défaut, mêmes règles que pour la modification
+        return canEditEventLocal($event);
+    }
+}
+
+// Trier les événements
+usort($filtered_events, function($a, $b) {
+    return strtotime($a['date_debut']) - strtotime($b['date_debut']);
+});
+
+// Calculer la pagination
+$total_events = count($filtered_events);
+$total_pages = ceil($total_events / $per_page);
+$page = max(1, min($page, $total_pages)); // S'assurer que la page est valide
+$offset = ($page - 1) * $per_page;
+$events_page = array_slice($filtered_events, $offset, $per_page);
 ?>
 
+<!-- Interface utilisateur pour les filtres de période -->
 <div class="list-filters">
-    <h2>Liste des événements</h2>
-    
-    <div class="period-tabs">
-        <a href="?view=list&period=upcoming<?= $filter_params ?>" 
-           class="period-tab <?= $period === 'upcoming' ? 'active' : '' ?>">À venir</a>
-        <a href="?view=list&period=past<?= $filter_params ?>" 
-           class="period-tab <?= $period === 'past' ? 'active' : '' ?>">Passés</a>
-        <a href="?view=list&period=all<?= $filter_params ?>" 
-           class="period-tab <?= $period === 'all' ? 'active' : '' ?>">Tous</a>
+    <div class="period-filter">
+        <a href="?view=list&period=upcoming" class="period-option <?= $period === 'upcoming' ? 'active' : '' ?>">À venir</a>
+        <a href="?view=list&period=past" class="period-option <?= $period === 'past' ? 'active' : '' ?>">Passés</a>
+        <a href="?view=list&period=all" class="period-option <?= $period === 'all' ? 'active' : '' ?>">Tous</a>
     </div>
 </div>
 
-<?php if (count($paged_events) > 0): ?>
-    <div class="event-list">
-        <?php foreach ($paged_events as $event): ?>
-            <?php
-            $event_debut = new DateTime($event['date_debut']);
-            $event_fin = new DateTime($event['date_fin']);
+<?php if (empty($events_page)): ?>
+    <div class="no-events">
+        <p>Aucun événement trouvé pour cette période.</p>
+    </div>
+<?php else: ?>
+    <div class="events-list">
+        <?php foreach ($events_page as $event): ?>
+            <?php 
+            // Déterminer les classes CSS en fonction du type d'événement et du statut
             $event_class = 'event-' . strtolower($event['type_evenement']);
-            
             if ($event['statut'] === 'annulé') {
                 $event_class .= ' event-cancelled';
             } elseif ($event['statut'] === 'reporté') {
                 $event_class .= ' event-postponed';
             }
+            
+            // Formater les dates
+            $date_debut = new DateTime($event['date_debut']);
+            $date_fin = new DateTime($event['date_fin']);
             ?>
-            <div class="event-list-item <?= $event_class ?>">
-                <div class="event-list-date">
-                    <?php if ($event_debut->format('Y-m-d') === $event_fin->format('Y-m-d')): ?>
-                        <div><?= $event_debut->format('d/m/Y') ?></div>
-                        <div><?= $event_debut->format('H:i') ?> - <?= $event_fin->format('H:i') ?></div>
+            <div class="event-item <?= $event_class ?>">
+                <div class="event-date">
+                    <?php if ($date_debut->format('Y-m-d') === $date_fin->format('Y-m-d')): ?>
+                        <div class="event-day"><?= $date_debut->format('d/m/Y') ?></div>
+                        <div class="event-time"><?= $date_debut->format('H:i') ?> - <?= $date_fin->format('H:i') ?></div>
                     <?php else: ?>
-                        <div>Du <?= $event_debut->format('d/m/Y') ?></div>
-                        <div>au <?= $event_fin->format('d/m/Y') ?></div>
+                        <div class="event-day">Du <?= $date_debut->format('d/m/Y') ?></div>
+                        <div class="event-day">au <?= $date_fin->format('d/m/Y') ?></div>
                     <?php endif; ?>
                 </div>
-                
-                <div class="event-list-details">
-                    <div class="event-list-title"><?= htmlspecialchars($event['titre']) ?></div>
-                    
+                <div class="event-details">
+                    <h3 class="event-title"><?= htmlspecialchars($event['titre']) ?></h3>
                     <?php if (!empty($event['lieu'])): ?>
-                        <div class="event-list-location">Lieu: <?= htmlspecialchars($event['lieu']) ?></div>
+                        <div class="event-location"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($event['lieu']) ?></div>
                     <?php endif; ?>
-                    
-                    <div class="event-list-creator">Par: <?= htmlspecialchars($event['createur']) ?></div>
-                    
-                    <?php if (!empty($event['matieres'])): ?>
-                        <div class="event-list-subject">Matière: <?= htmlspecialchars($event['matieres']) ?></div>
-                    <?php endif; ?>
+                    <div class="event-creator">Créé par <?= htmlspecialchars($event['createur']) ?></div>
                 </div>
-                
-                <div class="event-list-actions">
-                    <a href="details_evenement.php?id=<?= $event['id'] ?>" class="button">Voir</a>
-                    
-                    <?php if (canEditEvent($event)): ?>
-                        <a href="modifier_evenement.php?id=<?= $event['id'] ?>" class="button">Modifier</a>
+                <div class="event-actions">
+                    <a href="details_evenement.php?id=<?= $event['id'] ?>" class="btn btn-sm">Voir</a>
+                    <?php if (canEditEventLocal($event)): ?>
+                        <a href="modifier_evenement.php?id=<?= $event['id'] ?>" class="btn btn-sm">Modifier</a>
                     <?php endif; ?>
-                    
-                    <?php if (canDeleteEvent($event)): ?>
-                        <a href="supprimer_evenement.php?id=<?= $event['id'] ?>" class="button button-secondary" 
-                           onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet événement ?');">Supprimer</a>
+                    <?php if (canDeleteEventLocal($event)): ?>
+                        <a href="supprimer_evenement.php?id=<?= $event['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet événement ?');">Supprimer</a>
                     <?php endif; ?>
                 </div>
             </div>
         <?php endforeach; ?>
+    </div>
+    
+    <!-- Pagination -->
+    <?php if ($total_pages > 1): ?>
+    <div class="pagination">
+        <?php if ($page > 1): ?>
+            <a href="?view=list&period=<?= $period ?>&page=<?= $page - 1 ?>" class="page-link">&laquo; Précédent</a>
+        <?php endif; ?>
         
-        <?php if ($total_pages > 1): ?>
-            <div class="pagination">
-                <?php if ($page > 1): ?>
-                    <a href="?view=list&period=<?= $period ?>&page=<?= $page - 1 . $filter_params ?>" 
-                       class="button button-secondary">Précédent</a>
-                <?php endif; ?>
-                
-                <div class="page-info">Page <?= $page ?> sur <?= $total_pages ?></div>
-                
-                <?php if ($page < $total_pages): ?>
-                    <a href="?view=list&period=<?= $period ?>&page=<?= $page + 1 . $filter_params ?>" 
-                       class="button button-secondary">Suivant</a>
-                <?php endif; ?>
-            </div>
+        <?php for ($i = max(1, $page - 2); $i <= min($page + 2, $total_pages); $i++): ?>
+            <a href="?view=list&period=<?= $period ?>&page=<?= $i ?>" class="page-link <?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
+        <?php endfor; ?>
+        
+        <?php if ($page < $total_pages): ?>
+            <a href="?view=list&period=<?= $period ?>&page=<?= $page + 1 ?>" class="page-link">Suivant &raquo;</a>
         <?php endif; ?>
     </div>
-<?php else: ?>
-    <div class="no-events">
-        <p>Aucun événement trouvé pour les critères sélectionnés.</p>
-    </div>
+    <?php endif; ?>
 <?php endif; ?>

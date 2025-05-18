@@ -68,6 +68,15 @@ function requireLogin() {
 }
 
 /**
+ * Vérifier si l'utilisateur a le droit de consulter tous les événements
+ * 
+ * @return bool
+ */
+function canViewAllEvents() {
+    return isAdmin() || isVieScolaire();
+}
+
+/**
  * Fonctions spécifiques pour la gestion des événements dans l'agenda
  */
 

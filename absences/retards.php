@@ -25,6 +25,17 @@ $date_fin = isset($_GET['date_fin']) ? $_GET['date_fin'] : date('Y-m-d');
 $classe = isset($_GET['classe']) ? $_GET['classe'] : '';
 $justifie = isset($_GET['justifie']) ? $_GET['justifie'] : '';
 
+// Vérifier si la table retards existe
+try {
+    $tableCheck = $pdo->query("SHOW TABLES LIKE 'retards'");
+    if ($tableCheck->rowCount() == 0) {
+        // Créer la table si elle n'existe pas
+        createRetardsTableIfNotExists($pdo);
+    }
+} catch (PDOException $e) {
+    error_log("Erreur lors de la vérification de la table retards: " . $e->getMessage());
+}
+
 // Récupérer la liste des retards selon le rôle de l'utilisateur
 $retards = [];
 
@@ -37,16 +48,17 @@ if (isAdmin() || isVieScolaire()) {
         $sql = "SELECT r.*, e.nom, e.prenom, e.classe 
                 FROM retards r 
                 JOIN eleves e ON r.id_eleve = e.id 
-                WHERE r.date BETWEEN ? AND ? ";
+                WHERE ((r.date_retard BETWEEN ? AND ?) OR 
+                       (DATE(r.date_retard) BETWEEN ? AND ?))";
                 
         if ($justifie !== '') {
             $sql .= "AND r.justifie = ? ";
-            $params = [$date_debut, $date_fin, $justifie === 'oui'];
+            $params = [$date_debut, $date_fin, $date_debut, $date_fin, $justifie === 'oui'];
         } else {
-            $params = [$date_debut, $date_fin];
+            $params = [$date_debut, $date_fin, $date_debut, $date_fin];
         }
         
-        $sql .= "ORDER BY r.date DESC";
+        $sql .= "ORDER BY r.date_retard DESC";
         
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
@@ -76,16 +88,17 @@ if (isAdmin() || isVieScolaire()) {
                 FROM retards r 
                 JOIN eleves e ON r.id_eleve = e.id 
                 WHERE e.classe IN ($placeholders) 
-                AND r.date BETWEEN ? AND ? ";
+                AND ((r.date_retard BETWEEN ? AND ?) OR 
+                     (DATE(r.date_retard) BETWEEN ? AND ?))";
                 
         if ($justifie !== '') {
             $sql .= "AND r.justifie = ? ";
-            $params = array_merge($prof_classes, [$date_debut, $date_fin, $justifie === 'oui']);
+            $params = array_merge($prof_classes, [$date_debut, $date_fin, $date_debut, $date_fin, $justifie === 'oui']);
         } else {
-            $params = array_merge($prof_classes, [$date_debut, $date_fin]);
+            $params = array_merge($prof_classes, [$date_debut, $date_fin, $date_debut, $date_fin]);
         }
         
-        $sql .= "ORDER BY e.classe, e.nom, e.prenom, r.date DESC";
+        $sql .= "ORDER BY e.classe, e.nom, e.prenom, r.date_retard DESC";
         
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
@@ -106,16 +119,17 @@ if (isAdmin() || isVieScolaire()) {
                 FROM retards r 
                 JOIN eleves e ON r.id_eleve = e.id 
                 WHERE r.id_eleve IN ($placeholders) 
-                AND r.date BETWEEN ? AND ? ";
+                AND ((r.date_retard BETWEEN ? AND ?) OR 
+                     (DATE(r.date_retard) BETWEEN ? AND ?))";
                 
         if ($justifie !== '') {
             $sql .= "AND r.justifie = ? ";
-            $params = array_merge($enfants, [$date_debut, $date_fin, $justifie === 'oui']);
+            $params = array_merge($enfants, [$date_debut, $date_fin, $date_debut, $date_fin, $justifie === 'oui']);
         } else {
-            $params = array_merge($enfants, [$date_debut, $date_fin]);
+            $params = array_merge($enfants, [$date_debut, $date_fin, $date_debut, $date_fin]);
         }
         
-        $sql .= "ORDER BY e.nom, e.prenom, r.date DESC";
+        $sql .= "ORDER BY e.nom, e.prenom, r.date_retard DESC";
         
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);

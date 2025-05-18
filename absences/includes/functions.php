@@ -21,12 +21,17 @@ if (!function_exists('getAbsencesEleve')) {
                 JOIN eleves e ON a.id_eleve = e.id 
                 WHERE a.id_eleve = ?";
         
-        if ($date_debut) {
-            $sql .= " AND a.date_debut >= ?";
+        if ($date_debut && $date_fin) {
+            $sql .= " AND (
+                (a.date_debut BETWEEN ? AND ?) OR  /* Commence dans la période */
+                (a.date_fin BETWEEN ? AND ?) OR    /* Finit dans la période */
+                (a.date_debut <= ? AND a.date_fin >= ?) /* Chevauche complètement la période */
+            )";
+            $params = array_merge($params, [$date_debut, $date_fin, $date_debut, $date_fin, $date_debut, $date_fin]);
+        } else if ($date_debut) {
+            $sql .= " AND a.date_fin >= ?";
             $params[] = $date_debut;
-        }
-        
-        if ($date_fin) {
+        } else if ($date_fin) {
             $sql .= " AND a.date_debut <= ?";
             $params[] = $date_fin;
         }
@@ -47,30 +52,47 @@ if (!function_exists('getAbsencesClasse')) {
      * @param string $classe Classe concernée
      * @param string $date_debut Date de début (optionnel)
      * @param string $date_fin Date de fin (optionnel)
+     * @param string $justifie Filtre de justification (oui/non/vide)
      * @return array Liste des absences
      */
-    function getAbsencesClasse($pdo, $classe, $date_debut = null, $date_fin = null) {
+    function getAbsencesClasse($pdo, $classe, $date_debut = null, $date_fin = null, $justifie = '') {
         $params = [$classe];
         $sql = "SELECT a.*, e.nom, e.prenom, e.classe 
                 FROM absences a 
                 JOIN eleves e ON a.id_eleve = e.id 
                 WHERE e.classe = ?";
         
-        if ($date_debut) {
-            $sql .= " AND a.date_debut >= ?";
+        if ($date_debut && $date_fin) {
+            $sql .= " AND (
+                (a.date_debut BETWEEN ? AND ?) OR  /* Commence dans la période */
+                (a.date_fin BETWEEN ? AND ?) OR    /* Finit dans la période */
+                (a.date_debut <= ? AND a.date_fin >= ?) /* Chevauche complètement la période */
+            )";
+            $params = array_merge($params, [$date_debut, $date_fin, $date_debut, $date_fin, $date_debut, $date_fin]);
+        } else if ($date_debut) {
+            $sql .= " AND a.date_fin >= ?";
             $params[] = $date_debut;
-        }
-        
-        if ($date_fin) {
+        } else if ($date_fin) {
             $sql .= " AND a.date_debut <= ?";
             $params[] = $date_fin;
         }
         
+        if ($justifie === 'oui') {
+            $sql .= " AND a.justifie = 1";
+        } else if ($justifie === 'non') {
+            $sql .= " AND a.justifie = 0";
+        }
+        
         $sql .= " ORDER BY e.nom, e.prenom, a.date_debut DESC";
         
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Erreur dans getAbsencesClasse: " . $e->getMessage());
+            return [];
+        }
     }
 }
 
@@ -226,19 +248,101 @@ function supprimerAbsence($pdo, $id) {
 }
 
 /**
- * Fonctions similaires pour les retards...
+ * Fonction complète pour récupérer les retards d'un élève
+ * @param PDO $pdo Connexion à la base de données
+ * @param int $id_eleve ID de l'élève
+ * @param string $date_debut Date de début (optionnel)
+ * @param string $date_fin Date de fin (optionnel)
+ * @return array Liste des retards
  */
 function getRetardsEleve($pdo, $id_eleve, $date_debut = null, $date_fin = null) {
-    // Similaire à getAbsencesEleve mais pour les retards
+    $params = [$id_eleve];
+    $sql = "SELECT r.*, e.nom, e.prenom, e.classe 
+            FROM retards r 
+            JOIN eleves e ON r.id_eleve = e.id 
+            WHERE r.id_eleve = ?";
+    
+    if ($date_debut && $date_fin) {
+        // Pour les retards, on cherche ceux qui sont dans la période
+        $sql .= " AND ((r.date_retard BETWEEN ? AND ?) OR 
+                       (DATE(r.date_retard) BETWEEN ? AND ?))";
+        $params = array_merge($params, [$date_debut, $date_fin, $date_debut, $date_fin]);
+    } else if ($date_debut) {
+        $sql .= " AND DATE(r.date_retard) >= ?";
+        $params[] = $date_debut;
+    } else if ($date_fin) {
+        $sql .= " AND DATE(r.date_retard) <= ?";
+        $params[] = $date_fin;
+    }
+    
+    $sql .= " ORDER BY r.date_retard DESC";
+    
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
+/**
+ * Ajout d'un retard
+ * @param PDO $pdo Connexion à la base de données
+ * @param array $data Données du retard
+ * @return bool|int ID du retard créé ou false en cas d'erreur
+ */
 function ajouterRetard($pdo, $data) {
-    // Similaire à ajouterAbsence mais pour les retards
+    try {
+        // Enable PDO error mode for debugging
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        
+        // Check if all required fields are present
+        $required_fields = ['id_eleve', 'date_retard', 'duree', 'signale_par'];
+        foreach ($required_fields as $field) {
+            if (empty($data[$field])) {
+                error_log("Missing required field for retard: $field");
+                return false;
+            }
+        }
+        
+        // Set default values for optional fields
+        $data['motif'] = isset($data['motif']) ? $data['motif'] : null;
+        $data['justifie'] = isset($data['justifie']) ? $data['justifie'] : false;
+        $data['commentaire'] = isset($data['commentaire']) ? $data['commentaire'] : null;
+        
+        $sql = "INSERT INTO retards (
+                    id_eleve,
+                    date_retard,
+                    duree,
+                    motif,
+                    justifie,
+                    commentaire,
+                    signale_par
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        
+        $stmt = $pdo->prepare($sql);
+        
+        $success = $stmt->execute([
+            $data['id_eleve'],
+            $data['date_retard'],
+            $data['duree'],
+            $data['motif'],
+            $data['justifie'] ? 1 : 0,
+            $data['commentaire'],
+            $data['signale_par']
+        ]);
+        
+        if ($success) {
+            return $pdo->lastInsertId();
+        } else {
+            error_log("Failed to add retard: " . json_encode($stmt->errorInfo()));
+            return false;
+        }
+    } catch (PDOException $e) {
+        error_log("PDO Exception when adding retard: " . $e->getMessage());
+        return false;
+    }
 }
 
 /**
  * Récupère les retards pour une classe
- * 
  * @param PDO $pdo Connexion à la base de données
  * @param string $classe Classe concernée
  * @param string $date_debut Date de début (optionnel)
@@ -252,17 +356,20 @@ function getRetardsClasse($pdo, $classe, $date_debut = null, $date_fin = null) {
             JOIN eleves e ON r.id_eleve = e.id 
             WHERE e.classe = ?";
     
-    if ($date_debut) {
-        $sql .= " AND r.date >= ?";
+    if ($date_debut && $date_fin) {
+        // Pour les retards, on cherche ceux qui sont dans la période
+        $sql .= " AND ((r.date_retard BETWEEN ? AND ?) OR 
+                       (DATE(r.date_retard) BETWEEN ? AND ?))";
+        $params = array_merge($params, [$date_debut, $date_fin, $date_debut, $date_fin]);
+    } else if ($date_debut) {
+        $sql .= " AND DATE(r.date_retard) >= ?";
         $params[] = $date_debut;
-    }
-    
-    if ($date_fin) {
-        $sql .= " AND r.date <= ?";
+    } else if ($date_fin) {
+        $sql .= " AND DATE(r.date_retard) <= ?";
         $params[] = $date_fin;
     }
     
-    $sql .= " ORDER BY e.nom, e.prenom, r.date DESC";
+    $sql .= " ORDER BY e.nom, e.prenom, r.date_retard DESC";
     
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
@@ -272,12 +379,126 @@ function getRetardsClasse($pdo, $classe, $date_debut = null, $date_fin = null) {
 /**
  * Fonctions pour les justificatifs
  */
-function ajouterJustificatif($pdo, $data) {
-    // Code pour ajouter un justificatif
+if (!function_exists('ajouterJustificatif')) {
+    /**
+     * Ajoute un justificatif dans la base de données
+     * @param PDO $pdo Instance de PDO
+     * @param array $data Données du justificatif
+     * @return bool|int ID du justificatif créé ou false en cas d'erreur
+     */
+    function ajouterJustificatif($pdo, $data) {
+        try {
+            // Vérifier les champs obligatoires
+            $required_fields = ['id_eleve', 'date_soumission', 'date_debut_absence', 'date_fin_absence', 'type', 'motif'];
+            foreach ($required_fields as $field) {
+                if (empty($data[$field])) {
+                    error_log("Champ obligatoire manquant pour justificatif: $field");
+                    return false;
+                }
+            }
+
+            $sql = "INSERT INTO justificatifs (
+                        id_eleve, 
+                        date_soumission, 
+                        date_debut_absence,
+                        date_fin_absence,
+                        type,
+                        fichier,
+                        motif,
+                        commentaire
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+
+            $stmt = $pdo->prepare($sql);
+            $success = $stmt->execute([
+                $data['id_eleve'],
+                $data['date_soumission'],
+                $data['date_debut_absence'],
+                $data['date_fin_absence'],
+                $data['type'],
+                isset($data['fichier']) ? $data['fichier'] : null,
+                $data['motif'],
+                isset($data['commentaire']) ? $data['commentaire'] : null
+            ]);
+
+            if ($success) {
+                return $pdo->lastInsertId();
+            } else {
+                error_log("Échec d'ajout de justificatif: " . json_encode($stmt->errorInfo()));
+                return false;
+            }
+        } catch (PDOException $e) {
+            error_log("PDOException lors de l'ajout du justificatif: " . $e->getMessage());
+            return false;
+        }
+    }
 }
 
-function getJustificatifsEleve($pdo, $id_eleve) {
-    // Code pour récupérer les justificatifs d'un élève
+/**
+ * Récupère un justificatif par son ID
+ * @param PDO $pdo Instance PDO
+ * @param int $id ID du justificatif
+ * @return array|false Données du justificatif ou false si non trouvé
+ */
+if (!function_exists('getJustificatifById')) {
+    function getJustificatifById($pdo, $id) {
+        try {
+            $sql = "SELECT j.*, e.nom, e.prenom, e.classe 
+                    FROM justificatifs j 
+                    JOIN eleves e ON j.id_eleve = e.id 
+                    WHERE j.id = ?";
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$id]);
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la récupération du justificatif: " . $e->getMessage());
+            return false;
+        }
+    }
+}
+
+/**
+ * Met à jour un justificatif
+ * @param PDO $pdo Instance PDO
+ * @param int $id ID du justificatif
+ * @param array $data Données à mettre à jour
+ * @return bool Succès ou échec
+ */
+if (!function_exists('updateJustificatif')) {
+    function updateJustificatif($pdo, $id, $data) {
+        try {
+            $sql = "UPDATE justificatifs SET ";
+            $params = [];
+            $updates = [];
+            
+            // Champs pouvant être mis à jour
+            $updatableFields = [
+                'motif', 'commentaire', 'traite', 'approuve', 
+                'commentaire_admin', 'date_traitement', 'traite_par'
+            ];
+            
+            foreach ($updatableFields as $field) {
+                if (isset($data[$field])) {
+                    $updates[] = "$field = ?";
+                    $params[] = $data[$field];
+                }
+            }
+            
+            // Si aucun champ à mettre à jour
+            if (empty($updates)) {
+                return true;
+            }
+            
+            $sql .= implode(', ', $updates) . " WHERE id = ?";
+            $params[] = $id;
+            
+            $stmt = $pdo->prepare($sql);
+            return $stmt->execute($params);
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la mise à jour du justificatif: " . $e->getMessage());
+            return false;
+        }
+    }
 }
 
 /**
@@ -332,7 +553,7 @@ function createRetardsTableIfNotExists($pdo) {
         $sql = "CREATE TABLE IF NOT EXISTS retards (
             id INT AUTO_INCREMENT PRIMARY KEY,
             id_eleve INT NOT NULL,
-            date DATETIME NOT NULL,
+            date_retard DATETIME NOT NULL,
             duree INT NOT NULL,
             motif VARCHAR(100) NULL,
             justifie BOOLEAN DEFAULT FALSE,
@@ -371,53 +592,184 @@ function createProfesseurClassesTableIfNotExists($pdo) {
 }
 
 /**
- * Vérifie si les classes existent déjà dans la table professeur_classes
- * Si non, initialise la table avec les données des professeurs
- * Cette fonction est provisoire pour la migration
+ * Crée la table justificatifs avec les colonnes nécessaires
+ * @param PDO $pdo Instance PDO
+ * @return bool Succès ou échec
+ */
+function createJustificatifsTableIfNotExists($pdo) {
+    try {
+        $sql = "CREATE TABLE IF NOT EXISTS justificatifs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            id_eleve INT NOT NULL,
+            date_soumission DATE NOT NULL,
+            date_debut_absence DATE NOT NULL,
+            date_fin_absence DATE NOT NULL,
+            type VARCHAR(50) NOT NULL,
+            fichier VARCHAR(255) NULL,
+            motif TEXT NULL,
+            commentaire TEXT NULL,
+            traite BOOLEAN DEFAULT FALSE,
+            approuve BOOLEAN DEFAULT FALSE,
+            commentaire_admin TEXT NULL,
+            date_traitement DATETIME NULL,
+            traite_par VARCHAR(100) NULL,
+            FOREIGN KEY (id_eleve) REFERENCES eleves(id) ON DELETE CASCADE
+        )";
+        
+        $pdo->exec($sql);
+        return true;
+    } catch (PDOException $e) {
+        error_log("Erreur lors de la création de la table justificatifs: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Met à jour la structure de la table justificatifs si nécessaire
+ * @param PDO $pdo Instance PDO
+ * @return bool Succès ou échec
+ */
+function updateJustificatifsTable($pdo) {
+    try {
+        // Vérifier si la colonne date_soumission existe
+        $columnCheck = $pdo->query("SHOW COLUMNS FROM justificatifs LIKE 'date_soumission'");
+        if ($columnCheck->rowCount() == 0) {
+            // Ajouter la colonne date_soumission
+            $pdo->exec("ALTER TABLE justificatifs ADD COLUMN date_soumission DATE DEFAULT CURRENT_DATE");
+        }
+        
+        // Vérifier si la colonne date_depot existe (ancienne version)
+        $columnCheck = $pdo->query("SHOW COLUMNS FROM justificatifs LIKE 'date_depot'");
+        if ($columnCheck->rowCount() > 0) {
+            // Migration des données de date_depot vers date_soumission
+            $pdo->exec("UPDATE justificatifs SET date_soumission = date_depot WHERE date_soumission IS NULL");
+        }
+        
+        return true;
+    } catch (PDOException $e) {
+        error_log("Erreur lors de la mise à jour de la table justificatifs: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Récupère les justificatifs pour un élève
+ * @param PDO $pdo Instance PDO
+ * @param int $id_eleve ID de l'élève
+ * @param string $date_debut Date de début (optionnel)
+ * @param string $date_fin Date de fin (optionnel)
+ * @return array Liste des justificatifs
+ */
+function getJustificatifsEleve($pdo, $id_eleve, $date_debut = null, $date_fin = null) {
+    try {
+        // Vérifier quelle colonne de date utiliser
+        $columnCheck = $pdo->query("SHOW COLUMNS FROM justificatifs LIKE 'date_soumission'");
+        $dateColumn = $columnCheck->rowCount() > 0 ? 'date_soumission' : 'date_depot';
+        
+        $params = [$id_eleve];
+        $sql = "SELECT j.*, e.nom, e.prenom, e.classe 
+                FROM justificatifs j 
+                JOIN eleves e ON j.id_eleve = e.id 
+                WHERE j.id_eleve = ?";
+        
+        if ($date_debut) {
+            $sql .= " AND j.$dateColumn >= ?";
+            $params[] = $date_debut;
+        }
+        
+        if ($date_fin) {
+            $sql .= " AND j.$dateColumn <= ?";
+            $params[] = $date_fin;
+        }
+        
+        $sql .= " ORDER BY j.$dateColumn DESC";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Erreur lors de la récupération des justificatifs: " . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Initialise les associations professeurs-classes si nécessaire
+ * @param PDO $pdo Connexion à la base de données
+ * @return bool Succès de l'opération
  */
 function initializeProfesseurClasses($pdo) {
     try {
-        // Check if table is empty
+        // Vérifier si des associations existent déjà
         $stmt = $pdo->query("SELECT COUNT(*) FROM professeur_classes");
         $count = $stmt->fetchColumn();
         
-        if ($count == 0) {
-            // Table is empty, let's get data from professeurs table if it exists
-            try {
-                $stmt = $pdo->query("SHOW COLUMNS FROM professeurs LIKE 'classe'");
-                $column_exists = $stmt->fetch();
-                
-                if ($column_exists) {
-                    // Old structure with 'classe' column
-                    $stmt = $pdo->query("SELECT id, classe FROM professeurs WHERE classe IS NOT NULL AND classe != ''");
-                    $profs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                    
-                    foreach ($profs as $prof) {
-                        // A professor might teach multiple classes separated by commas
-                        $classes = explode(',', $prof['classe']);
-                        foreach ($classes as $classe) {
-                            $classe = trim($classe);
-                            if (!empty($classe)) {
-                                $insert = $pdo->prepare("INSERT IGNORE INTO professeur_classes (id_professeur, nom_classe) VALUES (?, ?)");
-                                $insert->execute([$prof['id'], $classe]);
-                            }
-                        }
+        // Si des associations existent déjà, ne rien faire
+        if ($count > 0) {
+            return true;
+        }
+        
+        // Sinon, charger les données depuis le fichier JSON de l'établissement
+        $etablissement_data = json_decode(file_get_contents(__DIR__ . '/../../login/data/etablissement.json'), true);
+        if (empty($etablissement_data['professeurs'])) {
+            error_log("Aucune donnée de professeur trouvée dans le fichier établissement");
+            return false;
+        }
+        
+        // Récupérer les professeurs depuis la base de données
+        $stmt = $pdo->query("SELECT id, nom, prenom FROM professeurs");
+        $professeurs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        if (empty($professeurs)) {
+            error_log("Aucun professeur trouvé dans la base de données");
+            return false;
+        }
+        
+        // Récupérer les classes disponibles
+        $classes = [];
+        if (!empty($etablissement_data['classes'])) {
+            foreach ($etablissement_data['classes'] as $niveau => $niveaux) {
+                foreach ($niveaux as $cycle => $liste_classes) {
+                    foreach ($liste_classes as $nom_classe) {
+                        $classes[] = $nom_classe;
                     }
-                    
-                    error_log("Initialized professeur_classes table from professeurs.classe");
-                } else {
-                    // Create a test entry for debugging
-                    error_log("No 'classe' column in professeurs table, creating test data");
-                    $insert = $pdo->prepare("INSERT IGNORE INTO professeur_classes (id_professeur, nom_classe) VALUES (1, '6A'), (1, '5B')");
-                    $insert->execute();
                 }
-            } catch (PDOException $e) {
-                error_log("Error migrating professeur classes: " . $e->getMessage());
             }
         }
+        
+        if (empty($classes)) {
+            error_log("Aucune classe trouvée dans le fichier établissement");
+            return false;
+        }
+        
+        // Préparer la requête d'insertion
+        $stmt = $pdo->prepare("INSERT INTO professeur_classes (id_professeur, nom_classe) VALUES (?, ?)");
+        
+        // Pour chaque professeur, assigner aléatoirement 1 à 3 classes
+        foreach ($professeurs as $prof) {
+            $nbClasses = rand(1, 3);
+            $classesPourProf = array_rand(array_flip($classes), min($nbClasses, count($classes)));
+            
+            // Si une seule classe est retournée, convertir en tableau
+            if (!is_array($classesPourProf)) {
+                $classesPourProf = [$classesPourProf];
+            }
+            
+            foreach ($classesPourProf as $classe) {
+                try {
+                    $stmt->execute([$prof['id'], $classe]);
+                } catch (PDOException $e) {
+                    // Ignorer les erreurs de doublon (contrainte unique)
+                    if ($e->getCode() != '23000') {
+                        error_log("Erreur lors de l'association professeur-classe: " . $e->getMessage());
+                    }
+                }
+            }
+        }
+        
         return true;
-    } catch (PDOException $e) {
-        error_log("Error initializing professeur_classes: " . $e->getMessage());
+    } catch (Exception $e) {
+        error_log("Erreur dans initializeProfesseurClasses: " . $e->getMessage());
         return false;
     }
 }
@@ -427,6 +779,7 @@ try {
     createAbsencesTableIfNotExists($pdo);
     createRetardsTableIfNotExists($pdo);
     createProfesseurClassesTableIfNotExists($pdo);
+    createJustificatifsTableIfNotExists($pdo);
     initializeProfesseurClasses($pdo);
 } catch (Exception $e) {
     error_log("Error initializing tables: " . $e->getMessage());

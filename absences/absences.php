@@ -5,46 +5,35 @@ ob_start();
 // Inclure les fichiers nécessaires
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/db.php';
+require_once __DIR__ . '/includes/functions.php';
 
-// Vérifier si functions.php existe, et sinon, créer un fichier de base
-$functions_file = __DIR__ . '/includes/functions.php';
-if (!file_exists($functions_file)) {
-    // Créer un fichier de fonctions de base
-    $functions_content = '<?php
-/**
- * Fonctions utilitaires pour la gestion des absences et retards
- */
-
-// Implémentations de base si le fichier de fonctions réel est manquant
-function getAbsencesEleve($pdo, $id_eleve, $date_debut = null, $date_fin = null) {
-    return [];
-}
-
-function getAbsencesClasse($pdo, $classe, $date_debut = null, $date_fin = null) {
-    return [];
-}
-?>';
-    file_put_contents($functions_file, $functions_content);
-}
-
-require_once $functions_file;
-
-// Vérifier que l'utilisateur est connecté - en utilisant isLoggedIn() au lieu de requireLogin()
+// Vérifier que l'utilisateur est connecté
 if (!isLoggedIn()) {
-    header('Location: /~u22405372/SAE/Pronote/login/public/index.php');
+    header('Location: ../login/public/index.php');
     exit;
 }
 
 // Récupérer les informations de l'utilisateur connecté
 $user = $_SESSION['user'] ?? null;
 if (!$user) {
-    header('Location: /~u22405372/SAE/Pronote/login/public/index.php');
+    header('Location: ../login/public/index.php');
     exit;
 }
 
 $user_fullname = $user['prenom'] . ' ' . $user['nom'];
 $user_role = $user['profil'];
 $user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
+
+// Vérifier si la table absences existe
+try {
+    $tableCheck = $pdo->query("SHOW TABLES LIKE 'absences'");
+    if ($tableCheck->rowCount() == 0) {
+        // Créer la table si elle n'existe pas
+        createAbsencesTableIfNotExists($pdo);
+    }
+} catch (PDOException $e) {
+    error_log("Erreur lors de la vérification de la table absences: " . $e->getMessage());
+}
 
 // Définir les filtres par défaut
 $date_debut = isset($_GET['date_debut']) ? $_GET['date_debut'] : date('Y-m-d', strtotime('-30 days'));
@@ -56,20 +45,28 @@ $justifie = isset($_GET['justifie']) ? $_GET['justifie'] : '';
 // Récupérer la liste des absences selon le rôle de l'utilisateur
 $absences = [];
 
+// Pour déboguer: journaliser le rôle de l'utilisateur
+error_log("absences.php - Rôle de l'utilisateur: " . $user_role);
+
 if (isAdmin() || isVieScolaire()) {
+    error_log("absences.php - Utilisateur admin ou vie scolaire détecté");
     if (!empty($classe)) {
-        $absences = getAbsencesClasse($pdo, $classe, $date_debut, $date_fin);
+        $absences = getAbsencesClasse($pdo, $classe, $date_debut, $date_fin, $justifie);
     } else {
         $sql = "SELECT a.*, e.nom, e.prenom, e.classe 
                 FROM absences a 
                 JOIN eleves e ON a.id_eleve = e.id 
-                WHERE a.date_debut BETWEEN ? AND ? ";
+                WHERE (
+                    (a.date_debut BETWEEN ? AND ?) OR  /* Commence dans la période */
+                    (a.date_fin BETWEEN ? AND ?) OR    /* Finit dans la période */
+                    (a.date_debut <= ? AND a.date_fin >= ?) /* Chevauche complètement la période */
+                )";
                 
         if ($justifie !== '') {
             $sql .= "AND a.justifie = ? ";
-            $params = [$date_debut, $date_fin, $justifie === 'oui'];
+            $params = [$date_debut, $date_fin, $date_debut, $date_fin, $date_debut, $date_fin, $justifie === 'oui'];
         } else {
-            $params = [$date_debut, $date_fin];
+            $params = [$date_debut, $date_fin, $date_debut, $date_fin, $date_debut, $date_fin];
         }
         
         $sql .= "ORDER BY a.date_debut DESC";
@@ -77,48 +74,65 @@ if (isAdmin() || isVieScolaire()) {
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         $absences = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Journaliser le nombre d'absences récupérées
+        error_log("absences.php - Récupération de " . count($absences) . " absences pour admin/vie scolaire");
     }
 } elseif (isTeacher()) {
-    // Fix the query to get the classes taught by the teacher
-    // The professeurs table doesn't have a 'classe' column directly
-    $stmt = $pdo->prepare("
-        SELECT DISTINCT c.nom_classe as classe
-        FROM professeur_classes c
-        WHERE c.id_professeur = ?
-    ");
-    $stmt->execute([$user['id']]);
-    $prof_classes = $stmt->fetchAll(PDO::FETCH_COLUMN);
-    
-    // If no classes found for this professor, use an empty array to avoid SQL errors
-    if (empty($prof_classes)) {
-        $prof_classes = [];
-    }
-    
-    if (!empty($classe) && in_array($classe, $prof_classes)) {
-        $absences = getAbsencesClasse($pdo, $classe, $date_debut, $date_fin);
-    } else {
-        $placeholders = implode(',', array_fill(0, count($prof_classes), '?'));
-        $sql = "SELECT a.*, e.nom, e.prenom, e.classe 
-                FROM absences a 
-                JOIN eleves e ON a.id_eleve = e.id 
-                WHERE e.classe IN ($placeholders) 
-                AND a.date_debut BETWEEN ? AND ? ";
-                
-        if ($justifie !== '') {
-            $sql .= "AND a.justifie = ? ";
-            $params = array_merge($prof_classes, [$date_debut, $date_fin, $justifie === 'oui']);
-        } else {
-            $params = array_merge($prof_classes, [$date_debut, $date_fin]);
+    error_log("absences.php - Utilisateur professeur détecté: ID=" . $user['id']);
+    try {
+        // Récupérer les classes du professeur
+        $stmt = $pdo->prepare("
+            SELECT DISTINCT c.nom_classe as classe
+            FROM professeur_classes c
+            WHERE c.id_professeur = ?
+        ");
+        $stmt->execute([$user['id']]);
+        $prof_classes = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        
+        error_log("absences.php - Classes du professeur: " . implode(", ", $prof_classes));
+        
+        // Si pas de classes trouvées, utiliser un tableau vide
+        if (empty($prof_classes)) {
+            $prof_classes = [];
         }
         
-        $sql .= "ORDER BY e.classe, e.nom, e.prenom, a.date_debut DESC";
-        
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
-        $absences = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!empty($classe) && in_array($classe, $prof_classes)) {
+            $absences = getAbsencesClasse($pdo, $classe, $date_debut, $date_fin, $justifie);
+        } else if (!empty($prof_classes)) {
+            $placeholders = implode(',', array_fill(0, count($prof_classes), '?'));
+            $sql = "SELECT a.*, e.nom, e.prenom, e.classe 
+                    FROM absences a 
+                    JOIN eleves e ON a.id_eleve = e.id 
+                    WHERE e.classe IN ($placeholders) 
+                    AND (
+                        (a.date_debut BETWEEN ? AND ?) OR  /* Commence dans la période */
+                        (a.date_fin BETWEEN ? AND ?) OR    /* Finit dans la période */
+                        (a.date_debut <= ? AND a.date_fin >= ?) /* Chevauche complètement la période */
+                    )";
+                
+            if ($justifie !== '') {
+                $sql .= "AND a.justifie = ? ";
+                $params = array_merge($prof_classes, [$date_debut, $date_fin, $date_debut, $date_fin, $date_debut, $date_fin, $justifie === 'oui']);
+            } else {
+                $params = array_merge($prof_classes, [$date_debut, $date_fin, $date_debut, $date_fin, $date_debut, $date_fin]);
+            }
+            
+            $sql .= "ORDER BY e.classe, e.nom, e.prenom, a.date_debut DESC";
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            $absences = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            error_log("absences.php - Récupération de " . count($absences) . " absences pour professeur");
+        }
+    } catch (PDOException $e) {
+        error_log("absences.php - Erreur dans la requête pour professeur: " . $e->getMessage());
     }
 } elseif (isStudent()) {
+    error_log("absences.php - Utilisateur élève détecté: ID=" . $user['id']);
     $absences = getAbsencesEleve($pdo, $user['id'], $date_debut, $date_fin);
+    error_log("absences.php - Récupération de " . count($absences) . " absences pour élève");
 } elseif (isParent()) {
     $stmt = $pdo->prepare("SELECT id_eleve FROM parents_eleves WHERE id_parent = ?");
     $stmt->execute([$user['id']]);
@@ -130,13 +144,17 @@ if (isAdmin() || isVieScolaire()) {
                 FROM absences a 
                 JOIN eleves e ON a.id_eleve = e.id 
                 WHERE a.id_eleve IN ($placeholders) 
-                AND a.date_debut BETWEEN ? AND ? ";
+                AND (
+                    (a.date_debut BETWEEN ? AND ?) OR  /* Commence dans la période */
+                    (a.date_fin BETWEEN ? AND ?) OR    /* Finit dans la période */
+                    (a.date_debut <= ? AND a.date_fin >= ?) /* Chevauche complètement la période */
+                )";
                 
         if ($justifie !== '') {
             $sql .= "AND a.justifie = ? ";
-            $params = array_merge($enfants, [$date_debut, $date_fin, $justifie === 'oui']);
+            $params = array_merge($enfants, [$date_debut, $date_fin, $date_debut, $date_fin, $date_debut, $date_fin, $justifie === 'oui']);
         } else {
-            $params = array_merge($enfants, [$date_debut, $date_fin]);
+            $params = array_merge($enfants, [$date_debut, $date_fin, $date_debut, $date_fin, $date_debut, $date_fin]);
         }
         
         $sql .= "ORDER BY e.nom, e.prenom, a.date_debut DESC";

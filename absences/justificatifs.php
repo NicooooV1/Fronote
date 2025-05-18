@@ -25,32 +25,77 @@ $date_fin = isset($_GET['date_fin']) ? $_GET['date_fin'] : date('Y-m-d');
 $classe = isset($_GET['classe']) ? $_GET['classe'] : '';
 $traite = isset($_GET['traite']) ? $_GET['traite'] : '';
 
+// Vérifier si la table justificatifs existe
+try {
+    $tableCheck = $pdo->query("SHOW TABLES LIKE 'justificatifs'");
+    if ($tableCheck->rowCount() == 0) {
+        // Créer la table si elle n'existe pas
+        createJustificatifsTableIfNotExists($pdo);
+    } else {
+        // Vérifier si la colonne date_soumission existe
+        $columnCheck = $pdo->query("SHOW COLUMNS FROM justificatifs LIKE 'date_soumission'");
+        if ($columnCheck->rowCount() == 0) {
+            // Essayer de trouver une colonne similaire (date_depot ou autre)
+            $columns = $pdo->query("DESCRIBE justificatifs");
+            $dateColumns = [];
+            while ($col = $columns->fetch(PDO::FETCH_ASSOC)) {
+                if (strpos($col['Field'], 'date') !== false) {
+                    $dateColumns[] = $col['Field'];
+                }
+            }
+            
+            // Si une colonne de date est trouvée, l'utiliser; sinon, créer la colonne
+            if (!empty($dateColumns)) {
+                $dateColumn = $dateColumns[0]; // Utiliser la première colonne de date trouvée
+            } else {
+                // Ajouter la colonne date_soumission
+                $pdo->exec("ALTER TABLE justificatifs ADD COLUMN date_soumission DATE DEFAULT CURRENT_DATE");
+                $dateColumn = 'date_soumission';
+            }
+            
+            // Journaliser le changement
+            error_log("Colonne date_soumission manquante dans la table justificatifs, utilisation de la colonne $dateColumn à la place");
+        } else {
+            $dateColumn = 'date_soumission';
+        }
+    }
+} catch (PDOException $e) {
+    error_log("Erreur lors de la vérification de la table justificatifs: " . $e->getMessage());
+    // Par défaut, utiliser une colonne qui existe probablement
+    $dateColumn = 'date_depot';
+}
+
 // Récupérer la liste des justificatifs
 $justificatifs = [];
 
 if (isAdmin() || isVieScolaire()) {
-    $sql = "SELECT j.*, e.nom, e.prenom, e.classe 
-            FROM justificatifs j 
-            JOIN eleves e ON j.id_eleve = e.id 
-            WHERE j.date_depot BETWEEN ? AND ? ";
-            
-    $params = [$date_debut, $date_fin];
-    
-    if (!empty($classe)) {
-        $sql .= "AND e.classe = ? ";
-        $params[] = $classe;
+    try {
+        // Construire la requête en utilisant la colonne de date déterminée
+        $sql = "SELECT j.*, e.nom, e.prenom, e.classe 
+                FROM justificatifs j 
+                JOIN eleves e ON j.id_eleve = e.id 
+                WHERE j.$dateColumn BETWEEN ? AND ? ";
+                
+        $params = [$date_debut, $date_fin];
+        
+        if (!empty($classe)) {
+            $sql .= "AND e.classe = ? ";
+            $params[] = $classe;
+        }
+        
+        if ($traite !== '') {
+            $sql .= "AND j.traite = ? ";
+            $params[] = $traite === 'oui';
+        }
+        
+        $sql .= "ORDER BY j.$dateColumn DESC";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $justificatifs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Erreur lors de la récupération des justificatifs: " . $e->getMessage());
     }
-    
-    if ($traite !== '') {
-        $sql .= "AND j.traite = ? ";
-        $params[] = $traite === 'oui';
-    }
-    
-    $sql .= "ORDER BY j.date_depot DESC";
-    
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    $justificatifs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 // Traitement du formulaire de justification
@@ -84,28 +129,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // Récupérer la liste des classes pour le filtre
 $classes = [];
-$etablissement_data = json_decode(file_get_contents('../login/data/etablissement.json'), true);
-if (!empty($etablissement_data['classes'])) {
-    foreach ($etablissement_data['classes'] as $niveau => $niveaux) {
-        foreach ($niveaux as $cycle => $liste_classes) {
-            foreach ($liste_classes as $nom_classe) {
-                $classes[] = $nom_classe;
+try {
+    $etablissement_data = json_decode(file_get_contents('../login/data/etablissement.json'), true);
+    if (!empty($etablissement_data['classes'])) {
+        foreach ($etablissement_data['classes'] as $niveau => $niveaux) {
+            foreach ($niveaux as $cycle => $liste_classes) {
+                foreach ($liste_classes as $nom_classe) {
+                    $classes[] = $nom_classe;
+                }
             }
         }
     }
-}
-
-// Message de succès
-if (isset($_GET['success'])) {
-    $message = "Le justificatif a été traité avec succès.";
+} catch (Exception $e) {
+    error_log("Erreur lors de la récupération des classes: " . $e->getMessage());
 }
 ?>
+
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gestion des justificatifs - Pronote</title>
+  <title>Justificatifs d'absence - Pronote</title>
   <link rel="stylesheet" href="../agenda/assets/css/calendar.css">
   <link rel="stylesheet" href="assets/css/absences.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -116,12 +161,12 @@ if (isset($_GET['success'])) {
     <div class="sidebar">
       <a href="../accueil/accueil.php" class="logo-container">
         <div class="app-logo">P</div>
-        <div class="app-title">Pronote Justificatifs</div>
+        <div class="app-title">Pronote Absences</div>
       </a>
       
       <!-- Filtres -->
       <div class="sidebar-section">
-        <form id="filters-form" method="get" action="justificatifs.php">
+        <form id="filters-form" method="get" action="">
           <div class="form-group">
             <label for="date_debut">Du</label>
             <input type="date" id="date_debut" name="date_debut" value="<?= $date_debut ?>" max="<?= date('Y-m-d') ?>">
@@ -158,11 +203,7 @@ if (isset($_GET['success'])) {
       <!-- Actions -->
       <div class="sidebar-section">
         <a href="absences.php" class="action-button secondary">
-          <i class="fas fa-calendar"></i> Voir les absences
-        </a>
-        
-        <a href="retards.php" class="action-button secondary">
-          <i class="fas fa-clock"></i> Voir les retards
+          <i class="fas fa-arrow-left"></i> Retour aux absences
         </a>
       </div>
     </div>
@@ -183,34 +224,20 @@ if (isset($_GET['success'])) {
       
       <!-- Content -->
       <div class="content-container">
-        <?php if (!empty($message)): ?>
-          <div class="alert alert-success">
-            <i class="fas fa-check-circle"></i>
-            <?= $message ?>
-          </div>
-        <?php endif; ?>
-        
-        <?php if (!empty($erreur)): ?>
-          <div class="alert alert-error">
-            <i class="fas fa-exclamation-circle"></i>
-            <?= $erreur ?>
-          </div>
-        <?php endif; ?>
-        
         <?php if (empty($justificatifs)): ?>
           <div class="no-data-message">
             <i class="fas fa-info-circle"></i>
             <p>Aucun justificatif ne correspond aux critères sélectionnés.</p>
           </div>
         <?php else: ?>
-          <div class="absences-list">
+          <div class="justificatifs-list">
             <div class="list-header">
               <div class="list-row header-row">
                 <div class="list-cell header-cell">Élève</div>
                 <div class="list-cell header-cell">Classe</div>
                 <div class="list-cell header-cell">Date de dépôt</div>
-                <div class="list-cell header-cell">Période justifiée</div>
-                <div class="list-cell header-cell">Type</div>
+                <div class="list-cell header-cell">Période</div>
+                <div class="list-cell header-cell">Motif</div>
                 <div class="list-cell header-cell">Statut</div>
                 <div class="list-cell header-cell">Actions</div>
               </div>
@@ -218,48 +245,36 @@ if (isset($_GET['success'])) {
             
             <div class="list-body">
               <?php foreach ($justificatifs as $justificatif): ?>
-                <?php
-                $date_depot = new DateTime($justificatif['date_depot']);
-                $date_debut_absence = new DateTime($justificatif['date_debut_absence']);
-                $date_fin_absence = new DateTime($justificatif['date_fin_absence']);
-                ?>
-                <div class="list-row">
+                <div class="list-row justificatif-row <?= $justificatif['traite'] ? 'traite' : 'non-traite' ?>">
+                  <div class="list-cell"><?= htmlspecialchars($justificatif['prenom'] . ' ' . $justificatif['nom']) ?></div>
+                  <div class="list-cell"><?= htmlspecialchars($justificatif['classe']) ?></div>
                   <div class="list-cell">
-                    <?= htmlspecialchars($justificatif['prenom'] . ' ' . $justificatif['nom']) ?>
+                    <?= isset($justificatif[$dateColumn]) ? date('d/m/Y', strtotime($justificatif[$dateColumn])) : 'N/A' ?>
                   </div>
                   <div class="list-cell">
-                    <?= htmlspecialchars($justificatif['classe']) ?>
+                    Du <?= date('d/m/Y', strtotime($justificatif['date_debut_absence'])) ?>
+                    <br>
+                    au <?= date('d/m/Y', strtotime($justificatif['date_fin_absence'])) ?>
                   </div>
-                  <div class="list-cell">
-                    <?= $date_depot->format('d/m/Y') ?>
-                  </div>
-                  <div class="list-cell">
-                    Du <?= $date_debut_absence->format('d/m/Y') ?> au <?= $date_fin_absence->format('d/m/Y') ?>
-                  </div>
-                  <div class="list-cell">
-                    <?= ucfirst(htmlspecialchars($justificatif['type'])) ?>
-                  </div>
+                  <div class="list-cell"><?= htmlspecialchars($justificatif['motif'] ?? 'Non spécifié') ?></div>
                   <div class="list-cell">
                     <?php if ($justificatif['traite']): ?>
-                      <?php if ($justificatif['approuve']): ?>
-                        <span class="badge badge-success">Approuvé</span>
-                      <?php else: ?>
-                        <span class="badge badge-danger">Refusé</span>
-                      <?php endif; ?>
+                      <span class="badge badge-success">Traité</span>
+                      <span class="badge <?= $justificatif['approuve'] ? 'badge-success' : 'badge-danger' ?>">
+                        <?= $justificatif['approuve'] ? 'Approuvé' : 'Rejeté' ?>
+                      </span>
                     <?php else: ?>
-                      <span class="badge badge-cours">En attente</span>
+                      <span class="badge badge-warning">En attente</span>
                     <?php endif; ?>
                   </div>
                   <div class="list-cell">
                     <div class="action-buttons">
-                      <a href="#" class="btn-icon view-justificatif" data-id="<?= $justificatif['id'] ?>" title="Voir les détails">
+                      <a href="details_justificatif.php?id=<?= $justificatif['id'] ?>" class="btn-icon" title="Voir les détails">
                         <i class="fas fa-eye"></i>
                       </a>
-                      <?php if (!$justificatif['traite']): ?>
-                        <a href="#" class="btn-icon process-justificatif" data-id="<?= $justificatif['id'] ?>" title="Traiter ce justificatif">
-                          <i class="fas fa-check"></i>
-                        </a>
-                      <?php endif; ?>
+                      <a href="traiter_justificatif.php?id=<?= $justificatif['id'] ?>" class="btn-icon" title="Traiter">
+                        <i class="fas fa-check-circle"></i>
+                      </a>
                     </div>
                   </div>
                 </div>
@@ -270,194 +285,7 @@ if (isset($_GET['success'])) {
       </div>
     </div>
   </div>
-  
-  <!-- Modal pour traiter un justificatif -->
-  <div id="modal-process" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>Traiter le justificatif</h2>
-        <span class="modal-close">&times;</span>
-      </div>
-      <div class="modal-body">
-        <form id="form-process" method="post" action="justificatifs.php">
-          <input type="hidden" name="action" value="traiter">
-          <input type="hidden" name="id_justificatif" id="id_justificatif">
-          <input type="hidden" name="id_absence" id="id_absence">
-          
-          <div class="form-group">
-            <div class="checkbox-group">
-              <input type="checkbox" name="approuve" id="approuve" checked>
-              <label for="approuve">Approuver ce justificatif</label>
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label for="commentaire">Commentaire (optionnel)</label>
-            <textarea name="commentaire" id="commentaire" rows="3"></textarea>
-          </div>
-          
-          <div class="form-actions">
-            <button type="button" class="btn btn-secondary modal-close-btn">Annuler</button>
-            <button type="submit" class="btn btn-primary">Valider</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-  
-  <!-- Modal pour voir un justificatif -->
-  <div id="modal-view" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>Détails du justificatif</h2>
-        <span class="modal-close">&times;</span>
-      </div>
-      <div class="modal-body">
-        <div id="justificatif-details"></div>
-      </div>
-    </div>
-  </div>
-  
-  <style>
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 1000;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0,0,0,0.6);
-    }
-    
-    .modal-content {
-      background-color: white;
-      margin: 10% auto;
-      padding: 0;
-      border-radius: 8px;
-      width: 50%;
-      max-width: 600px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    }
-    
-    .modal-header {
-      padding: 15px 20px;
-      border-bottom: 1px solid #eee;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    
-    .modal-header h2 {
-      margin: 0;
-      font-size: 1.4rem;
-    }
-    
-    .modal-close {
-      font-size: 28px;
-      font-weight: bold;
-      color: #aaa;
-      cursor: pointer;
-    }
-    
-    .modal-close:hover {
-      color: #666;
-    }
-    
-    .modal-body {
-      padding: 20px;
-    }
-    
-    @media (max-width: 768px) {
-      .modal-content {
-        width: 90%;
-        margin: 20% auto;
-      }
-    }
-  </style>
-  
-  <script>
-    // Ouvrir le modal pour traiter un justificatif
-    document.querySelectorAll('.process-justificatif').forEach(function(btn) {
-      btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        document.getElementById('id_justificatif').value = this.getAttribute('data-id');
-        document.getElementById('id_absence').value = this.getAttribute('data-absence-id');
-        document.getElementById('modal-process').style.display = 'block';
-      });
-    });
-    
-    // Ouvrir le modal pour voir un justificatif
-    document.querySelectorAll('.view-justificatif').forEach(function(btn) {
-      btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        const id = this.getAttribute('data-id');
-        // Ici, vous pourriez charger les détails via AJAX
-        document.getElementById('justificatif-details').innerHTML = 'Chargement...';
-        document.getElementById('modal-view').style.display = 'block';
-        
-        // Simulation d'un chargement AJAX (à remplacer par un vrai appel AJAX)
-        setTimeout(function() {
-          document.getElementById('justificatif-details').innerHTML = `
-            <div class="details-grid">
-              <div class="details-row">
-                <div class="details-label">Élève:</div>
-                <div class="details-value">Nom de l'élève</div>
-              </div>
-              <div class="details-row">
-                <div class="details-label">Motif:</div>
-                <div class="details-value">Maladie</div>
-              </div>
-              <div class="details-row">
-                <div class="details-label">Période:</div>
-                <div class="details-value">Du 01/05/2025 au 03/05/2025</div>
-              </div>
-              <div class="details-row">
-                <div class="details-label">Commentaire:</div>
-                <div class="details-value">Certificat médical joint.</div>
-              </div>
-              <div class="details-row">
-                <div class="details-label">Déposé le:</div>
-                <div class="details-value">05/05/2025</div>
-              </div>
-              <div class="details-row">
-                <div class="details-label">Statut:</div>
-                <div class="details-value"><span class="badge badge-cours">En attente</span></div>
-              </div>
-            </div>
-            
-            <div class="document-preview">
-              <h3>Aperçu du document</h3>
-              <div class="document-container">
-                <div class="document-placeholder">
-                  <i class="fas fa-file-medical"></i>
-                  <p>Certificat médical</p>
-                </div>
-              </div>
-            </div>
-          `;
-        }, 500);
-      });
-    });
-    
-    // Fermer les modals
-    document.querySelectorAll('.modal-close, .modal-close-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        document.querySelectorAll('.modal').forEach(function(modal) {
-          modal.style.display = 'none';
-        });
-      });
-    });
-    
-    // Fermer les modals en cliquant en dehors
-    window.addEventListener('click', function(e) {
-      document.querySelectorAll('.modal').forEach(function(modal) {
-        if (e.target === modal) {
-          modal.style.display = 'none';
-        }
-      });
-    });
-  </script>
 </body>
 </html>
+
 <?php ob_end_flush(); ?>

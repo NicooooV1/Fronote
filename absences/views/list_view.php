@@ -1,6 +1,14 @@
 <?php
 // Fichier inclus depuis absences.php
-// Les variables $absences, $user_role, etc. sont déjà définies
+
+// Vérifier si nous avons des absences à afficher
+if (empty($absences)) {
+    echo '<div class="no-data-message">
+        <i class="fas fa-info-circle"></i>
+        <p>Aucune absence ne correspond aux critères sélectionnés.</p>
+    </div>';
+    return;
+}
 
 // Tri des absences (par défaut par date)
 $sort = isset($_GET['sort']) ? $_GET['sort'] : 'date';
@@ -37,62 +45,17 @@ $nombre_pages = ceil($nombre_absences / $absences_par_page);
 $page_courante = isset($_GET['page']) ? max(1, min($nombre_pages, intval($_GET['page']))) : 1;
 $debut_absences = ($page_courante - 1) * $absences_par_page;
 $absences_page = array_slice($absences, $debut_absences, $absences_par_page);
-
-// URL de base pour les liens de tri
-$base_url = 'absences.php?view=list';
-if (!empty($classe)) $base_url .= '&classe=' . urlencode($classe);
-if (!empty($date_debut)) $base_url .= '&date_debut=' . urlencode($date_debut);
-if (!empty($date_fin)) $base_url .= '&date_fin=' . urlencode($date_fin);
-if (!empty($justifie)) $base_url .= '&justifie=' . urlencode($justifie);
-
-// Fonction pour créer un lien de tri
-function getSortLink($field, $current_sort, $current_order, $base_url) {
-    $new_order = ($current_sort === $field && $current_order === 'asc') ? 'desc' : 'asc';
-    $link = $base_url . '&sort=' . $field . '&order=' . $new_order;
-    $icon = '';
-    
-    if ($current_sort === $field) {
-        $icon = $current_order === 'asc' ? ' <i class="fas fa-sort-up"></i>' : ' <i class="fas fa-sort-down"></i>';
-    }
-    
-    return [
-        'link' => $link,
-        'icon' => $icon
-    ];
-}
-
-// Liens de tri
-$sort_date = getSortLink('date', $sort, $order, $base_url);
-$sort_nom = getSortLink('nom', $sort, $order, $base_url);
-$sort_classe = getSortLink('classe', $sort, $order, $base_url);
-$sort_duree = getSortLink('duree', $sort, $order, $base_url);
 ?>
 
 <div class="absences-list">
   <div class="list-header">
     <div class="list-row header-row">
       <?php if (isAdmin() || isVieScolaire() || isTeacher()): ?>
-        <div class="list-cell header-cell">
-          <a href="<?= $sort_nom['link'] ?>" class="sort-link">
-            Élève<?= $sort_nom['icon'] ?>
-          </a>
-        </div>
-        <div class="list-cell header-cell">
-          <a href="<?= $sort_classe['link'] ?>" class="sort-link">
-            Classe<?= $sort_classe['icon'] ?>
-          </a>
-        </div>
+        <div class="list-cell header-cell">Élève</div>
+        <div class="list-cell header-cell">Classe</div>
       <?php endif; ?>
-      <div class="list-cell header-cell">
-        <a href="<?= $sort_date['link'] ?>" class="sort-link">
-          Date<?= $sort_date['icon'] ?>
-        </a>
-      </div>
-      <div class="list-cell header-cell">
-        <a href="<?= $sort_duree['link'] ?>" class="sort-link">
-          Durée<?= $sort_duree['icon'] ?>
-        </a>
-      </div>
+      <div class="list-cell header-cell">Date</div>
+      <div class="list-cell header-cell">Durée</div>
       <div class="list-cell header-cell">Type</div>
       <div class="list-cell header-cell">Justifiée</div>
       <div class="list-cell header-cell">Actions</div>
@@ -116,6 +79,9 @@ $sort_duree = getSortLink('duree', $sort, $order, $base_url);
       }
       if ($duree->i > 0) {
           $duree_str .= $duree->i . 'min';
+      }
+      if (empty($duree_str)) {
+          $duree_str = 'n/a';
       }
       ?>
       <div class="list-row absence-row <?= $absence['justifie'] ? 'justified' : 'not-justified' ?>">
@@ -170,14 +136,14 @@ $sort_duree = getSortLink('duree', $sort, $order, $base_url);
   <?php if ($nombre_pages > 1): ?>
     <div class="pagination">
       <?php if ($page_courante > 1): ?>
-        <a href="<?= $base_url ?>&sort=<?= $sort ?>&order=<?= $order ?>&page=<?= $page_courante - 1 ?>" class="page-link">
+        <a href="?view=list&sort=<?= $sort ?>&order=<?= $order ?>&page=<?= $page_courante - 1 ?>&date_debut=<?= $date_debut ?>&date_fin=<?= $date_fin ?>&classe=<?= $classe ?>&justifie=<?= $justifie ?>" class="page-link">
           <i class="fas fa-chevron-left"></i> Précédent
         </a>
       <?php endif; ?>
       
       <div class="page-numbers">
         <?php for ($i = max(1, $page_courante - 2); $i <= min($nombre_pages, $page_courante + 2); $i++): ?>
-          <a href="<?= $base_url ?>&sort=<?= $sort ?>&order=<?= $order ?>&page=<?= $i ?>" 
+          <a href="?view=list&sort=<?= $sort ?>&order=<?= $order ?>&page=<?= $i ?>&date_debut=<?= $date_debut ?>&date_fin=<?= $date_fin ?>&classe=<?= $classe ?>&justifie=<?= $justifie ?>" 
              class="page-number <?= $i === $page_courante ? 'active' : '' ?>">
             <?= $i ?>
           </a>
@@ -185,7 +151,7 @@ $sort_duree = getSortLink('duree', $sort, $order, $base_url);
       </div>
       
       <?php if ($page_courante < $nombre_pages): ?>
-        <a href="<?= $base_url ?>&sort=<?= $sort ?>&order=<?= $order ?>&page=<?= $page_courante + 1 ?>" class="page-link">
+        <a href="?view=list&sort=<?= $sort ?>&order=<?= $order ?>&page=<?= $page_courante + 1 ?>&date_debut=<?= $date_debut ?>&date_fin=<?= $date_fin ?>&classe=<?= $classe ?>&justifie=<?= $justifie ?>" class="page-link">
           Suivant <i class="fas fa-chevron-right"></i>
         </a>
       <?php endif; ?>

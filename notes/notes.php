@@ -313,10 +313,6 @@ try {
                     <i class="fas fa-plus"></i>
                     Ajouter une note
                 </a>
-                <a href="statistiques.php" class="sidebar-button">
-                    <i class="fas fa-chart-bar"></i>
-                    Statistiques
-                </a>
             </div>
             <?php endif; ?>
         </div>

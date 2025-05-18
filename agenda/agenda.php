@@ -33,7 +33,7 @@ $filter_types = isset($_GET['types']) ? (is_array($_GET['types']) ? $_GET['types
 $filter_classes = isset($_GET['classes']) ? (is_array($_GET['classes']) ? $_GET['classes'] : [$_GET['classes']]) : [];
 
 // Garder une trace si les filtres ont été explicitement définis dans l'URL
-$filters_explicitly_set = isset($_GET['types']) || isset($_GET['filter_set']);
+$filters_explicitly_set = isset($_GET['filter_set']);
 
 // Assurer que le mois est entre 1 et 12
 if ($month < 1) {
@@ -702,6 +702,100 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
       margin-top: 10px;
     }
     
+    /* Styles pour le dropdown des classes */
+    .classes-dropdown {
+        position: relative;
+        width: 100%;
+    }
+    
+    .dropdown-menu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background-color: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        z-index: 1000;
+        max-height: 300px;
+        overflow-y: auto;
+        margin-top: 5px;
+    }
+    
+    .dropdown-menu.show {
+        display: block;
+    }
+    
+    .dropdown-actions {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 10px;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .dropdown-action {
+        background: none;
+        border: none;
+        color: #00843d;
+        cursor: pointer;
+        font-size: 12px;
+        padding: 3px 5px;
+    }
+    
+    .dropdown-search {
+        padding: 8px 10px;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .dropdown-search input {
+        width: 100%;
+        padding: 6px 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    
+    .dropdown-options {
+        max-height: 200px;
+        overflow-y: auto;
+        padding: 5px 0;
+    }
+    
+    .dropdown-option {
+        padding: 5px 10px;
+        display: flex;
+        align-items: center;
+    }
+    
+    .dropdown-option label {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        width: 100%;
+        margin: 0;
+        padding: 3px 0;
+    }
+    
+    .dropdown-option input[type="checkbox"] {
+        margin-right: 8px;
+    }
+    
+    .dropdown-footer {
+        padding: 8px 10px;
+        border-top: 1px solid #eee;
+        text-align: right;
+    }
+    
+    .apply-button {
+        background-color: #00843d;
+        color: white;
+        border: none;
+        padding: 6px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    
     /* Vue principale du calendrier */
     .calendar-container {
       flex: 1;
@@ -1096,58 +1190,73 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
     });
     
     function applyFilters() {
-      let url = `?view=<?= $view ?>`;
-      
-      if ('<?= $view ?>' === 'month') {
-        url += `&month=<?= $month ?>&year=<?= $year ?>`;
-      } else if ('<?= $view ?>' === 'day' || '<?= $view ?>' === 'week') {
-        url += `&date=<?= $date ?>`;
-      }
-      
-      // Ajouter les filtres
-      url += getFilterParams();
-      
-      window.location.href = url;
-    }
-    
-    function getFilterParams() {
-      let params = '&filter_set=1';  // Add this parameter to indicate filters were explicitly set
-      
-      // Filtres de type
-      const typeCheckboxes = document.querySelectorAll('.filter-checkbox[data-filter-type="type"]:checked');
-      typeCheckboxes.forEach(checkbox => {
-        params += `&types[]=${checkbox.value}`;
-      });
-      
-      // Filtres de classe (uniquement les classes sélectionnées)
-      const classCheckboxes = document.querySelectorAll('.filter-checkbox[data-filter-type="class"]:checked');
-      classCheckboxes.forEach(checkbox => {
-        params += `&classes[]=${checkbox.value}`;
-      });
-      
-      return params;
+        let url = `?view=<?= $view ?>`;
+        
+        if ('<?= $view ?>' === 'month') {
+            url += `&month=<?= $month ?>&year=<?= $year ?>`;
+        } else if ('<?= $view ?>' === 'day' || '<?= $view ?>' === 'week') {
+            url += `&date=<?= $date ?>`;
+        }
+        
+        // Ajouter les filtres
+        url += '&filter_set=1'; // Important: indiquer que les filtres ont été définis explicitement
+        
+        // Filtres de type
+        const typeCheckboxes = document.querySelectorAll('.filter-checkbox[data-filter-type="type"]:checked');
+        typeCheckboxes.forEach(checkbox => {
+            url += `&types[]=${checkbox.value}`;
+        });
+        
+        // Filtres de classe (uniquement les classes sélectionnées)
+        const classCheckboxes = document.querySelectorAll('.filter-checkbox[data-filter-type="class"]:checked');
+        classCheckboxes.forEach(checkbox => {
+            url += `&classes[]=${checkbox.value}`;
+        });
+        
+        window.location.href = url;
     }
     
     // Fonctions pour le dropdown des classes
     function toggleClassesDropdown() {
       const dropdown = document.getElementById('classes-dropdown');
       dropdown.classList.toggle('show');
+      
+      // Fermer le dropdown quand on clique ailleurs
+      if (dropdown.classList.contains('show')) {
+          document.addEventListener('click', closeClassesDropdownOutside);
+      } else {
+          document.removeEventListener('click', closeClassesDropdownOutside);
+      }
     }
     
+    // Fermer le dropdown si on clique en dehors
+    function closeClassesDropdownOutside(event) {
+      const dropdown = document.getElementById('classes-dropdown');
+      const toggleButton = document.querySelector('.classes-dropdown-toggle');
+      
+      if (dropdown && !dropdown.contains(event.target) && !toggleButton.contains(event.target)) {
+          dropdown.classList.remove('show');
+          document.removeEventListener('click', closeClassesDropdownOutside);
+      }
+    }
+    
+    // Sélectionner toutes les classes
     function selectAllClasses() {
       document.querySelectorAll('.class-checkbox').forEach(checkbox => {
-        checkbox.checked = true;
+          checkbox.checked = true;
       });
       updateSelectedClasses();
     }
     
+    // Désélectionner toutes les classes
     function deselectAllClasses() {
       document.querySelectorAll('.class-checkbox').forEach(checkbox => {
-        checkbox.checked = false;
+          checkbox.checked = false;
       });
       updateSelectedClasses();
     }
     
+    // Mettre à jour le texte affiché selon les classes sélectionnées
     function updateSelectedClasses() {
       const checkboxes = document.querySelectorAll('.class-checkbox:checked');
       const text = checkboxes.length === 0 
@@ -1156,14 +1265,16 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
       document.getElementById('selected-classes-text').textContent = text;
     }
     
+    // Filtrer les classes selon le texte saisi
     function filterClasses() {
       const searchText = document.getElementById('classes-search').value.toLowerCase();
       document.querySelectorAll('.dropdown-option').forEach(option => {
-        const className = option.querySelector('label').textContent.toLowerCase();
-        option.style.display = className.includes(searchText) ? 'flex' : 'none';
+          const className = option.textContent.toLowerCase();
+          option.style.display = className.includes(searchText) ? 'flex' : 'none';
       });
     }
     
+    // Appliquer les filtres de classe
     function applyClassesFilter() {
       document.getElementById('classes-dropdown').classList.remove('show');
       applyFilters();
@@ -1175,7 +1286,9 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
         document.getElementById('classes-dropdown').classList.remove('show');
       }
     });
-    
+  </script>
+</body>
+</html>
     // Événements pour la navigation par clics sur les jours du calendrier
     document.querySelectorAll('.calendar-day:not(.other-month)').forEach(day => {
       day.addEventListener('click', function(e) {
