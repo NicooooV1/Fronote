@@ -1,45 +1,43 @@
 <?php
 /**
- * Authentication functions for messagerie module
+ * Module d'authentification pour la messagerie
  */
-require_once __DIR__ . '/../config/config.php';
-require_once __DIR__ . '/../config/constants.php';
-require_once API_AUTH_PATH;
 
-// Local helper functions that don't conflict with central API
+// Démarrer la session si nécessaire
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Essayer d'inclure le fichier d'authentification central
+$authCentralPath = __DIR__ . '/../../API/auth_central.php';
+if (file_exists($authCentralPath)) {
+    require_once $authCentralPath;
+} else {
+    // Inclure le fichier de résolution d'authentification s'il existe
+    $authResolvePath = __DIR__ . '/../../API/auth_resolve.php';
+    if (file_exists($authResolvePath)) {
+        require_once $authResolvePath;
+    }
+}
+
+// Vérifier si les fonctions d'authentification nécessaires existent, sinon les définir localement
 if (!function_exists('checkAuth')) {
     /**
-     * Check authentication and return user info
-     * @return array|false
+     * Vérifie si l'utilisateur est authentifié
+     * @return array|false Données utilisateur ou false si non connecté
      */
     function checkAuth() {
-        $user = getCurrentUser();
-        if (!$user) {
-            return false;
-        }
-        
-        // Adapt: use 'profil' as 'type' if 'type' doesn't exist
-        if (!isset($user['type']) && isset($user['profil'])) {
-            $user['type'] = $user['profil'];
-            $_SESSION['user']['type'] = $user['profil'];
-        }
-
-        // Check that type is defined
-        if (!isset($user['type'])) {
-            return false;
-        }
-        
-        return $user;
+        return $_SESSION['user'] ?? false;
     }
 }
 
 if (!function_exists('requireAuth')) {
     /**
-     * Require authentication or redirect to login
+     * Force l'authentification
+     * @return array Données utilisateur
      */
     function requireAuth() {
-        $user = checkAuth();
-        if (!$user) {
+        if (!isset($_SESSION['user'])) {
             // Utiliser BASE_URL si défini, sinon un chemin relatif
             $baseUrl = defined('BASE_URL') ? BASE_URL : '/~u22405372/SAE/Pronote';
             $loginUrl = $baseUrl . '/login/public/index.php';
@@ -50,59 +48,7 @@ if (!function_exists('requireAuth')) {
             header("Location: $loginUrl");
             exit;
         }
-        return $user;
-    }
-}
-
-if (!function_exists('canSendAnnouncement')) {
-    /**
-     * Vérifie si l'utilisateur peut envoyer des annonces
-     * @param array $user
-     * @return bool
-     */
-    function canSendAnnouncement($user) {
-        return in_array($user['type'], ['vie_scolaire', 'administrateur']);
-    }
-}
-
-if (!function_exists('isProfesseur')) {
-    /**
-     * Vérifie si l'utilisateur est un professeur
-     * @param array $user
-     * @return bool
-     */
-    function isProfesseur($user) {
-        return $user['type'] === 'professeur';
-    }
-}
-
-if (!function_exists('hasRole')) {
-    /**
-     * Vérifie si l'utilisateur a un rôle spécifique
-     * @param array $user
-     * @param array|string $roles
-     * @return bool
-     */
-    function hasRole($user, $roles) {
-        if (!is_array($roles)) {
-            $roles = [$roles];
-        }
-        
-        return in_array($user['type'], $roles);
-    }
-}
-
-if (!function_exists('requireRole')) {
-    /**
-     * Redirige si l'utilisateur n'a pas le rôle requis
-     * @param array $user
-     * @param array|string $roles
-     * @param string $redirectUrl
-     */
-    function requireRole($user, $roles, $redirectUrl = 'index.php') {
-        if (!hasRole($user, $roles)) {
-            redirect($redirectUrl);
-        }
+        return $_SESSION['user'];
     }
 }
 

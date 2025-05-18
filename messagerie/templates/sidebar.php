@@ -12,6 +12,18 @@ $folders = [
     'corbeille' => 'Corbeille'
 ];
 
+// S'assurer que user est défini et que le type est présent
+if (!isset($user)) {
+    $user = $_SESSION['user'] ?? [];
+}
+
+// Définir le type s'il n'est pas défini
+if (!isset($user['type']) && isset($user['profil'])) {
+    $user['type'] = $user['profil'];
+} elseif (!isset($user['type'])) {
+    $user['type'] = 'eleve'; // Valeur par défaut
+}
+
 // Fonctionnalités disponibles selon le profil
 $canSendAnnouncement = isset($user) && in_array($user['type'], ['vie_scolaire', 'administrateur']);
 $isProfesseur = isset($user) && $user['type'] === 'professeur';

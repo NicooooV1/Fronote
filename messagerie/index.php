@@ -18,12 +18,19 @@ if (!function_exists('isLoggedIn')) {
 
 // Vérifier l'authentification
 if (!isLoggedIn()) {
-    $loginPage = defined('BASE_URL') ? BASE_URL . '/login/public/index.php' : '../login/public/index.php';
+    $loginPage = defined('LOGIN_URL') ? LOGIN_URL : '../login/public/index.php';
     header('Location: ' . $loginPage);
     exit;
 }
 
 $user = $_SESSION['user'];
+
+// S'assurer que la propriété 'type' existe dans $user, sinon définir une valeur par défaut
+if (!isset($user['type']) && isset($user['profil'])) {
+    $user['type'] = $user['profil']; // Utiliser 'profil' si 'type' n'existe pas
+} elseif (!isset($user['type'])) {
+    $user['type'] = 'eleve'; // Valeur par défaut
+}
 
 // Charger les modèles nécessaires 
 require_once __DIR__ . '/models/conversation.php';

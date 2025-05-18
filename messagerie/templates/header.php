@@ -37,8 +37,20 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
 // Récupérer le dossier courant pour les menus
 $currentFolder = isset($_GET['folder']) ? $_GET['folder'] : 'reception';
 
-// Compter les notifications non lues
-$unreadNotifications = isset($user) ? countUnreadNotifications($user['id'], $user['type']) : 0;
+// Vérifier si l'utilisateur est défini et s'assurer que son type est défini
+if (isset($user)) {
+    // Définir le type s'il n'est pas défini
+    if (!isset($user['type']) && isset($user['profil'])) {
+        $user['type'] = $user['profil'];
+    } elseif (!isset($user['type'])) {
+        $user['type'] = 'eleve'; // Valeur par défaut
+    }
+    
+    // Compter les notifications non lues seulement si l'utilisateur est défini
+    $unreadNotifications = countUnreadNotifications($user['id'], $user['type']);
+} else {
+    $unreadNotifications = 0;
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -72,10 +84,6 @@ $unreadNotifications = isset($user) ? countUnreadNotifications($user['id'], $use
                 <?php if (isset($user)): ?>
                 <span><?= htmlspecialchars($user['prenom'] . ' ' . $user['nom']) ?></span>
                 <span class="badge"><?= htmlspecialchars(ucfirst($user['type'])) ?></span>
-                
-                <?php if ($unreadNotifications > 0): ?>
-                <span class="notification-badge"><?= $unreadNotifications ?></span>
-                <?php endif; ?>
                 <?php endif; ?>
             </div>
         </header>

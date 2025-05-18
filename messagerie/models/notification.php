@@ -34,12 +34,15 @@ function getUserNotificationPreferences($userId, $userType) {
         $stmt->execute([$userId, $userType]);
         
         // Récupérer les préférences nouvellement créées
-        $stmt = $pdo->prepare("
-            SELECT * FROM user_notification_preferences
-            WHERE user_id = ? AND user_type = ?
-        ");
-        $stmt->execute([$userId, $userType]);
-        $preferences = $stmt->fetch();
+        return [
+            'email_notifications' => false,
+            'browser_notifications' => true,
+            'notification_sound' => true,
+            'mention_notifications' => true,
+            'reply_notifications' => true,
+            'important_notifications' => true,
+            'digest_frequency' => 'never'
+        ];
     }
     
     return $preferences;
@@ -55,163 +58,141 @@ function getUserNotificationPreferences($userId, $userType) {
 function updateUserNotificationPreferences($userId, $userType, $preferences) {
     global $pdo;
     
-    // Valider les préférences
-    $validPreferences = [];
+    // Vérifier si les préférences existent déjà
+    $stmt = $pdo->prepare("
+        SELECT * FROM user_notification_preferences
+        WHERE user_id = ? AND user_type = ?
+    ");
+    $stmt->execute([$userId, $userType]);
+    $existing = $stmt->fetch();
     
-    // Valider les booléens
-    $booleanFields = [
-        'email_notifications', 'browser_notifications', 'notification_sound',
-        'mention_notifications', 'reply_notifications', 'important_notifications'
+    // Préparer les données à mettre à jour
+    $data = [
+        'email_notifications' => isset($preferences['email_notifications']) && $preferences['email_notifications'] ? 1 : 0,
+        'browser_notifications' => isset($preferences['browser_notifications']) && $preferences['browser_notifications'] ? 1 : 0,
+        'notification_sound' => isset($preferences['notification_sound']) && $preferences['notification_sound'] ? 1 : 0,
+        'mention_notifications' => isset($preferences['mention_notifications']) && $preferences['mention_notifications'] ? 1 : 0,
+        'reply_notifications' => isset($preferences['reply_notifications']) && $preferences['reply_notifications'] ? 1 : 0,
+        'important_notifications' => isset($preferences['important_notifications']) && $preferences['important_notifications'] ? 1 : 0,
+        'digest_frequency' => isset($preferences['digest_frequency']) ? $preferences['digest_frequency'] : 'never'
     ];
     
-    foreach ($booleanFields as $field) {
-        if (isset($preferences[$field])) {
-            $validPreferences[$field] = $preferences[$field] ? 1 : 0;
-        }
-    }
-    
-    // Valider digest_frequency
-    if (isset($preferences['digest_frequency'])) {
-        $validFrequencies = ['never', 'daily', 'weekly'];
-        if (in_array($preferences['digest_frequency'], $validFrequencies)) {
-            $validPreferences['digest_frequency'] = $preferences['digest_frequency'];
-        }
-    }
-    
-    // Si aucune préférence valide n'a été fournie, retourner false
-    if (empty($validPreferences)) {
-        return false;
-    }
-    
-    // Créer la requête d'update
-    $sql = "UPDATE user_notification_preferences SET ";
-    $params = [];
-    
-    foreach ($validPreferences as $field => $value) {
-        $sql .= "$field = ?, ";
-        $params[] = $value;
-    }
-    
-    // Supprimer la virgule finale et ajouter la condition WHERE
-    $sql = rtrim($sql, ', ');
-    $sql .= " WHERE user_id = ? AND user_type = ?";
-    $params[] = $userId;
-    $params[] = $userType;
-    
-    // Exécuter la requête
-    $stmt = $pdo->prepare($sql);
-    $result = $stmt->execute($params);
-    
-    // Si aucune ligne n'a été mise à jour, les préférences n'existent peut-être pas encore
-    if ($stmt->rowCount() === 0) {
-        // Vérifier si les préférences existent
-        $checkStmt = $pdo->prepare("
-            SELECT id FROM user_notification_preferences
+    if ($existing) {
+        // Mettre à jour les préférences existantes
+        $stmt = $pdo->prepare("
+            UPDATE user_notification_preferences
+            SET email_notifications = ?,
+                browser_notifications = ?,
+                notification_sound = ?,
+                mention_notifications = ?,
+                reply_notifications = ?,
+                important_notifications = ?,
+                digest_frequency = ?
             WHERE user_id = ? AND user_type = ?
         ");
-        $checkStmt->execute([$userId, $userType]);
         
-        if (!$checkStmt->fetch()) {
-            // Créer les préférences avec les valeurs par défaut + les valeurs fournies
-            $defaults = [
-                'email_notifications' => 0,
-                'browser_notifications' => 1,
-                'notification_sound' => 1,
-                'mention_notifications' => 1,
-                'reply_notifications' => 1,
-                'important_notifications' => 1,
-                'digest_frequency' => 'never'
-            ];
-            
-            // Fusionner les valeurs par défaut avec les valeurs fournies
-            $values = array_merge($defaults, $validPreferences);
-            
-            $insertSql = "
-                INSERT INTO user_notification_preferences
-                (user_id, user_type, email_notifications, browser_notifications,
-                notification_sound, mention_notifications, reply_notifications,
-                important_notifications, digest_frequency)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ";
-            
-            $insertParams = [
-                $userId, $userType,
-                $values['email_notifications'], $values['browser_notifications'],
-                $values['notification_sound'], $values['mention_notifications'],
-                $values['reply_notifications'], $values['important_notifications'],
-                $values['digest_frequency']
-            ];
-            
-            $insertStmt = $pdo->prepare($insertSql);
-            return $insertStmt->execute($insertParams);
-        }
+        return $stmt->execute([
+            $data['email_notifications'],
+            $data['browser_notifications'],
+            $data['notification_sound'],
+            $data['mention_notifications'],
+            $data['reply_notifications'],
+            $data['important_notifications'],
+            $data['digest_frequency'],
+            $userId,
+            $userType
+        ]);
+    } else {
+        // Insérer de nouvelles préférences
+        $stmt = $pdo->prepare("
+            INSERT INTO user_notification_preferences
+            (user_id, user_type, email_notifications, browser_notifications, 
+             notification_sound, mention_notifications, reply_notifications, 
+             important_notifications, digest_frequency)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        
+        return $stmt->execute([
+            $userId,
+            $userType,
+            $data['email_notifications'],
+            $data['browser_notifications'],
+            $data['notification_sound'],
+            $data['mention_notifications'],
+            $data['reply_notifications'],
+            $data['important_notifications'],
+            $data['digest_frequency']
+        ]);
     }
-    
-    return $result;
-}
-
-/**
- * Récupère les notifications non lues d'un utilisateur
- * @param int $userId
- * @param string $userType
- * @param int $limit
- * @return array
- */
-function getUnreadNotifications($userId, $userType, $limit = 50) {
-    global $pdo;
-    
-    // Assurez-vous que limit est un entier pour éviter les injections SQL
-    $limit = (int)$limit;
-    
-    $stmt = $pdo->prepare("
-        SELECT n.*, 
-               m.body as contenu, m.sender_id as expediteur_id, m.sender_type as expediteur_type,
-               m.conversation_id,
-               c.subject as conversation_titre,
-               CASE 
-                   WHEN m.sender_type = 'eleve' THEN 
-                       (SELECT CONCAT(e.prenom, ' ', e.nom) FROM eleves e WHERE e.id = m.sender_id)
-                   WHEN m.sender_type = 'parent' THEN 
-                       (SELECT CONCAT(p.prenom, ' ', p.nom) FROM parents p WHERE p.id = m.sender_id)
-                   WHEN m.sender_type = 'professeur' THEN 
-                       (SELECT CONCAT(p.prenom, ' ', p.nom) FROM professeurs p WHERE p.id = m.sender_id)
-                   WHEN m.sender_type = 'vie_scolaire' THEN 
-                       (SELECT CONCAT(v.prenom, ' ', v.nom) FROM vie_scolaire v WHERE v.id = m.sender_id)
-                   WHEN m.sender_type = 'administrateur' THEN 
-                       (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = m.sender_id)
-                   ELSE 'Inconnu'
-               END as expediteur_nom,
-               m.status,
-               notified_at as date_creation
-        FROM message_notifications n
-        JOIN messages m ON n.message_id = m.id
-        JOIN conversations c ON m.conversation_id = c.id
-        WHERE n.user_id = ? AND n.user_type = ? AND n.is_read = 0
-        ORDER BY n.notified_at DESC
-        LIMIT " . $limit
-    );
-    $stmt->execute([$userId, $userType]);
-    
-    return $stmt->fetchAll();
 }
 
 /**
  * Compte le nombre de notifications non lues pour un utilisateur
+ * REMARQUE: Utiliser la fonction du même nom depuis core/auth.php si elle existe déjà
  * @param int $userId
  * @param string $userType
  * @return int
  */
-function countUnreadNotifications($userId, $userType) {
+if (!function_exists('countUnreadNotifications')) {
+    function countUnreadNotifications($userId, $userType) {
+        global $pdo;
+        if (!isset($pdo)) {
+            return 0; // Si pas de connexion à la BDD, retourner 0
+        }
+        
+        try {
+            $stmt = $pdo->prepare("
+                SELECT COUNT(*) FROM notifications 
+                WHERE user_id = ? AND user_type = ? AND is_read = 0
+            ");
+            $stmt->execute([$userId, $userType]);
+            return (int)$stmt->fetchColumn();
+        } catch (Exception $e) {
+            // Journaliser l'erreur mais ne pas interrompre le flux
+            error_log('Error in countUnreadNotifications: ' . $e->getMessage());
+            return 0; // En cas d'erreur, retourner 0
+        }
+    }
+}
+
+/**
+ * Récupère les notifications d'un utilisateur
+ * @param int $userId
+ * @param string $userType
+ * @param array $options Options (unread_only, limit)
+ * @return array
+ */
+function getUserNotifications($userId, $userType, $options = []) {
     global $pdo;
     
-    // Utiliser la somme des unread_count de toutes les conversations de l'utilisateur
-    $stmt = $pdo->prepare("
-        SELECT SUM(unread_count) as total_unread
-        FROM conversation_participants
-        WHERE user_id = ? AND user_type = ? AND is_deleted = 0
-    ");
-    $stmt->execute([$userId, $userType]);
-    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $unreadOnly = isset($options['unread_only']) && $options['unread_only'];
+    $limit = isset($options['limit']) ? (int)$options['limit'] : 20;
     
-    return $result['total_unread'] ?: 0;
+    $sql = "
+        SELECT n.*, c.title as conversation_title
+        FROM notifications n
+        LEFT JOIN conversations c ON n.conversation_id = c.id
+        WHERE n.user_id = ? AND n.user_type = ?
+    ";
+    
+    if ($unreadOnly) {
+        $sql .= " AND n.is_read = 0";
+    }
+    
+    $sql .= " ORDER BY n.created_at DESC";
+    
+    if ($limit > 0) {
+        $sql .= " LIMIT " . $limit;
+    }
+    
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$userId, $userType]);
+        return $stmt->fetchAll();
+    } catch (Exception $e) {
+        error_log('Error in getUserNotifications: ' . $e->getMessage());
+        return [];
+    }
 }
+
+// Autres fonctions de notification...
