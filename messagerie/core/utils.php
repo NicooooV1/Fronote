@@ -5,16 +5,36 @@
 require_once __DIR__ . '/../config/config.php';
 
 /**
+ * Crée un identifiant aléatoire
+ * @param int $length Longueur de l'identifiant
+ * @return string Identifiant généré
+ */
+function generateRandomId($length = 10) {
+    return substr(str_shuffle("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"), 0, $length);
+}
+
+/**
  * Redirige vers une URL
- * @param string $url
+ * @param string $url URL de destination
  */
 function redirect($url) {
-    if (!headers_sent()) {
-        header("Location: $url");
-    } else {
-        echo "<script>location.href='$url';</script>";
-    }
+    header("Location: $url");
     exit;
+}
+
+/**
+ * Tronque un texte à une longueur donnée
+ * @param string $text Texte à tronquer
+ * @param int $length Longueur maximale
+ * @param string $suffix Suffixe à ajouter si le texte est tronqué
+ * @return string Texte tronqué
+ */
+function truncate($text, $length = 100, $suffix = '...') {
+    if (strlen($text) <= $length) {
+        return $text;
+    }
+    
+    return substr($text, 0, $length) . $suffix;
 }
 
 /**
@@ -213,4 +233,53 @@ function getParticipantType($type) {
         'administrateur' => 'Administrateur'
     ];
     return $types[$type] ?? ucfirst($type);
+}
+
+/**
+ * Détermine si l'utilisateur peut définir l'importance d'un message
+ * @param string $userType Type d'utilisateur
+ * @return bool True si l'utilisateur peut définir l'importance
+ */
+function canSetMessageImportance($userType) {
+    return in_array($userType, ['professeur', 'vie_scolaire', 'administrateur']);
+}
+
+/**
+ * Détermine si l'utilisateur peut répondre à une annonce
+ * @param int $userId ID de l'utilisateur
+ * @param string $userType Type d'utilisateur
+ * @param int $convId ID de la conversation
+ * @param string $convType Type de conversation
+ * @return bool True si l'utilisateur peut répondre
+ */
+function canReplyToAnnouncement($userId, $userType, $convId, $convType = 'standard') {
+    // Si ce n'est pas une annonce, tout le monde peut répondre
+    if ($convType !== 'annonce') {
+        return true;
+    }
+    
+    // Certains profils peuvent toujours répondre aux annonces
+    if (in_array($userType, ['vie_scolaire', 'administrateur'])) {
+        return true;
+    }
+    
+    // Pour les autres profils, vérifier si l'option est activée
+    global $pdo;
+    if (!isset($pdo) || !$pdo) {
+        require_once __DIR__ . '/../config/database.php';
+    }
+    
+    try {
+        // Vérifier si l'annonce permet les réponses
+        $stmt = $pdo->prepare("
+            SELECT allow_replies FROM conversations 
+            WHERE id = ? AND type = 'annonce'
+        ");
+        $stmt->execute([$convId]);
+        
+        return $stmt->fetchColumn() == 1;
+    } catch (Exception $e) {
+        // En cas d'erreur, ne pas autoriser la réponse par sécurité
+        return false;
+    }
 }

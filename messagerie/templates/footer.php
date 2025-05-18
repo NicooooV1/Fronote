@@ -26,23 +26,13 @@
             const form = document.createElement('form');
             form.method = 'POST';
             form.style.display = 'none';
-            
-            const actionInput = document.createElement('input');
-            actionInput.type = 'hidden';
-            actionInput.name = 'action';
-            actionInput.value = 'delete';
-            
-            const idInput = document.createElement('input');
-            idInput.type = 'hidden';
-            idInput.name = 'conv_id';
-            idInput.value = id;
-            
-            form.appendChild(actionInput);
-            form.appendChild(idInput);
+            form.innerHTML = `
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="conv_id" value="${id}">
+            `;
             document.body.appendChild(form);
             form.submit();
         }
-        event.stopPropagation();
     }
     
     function confirmDeletePermanently(id) {
@@ -50,92 +40,49 @@
             const form = document.createElement('form');
             form.method = 'POST';
             form.style.display = 'none';
-            
-            const actionInput = document.createElement('input');
-            actionInput.type = 'hidden';
-            actionInput.name = 'action';
-            actionInput.value = 'delete_permanently';
-            
-            const idInput = document.createElement('input');
-            idInput.type = 'hidden';
-            idInput.name = 'conv_id';
-            idInput.value = id;
-            
-            form.appendChild(actionInput);
-            form.appendChild(idInput);
+            form.innerHTML = `
+                <input type="hidden" name="action" value="delete_permanently">
+                <input type="hidden" name="conv_id" value="${id}">
+            `;
             document.body.appendChild(form);
             form.submit();
         }
-        event.stopPropagation();
     }
     
     function archiveConversation(id) {
         const form = document.createElement('form');
         form.method = 'POST';
         form.style.display = 'none';
-        
-        const actionInput = document.createElement('input');
-        actionInput.type = 'hidden';
-        actionInput.name = 'action';
-        actionInput.value = 'archive';
-        
-        const idInput = document.createElement('input');
-        idInput.type = 'hidden';
-        idInput.name = 'conv_id';
-        idInput.value = id;
-        
-        form.appendChild(actionInput);
-        form.appendChild(idInput);
+        form.innerHTML = `
+            <input type="hidden" name="action" value="archive">
+            <input type="hidden" name="conv_id" value="${id}">
+        `;
         document.body.appendChild(form);
         form.submit();
-        
-        event.stopPropagation();
     }
     
     function unarchiveConversation(id) {
         const form = document.createElement('form');
         form.method = 'POST';
         form.style.display = 'none';
-        
-        const actionInput = document.createElement('input');
-        actionInput.type = 'hidden';
-        actionInput.name = 'action';
-        actionInput.value = 'unarchive';
-        
-        const idInput = document.createElement('input');
-        idInput.type = 'hidden';
-        idInput.name = 'conv_id';
-        idInput.value = id;
-        
-        form.appendChild(actionInput);
-        form.appendChild(idInput);
+        form.innerHTML = `
+            <input type="hidden" name="action" value="unarchive">
+            <input type="hidden" name="conv_id" value="${id}">
+        `;
         document.body.appendChild(form);
         form.submit();
-        
-        event.stopPropagation();
     }
     
     function restoreConversation(id) {
         const form = document.createElement('form');
         form.method = 'POST';
         form.style.display = 'none';
-        
-        const actionInput = document.createElement('input');
-        actionInput.type = 'hidden';
-        actionInput.name = 'action';
-        actionInput.value = 'restore';
-        
-        const idInput = document.createElement('input');
-        idInput.type = 'hidden';
-        idInput.name = 'conv_id';
-        idInput.value = id;
-        
-        form.appendChild(actionInput);
-        form.appendChild(idInput);
+        form.innerHTML = `
+            <input type="hidden" name="action" value="restore">
+            <input type="hidden" name="conv_id" value="${id}">
+        `;
         document.body.appendChild(form);
         form.submit();
-        
-        event.stopPropagation();
     }
     </script>
 </body>

@@ -75,27 +75,41 @@ if (isset($user)) {
     <link rel="stylesheet" href="<?= $baseUrl ?>assets/css/forms.css">
     <?php endif; ?>
 </head>
-<body <?php if (isset($user)): ?>data-user-id="<?= $user['id'] ?>" data-user-type="<?= $user['type'] ?>"<?php endif; ?>>
+<body>
     <div class="app-container">
-        <div class="sidebar">
-            <a href="../accueil/accueil.php" class="logo-container">
-                <div class="app-logo">P</div>
-                <div class="app-title">Pronote Messagerie</div>
-            </a>
-
-            <!-- Barre latérale avec le menu de navigation -->
-            <?php include 'sidebar.php'; ?>
-        </div>
+        <?php include 'sidebar.php'; ?>
         
         <div class="main-content">
             <div class="top-header">
                 <div class="page-title">
-                    <h1><?= htmlspecialchars($pageTitle) ?></h1>
+                    <?php if (isset($showBackButton) && $showBackButton): ?>
+                    <a href="index.php" class="back-button">
+                        <i class="fas fa-arrow-left"></i> Retour
+                    </a>
+                    <?php endif; ?>
+                    
+                    <h1>
+                        <?php if (isset($customTitle)): ?>
+                            <?= htmlspecialchars($customTitle) ?>
+                        <?php else: ?>
+                            Messagerie
+                            <?php if (isset($currentFolder) && !empty($currentFolder)): ?>
+                            - <?= ucfirst(htmlspecialchars($currentFolder)) ?>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    </h1>
                 </div>
-
+                
                 <div class="header-actions">
-                    <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">⏻</a>
-                    <div class="user-avatar" title="<?= htmlspecialchars($user['prenom'] . ' ' . $user['nom']) ?>"><?= $user_initials ?></div>
+                    <?php if (isset($user)): ?>
+                    <div class="user-avatar">
+                        <?= $user_initials ?? substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1) ?>
+                    </div>
+                    
+                    <a href="<?= isset($logoutUrl) ? $logoutUrl : '../login/public/logout.php' ?>" class="logout-button" title="Déconnexion">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </a>
+                    <?php endif; ?>
                 </div>
             </div>
             

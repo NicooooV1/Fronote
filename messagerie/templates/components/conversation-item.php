@@ -49,7 +49,7 @@ if (!empty($participants)) {
 }
 
 // Formater la date relative
-$relativeDate = getTimeAgo($lastActivity);
+$relativeDate = function_exists('getTimeAgo') ? getTimeAgo($lastActivity) : date('d/m/Y H:i', $lastActivity);
 
 // Classes CSS pour la conversation
 $conversationClasses = ['conversation-item'];
@@ -65,7 +65,10 @@ $conversationClassesStr = implode(' ', $conversationClasses);
 
 <div class="<?= $conversationClassesStr ?>" data-id="<?= $id ?>">
     <div class="conversation-checkbox">
-        <input type="checkbox" class="conversation-select" data-id="<?= $id ?>" data-read="<?= $isRead ? '1' : '0' ?>">
+        <label class="checkbox-container">
+            <input type="checkbox" class="conversation-select" data-id="<?= $id ?>" data-read="<?= $isRead ? '1' : '0' ?>">
+            <span class="checkmark"></span>
+        </label>
     </div>
     
     <div class="conversation-content" onclick="window.location.href='conversation.php?id=<?= $id ?>'">

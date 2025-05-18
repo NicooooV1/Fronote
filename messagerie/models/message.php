@@ -26,10 +26,11 @@ function getMessages($convId, $userId, $userType) {
         throw new Exception("Vous n'êtes pas autorisé à accéder à cette conversation");
     }
     
-    $sql = "
+    // Récupérer les messages
+    $stmt = $pdo->prepare("
         SELECT m.*, 
                CASE 
-                   WHEN cp.last_read_message_id IS NULL OR m.id > cp.last_read_message_id THEN 0
+                   WHEN cp.last_read_at IS NULL OR m.created_at > cp.last_read_at THEN 0
                    ELSE 1
                END as est_lu,
                CASE 
@@ -49,11 +50,6 @@ function getMessages($convId, $userId, $userType) {
                        (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = m.sender_id)
                    ELSE 'Inconnu'
                END as expediteur_nom,
-               m.sender_id as expediteur_id, 
-               m.sender_type as expediteur_type,
-               m.body as contenu,
-               COALESCE(m.status, 'normal') as status,
-               m.created_at as date_envoi,
                UNIX_TIMESTAMP(m.created_at) as timestamp
         FROM messages m
         LEFT JOIN conversation_participants cp ON (
@@ -61,90 +57,15 @@ function getMessages($convId, $userId, $userType) {
             cp.user_id = ? AND 
             cp.user_type = ?
         )
-        WHERE m.conversation_id = ?
+        WHERE m.conversation_id = ? AND m.is_deleted = 0
         ORDER BY m.created_at ASC
-    ";
-    $stmt = $pdo->prepare($sql);
+    ");
     $stmt->execute([$userId, $userType, $userId, $userType, $convId]);
-    $messages = $stmt->fetchAll();
-
-    $attachmentStmt = $pdo->prepare("
-        SELECT id, message_id, file_name as nom_fichier, file_path as chemin
-        FROM message_attachments 
-        WHERE message_id = ?
-    ");
+    $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Requête pour récupérer les infos de lecture pour chaque message
-    $readInfoStmt = $pdo->prepare("
-        SELECT COUNT(*) as total_participants,
-               SUM(CASE WHEN cp.last_read_message_id >= ? THEN 1 ELSE 0 END) as read_count,
-               GROUP_CONCAT(
-                   CASE WHEN cp.last_read_message_id >= ? THEN 
-                     CONCAT(cp.user_id, '-', cp.user_type)
-                   ELSE NULL END
-               ) as readers
-        FROM conversation_participants cp
-        WHERE cp.conversation_id = ? AND cp.is_deleted = 0
-    ");
+    // Marquer la conversation comme lue
+    markConversationAsRead($convId, $userId, $userType);
     
-    // Requête pour obtenir les noms des lecteurs
-    $readerNamesStmt = $pdo->prepare("
-        SELECT 
-            CASE 
-                WHEN u.user_type = 'eleve' THEN 
-                    (SELECT CONCAT(e.prenom, ' ', e.nom) FROM eleves e WHERE e.id = u.user_id)
-                WHEN u.user_type = 'parent' THEN 
-                    (SELECT CONCAT(p.prenom, ' ', p.nom) FROM parents p WHERE p.id = u.user_id)
-                WHEN u.user_type = 'professeur' THEN 
-                    (SELECT CONCAT(p.prenom, ' ', p.nom) FROM professeurs p WHERE p.id = u.user_id)
-                WHEN u.user_type = 'vie_scolaire' THEN 
-                    (SELECT CONCAT(v.prenom, ' ', v.nom) FROM vie_scolaire v WHERE v.id = u.user_id)
-                WHEN u.user_type = 'administrateur' THEN 
-                    (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = u.user_id)
-                ELSE 'Inconnu'
-            END as nom_complet,
-            u.user_id,
-            u.user_type
-        FROM (
-            SELECT ? AS conversation_id, ? AS message_id, ? AS user_id, ? AS user_type
-        ) AS params
-        CROSS JOIN (
-            SELECT user_id, user_type
-            FROM conversation_participants
-            WHERE conversation_id = ? AND last_read_message_id >= ? AND is_deleted = 0
-        ) AS u
-    ");
-    
-    foreach ($messages as &$message) {
-        $attachmentStmt->execute([$message['id']]);
-        $message['pieces_jointes'] = $attachmentStmt->fetchAll();
-        
-        // Marquer comme lu si pas encore lu et si ce n'est pas notre propre message
-        if (!$message['est_lu'] && !$message['is_self']) {
-            markMessageAsRead($message['id'], $userId, $userType);
-        }
-        
-        // Récupérer les informations de lecture pour ce message
-        $readInfoStmt->execute([$message['id'], $message['id'], $convId]);
-        $readInfo = $readInfoStmt->fetch();
-        
-        $message['read_status'] = [
-            'message_id' => $message['id'],
-            'total_participants' => (int)$readInfo['total_participants'],
-            'read_by_count' => (int)$readInfo['read_count'],
-            'all_read' => (int)$readInfo['read_count'] === (int)$readInfo['total_participants'],
-            'percentage' => $readInfo['total_participants'] > 0 ? 
-                            round(($readInfo['read_count'] / $readInfo['total_participants']) * 100) : 0,
-            'readers' => []
-        ];
-        
-        // Récupérer les noms des lecteurs si nécessaire
-        if ($readInfo['read_count'] > 0) {
-            $readerNamesStmt->execute([$convId, $message['id'], $userId, $userType, $convId, $message['id']]);
-            $message['read_status']['readers'] = $readerNamesStmt->fetchAll();
-        }
-    }
-
     return $messages;
 }
 
@@ -191,11 +112,6 @@ function getMessagesEvenIfDeleted($convId, $userId, $userType) {
                        (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = m.sender_id)
                    ELSE 'Inconnu'
                END as expediteur_nom,
-               m.sender_id as expediteur_id, 
-               m.sender_type as expediteur_type,
-               m.body as contenu,
-               COALESCE(m.status, 'normal') as status,
-               m.created_at as date_envoi,
                UNIX_TIMESTAMP(m.created_at) as timestamp
         FROM messages m
         LEFT JOIN conversation_participants cp ON (
@@ -206,51 +122,10 @@ function getMessagesEvenIfDeleted($convId, $userId, $userType) {
         WHERE m.conversation_id = ?
         ORDER BY m.created_at ASC
     ";
+    
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$userId, $userType, $userId, $userType, $convId]);
-    $messages = $stmt->fetchAll();
-
-    // Récupérer les pièces jointes pour chaque message
-    $attachmentStmt = $pdo->prepare("
-        SELECT id, message_id, file_name as nom_fichier, file_path as chemin
-        FROM message_attachments 
-        WHERE message_id = ?
-    ");
-    
-    // Requête pour récupérer les infos de lecture pour chaque message
-    $readInfoStmt = $pdo->prepare("
-        SELECT COUNT(*) as total_participants,
-               SUM(CASE WHEN cp.last_read_message_id >= ? THEN 1 ELSE 0 END) as read_count,
-               GROUP_CONCAT(
-                   CASE WHEN cp.last_read_message_id >= ? THEN 
-                     CONCAT(cp.user_id, '-', cp.user_type)
-                   ELSE NULL END
-               ) as readers
-        FROM conversation_participants cp
-        WHERE cp.conversation_id = ? AND cp.is_deleted = 0
-    ");
-    
-    foreach ($messages as &$message) {
-        $attachmentStmt->execute([$message['id']]);
-        $message['pieces_jointes'] = $attachmentStmt->fetchAll();
-        
-        // Ne pas marquer comme lu automatiquement puisque la conversation est dans la corbeille
-        
-        // Récupérer les informations de lecture pour ce message
-        $readInfoStmt->execute([$message['id'], $message['id'], $convId]);
-        $readInfo = $readInfoStmt->fetch();
-        
-        $message['read_status'] = [
-            'message_id' => $message['id'],
-            'total_participants' => (int)$readInfo['total_participants'],
-            'read_by_count' => (int)$readInfo['read_count'],
-            'all_read' => (int)$readInfo['read_count'] === (int)$readInfo['total_participants'],
-            'percentage' => $readInfo['total_participants'] > 0 ? 
-                            round(($readInfo['read_count'] / $readInfo['total_participants']) * 100) : 0
-        ];
-    }
-
-    return $messages;
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 /**

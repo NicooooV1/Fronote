@@ -5,28 +5,31 @@
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/constants.php';
 
-/**
- * Fonction de journalisation pour débuguer les uploads
- * @param string $message Message à journaliser
- * @param mixed $data Données supplémentaires (facultatif)
- */
-function logUpload($message, $data = null) {
-    $logFile = __DIR__ . '/../logs/upload_' . date('Y-m-d') . '.log';
-    $dir = dirname($logFile);
-    
-    // S'assurer que le répertoire de logs existe
-    if (!is_dir($dir)) {
-        mkdir($dir, 0755, true);
+// Vérifier si la fonction logUpload est déjà définie pour éviter la redéclaration
+if (!function_exists('logUpload')) {
+    /**
+     * Fonction de journalisation pour débuguer les uploads
+     * @param string $message Message à journaliser
+     * @param mixed $data Données supplémentaires (facultatif)
+     */
+    function logUpload($message, $data = null) {
+        $logFile = __DIR__ . '/../logs/upload_' . date('Y-m-d') . '.log';
+        $dir = dirname($logFile);
+        
+        // S'assurer que le répertoire de logs existe
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        
+        $timestamp = date('Y-m-d H:i:s');
+        $logMessage = "[{$timestamp}] {$message}";
+        
+        if ($data !== null) {
+            $logMessage .= " - Data: " . json_encode($data);
+        }
+        
+        file_put_contents($logFile, $logMessage . PHP_EOL, FILE_APPEND);
     }
-    
-    $timestamp = date('Y-m-d H:i:s');
-    $logMessage = "[{$timestamp}] {$message}";
-    
-    if ($data !== null) {
-        $logMessage .= " - Data: " . json_encode($data);
-    }
-    
-    file_put_contents($logFile, $logMessage . PHP_EOL, FILE_APPEND);
 }
 
 /**

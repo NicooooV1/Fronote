@@ -248,7 +248,7 @@ function setupBulkActions() {
  * Met à jour l'état des boutons d'action en fonction de la sélection
  */
 function updateBulkActionButtons() {
-    const selectedConvs = document.querySelectorAll('.conversation-checkbox:checked');
+    const selectedConvs = document.querySelectorAll('.conversation-select:checked');
     const selectedCount = selectedConvs.length;
     
     // Mettre à jour le texte de tous les boutons avec le nombre sélectionné correct
@@ -261,7 +261,7 @@ function updateBulkActionButtons() {
         // Activer/désactiver les boutons en fonction de la sélection
         button.disabled = selectedCount === 0;
         
-        // Afficher/masquer les boutons si rien n'est sélectionné
+        // Afficher/masquer les boutons selon la sélection
         if (selectedCount === 0) {
             button.style.display = 'none';
         } else {
@@ -283,15 +283,12 @@ function updateBulkActionButtons() {
         let hasUnreadMessages = false;
         
         selectedConvs.forEach(checkbox => {
-            const conversationItem = checkbox.closest('.conversation-item');
-            if (conversationItem) {
-                const isRead = !conversationItem.classList.contains('unread');
-                
-                if (isRead) {
-                    hasReadMessages = true;
-                } else {
-                    hasUnreadMessages = true;
-                }
+            const isRead = checkbox.dataset.read === '1';
+            
+            if (isRead) {
+                hasReadMessages = true;
+            } else {
+                hasUnreadMessages = true;
             }
         });
         
