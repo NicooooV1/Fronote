@@ -5,6 +5,11 @@
  * IMPORTANT: Tous les modules doivent inclure ce fichier pour la gestion de l'authentification
  */
 
+// Marquer le fichier comme inclus
+if (!defined('AUTH_CENTRAL_INCLUDED')) {
+    define('AUTH_CENTRAL_INCLUDED', true);
+}
+
 // Charger les dépendances nécessaires
 require_once __DIR__ . '/bootstrap.php';
 

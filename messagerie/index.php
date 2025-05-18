@@ -8,23 +8,26 @@ require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/config/constants.php';
 require_once __DIR__ . '/core/utils.php';
 require_once __DIR__ . '/core/auth.php';
-require_once __DIR__ . '/models/conversation.php';
-require_once __DIR__ . '/models/notification.php';
 
-// Vérifier l'authentification
-if (!function_exists('requireAuth')) {
-    function requireAuth() {
-        if (!isset($_SESSION['user'])) {
-            // Utiliser BASE_URL si défini, sinon chemin relatif
-            $loginPage = defined('BASE_URL') ? BASE_URL . '/login/public/index.php' : '../login/public/index.php';
-            header('Location: ' . $loginPage);
-            exit;
-        }
-        return $_SESSION['user'];
+// Assurer que les fonctions d'authentification sont disponibles
+if (!function_exists('isLoggedIn')) {
+    function isLoggedIn() {
+        return isset($_SESSION['user']) && !empty($_SESSION['user']);
     }
 }
 
-$user = requireAuth();
+// Vérifier l'authentification
+if (!isLoggedIn()) {
+    $loginPage = defined('BASE_URL') ? BASE_URL . '/login/public/index.php' : '../login/public/index.php';
+    header('Location: ' . $loginPage);
+    exit;
+}
+
+$user = $_SESSION['user'];
+
+// Charger les modèles nécessaires 
+require_once __DIR__ . '/models/conversation.php';
+require_once __DIR__ . '/models/notification.php';
 
 // Définir le titre de la page
 $pageTitle = 'Pronote - Messagerie';
@@ -88,73 +91,63 @@ include 'templates/header.php';
     <main>
         <h2><?= isset($folders[$currentFolder]) ? $folders[$currentFolder] : 'Messages' ?></h2>
         
-        <!-- Section des actions en masse pour tous les dossiers -->
-        <?php if (!empty($conversations)): ?>
-        <div class="bulk-actions">
-            <label class="checkbox-container">
-                <input type="checkbox" id="select-all-conversations">
-                <span class="checkmark"></span>
-                <strong>Tout sélectionner</strong>
-            </label>
-            
-            <div class="bulk-action-buttons">
-                <?php 
-                // Boutons d'actions spécifiques selon le dossier
-                if ($currentFolder === 'archives'): ?>
-                    <!-- Boutons pour les archives -->
-                    <button data-action="unarchive" data-icon="inbox" data-action-text="Désarchiver" class="bulk-action-btn btn primary" disabled>
-                        <i class="fas fa-inbox"></i> Désarchiver (0)
-                    </button>
-                <?php elseif ($currentFolder !== 'corbeille'): ?>
-                    <!-- Bouton d'archivage pour les dossiers autres que archives et corbeille -->
-                    <button data-action="archive" data-icon="archive" data-action-text="Archiver" class="bulk-action-btn btn secondary" disabled>
-                        <i class="fas fa-archive"></i> Archiver (0)
-                    </button>
-                <?php endif; ?>
-                
-                <?php if ($currentFolder === 'corbeille'): ?>
-                    <!-- Boutons pour la corbeille -->
-                    <button data-action="restore" data-icon="trash-restore" data-action-text="Restaurer" class="bulk-action-btn btn primary" disabled>
-                        <i class="fas fa-trash-restore"></i> Restaurer (0)
-                    </button>
-                    
-                    <button data-action="delete_permanently" data-icon="trash-alt" data-action-text="Supprimer définitivement" class="bulk-action-btn btn warning" disabled>
-                        <i class="fas fa-trash-alt"></i> Supprimer définitivement (0)
-                    </button>
-                <?php else: ?>
-                    <!-- Bouton de suppression pour tous les dossiers sauf corbeille -->
-                    <button data-action="delete" data-icon="trash" data-action-text="Supprimer" class="bulk-action-btn btn warning" disabled>
-                        <i class="fas fa-trash"></i> Supprimer (0)
-                    </button>
-                <?php endif; ?>
+        <?php if (empty($conversations)): ?>
+        <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <p>Aucun message dans ce dossier.</p>
+        </div>
+        <?php else: ?>
+        <div class="conversation-list-header">
+            <div class="bulk-actions">
+                <label class="checkbox-container select-all">
+                    <input type="checkbox" id="select-all-conversations">
+                    <span class="checkmark"></span>
+                    <span class="label-text">Tout sélectionner</span>
+                </label>
                 
                 <?php if ($currentFolder !== 'corbeille'): ?>
-                    <!-- Boutons de marquage communs à tous les dossiers sauf corbeille -->
-                    <button data-action="mark_read" data-icon="envelope-open" data-action-text="Marquer comme lu" class="bulk-action-btn btn secondary" disabled>
-                        <i class="fas fa-envelope-open"></i> Marquer comme lu (0)
-                    </button>
-                    
-                    <button data-action="mark_unread" data-icon="envelope" data-action-text="Marquer comme non lu" class="bulk-action-btn btn secondary" disabled>
-                        <i class="fas fa-envelope"></i> Marquer comme non lu (0)
-                    </button>
+                <button class="bulk-action-btn" data-action="mark_read" data-action-text="Marquer comme lu" data-icon="envelope-open" disabled>
+                    <i class="fas fa-envelope-open"></i> Marquer comme lu (0)
+                </button>
+                <button class="bulk-action-btn" data-action="mark_unread" data-action-text="Marquer comme non lu" data-icon="envelope" disabled>
+                    <i class="fas fa-envelope"></i> Marquer comme non lu (0)
+                </button>
+                
+                <button class="bulk-action-btn danger" data-action="delete" data-action-text="Supprimer" data-icon="trash" disabled>
+                    <i class="fas fa-trash"></i> Supprimer (0)
+                </button>
+                
+                <?php if ($currentFolder !== 'archives'): ?>
+                <button class="bulk-action-btn" data-action="archive" data-action-text="Archiver" data-icon="archive" disabled>
+                    <i class="fas fa-archive"></i> Archiver (0)
+                </button>
+                <?php else: ?>
+                <button class="bulk-action-btn" data-action="unarchive" data-action-text="Désarchiver" data-icon="inbox" disabled>
+                    <i class="fas fa-inbox"></i> Désarchiver (0)
+                </button>
+                <?php endif; ?>
+                
+                <?php else: ?>
+                <button class="bulk-action-btn" data-action="restore" data-action-text="Restaurer" data-icon="trash-restore" disabled>
+                    <i class="fas fa-trash-restore"></i> Restaurer (0)
+                </button>
+                <button class="bulk-action-btn danger" data-action="delete_permanently" data-action-text="Supprimer définitivement" data-icon="trash-alt" disabled>
+                    <i class="fas fa-trash-alt"></i> Supprimer définitivement (0)
+                </button>
                 <?php endif; ?>
             </div>
+            
+            <div class="conversation-search">
+                <input type="text" id="search-conversations" placeholder="Rechercher...">
+            </div>
+        </div>
+        
+        <div class="conversation-list">
+            <?php foreach ($conversations as $conversation): ?>
+                <?php include 'templates/components/conversation-item.php'; ?>
+            <?php endforeach; ?>
         </div>
         <?php endif; ?>
-        
-        <!-- Liste des conversations -->
-        <div class="conversation-list">
-            <?php if (empty($conversations)): ?>
-            <div class="empty-state">
-                <i class="fas fa-inbox"></i>
-                <p>Aucun message dans ce dossier</p>
-            </div>
-            <?php else: ?>
-                <?php foreach ($conversations as $conversation): ?>
-                    <?php include 'templates/components/conversation-item.php'; ?>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </div>
     </main>
 </div>
 

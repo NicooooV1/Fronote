@@ -40,7 +40,15 @@ if (!function_exists('requireAuth')) {
     function requireAuth() {
         $user = checkAuth();
         if (!$user) {
-            redirect(LOGIN_URL);
+            // Utiliser BASE_URL si défini, sinon un chemin relatif
+            $baseUrl = defined('BASE_URL') ? BASE_URL : '/~u22405372/SAE/Pronote';
+            $loginUrl = $baseUrl . '/login/public/index.php';
+            
+            // Stocker l'URL actuelle pour redirection après connexion
+            $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
+            
+            header("Location: $loginUrl");
+            exit;
         }
         return $user;
     }
@@ -94,6 +102,33 @@ if (!function_exists('requireRole')) {
     function requireRole($user, $roles, $redirectUrl = 'index.php') {
         if (!hasRole($user, $roles)) {
             redirect($redirectUrl);
+        }
+    }
+}
+
+// S'assurer que la fonction countUnreadNotifications est disponible
+if (!function_exists('countUnreadNotifications')) {
+    /**
+     * Compte les notifications non lues
+     * @param int $userId ID de l'utilisateur
+     * @param string $userType Type d'utilisateur
+     * @return int Nombre de notifications non lues
+     */
+    function countUnreadNotifications($userId, $userType) {
+        global $pdo;
+        if (!isset($pdo)) {
+            return 0; // Si pas de connexion à la BDD, retourner 0
+        }
+        
+        try {
+            $stmt = $pdo->prepare("
+                SELECT COUNT(*) FROM notifications 
+                WHERE user_id = ? AND user_type = ? AND is_read = 0
+            ");
+            $stmt->execute([$userId, $userType]);
+            return (int)$stmt->fetchColumn();
+        } catch (Exception $e) {
+            return 0; // En cas d'erreur, retourner 0
         }
     }
 }

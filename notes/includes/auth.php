@@ -3,85 +3,46 @@
  * Module d'authentification pour le module Notes
  */
 
-// Démarrer la session si nécessaire
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Essayer d'inclure le fichier d'authentification central
-$authCentralPath = __DIR__ . '/../../API/auth_central.php';
-if (file_exists($authCentralPath)) {
-    require_once $authCentralPath;
+// Utiliser le résolveur d'authentification qui évite les problèmes de redéclaration
+$authResolvePath = __DIR__ . '/../../API/auth_resolve.php';
+if (file_exists($authResolvePath)) {
+    require_once $authResolvePath;
 } else {
     // Fallback si le fichier central n'est pas disponible
-    /**
-     * Vérifier si l'utilisateur est connecté
-     * @return bool True si l'utilisateur est connecté
-     */
-    function isLoggedIn() {
-        return isset($_SESSION['user']) && !empty($_SESSION['user']);
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
     }
     
-    /**
-     * Récupérer l'utilisateur connecté
-     * @return array|null Données de l'utilisateur ou null si non connecté
-     */
-    function getCurrentUser() {
-        return $_SESSION['user'] ?? null;
-    }
-    
-    /**
-     * Récupère le rôle de l'utilisateur
-     * @return string|null Rôle de l'utilisateur ou null
-     */
-    function getUserRole() {
-        $user = getCurrentUser();
-        return $user ? $user['profil'] : null;
-    }
-    
-    /**
-     * Récupère le nom complet de l'utilisateur
-     * @return string Nom complet de l'utilisateur ou chaîne vide
-     */
-    function getUserFullName() {
-        $user = getCurrentUser();
-        if ($user) {
-            return $user['prenom'] . ' ' . $user['nom'];
+    // Uniquement si les fonctions n'existent pas déjà
+    if (!function_exists('isLoggedIn')) {
+        /**
+         * Vérifie si l'utilisateur est connecté
+         * @return bool True si l'utilisateur est connecté
+         */
+        function isLoggedIn() {
+            return isset($_SESSION['user']) && !empty($_SESSION['user']);
         }
-        return '';
     }
     
-    /**
-     * Vérifier si l'utilisateur est administrateur
-     * @return bool True si l'utilisateur est administrateur
-     */
-    function isAdmin() {
-        return getUserRole() === 'administrateur';
+    if (!function_exists('getCurrentUser')) {
+        /**
+         * Récupérer l'utilisateur connecté
+         * @return array|null Données de l'utilisateur ou null si non connecté
+         */
+        function getCurrentUser() {
+            return $_SESSION['user'] ?? null;
+        }
     }
     
-    /**
-     * Vérifier si l'utilisateur est professeur
-     * @return bool True si l'utilisateur est professeur
-     */
-    function isTeacher() {
-        return getUserRole() === 'professeur';
-    }
-    
-    /**
-     * Vérifier si l'utilisateur est membre de la vie scolaire
-     * @return bool True si l'utilisateur est membre de la vie scolaire
-     */
-    function isVieScolaire() {
-        return getUserRole() === 'vie_scolaire';
-    }
-    
-    /**
-     * Vérifie si l'utilisateur peut gérer les notes
-     * @return bool True si l'utilisateur peut gérer les notes
-     */
-    function canManageNotes() {
-        $role = getUserRole();
-        return in_array($role, ['administrateur', 'professeur', 'vie_scolaire']);
+    if (!function_exists('getUserRole')) {
+        /**
+         * Récupère le rôle de l'utilisateur
+         * @return string|null Rôle de l'utilisateur ou null
+         */
+        function getUserRole() {
+            $user = getCurrentUser();
+            return $user ? $user['profil'] : null;
+        }
     }
 }
 ?>
