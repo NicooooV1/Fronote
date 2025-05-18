@@ -1,45 +1,43 @@
 <?php
 /**
- * Path Helper for Pronote
- * 
- * This file provides consistent path resolution across all modules,
- * ensuring that files can be found whether running locally or on the server.
+ * Helper pour la gestion des chemins d'accès à l'API
  */
 
-// Exit if accessed directly
-if (!defined('ABSPATH') && basename($_SERVER['SCRIPT_FILENAME']) == basename(__FILE__)) {
-    exit('Direct access not permitted');
+// Vérification de sécurité pour éviter l'accès direct
+if (!defined('ABSPATH')) {
+    die('Accès direct interdit');
 }
 
-// Only define paths once
-if (!defined('API_PATHS_DEFINED')) {
-    // Try various path combinations to find the API directory
-    $possible_paths = [
-        __DIR__, // If this file is already in the API directory
-        dirname(dirname(__DIR__)) . '/API', // Two levels up + /API
-        dirname(__DIR__) . '/API', // One level up + /API
-        dirname(dirname(dirname(__DIR__))) . '/API', // Three levels up + /API
-    ];
+// Trouver le chemin racine de l'API
+$api_dir = null;
+$current_dir = dirname(__FILE__);
 
-    $api_dir = null;
-    foreach ($possible_paths as $path) {
-        if (file_exists($path) && is_dir($path)) {
-            $api_dir = $path;
-            break;
-        }
+// Essayer des chemins relatifs probables
+$possible_api_dirs = [
+    $current_dir,
+    dirname(dirname(__FILE__)) . '/API',
+    dirname(dirname(dirname(__FILE__))) . '/API',
+];
+
+foreach ($possible_api_dirs as $dir) {
+    if (file_exists($dir . '/core.php')) {
+        $api_dir = $dir;
+        break;
     }
+}
 
+if (!defined('API_PATHS_DEFINED')) {
     if (!$api_dir) {
         die("Impossible de localiser le répertoire API.");
     }
 
     // Define constant for the API directory
-    define('API_DIR', $api_dir);
+    if (!defined('API_DIR')) define('API_DIR', $api_dir);
 
     // Define constants for commonly used API files
-    define('API_CORE_PATH', API_DIR . '/core.php');
-    define('API_AUTH_PATH', API_DIR . '/auth.php');
-    define('API_DATA_PATH', API_DIR . '/data.php');
+    if (!defined('API_CORE_PATH')) define('API_CORE_PATH', API_DIR . '/core.php');
+    if (!defined('API_AUTH_PATH')) define('API_AUTH_PATH', API_DIR . '/auth.php');
+    if (!defined('API_DATA_PATH')) define('API_DATA_PATH', API_DIR . '/data.php');
     
     define('API_PATHS_DEFINED', true);
 }

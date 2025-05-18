@@ -79,8 +79,14 @@ function canManageNotes() {
 function logout() {
     Session::destroy();
     
-    // Redirection vers la page de connexion avec un chemin relatif
-    $loginUrl = defined('LOGIN_URL') ? LOGIN_URL : '../login/public/index.php';
+    // Utiliser le chemin BASE_URL complet pour la redirection
+    $loginUrl = defined('LOGIN_URL') ? LOGIN_URL : BASE_URL . '/login/public/index.php';
+    
+    // S'assurer que l'URL commence par le bon chemin
+    if (strpos($loginUrl, '/~') !== 0 && strpos($loginUrl, 'http') !== 0) {
+        $loginUrl = BASE_URL . $loginUrl;
+    }
+    
     header('Location: ' . $loginUrl);
     exit;
 }
@@ -88,8 +94,14 @@ function logout() {
 // Rediriger si l'utilisateur n'est pas connecté
 function requireLogin() {
     if (!isLoggedIn()) {
-        // Redirection vers la page de connexion avec un chemin relatif
-        $loginUrl = defined('LOGIN_URL') ? LOGIN_URL : '../login/public/index.php';
+        // Utiliser le chemin BASE_URL complet pour la redirection
+        $loginUrl = defined('LOGIN_URL') ? LOGIN_URL : BASE_URL . '/login/public/index.php';
+        
+        // S'assurer que l'URL commence par le bon chemin
+        if (strpos($loginUrl, '/~') !== 0 && strpos($loginUrl, 'http') !== 0) {
+            $loginUrl = BASE_URL . $loginUrl;
+        }
+        
         header('Location: ' . $loginUrl);
         exit;
     }

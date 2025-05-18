@@ -2,13 +2,33 @@
 // Démarrer la mise en mémoire tampon de sortie pour éviter l'erreur "headers already sent"
 ob_start();
 
+// Démarrer la session si nécessaire
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 // Inclusions
-include 'includes/header.php'; 
-include 'includes/db.php';
-include 'includes/auth.php';
+include_once 'includes/header.php'; 
+include_once 'includes/db.php';
+include_once 'includes/auth.php';
+
+// Vérifier si l'utilisateur est connecté
+if (!isLoggedIn()) {
+    // Utiliser un chemin absolu pour la redirection
+    $loginUrl = '/~u22405372/SAE/Pronote/login/public/index.php';
+    header('Location: ' . $loginUrl);
+    exit;
+}
 
 // Récupérer les informations de l'utilisateur connecté
-$user = $_SESSION['user'];
+$user = $_SESSION['user'] ?? null;
+if (!$user) {
+    // Utiliser un chemin absolu pour la redirection
+    $loginUrl = '/~u22405372/SAE/Pronote/login/public/index.php';
+    header('Location: ' . $loginUrl);
+    exit;
+}
+
 $user_fullname = $user['prenom'] . ' ' . $user['nom'];
 $user_role = $user['profil']; 
 
@@ -16,60 +36,79 @@ $user_role = $user['profil'];
 $stmt_classes = $pdo->query('SELECT DISTINCT classe FROM notes ORDER BY classe');
 $classes = $stmt_classes->fetchAll(PDO::FETCH_COLUMN);
 
-// Récupérer toutes les matières disponibles
-$stmt_matieres = $pdo->query('SELECT DISTINCT nom_matiere FROM notes ORDER BY nom_matiere');
+// Définir la classe sélectionnée (si présente dans l'URL ou par défaut la première)
+$selected_class = isset($_GET['classe']) ? $_GET['classe'] : ($classes[0] ?? '');
+
+// Définir la matière sélectionnée (si présente dans l'URL ou vide par défaut)
+$selected_subject = isset($_GET['matiere']) ? $_GET['matiere'] : '';
+
+// Définir le filtre de date
+$date_filter = isset($_GET['date']) ? $_GET['date'] : '';
+
+// Construire la requête de base
+$query = 'SELECT * FROM notes WHERE 1=1';
+$params = [];
+
+// Ajouter des filtres à la requête
+if (!empty($selected_class)) {
+    $query .= ' AND classe = ?';
+    $params[] = $selected_class;
+}
+
+if (!empty($selected_subject)) {
+    $query .= ' AND matiere = ?';
+    $params[] = $selected_subject;
+}
+
+if (!empty($date_filter)) {
+    $query .= ' AND date_evaluation = ?';
+    $params[] = $date_filter;
+}
+
+// Si l'utilisateur est un professeur (et pas un admin), limiter aux notes qu'il a créées
+if (isTeacher() && !isAdmin() && !isVieScolaire()) {
+    $query .= ' AND nom_professeur = ?';
+    $params[] = $user_fullname;
+}
+
+// Si l'utilisateur est un élève, limiter aux notes le concernant
+if (isStudent()) {
+    $query .= ' AND eleve_id = ?';
+    $params[] = $user['id'];
+}
+
+// Si l'utilisateur est un parent, limiter aux notes concernant son/ses enfant(s)
+if (isParent()) {
+    // Récupérer les IDs des enfants
+    $stmt_enfants = $pdo->prepare('SELECT eleve_id FROM parents_eleves WHERE parent_id = ?');
+    $stmt_enfants->execute([$user['id']]);
+    $enfants = $stmt_enfants->fetchAll(PDO::FETCH_COLUMN);
+    
+    if (!empty($enfants)) {
+        $placeholders = implode(',', array_fill(0, count($enfants), '?'));
+        $query .= ' AND eleve_id IN (' . $placeholders . ')';
+        $params = array_merge($params, $enfants);
+    } else {
+        // Si le parent n'a pas d'enfant enregistré, ne rien afficher
+        $query .= ' AND 1=0';
+    }
+}
+
+// Ajouter l'ordre
+$query .= ' ORDER BY date_evaluation DESC, matiere ASC';
+
+// Préparer et exécuter la requête
+$stmt = $pdo->prepare($query);
+$stmt->execute($params);
+$notes = $stmt->fetchAll();
+
+// Récupérer les matières disponibles
+$stmt_matieres = $pdo->query('SELECT DISTINCT matiere FROM notes ORDER BY matiere');
 $matieres = $stmt_matieres->fetchAll(PDO::FETCH_COLUMN);
 
-// Pour les professeurs, récupérer leur matière enseignée
-$matiere_prof = '';
-if (isTeacher()) {
-  $stmt_prof = $pdo->prepare('SELECT matiere FROM professeurs WHERE nom = ? AND prenom = ?');
-  $stmt_prof->execute([$user['nom'], $user['prenom']]);
-  $prof_data = $stmt_prof->fetch();
-  $matiere_prof = $prof_data ? $prof_data['matiere'] : '';
-}
-
-// Récupérer les filtres depuis l'URL
-$classe_selectionnee = isset($_GET['classe']) ? $_GET['classe'] : (count($classes) > 0 ? $classes[0] : '');
-$trimestre_selectionne = isset($_GET['trimestre']) ? intval($_GET['trimestre']) : 3;
-$matiere_selectionnee = isset($_GET['matiere']) ? $_GET['matiere'] : ($matiere_prof ?: (count($matieres) > 0 ? $matieres[0] : ''));
-$eleve_selectionne = isset($_GET['eleve']) ? $_GET['eleve'] : '';
-
-// Fonctions utilitaires
-function calculerMoyenne($notes) {
-  if (empty($notes)) return 0;
-  
-  $somme_notes = 0;
-  $somme_coefs = 0;
-  
-  foreach ($notes as $note) {
-    if (is_numeric($note['note'])) {
-      $coef = isset($note['coefficient']) ? intval($note['coefficient']) : 1;
-      $somme_notes += floatval($note['note']) * $coef;
-      $somme_coefs += $coef;
-    }
-  }
-  
-  return $somme_coefs > 0 ? round($somme_notes / $somme_coefs, 2) : 0;
-}
-
-// Déterminer les dates de début et fin du trimestre
-$annee = date('Y');
-switch ($trimestre_selectionne) {
-  case 1:
-    $date_debut = $annee . '-09-01';
-    $date_fin = $annee . '-12-31';
-    break;
-  case 2:
-    $date_debut = $annee . '-01-01';
-    $date_fin = $annee . '-03-31';
-    break;
-  case 3:
-  default:
-    $date_debut = $annee . '-04-01';
-    $date_fin = $annee . '-07-31';
-    break;
-}
+// Récupérer les dates d'évaluation disponibles
+$stmt_dates = $pdo->query('SELECT DISTINCT date_evaluation FROM notes ORDER BY date_evaluation DESC');
+$dates = $stmt_dates->fetchAll(PDO::FETCH_COLUMN);
 ?>
 
 <div class="container">

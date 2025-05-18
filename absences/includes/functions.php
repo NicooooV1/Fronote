@@ -1,197 +1,208 @@
 <?php
 /**
- * Fonctions utilitaires pour la gestion des absences et retards
+ * Fonctions utilitaires pour le module Absences
  */
 
-/**
- * Récupère la liste des absences d'un élève
- * 
- * @param PDO $pdo Connexion à la base de données
- * @param int $id_eleve ID de l'élève
- * @param string $date_debut Date de début (optionnel)
- * @param string $date_fin Date de fin (optionnel)
- * @return array Liste des absences
- */
-function getAbsencesEleve($pdo, $id_eleve, $date_debut = null, $date_fin = null) {
-    $params = [$id_eleve];
-    $sql = "SELECT a.*, e.nom, e.prenom, e.classe 
-            FROM absences a 
-            JOIN eleves e ON a.id_eleve = e.id 
-            WHERE a.id_eleve = ?";
-    
-    if ($date_debut) {
-        $sql .= " AND a.date_debut >= ?";
-        $params[] = $date_debut;
-    }
-    
-    if ($date_fin) {
-        $sql .= " AND a.date_debut <= ?";
-        $params[] = $date_fin;
-    }
-    
-    $sql .= " ORDER BY a.date_debut DESC";
-    
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-/**
- * Récupère la liste des absences pour une classe
- * 
- * @param PDO $pdo Connexion à la base de données
- * @param string $classe Classe concernée
- * @param string $date_debut Date de début (optionnel)
- * @param string $date_fin Date de fin (optionnel)
- * @return array Liste des absences
- */
-function getAbsencesClasse($pdo, $classe, $date_debut = null, $date_fin = null) {
-    $params = [$classe];
-    $sql = "SELECT a.*, e.nom, e.prenom, e.classe 
-            FROM absences a 
-            JOIN eleves e ON a.id_eleve = e.id 
-            WHERE e.classe = ?";
-    
-    if ($date_debut) {
-        $sql .= " AND a.date_debut >= ?";
-        $params[] = $date_debut;
-    }
-    
-    if ($date_fin) {
-        $sql .= " AND a.date_debut <= ?";
-        $params[] = $date_fin;
-    }
-    
-    $sql .= " ORDER BY e.nom, e.prenom, a.date_debut DESC";
-    
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-/**
- * Ajoute une absence dans la base de données
- * 
- * @param PDO $pdo Connexion à la base de données
- * @param array $data Données de l'absence
- * @return bool|int ID de l'absence créée ou false en cas d'erreur
- */
-function ajouterAbsence($pdo, $data) {
-    try {
-        // Enable PDO error mode for debugging
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+// Vérifier si les fonctions sont déjà définies pour éviter les redéclarations
+if (!function_exists('getAbsencesEleve')) {
+    /**
+     * Récupère la liste des absences d'un élève
+     * 
+     * @param PDO $pdo Connexion à la base de données
+     * @param int $id_eleve ID de l'élève
+     * @param string $date_debut Date de début (optionnel)
+     * @param string $date_fin Date de fin (optionnel)
+     * @return array Liste des absences
+     */
+    function getAbsencesEleve($pdo, $id_eleve, $date_debut = null, $date_fin = null) {
+        $params = [$id_eleve];
+        $sql = "SELECT a.*, e.nom, e.prenom, e.classe 
+                FROM absences a 
+                JOIN eleves e ON a.id_eleve = e.id 
+                WHERE a.id_eleve = ?";
         
-        // Check if all required fields are present
-        $required_fields = ['id_eleve', 'date_debut', 'date_fin', 'type_absence', 'signale_par'];
-        foreach ($required_fields as $field) {
-            if (empty($data[$field])) {
-                error_log("Missing required field for absence: $field");
+        if ($date_debut) {
+            $sql .= " AND a.date_debut >= ?";
+            $params[] = $date_debut;
+        }
+        
+        if ($date_fin) {
+            $sql .= " AND a.date_debut <= ?";
+            $params[] = $date_fin;
+        }
+        
+        $sql .= " ORDER BY a.date_debut DESC";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+}
+
+if (!function_exists('getAbsencesClasse')) {
+    /**
+     * Récupère la liste des absences pour une classe
+     * 
+     * @param PDO $pdo Connexion à la base de données
+     * @param string $classe Classe concernée
+     * @param string $date_debut Date de début (optionnel)
+     * @param string $date_fin Date de fin (optionnel)
+     * @return array Liste des absences
+     */
+    function getAbsencesClasse($pdo, $classe, $date_debut = null, $date_fin = null) {
+        $params = [$classe];
+        $sql = "SELECT a.*, e.nom, e.prenom, e.classe 
+                FROM absences a 
+                JOIN eleves e ON a.id_eleve = e.id 
+                WHERE e.classe = ?";
+        
+        if ($date_debut) {
+            $sql .= " AND a.date_debut >= ?";
+            $params[] = $date_debut;
+        }
+        
+        if ($date_fin) {
+            $sql .= " AND a.date_debut <= ?";
+            $params[] = $date_fin;
+        }
+        
+        $sql .= " ORDER BY e.nom, e.prenom, a.date_debut DESC";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+}
+
+if (!function_exists('ajouterAbsence')) {
+    /**
+     * Ajoute une absence dans la base de données
+     * 
+     * @param PDO $pdo Connexion à la base de données
+     * @param array $data Données de l'absence
+     * @return bool|int ID de l'absence créée ou false en cas d'erreur
+     */
+    function ajouterAbsence($pdo, $data) {
+        try {
+            // Enable PDO error mode for debugging
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            
+            // Check if all required fields are present
+            $required_fields = ['id_eleve', 'date_debut', 'date_fin', 'type_absence', 'signale_par'];
+            foreach ($required_fields as $field) {
+                if (empty($data[$field])) {
+                    error_log("Missing required field for absence: $field");
+                    return false;
+                }
+            }
+            
+            // Set default values for optional fields
+            $data['motif'] = isset($data['motif']) ? $data['motif'] : null;
+            $data['justifie'] = isset($data['justifie']) ? $data['justifie'] : false;
+            $data['commentaire'] = isset($data['commentaire']) ? $data['commentaire'] : null;
+            
+            // Verify the SQL table structure and adjust the query accordingly
+            $sql = "INSERT INTO absences (
+                        id_eleve, 
+                        date_debut, 
+                        date_fin, 
+                        type_absence, 
+                        motif, 
+                        justifie, 
+                        commentaire, 
+                        signale_par
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            
+            $stmt = $pdo->prepare($sql);
+            
+            // Log the data we're trying to insert
+            error_log("Attempting to add absence with data: " . json_encode($data));
+            
+            $success = $stmt->execute([
+                $data['id_eleve'],
+                $data['date_debut'],
+                $data['date_fin'],
+                $data['type_absence'],
+                $data['motif'],
+                $data['justifie'] ? 1 : 0, // Convert boolean to int for MySQL
+                $data['commentaire'],
+                $data['signale_par']
+            ]);
+            
+            if ($success) {
+                $id = $pdo->lastInsertId();
+                error_log("Successfully added absence with ID: $id");
+                return $id;
+            } else {
+                error_log("Failed to add absence: " . json_encode($stmt->errorInfo()));
                 return false;
             }
-        }
-        
-        // Set default values for optional fields
-        $data['motif'] = isset($data['motif']) ? $data['motif'] : null;
-        $data['justifie'] = isset($data['justifie']) ? $data['justifie'] : false;
-        $data['commentaire'] = isset($data['commentaire']) ? $data['commentaire'] : null;
-        
-        // Verify the SQL table structure and adjust the query accordingly
-        $sql = "INSERT INTO absences (
-                    id_eleve, 
-                    date_debut, 
-                    date_fin, 
-                    type_absence, 
-                    motif, 
-                    justifie, 
-                    commentaire, 
-                    signale_par
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-        
-        $stmt = $pdo->prepare($sql);
-        
-        // Log the data we're trying to insert
-        error_log("Attempting to add absence with data: " . json_encode($data));
-        
-        $success = $stmt->execute([
-            $data['id_eleve'],
-            $data['date_debut'],
-            $data['date_fin'],
-            $data['type_absence'],
-            $data['motif'],
-            $data['justifie'] ? 1 : 0, // Convert boolean to int for MySQL
-            $data['commentaire'],
-            $data['signale_par']
-        ]);
-        
-        if ($success) {
-            $id = $pdo->lastInsertId();
-            error_log("Successfully added absence with ID: $id");
-            return $id;
-        } else {
-            error_log("Failed to add absence: " . json_encode($stmt->errorInfo()));
+        } catch (PDOException $e) {
+            error_log("PDO Exception when adding absence: " . $e->getMessage());
+            // Display more detailed error for development
+            error_log("Error details: " . $e->getTraceAsString());
+            return false;
+        } catch (Exception $e) {
+            error_log("General Exception when adding absence: " . $e->getMessage());
             return false;
         }
-    } catch (PDOException $e) {
-        error_log("PDO Exception when adding absence: " . $e->getMessage());
-        // Display more detailed error for development
-        error_log("Error details: " . $e->getTraceAsString());
-        return false;
-    } catch (Exception $e) {
-        error_log("General Exception when adding absence: " . $e->getMessage());
-        return false;
     }
 }
 
-/**
- * Récupère les détails d'une absence
- * 
- * @param PDO $pdo Connexion à la base de données
- * @param int $id ID de l'absence
- * @return array|bool Détails de l'absence ou false si non trouvée
- */
-function getAbsenceById($pdo, $id) {
-    $sql = "SELECT a.*, e.nom, e.prenom, e.classe 
-            FROM absences a 
-            JOIN eleves e ON a.id_eleve = e.id 
-            WHERE a.id = ?";
-    
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([$id]);
-    return $stmt->fetch(PDO::FETCH_ASSOC);
+if (!function_exists('getAbsenceById')) {
+    /**
+     * Récupère les détails d'une absence
+     * 
+     * @param PDO $pdo Connexion à la base de données
+     * @param int $id ID de l'absence
+     * @return array|bool Détails de l'absence ou false si non trouvée
+     */
+    function getAbsenceById($pdo, $id) {
+        $sql = "SELECT a.*, e.nom, e.prenom, e.classe 
+                FROM absences a 
+                JOIN eleves e ON a.id_eleve = e.id 
+                WHERE a.id = ?";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
 }
 
-/**
- * Met à jour une absence
- * 
- * @param PDO $pdo Connexion à la base de données
- * @param int $id ID de l'absence
- * @param array $data Nouvelles données
- * @return bool Succès de la mise à jour
- */
-function modifierAbsence($pdo, $id, $data) {
-    $sql = "UPDATE absences SET 
-                date_debut = ?, 
-                date_fin = ?, 
-                type_absence = ?, 
-                motif = ?, 
-                justifie = ?, 
-                commentaire = ? 
-            WHERE id = ?";
-    
-    try {
-        $stmt = $pdo->prepare($sql);
-        return $stmt->execute([
-            $data['date_debut'],
-            $data['date_fin'],
-            $data['type_absence'],
-            $data['motif'] ?? null,
-            isset($data['justifie']) ? $data['justifie'] : false,
-            $data['commentaire'] ?? null,
-            $id
-        ]);
-    } catch (PDOException $e) {
-        error_log("Erreur lors de la modification d'une absence: " . $e->getMessage());
-        return false;
+if (!function_exists('modifierAbsence')) {
+    /**
+     * Met à jour une absence
+     * 
+     * @param PDO $pdo Connexion à la base de données
+     * @param int $id ID de l'absence
+     * @param array $data Nouvelles données
+     * @return bool Succès de la mise à jour
+     */
+    function modifierAbsence($pdo, $id, $data) {
+        try {
+            $sql = "UPDATE absences SET 
+                        date_debut = ?, 
+                        date_fin = ?, 
+                        type_absence = ?, 
+                        motif = ?, 
+                        justifie = ?, 
+                        commentaire = ? 
+                    WHERE id = ?";
+            
+            $stmt = $pdo->prepare($sql);
+            return $stmt->execute([
+                $data['date_debut'],
+                $data['date_fin'],
+                $data['type_absence'],
+                $data['motif'] ?? null,
+                isset($data['justifie']) ? $data['justifie'] : false,
+                $data['commentaire'] ?? null,
+                $id
+            ]);
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la modification d'une absence: " . $e->getMessage());
+            return false;
+        }
     }
 }
 
@@ -267,15 +278,6 @@ function ajouterJustificatif($pdo, $data) {
 
 function getJustificatifsEleve($pdo, $id_eleve) {
     // Code pour récupérer les justificatifs d'un élève
-}
-
-/**
- * Vérifie si l'utilisateur est autorisé à gérer les absences
- * 
- * @return bool
- */
-function canManageAbsences() {
-    return (isTeacher() || isAdmin() || isVieScolaire());
 }
 
 /**
@@ -428,5 +430,33 @@ try {
     initializeProfesseurClasses($pdo);
 } catch (Exception $e) {
     error_log("Error initializing tables: " . $e->getMessage());
+}
+
+/**
+ * Formate une date au format français
+ * @param string $date La date au format SQL
+ * @return string La date formatée
+ */
+function formatDate($date) {
+    if (empty($date)) {
+        return '';
+    }
+    
+    $timestamp = strtotime($date);
+    return date('d/m/Y', $timestamp);
+}
+
+/**
+ * Formate une date et heure au format français
+ * @param string $datetime La date et heure au format SQL
+ * @return string La date et heure formatée
+ */
+function formatDateTime($datetime) {
+    if (empty($datetime)) {
+        return '';
+    }
+    
+    $timestamp = strtotime($datetime);
+    return date('d/m/Y à H:i', $timestamp);
 }
 ?>

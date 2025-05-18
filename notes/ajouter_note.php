@@ -2,7 +2,11 @@
 // Démarrer la mise en mémoire tampon de sortie pour éviter l'erreur "headers already sent"
 ob_start();
 
-// Nous n'avons plus besoin de démarrer la session, car c'est fait dans Auth
+// Démarrer la session si nécessaire
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 include 'includes/header.php'; 
 include 'includes/db.php';
 include 'includes/auth.php';

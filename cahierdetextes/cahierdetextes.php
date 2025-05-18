@@ -1,25 +1,92 @@
 <?php
-// Démarrer la mise en mémoire tampon de sortie pour éviter l'erreur "headers already sent"
+// Démarrer la mise en mémoire tampon
 ob_start();
 
-// Inclusion des fichiers nécessaires
-include 'includes/db.php';
-include 'includes/auth.php';
+// Inclure les fichiers nécessaires
+include_once 'includes/db.php';
+include_once 'includes/auth.php';
 
-// Vérifier que l'utilisateur est connecté
+// Vérifier si l'utilisateur est connecté
 if (!isLoggedIn()) {
-    header('Location: ../login/public/login.php');
+    // Utiliser un chemin absolu pour la redirection
+    $loginUrl = '/~u22405372/SAE/Pronote/login/public/index.php';
+    header('Location: ' . $loginUrl);
     exit;
 }
 
 // Récupérer les informations de l'utilisateur connecté
-$user = getCurrentUser();
-$user_fullname = getUserFullName();
-$user_role = getUserRole();
+$user = $_SESSION['user'] ?? null;
+if (!$user) {
+    // Utiliser un chemin absolu pour la redirection
+    $loginUrl = '/~u22405372/SAE/Pronote/login/public/index.php';
+    header('Location: ' . $loginUrl);
+    exit;
+}
+
+$user_role = $user['profil'];
+$user_fullname = $user['prenom'] . ' ' . $user['nom'];
 $user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
 
-// Paramètres de filtrage
-$order = isset($_GET['order']) ? $_GET['order'] : 'date_rendu';
+// Charger la liste des devoirs
+$devoirs = [];
+try {
+    $sql = "SELECT * FROM devoirs";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute();
+    $devoirs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    // Vérifier si la table existe
+    $tableExists = false;
+    try {
+        $checkTable = $pdo->query("SHOW TABLES LIKE 'devoirs'");
+        $tableExists = $checkTable->rowCount() > 0;
+    } catch (PDOException $e) {
+        $tableExists = false;
+    }
+    
+    if (!$tableExists) {
+        // Créer la table si elle n'existe pas
+        try {
+            $pdo->exec("
+                CREATE TABLE devoirs (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    titre VARCHAR(255) NOT NULL,
+                    description TEXT,
+                    classe VARCHAR(50) NOT NULL,
+                    nom_matiere VARCHAR(100) NOT NULL,
+                    nom_professeur VARCHAR(100) NOT NULL,
+                    date_ajout DATE NOT NULL,
+                    date_rendu DATE NOT NULL,
+                    date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ");
+            
+            // Réessayer de charger les devoirs (la table est maintenant vide)
+            $stmt = $pdo->query("SELECT * FROM devoirs");
+            $devoirs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $createError) {
+            // Échec de la création de la table
+            error_log("Erreur lors de la création de la table devoirs: " . $createError->getMessage());
+        }
+    } else {
+        // Autre erreur avec la table existante
+        error_log("Erreur lors de la récupération des devoirs: " . $e->getMessage());
+    }
+}
+
+// Variable globale pour vérifier les fonctions disponibles
+$functionsAvailable = [
+    'canManageDevoirs' => function_exists('canManageDevoirs'),
+    'canManageCahierTextes' => function_exists('canManageCahierTextes')
+];
+
+// Fonction de secours si la fonction canManageDevoirs n'est pas disponible
+if (!function_exists('canManageDevoirs')) {
+    function canManageDevoirs() {
+        $role = isset($_SESSION['user']) ? $_SESSION['user']['profil'] : '';
+        return in_array($role, ['administrateur', 'professeur', 'vie_scolaire']);
+    }
+}
 ?>
 <!DOCTYPE html>
 <html>
@@ -27,7 +94,7 @@ $order = isset($_GET['order']) ? $_GET['order'] : 'date_rendu';
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cahier de Textes - Pronote</title>
-  <link rel="stylesheet" href="assets/css/cahierdetextes.css">
+  <link rel="stylesheet" href="assets/css/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>

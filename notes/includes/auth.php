@@ -1,116 +1,88 @@
 <?php
 /**
- * Authentication functions for notes module
+ * Module d'authentification pour le module Notes
  */
 
-// Locate and include the API auth file
-$path_helper = null;
-$possible_paths = [
-    dirname(dirname(dirname(__DIR__))) . '/API/path_helper.php', // Standard path
-    dirname(dirname(__DIR__)) . '/API/path_helper.php', // Alternate path
-    dirname(dirname(dirname(dirname(__DIR__)))) . '/API/path_helper.php', // Another possible path
-];
+// Inclure le système d'autoloading
+$autoloadPath = __DIR__ . '/../../API/autoload.php';
 
-foreach ($possible_paths as $path) {
-    if (file_exists($path)) {
-        $path_helper = $path;
-        break;
-    }
-}
-
-if ($path_helper) {
-    // Define ABSPATH for security check in path_helper.php
-    if (!defined('ABSPATH')) define('ABSPATH', dirname(dirname(__FILE__)));
-    require_once $path_helper;
-    require_once API_AUTH_PATH;
+if (file_exists($autoloadPath)) {
+    require_once $autoloadPath;
+    
+    // Initialiser l'application avec le système d'autoloading
+    bootstrap();
 } else {
-    // Enhanced fallback for direct inclusion if path_helper.php is not found
-    $possible_api_paths = [
-        dirname(dirname(dirname(__DIR__))) . '/API/auth.php',
-        dirname(dirname(__DIR__)) . '/API/auth.php',
-        dirname(__DIR__) . '/../API/auth.php'
-    ];
+    // Fallback si le système d'autoloading n'est pas disponible
+    session_start();
     
-    $api_path = null;
-    foreach ($possible_api_paths as $path) {
-        if (file_exists($path)) {
-            $api_path = $path;
-            break;
-        }
+    /**
+     * Vérifier si l'utilisateur est connecté
+     * @return bool True si l'utilisateur est connecté
+     */
+    function isLoggedIn() {
+        return isset($_SESSION['user']) && !empty($_SESSION['user']);
     }
     
-    if ($api_path) {
-        require_once $api_path;
-    } else {
-        // Last resort - create minimal authentication functions
-        error_log("Cannot locate API auth file. Using minimal auth fallback");
-        
-        if (!function_exists('isLoggedIn')) {
-            function isLoggedIn() {
-                return isset($_SESSION['user']);
-            }
-        }
-        
-        if (!function_exists('getCurrentUser')) {
-            function getCurrentUser() {
-                return $_SESSION['user'] ?? null;
-            }
-        }
-        
-        if (!function_exists('getUserRole')) {
-            function getUserRole() {
-                return $_SESSION['user']['profil'] ?? '';
-            }
-        }
-        
-        if (!function_exists('canManageNotes')) {
-            function canManageNotes() {
-                $role = getUserRole();
-                return $role === 'professeur' || $role === 'administrateur' || $role === 'vie_scolaire';
-            }
-        }
+    /**
+     * Récupérer l'utilisateur connecté
+     * @return array|null Données de l'utilisateur ou null si non connecté
+     */
+    function getCurrentUser() {
+        return $_SESSION['user'] ?? null;
     }
-}
-
-// Spécifique au module Notes
-// Si ces fonctions n'existent pas encore, on les définit
-if (!function_exists('isTeacher')) {
-    function isTeacher() {
-        return getUserRole() === 'professeur';
+    
+    /**
+     * Récupère le rôle de l'utilisateur
+     * @return string|null Rôle de l'utilisateur ou null
+     */
+    function getUserRole() {
+        $user = getCurrentUser();
+        return $user ? $user['profil'] : null;
     }
-}
-
-if (!function_exists('isAdmin')) {
-    function isAdmin() {
-        return getUserRole() === 'administrateur';
-    }
-}
-
-if (!function_exists('isVieScolaire')) {
-    function isVieScolaire() {
-        return getUserRole() === 'vie_scolaire';
-    }
-}
-
-if (!function_exists('isStudent')) {
-    function isStudent() {
-        return getUserRole() === 'eleve';
-    }
-}
-
-if (!function_exists('isParent')) {
-    function isParent() {
-        return getUserRole() === 'parent';
-    }
-}
-
-if (!function_exists('getUserFullName')) {
+    
+    /**
+     * Récupère le nom complet de l'utilisateur
+     * @return string Nom complet de l'utilisateur ou chaîne vide
+     */
     function getUserFullName() {
         $user = getCurrentUser();
         if ($user) {
             return $user['prenom'] . ' ' . $user['nom'];
         }
         return '';
+    }
+    
+    /**
+     * Vérifier si l'utilisateur est administrateur
+     * @return bool True si l'utilisateur est administrateur
+     */
+    function isAdmin() {
+        return getUserRole() === 'administrateur';
+    }
+    
+    /**
+     * Vérifier si l'utilisateur est professeur
+     * @return bool True si l'utilisateur est professeur
+     */
+    function isTeacher() {
+        return getUserRole() === 'professeur';
+    }
+    
+    /**
+     * Vérifier si l'utilisateur est membre de la vie scolaire
+     * @return bool True si l'utilisateur est membre de la vie scolaire
+     */
+    function isVieScolaire() {
+        return getUserRole() === 'vie_scolaire';
+    }
+    
+    /**
+     * Vérifie si l'utilisateur peut gérer les notes
+     * @return bool True si l'utilisateur peut gérer les notes
+     */
+    function canManageNotes() {
+        $role = getUserRole();
+        return in_array($role, ['administrateur', 'professeur', 'vie_scolaire']);
     }
 }
 ?>

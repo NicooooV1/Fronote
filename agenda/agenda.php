@@ -1,19 +1,15 @@
 <?php
-// Démarrer la mise en mémoire tampon de sortie pour éviter l'erreur "headers already sent"
+// Démarrer la mise en mémoire tampon
 ob_start();
 
-// Inclusion des fichiers nécessaires
-include 'includes/db.php';
-include 'includes/auth.php';
+// Inclure les fichiers nécessaires
+require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/db.php';
 
 // Vérifier que l'utilisateur est connecté
-if (!isLoggedIn()) {
-    header('Location: ../login/public/login.php');
-    exit;
-}
+$user = requireLogin();
 
 // Récupérer les informations de l'utilisateur connecté
-$user = $_SESSION['user'];
 $user_fullname = $user['prenom'] . ' ' . $user['nom'];
 $user_role = $user['profil'];
 $user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));

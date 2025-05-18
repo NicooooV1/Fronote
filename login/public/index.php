@@ -1,59 +1,42 @@
 <?php
-require __DIR__ . '/../config/database.php';
-require __DIR__ . '/../src/auth.php';
+// Démarrer la session
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../src/auth.php';
 $auth = new Auth($pdo);
 
-// Vérification simple : si l'utilisateur est déjà connecté, on le redirige
-// Sauf si on vient de register.php avec un message de succès
-if ($auth->isLoggedIn() && !isset($_GET['from_register'])) {
-    // Redirection vers accueil.php
+// Si l'utilisateur est déjà connecté, le rediriger vers l'accueil
+if (isset($_SESSION['user'])) {
     header('Location: /~u22405372/SAE/Pronote/accueil/accueil.php');
     exit;
 }
 
-// Si l'utilisateur vient de register.php, on n'a PAS besoin de le déconnecter
-// Car il n'est PAS encore connecté - il doit saisir ses identifiants
-
+// Traitement du formulaire de connexion
 $error = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $profil      = isset($_POST['profil']) ? $_POST['profil'] : '';
-    $identifiant = isset($_POST['identifiant']) ? $_POST['identifiant'] : '';
-    $password    = isset($_POST['mot_de_passe']) ? $_POST['mot_de_passe'] : '';
+$profil = isset($_POST['profil']) ? $_POST['profil'] : '';
+$identifiant = isset($_POST['identifiant']) ? $_POST['identifiant'] : '';
+$password = isset($_POST['password']) ? $_POST['password'] : '';
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Tentative de connexion
     if ($auth->login($profil, $identifiant, $password)) {
-        // Vérification si c'est la première connexion (mot de passe par défaut)
-        if ($auth->isDefaultPassword()) {
-            // Définir un drapeau de session pour autoriser l'accès à change_password.php
-            $_SESSION['password_change_required'] = true;
-            header('Location: change_password.php');
-            exit;
-        }
-        // On utilise JavaScript avec le script session_checker.js pour la redirection
-        echo '
-        <script src="/~u22405372/SAE/Pronote/login/public/assets/js/session_checker.js"></script>
-        <script>
-            window.location.href = "/~u22405372/SAE/Pronote/accueil/accueil.php";
-        </script>';
+        // La connexion a réussi, redirection vers l'accueil
+        header('Location: /~u22405372/SAE/Pronote/accueil/accueil.php');
         exit;
     } else {
-        $error = 'Identifiant ou mot de passe invalides.';
+        // La connexion a échoué
+        $error = 'Identifiant ou mot de passe incorrect';
     }
 }
 
-// Déterminer quel avatar afficher en fonction du profil sélectionné
-$profil = isset($_POST['profil']) ? $_POST['profil'] : 'eleve';
-$avatars = [
-    'eleve' => 'student.png',
-    'parent' => 'parent.png',
-    'professeur' => 'teacher.png',
-    'vie_scolaire' => 'staff.png',
-    'administrateur' => 'admin.png'
-];
-$avatarImg = $avatars[$profil] ?? 'student.png';
-$espaceTitle = 'Espace ' . ucfirst($profil) . 's';
+// Le reste du code HTML de la page
 ?>
+
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -225,7 +208,7 @@ $espaceTitle = 'Espace ' . ucfirst($profil) . 's';
             <div class="form-group">
                 <label for="password">Mot de passe</label>
                 <div class="input-group">
-                    <input type="password" id="password" name="mot_de_passe" required>
+                    <input type="password" id="password" name="password" required>
                     <button type="button" class="visibility-toggle" id="passwordToggle">
                         <i class="fas fa-eye"></i>
                     </button>
@@ -240,6 +223,14 @@ $espaceTitle = 'Espace ' . ucfirst($profil) . 's';
         <div class="additional-links" style="margin-top: 20px; text-align: center;">
             <a href="forgot_password.php" style="color: #009b72; font-size: 14px; margin-right: 15px;">Mot de passe oublié ?</a>
             <a href="register.php" style="color: #009b72; font-size: 14px;">S'inscrire</a>
+        </div>
+        
+        <div class="credentials-info" style="margin-top: 30px; font-size: 14px; color: #333;">
+            <h3 style="font-size: 16px; font-weight: 500; margin-bottom: 10px;">Identifiants de test</h3>
+            <p style="margin: 5px 0;"><strong>Administrateur:</strong> admin / admin</p>
+            <p style="margin: 5px 0;"><strong>Professeur:</strong> dupont / prof123</p>
+            <p style="margin: 5px 0;"><strong>Élève:</strong> dupuis / eleve123</p>
+            <p style="margin: 5px 0;"><strong>Parent:</strong> martin / parent123</p>
         </div>
     </div>
     

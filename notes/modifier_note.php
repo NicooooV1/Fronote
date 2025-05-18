@@ -2,6 +2,11 @@
 // Démarrer la mise en mémoire tampon de sortie pour éviter l'erreur "headers already sent"
 ob_start();
 
+// Démarrer la session si nécessaire
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 // Inclure les fichiers nécessaires avec des chemins relatifs
 include_once 'includes/header.php'; 
 include_once 'includes/db.php';
@@ -16,7 +21,7 @@ if (!canManageNotes()) {
 // Utiliser les données utilisateur de la session
 $user = $_SESSION['user'] ?? null;
 if (!$user) {
-    header('Location: ../login/public/index.php');
+    header('Location: /~u22405372/SAE/Pronote/login/public/index.php');
     exit;
 }
 $nom_professeur = $user['prenom'] . ' ' . $user['nom'];

@@ -1,45 +1,53 @@
 <?php
 /**
- * Authentication functions for agenda module
+ * Module d'authentification pour le module Agenda
  */
 
-// Locate and include the API path helper
-$path_helper = null;
-$possible_paths = [
-    dirname(dirname(dirname(__DIR__))) . '/API/path_helper.php', // Standard path
-    dirname(dirname(__DIR__)) . '/API/path_helper.php', // Alternate path
-    dirname(dirname(dirname(dirname(__DIR__)))) . '/API/path_helper.php', // Another possible path
-];
+// Inclure le système d'autoloading
+$autoloadPath = __DIR__ . '/../../API/autoload.php';
 
-foreach ($possible_paths as $path) {
-    if (file_exists($path)) {
-        $path_helper = $path;
-        break;
-    }
-}
-
-if ($path_helper) {
-    // Define ABSPATH for security check in path_helper.php
-    if (!defined('ABSPATH')) define('ABSPATH', dirname(dirname(__FILE__)));
-    require_once $path_helper;
+if (file_exists($autoloadPath)) {
+    require_once $autoloadPath;
     
-    // Include the centralized API auth file
-    require_once API_AUTH_PATH;
+    // Initialiser l'application avec le système d'autoloading
+    bootstrap();
 } else {
-    // Fallback to direct inclusion if path_helper.php is not found
-    $api_dir = dirname(dirname(dirname(__DIR__))) . '/API';
-    if (file_exists($api_dir . '/auth.php')) {
-        require_once $api_dir . '/auth.php';
-    } else {
-        // Try another potential path
-        $api_dir = dirname(__DIR__) . '/../API';
-        if (file_exists($api_dir . '/auth.php')) {
-            require_once $api_dir . '/auth.php';
-        } else {
-            die("Cannot locate the API auth file. Please check your installation.");
+    // Fallback si le système d'autoloading n'est pas disponible
+    session_start();
+    
+    // Fonctions d'authentification de base si le système centralisé n'est pas disponible
+    if (!function_exists('isLoggedIn')) {
+        function isLoggedIn() {
+            return isset($_SESSION['user']) && !empty($_SESSION['user']);
+        }
+    }
+    
+    if (!function_exists('getCurrentUser')) {
+        function getCurrentUser() {
+            return $_SESSION['user'] ?? null;
+        }
+    }
+    
+    if (!function_exists('getUserRole')) {
+        function getUserRole() {
+            $user = getCurrentUser();
+            return $user ? $user['profil'] : null;
+        }
+    }
+    
+    if (!function_exists('requireLogin')) {
+        function requireLogin() {
+            if (!isLoggedIn()) {
+                $loginUrl = '/~u22405372/SAE/Pronote/login/public/index.php';
+                header("Location: $loginUrl");
+                exit;
+            }
+            return getCurrentUser();
         }
     }
 }
+
+// Si nécessaire, définir des fonctions spécifiques au module Agenda ici
 
 // No need to redefine functions that already exist in the API
 // Only declare functions that are specific to this module that aren't already defined

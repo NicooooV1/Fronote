@@ -12,6 +12,7 @@ class Auth {
     ];
     
     private $isDefaultPassword = false;
+    private $errorMessage = '';
 
     public function __construct(PDO $pdo) {
         $this->pdo = $pdo;
@@ -56,6 +57,10 @@ class Auth {
                 'last_check' => time(), // Ajouter un timestamp pour la dernière vérification
                 'password_hash' => $user['mot_de_passe'] // Stocker le hash du mot de passe pour vérification
             ];
+            
+            // Journaliser le login réussi
+            $this->debugSession("Login successful for user: $identifiant, profile: $profil");
+            
             return true;
         }
         return false;
@@ -95,14 +100,36 @@ class Auth {
      * @return bool True si l'utilisateur est connecté, false sinon
      */
     public function isLoggedIn() {
-        return !empty($_SESSION['user']);
+        $isLoggedIn = isset($_SESSION['user']) && !empty($_SESSION['user']);
+        if ($isLoggedIn) {
+            $this->debugSession("User is logged in: " . $_SESSION['user']['identifiant'] ?? 'unknown');
+        } else {
+            $this->debugSession("User is NOT logged in");
+        }
+        return $isLoggedIn;
     }
 
     /**
      * Déconnecte l'utilisateur
      */
     public function logout() {
-        session_unset();
+        // Journaliser la déconnexion
+        $user = $_SESSION['user']['identifiant'] ?? 'unknown';
+        $this->debugSession("Logout for user: $user");
+        
+        // Supprimer les données de session
+        $_SESSION = array();
+        
+        // Supprimer le cookie de session si utilisé
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000,
+                $params["path"], $params["domain"],
+                $params["secure"], $params["httponly"]
+            );
+        }
+        
+        // Détruire la session
         session_destroy();
     }
 
@@ -249,5 +276,46 @@ class Auth {
         }
         
         return in_array($_SESSION['user']['profil'], $roles);
+    }
+    
+    /**
+     * Méthode pour déboguer les redirections
+     * Écrit des informations sur la session dans un fichier log
+     */
+    public function debugSession($message = 'Debug session') {
+        $log = date('Y-m-d H:i:s') . " - $message\n";
+        $log .= "SESSION: " . print_r($_SESSION, true) . "\n";
+        $log .= "COOKIES: " . print_r($_COOKIE, true) . "\n";
+        $log .= "SERVER: " . print_r([
+            'REQUEST_URI' => $_SERVER['REQUEST_URI'] ?? 'N/A',
+            'SCRIPT_NAME' => $_SERVER['SCRIPT_NAME'] ?? 'N/A',
+            'PHP_SELF' => $_SERVER['PHP_SELF'] ?? 'N/A',
+            'HTTP_REFERER' => $_SERVER['HTTP_REFERER'] ?? 'N/A'
+        ], true) . "\n";
+        $log .= "-------------------------------\n";
+        
+        try {
+            // Vérifier et créer le répertoire pour les logs
+            $logDir = __DIR__ . '/../logs';
+            if (!is_dir($logDir)) {
+                // Essayer de créer le répertoire
+                if (!@mkdir($logDir, 0755, true)) {
+                    // Utiliser le répertoire temporaire si on ne peut pas créer le dossier
+                    $logDir = sys_get_temp_dir();
+                }
+            }
+            
+            // Vérifier si le répertoire est accessible en écriture
+            if (is_writable($logDir)) {
+                $logFile = $logDir . '/auth_debug.log';
+                @file_put_contents($logFile, $log, FILE_APPEND);
+            } else {
+                // Essayer d'écrire dans le répertoire temporaire du système
+                $logFile = sys_get_temp_dir() . '/pronote_auth_debug.log';
+                @file_put_contents($logFile, $log, FILE_APPEND);
+            }
+        } catch (Exception $e) {
+            // Ne pas échouer si la journalisation ne fonctionne pas
+        }
     }
 }

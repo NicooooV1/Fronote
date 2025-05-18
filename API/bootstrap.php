@@ -12,21 +12,20 @@ if (!defined('APP_ROOT')) {
     define('APP_ROOT', realpath(dirname(__FILE__) . '/../'));
 }
 
-// Chemins relatifs à la racine de l'application
-define('API_DIR', APP_ROOT . '/API');
-define('UPLOADS_PATH', APP_ROOT . '/uploads');
-define('LOGS_PATH', API_DIR . '/logs');
-
-// Vérifier si le fichier d'environnement existe
+// Vérifier si le fichier d'environnement existe et le charger en premier
 $envFile = __DIR__ . '/config/env.php';
 if (file_exists($envFile)) {
     require_once $envFile;
-} else {
-    // Charger la configuration par défaut
-    require_once __DIR__ . '/config/config.php';
 }
 
+// Chargement des fichiers de configuration dans cet ordre
+require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/config/constants.php';
+
+// Chemins relatifs à la racine de l'application - vérification avant définition
+if (!defined('API_DIR')) define('API_DIR', APP_ROOT . '/API');
+if (!defined('UPLOADS_PATH')) define('UPLOADS_PATH', APP_ROOT . '/uploads');
+if (!defined('LOGS_PATH')) define('LOGS_PATH', API_DIR . '/logs');
 
 // Créer les répertoires nécessaires s'ils n'existent pas
 $directories = [

@@ -15,7 +15,9 @@ require_once __DIR__ . '/models/notification.php';
 if (!function_exists('requireAuth')) {
     function requireAuth() {
         if (!isset($_SESSION['user'])) {
-            header('Location: ../login/public/index.php');
+            // Utiliser BASE_URL si défini, sinon chemin relatif
+            $loginPage = defined('BASE_URL') ? BASE_URL . '/login/public/index.php' : '../login/public/index.php';
+            header('Location: ' . $loginPage);
             exit;
         }
         return $_SESSION['user'];

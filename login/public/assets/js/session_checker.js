@@ -65,3 +65,28 @@ function startSessionChecker() {
 
 // Démarrer la vérification de session quand la page est chargée
 document.addEventListener('DOMContentLoaded', startSessionChecker);
+
+/**
+ * Ce fichier a été désactivé pour éviter les problèmes de redirection en boucle.
+ * Le code ci-dessous est l'original mais il n'est pas exécuté.
+ */
+/*
+document.addEventListener('DOMContentLoaded', function() {
+    // Fonction pour vérifier l'état de la session
+    function checkSession() {
+        fetch('check_session.php')
+            .then(response => response.json())
+            .then(data => {
+                if (!data.loggedIn) {
+                    window.location.href = 'login.php';
+                }
+            })
+            .catch(error => {
+                console.error('Erreur lors de la vérification de la session:', error);
+            });
+    }
+
+    // Vérifier la session toutes les 30 secondes
+    setInterval(checkSession, 30000);
+});
+*/

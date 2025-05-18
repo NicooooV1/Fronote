@@ -1,7 +1,17 @@
 <?php
 /**
  * Script d'installation de Pronote
+ * Ce script s'auto-désactivera après une installation réussie
  */
+
+// Vérifier si l'installation est déjà terminée
+$installLockFile = __DIR__ . '/install.lock';
+if (file_exists($installLockFile)) {
+    die('L\'installation a déjà été effectuée. Pour réinstaller, supprimez le fichier install.lock du répertoire racine.');
+}
+
+// Journaliser l'accès au script d'installation
+error_log('Accès au script d\'installation de Pronote: ' . date('Y-m-d H:i:s'));
 
 // Vérifier la version de PHP
 if (version_compare(PHP_VERSION, '7.4.0', '<')) {
@@ -46,8 +56,12 @@ foreach ($directories as $dir) {
     
     // Créer le dossier s'il n'existe pas
     if (!is_dir($path)) {
-        if (!@mkdir($path, 0755, true)) {
-            $permissionIssues[] = "Impossible de créer le dossier {$dir}";
+        try {
+            if (!mkdir($path, 0755, true)) {
+                $permissionIssues[] = "Impossible de créer le dossier {$dir}";
+            }
+        } catch (Exception $e) {
+            $permissionIssues[] = "Erreur lors de la création du dossier {$dir}: " . $e->getMessage();
         }
     } else if (!is_writable($path)) {
         $permissionIssues[] = "Le dossier {$dir} n'est pas accessible en écriture";
@@ -71,82 +85,112 @@ $dbError = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        $dbHost = isset($_POST['db_host']) ? $_POST['db_host'] : 'localhost';
-        $dbName = isset($_POST['db_name']) ? $_POST['db_name'] : '';
-        $dbUser = isset($_POST['db_user']) ? $_POST['db_user'] : '';
-        $dbPass = isset($_POST['db_pass']) ? $_POST['db_pass'] : '';
-        $appEnv = isset($_POST['app_env']) ? $_POST['app_env'] : 'production';
-        $baseUrlInput = isset($_POST['base_url']) ? $_POST['base_url'] : $baseUrl;
+        // Valider les entrées utilisateur
+        $dbHost = filter_input(INPUT_POST, 'db_host', FILTER_SANITIZE_STRING) ?: 'localhost';
+        $dbName = filter_input(INPUT_POST, 'db_name', FILTER_SANITIZE_STRING) ?: '';
+        $dbUser = filter_input(INPUT_POST, 'db_user', FILTER_SANITIZE_STRING) ?: '';
+        $dbPass = $_POST['db_pass'] ?? ''; // Ne pas filtrer le mot de passe pour permettre les caractères spéciaux
+        $appEnv = filter_input(INPUT_POST, 'app_env', FILTER_SANITIZE_STRING) ?: 'production';
+        $baseUrlInput = filter_input(INPUT_POST, 'base_url', FILTER_SANITIZE_STRING) ?: $baseUrl;
         
+        // Validation supplémentaire
         if (empty($dbName) || empty($dbUser)) {
             throw new Exception("Le nom de la base de données et l'utilisateur sont obligatoires.");
         }
         
-        // Tester la connexion
-        $dsn = "mysql:host={$dbHost};charset=utf8mb4";
-        $options = [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false
-        ];
-        
-        $pdo = new PDO($dsn, $dbUser, $dbPass, $options);
-        
-        // Créer la base de données si elle n'existe pas
-        $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$dbName}`");
-        $pdo->exec("USE `{$dbName}`");
-        
-        // Créer le fichier de configuration
-        $apiDir = $installDir . '/API';
-        $configDir = $apiDir . '/config';
-        
-        if (!is_dir($configDir)) {
-            mkdir($configDir, 0755, true);
-        }
-        
-        $configContent = <<<CONFIG
+        // Tester la connexion à la base de données
+        try {
+            $dsn = "mysql:host={$dbHost};charset=utf8mb4";
+            $options = [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false
+            ];
+            
+            $pdo = new PDO($dsn, $dbUser, $dbPass, $options);
+            
+            // Créer la base de données si elle n'existe pas
+            $pdo->exec("CREATE DATABASE IF NOT EXISTS `" . $pdo->quote($dbName) . "`");
+            $pdo->exec("USE `" . $pdo->quote($dbName) . "`");
+            
+            // Créer le fichier de configuration
+            $apiDir = $installDir . '/API';
+            $configDir = $apiDir . '/config';
+            
+            if (!is_dir($configDir)) {
+                if (!mkdir($configDir, 0755, true)) {
+                    throw new Exception("Impossible de créer le répertoire de configuration.");
+                }
+            }
+            
+            // Créer le contenu du fichier de configuration en évitant les injections
+            $configContent = <<<CONFIG
 <?php
 /**
  * Configuration d'environnement
+ * Généré automatiquement par le script d'installation
  */
 
 // Environnement (development, production, test)
-define('APP_ENV', '{$appEnv}');
+if (!defined('APP_ENV')) define('APP_ENV', '{$appEnv}');
 
 // Configuration de base
-define('APP_NAME', 'Pronote');
-define('APP_VERSION', '1.0.0');
+if (!defined('APP_NAME')) define('APP_NAME', 'Pronote');
+if (!defined('APP_VERSION')) define('APP_VERSION', '1.0.0');
 
-// Configuration des URLs et chemins
-define('BASE_URL', '{$baseUrlInput}');
-define('APP_ROOT', realpath(__DIR__ . '/../../'));
+// Configuration des URLs et chemins - CHEMIN COMPLET OBLIGATOIRE
+if (!defined('BASE_URL')) define('BASE_URL', '{$baseUrlInput}');
+if (!defined('APP_URL')) define('APP_URL', '{$baseUrlInput}'); // Même valeur que BASE_URL par défaut
+if (!defined('APP_ROOT')) define('APP_ROOT', realpath(__DIR__ . '/../../'));
+
+// URLs communes construites avec BASE_URL
+if (!defined('LOGIN_URL')) define('LOGIN_URL', BASE_URL . '/login/public/index.php');
+if (!defined('LOGOUT_URL')) define('LOGOUT_URL', BASE_URL . '/login/public/logout.php');
+if (!defined('HOME_URL')) define('HOME_URL', BASE_URL . '/accueil/accueil.php');
 
 // Configuration de la base de données
-define('DB_HOST', '{$dbHost}');
-define('DB_NAME', '{$dbName}');
-define('DB_USER', '{$dbUser}');
-define('DB_PASS', '{$dbPass}');
-define('DB_CHARSET', 'utf8mb4');
+if (!defined('DB_HOST')) define('DB_HOST', '{$dbHost}');
+if (!defined('DB_NAME')) define('DB_NAME', '{$dbName}');
+if (!defined('DB_USER')) define('DB_USER', '{$dbUser}');
+if (!defined('DB_PASS')) define('DB_PASS', '{$dbPass}');
+if (!defined('DB_CHARSET')) define('DB_CHARSET', 'utf8mb4');
 
 // Configuration des sessions
-define('SESSION_NAME', 'pronote_session');
-define('SESSION_LIFETIME', 3600); // 1 heure
-define('SESSION_PATH', '/');
-define('SESSION_SECURE', false); // Mettre à true en production si HTTPS
-define('SESSION_HTTPONLY', true);
+if (!defined('SESSION_NAME')) define('SESSION_NAME', 'pronote_session');
+if (!defined('SESSION_LIFETIME')) define('SESSION_LIFETIME', 3600); // 1 heure
+if (!defined('SESSION_PATH')) define('SESSION_PATH', '/');
+if (!defined('SESSION_SECURE')) define('SESSION_SECURE', false); // Mettre à true en production si HTTPS
+if (!defined('SESSION_HTTPONLY')) define('SESSION_HTTPONLY', true);
 
 // Configuration des logs
-define('LOG_ENABLED', true);
-define('LOG_LEVEL', '{$appEnv}' === 'development' ? 'debug' : 'error');
+if (!defined('LOG_ENABLED')) define('LOG_ENABLED', true);
+if (!defined('LOG_LEVEL')) define('LOG_LEVEL', '{$appEnv}' === 'development' ? 'debug' : 'error');
 CONFIG;
 
-        file_put_contents($apiDir . '/config/env.php', $configContent);
-        
-        // Indiquer que l'installation est réussie
-        $installed = true;
-        
-    } catch (PDOException $e) {
-        $dbError = $e->getMessage();
+            if (file_put_contents($apiDir . '/config/env.php', $configContent) === false) {
+                throw new Exception("Impossible d'écrire le fichier de configuration.");
+            }
+            
+            // Créer un fichier .htaccess pour protéger les fichiers de config
+            $htaccessContent = <<<HTACCESS
+# Protéger les fichiers de configuration
+<Files ~ "\.php$">
+    Order allow,deny
+    Deny from all
+</Files>
+HTACCESS;
+
+            file_put_contents($configDir . '/.htaccess', $htaccessContent);
+            
+            // Créer un fichier de verrou pour empêcher l'exécution future de l'installation
+            file_put_contents($installLockFile, date('Y-m-d H:i:s'));
+            
+            // Indiquer que l'installation est réussie
+            $installed = true;
+            
+        } catch (PDOException $e) {
+            throw new Exception("Erreur de connexion à la base de données: " . $e->getMessage());
+        }
     } catch (Exception $e) {
         $dbError = $e->getMessage();
     }
@@ -156,6 +200,7 @@ CONFIG;
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Installation de Pronote</title>
     <style>
         body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
@@ -174,7 +219,8 @@ CONFIG;
         <div class="success">
             <h2>Installation réussie!</h2>
             <p>Pronote a été correctement configuré.</p>
-            <p><a href="<?= $baseUrl ?>">Accéder à l'application</a></p>
+            <p><strong>Important:</strong> Par mesure de sécurité, le script d'installation a été désactivé. Pour réinstaller, supprimez le fichier <code>install.lock</code> du répertoire racine.</p>
+            <p><a href="<?= htmlspecialchars($baseUrl) ?>/login/public/index.php">Accéder à l'application</a></p>
         </div>
     <?php else: ?>
         <?php if (!empty($dbError)): ?>

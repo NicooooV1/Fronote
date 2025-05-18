@@ -2,14 +2,9 @@
 // Démarrer la mise en mémoire tampon
 ob_start();
 
-// Start session if not already started
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Inclusion des fichiers nécessaires - use absolute directory paths
-require_once __DIR__ . '/includes/db.php';
+// Inclure les fichiers nécessaires - use absolute directory paths
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/db.php';
 
 // Check if functions.php exists, and if not, create it
 $functions_file = __DIR__ . '/includes/functions.php';
@@ -28,10 +23,6 @@ function getAbsencesEleve($pdo, $id_eleve, $date_debut = null, $date_fin = null)
 function getAbsencesClasse($pdo, $classe, $date_debut = null, $date_fin = null) {
     return [];
 }
-
-function canManageAbsences() {
-    return (isTeacher() || isAdmin() || isVieScolaire());
-}
 ?>';
     file_put_contents($functions_file, $functions_content);
 }
@@ -39,13 +30,9 @@ function canManageAbsences() {
 require_once $functions_file;
 
 // Vérifier que l'utilisateur est connecté
-if (!isLoggedIn()) {
-    header('Location: ../login/public/index.php');
-    exit;
-}
+$user = requireLogin();
 
 // Récupérer les informations de l'utilisateur connecté
-$user = $_SESSION['user'];
 $user_fullname = $user['prenom'] . ' ' . $user['nom'];
 $user_role = $user['profil'];
 $user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));

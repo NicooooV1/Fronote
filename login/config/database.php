@@ -8,6 +8,7 @@ if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
 if (!defined('DB_NAME')) define('DB_NAME', 'db_MASSE');
 if (!defined('DB_USER')) define('DB_USER', '22405372');
 if (!defined('DB_PASS')) define('DB_PASS', '807014');
+if (!defined('DB_CHARSET')) define('DB_CHARSET', 'utf8mb4');
 
 // First try to use the centralized API if available
 $path_helper = null;
@@ -39,14 +40,21 @@ if ($path_helper) {
 // If $pdo is not defined, create a local connection
 if (!isset($pdo)) {
     try {
-        $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+        // Use defined constants or fallback to default values
+        $dbHost = defined('DB_HOST') ? DB_HOST : 'localhost';
+        $dbName = defined('DB_NAME') ? DB_NAME : 'db_MASSE';
+        $dbUser = defined('DB_USER') ? DB_USER : '22405372';
+        $dbPass = defined('DB_PASS') ? DB_PASS : '807014';
+        $dbCharset = defined('DB_CHARSET') ? DB_CHARSET : 'utf8mb4';
+        
+        $dsn = "mysql:host=$dbHost;dbname=$dbName;charset=$dbCharset";
         $options = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES => false,
         ];
         
-        $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+        $pdo = new PDO($dsn, $dbUser, $dbPass, $options);
         
         // Add to globals so other parts of the API can use it
         $GLOBALS['pdo'] = $pdo;

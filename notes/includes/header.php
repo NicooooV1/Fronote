@@ -14,5 +14,7 @@
       <?php if (function_exists('canManageNotes') && canManageNotes()): ?>
       <a href="ajouter_note.php">Ajouter une note</a>
       <?php endif; ?>
+      <a href="/~u22405372/SAE/Pronote/accueil/accueil.php">Accueil Pronote</a>
+      <a href="/~u22405372/SAE/Pronote/login/public/logout.php">Déconnexion</a>
     </nav>
   </header>
