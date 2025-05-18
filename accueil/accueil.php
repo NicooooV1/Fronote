@@ -39,7 +39,7 @@ if ($path_helper) {
 
 // Check if user is logged in
 if (!isLoggedIn()) {
-    header('Location: /~u22405372/SAE/Pronote/login/public/index.php');
+    header('Location: ../login/public/index.php');
     exit;
 }
 

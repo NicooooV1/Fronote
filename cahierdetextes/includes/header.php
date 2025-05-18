@@ -38,7 +38,7 @@
         <a href="ajouter_devoir.php">Ajouter un devoir</a>
       <?php endif; ?>
       <a href="../notes/notes.php">Système de Notes</a>
-      <a href="/~u22405372/SAE/Pronote/accueil/accueil.php">Accueil Pronote</a>
-      <a href="/~u22405372/SAE/Pronote/login/public/logout.php">Déconnexion</a>
+      <a href="../accueil/accueil.php">Accueil Pronote</a>
+      <a href="../login/public/logout.php">Déconnexion</a>
     </nav>
   </header>

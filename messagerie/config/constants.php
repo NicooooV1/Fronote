@@ -30,8 +30,8 @@ define('FOLDER_ARCHIVES', 'archives');
 define('FOLDER_INFORMATION', 'information');
 define('FOLDER_CORBEILLE', 'corbeille');
 
-// Redirection login
-define('LOGIN_URL', '/~u22405372/SAE/Pronote/login/public/index.php');
+// Redirection login - suppression du préfixe
+define('LOGIN_URL', '/login/public/index.php');
 
 // Créer les répertoires importants s'ils n'existent pas
 $directories = [

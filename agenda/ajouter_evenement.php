@@ -8,7 +8,7 @@ include 'includes/auth.php';
 
 // Vérifier que l'utilisateur est connecté
 if (!isLoggedIn()) {
-    header('Location: ../login/public/login.php');
+    header('Location: ../login/public/index.php');
     exit;
 }
 

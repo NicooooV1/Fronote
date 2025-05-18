@@ -1,4 +1,8 @@
 <?php
+/**
+ * Database connection for accueil module
+ */
+
 // Locate and include the API path helper
 $path_helper = null;
 $possible_paths = [
@@ -22,7 +26,7 @@ if ($path_helper) {
 } else {
     // Fallback to direct inclusion if path_helper.php is not found
     $api_dir = dirname(dirname(dirname(__DIR__))) . '/API';
-    if (file_exists($api_dir) && file_exists($api_dir . '/core.php')) {
+    if (file_exists($api_dir . '/core.php')) {
         require_once $api_dir . '/core.php';
     } else {
         die("Cannot locate the API directory. Please check your installation.");

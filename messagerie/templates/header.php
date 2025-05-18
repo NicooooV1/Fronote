@@ -6,8 +6,8 @@
 // Inclure le modèle de notification
 require_once __DIR__ . '/../models/notification.php';
 
-// URL de base
-$baseUrl = '/~u22405372/SAE/Pronote/messagerie/';
+// URL de base - suppression du préfixe "/~u22405372/SAE/Pronote"
+$baseUrl = '/messagerie/';
 
 // Titre par défaut
 $pageTitle = $pageTitle ?? 'Pronote - Messagerie';

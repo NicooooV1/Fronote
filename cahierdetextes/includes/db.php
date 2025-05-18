@@ -9,8 +9,6 @@ $possible_paths = [
     dirname(dirname(dirname(__DIR__))) . '/API/path_helper.php', // Standard path
     dirname(dirname(__DIR__)) . '/API/path_helper.php', // Alternate path
     dirname(dirname(dirname(dirname(__DIR__)))) . '/API/path_helper.php', // Another possible path
-    $_SERVER['DOCUMENT_ROOT'] . '/SAE/Pronote/API/path_helper.php', // Server absolute path
-    $_SERVER['DOCUMENT_ROOT'] . '/~u22405372/SAE/Pronote/API/path_helper.php', // User directory path
 ];
 
 foreach ($possible_paths as $path) {
@@ -30,9 +28,7 @@ if ($path_helper) {
     $possible_api_paths = [
         dirname(dirname(dirname(__DIR__))) . '/API/core.php',
         dirname(dirname(__DIR__)) . '/API/core.php',
-        dirname(__DIR__) . '/../API/core.php',
-        $_SERVER['DOCUMENT_ROOT'] . '/SAE/Pronote/API/core.php',
-        $_SERVER['DOCUMENT_ROOT'] . '/~u22405372/SAE/Pronote/API/core.php'
+        dirname(__DIR__) . '/../API/core.php'
     ];
     
     $api_path = null;
