@@ -517,11 +517,21 @@ function calculerStatistiquesAbsences($pdo, $id_eleve, $periode = 'annee') {
 /**
  * Crée une table absences dans la base de données si elle n'existe pas
  * 
- * @param PDO $pdo Connexion à la base de données
+ * @param PDO|null $pdo Connexion à la base de données
  * @return bool Succès de la création
  */
-function createAbsencesTableIfNotExists($pdo) {
+function createAbsencesTableIfNotExists($pdo = null) {
     try {
+        // Vérifier si $pdo est défini, sinon essayer de l'obtenir depuis la variable globale
+        if ($pdo === null) {
+            global $pdo;
+            // Si toujours null, essayer de créer une connexion d'urgence
+            if ($pdo === null) {
+                error_log("Warning: PDO non disponible dans createAbsencesTableIfNotExists");
+                return false;
+            }
+        }
+        
         $sql = "CREATE TABLE IF NOT EXISTS absences (
             id INT AUTO_INCREMENT PRIMARY KEY,
             id_eleve INT NOT NULL,
@@ -539,17 +549,30 @@ function createAbsencesTableIfNotExists($pdo) {
     } catch (PDOException $e) {
         error_log("Error creating absences table: " . $e->getMessage());
         return false;
+    } catch (Error $e) {
+        error_log("PHP Error in createAbsencesTableIfNotExists: " . $e->getMessage());
+        return false;
     }
 }
 
 /**
  * Crée une table retards dans la base de données si elle n'existe pas
  * 
- * @param PDO $pdo Connexion à la base de données
+ * @param PDO|null $pdo Connexion à la base de données
  * @return bool Succès de la création
  */
-function createRetardsTableIfNotExists($pdo) {
+function createRetardsTableIfNotExists($pdo = null) {
     try {
+        // Vérifier si $pdo est défini, sinon essayer de l'obtenir depuis la variable globale
+        if ($pdo === null) {
+            global $pdo;
+            // Si toujours null, essayer de créer une connexion d'urgence
+            if ($pdo === null) {
+                error_log("Warning: PDO non disponible dans createRetardsTableIfNotExists");
+                return false;
+            }
+        }
+        
         $sql = "CREATE TABLE IF NOT EXISTS retards (
             id INT AUTO_INCREMENT PRIMARY KEY,
             id_eleve INT NOT NULL,
@@ -566,17 +589,30 @@ function createRetardsTableIfNotExists($pdo) {
     } catch (PDOException $e) {
         error_log("Error creating retards table: " . $e->getMessage());
         return false;
+    } catch (Error $e) {
+        error_log("PHP Error in createRetardsTableIfNotExists: " . $e->getMessage());
+        return false;
     }
 }
 
 /**
  * Crée une table professeur_classes dans la base de données si elle n'existe pas
  * 
- * @param PDO $pdo Connexion à la base de données
+ * @param PDO|null $pdo Connexion à la base de données
  * @return bool Succès de la création
  */
-function createProfesseurClassesTableIfNotExists($pdo) {
+function createProfesseurClassesTableIfNotExists($pdo = null) {
     try {
+        // Vérifier si $pdo est défini, sinon essayer de l'obtenir depuis la variable globale
+        if ($pdo === null) {
+            global $pdo;
+            // Si toujours null, essayer de créer une connexion d'urgence
+            if ($pdo === null) {
+                error_log("Warning: PDO non disponible dans createProfesseurClassesTableIfNotExists");
+                return false;
+            }
+        }
+        
         $sql = "CREATE TABLE IF NOT EXISTS professeur_classes (
             id INT AUTO_INCREMENT PRIMARY KEY,
             id_professeur INT NOT NULL,
@@ -588,16 +624,29 @@ function createProfesseurClassesTableIfNotExists($pdo) {
     } catch (PDOException $e) {
         error_log("Error creating professeur_classes table: " . $e->getMessage());
         return false;
+    } catch (Error $e) {
+        error_log("PHP Error in createProfesseurClassesTableIfNotExists: " . $e->getMessage());
+        return false;
     }
 }
 
 /**
  * Crée la table justificatifs avec les colonnes nécessaires
- * @param PDO $pdo Instance PDO
+ * @param PDO|null $pdo Instance PDO
  * @return bool Succès ou échec
  */
-function createJustificatifsTableIfNotExists($pdo) {
+function createJustificatifsTableIfNotExists($pdo = null) {
     try {
+        // Vérifier si $pdo est défini, sinon essayer de l'obtenir depuis la variable globale
+        if ($pdo === null) {
+            global $pdo;
+            // Si toujours null, essayer de créer une connexion d'urgence
+            if ($pdo === null) {
+                error_log("Warning: PDO non disponible dans createJustificatifsTableIfNotExists");
+                return false;
+            }
+        }
+        
         $sql = "CREATE TABLE IF NOT EXISTS justificatifs (
             id INT AUTO_INCREMENT PRIMARY KEY,
             id_eleve INT NOT NULL,
@@ -612,14 +661,16 @@ function createJustificatifsTableIfNotExists($pdo) {
             approuve BOOLEAN DEFAULT FALSE,
             commentaire_admin TEXT NULL,
             date_traitement DATETIME NULL,
-            traite_par VARCHAR(100) NULL,
-            FOREIGN KEY (id_eleve) REFERENCES eleves(id) ON DELETE CASCADE
+            traite_par VARCHAR(100) NULL
         )";
         
         $pdo->exec($sql);
         return true;
     } catch (PDOException $e) {
         error_log("Erreur lors de la création de la table justificatifs: " . $e->getMessage());
+        return false;
+    } catch (Error $e) {
+        error_log("PHP Error in createJustificatifsTableIfNotExists: " . $e->getMessage());
         return false;
     }
 }
@@ -776,13 +827,21 @@ function initializeProfesseurClasses($pdo) {
 
 // Try to create tables on include
 try {
-    createAbsencesTableIfNotExists($pdo);
-    createRetardsTableIfNotExists($pdo);
-    createProfesseurClassesTableIfNotExists($pdo);
-    createJustificatifsTableIfNotExists($pdo);
-    initializeProfesseurClasses($pdo);
+    // Vérifier si la connexion PDO est disponible
+    global $pdo;
+    if (isset($pdo) && $pdo instanceof PDO) {
+        createAbsencesTableIfNotExists($pdo);
+        createRetardsTableIfNotExists($pdo);
+        createProfesseurClassesTableIfNotExists($pdo);
+        createJustificatifsTableIfNotExists($pdo);
+        initializeProfesseurClasses($pdo);
+    } else {
+        error_log("Avertissement: La variable PDO n'est pas disponible dans functions.php - Les tables ne seront pas créées automatiquement");
+    }
 } catch (Exception $e) {
     error_log("Error initializing tables: " . $e->getMessage());
+} catch (Error $e) {
+    error_log("PHP Error while initializing tables: " . $e->getMessage());
 }
 
 /**

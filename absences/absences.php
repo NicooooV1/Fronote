@@ -2,9 +2,9 @@
 // Démarrer la mise en mémoire tampon
 ob_start();
 
-// Inclure les fichiers nécessaires
-require_once __DIR__ . '/includes/auth.php';
+// Inclure les fichiers nécessaires - s'assurer que db.php est chargé avant functions.php
 require_once __DIR__ . '/includes/db.php';
+require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/functions.php';
 
 // Vérifier que l'utilisateur est connecté
@@ -20,19 +20,29 @@ if (!$user) {
     exit;
 }
 
+// S'assurer que la connection PDO est disponible
+if (!isset($pdo) || !($pdo instanceof PDO)) {
+    error_log("Erreur critique: Connexion PDO non disponible dans absences.php");
+    die("Erreur de connexion à la base de données. Veuillez contacter l'administrateur du système.");
+}
+
 $user_fullname = $user['prenom'] . ' ' . $user['nom'];
 $user_role = $user['profil'];
 $user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
 
-// Vérifier si la table absences existe
+// Vérifier si la table absences existe avec protection contre les erreurs
 try {
     $tableCheck = $pdo->query("SHOW TABLES LIKE 'absences'");
-    if ($tableCheck->rowCount() == 0) {
+    $tableExists = $tableCheck && $tableCheck->rowCount() > 0;
+    
+    if (!$tableExists) {
         // Créer la table si elle n'existe pas
         createAbsencesTableIfNotExists($pdo);
     }
 } catch (PDOException $e) {
     error_log("Erreur lors de la vérification de la table absences: " . $e->getMessage());
+    // Continuer l'exécution, mais préparer un message pour l'utilisateur
+    $dbError = "Un problème est survenu avec la base de données. Certaines fonctionnalités peuvent être limitées.";
 }
 
 // Définir les filtres par défaut

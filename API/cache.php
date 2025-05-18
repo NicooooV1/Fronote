@@ -23,15 +23,31 @@ define('CACHE_DEFAULT_TTL', 3600); // 1 heure
 function initCache() {
     // Créer le répertoire de cache s'il n'existe pas
     if (!is_dir(CACHE_DIR)) {
-        if (!mkdir(CACHE_DIR, 0755, true)) {
-            error_log("Impossible de créer le répertoire de cache: " . CACHE_DIR);
+        // Ajouter une gestion d'erreur adaptée avec vérification de permission
+        try {
+            if (!@mkdir(CACHE_DIR, 0755, true)) {
+                error_log("Avertissement : Impossible de créer le répertoire de cache: " . CACHE_DIR);
+                // Tenter d'utiliser un répertoire temporaire du système comme alternative
+                $tempDir = sys_get_temp_dir() . '/pronote_cache';
+                if (!is_dir($tempDir) && !@mkdir($tempDir, 0755, true)) {
+                    error_log("Erreur : Impossible de créer un répertoire de cache alternatif");
+                    return false;
+                } else {
+                    // Redéfinir la constante CACHE_DIR
+                    define('CACHE_DIR_FALLBACK', $tempDir);
+                    error_log("Information : Utilisation du répertoire de cache alternatif: " . $tempDir);
+                }
+            }
+        } catch (Exception $e) {
+            error_log("Exception lors de la création du répertoire de cache: " . $e->getMessage());
             return false;
         }
     }
     
     // Vérifier que le répertoire est accessible en écriture
-    if (!is_writable(CACHE_DIR)) {
-        error_log("Le répertoire de cache n'est pas accessible en écriture: " . CACHE_DIR);
+    $actualCacheDir = defined('CACHE_DIR_FALLBACK') ? CACHE_DIR_FALLBACK : CACHE_DIR;
+    if (!is_writable($actualCacheDir)) {
+        error_log("Erreur : Le répertoire de cache n'est pas accessible en écriture: " . $actualCacheDir);
         return false;
     }
     
