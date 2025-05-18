@@ -616,35 +616,6 @@ function markMessageAsUnread($messageId, $userId, $userType) {
 }
 
 /**
- * Vérifie si un utilisateur peut répondre à une annonce
- * @param int $userId
- * @param string $userType
- * @param int $conversationId
- * @param string $convType
- * @return bool
- */
-function canReplyToAnnouncement($userId, $userType, $conversationId, $convType) {
-    // Si ce n'est pas une annonce, tout le monde peut répondre
-    if ($convType !== 'annonce') {
-        return true;
-    }
-    
-    // Les administrateurs et modérateurs peuvent répondre
-    if (isConversationModerator($userId, $userType, $conversationId)) {
-        return true;
-    }
-    
-    // Si c'est un élève, il ne peut pas répondre aux annonces sauf s'il est modérateur
-    if ($userType === 'eleve') {
-        return false;
-    }
-    
-    // Pour les autres types d'utilisateurs (professeurs, parents, vie scolaire)
-    // Ils peuvent répondre si promus modérateur, sinon lecture seule
-    return isConversationModerator($userId, $userType, $conversationId);
-}
-
-/**
  * Vérifie si un utilisateur peut définir une importance pour un message
  * @param string $userType
  * @return bool
