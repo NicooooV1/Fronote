@@ -2,10 +2,10 @@
 // Démarrer la mise en mémoire tampon de sortie pour éviter l'erreur "headers already sent"
 ob_start();
 
-// Nous n'avons plus besoin de démarrer la session, car c'est fait dans Auth
-include 'includes/header.php'; 
-include 'includes/db.php';
-include 'includes/auth.php';
+// Inclure les fichiers nécessaires avec des chemins relatifs
+include_once 'includes/header.php'; 
+include_once 'includes/db.php';
+include_once 'includes/auth.php';
 
 // Vérifier si l'utilisateur a les permissions pour modifier des notes
 if (!canManageNotes()) {
@@ -14,11 +14,15 @@ if (!canManageNotes()) {
 }
 
 // Utiliser les données utilisateur de la session
-$user = $_SESSION['user'];
+$user = $_SESSION['user'] ?? null;
+if (!$user) {
+    header('Location: ../login/public/index.php');
+    exit;
+}
 $nom_professeur = $user['prenom'] . ' ' . $user['nom'];
 
-// Charger les données depuis le fichier JSON
-$json_file = __DIR__ . '/../login/data/etablissement.json';
+// Charger les données depuis le fichier JSON en utilisant un chemin relatif
+$json_file = dirname(__DIR__) . '/login/data/etablissement.json';
 $etablissement_data = [];
 
 if (file_exists($json_file)) {

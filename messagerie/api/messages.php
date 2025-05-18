@@ -8,13 +8,13 @@ require_once __DIR__ . '/../models/message.php';
 require_once __DIR__ . '/../core/auth.php';
 
 // Pour le débogage, activer temporairement l'affichage des erreurs
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+ini_set('display_errors', defined('APP_ENV') && APP_ENV === 'development' ? 1 : 0);
+error_reporting(defined('APP_ENV') && APP_ENV === 'development' ? E_ALL : 0);
 
 // Assurer que le dossier de logs existe
 $logDir = __DIR__ . '/../logs';
 if (!is_dir($logDir)) {
-    mkdir($logDir, 0755, true);
+    @mkdir($logDir, 0755, true);
 }
 
 // Fonction de journalisation
@@ -38,6 +38,17 @@ $user = checkAuth();
 if (!$user) {
     echo json_encode(['success' => false, 'error' => 'Non authentifié']);
     exit;
+}
+
+// Inclure le fichier qui contient les fonctions nécessaires
+if (!function_exists('getMessageById')) {
+    require_once __DIR__ . '/../models/message.php';
+}
+if (!function_exists('addMessage')) {
+    require_once __DIR__ . '/../models/message.php';
+}
+if (!function_exists('saveAttachments')) {
+    require_once __DIR__ . '/../models/attachment.php';
 }
 
 // Envoi d'un nouveau message via AJAX
@@ -309,5 +320,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id']) && isset($_GET['a
     exit;
 }
 
-// Si on arrive ici, c'est que l'action demandée n'existe pas
+// Si aucune action reconnue n'est trouvée
 echo json_encode(['success' => false, 'error' => 'Action non supportée']);

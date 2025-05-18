@@ -3,7 +3,7 @@
  * Interface principale de messagerie
  */
 
-// Inclure les fichiers nécessaires
+// Inclure les fichiers nécessaires avec des chemins relatifs
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/config/constants.php';
 require_once __DIR__ . '/core/utils.php';
@@ -12,6 +12,16 @@ require_once __DIR__ . '/models/conversation.php';
 require_once __DIR__ . '/models/notification.php';
 
 // Vérifier l'authentification
+if (!function_exists('requireAuth')) {
+    function requireAuth() {
+        if (!isset($_SESSION['user'])) {
+            header('Location: ../login/public/index.php');
+            exit;
+        }
+        return $_SESSION['user'];
+    }
+}
+
 $user = requireAuth();
 
 // Définir le titre de la page
@@ -20,6 +30,12 @@ $pageTitle = 'Pronote - Messagerie';
 // Traitement des actions rapides si demandé
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['conv_id'])) {
     $convId = (int)$_POST['conv_id'];
+    
+    // Vérifier que ces fonctions existent
+    if (!function_exists('archiveConversation') || !function_exists('deleteConversation')) {
+        // Inclure le fichier qui définit ces fonctions
+        require_once __DIR__ . '/models/action_handlers.php';
+    }
     
     switch ($_POST['action']) {
         case 'archive':
@@ -34,12 +50,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['con
             
         case 'restore':
             restoreConversation($convId, $user['id'], $user['type']);
-            redirect('index.php?folder=reception');
+            redirect('index.php');
             break;
             
-        case 'delete_permanently':
-            deletePermanently($convId, $user['id'], $user['type']);
-            redirect('index.php?folder=corbeille');
+        case 'leave':
+            leaveConversation($convId, $user['id'], $user['type']);
+            redirect('index.php');
             break;
     }
 }

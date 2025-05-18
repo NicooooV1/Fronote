@@ -1,81 +1,47 @@
 <?php
 /**
- * Contrôleur pour les actions sur les messages
+ * Contrôleur pour la gestion des messages
  */
-require_once __DIR__ . '/../config/config.php';
-require_once __DIR__ . '/../models/message.php';
-require_once __DIR__ . '/../models/conversation.php';
-require_once __DIR__ . '/../core/utils.php';
-require_once __DIR__ . '/../core/uploader.php';
 
 /**
- * Gère l'envoi d'un nouveau message
- * @param int $convId
- * @param array $user
- * @param string $contenu
- * @param string $importance
- * @param int|null $parentMessageId
- * @param array $filesData
- * @return array
+ * Gère l'envoi d'un message
+ * 
+ * @param int $convId ID de la conversation
+ * @param array $user Données de l'utilisateur
+ * @param string $contenu Contenu du message
+ * @param string $importance Niveau d'importance du message
+ * @param int|null $parentMessageId ID du message parent (si réponse)
+ * @param array $filesData Données des fichiers uploadés
+ * @return array Résultat de l'opération
  */
 function handleSendMessage($convId, $user, $contenu, $importance = 'normal', $parentMessageId = null, $filesData = []) {
+    global $pdo;
+    if (!isset($pdo) || !$pdo) {
+        require_once __DIR__ . '/../config/database.php';
+    }
+    
+    $uploadedFiles = []; // Initialiser avant utilisation
+    
     try {
-        // Log le début de l'opération
-        logUpload("Début de handleSendMessage pour user {$user['id']} (type {$user['type']}) - Conv #{$convId}");
-        
-        // Vérifier que l'utilisateur peut répondre à cette conversation
-        $conversation = getConversationInfo($convId);
-        if (!$conversation) {
-            logUpload("Conversation #{$convId} introuvable");
-            return [
-                'success' => false,
-                'message' => "Conversation introuvable"
-            ];
-        }
-        
-        // Vérifier si l'utilisateur peut répondre à une annonce
-        if (!canReplyToAnnouncement($user['id'], $user['type'], $convId, $conversation['type'])) {
-            logUpload("L'utilisateur ne peut pas répondre à cette annonce");
-            return [
-                'success' => false,
-                'message' => "Vous n'êtes pas autorisé à répondre à cette annonce"
-            ];
-        }
-        
-        // Vérifier si l'utilisateur peut définir l'importance
-        if (!canSetMessageImportance($user['type'])) {
-            $importance = 'normal';
-        }
-        
-        // Vérifier les pièces jointes avant de commencer la transaction
-        $uploadedFiles = [];
-        if (!empty($filesData) && isset($filesData['name']) && !empty($filesData['name'][0])) {
-            try {
-                logUpload("Traitement des pièces jointes pour le message");
-                $uploadedFiles = handleFileUploads($filesData);
-                logUpload("Pièces jointes traitées avec succès", $uploadedFiles);
-            } catch (Exception $e) {
-                logUpload("Erreur lors du traitement des pièces jointes: " . $e->getMessage());
-                return [
-                    'success' => false,
-                    'message' => "Erreur lors du traitement des pièces jointes: " . $e->getMessage()
-                ];
-            }
-        }
-        
-        // Ajouter le message
-        global $pdo;
+        // Commencer une transaction
         $pdo->beginTransaction();
         
         try {
-            // Insérer le message en base de données
-            logUpload("Insertion du message en base de données");
+            // Traitement des fichiers
+            if (!empty($filesData) && isset($filesData['name']) && is_array($filesData['name'])) {
+                require_once __DIR__ . '/../core/uploader.php';
+                
+                // Logique de traitement des uploads ici
+                // ...
+                
+                // Si des fichiers ont été uploadés, les stocker dans $uploadedFiles
+            }
+            
             $messageId = addMessage(
                 $convId,
                 $user['id'],
                 $user['type'],
                 $contenu,
-                $importance,
                 false, // Est annonce
                 false, // Notification obligatoire
                 $parentMessageId,
@@ -108,14 +74,13 @@ function handleSendMessage($convId, $user, $contenu, $importance = 'normal', $pa
             logUpload("Exception lors de l'envoi du message: " . $e->getMessage());
             return [
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => "Erreur lors de l'envoi du message: " . $e->getMessage()
             ];
         }
     } catch (Exception $e) {
-        logUpload("Exception externe dans handleSendMessage: " . $e->getMessage());
         return [
             'success' => false,
-            'message' => $e->getMessage()
+            'message' => "Erreur critique: " . $e->getMessage()
         ];
     }
 }

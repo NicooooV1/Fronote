@@ -6,8 +6,27 @@
 // Inclure le modèle de notification
 require_once __DIR__ . '/../models/notification.php';
 
-// URL de base - suppression du préfixe "/~u22405372/SAE/Pronote"
-$baseUrl = '/messagerie/';
+// Détection automatique du chemin de base
+function getBaseUrl() {
+    $scriptDir = dirname($_SERVER['SCRIPT_NAME']);
+    $requestUri = $_SERVER['REQUEST_URI'];
+    
+    // Si nous sommes dans un sous-dossier du serveur web
+    if(strpos($requestUri, $scriptDir) === 0) {
+        $baseUrl = $scriptDir;
+    } else {
+        // Cas où nous sommes à la racine ou dans une configuration spéciale
+        $pathParts = explode('/', trim($scriptDir, '/'));
+        $baseDir = $pathParts[0] ?? '';
+        $baseUrl = $baseDir ? "/{$baseDir}/" : '/';
+    }
+    
+    // S'assurer que le chemin se termine par un /
+    return rtrim($baseUrl, '/') . '/';
+}
+
+// Définir le chemin de base
+$baseUrl = getBaseUrl();
 
 // Titre par défaut
 $pageTitle = $pageTitle ?? 'Pronote - Messagerie';
@@ -44,7 +63,7 @@ $unreadNotifications = isset($user) ? countUnreadNotifications($user['id'], $use
     <div class="container">
         <header>
             <?php if ($currentPage != 'index'): ?>
-            <a href="index.php" class="back-link"><i class="fas fa-arrow-left"></i> Retour</a>
+            <a href="<?= $baseUrl ?>index.php" class="back-link"><i class="fas fa-arrow-left"></i> Retour</a>
             <?php endif; ?>
             
             <h1><?= htmlspecialchars($pageTitle) ?></h1>

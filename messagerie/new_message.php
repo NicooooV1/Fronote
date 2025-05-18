@@ -3,6 +3,9 @@
  * /new_message.php - Création d'un nouveau message
  */
 
+// Démarrer la mise en mémoire tampon
+ob_start();
+
 // Inclure les fichiers nécessaires
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/config/constants.php';
@@ -30,28 +33,30 @@ $importance = isset($_POST['importance']) ? $_POST['importance'] : 'normal';
 
 // Traitement du formulaire d'envoi
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $errors = [];
+    
     try {
         if (empty($destinataires)) {
-            throw new Exception("Veuillez sélectionner au moins un destinataire.");
+            $errors[] = "Veuillez sélectionner au moins un destinataire.";
         }
         
         if (empty($titre)) {
-            throw new Exception("Le titre est obligatoire");
+            $errors[] = "Le titre est obligatoire";
         }
         
         // Vérifier la longueur du titre
         if (mb_strlen($titre) > 100) {
-            throw new Exception("Le titre ne peut pas dépasser 100 caractères");
+            $errors[] = "Le titre ne peut pas dépasser 100 caractères";
         }
         
         if (empty($contenu)) {
-            throw new Exception("Le message ne peut pas être vide");
+            $errors[] = "Le message ne peut pas être vide";
         }
         
         // Vérifier la longueur maximale du message
         $maxLength = 10000;
         if (mb_strlen($contenu) > $maxLength) {
-            throw new Exception("Votre message est trop long (maximum $maxLength caractères)");
+            $errors[] = "Votre message est trop long (maximum $maxLength caractères)";
         }
         
         // Traitement des destinataires
@@ -61,53 +66,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // Vérification pour éviter l'envoi à soi-même
             if ($destId == $user['id'] && $destType == $user['type']) {
-                throw new Exception("Vous ne pouvez pas vous envoyer un message à vous-même");
+                $errors[] = "Vous ne pouvez pas vous envoyer un message à vous-même";
             }
             
             $participants[] = ['id' => $destId, 'type' => $destType];
         }
         
-        // Création de la conversation
-        $result = handleCreateConversation(
-            $titre, 
-            count($participants) > 1 ? 'groupe' : 'individuelle',
-            $user,
-            $participants
-        );
-        
-        if ($result['success']) {
-            $convId = $result['convId'];
-            
-            // Envoi du message
-            $filesData = isset($_FILES['attachments']) ? $_FILES['attachments'] : [];
-            
-            // Vérifier si l'utilisateur peut définir l'importance
-            if (!canSetMessageImportance($user['type'])) {
-                $importance = 'normal';
-            }
-            
-            $result = handleSendMessage(
-                $convId,
+        if (empty($errors)) {
+            // Création de la conversation
+            $result = handleCreateConversation(
+                $titre, 
+                count($participants) > 1 ? 'groupe' : 'individuelle',
                 $user,
-                $contenu,
-                $importance,
-                null, // Parent message ID
-                $filesData
+                $participants
             );
             
             if ($result['success']) {
-                $success = "Votre message a été envoyé avec succès";
+                $convId = $result['convId'];
                 
-                // Réinitialiser les variables pour un nouveau message
-                $destinataires = [];
-                $titre = '';
-                $contenu = '';
-                $importance = 'normal';
+                // Envoi du message
+                $filesData = isset($_FILES['attachments']) ? $_FILES['attachments'] : [];
+                
+                // Vérifier si l'utilisateur peut définir l'importance
+                if (!canSetMessageImportance($user['type'])) {
+                    $importance = 'normal';
+                }
+                
+                $result = handleSendMessage(
+                    $convId,
+                    $user,
+                    $contenu,
+                    $importance,
+                    null, // Parent message ID
+                    $filesData
+                );
+                
+                if ($result['success']) {
+                    $success = "Votre message a été envoyé avec succès";
+                    
+                    // Réinitialiser les variables pour un nouveau message
+                    $destinataires = [];
+                    $titre = '';
+                    $contenu = '';
+                    $importance = 'normal';
+                } else {
+                    $error = $result['message'];
+                }
             } else {
                 $error = $result['message'];
             }
         } else {
-            $error = $result['message'];
+            $error = implode('<br>', $errors);
         }
         
     } catch (Exception $e) {

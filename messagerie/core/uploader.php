@@ -68,13 +68,13 @@ function getUploadErrorMessage($errorCode) {
         case UPLOAD_ERR_NO_FILE:
             return "Aucun fichier n'a été téléchargé";
         case UPLOAD_ERR_NO_TMP_DIR:
-            return "Répertoire temporaire manquant";
+            return "Le dossier temporaire est manquant";
         case UPLOAD_ERR_CANT_WRITE:
-            return "Échec d'écriture du fichier sur le disque";
+            return "Échec de l'écriture du fichier sur le disque";
         case UPLOAD_ERR_EXTENSION:
-            return "Une extension PHP a arrêté l'upload";
+            return "Une extension PHP a arrêté le téléchargement";
         default:
-            return "Erreur inconnue lors de l'upload";
+            return "Erreur inconnue lors du téléchargement";
     }
 }
 

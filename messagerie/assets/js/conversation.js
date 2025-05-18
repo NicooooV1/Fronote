@@ -832,7 +832,12 @@ function scrollToBottom(element) {
  */
 function isScrolledToBottom(element) {
     if (!element) return false;
-    return Math.abs(element.scrollHeight - element.scrollTop - element.clientHeight) < 20;
+    
+    const tolerance = 50; // pixels de tolérance
+    const scrollPosition = element.scrollTop + element.clientHeight;
+    const scrollHeight = element.scrollHeight;
+    
+    return scrollPosition >= scrollHeight - tolerance;
 }
 
 /**

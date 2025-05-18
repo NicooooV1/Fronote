@@ -37,10 +37,18 @@ function formatDate($date) {
     } elseif ($diff < 86400) {
         $hours = floor($diff / 3600);
         return "Il y a $hours heure" . ($hours > 1 ? 's' : '');
-    } elseif ($diff < 172800) {
-        return 'Hier à ' . date('H:i', $timestamp);
+    } elseif ($diff < 604800) {
+        $days = floor($diff / 86400);
+        return "Il y a $days jour" . ($days > 1 ? 's' : '');
+    } elseif ($diff < 2592000) {
+        $weeks = floor($diff / 604800);
+        return "Il y a $weeks semaine" . ($weeks > 1 ? 's' : '');
+    } elseif ($diff < 31536000) {
+        $months = floor($diff / 2592000);
+        return "Il y a $months mois";
     } else {
-        return date('d/m/Y à H:i', $timestamp);
+        $years = floor($diff / 31536000);
+        return "Il y a $years an" . ($years > 1 ? 's' : '');
     }
 }
 

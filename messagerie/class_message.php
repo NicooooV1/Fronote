@@ -9,8 +9,9 @@ require_once __DIR__ . '/config/constants.php';
 require_once __DIR__ . '/core/utils.php';
 require_once __DIR__ . '/core/auth.php';
 require_once __DIR__ . '/controllers/message.php';
-require_once __DIR__ . '/models/class.php';
-require_once __DIR__ . '/models/message.php'; // Ajout de cette ligne pour corriger l'erreur fatale
+
+// Inclure le modèle message avant class.php pour éviter des problèmes de dépendance
+require_once __DIR__ . '/models/message.php';
 
 // Vérifier l'authentification
 $user = requireAuth();
@@ -26,8 +27,30 @@ $pageTitle = 'Message à la classe';
 $error = '';
 $success = '';
 
-// Récupérer les classes depuis la base de données
-$classes = getAvailableClasses();
+// Important: Obtenir les classes AVANT d'inclure models/class.php
+// car getAvailableClasses() peut déjà exister dans l'API
+function getClassesList() {
+    $classes = array();
+    
+    // Méthode 1: Utiliser directement la BDD
+    global $pdo;
+    $query = $pdo->query("SELECT DISTINCT classe FROM eleves ORDER BY classe");
+    if ($query) {
+        $classes = $query->fetchAll(PDO::FETCH_COLUMN);
+    }
+    
+    // Si vide, utiliser des valeurs par défaut
+    if (empty($classes)) {
+        $classes = ['6A', '6B', '5A', '5B', '4A', '4B', '3A', '3B'];
+    }
+    
+    return $classes;
+}
+
+$classes = getClassesList();
+
+// Maintenant on peut inclure le modèle class après avoir obtenu les classes
+require_once __DIR__ . '/models/class.php';
 
 // Traitement du formulaire d'envoi
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

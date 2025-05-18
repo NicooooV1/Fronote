@@ -1,202 +1,108 @@
 <?php
 /**
- * Centralized authentication API for Pronote
- * Relies on the existing login system but provides unified access across all modules
+ * Gestion centralisée de l'authentification
  */
 
-// Include the core API if not already included
-if (!isset($GLOBALS['pdo'])) {
-    require_once __DIR__ . '/core.php';
-}
+// Inclure le bootstrap
+require_once __DIR__ . '/bootstrap.php';
 
-// Include the original Auth class
-require_once __DIR__ . '/../login/src/auth.php';
-
-// Initialize Auth object with the database connection
-if (!isset($GLOBALS['auth'])) {
-    $GLOBALS['auth'] = new Auth($GLOBALS['pdo']);
-}
-$auth = $GLOBALS['auth'];
-
-/**
- * Check if user is logged in
- * 
- * @return bool
- */
+// Vérifier si l'utilisateur est connecté
 function isLoggedIn() {
-    global $auth;
-    try {
-        return $auth->isLoggedIn();
-    } catch (Exception $e) {
-        error_log("Auth error in isLoggedIn: " . $e->getMessage());
-        // Default to not logged in if there's an error
-        return false;
+    return Session::has('user') && Session::has('auth_time');
+}
+
+// Vérifier si la session a expiré
+function isSessionExpired($timeout = 7200) {
+    if (!Session::has('auth_time')) {
+        return true;
     }
+    
+    return time() - Session::get('auth_time') > $timeout;
 }
 
-/**
- * Require user to be logged in to access the page
- * Redirects to login page if not authenticated
- */
-function requireLogin() {
-    if (!isLoggedIn()) {
-        header('Location: /~u22405372/SAE/Pronote/login/public/index.php');
-        exit;
-    }
+// Mettre à jour le timestamp d'authentification
+function refreshAuthTime() {
+    Session::set('auth_time', time());
 }
 
-/**
- * Check if current user has specific role
- * Safe handling to avoid SQL errors
- * 
- * @param string $role The role to check
- * @return bool
- */
-function hasRole($role) {
-    global $auth;
-    try {
-        return isLoggedIn() && $auth->hasRole($role);
-    } catch (Exception $e) {
-        error_log("Auth error in hasRole: " . $e->getMessage());
-        return false;
-    }
-}
-
-/**
- * Check if current user is a teacher
- * 
- * @return bool
- */
-function isTeacher() {
-    return hasRole('professeur');
-}
-
-/**
- * Check if current user is a student
- * 
- * @return bool
- */
-function isStudent() {
-    return hasRole('eleve');
-}
-
-/**
- * Check if current user is a parent
- * 
- * @return bool
- */
-function isParent() {
-    return hasRole('parent');
-}
-
-/**
- * Check if current user is an administrator
- * 
- * @return bool
- */
-function isAdmin() {
-    return hasRole('administrateur');
-}
-
-/**
- * Check if current user is school life staff
- * 
- * @return bool
- */
-function isVieScolaire() {
-    return hasRole('vie_scolaire');
-}
-
-/**
- * Check if user can manage notes
- * 
- * @return bool
- */
-function canManageNotes() {
-    return isTeacher() || isAdmin() || isVieScolaire();
-}
-
-/**
- * Check if user can manage homework
- * 
- * @return bool
- */
-function canManageDevoirs() {
-    return isTeacher() || isAdmin() || isVieScolaire();
-}
-
-/**
- * Check if user can manage events
- * 
- * @return bool
- */
-function canManageEvents() {
-    return isTeacher() || isAdmin() || isVieScolaire();
-}
-
-/**
- * Check if user can view all events
- * 
- * @return bool
- */
-function canViewAllEvents() {
-    return isAdmin() || isVieScolaire();
-}
-
-/**
- * Get logged in user data
- * Returns cached version if available to reduce database calls
- * 
- * @return array|null User data or null if not logged in
- */
+// Récupérer l'utilisateur connecté
 function getCurrentUser() {
-    static $cached_user = null;
-    
-    if ($cached_user !== null) {
-        return $cached_user;
-    }
-    
-    if (!isset($_SESSION['user'])) {
-        return null;
-    }
-    
-    // Cache user data to reduce database load
-    $cached_user = $_SESSION['user'];
-    return $cached_user;
+    return Session::get('user');
 }
 
-/**
- * Get user's full name
- * 
- * @return string
- */
-function getUserFullName() {
-    $user = getCurrentUser();
-    return $user ? ($user['prenom'] . ' ' . $user['nom']) : '';
-}
-
-/**
- * Get user ID
- * 
- * @return int|null
- */
-function getUserId() {
-    $user = getCurrentUser();
-    return $user ? $user['id'] : null;
-}
-
-/**
- * Get user role/profile
- * 
- * @return string|null
- */
+// Récupérer le rôle de l'utilisateur
 function getUserRole() {
     $user = getCurrentUser();
     return $user ? $user['profil'] : null;
 }
 
-// Require login by default unless this file is included in a special context
-if (!defined('SKIP_LOGIN_CHECK')) {
-    requireLogin();
+// Vérifier si l'utilisateur est administrateur
+function isAdmin() {
+    return getUserRole() === USER_TYPE_ADMIN;
+}
+
+// Vérifier si l'utilisateur est professeur
+function isTeacher() {
+    return getUserRole() === USER_TYPE_TEACHER;
+}
+
+// Vérifier si l'utilisateur est élève
+function isStudent() {
+    return getUserRole() === USER_TYPE_STUDENT;
+}
+
+// Vérifier si l'utilisateur est parent
+function isParent() {
+    return getUserRole() === USER_TYPE_PARENT;
+}
+
+// Vérifier si l'utilisateur est membre de la vie scolaire
+function isVieScolaire() {
+    return getUserRole() === USER_TYPE_STAFF;
+}
+
+// Récupérer le nom complet de l'utilisateur
+function getUserFullName() {
+    $user = getCurrentUser();
+    if ($user) {
+        return $user['prenom'] . ' ' . $user['nom'];
+    }
+    return '';
+}
+
+// Vérifier si l'utilisateur peut gérer les notes
+function canManageNotes() {
+    return isTeacher() || isAdmin() || isVieScolaire();
+}
+
+// Déconnecter l'utilisateur
+function logout() {
+    Session::destroy();
+    
+    // Redirection vers la page de connexion avec un chemin relatif
+    $loginUrl = defined('LOGIN_URL') ? LOGIN_URL : '../login/public/index.php';
+    header('Location: ' . $loginUrl);
+    exit;
+}
+
+// Rediriger si l'utilisateur n'est pas connecté
+function requireLogin() {
+    if (!isLoggedIn()) {
+        // Redirection vers la page de connexion avec un chemin relatif
+        $loginUrl = defined('LOGIN_URL') ? LOGIN_URL : '../login/public/index.php';
+        header('Location: ' . $loginUrl);
+        exit;
+    }
+    
+    if (isSessionExpired()) {
+        Session::set('login_redirect', $_SERVER['REQUEST_URI']);
+        Session::setFlash('warning', 'Votre session a expiré. Veuillez vous reconnecter.');
+        logout();
+    }
+    
+    // Rafraîchir le temps d'authentification
+    refreshAuthTime();
+    
+    return getCurrentUser();
 }
 ?>
