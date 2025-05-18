@@ -27,37 +27,22 @@ $error = '';
 $success = '';
 
 /**
- * Récupère les classes disponibles à partir du fichier JSON ou de la base de données
+ * Récupère les classes disponibles à partir de l'API ou de la base de données
  * @return array
  */
 function getAvailableClasses() {
-    global $pdo;
+    require_once __DIR__ . '/../../API/data.php';
     
-    $allClasses = [];
+    $allClasses = getAvailableClasses();
     
-    // Essayer de récupérer les classes depuis le fichier établissement.json
-    $etablissementFile = __DIR__ . '/../login/data/etablissement.json';
-    
-    if (file_exists($etablissementFile)) {
-        $etablissement = json_decode(file_get_contents($etablissementFile), true);
-        
-        // Vérifier si le format JSON est correct et contient des classes
-        if (isset($etablissement['classes']) && is_array($etablissement['classes'])) {
-            // Parcourir la structure imbriquée (collège et lycée)
-            foreach ($etablissement['classes'] as $niveau => $cycles) {
-                foreach ($cycles as $cycle => $classes) {
-                    foreach ($classes as $classe) {
-                        $allClasses[] = $classe;
-                    }
-                }
+    if (empty($allClasses)) {
+        global $pdo;
+        $query = $pdo->query("SELECT DISTINCT classe FROM eleves ORDER BY classe");
+        if ($query) {
+            while ($row = $query->fetch()) {
+                $allClasses[] = $row['classe'];
             }
         }
-    } 
-    
-    // Si pas de classes dans le fichier ou fichier inaccessible, récupérer depuis la base de données
-    if (empty($allClasses)) {
-        $query = $pdo->query("SELECT DISTINCT classe FROM eleves ORDER BY classe");
-        $allClasses = $query->fetchAll(PDO::FETCH_COLUMN);
     }
     
     return $allClasses;

@@ -64,132 +64,154 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $user = $_SESSION['user'];
 $isFirstLogin = $user['first_login'] ?? false;
-$avatars = [
-    'eleve' => 'student.png',
-    'parent' => 'parent.png',
-    'professeur' => 'teacher.png',
-    'vie_scolaire' => 'staff.png',
-    'administrateur' => 'admin.png'
-];
-$avatarImg = $avatars[$user['profil']] ?? 'student.png';
 ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pronote - Changement de mot de passe</title>
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="stylesheet" href="assets/css/styles_password.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/pronote-style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
     <div class="change-password-container">
-        <img src="assets/images/logo-pronote.png" alt="Logo Pronote" class="logo">
-        
-        <h2>Changement de mot de passe</h2>
-        
-        <div class="avatar">
-            <img src="assets/images/avatars/<?php echo htmlspecialchars($avatarImg); ?>" alt="Avatar">
+        <div class="app-header">
+            <div class="app-logo">P</div>
+            <h1 class="app-title">Pronote</h1>
         </div>
         
-        <?php if ($isFirstLogin): ?>
-        <div class="info-message">
-            <p>C'est votre première connexion. Vous devez changer votre mot de passe par défaut.</p>
-        </div>
-        <?php endif; ?>
-        
-        <?php if (!empty($error)): ?>
-        <div class="error-message"><?php echo $error; ?></div>
+        <?php if (isset($user)): ?>
+            <div class="avatar">
+                <div class="user-avatar"><?= strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1)) ?></div>
+                <div class="user-name"><?= htmlspecialchars($user['prenom'] . ' ' . $user['nom']) ?></div>
+            </div>
         <?php endif; ?>
         
         <?php if (!empty($success)): ?>
-        <div class="success-message">
-            <?php echo htmlspecialchars($success); ?>
-        </div>
-        
-        <div class="form-actions" style="margin-top: 20px; text-align: center;">
-            <a href="#" onclick="
-                // Charger le script de vérification de session
-                var script = document.createElement('script');
-                script.src = '/~u22405372/SAE/Pronote/login/public/assets/js/session_checker.js';
-                document.head.appendChild(script);
-                
-                // Rediriger après chargement du script
-                script.onload = function() {
-                    window.location.href = '/~u22405372/SAE/Pronote/accueil/accueil.php';
-                };
-                return false;
-            " class="btn-connect">Continuer</a>
-        </div>
-        <?php else: ?>
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle"></i>
+                <?= htmlspecialchars($success) ?>
+            </div>
+        <?php elseif (!empty($error)): ?>
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-circle"></i>
+                <?= htmlspecialchars($error) ?>
+            </div>
+        <?php endif; ?>
         
         <form action="change_password.php" method="post" id="passwordForm">
-            <div class="required-notice">* champs obligatoires</div>
-            
-            <div class="form-group">
-                <label for="new_password">Nouveau mot de passe</label>
-                <div class="input-group">
-                    <input type="password" id="new_password" name="new_password" required>
-                    <button type="button" class="visibility-toggle" id="newPasswordToggle">
-                        <i class="fa-regular fa-eye"></i>
-                    </button>
+            <?php if ($isFirstLogin || isset($_GET['reset'])): ?>
+                <div class="form-group">
+                    <label for="new_password">Nouveau mot de passe</label>
+                    <div class="input-group">
+                        <input type="password" id="new_password" name="new_password" required>
+                        <button type="button" class="visibility-toggle" id="newPasswordToggle">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <div class="password-strength">
+                        <div class="strength-meter">
+                            <div class="strength-meter-fill" id="strengthIndicator" style="width: 0%;"></div>
+                        </div>
+                        <div class="strength-text" id="strengthText">Force du mot de passe</div>
+                    </div>
                 </div>
-            </div>
-            
-            <!-- Indicateur de force du mot de passe -->
-            <div class="password-strength-meter">
-                <div class="strength-indicator" id="strengthIndicator"></div>
-            </div>
-            <div class="password-strength-text" id="strengthText">Force du mot de passe: -</div>
-            
-            <!-- Liste des exigences avec indicateurs -->
-            <div class="password-requirements">
-                <p>Le mot de passe doit :</p>
-                <ul>
-                    <li class="requirement-item">
-                        <span class="requirement-status" id="length-status"><i class="fas fa-times invalid"></i></span>
-                        <span>Contenir entre 12 et 50 caractères</span>
-                    </li>
-                    <li class="requirement-item">
-                        <span class="requirement-status" id="uppercase-status"><i class="fas fa-times invalid"></i></span>
-                        <span>Contenir au moins une lettre majuscule</span>
-                    </li>
-                    <li class="requirement-item">
-                        <span class="requirement-status" id="lowercase-status"><i class="fas fa-times invalid"></i></span>
-                        <span>Contenir au moins une lettre minuscule</span>
-                    </li>
-                    <li class="requirement-item">
-                        <span class="requirement-status" id="digit-status"><i class="fas fa-times invalid"></i></span>
-                        <span>Contenir au moins un chiffre</span>
-                    </li>
-                    <li class="requirement-item">
-                        <span class="requirement-status" id="special-status"><i class="fas fa-times invalid"></i></span>
-                        <span>Contenir au moins un caractère spécial (!@#$%^&*...)</span>
-                    </li>
-                </ul>
-            </div>
-            
-            <div class="form-group">
-                <label for="confirm_password">Confirmer le mot de passe</label>
-                <div class="input-group">
-                    <input type="password" id="confirm_password" name="confirm_password" required>
-                    <button type="button" class="visibility-toggle" id="confirmPasswordToggle">
-                        <i class="fa-regular fa-eye"></i>
-                    </button>
+                
+                <div class="password-requirements">
+                    <div class="requirement" id="length-requirement">
+                        <i class="fas fa-circle" id="length-status"></i>
+                        <span>Au moins 8 caractères</span>
+                    </div>
+                    <div class="requirement" id="uppercase-requirement">
+                        <i class="fas fa-circle" id="uppercase-status"></i>
+                        <span>Au moins une majuscule</span>
+                    </div>
+                    <div class="requirement" id="lowercase-requirement">
+                        <i class="fas fa-circle" id="lowercase-status"></i>
+                        <span>Au moins une minuscule</span>
+                    </div>
+                    <div class="requirement" id="digit-requirement">
+                        <i class="fas fa-circle" id="digit-status"></i>
+                        <span>Au moins un chiffre</span>
+                    </div>
                 </div>
-                <div class="password-match" id="passwordMatch"></div>
-            </div>
+                
+                <div class="form-group">
+                    <label for="confirm_password">Confirmer le mot de passe</label>
+                    <div class="input-group">
+                        <input type="password" id="confirm_password" name="confirm_password" required>
+                        <button type="button" class="visibility-toggle" id="confirmPasswordToggle">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <div id="passwordMatch" style="font-size: 12px; margin-top: 5px;"></div>
+                </div>
+            <?php else: ?>
+                <div class="form-group">
+                    <label for="current_password">Mot de passe actuel</label>
+                    <div class="input-group">
+                        <input type="password" id="current_password" name="current_password" required>
+                        <button type="button" class="visibility-toggle" id="currentPasswordToggle">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="new_password">Nouveau mot de passe</label>
+                    <div class="input-group">
+                        <input type="password" id="new_password" name="new_password" required>
+                        <button type="button" class="visibility-toggle" id="newPasswordToggle">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <div class="password-strength">
+                        <div class="strength-meter">
+                            <div class="strength-meter-fill" id="strengthIndicator" style="width: 0%;"></div>
+                        </div>
+                        <div class="strength-text" id="strengthText">Force du mot de passe</div>
+                    </div>
+                </div>
+                
+                <div class="password-requirements">
+                    <div class="requirement" id="length-requirement">
+                        <i class="fas fa-circle" id="length-status"></i>
+                        <span>Au moins 8 caractères</span>
+                    </div>
+                    <div class="requirement" id="uppercase-requirement">
+                        <i class="fas fa-circle" id="uppercase-status"></i>
+                        <span>Au moins une majuscule</span>
+                    </div>
+                    <div class="requirement" id="lowercase-requirement">
+                        <i class="fas fa-circle" id="lowercase-status"></i>
+                        <span>Au moins une minuscule</span>
+                    </div>
+                    <div class="requirement" id="digit-requirement">
+                        <i class="fas fa-circle" id="digit-status"></i>
+                        <span>Au moins un chiffre</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirm_password">Confirmer le mot de passe</label>
+                    <div class="input-group">
+                        <input type="password" id="confirm_password" name="confirm_password" required>
+                        <button type="button" class="visibility-toggle" id="confirmPasswordToggle">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <div id="passwordMatch" style="font-size: 12px; margin-top: 5px;"></div>
+                </div>
+            <?php endif; ?>
             
             <div class="form-actions">
                 <button type="submit" class="btn-connect">Enregistrer</button>
                 <?php if (!$isFirstLogin): ?>
-                <a href="/~u22405372/SAE/Pronote/accueil/accueil.php" class="btn-cancel">Annuler</a>
+                <a href="../accueil/accueil.php" class="btn-cancel">Annuler</a>
                 <?php endif; ?>
             </div>
         </form>
-        
-        <?php endif; ?>
     </div>
 
     <script>
@@ -208,177 +230,158 @@ $avatarImg = $avatars[$user['profil']] ?? 'student.png';
                 'uppercase': document.getElementById('uppercase-status'),
                 'lowercase': document.getElementById('lowercase-status'),
                 'digit': document.getElementById('digit-status'),
-                'special': document.getElementById('special-status')
             };
             
-            // Fonction pour mettre à jour les indicateurs de validation
-            function updateRequirementStatus(requirement, isValid) {
-                const statusIcon = statusIcons[requirement];
-                if (isValid) {
-                    statusIcon.innerHTML = '<i class="fas fa-check valid"></i>';
-                } else {
-                    statusIcon.innerHTML = '<i class="fas fa-times invalid"></i>';
-                }
-            }
-            
-            // Fonction pour calculer la force du mot de passe
-            function calculatePasswordStrength(password) {
-                if (!password) return 0;
-                
+            // Fonction pour évaluer la force du mot de passe
+            function checkPasswordStrength(password) {
                 let strength = 0;
+                let statuses = {
+                    length: false,
+                    uppercase: false,
+                    lowercase: false,
+                    digit: false
+                };
                 
-                // Longueur (30%)
-                if (password.length >= 12 && password.length <= 50) {
-                    strength += 30 * Math.min(1, password.length / 20); // Augmente jusqu'à 20 caractères
-                    updateRequirementStatus('length', true);
-                } else {
-                    updateRequirementStatus('length', false);
+                // Longueur minimale
+                if (password.length >= 8) {
+                    strength += 25;
+                    statuses.length = true;
                 }
                 
-                // Majuscules (15%)
-                const uppercaseCount = (password.match(/[A-Z]/g) || []).length;
-                if (uppercaseCount >= 1) {
-                    // Bonus pour plusieurs majuscules (jusqu'à 15%)
-                    strength += 15 * Math.min(1, uppercaseCount / 3);
-                    updateRequirementStatus('uppercase', true);
-                } else {
-                    updateRequirementStatus('uppercase', false);
+                // Présence de majuscules
+                if (/[A-Z]/.test(password)) {
+                    strength += 25;
+                    statuses.uppercase = true;
                 }
                 
-                // Minuscules (15%)
-                const lowercaseCount = (password.match(/[a-z]/g) || []).length;
-                if (lowercaseCount >= 1) {
-                    // Bonus pour plusieurs minuscules
-                    strength += 15 * Math.min(1, lowercaseCount / 5);
-                    updateRequirementStatus('lowercase', true);
-                } else {
-                    updateRequirementStatus('lowercase', false);
+                // Présence de minuscules
+                if (/[a-z]/.test(password)) {
+                    strength += 25;
+                    statuses.lowercase = true;
                 }
                 
-                // Chiffres (15%)
-                const digitCount = (password.match(/[0-9]/g) || []).length;
-                if (digitCount >= 1) {
-                    // Bonus pour plusieurs chiffres
-                    strength += 15 * Math.min(1, digitCount / 3);
-                    updateRequirementStatus('digit', true);
-                } else {
-                    updateRequirementStatus('digit', false);
+                // Présence de chiffres
+                if (/[0-9]/.test(password)) {
+                    strength += 25;
+                    statuses.digit = true;
                 }
                 
-                // Caractères spéciaux (15%)
-                const specialCount = (password.match(/[!@#$%^&*(),.?":{}|<>]/g) || []).length;
-                if (specialCount >= 1) {
-                    // Bonus pour plusieurs caractères spéciaux
-                    strength += 15 * Math.min(1, specialCount / 3);
-                    updateRequirementStatus('special', true);
-                } else {
-                    updateRequirementStatus('special', false);
-                }
-                
-                // Bonus pour la variété (10%)
-                let varietyCount = 0;
-                if (uppercaseCount > 0) varietyCount++;
-                if (lowercaseCount > 0) varietyCount++;
-                if (digitCount > 0) varietyCount++;
-                if (specialCount > 0) varietyCount++;
-                strength += (varietyCount / 4) * 10;
-                
-                return strength;
+                return { strength, statuses };
             }
             
             // Fonction pour mettre à jour l'indicateur de force
             function updateStrengthIndicator() {
-                const password = newPasswordInput.value;
-                const strength = calculatePasswordStrength(password);
+                if (!newPasswordInput) return;
                 
-                // Mise à jour de la barre de progression (s'assurer qu'elle peut atteindre 100%)
+                const password = newPasswordInput.value;
+                const { strength, statuses } = checkPasswordStrength(password);
+                
+                // Mettre à jour la barre de progression
                 strengthIndicator.style.width = strength + '%';
                 
-                // Détermination de la couleur en fonction de la force
-                if (strength < 40) {
-                    strengthIndicator.style.backgroundColor = '#dc3545'; // Rouge
-                    strengthText.textContent = 'Force du mot de passe: Faible';
-                    strengthText.style.color = '#dc3545';
-                } else if (strength < 70) {
-                    strengthIndicator.style.backgroundColor = '#fd7e14'; // Orange
-                    strengthText.textContent = 'Force du mot de passe: Moyen';
-                    strengthText.style.color = '#fd7e14';
-                } else if (strength < 90) {
-                    strengthIndicator.style.backgroundColor = '#28a745'; // Vert
-                    strengthText.textContent = 'Force du mot de passe: Fort';
-                    strengthText.style.color = '#28a745';
+                // Changer la couleur selon la force
+                if (strength < 50) {
+                    strengthIndicator.style.backgroundColor = '#f44336'; // Rouge
+                    strengthText.textContent = 'Faible';
+                    strengthText.style.color = '#f44336';
+                } else if (strength < 100) {
+                    strengthIndicator.style.backgroundColor = '#ff9800'; // Orange
+                    strengthText.textContent = 'Moyen';
+                    strengthText.style.color = '#ff9800';
                 } else {
-                    // Gradient de vert à turquoise pour "Très fort"
-                    strengthIndicator.style.background = 'linear-gradient(to right, #28a745, #20c997)';
-                    strengthText.textContent = 'Force du mot de passe: Très fort';
-                    strengthText.style.color = '#20c997';
+                    strengthIndicator.style.backgroundColor = '#4caf50'; // Vert
+                    strengthText.textContent = 'Fort';
+                    strengthText.style.color = '#4caf50';
+                    strengthIndicator.style.animation = 'pulse 2s infinite';
                 }
                 
-                // Ajouter une animation subtile pour les mots de passe très forts
-                if (strength >= 90) {
-                    strengthIndicator.style.animation = 'pulse 1.5s infinite';
-                } else {
-                    strengthIndicator.style.animation = 'none';
-                }
-                
-                // Vérification de la correspondance des mots de passe
-                if (confirmPasswordInput.value) {
-                    checkPasswordMatch();
+                // Mettre à jour les icônes de statut
+                for (const [key, status] of Object.entries(statuses)) {
+                    const icon = statusIcons[key];
+                    if (icon) {
+                        if (status) {
+                            icon.classList.remove('fa-circle');
+                            icon.classList.add('fa-check-circle');
+                            icon.style.color = '#4caf50';
+                            icon.closest('.requirement').classList.add('valid');
+                        } else {
+                            icon.classList.remove('fa-check-circle');
+                            icon.classList.add('fa-circle');
+                            icon.style.color = '#ccc';
+                            icon.closest('.requirement').classList.remove('valid');
+                        }
+                    }
                 }
             }
             
-            // Fonction pour vérifier la correspondance des mots de passe
+            // Fonction pour vérifier si les mots de passe correspondent
             function checkPasswordMatch() {
+                if (!newPasswordInput || !confirmPasswordInput) return;
+                
                 const password = newPasswordInput.value;
                 const confirmPassword = confirmPasswordInput.value;
                 
+                if (confirmPassword.length === 0) {
+                    passwordMatchText.textContent = '';
+                    return;
+                }
+                
                 if (password === confirmPassword) {
-                    passwordMatchText.textContent = '✓ Les mots de passe correspondent';
-                    passwordMatchText.style.color = '#28a745';
+                    passwordMatchText.textContent = 'Les mots de passe correspondent';
+                    passwordMatchText.style.color = '#4caf50';
                 } else {
-                    passwordMatchText.textContent = '✗ Les mots de passe ne correspondent pas';
-                    passwordMatchText.style.color = '#dc3545';
+                    passwordMatchText.textContent = 'Les mots de passe ne correspondent pas';
+                    passwordMatchText.style.color = '#f44336';
                 }
             }
             
-            // Écoute des événements pour le mot de passe
-            newPasswordInput.addEventListener('input', updateStrengthIndicator);
-            confirmPasswordInput.addEventListener('input', checkPasswordMatch);
-            
-            // Bloquer le copier-coller sur le champ de confirmation
-            confirmPasswordInput.addEventListener('paste', function(e) {
-                e.preventDefault();
-                alert('Le collage n\'est pas autorisé pour le champ de confirmation du mot de passe');
-            });
-            
-            // Fonctions pour le bouton "afficher mot de passe" avec appui maintenu
-            function showNewPassword() {
-                newPasswordInput.type = 'text';
-                newPasswordToggle.querySelector('i').className = 'fa-regular fa-eye-slash';
+            // Ajout des événements
+            if (newPasswordInput) {
+                newPasswordInput.addEventListener('input', function() {
+                    updateStrengthIndicator();
+                    checkPasswordMatch();
+                });
             }
             
-            function hideNewPassword() {
-                newPasswordInput.type = 'password';
-                newPasswordToggle.querySelector('i').className = 'fa-regular fa-eye';
+            if (confirmPasswordInput) {
+                confirmPasswordInput.addEventListener('input', checkPasswordMatch);
             }
             
-            // Désactiver l'affichage du mot de passe de confirmation
-            function preventShowConfirmPassword(e) {
-                e.preventDefault();
-                alert('Il n\'est pas possible de visualiser le mot de passe de confirmation');
+            // Toggle pour l'affichage du mot de passe
+            if (newPasswordToggle) {
+                newPasswordToggle.addEventListener('click', function() {
+                    togglePasswordVisibility(newPasswordInput, newPasswordToggle);
+                });
             }
             
-            // Écouteurs d'événements pour le bouton du nouveau mot de passe
-            newPasswordToggle.addEventListener('mousedown', showNewPassword);
-            newPasswordToggle.addEventListener('mouseup', hideNewPassword);
-            newPasswordToggle.addEventListener('mouseleave', hideNewPassword);
-            newPasswordToggle.addEventListener('touchstart', showNewPassword);
-            newPasswordToggle.addEventListener('touchend', hideNewPassword);
-            newPasswordToggle.addEventListener('touchcancel', hideNewPassword);
+            if (confirmPasswordToggle) {
+                confirmPasswordToggle.addEventListener('click', function() {
+                    togglePasswordVisibility(confirmPasswordInput, confirmPasswordToggle);
+                });
+            }
             
-            // Désactiver le bouton de visualisation pour le mot de passe de confirmation
-            confirmPasswordToggle.addEventListener('mousedown', preventShowConfirmPassword);
-            confirmPasswordToggle.addEventListener('touchstart', preventShowConfirmPassword);
+            const currentPasswordToggle = document.getElementById('currentPasswordToggle');
+            const currentPasswordInput = document.getElementById('current_password');
+            if (currentPasswordToggle && currentPasswordInput) {
+                currentPasswordToggle.addEventListener('click', function() {
+                    togglePasswordVisibility(currentPasswordInput, currentPasswordToggle);
+                });
+            }
+            
+            function togglePasswordVisibility(inputElement, toggleElement) {
+                const type = inputElement.getAttribute('type') === 'password' ? 'text' : 'password';
+                inputElement.setAttribute('type', type);
+                
+                // Change l'icône de l'œil
+                const icon = toggleElement.querySelector('i');
+                icon.classList.toggle('fa-eye');
+                icon.classList.toggle('fa-eye-slash');
+            }
+            
+            // Initialisation
+            if (newPasswordInput) {
+                updateStrengthIndicator();
+            }
         });
     </script>
 </body>

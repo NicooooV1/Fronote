@@ -1,8 +1,54 @@
 <?php
-// Données simulées
-$eleve_nom = "Jean Dupont";
-$classe = "3e A";
+// Locate and include the API path helper
+$path_helper = null;
+$possible_paths = [
+    dirname(dirname(__DIR__)) . '/API/path_helper.php', // Standard path
+    dirname(__DIR__) . '/API/path_helper.php', // Alternate path
+    dirname(dirname(dirname(__DIR__))) . '/API/path_helper.php', // Another possible path
+];
 
+foreach ($possible_paths as $path) {
+    if (file_exists($path)) {
+        $path_helper = $path;
+        break;
+    }
+}
+
+if ($path_helper) {
+    // Define ABSPATH for security check in path_helper.php
+    if (!defined('ABSPATH')) define('ABSPATH', dirname(__FILE__));
+    require_once $path_helper;
+    require_once API_CORE_PATH;
+    require_once API_AUTH_PATH;
+    require_once API_DATA_PATH;
+} else {
+    // Fallback for direct inclusion if path_helper is not found
+    $base_dir = dirname(dirname(__DIR__));
+    $api_dir = $base_dir . '/API';
+
+    // Si nous sommes sur le serveur, le chemin pourrait être différent
+    if (!file_exists($api_dir)) {
+        $api_dir = dirname(__DIR__) . '/API';
+    }
+
+    // Include the API core
+    require_once $api_dir . '/core.php';
+    require_once $api_dir . '/auth.php';
+    require_once $api_dir . '/data.php';
+}
+
+// Check if user is logged in
+if (!isLoggedIn()) {
+    header('Location: /~u22405372/SAE/Pronote/login/public/index.php');
+    exit;
+}
+
+// Get user data
+$user = getCurrentUser();
+$eleve_nom = $user['prenom'] . ' ' . $user['nom'];
+$classe = isset($user['classe']) ? $user['classe'] : '3e A';
+
+// Simulated data
 $edt = [
   ["heure" => "9h00", "matiere" => "Français", "prof" => "Gallet B.", "salle" => "105", "couleur" => "#3498db"],
   ["heure" => "10h00", "matiere" => "Histoire-Géo", "prof" => "Moreau C.", "salle" => "206", "couleur" => "#e67e22"],

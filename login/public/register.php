@@ -102,408 +102,488 @@ $avatarImg = $avatars[$profil] ?? 'student.png';
 $espaceTitle = 'Création compte ' . ucfirst($profil);
 ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pronote - Inscription</title>
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="stylesheet" href="assets/css/styles_register.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/pronote-style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Styles pour les conteneurs de suggestions */
+        .autocomplete-container {
+            position: relative;
+            width: 100%;
+        }
+        
+        .suggestions-container {
+            position: absolute;
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            z-index: 9999;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            top: 100%;
+            left: 0;
+        }
+        
+        .suggestion-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .suggestion-item:hover {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+        
+        /* Force la position relative sur les form-group pour le positionnement absolu */
+        .form-group {
+            position: relative;
+        }
+    </style>
 </head>
 <body>
     <div class="register-container">
-        <img src="assets/images/logo-pronote.png" alt="Logo Pronote" class="logo">
-        
-        <h2><?php echo htmlspecialchars($espaceTitle); ?></h2>
-        
-        <div class="avatar">
-            <img src="assets/images/avatars/<?php echo htmlspecialchars($avatarImg); ?>" alt="Avatar">
+        <div class="app-header">
+            <div class="app-logo">P</div>
+            <h1 class="app-title">Pronote - Inscription</h1>
         </div>
-        
-        <?php if (!empty($error)): ?>
-            <div class="error-message"><?php echo htmlspecialchars($error); ?></div>
-        <?php endif; ?>
         
         <?php if (!empty($success)): ?>
-            <!-- Section de succès redessinée -->
             <div class="success-message">
+                <i class="fas fa-check-circle"></i>
                 <p><?php echo htmlspecialchars($success); ?></p>
+                
                 <div class="credentials-info">
-                    <p><strong>Identifiant :</strong> <?php echo htmlspecialchars($identifiant); ?></p>
-                    <p><strong>Mot de passe temporaire :</strong> <?php echo htmlspecialchars($generatedPassword); ?></p>
-                    <p class="warning">Notez bien ces informations, le mot de passe ne sera plus jamais affiché !</p>
-                    <p>L'utilisateur devra changer ce mot de passe lors de sa première connexion.</p>
+                    <strong>Identifiant :</strong> <?php echo htmlspecialchars($identifiant); ?><br>
+                    <strong>Mot de passe temporaire :</strong> <?php echo htmlspecialchars($generatedPassword); ?>
+                    <p class="warning">Notez ces informations, elles ne seront plus affichées.</p>
                 </div>
             </div>
-            <!-- Boutons en dehors du message de succès -->
-            <div class="form-actions" style="margin-top: 20px;">
-                <a href="register.php" class="btn-connect">Créer un nouveau compte</a>
-                <a href="index.php?from_register=1&success=1" class="btn-cancel">Page de connexion</a>
+            
+            <div class="form-actions">
+                <a href="index.php" class="btn-connect">Se connecter</a>
+                <a href="register.php" class="btn-secondary">Nouvelle inscription</a>
             </div>
         <?php else: ?>
-        
-        <form action="register.php" method="post" id="registrationForm">
-            <div class="required-notice">* champs obligatoires</div>
+            <?php if (!empty($error)): ?>
+                <div class="alert alert-error">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <?php echo htmlspecialchars($error); ?>
+                </div>
+            <?php endif; ?>
             
-            <div class="form-group">
-                <label for="profil">Type de compte</label>
-                <select name="profil" id="profil" required onchange="updateFormFields()">
-                    <option value="eleve" <?php echo ($profil === 'eleve') ? 'selected' : ''; ?>>Élève</option>
-                    <option value="parent" <?php echo ($profil === 'parent') ? 'selected' : ''; ?>>Parent</option>
-                    <option value="professeur" <?php echo ($profil === 'professeur') ? 'selected' : ''; ?>>Professeur</option>
-                    <option value="vie_scolaire" <?php echo ($profil === 'vie_scolaire') ? 'selected' : ''; ?>>Vie scolaire</option>
-                    <option value="administrateur" <?php echo ($profil === 'administrateur') ? 'selected' : ''; ?>>Administrateur</option>
-                </select>
-            </div>
-
-            <div class="register-form">
-                <!-- Champs communs à tous les profils -->
+            <form action="register.php" method="post" class="register-form">
+                <div class="form-group">
+                    <label for="profil">Profil</label>
+                    <select id="profil" name="profil" required>
+                        <option value="">Sélectionnez votre profil</option>
+                        <option value="eleve" <?php echo ($profil === 'eleve') ? 'selected' : ''; ?>>Élève</option>
+                        <option value="parent" <?php echo ($profil === 'parent') ? 'selected' : ''; ?>>Parent d'élève</option>
+                        <option value="professeur" <?php echo ($profil === 'professeur') ? 'selected' : ''; ?>>Professeur</option>
+                        <option value="vie_scolaire" <?php echo ($profil === 'vie_scolaire') ? 'selected' : ''; ?>>Vie scolaire</option>
+                        <option value="administrateur" <?php echo ($profil === 'administrateur') ? 'selected' : ''; ?>>Administrateur</option>
+                    </select>
+                </div>
+                
                 <div class="form-group">
                     <label for="nom">Nom</label>
-                    <input type="text" name="nom" id="nom" value="<?php echo htmlspecialchars(isset($_POST['nom']) ? $_POST['nom'] : ''); ?>" required>
+                    <input type="text" id="nom" name="nom" value="<?php echo htmlspecialchars(isset($_POST['nom']) ? $_POST['nom'] : ''); ?>" required>
                 </div>
-
+                
                 <div class="form-group">
                     <label for="prenom">Prénom</label>
-                    <input type="text" name="prenom" id="prenom" value="<?php echo htmlspecialchars(isset($_POST['prenom']) ? $_POST['prenom'] : ''); ?>" required>
+                    <input type="text" id="prenom" name="prenom" value="<?php echo htmlspecialchars(isset($_POST['prenom']) ? $_POST['prenom'] : ''); ?>" required>
                 </div>
-
+                
                 <div class="form-group">
                     <label for="mail">Email</label>
-                    <input type="email" name="mail" id="mail" value="<?php echo htmlspecialchars(isset($_POST['mail']) ? $_POST['mail'] : ''); ?>" 
-                        pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$" 
-                        title="Veuillez entrer une adresse email valide" required>
+                    <input type="email" id="mail" name="mail" value="<?php echo htmlspecialchars(isset($_POST['mail']) ? $_POST['mail'] : ''); ?>" required>
                 </div>
-
-                <div class="form-group">
-                    <label for="telephone" class="optional">Téléphone</label>
-                    <input type="tel" name="telephone" id="telephone" 
-                        value="<?php echo htmlspecialchars(isset($_POST['telephone']) ? $_POST['telephone'] : ''); ?>" 
-                        pattern="[0-9]{2} [0-9]{2} [0-9]{2} [0-9]{2} [0-9]{2}|[0-9]{10}" 
-                        placeholder="XX XX XX XX XX">
+                
+                <!-- Champs dynamiques qui s'affichent en fonction du profil -->
+                <div id="dynamicFields"></div>
+                
+                <div class="form-actions">
+                    <a href="index.php" class="btn-cancel">Annuler</a>
+                    <button type="submit" name="submit" value="1" class="btn-connect">S'inscrire</button>
                 </div>
-
-                <!-- Champs spécifiques dynamiques -->
-                <div id="dynamicFields">
-                    <!-- Ces champs seront remplis dynamiquement par JavaScript -->
-                </div>
-            </div>
-
-            <div class="form-actions">
-                <button type="submit" name="submit" value="1" class="btn-connect">Créer le compte</button>
-                <a href="index.php" class="btn-cancel">Annuler</a>
-            </div>
-        </form>
-        
-        <!-- Templates de champs spécifiques à chaque profil -->
-        <div id="eleveFields" style="display:none;">
-            <div class="form-group">
-                <label for="date_naissance">Date de naissance</label>
-                <input type="date" name="date_naissance" id="date_naissance" 
-                       value="<?php echo htmlspecialchars(isset($_POST['date_naissance']) ? $_POST['date_naissance'] : ''); ?>" 
-                       max="<?php echo date('Y-m-d'); ?>" required>
-            </div>
-
-            <div class="form-group">
-                <label for="lieu_naissance">Lieu de naissance</label>
-                <div class="input-group">
-                    <input type="text" name="lieu_naissance" id="lieu_naissance" 
-                           value="<?php echo htmlspecialchars(isset($_POST['lieu_naissance']) ? $_POST['lieu_naissance'] : ''); ?>" 
-                           autocomplete="off" required>
-                    <div id="villesSuggestions" class="suggestions-container"></div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="classe">Classe</label>
-                <select name="classe" id="classe" required>
-                    <option value="">Sélectionner une classe</option>
-                    
-                    <?php if (!empty($etablissementData['classes']['college'])): ?>
-                    <optgroup label="Collège">
-                        <?php foreach ($etablissementData['classes']['college'] as $niveau => $classes): ?>
-                            <?php foreach ($classes as $classe): ?>
-                                <option value="<?php echo htmlspecialchars($classe); ?>">
-                                    <?php echo htmlspecialchars($classe); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        <?php endforeach; ?>
-                    </optgroup>
-                    <?php endif; ?>
-                    
-                    <?php if (!empty($etablissementData['classes']['lycee'])): ?>
-                    <optgroup label="Lycée">
-                        <?php foreach ($etablissementData['classes']['lycee'] as $niveau => $classes): ?>
-                            <?php foreach ($classes as $classe): ?>
-                                <option value="<?php echo htmlspecialchars($classe); ?>">
-                                    <?php echo htmlspecialchars($classe); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        <?php endforeach; ?>
-                    </optgroup>
-                    <?php endif; ?>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="adresse">Adresse</label>
-                <div class="input-group">
-                    <input type="text" name="adresse" id="adresse" 
-                           value="<?php echo htmlspecialchars(isset($_POST['adresse']) ? $_POST['adresse'] : ''); ?>" 
-                           placeholder="Commencez à taper une adresse" autocomplete="off" required>
-                    <div id="adressesSuggestions" class="suggestions-container"></div>
-                </div>
-            </div>
-        </div>
-
-        <div id="parentFields" style="display:none;">
-            <div class="form-group">
-                <label for="adresse">Adresse</label>
-                <div class="input-group">
-                    <input type="text" name="adresse" id="adresse" 
-                           value="<?php echo htmlspecialchars(isset($_POST['adresse']) ? $_POST['adresse'] : ''); ?>" 
-                           placeholder="Commencez à taper une adresse" autocomplete="off" required>
-                    <div id="adressesSuggestions" class="suggestions-container"></div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="metier" class="optional">Métier</label>
-                <input type="text" name="metier" id="metier" 
-                       value="<?php echo htmlspecialchars(isset($_POST['metier']) ? $_POST['metier'] : ''); ?>">
-            </div>
-
-            <div class="form-group">
-                <label for="est_parent_eleve" class="optional">Parent d'élève</label>
-                <select name="est_parent_eleve" id="est_parent_eleve">
-                    <option value="oui" <?php echo (isset($_POST['est_parent_eleve']) && $_POST['est_parent_eleve'] === 'oui') ? 'selected' : ''; ?>>Oui</option>
-                    <option value="non" <?php echo (!isset($_POST['est_parent_eleve']) || $_POST['est_parent_eleve'] === 'non') ? 'selected' : ''; ?>>Non</option>
-                </select>
-            </div>
-        </div>
-
-        <div id="professeurFields" style="display:none;">
-            <div class="form-group">
-                <label for="adresse">Adresse</label>
-                <div class="input-group">
-                    <input type="text" name="adresse" id="adresse" 
-                           value="<?php echo htmlspecialchars(isset($_POST['adresse']) ? $_POST['adresse'] : ''); ?>" 
-                           placeholder="Commencez à taper une adresse" autocomplete="off" required>
-                    <div id="adressesSuggestions" class="suggestions-container"></div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="matiere">Matière enseignée</label>
-                <select name="matiere" id="matiere" required>
-                    <option value="">Sélectionner une matière</option>
-                    <?php foreach ($etablissementData['matieres'] as $matiere): ?>
-                        <option value="<?php echo htmlspecialchars($matiere['nom']); ?>">
-                            <?php echo htmlspecialchars($matiere['nom']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="professeur_principal" class="optional">Professeur principal</label>
-                <select name="professeur_principal" id="professeur_principal">
-                    <option value="non">Non</option>
-                    
-                    <?php if (!empty($etablissementData['classes']['college'])): ?>
-                    <optgroup label="Collège">
-                        <?php foreach ($etablissementData['classes']['college'] as $niveau => $classes): ?>
-                            <?php foreach ($classes as $classe): ?>
-                                <option value="<?php echo htmlspecialchars($classe); ?>">
-                                    <?php echo htmlspecialchars($classe); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        <?php endforeach; ?>
-                    </optgroup>
-                    <?php endif; ?>
-                    
-                    <?php if (!empty($etablissementData['classes']['lycee'])): ?>
-                    <optgroup label="Lycée">
-                        <?php foreach ($etablissementData['classes']['lycee'] as $niveau => $classes): ?>
-                            <?php foreach ($classes as $classe): ?>
-                                <option value="<?php echo htmlspecialchars($classe); ?>">
-                                    <?php echo htmlspecialchars($classe); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        <?php endforeach; ?>
-                    </optgroup>
-                    <?php endif; ?>
-                </select>
-            </div>
-        </div>
-
-        <div id="vieScolaireFields" style="display:none;">
-            <div class="form-group">
-                <label for="est_CPE" class="optional">CPE</label>
-                <select name="est_CPE" id="est_CPE">
-                    <option value="oui" <?php echo (isset($_POST['est_CPE']) && $_POST['est_CPE'] === 'oui') ? 'selected' : ''; ?>>Oui</option>
-                    <option value="non" <?php echo (!isset($_POST['est_CPE']) || $_POST['est_CPE'] === 'non') ? 'selected' : ''; ?>>Non</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="est_infirmerie" class="optional">Infirmerie</label>
-                <select name="est_infirmerie" id="est_infirmerie">
-                    <option value="oui" <?php echo (isset($_POST['est_infirmerie']) && $_POST['est_infirmerie'] === 'oui') ? 'selected' : ''; ?>>Oui</option>
-                    <option value="non" <?php echo (!isset($_POST['est_infirmerie']) || $_POST['est_infirmerie'] === 'non') ? 'selected' : ''; ?>>Non</option>
-                </select>
-            </div>
-        </div>
-
-        <!-- Pas de champs spécifiques pour administrateur -->
-        <div id="administrateurFields" style="display:none;">
-            <!-- Aucun champ supplémentaire nécessaire -->
-        </div>
-        
+            </form>
         <?php endif; ?>
     </div>
-
+    
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Fonction pour afficher les champs en fonction du profil sélectionné
+            // Définir les champs spécifiques à chaque profil
+            const profileFields = {
+                'eleve': `
+                    <div class="form-group">
+                        <label for="date_naissance">Date de naissance</label>
+                        <input type="date" id="date_naissance" name="date_naissance" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lieu_naissance">Lieu de naissance</label>
+                        <div class="autocomplete-container">
+                            <input type="text" id="lieu_naissance" name="lieu_naissance" required autocomplete="off">
+                            <div id="villesSuggestions" class="suggestions-container" style="display:none;"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="classe">Classe</label>
+                        <select id="classe" name="classe" required>
+                            <option value="">Sélectionner une classe</option>
+                            <!-- Options générées dynamiquement -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="adresse">Adresse</label>
+                        <div class="autocomplete-container">
+                            <input type="text" id="adresse" name="adresse" required autocomplete="off">
+                            <div id="adressesSuggestions" class="suggestions-container" style="display:none;"></div>
+                        </div>
+                    </div>
+                `,
+                'parent': `
+                    <div class="form-group">
+                        <label for="adresse">Adresse</label>
+                        <div class="autocomplete-container">
+                            <input type="text" id="adresse" name="adresse" required autocomplete="off">
+                            <div id="adressesSuggestions" class="suggestions-container" style="display:none;"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="telephone">Téléphone</label>
+                        <input type="text" id="telephone" name="telephone" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="metier">Profession</label>
+                        <input type="text" id="metier" name="metier">
+                    </div>
+                `,
+                'professeur': `
+                    <div class="form-group">
+                        <label for="matiere">Matière enseignée</label>
+                        <select id="matiere" name="matiere" required>
+                            <option value="">Sélectionner une matière</option>
+                            <!-- Options générées dynamiquement -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="adresse">Adresse</label>
+                        <div class="autocomplete-container">
+                            <input type="text" id="adresse" name="adresse" required autocomplete="off">
+                            <div id="adressesSuggestions" class="suggestions-container" style="display:none;"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="telephone">Téléphone</label>
+                        <input type="text" id="telephone" name="telephone" required>
+                    </div>
+                `,
+                'vie_scolaire': `
+                    <div class="form-group">
+                        <label for="est_CPE">CPE</label>
+                        <select id="est_CPE" name="est_CPE">
+                            <option value="oui">Oui</option>
+                            <option value="non" selected>Non</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="est_infirmerie">Infirmerie</label>
+                        <select id="est_infirmerie" name="est_infirmerie">
+                            <option value="oui">Oui</option>
+                            <option value="non" selected>Non</option>
+                        </select>
+                    </div>
+                `,
+                'administrateur': `
+                    <!-- Aucun champ supplémentaire nécessaire -->
+                `
+            };
+            
+            // Fonction pour mettre à jour les champs du formulaire
             function updateFormFields() {
-                var profil = document.getElementById('profil').value;
-                var dynamicFields = document.getElementById('dynamicFields');
-                var avatar = document.querySelector('.avatar img');
-                var title = document.querySelector('h2');
+                const profil = document.getElementById('profil').value;
+                const dynamicFields = document.getElementById('dynamicFields');
                 
-                // Mettre à jour l'avatar
-                avatar.src = 'assets/images/avatars/' + getAvatarForProfile(profil);
-                
-                // Mettre à jour le titre
-                title.textContent = 'Création compte ' + capitalizeFirstLetter(profil);
-                
-                // Vider les champs dynamiques
-                dynamicFields.innerHTML = '';
-                
-                // Récupérer le template correspondant
-                var template = document.getElementById(profil + 'Fields');
-                
-                if (template) {
-                    // Cloner le contenu du template
-                    var clone = template.cloneNode(true);
-                    clone.style.display = 'block';
-                    clone.id = 'active' + profil + 'Fields';
+                if (profil && profileFields[profil]) {
+                    dynamicFields.innerHTML = profileFields[profil];
                     
-                    // Ajouter au formulaire
-                    dynamicFields.appendChild(clone);
-                    
-                    // Initialiser les autocompletions pour les nouveaux champs
-                    initAutocompletion();
+                    // Initialiser les champs spécifiques
+                    if (profil === 'eleve') {
+                        loadClasses();
+                        setupVilleAutocomplete();
+                        setupAdresseAutocomplete();
+                    } else if (profil === 'professeur') {
+                        loadMatieres();
+                        setupAdresseAutocomplete();
+                    } else if (profil === 'parent') {
+                        setupAdresseAutocomplete();
+                    }
+                } else {
+                    dynamicFields.innerHTML = '';
                 }
             }
             
-            function getAvatarForProfile(profil) {
-                var avatars = {
-                    'eleve': 'student.png',
-                    'parent': 'parent.png',
-                    'professeur': 'teacher.png',
-                    'vie_scolaire': 'staff.png',
-                    'administrateur': 'admin.png'
-                };
-                return avatars[profil] || 'student.png';
+            // Fonction pour charger les classes
+            function loadClasses() {
+                const classeSelect = document.getElementById('classe');
+                if (classeSelect) {
+                    // Vérifier si l'élément a déjà été chargé
+                    if (classeSelect.options.length <= 1) {
+                        // Tenter d'utiliser les données de l'établissement chargées par PHP
+                        <?php if (!empty($etablissementData) && isset($etablissementData['classes'])): ?>
+                            // Utiliser les données chargées par PHP
+                            const classes = <?php echo json_encode($etablissementData['classes']); ?>;
+                            
+                            // Parcourir les niveaux
+                            Object.keys(classes).forEach(niveau => {
+                                const optgroup = document.createElement('optgroup');
+                                optgroup.label = niveau;
+                                
+                                // Ajouter les classes de ce niveau
+                                classes[niveau].forEach(classe => {
+                                    const option = document.createElement('option');
+                                    option.value = classe;
+                                    option.textContent = classe;
+                                    optgroup.appendChild(option);
+                                });
+                                
+                                classeSelect.appendChild(optgroup);
+                            });
+                        <?php else: ?>
+                            // Fallback: données statiques
+                            const classes = [
+                                { niveau: 'Collège', classes: ['6A', '6B', '5A', '5B', '4A', '4B', '3A', '3B'] },
+                                { niveau: 'Lycée', classes: ['2ndA', '2ndB', '1èreA', '1èreB', 'TermA', 'TermB'] }
+                            ];
+                            
+                            classes.forEach(niveau => {
+                                const optgroup = document.createElement('optgroup');
+                                optgroup.label = niveau.niveau;
+                                
+                                niveau.classes.forEach(classe => {
+                                    const option = document.createElement('option');
+                                    option.value = classe;
+                                    option.textContent = classe;
+                                    optgroup.appendChild(option);
+                                });
+                                
+                                classeSelect.appendChild(optgroup);
+                            });
+                        <?php endif; ?>
+                    }
+                }
             }
             
-            function capitalizeFirstLetter(string) {
-                return string.charAt(0).toUpperCase() + string.slice(1);
+            // Fonction pour charger les matières
+            function loadMatieres() {
+                const matiereSelect = document.getElementById('matiere');
+                if (matiereSelect) {
+                    // Vérifier si l'élément a déjà été chargé
+                    if (matiereSelect.options.length <= 1) {
+                        <?php if (!empty($etablissementData) && isset($etablissementData['matieres'])): ?>
+                            // Utiliser les données chargées par PHP
+                            const matieres = <?php echo json_encode(array_column($etablissementData['matieres'], 'nom')); ?>;
+                            
+                            // Ajouter les options
+                            matieres.forEach(matiere => {
+                                const option = document.createElement('option');
+                                option.value = matiere;
+                                option.textContent = matiere;
+                                matiereSelect.appendChild(option);
+                            });
+                        <?php else: ?>
+                            // Fallback: données statiques
+                            const matieres = [
+                                'Mathématiques', 
+                                'Français', 
+                                'Histoire-Géographie', 
+                                'Sciences Physiques', 
+                                'SVT', 
+                                'Anglais', 
+                                'Espagnol', 
+                                'Allemand', 
+                                'EPS', 
+                                'Arts Plastiques', 
+                                'Musique', 
+                                'Technologie', 
+                                'Sciences Économiques'
+                            ];
+                            
+                            matieres.forEach(matiere => {
+                                const option = document.createElement('option');
+                                option.value = matiere;
+                                option.textContent = matiere;
+                                matiereSelect.appendChild(option);
+                            });
+                        <?php endif; ?>
+                    }
+                }
             }
             
-            // Initialiser les autocompletions
-            function initAutocompletion() {
-                // Autocomplétion des villes (lieu de naissance)
+            // Implémentation robuste de l'autocomplétion pour les villes
+            function setupVilleAutocomplete() {
                 const lieuNaissanceInput = document.getElementById('lieu_naissance');
                 const villesSuggestions = document.getElementById('villesSuggestions');
                 
-                if (lieuNaissanceInput && villesSuggestions) {
-                    lieuNaissanceInput.addEventListener('input', function() {
-                        const query = this.value.trim();
-                        if (query.length < 2) {
-                            villesSuggestions.style.display = 'none';
-                            return;
-                        }
-                        
-                        // Appel à l'API pour les suggestions de villes
-                        fetch(`https://geo.api.gouv.fr/communes?nom=${query}&fields=nom&boost=population&limit=5`)
-                            .then(response => response.json())
-                            .then(data => {
-                                villesSuggestions.innerHTML = '';
-                                
-                                if (data.length > 0) {
-                                    data.forEach(ville => {
-                                        const item = document.createElement('div');
-                                        item.className = 'suggestion-item';
-                                        item.textContent = ville.nom;
-                                        item.addEventListener('click', function() {
-                                            lieuNaissanceInput.value = ville.nom;
-                                            villesSuggestions.style.display = 'none';
-                                        });
-                                        villesSuggestions.appendChild(item);
-                                    });
-                                    villesSuggestions.style.display = 'block';
-                                } else {
-                                    villesSuggestions.style.display = 'none';
-                                }
-                            })
-                            .catch(error => {
-                                console.error('Erreur lors de la récupération des villes:', error);
-                            });
-                    });
-                }
+                if (!lieuNaissanceInput || !villesSuggestions) return;
                 
-                // Autocomplétion des adresses
+                // Désactiver l'autocomplétion native du navigateur
+                lieuNaissanceInput.setAttribute('autocomplete', 'off');
+                
+                lieuNaissanceInput.addEventListener('input', function() {
+                    const query = this.value.trim();
+                    
+                    if (query.length < 2) {
+                        villesSuggestions.style.display = 'none';
+                        return;
+                    }
+                    
+                    // Appel à l'API
+                    fetch(`https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(query)}&boost=population&limit=5`)
+                        .then(response => response.json())
+                        .then(data => {
+                            // Vider le conteneur des suggestions
+                            villesSuggestions.innerHTML = '';
+                            
+                            if (data.length > 0) {
+                                // Créer les éléments de suggestion
+                                data.forEach(ville => {
+                                    const div = document.createElement('div');
+                                    div.className = 'suggestion-item';
+                                    div.textContent = `${ville.nom} (${ville.codeDepartement})`;
+                                    
+                                    // Ajouter un gestionnaire d'événements de clic
+                                    div.addEventListener('click', function() {
+                                        lieuNaissanceInput.value = `${ville.nom} (${ville.codeDepartement})`;
+                                        villesSuggestions.style.display = 'none';
+                                    });
+                                    
+                                    villesSuggestions.appendChild(div);
+                                });
+                                
+                                // Afficher le conteneur de suggestions avec des styles inline
+                                villesSuggestions.style.display = 'block';
+                                villesSuggestions.style.backgroundColor = 'white';
+                                villesSuggestions.style.border = '1px solid #ddd';
+                                villesSuggestions.style.maxHeight = '200px';
+                                villesSuggestions.style.overflowY = 'auto';
+                                villesSuggestions.style.zIndex = '9999';
+                                villesSuggestions.style.width = '100%';
+                                villesSuggestions.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+                            } else {
+                                villesSuggestions.style.display = 'none';
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Erreur API villes:', error);
+                            villesSuggestions.style.display = 'none';
+                        });
+                });
+                
+                // Fermer les suggestions en cas de clic en dehors
+                document.addEventListener('click', function(e) {
+                    if (!lieuNaissanceInput.contains(e.target) && !villesSuggestions.contains(e.target)) {
+                        villesSuggestions.style.display = 'none';
+                    }
+                });
+                
+                // Focus sur le champ input
+                lieuNaissanceInput.addEventListener('focus', function() {
+                    if (this.value.trim().length >= 2) {
+                        // Simuler un événement d'entrée pour afficher les suggestions
+                        this.dispatchEvent(new Event('input'));
+                    }
+                });
+            }
+            
+            // Implémentation robuste de l'autocomplétion pour les adresses
+            function setupAdresseAutocomplete() {
                 const adresseInput = document.getElementById('adresse');
                 const adressesSuggestions = document.getElementById('adressesSuggestions');
                 
-                if (adresseInput && adressesSuggestions) {
-                    adresseInput.addEventListener('input', function() {
-                        const query = this.value.trim();
-                        if (query.length < 3) {
-                            adressesSuggestions.style.display = 'none';
-                            return;
-                        }
-                        
-                        // Appel à l'API pour les suggestions d'adresses
-                        fetch(`https://api-adresse.data.gouv.fr/search/?q=${query}&limit=5`)
+                if (!adresseInput || !adressesSuggestions) return;
+                
+                // Désactiver l'autocomplétion native du navigateur
+                adresseInput.setAttribute('autocomplete', 'off');
+                
+                // Timer pour limiter les appels API
+                let typingTimer;
+                const doneTypingInterval = 300;
+                
+                adresseInput.addEventListener('input', function() {
+                    clearTimeout(typingTimer);
+                    
+                    const query = this.value.trim();
+                    
+                    if (query.length < 3) {
+                        adressesSuggestions.style.display = 'none';
+                        return;
+                    }
+                    
+                    typingTimer = setTimeout(() => {
+                        // Appel à l'API
+                        fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5`)
                             .then(response => response.json())
                             .then(data => {
+                                // Vider le conteneur des suggestions
                                 adressesSuggestions.innerHTML = '';
                                 
                                 if (data.features && data.features.length > 0) {
+                                    // Créer les éléments de suggestion
                                     data.features.forEach(feature => {
-                                        const item = document.createElement('div');
-                                        item.className = 'suggestion-item';
-                                        item.textContent = feature.properties.label;
-                                        item.addEventListener('click', function() {
+                                        const div = document.createElement('div');
+                                        div.className = 'suggestion-item';
+                                        div.textContent = feature.properties.label;
+                                        
+                                        // Ajouter un gestionnaire d'événements de clic
+                                        div.addEventListener('click', function() {
                                             adresseInput.value = feature.properties.label;
                                             adressesSuggestions.style.display = 'none';
                                         });
-                                        adressesSuggestions.appendChild(item);
+                                        
+                                        adressesSuggestions.appendChild(div);
                                     });
+                                    
+                                    // Afficher le conteneur de suggestions avec des styles inline
                                     adressesSuggestions.style.display = 'block';
+                                    adressesSuggestions.style.backgroundColor = 'white';
+                                    adressesSuggestions.style.border = '1px solid #ddd';
+                                    adressesSuggestions.style.maxHeight = '200px';
+                                    adressesSuggestions.style.overflowY = 'auto';
+                                    adressesSuggestions.style.zIndex = '9999';
+                                    adressesSuggestions.style.width = '100%';
+                                    adressesSuggestions.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
                                 } else {
                                     adressesSuggestions.style.display = 'none';
                                 }
                             })
                             .catch(error => {
-                                console.error('Erreur lors de la récupération des adresses:', error);
+                                console.error('Erreur API adresses:', error);
+                                adressesSuggestions.style.display = 'none';
                             });
-                    });
-                }
+                    }, doneTypingInterval);
+                });
                 
-                // Fermer les suggestions si on clique ailleurs
+                // Fermer les suggestions en cas de clic en dehors
                 document.addEventListener('click', function(e) {
-                    if (villesSuggestions && lieuNaissanceInput && !lieuNaissanceInput.contains(e.target) && !villesSuggestions.contains(e.target)) {
-                        villesSuggestions.style.display = 'none';
-                    }
-                    
-                    if (adressesSuggestions && adresseInput && !adresseInput.contains(e.target) && !adressesSuggestions.contains(e.target)) {
+                    if (!adresseInput.contains(e.target) && !adressesSuggestions.contains(e.target)) {
                         adressesSuggestions.style.display = 'none';
+                    }
+                });
+                
+                // Focus sur le champ input
+                adresseInput.addEventListener('focus', function() {
+                    if (this.value.trim().length >= 3) {
+                        // Simuler un événement d'entrée pour afficher les suggestions
+                        this.dispatchEvent(new Event('input'));
                     }
                 });
             }
