@@ -653,3 +653,31 @@ function canSetMessageImportance($userType) {
     // Seuls les parents, professeurs, vie scolaire et administrateurs peuvent définir des priorités
     return in_array($userType, ['parent', 'professeur', 'vie_scolaire', 'administrateur']);
 }
+
+/**
+ * Fonctions liées aux messages
+ */
+require_once __DIR__ . '/../core/utils.php';
+
+/**
+ * Envoie un message groupé à une classe
+ * @param int $userId ID de l'utilisateur
+ * @param string $classe Nom de la classe
+ * @param string $titre Titre du message
+ * @param string $contenu Contenu du message
+ * @param string $importance Niveau d'importance du message
+ * @param bool $notificationObligatoire Si la notification est obligatoire
+ * @param bool $includeParents Si les parents d'élèves doivent être inclus
+ * @param array $files Fichiers à joindre
+ * @return int ID de la conversation créée
+ */
+function sendMessageToClass($userId, $classe, $titre, $contenu, $importance = 'normal', $notificationObligatoire = false, $includeParents = false, $files = []) {
+    global $pdo;
+    
+    // ...existing code...
+}
+
+/* 
+* La fonction canReplyToAnnouncement() est déjà déclarée dans core/utils.php
+* Ne pas la redéclarer ici pour éviter l'erreur
+*/

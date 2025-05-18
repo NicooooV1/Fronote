@@ -8,9 +8,8 @@ require_once __DIR__ . '/../core/auth.php';
 require_once __DIR__ . '/../models/message.php';
 require_once __DIR__ . '/../controllers/message.php';
 
-// Désactiver l'affichage des erreurs pour éviter de corrompre le JSON
-ini_set('display_errors', 0);
-error_reporting(0);
+// S'assurer que toute sortie avant l'entête JSON est nettoyée
+ob_clean();
 
 // Toujours répondre en JSON
 header('Content-Type: application/json');
@@ -25,7 +24,17 @@ if (!$user) {
 // Point d'entrée pour les actions en masse
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'bulk') {
     // Récupérer les données JSON
-    $data = json_decode(file_get_contents('php://input'), true);
+    $jsonInput = file_get_contents('php://input');
+    $data = json_decode($jsonInput, true);
+    
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        echo json_encode([
+            'success' => false, 
+            'error' => 'JSON invalide: ' . json_last_error_msg(),
+            'input_received' => substr($jsonInput, 0, 100) . '...'
+        ]);
+        exit;
+    }
 
     if (!isset($data['ids']) || !is_array($data['ids']) || empty($data['ids']) || !isset($data['action'])) {
         echo json_encode(['success' => false, 'error' => 'Paramètres invalides']);

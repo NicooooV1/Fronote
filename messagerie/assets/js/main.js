@@ -363,10 +363,20 @@ function performBulkAction(action, convIds) {
             body: JSON.stringify(data)
         })
         .then(response => {
+            // Vérifier si la réponse est OK avant de continuer
             if (!response.ok) {
                 throw new Error('Erreur réseau: ' + response.status);
             }
-            return response.json();
+            // Essayez d'analyser la réponse JSON
+            return response.text().then(text => {
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    console.error("Erreur de parsing JSON:", e);
+                    console.error("Texte reçu:", text);
+                    throw new Error('La réponse du serveur n\'est pas un JSON valide');
+                }
+            });
         })
         .then(data => {
             if (data.success) {
