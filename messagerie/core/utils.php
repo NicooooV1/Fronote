@@ -53,6 +53,35 @@ function formatDate($date) {
 }
 
 /**
+ * Convertit un timestamp en texte relatif (temps écoulé)
+ * @param int $timestamp Timestamp UNIX à convertir
+ * @return string Texte affichant le temps écoulé
+ */
+function getTimeAgo($timestamp) {
+    if (!$timestamp) return 'Date inconnue';
+    
+    $current = time();
+    $diff = $current - $timestamp;
+    
+    if ($diff < 60) {
+        return "à l'instant";
+    } elseif ($diff < 3600) {
+        $minutes = floor($diff / 60);
+        return "il y a $minutes minute" . ($minutes > 1 ? 's' : '');
+    } elseif ($diff < 86400) {
+        $hours = floor($diff / 3600);
+        return "il y a $hours heure" . ($hours > 1 ? 's' : '');
+    } elseif ($diff < 172800) {
+        return "hier à " . date('H:i', $timestamp);
+    } elseif ($diff < 604800) {
+        $days = floor($diff / 86400);
+        return "il y a $days jour" . ($days > 1 ? 's' : '');
+    } else {
+        return date('d/m/Y à H:i', $timestamp);
+    }
+}
+
+/**
  * Vérifie si un utilisateur est l'utilisateur courant
  * @param int $id
  * @param string $type
@@ -87,18 +116,19 @@ function linkify($text) {
 }
 
 /**
- * Retourne l'icône pour un dossier
- * @param string $folder
- * @return string
+ * Renvoie l'icône correspondant à un dossier
+ * @param string $folder Identifiant du dossier
+ * @return string Nom de l'icône Font Awesome
  */
 function getFolderIcon($folder) {
     $icons = [
+        'information' => 'info-circle',
         'reception' => 'inbox',
         'envoyes' => 'paper-plane',
         'archives' => 'archive',
-        'information' => 'info-circle',
         'corbeille' => 'trash'
     ];
+    
     return $icons[$folder] ?? 'folder';
 }
 

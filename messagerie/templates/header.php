@@ -65,7 +65,7 @@ if (isset($user)) {
     
     <!-- Feuilles de style -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="<?= $baseUrl ?>assets/css/messagerie.css">
+    <link rel="stylesheet" href="<?= $baseUrl ?>assets/css/main.css">
     
     <?php if (in_array($currentPage, ['conversation'])): ?>
     <link rel="stylesheet" href="<?= $baseUrl ?>assets/css/conversation.css">

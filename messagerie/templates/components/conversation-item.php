@@ -7,9 +7,9 @@
 $id = $conversation['id'];
 $title = !empty($conversation['title']) ? $conversation['title'] : '(Sans titre)';
 $preview = !empty($conversation['last_message']) ? $conversation['last_message'] : '(Pas de message)';
-$dateCreation = strtotime($conversation['created_at']);
-$lastActivity = strtotime($conversation['updated_at']);
-$isRead = $conversation['is_read'];
+$dateCreation = isset($conversation['created_at']) ? strtotime($conversation['created_at']) : time();
+$lastActivity = isset($conversation['updated_at']) ? strtotime($conversation['updated_at']) : time();
+$isRead = isset($conversation['is_read']) ? $conversation['is_read'] : true;
 $participants = $conversation['participants'] ?? [];
 $type = $conversation['type'] ?? 'standard';
 

@@ -192,7 +192,7 @@ function setupBulkActions() {
     if (selectAllCheckbox) {
         // Sélectionner/désélectionner tous
         selectAllCheckbox.addEventListener('change', function() {
-            const checkboxes = document.querySelectorAll('.conversation-checkbox');
+            const checkboxes = document.querySelectorAll('.conversation-select');
             checkboxes.forEach(checkbox => {
                 checkbox.checked = this.checked;
                 
@@ -207,7 +207,7 @@ function setupBulkActions() {
         });
         
         // Mettre à jour les boutons d'action lorsqu'une case est cochée/décochée
-        document.querySelectorAll('.conversation-checkbox').forEach(checkbox => {
+        document.querySelectorAll('.conversation-select').forEach(checkbox => {
             checkbox.addEventListener('change', function() {
                 // Mettre à jour la classe 'selected' sur l'élément parent
                 const conversationItem = this.closest('.conversation-item');
@@ -227,8 +227,8 @@ function setupBulkActions() {
                 if (!action) return;
                 
                 const selectedIds = Array.from(
-                    document.querySelectorAll('.conversation-checkbox:checked')
-                ).map(cb => parseInt(cb.value, 10));
+                    document.querySelectorAll('.conversation-select:checked')
+                ).map(cb => parseInt(cb.dataset.id, 10));
                 
                 if (selectedIds.length === 0) {
                     afficherNotificationErreur('Veuillez sélectionner au moins une conversation');

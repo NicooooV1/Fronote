@@ -1,4 +1,10 @@
-/* Style principal pour le module messagerie - harmonisé avec notes, absences, agenda et cahierdetextes */
+/* 
+   Fichier déprécié: Ce fichier est maintenu pour compatibilité,  
+   mais toutes les définitions de style sont maintenant dans main.css 
+*/
+
+/* Redirection des styles pour assurer la compatibilité */
+@import url('main.css');
 
 /* ======= RESET ET BASE ======= */
 * {
