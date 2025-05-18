@@ -7,8 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Inclusions
-include_once 'includes/header.php'; 
+// Inclusions nécessaires (sans header.php)
 include_once 'includes/db.php';
 include_once 'includes/auth.php';
 
