@@ -37,116 +37,142 @@ if (!defined('USER_TYPE_STAFF')) define('USER_TYPE_STAFF', 'vie_scolaire');
  * Vérifie si l'utilisateur est connecté
  * @return bool Vrai si l'utilisateur est connecté
  */
-function isLoggedIn() {
-    return isset($_SESSION['user']) && !empty($_SESSION['user']);
+if (!function_exists('isLoggedIn')) {
+    function isLoggedIn() {
+        return isset($_SESSION['user']) && !empty($_SESSION['user']);
+    }
 }
 
 /**
  * Récupère l'utilisateur connecté
  * @return array|null Données de l'utilisateur ou null si non connecté
  */
-function getCurrentUser() {
-    return $_SESSION['user'] ?? null;
+if (!function_exists('getCurrentUser')) {
+    function getCurrentUser() {
+        return $_SESSION['user'] ?? null;
+    }
 }
 
 /**
  * Récupère le rôle de l'utilisateur
  * @return string|null Rôle de l'utilisateur ou null si non connecté
  */
-function getUserRole() {
-    $user = getCurrentUser();
-    return $user['profil'] ?? null;
+if (!function_exists('getUserRole')) {
+    function getUserRole() {
+        $user = getCurrentUser();
+        return $user['profil'] ?? null;
+    }
 }
 
 /**
  * Vérifie si l'utilisateur est un administrateur
  * @return bool Vrai si l'utilisateur est un administrateur
  */
-function isAdmin() {
-    return getUserRole() === USER_TYPE_ADMIN;
+if (!function_exists('isAdmin')) {
+    function isAdmin() {
+        return getUserRole() === USER_TYPE_ADMIN;
+    }
 }
 
 /**
  * Vérifie si l'utilisateur est un professeur
  * @return bool Vrai si l'utilisateur est un professeur
  */
-function isTeacher() {
-    return getUserRole() === USER_TYPE_TEACHER;
+if (!function_exists('isTeacher')) {
+    function isTeacher() {
+        return getUserRole() === USER_TYPE_TEACHER;
+    }
 }
 
 /**
  * Vérifie si l'utilisateur est un élève
  * @return bool Vrai si l'utilisateur est un élève
  */
-function isStudent() {
-    return getUserRole() === USER_TYPE_STUDENT;
+if (!function_exists('isStudent')) {
+    function isStudent() {
+        return getUserRole() === USER_TYPE_STUDENT;
+    }
 }
 
 /**
  * Vérifie si l'utilisateur est un parent
  * @return bool Vrai si l'utilisateur est un parent
  */
-function isParent() {
-    return getUserRole() === USER_TYPE_PARENT;
+if (!function_exists('isParent')) {
+    function isParent() {
+        return getUserRole() === USER_TYPE_PARENT;
+    }
 }
 
 /**
  * Vérifie si l'utilisateur est un membre de la vie scolaire
  * @return bool Vrai si l'utilisateur est un membre de la vie scolaire
  */
-function isVieScolaire() {
-    return getUserRole() === USER_TYPE_STAFF;
+if (!function_exists('isVieScolaire')) {
+    function isVieScolaire() {
+        return getUserRole() === USER_TYPE_STAFF;
+    }
 }
 
 /**
  * Vérifie si l'utilisateur peut gérer les notes
  * @return bool Vrai si l'utilisateur peut gérer les notes
  */
-function canManageNotes() {
-    $role = getUserRole();
-    return $role === USER_TYPE_TEACHER || $role === USER_TYPE_ADMIN || $role === USER_TYPE_STAFF;
+if (!function_exists('canManageNotes')) {
+    function canManageNotes() {
+        $role = getUserRole();
+        return $role === USER_TYPE_TEACHER || $role === USER_TYPE_ADMIN || $role === USER_TYPE_STAFF;
+    }
 }
 
 /**
  * Vérifie si l'utilisateur peut gérer les absences
  * @return bool Vrai si l'utilisateur peut gérer les absences
  */
-function canManageAbsences() {
-    $role = getUserRole();
-    return $role === USER_TYPE_TEACHER || $role === USER_TYPE_ADMIN || $role === USER_TYPE_STAFF;
+if (!function_exists('canManageAbsences')) {
+    function canManageAbsences() {
+        $role = getUserRole();
+        return $role === USER_TYPE_TEACHER || $role === USER_TYPE_ADMIN || $role === USER_TYPE_STAFF;
+    }
 }
 
 /**
  * Vérifie si l'utilisateur peut gérer le cahier de textes
  * @return bool Vrai si l'utilisateur peut gérer le cahier de textes
  */
-function canManageCahierTextes() {
-    $role = getUserRole();
-    return $role === USER_TYPE_TEACHER || $role === USER_TYPE_ADMIN || $role === USER_TYPE_STAFF;
+if (!function_exists('canManageCahierTextes')) {
+    function canManageCahierTextes() {
+        $role = getUserRole();
+        return $role === USER_TYPE_TEACHER || $role === USER_TYPE_ADMIN || $role === USER_TYPE_STAFF;
+    }
 }
 
 /**
  * Récupère le nom complet de l'utilisateur
  * @return string Nom complet de l'utilisateur ou chaîne vide si non connecté
  */
-function getUserFullName() {
-    $user = getCurrentUser();
-    if ($user) {
-        return $user['prenom'] . ' ' . $user['nom'];
+if (!function_exists('getUserFullName')) {
+    function getUserFullName() {
+        $user = getCurrentUser();
+        if ($user) {
+            return $user['prenom'] . ' ' . $user['nom'];
+        }
+        return '';
     }
-    return '';
 }
 
 /**
  * Force l'authentification et redirige si non connecté
  * @return array Données de l'utilisateur connecté
  */
-function requireLogin() {
-    if (!isLoggedIn()) {
-        header("Location: " . LOGIN_URL);
-        exit;
+if (!function_exists('requireLogin')) {
+    function requireLogin() {
+        if (!isLoggedIn()) {
+            header("Location: " . LOGIN_URL);
+            exit;
+        }
+        return getCurrentUser();
     }
-    return getCurrentUser();
 }
 
 /**

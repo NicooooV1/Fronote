@@ -3,18 +3,17 @@
  * Module d'authentification pour le module Notes
  */
 
-// Inclure le système d'autoloading
-$autoloadPath = __DIR__ . '/../../API/autoload.php';
-
-if (file_exists($autoloadPath)) {
-    require_once $autoloadPath;
-    
-    // Initialiser l'application avec le système d'autoloading
-    bootstrap();
-} else {
-    // Fallback si le système d'autoloading n'est pas disponible
+// Démarrer la session si nécessaire
+if (session_status() === PHP_SESSION_NONE) {
     session_start();
-    
+}
+
+// Essayer d'inclure le fichier d'authentification central
+$authCentralPath = __DIR__ . '/../../API/auth_central.php';
+if (file_exists($authCentralPath)) {
+    require_once $authCentralPath;
+} else {
+    // Fallback si le fichier central n'est pas disponible
     /**
      * Vérifier si l'utilisateur est connecté
      * @return bool True si l'utilisateur est connecté

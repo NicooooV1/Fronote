@@ -469,4 +469,7 @@ if (!function_exists('logout')) {
 }
 
 // Créer un bridge pour assurer la compatibilité avec le code existant
-require_once __DIR__ . '/auth_bridge.php';
+// Cette ligne doit être après toutes les définitions de fonctions principales
+if (file_exists(__DIR__ . '/auth_bridge.php')) {
+    include_once __DIR__ . '/auth_bridge.php';
+}
