@@ -1,114 +1,96 @@
 <?php
 /**
- * Système d'autoloading pour éviter les redéclarations de fonctions
- * 
- * Ce fichier sert de point d'entrée pour charger les fonctionnalités
- * communes à tous les modules de l'application.
+ * Chargeur automatique pour Pronote
+ * Ce fichier s'occupe de charger les dépendances de base nécessaires au bon fonctionnement de l'application
  */
 
-// Vérifier si le système a déjà été chargé pour éviter des redéclarations
-if (defined('PRONOTE_AUTOLOAD_LOADED')) {
-    return;
+// Démarrer la session si elle n'est pas déjà démarrée
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
-define('PRONOTE_AUTOLOAD_LOADED', true);
 
-// Chemins des fonctionnalités principales
-$core_paths = [
-    __DIR__ . '/core/functions.php',
-    __DIR__ . '/core/auth.php',
-    __DIR__ . '/core/session.php',
-    __DIR__ . '/core/security.php',
-    __DIR__ . '/core/database.php',
-    __DIR__ . '/core/logging.php',
+// Marquer ce fichier comme inclus pour éviter les redéclarations de fonctions
+if (!defined('PRONOTE_AUTOLOAD_INCLUDED')) {
+    define('PRONOTE_AUTOLOAD_INCLUDED', true);
+}
+
+// Tableau des fichiers à charger dans l'ordre
+$coreFiles = [
+    __DIR__ . '/config/env.php',      // Configuration de l'environnement
+    __DIR__ . '/config/config.php',   // Configuration générale
+    __DIR__ . '/errors.php',          // Gestionnaire d'erreurs
+    __DIR__ . '/auth_central.php',    // Système d'authentification central
+    __DIR__ . '/database.php',        // Connexion à la base de données
+    __DIR__ . '/validator.php',       // Validateur de formulaires
+    __DIR__ . '/cache.php'            // Système de cache
 ];
 
-// Charger les fichiers principaux
-foreach ($core_paths as $path) {
-    if (file_exists($path)) {
-        require_once $path;
+// Garder une trace des fichiers chargés pour éviter les inclusions multiples
+$GLOBALS['PRONOTE_LOADED_FILES'] = $GLOBALS['PRONOTE_LOADED_FILES'] ?? [];
+
+// Charger chaque fichier s'il existe
+foreach ($coreFiles as $file) {
+    if (file_exists($file) && !in_array($file, $GLOBALS['PRONOTE_LOADED_FILES'])) {
+        require_once $file;
+        $GLOBALS['PRONOTE_LOADED_FILES'][] = $file;
     }
 }
 
 /**
  * Fonction pour initialiser l'application
  * @param array $options Options d'initialisation
+ * @return bool Succès de l'initialisation
  */
 function bootstrap($options = []) {
-    // Définir les constantes de base si elles ne sont pas déjà définies
-    if (!defined('APP_ROOT')) {
-        define('APP_ROOT', dirname(__DIR__));
-    }
-    
-    // Charger la configuration
-    $configFile = __DIR__ . '/config/config.php';
-    if (file_exists($configFile)) {
-        require_once $configFile;
-    }
-    
-    // Initialiser la session de manière sécurisée
-    if (function_exists('Pronote\Session\init')) {
-        Pronote\Session\init();
-    } else {
-        // Fallback si la fonction spécialisée n'est pas disponible
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-    }
-    
-    // Vérifier si la base de données est configurée et se connecter
-    if (defined('DB_HOST') && defined('DB_NAME') && defined('DB_USER') && defined('DB_PASS')) {
-        try {
-            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . (defined('DB_CHARSET') ? DB_CHARSET : 'utf8mb4');
-            $options = [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES => false
-            ];
-            
-            $GLOBALS['pdo'] = new PDO($dsn, DB_USER, DB_PASS, $options);
-            
-            // Rendre la connexion disponible via une fonction
-            function getPDO() {
-                return $GLOBALS['pdo'] ?? null;
-            }
-        } catch (PDOException $e) {
-            // Logger l'erreur mais ne pas l'afficher directement (sécurité)
-            error_log("Erreur de connexion à la base de données: " . $e->getMessage());
-        }
-    }
-}
-
-/**
- * Fonction pour exporter les fonctions du namespace vers le scope global
- * uniquement si elles n'existent pas déjà
- */
-function export_namespace_functions() {
-    // Liste des fonctions d'authentification à exporter
-    $auth_functions = [
-        'isLoggedIn',
-        'getCurrentUser',
-        'getUserRole',
-        'isAdmin',
-        'isTeacher',
-        'isStudent',
-        'isParent',
-        'isVieScolaire',
-        'getUserFullName',
-        'canManageNotes',
-        'canManageAbsences',
-        'canManageCahierTextes',
-        'canManageDevoirs',
-        'requireLogin'
+    // Fusionner avec les options par défaut
+    $defaultOptions = [
+        'requireLogin' => false,      // Exiger une authentification?
+        'requireAdmin' => false,      // Exiger un rôle administrateur?
+        'errorHandling' => true,      // Activer le gestionnaire d'erreurs personnalisé?
     ];
     
-    // Exporter les fonctions d'authentification si elles n'existent pas déjà
-    foreach ($auth_functions as $function) {
-        $namespace_function = "\\Pronote\\Auth\\{$function}";
-        if (function_exists($namespace_function) && !function_exists($function)) {
-            eval("function {$function}() { return call_user_func_array('{$namespace_function}', func_get_args()); }");
+    $options = array_merge($defaultOptions, $options);
+    
+    // Activer la gestion d'erreurs personnalisée si demandé
+    if ($options['errorHandling'] && function_exists('registerErrorHandler')) {
+        registerErrorHandler();
+    }
+    
+    try {
+        // Initialiser la base de données si la fonction existe
+        if (function_exists('initDatabase')) {
+            initDatabase();
         }
+        
+        // Vérifier l'authentification si nécessaire
+        if ($options['requireLogin']) {
+            if (function_exists('requireLogin')) {
+                $user = requireLogin(true); // true = rediriger si non connecté
+                
+                if ($options['requireAdmin'] && (!function_exists('isAdmin') || !isAdmin())) {
+                    // L'utilisateur n'est pas administrateur
+                    header('Location: ' . (defined('HOME_URL') ? HOME_URL : '/'));
+                    exit('Accès refusé: privilèges administrateur requis.');
+                }
+            } else {
+                // La fonction requireLogin n'existe pas
+                if (defined('LOGIN_URL')) {
+                    header('Location: ' . LOGIN_URL);
+                    exit;
+                }
+            }
+        }
+        
+        return true;
+    } catch (Exception $e) {
+        // Journaliser l'erreur
+        error_log('Erreur bootstrap: ' . $e->getMessage());
+        
+        // Afficher une erreur en mode développement
+        if (defined('APP_ENV') && APP_ENV === 'development') {
+            echo '<div style="color:red">Erreur bootstrap: ' . $e->getMessage() . '</div>';
+        }
+        
+        return false;
     }
 }
-
-// Exporter les fonctions pour la compatibilité descendante
-export_namespace_functions();

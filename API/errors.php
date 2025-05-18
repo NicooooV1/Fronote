@@ -5,6 +5,7 @@
  */
 
 // Configuration initiale pour la gestion d'erreurs
+if (!defined('APP_ENV')) define('APP_ENV', 'development');
 ini_set('display_errors', APP_ENV === 'development');
 error_reporting(E_ALL);
 
@@ -33,8 +34,8 @@ function customErrorHandler($errno, $errstr, $errfile, $errline) {
     
     $error_type = getErrorTypeName($errno);
     
-    // Journaliser l'erreur
-    logError($error_type, $errstr, $errfile, $errline);
+    // Journaliser l'erreur en utilisant la fonction de journalisation sécurisée
+    safeLogError($error_type, $errstr, $errfile, $errline);
     
     // En mode développement, afficher les erreurs
     if (APP_ENV === 'development' && error_reporting() & $errno) {
@@ -60,8 +61,8 @@ function customErrorHandler($errno, $errstr, $errfile, $errline) {
  * @param Throwable $exception L'exception lancée
  */
 function customExceptionHandler($exception) {
-    // Journaliser l'exception
-    logException($exception);
+    // Journaliser l'exception en utilisant la fonction de journalisation sécurisée
+    safeLogException($exception);
     
     // En mode développement, afficher l'exception
     if (APP_ENV === 'development') {
@@ -92,8 +93,8 @@ function fatalErrorHandler() {
         // Nettoyer la sortie précédente
         ob_clean();
         
-        // Journaliser l'erreur fatale
-        logError('FATAL_ERROR', $error['message'], $error['file'], $error['line']);
+        // Journaliser l'erreur fatale en utilisant la fonction sécurisée
+        safeLogError('FATAL_ERROR', $error['message'], $error['file'], $error['line']);
         
         // Afficher un message d'erreur approprié
         if (APP_ENV === 'development') {
@@ -123,58 +124,93 @@ function displayUserFriendlyError() {
 }
 
 /**
- * Journalise une erreur dans le fichier de log
+ * Version sécurisée de la journalisation d'erreurs qui gère les problèmes de permission
  * @param string $error_type Type d'erreur
  * @param string $message Message d'erreur
  * @param string $file Fichier où l'erreur s'est produite
  * @param int $line Ligne où l'erreur s'est produite
  */
-function logError($error_type, $message, $file, $line) {
-    $log_file = __DIR__ . '/logs/errors.log';
-    $log_dir = dirname($log_file);
-    
-    // Créer le répertoire de logs si nécessaire
-    if (!is_dir($log_dir)) {
-        mkdir($log_dir, 0755, true);
+function safeLogError($error_type, $message, $file, $line) {
+    try {
+        $log_file = sys_get_temp_dir() . '/pronote_errors.log';
+        $timestamp = date('Y-m-d H:i:s');
+        $user_info = 'Non connecté';
+        
+        if (function_exists('getCurrentUser')) {
+            $user = getCurrentUser();
+            if ($user && isset($user['identifiant'])) { // Vérification de l'existence de l'index 'identifiant'
+                $user_info = $user['identifiant'] . ' (' . $user['profil'] . ')';
+            } elseif ($user) {
+                // Si l'utilisateur est défini mais pas son identifiant
+                $nom = isset($user['nom']) ? $user['nom'] : 'Inconnu';
+                $prenom = isset($user['prenom']) ? $user['prenom'] : '';
+                $profil = isset($user['profil']) ? $user['profil'] : 'Inconnu';
+                $user_info = "$prenom $nom ($profil)";
+            }
+        }
+        
+        $ip = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+        $url = $_SERVER['REQUEST_URI'] ?? 'Unknown';
+        
+        $log_entry = "[$timestamp] [$error_type] [$ip] [$user_info] [$url] $message in $file on line $line" . PHP_EOL;
+        
+        file_put_contents($log_file, $log_entry, FILE_APPEND);
+        
+        // Essayer d'écrire dans le répertoire de logs de l'application si possible
+        $app_log_dir = __DIR__ . '/logs';
+        if (is_dir($app_log_dir) && is_writable($app_log_dir)) {
+            $app_log_file = $app_log_dir . '/errors.log';
+            file_put_contents($app_log_file, $log_entry, FILE_APPEND);
+        }
+    } catch (Exception $e) {
+        // En cas d'erreur dans la journalisation, simplement continuer
+        // Ne pas échouer si la journalisation est impossible
     }
-    
-    $timestamp = date('Y-m-d H:i:s');
-    $user = getCurrentUser();
-    $user_info = $user ? $user['identifiant'] . ' (' . $user['profil'] . ')' : 'Non connecté';
-    $ip = $_SERVER['REMOTE_ADDR'];
-    $url = $_SERVER['REQUEST_URI'];
-    
-    $log_entry = "[$timestamp] [$error_type] [$ip] [$user_info] [$url] $message in $file on line $line" . PHP_EOL;
-    
-    file_put_contents($log_file, $log_entry, FILE_APPEND);
 }
 
 /**
- * Journalise une exception dans le fichier de log
+ * Version sécurisée de la journalisation d'exceptions qui gère les problèmes de permission
  * @param Throwable $exception L'exception à journaliser
  */
-function logException($exception) {
-    $log_file = __DIR__ . '/logs/exceptions.log';
-    $log_dir = dirname($log_file);
-    
-    // Créer le répertoire de logs si nécessaire
-    if (!is_dir($log_dir)) {
-        mkdir($log_dir, 0755, true);
+function safeLogException($exception) {
+    try {
+        $log_file = sys_get_temp_dir() . '/pronote_exceptions.log';
+        $timestamp = date('Y-m-d H:i:s');
+        $user_info = 'Non connecté';
+        
+        if (function_exists('getCurrentUser')) {
+            $user = getCurrentUser();
+            if ($user && isset($user['identifiant'])) { // Vérification de l'existence de l'index 'identifiant'
+                $user_info = $user['identifiant'] . ' (' . $user['profil'] . ')';
+            } elseif ($user) {
+                // Si l'utilisateur est défini mais pas son identifiant
+                $nom = isset($user['nom']) ? $user['nom'] : 'Inconnu';
+                $prenom = isset($user['prenom']) ? $user['prenom'] : '';
+                $profil = isset($user['profil']) ? $user['profil'] : 'Inconnu';
+                $user_info = "$prenom $nom ($profil)";
+            }
+        }
+        
+        $ip = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+        $url = $_SERVER['REQUEST_URI'] ?? 'Unknown';
+        
+        $log_entry = "[$timestamp] [EXCEPTION] [$ip] [$user_info] [$url] " . PHP_EOL;
+        $log_entry .= "Type: " . get_class($exception) . PHP_EOL;
+        $log_entry .= "Message: " . $exception->getMessage() . PHP_EOL;
+        $log_entry .= "File: " . $exception->getFile() . " on line " . $exception->getLine() . PHP_EOL;
+        $log_entry .= "Trace: " . PHP_EOL . $exception->getTraceAsString() . PHP_EOL . PHP_EOL;
+        
+        file_put_contents($log_file, $log_entry, FILE_APPEND);
+        
+        // Essayer d'écrire dans le répertoire de logs de l'application si possible
+        $app_log_dir = __DIR__ . '/logs';
+        if (is_dir($app_log_dir) && is_writable($app_log_dir)) {
+            $app_log_file = $app_log_dir . '/exceptions.log';
+            file_put_contents($app_log_file, $log_entry, FILE_APPEND);
+        }
+    } catch (Exception $e) {
+        // En cas d'erreur dans la journalisation, simplement continuer
     }
-    
-    $timestamp = date('Y-m-d H:i:s');
-    $user = getCurrentUser();
-    $user_info = $user ? $user['identifiant'] . ' (' . $user['profil'] . ')' : 'Non connecté';
-    $ip = $_SERVER['REMOTE_ADDR'];
-    $url = $_SERVER['REQUEST_URI'];
-    
-    $log_entry = "[$timestamp] [EXCEPTION] [$ip] [$user_info] [$url] " . PHP_EOL;
-    $log_entry .= "Type: " . get_class($exception) . PHP_EOL;
-    $log_entry .= "Message: " . $exception->getMessage() . PHP_EOL;
-    $log_entry .= "File: " . $exception->getFile() . " on line " . $exception->getLine() . PHP_EOL;
-    $log_entry .= "Trace: " . PHP_EOL . $exception->getTraceAsString() . PHP_EOL . PHP_EOL;
-    
-    file_put_contents($log_file, $log_entry, FILE_APPEND);
 }
 
 /**
@@ -211,7 +247,7 @@ function getErrorTypeName($type) {
  */
 function stopWithError($message, $user_message = null, $status_code = 500) {
     // Journaliser l'erreur
-    logError('MANUAL_STOP', $message, debug_backtrace()[0]['file'] ?? __FILE__, debug_backtrace()[0]['line'] ?? __LINE__);
+    safeLogError('MANUAL_STOP', $message, debug_backtrace()[0]['file'] ?? __FILE__, debug_backtrace()[0]['line'] ?? __LINE__);
     
     // Définir le code de statut HTTP
     http_response_code($status_code);

@@ -181,7 +181,7 @@ if (!function_exists('checkAuth')) {
 }
 
 // Compatibilité avec différentes signatures de fonctions
-if (!function_exists('canSendAnnouncement') && function_exists('canSendAnnouncement')) {
+if (!function_exists('canSendAnnouncement') && !function_exists('canSendMessage')) {
     function canSendAnnouncement($user = null) {
         if ($user === null) $user = getCurrentUser();
         return in_array($user['profil'], ['administrateur', 'vie_scolaire']);
