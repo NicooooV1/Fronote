@@ -45,11 +45,15 @@ if (isset($user)) {
     } elseif (!isset($user['type'])) {
         $user['type'] = 'eleve'; // Valeur par défaut
     }
+
+    // Récupérer les initiales de l'utilisateur
+    $user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
     
     // Compter les notifications non lues seulement si l'utilisateur est défini
     $unreadNotifications = countUnreadNotifications($user['id'], $user['type']);
 } else {
     $unreadNotifications = 0;
+    $user_initials = '';
 }
 ?>
 <!DOCTYPE html>
@@ -61,7 +65,7 @@ if (isset($user)) {
     
     <!-- Feuilles de style -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="<?= $baseUrl ?>assets/css/main.css">
+    <link rel="stylesheet" href="<?= $baseUrl ?>assets/css/messagerie.css">
     
     <?php if (in_array($currentPage, ['conversation'])): ?>
     <link rel="stylesheet" href="<?= $baseUrl ?>assets/css/conversation.css">
@@ -72,18 +76,27 @@ if (isset($user)) {
     <?php endif; ?>
 </head>
 <body <?php if (isset($user)): ?>data-user-id="<?= $user['id'] ?>" data-user-type="<?= $user['type'] ?>"<?php endif; ?>>
-    <div class="container">
-        <header>
-            <?php if ($currentPage != 'index'): ?>
-            <a href="<?= $baseUrl ?>index.php" class="back-link"><i class="fas fa-arrow-left"></i> Retour</a>
-            <?php endif; ?>
-            
-            <h1><?= htmlspecialchars($pageTitle) ?></h1>
-            
-            <div class="user-info">
-                <?php if (isset($user)): ?>
-                <span><?= htmlspecialchars($user['prenom'] . ' ' . $user['nom']) ?></span>
-                <span class="badge"><?= htmlspecialchars(ucfirst($user['type'])) ?></span>
-                <?php endif; ?>
+    <div class="app-container">
+        <div class="sidebar">
+            <a href="../accueil/accueil.php" class="logo-container">
+                <div class="app-logo">P</div>
+                <div class="app-title">Pronote Messagerie</div>
+            </a>
+
+            <!-- Barre latérale avec le menu de navigation -->
+            <?php include 'sidebar.php'; ?>
+        </div>
+        
+        <div class="main-content">
+            <div class="top-header">
+                <div class="page-title">
+                    <h1><?= htmlspecialchars($pageTitle) ?></h1>
+                </div>
+
+                <div class="header-actions">
+                    <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">⏻</a>
+                    <div class="user-avatar" title="<?= htmlspecialchars($user['prenom'] . ' ' . $user['nom']) ?>"><?= $user_initials ?></div>
+                </div>
             </div>
-        </header>
+            
+            <div class="content-container">
