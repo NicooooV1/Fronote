@@ -90,7 +90,7 @@ if ($current_month >= 9 && $current_month <= 12) {
 // Traitement du formulaire soumis
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
-    // Vérifier si la colonne trimestre existe
+    // Vérifier la structure de la table
     $check_columns = $pdo->query("SHOW COLUMNS FROM notes");
     $columns = $check_columns->fetchAll(PDO::FETCH_COLUMN);
     
@@ -102,8 +102,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fields[] = 'nom_eleve = ?';
     $values[] = $_POST['nom_eleve'];
     
-    $fields[] = 'matiere = ?';
-    $values[] = $_POST['nom_matiere'];
+    // Gérer les différentes possibilités pour le champ matière
+    if (in_array('matiere', $columns)) {
+      $fields[] = 'matiere = ?';
+      $values[] = $_POST['nom_matiere'];
+    } else if (in_array('nom_matiere', $columns)) {
+      $fields[] = 'nom_matiere = ?';
+      $values[] = $_POST['nom_matiere'];
+    }
     
     $fields[] = 'nom_professeur = ?';
     $values[] = $_POST['nom_professeur'];
@@ -111,8 +117,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fields[] = 'note = ?';
     $values[] = $_POST['note'];
     
-    $fields[] = 'date_evaluation = ?';
-    $values[] = $_POST['date_ajout'];
+    if (in_array('date_evaluation', $columns)) {
+      $fields[] = 'date_evaluation = ?';
+      $values[] = $_POST['date_ajout'];
+    }
+    
+    if (in_array('date_ajout', $columns)) {
+      $fields[] = 'date_ajout = ?';
+      $values[] = $_POST['date_ajout'];
+    }
     
     $fields[] = 'classe = ?';
     $values[] = $_POST['classe'];
@@ -138,6 +151,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Construire la requête SQL
     $query = 'UPDATE notes SET ' . implode(', ', $fields) . ' WHERE id = ?';
+    error_log("SQL Query: " . $query);
+    error_log("SQL Values: " . print_r($values, true));
     
     $stmt = $pdo->prepare($query);
     $stmt->execute($values);
@@ -147,7 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
   } catch (PDOException $e) {
     error_log("Erreur lors de la mise à jour de la note: " . $e->getMessage());
-    $error_message = "Une erreur est survenue lors de la mise à jour de la note.";
+    $error_message = "Une erreur est survenue lors de la mise à jour de la note: " . $e->getMessage();
   }
 }
 ?>

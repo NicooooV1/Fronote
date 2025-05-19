@@ -65,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Vérifier la structure de la table
     $check_columns = $pdo->query("SHOW COLUMNS FROM notes");
     $columns = $check_columns->fetchAll(PDO::FETCH_COLUMN);
+    error_log("Table columns: " . print_r($columns, true));
     
     // Vérifier si la colonne 'eleve_id' existe
     $eleve_id_exists = in_array('eleve_id', $columns);
@@ -98,20 +99,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $placeholders[] = '?';
     $values[] = $_POST['classe'];
     
-    // S'assurer que le champ matiere est correctement défini
-    if (isset($_POST['nom_matiere']) && !empty($_POST['nom_matiere'])) {
+    // Vérifier si la table a une colonne 'matiere' ou 'nom_matiere'
+    if (in_array('matiere', $columns)) {
       $fields[] = 'matiere';
       $placeholders[] = '?';
       $values[] = $_POST['nom_matiere'];
-    } else {
-      // Si on n'a pas de matière, utiliser celle du professeur (pour les enseignants)
-      if (!empty($prof_matiere)) {
-        $fields[] = 'matiere';
-        $placeholders[] = '?';
-        $values[] = $prof_matiere;
-      } else {
-        throw new Exception("Le champ matière est obligatoire.");
-      }
+    }
+    
+    // Vérifier si la table a une colonne 'nom_matiere'
+    if (in_array('nom_matiere', $columns)) {
+      $fields[] = 'nom_matiere';
+      $placeholders[] = '?';
+      $values[] = $_POST['nom_matiere'];
     }
     
     $fields[] = 'note';
