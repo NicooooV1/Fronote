@@ -3,12 +3,34 @@ require __DIR__ . '/../config/database.php';
 require __DIR__ . '/../src/auth.php';
 require __DIR__ . '/../src/user.php';
 
+session_start();
+
+// Vérification de sécurité: seuls les administrateurs connectés peuvent accéder à cette page
+if (!isset($_SESSION['user']) || 
+    !isset($_SESSION['user']['profil']) || 
+    $_SESSION['user']['profil'] !== 'administrateur') {
+    
+    // Journaliser la tentative d'accès non autorisé
+    error_log("Tentative d'accès non autorisé à la page d'inscription - IP: " . $_SERVER['REMOTE_ADDR']);
+    
+    // Rediriger vers la page de connexion
+    header("Location: index.php");
+    exit;
+}
+
+// Récupérer les informations de l'utilisateur administrateur
+$admin = $_SESSION['user'];
+$admin_initials = strtoupper(mb_substr($admin['prenom'], 0, 1) . mb_substr($admin['nom'], 0, 1));
+
 $auth = new Auth($pdo);
 $user = new User($pdo);
 $error = '';
 $success = '';
 $generatedPassword = '';
 $identifiant = '';
+
+// Vérifier si la création de comptes administrateurs est autorisée
+$adminCreationAllowed = !file_exists(__DIR__ . '/../../admin.lock');
 
 // Chargement des données d'établissement (classes et matières)
 $etablissementData = $user->getEtablissementData();
@@ -17,554 +39,352 @@ $etablissementData = $user->getEtablissementData();
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit'])) {
     $profil = isset($_POST['profil']) ? $_POST['profil'] : '';
     
-    // Configuration des champs requis par profil
-    $requiredFields = [
-        'eleve' => ['nom', 'prenom', 'date_naissance', 'lieu_naissance', 'classe', 'adresse', 'mail'],
-        'parent' => ['nom', 'prenom', 'mail', 'adresse'],
-        'professeur' => ['nom', 'prenom', 'mail', 'adresse', 'matiere'],
-        'vie_scolaire' => ['nom', 'prenom', 'mail'],
-        'administrateur' => ['nom', 'prenom', 'mail']
-    ];
-    
-    // Champs optionnels par profil
-    $optionalFields = [
-        'eleve' => ['telephone'],
-        'parent' => ['telephone', 'metier', 'est_parent_eleve'],
-        'professeur' => ['telephone', 'professeur_principal'],
-        'vie_scolaire' => ['telephone', 'est_CPE', 'est_infirmerie'],
-        'administrateur' => ['telephone']
-    ];
-
-    if (!isset($requiredFields[$profil])) {
-        $error = 'Profil invalide.';
+    // Bloquer explicitement la création de comptes administrateurs si le fichier de verrouillage existe
+    if ($profil === 'administrateur' && !$adminCreationAllowed) {
+        $error = "La création de comptes administrateurs est désactivée.";
     } else {
-        $data = [];
+        // Configuration des champs requis par profil
+        $requiredFields = [
+            'eleve' => ['nom', 'prenom', 'date_naissance', 'lieu_naissance', 'classe', 'adresse', 'mail'],
+            'parent' => ['nom', 'prenom', 'mail', 'adresse'],
+            'professeur' => ['nom', 'prenom', 'mail', 'adresse', 'matiere'],
+            'vie_scolaire' => ['nom', 'prenom', 'mail', 'adresse'],
+            'administrateur' => ['nom', 'prenom', 'mail', 'adresse'],
+        ];
         
-        // Validation des champs requis
-        foreach ($requiredFields[$profil] as $field) {
-            if (empty($_POST[$field])) {
-                $error = "Le champ '$field' est obligatoire.";
-                break;
-            }
-            $data[$field] = trim($_POST[$field]);
-        }
-        
-        // Si pas d'erreur, on ajoute les champs optionnels
-        if (!$error) {
-            foreach ($optionalFields[$profil] as $field) {
-                if (isset($_POST[$field]) && $_POST[$field] !== '') {
-                    $data[$field] = trim($_POST[$field]);
+        // Vérifier le profil
+        if (!in_array($profil, array_keys($requiredFields))) {
+            $error = 'Profil invalide.';
+        } else {
+            $formData = [];
+            $errors = [];
+            
+            // Vérifier les champs requis
+            foreach ($requiredFields[$profil] as $field) {
+                if (empty($_POST[$field])) {
+                    $errors[] = "Le champ $field est obligatoire.";
+                } else {
+                    $formData[$field] = $_POST[$field];
                 }
             }
             
-            // Tentative de création de l'utilisateur
-            if ($user->create($profil, $data)) {
-                $generatedPassword = $user->getGeneratedPassword();
-                $identifiant = $user->getGeneratedIdentifier();
-                
-                $success = "Compte créé avec succès!";
-                
-                // Si c'est un administrateur, on s'assure de ne pas le connecter automatiquement
-                if ($profil === 'administrateur') {
-                    // Déconnecter si connecté automatiquement
-                    if ($auth->isLoggedIn()) {
-                        $auth->logout();
+            // Vérification spécifique pour l'email
+            if (!empty($formData['mail']) && !filter_var($formData['mail'], FILTER_VALIDATE_EMAIL)) {
+                $errors[] = "Le format de l'adresse email n'est pas valide.";
+            }
+            
+            // Si pas d'erreur, procéder à l'inscription
+            if (empty($errors)) {
+                // Vérifier si l'utilisateur existe déjà
+                if ($user->checkUserExists($profil, $formData)) {
+                    $error = 'Un utilisateur avec ces informations existe déjà.';
+                } else {
+                    // Générer les identifiants et créer l'utilisateur
+                    $result = $user->createUser($profil, $formData);
+                    
+                    if ($result['success']) {
+                        $success = 'Inscription réussie !';
+                        $generatedPassword = $result['password'];
+                        $identifiant = $result['identifiant'];
+                        
+                        // Journaliser la création d'un nouvel utilisateur
+                        error_log("Nouvel utilisateur créé: {$identifiant} (type: {$profil}) par admin: {$admin['identifiant']}");
+                        
+                        // Effacer les données du formulaire pour éviter une soumission en double
+                        unset($formData);
+                    } else {
+                        $error = $result['message'];
                     }
                 }
-                
-                // Réinitialiser les données du formulaire après création réussie
-                unset($data);
-                $_POST = [];
-                $profil = 'eleve'; // Réinitialiser le profil sélectionné
             } else {
-                // Récupérer le message d'erreur spécifique
-                $error = $user->getErrorMessage();
-                if (empty($error)) {
-                    $error = "Échec de l'enregistrement pour une raison inconnue. Veuillez réessayer.";
-                }
+                $error = implode('<br>', $errors);
             }
         }
     }
 }
 
-// Détermination du profil sélectionné (pour le formulaire)
-$profil = isset($_POST['profil']) ? $_POST['profil'] : 'eleve';
-
-// Déterminer quel avatar afficher en fonction du profil sélectionné
-$avatars = [
-    'eleve' => 'student.png',
-    'parent' => 'parent.png',
-    'professeur' => 'teacher.png',
-    'vie_scolaire' => 'staff.png',
-    'administrateur' => 'admin.png'
-];
-$avatarImg = $avatars[$profil] ?? 'student.png';
-$espaceTitle = 'Création compte ' . ucfirst($profil);
-
-// Générer un token CSRF pour la sécurité du formulaire
-$csrfToken = bin2hex(random_bytes(32));
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-$_SESSION['csrf_token'] = $csrfToken;
+// Titre de la page et informations pour le template
+$pageTitle = "Inscription d'un nouvel utilisateur";
 ?>
+
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pronote - Inscription</title>
-    <link rel="stylesheet" href="assets/css/pronote-style.css">
+    <title><?= htmlspecialchars($pageTitle) ?> - Pronote</title>
+    <link rel="stylesheet" href="assets/css/pronote-login.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Les styles de suggestions sont maintenant intégrés dans pronote-style.css -->
+    <style>
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .admin-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .admin-avatar {
+            width: 35px;
+            height: 35px;
+            background-color: #00843d;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+        
+        .backlink {
+            color: #333;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .backlink:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
 <body>
     <div class="register-container">
-        <div class="app-header">
-            <div class="app-logo">P</div>
-            <h1 class="app-title">Pronote - Inscription</h1>
+        <div class="admin-header">
+            <a href="../../accueil/accueil.php" class="backlink">
+                <i class="fas fa-arrow-left"></i> Retour à l'accueil
+            </a>
+            <div class="admin-info">
+                <span>Admin: <?= htmlspecialchars($admin['prenom'] . ' ' . $admin['nom']) ?></span>
+                <div class="admin-avatar"><?= $admin_initials ?></div>
+            </div>
         </div>
         
+        <div class="app-header">
+            <div class="app-logo">P</div>
+            <h1 class="app-title">Inscription d'un utilisateur</h1>
+        </div>
+        
+        <?php if (!empty($error)): ?>
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-circle"></i>
+                <div><?= $error ?></div>
+            </div>
+        <?php endif; ?>
+        
         <?php if (!empty($success)): ?>
-            <div class="alert alert-success">
-                <i class="fas fa-check-circle"></i>
-                <p><?php echo htmlspecialchars($success); ?></p>
+            <div class="success-message">
+                <h3><i class="fas fa-check-circle"></i> Inscription réussie !</h3>
+                <p>Le compte utilisateur a été créé avec succès.</p>
                 
                 <div class="credentials-info">
-                    <strong>Identifiant :</strong> <?php echo htmlspecialchars($identifiant); ?><br>
-                    <strong>Mot de passe temporaire :</strong> <?php echo htmlspecialchars($generatedPassword); ?>
-                    <p class="warning">Notez ces informations, elles ne seront plus affichées.</p>
+                    <p><strong>Identifiant :</strong> <?= htmlspecialchars($identifiant) ?></p>
+                    <p><strong>Mot de passe :</strong> <?= htmlspecialchars($generatedPassword) ?></p>
+                    <p class="warning">Veuillez communiquer ces informations à l'utilisateur de façon sécurisée.</p>
                 </div>
             </div>
             
             <div class="form-actions">
-                <a href="index.php" class="btn-connect">Se connecter</a>
-                <a href="register.php" class="btn-secondary">Nouvelle inscription</a>
+                <a href="../../accueil/accueil.php" class="btn btn-secondary">Retour à l'accueil</a>
+                <a href="register.php" class="btn btn-primary">Inscrire un autre utilisateur</a>
             </div>
         <?php else: ?>
-            <?php if (!empty($error)): ?>
-                <div class="alert alert-error">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <?php echo htmlspecialchars($error); ?>
-                </div>
-            <?php endif; ?>
-            
-            <form action="register.php" method="post" class="register-form">
-                <input type="hidden" name="csrf_token" value="<?= $csrfToken ?>">
-                
+            <form method="post" action="" class="register-form">
                 <div class="form-group">
-                    <label for="profil">Profil</label>
-                    <select id="profil" name="profil" required>
-                        <option value="">Sélectionnez votre profil</option>
-                        <option value="eleve" <?php echo ($profil === 'eleve') ? 'selected' : ''; ?>>Élève</option>
-                        <option value="parent" <?php echo ($profil === 'parent') ? 'selected' : ''; ?>>Parent d'élève</option>
-                        <option value="professeur" <?php echo ($profil === 'professeur') ? 'selected' : ''; ?>>Professeur</option>
-                        <option value="vie_scolaire" <?php echo ($profil === 'vie_scolaire') ? 'selected' : ''; ?>>Vie scolaire</option>
-                        <option value="administrateur" <?php echo ($profil === 'administrateur') ? 'selected' : ''; ?>>Administrateur</option>
+                    <label for="profil" class="required-field">Type d'utilisateur</label>
+                    <select id="profil" name="profil" required onchange="showFields()">
+                        <option value="" disabled selected>Choisir...</option>
+                        <option value="eleve">Élève</option>
+                        <option value="parent">Parent</option>
+                        <option value="professeur">Professeur</option>
+                        <option value="vie_scolaire">Vie Scolaire</option>
+                        <?php if ($adminCreationAllowed): ?>
+                        <option value="administrateur">Administrateur</option>
+                        <?php endif; ?>
                     </select>
+                    <?php if (!$adminCreationAllowed): ?>
+                        <div class="info-message">
+                            <p>La création de nouveaux comptes administrateurs est désactivée car un administrateur principal a déjà été créé.</p>
+                            <p>Les comptes administrateurs existants peuvent être gérés depuis le <a href="../../admin/admin_accounts.php">panneau d'administration</a>.</p>
+                        </div>
+                    <?php endif; ?>
                 </div>
                 
-                <div class="form-group">
-                    <label for="nom">Nom</label>
-                    <input type="text" id="nom" name="nom" value="<?php echo htmlspecialchars(isset($_POST['nom']) ? $_POST['nom'] : ''); ?>" required>
+                <div class="required-notice">* Champs obligatoires</div>
+                
+                <div id="commonFields">
+                    <div class="form-group">
+                        <label for="nom" class="required-field">Nom</label>
+                        <input type="text" id="nom" name="nom" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="prenom" class="required-field">Prénom</label>
+                        <input type="text" id="prenom" name="prenom" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="mail" class="required-field">Adresse email</label>
+                        <input type="email" id="mail" name="mail" required>
+                    </div>
                 </div>
                 
-                <div class="form-group">
-                    <label for="prenom">Prénom</label>
-                    <input type="text" id="prenom" name="prenom" value="<?php echo htmlspecialchars(isset($_POST['prenom']) ? $_POST['prenom'] : ''); ?>" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="mail">Email</label>
-                    <input type="email" id="mail" name="mail" value="<?php echo htmlspecialchars(isset($_POST['mail']) ? $_POST['mail'] : ''); ?>" required>
-                </div>
-                
-                <!-- Champs dynamiques qui s'affichent en fonction du profil -->
                 <div id="dynamicFields"></div>
                 
                 <div class="form-actions">
-                    <a href="index.php" class="btn-cancel">Annuler</a>
-                    <button type="submit" name="submit" value="1" class="btn-connect">S'inscrire</button>
+                    <a href="../../accueil/accueil.php" class="btn btn-secondary">Annuler</a>
+                    <button type="submit" name="submit" class="btn btn-primary">Inscrire l'utilisateur</button>
                 </div>
             </form>
         <?php endif; ?>
     </div>
     
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Définir les champs spécifiques à chaque profil
-            const profileFields = {
-                'eleve': `
+        // Fonction pour afficher les champs spécifiques au profil
+        function showFields() {
+            const profil = document.getElementById('profil').value;
+            const dynamicFieldsDiv = document.getElementById('dynamicFields');
+            
+            if (!profil) return;
+            
+            let fields = '';
+            
+            // Champs pour tous les profils avec adresse
+            fields += `
+                <div class="form-group">
+                    <label for="adresse" class="required-field">Adresse</label>
+                    <input type="text" id="adresse" name="adresse" required>
+                </div>
+            `;
+            
+            if (profil === 'eleve') {
+                fields += `
                     <div class="form-group">
-                        <label for="date_naissance">Date de naissance</label>
+                        <label for="date_naissance" class="required-field">Date de naissance</label>
                         <input type="date" id="date_naissance" name="date_naissance" required>
                     </div>
+                    
                     <div class="form-group">
-                        <label for="lieu_naissance">Lieu de naissance</label>
-                        <div class="autocomplete-container">
-                            <input type="text" id="lieu_naissance" name="lieu_naissance" required autocomplete="off">
-                            <div id="villesSuggestions" class="suggestions-container" style="display:none;"></div>
-                        </div>
+                        <label for="lieu_naissance" class="required-field">Lieu de naissance</label>
+                        <input type="text" id="lieu_naissance" name="lieu_naissance" required>
                     </div>
+                    
                     <div class="form-group">
-                        <label for="classe">Classe</label>
+                        <label for="classe" class="required-field">Classe</label>
                         <select id="classe" name="classe" required>
-                            <option value="">Sélectionner une classe</option>
-                            <!-- Options générées dynamiquement -->
+                            <option value="" disabled selected>Choisir...</option>
+                            ${getClassesOptions()}
                         </select>
                     </div>
+                `;
+            } else if (profil === 'professeur') {
+                fields += `
                     <div class="form-group">
-                        <label for="adresse">Adresse</label>
-                        <div class="autocomplete-container">
-                            <input type="text" id="adresse" name="adresse" required autocomplete="off">
-                            <div id="adressesSuggestions" class="suggestions-container" style="display:none;"></div>
-                        </div>
-                    </div>
-                `,
-                'parent': `
-                    <div class="form-group">
-                        <label for="adresse">Adresse</label>
-                        <div class="autocomplete-container">
-                            <input type="text" id="adresse" name="adresse" required autocomplete="off">
-                            <div id="adressesSuggestions" class="suggestions-container" style="display:none;"></div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="telephone">Téléphone</label>
-                        <input type="text" id="telephone" name="telephone" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="metier">Profession</label>
-                        <input type="text" id="metier" name="metier">
-                    </div>
-                `,
-                'professeur': `
-                    <div class="form-group">
-                        <label for="matiere">Matière enseignée</label>
+                        <label for="matiere" class="required-field">Matière enseignée</label>
                         <select id="matiere" name="matiere" required>
-                            <option value="">Sélectionner une matière</option>
-                            <!-- Options générées dynamiquement -->
+                            <option value="" disabled selected>Choisir...</option>
+                            ${getMatieresOptions()}
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="adresse">Adresse</label>
-                        <div class="autocomplete-container">
-                            <input type="text" id="adresse" name="adresse" required autocomplete="off">
-                            <div id="adressesSuggestions" class="suggestions-container" style="display:none;"></div>
-                        </div>
+                        <label for="est_pp">Professeur principal</label>
+                        <select id="est_pp" name="est_pp">
+                            <option value="0" selected>Non</option>
+                            <option value="1">Oui</option>
+                        </select>
                     </div>
+                `;
+            } else if (profil === 'parent') {
+                fields += `
                     <div class="form-group">
-                        <label for="telephone">Téléphone</label>
-                        <input type="text" id="telephone" name="telephone" required>
+                        <label for="enfant">Nom de l'enfant (facultatif)</label>
+                        <input type="text" id="enfant" name="enfant" placeholder="Vous pourrez associer l'enfant plus tard">
                     </div>
-                `,
-                'vie_scolaire': `
+                `;
+            } else if (profil === 'vie_scolaire') {
+                fields += `
                     <div class="form-group">
                         <label for="est_CPE">CPE</label>
                         <select id="est_CPE" name="est_CPE">
-                            <option value="oui">Oui</option>
-                            <option value="non" selected>Non</option>
+                            <option value="0" selected>Non</option>
+                            <option value="1">Oui</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="est_infirmerie">Infirmerie</label>
                         <select id="est_infirmerie" name="est_infirmerie">
-                            <option value="oui">Oui</option>
-                            <option value="non" selected>Non</option>
+                            <option value="0" selected>Non</option>
+                            <option value="1">Oui</option>
                         </select>
                     </div>
-                `,
-                'administrateur': `
-                    <!-- Aucun champ supplémentaire nécessaire -->
-                `
-            };
-            
-            // Fonction pour mettre à jour les champs du formulaire
-            function updateFormFields() {
-                const profil = document.getElementById('profil').value;
-                const dynamicFields = document.getElementById('dynamicFields');
-                
-                if (profil && profileFields[profil]) {
-                    dynamicFields.innerHTML = profileFields[profil];
-                    
-                    // Initialiser les champs spécifiques
-                    if (profil === 'eleve') {
-                        loadClasses();
-                        setupVilleAutocomplete();
-                        setupAdresseAutocomplete();
-                    } else if (profil === 'professeur') {
-                        loadMatieres();
-                        setupAdresseAutocomplete();
-                    } else if (profil === 'parent') {
-                        setupAdresseAutocomplete();
-                    }
-                } else {
-                    dynamicFields.innerHTML = '';
-                }
+                `;
+            } else if (profil === 'administrateur') {
+                fields += `
+                    <div class="form-group">
+                        <label for="role">Rôle administratif</label>
+                        <select id="role" name="role" required>
+                            <option value="" disabled selected>Choisir...</option>
+                            <option value="direction">Direction</option>
+                            <option value="secretariat">Secrétariat</option>
+                            <option value="technique">Support technique</option>
+                        </select>
+                    </div>
+                `;
             }
             
-            // Fonction pour charger les classes
-            function loadClasses() {
-                const classeSelect = document.getElementById('classe');
-                if (classeSelect) {
-                    // Vérifier si l'élément a déjà été chargé
-                    if (classeSelect.options.length <= 1) {
-                        // Tenter d'utiliser les données de l'établissement chargées par PHP
-                        <?php if (!empty($etablissementData) && isset($etablissementData['classes'])): ?>
-                            // Utiliser les données chargées par PHP
-                            const classes = <?php echo json_encode($etablissementData['classes']); ?>;
-                            
-                            // Parcourir les niveaux
-                            Object.keys(classes).forEach(niveau => {
-                                const optgroup = document.createElement('optgroup');
-                                optgroup.label = niveau;
-                                
-                                // Ajouter les classes de ce niveau
-                                classes[niveau].forEach(classe => {
-                                    const option = document.createElement('option');
-                                    option.value = classe;
-                                    option.textContent = classe;
-                                    optgroup.appendChild(option);
-                                });
-                                
-                                classeSelect.appendChild(optgroup);
-                            });
-                        <?php else: ?>
-                            // Fallback: données statiques
-                            const classes = [
-                                { niveau: 'Collège', classes: ['6A', '6B', '5A', '5B', '4A', '4B', '3A', '3B'] },
-                                { niveau: 'Lycée', classes: ['2ndA', '2ndB', '1èreA', '1èreB', 'TermA', 'TermB'] }
-                            ];
-                            
-                            classes.forEach(niveau => {
-                                const optgroup = document.createElement('optgroup');
-                                optgroup.label = niveau.niveau;
-                                
-                                niveau.classes.forEach(classe => {
-                                    const option = document.createElement('option');
-                                    option.value = classe;
-                                    option.textContent = classe;
-                                    optgroup.appendChild(option);
-                                });
-                                
-                                classeSelect.appendChild(optgroup);
-                            });
-                        <?php endif; ?>
-                    }
-                }
-            }
+            dynamicFieldsDiv.innerHTML = fields;
+        }
+        
+        // Fonction pour générer les options de classes
+        function getClassesOptions() {
+            const classesData = <?= json_encode($etablissementData['classes'] ?? []) ?>;
+            let options = '';
             
-            // Fonction pour charger les matières
-            function loadMatieres() {
-                const matiereSelect = document.getElementById('matiere');
-                if (matiereSelect) {
-                    // Vérifier si l'élément a déjà été chargé
-                    if (matiereSelect.options.length <= 1) {
-                        <?php if (!empty($etablissementData) && isset($etablissementData['matieres'])): ?>
-                            // Utiliser les données chargées par PHP
-                            const matieres = <?php echo json_encode(array_column($etablissementData['matieres'], 'nom')); ?>;
-                            
-                            // Ajouter les options
-                            matieres.forEach(matiere => {
-                                const option = document.createElement('option');
-                                option.value = matiere;
-                                option.textContent = matiere;
-                                matiereSelect.appendChild(option);
-                            });
-                        <?php else: ?>
-                            // Fallback: données statiques
-                            const matieres = [
-                                'Mathématiques', 
-                                'Français', 
-                                'Histoire-Géographie', 
-                                'Sciences Physiques', 
-                                'SVT', 
-                                'Anglais', 
-                                'Espagnol', 
-                                'Allemand', 
-                                'EPS', 
-                                'Arts Plastiques', 
-                                'Musique', 
-                                'Technologie', 
-                                'Sciences Économiques'
-                            ];
-                            
-                            matieres.forEach(matiere => {
-                                const option = document.createElement('option');
-                                option.value = matiere;
-                                option.textContent = matiere;
-                                matiereSelect.appendChild(option);
-                            });
-                        <?php endif; ?>
-                    }
-                }
-            }
-            
-            // Implémentation robuste de l'autocomplétion pour les villes
-            function setupVilleAutocomplete() {
-                const lieuNaissanceInput = document.getElementById('lieu_naissance');
-                const villesSuggestions = document.getElementById('villesSuggestions');
+            // Parcourir la structure des classes (qui peut avoir plusieurs niveaux)
+            for (const niveau in classesData) {
+                options += `<optgroup label="${niveau}">`;
                 
-                if (!lieuNaissanceInput || !villesSuggestions) return;
-                
-                // Désactiver l'autocomplétion native du navigateur
-                lieuNaissanceInput.setAttribute('autocomplete', 'off');
-                
-                lieuNaissanceInput.addEventListener('input', function() {
-                    const query = this.value.trim();
-                    
-                    if (query.length < 2) {
-                        villesSuggestions.style.display = 'none';
-                        return;
-                    }
-                    
-                    // Appel à l'API
-                    fetch(`https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(query)}&boost=population&limit=5`)
-                        .then(response => response.json())
-                        .then(data => {
-                            // Vider le conteneur des suggestions
-                            villesSuggestions.innerHTML = '';
-                            
-                            if (data.length > 0) {
-                                // Créer les éléments de suggestion
-                                data.forEach(ville => {
-                                    const div = document.createElement('div');
-                                    div.className = 'suggestion-item';
-                                    div.textContent = `${ville.nom} (${ville.codeDepartement})`;
-                                    
-                                    // Ajouter un gestionnaire d'événements de clic
-                                    div.addEventListener('click', function() {
-                                        lieuNaissanceInput.value = `${ville.nom} (${ville.codeDepartement})`;
-                                        villesSuggestions.style.display = 'none';
-                                    });
-                                    
-                                    villesSuggestions.appendChild(div);
-                                });
-                                
-                                // Afficher le conteneur de suggestions avec des styles inline
-                                villesSuggestions.style.display = 'block';
-                                villesSuggestions.style.backgroundColor = 'white';
-                                villesSuggestions.style.border = '1px solid #ddd';
-                                villesSuggestions.style.maxHeight = '200px';
-                                villesSuggestions.style.overflowY = 'auto';
-                                villesSuggestions.style.zIndex = '9999';
-                                villesSuggestions.style.width = '100%';
-                                villesSuggestions.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
-                            } else {
-                                villesSuggestions.style.display = 'none';
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Erreur API villes:', error);
-                            villesSuggestions.style.display = 'none';
+                for (const sousNiveau in classesData[niveau]) {
+                    // Si c'est un sous-niveau avec des classes
+                    if (Array.isArray(classesData[niveau][sousNiveau])) {
+                        classesData[niveau][sousNiveau].forEach(classe => {
+                            options += `<option value="${classe}">${classe}</option>`;
                         });
-                });
-                
-                // Fermer les suggestions en cas de clic en dehors
-                document.addEventListener('click', function(e) {
-                    if (!lieuNaissanceInput.contains(e.target) && !villesSuggestions.contains(e.target)) {
-                        villesSuggestions.style.display = 'none';
                     }
-                });
+                }
                 
-                // Focus sur le champ input
-                lieuNaissanceInput.addEventListener('focus', function() {
-                    if (this.value.trim().length >= 2) {
-                        // Simuler un événement d'entrée pour afficher les suggestions
-                        this.dispatchEvent(new Event('input'));
-                    }
-                });
+                options += `</optgroup>`;
             }
             
-            // Implémentation robuste de l'autocomplétion pour les adresses
-            function setupAdresseAutocomplete() {
-                const adresseInput = document.getElementById('adresse');
-                const adressesSuggestions = document.getElementById('adressesSuggestions');
-                
-                if (!adresseInput || !adressesSuggestions) return;
-                
-                // Désactiver l'autocomplétion native du navigateur
-                adresseInput.setAttribute('autocomplete', 'off');
-                
-                // Timer pour limiter les appels API
-                let typingTimer;
-                const doneTypingInterval = 300;
-                
-                adresseInput.addEventListener('input', function() {
-                    clearTimeout(typingTimer);
-                    
-                    const query = this.value.trim();
-                    
-                    if (query.length < 3) {
-                        adressesSuggestions.style.display = 'none';
-                        return;
-                    }
-                    
-                    typingTimer = setTimeout(() => {
-                        // Appel à l'API
-                        fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5`)
-                            .then(response => response.json())
-                            .then(data => {
-                                // Vider le conteneur des suggestions
-                                adressesSuggestions.innerHTML = '';
-                                
-                                if (data.features && data.features.length > 0) {
-                                    // Créer les éléments de suggestion
-                                    data.features.forEach(feature => {
-                                        const div = document.createElement('div');
-                                        div.className = 'suggestion-item';
-                                        div.textContent = feature.properties.label;
-                                        
-                                        // Ajouter un gestionnaire d'événements de clic
-                                        div.addEventListener('click', function() {
-                                            adresseInput.value = feature.properties.label;
-                                            adressesSuggestions.style.display = 'none';
-                                        });
-                                        
-                                        adressesSuggestions.appendChild(div);
-                                    });
-                                    
-                                    // Afficher le conteneur de suggestions avec des styles inline
-                                    adressesSuggestions.style.display = 'block';
-                                    adressesSuggestions.style.backgroundColor = 'white';
-                                    adressesSuggestions.style.border = '1px solid #ddd';
-                                    adressesSuggestions.style.maxHeight = '200px';
-                                    adressesSuggestions.style.overflowY = 'auto';
-                                    adressesSuggestions.style.zIndex = '9999';
-                                    adressesSuggestions.style.width = '100%';
-                                    adressesSuggestions.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
-                                } else {
-                                    adressesSuggestions.style.display = 'none';
-                                }
-                            })
-                            .catch(error => {
-                                console.error('Erreur API adresses:', error);
-                                adressesSuggestions.style.display = 'none';
-                            });
-                    }, doneTypingInterval);
-                });
-                
-                // Fermer les suggestions en cas de clic en dehors
-                document.addEventListener('click', function(e) {
-                    if (!adresseInput.contains(e.target) && !adressesSuggestions.contains(e.target)) {
-                        adressesSuggestions.style.display = 'none';
-                    }
-                });
-                
-                // Focus sur le champ input
-                adresseInput.addEventListener('focus', function() {
-                    if (this.value.trim().length >= 3) {
-                        // Simuler un événement d'entrée pour afficher les suggestions
-                        this.dispatchEvent(new Event('input'));
-                    }
-                });
+            return options;
+        }
+        
+        // Fonction pour générer les options de matières
+        function getMatieresOptions() {
+            const matieresData = <?= json_encode($etablissementData['matieres'] ?? []) ?>;
+            let options = '';
+            
+            matieresData.forEach(matiere => {
+                options += `<option value="${matiere.nom}">${matiere.nom} (${matiere.code})</option>`;
+            });
+            
+            return options;
+        }
+        
+        // Initialiser l'affichage des champs au chargement de la page
+        document.addEventListener('DOMContentLoaded', function() {
+            const profilSelect = document.getElementById('profil');
+            if (profilSelect && profilSelect.value) {
+                showFields();
             }
-            
-            // Écouter les changements sur le sélecteur de profil
-            document.getElementById('profil').addEventListener('change', updateFormFields);
-            
-            // Initialiser le formulaire
-            updateFormFields();
         });
     </script>
 </body>

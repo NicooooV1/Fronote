@@ -161,6 +161,9 @@ try {
     // Gérer silencieusement l'erreur
     error_log("Erreur lors de la récupération des notes: " . $e->getMessage());
 }
+
+// Déterminer si l'utilisateur est un administrateur pour afficher les options d'administration
+$isAdmin = isset($user['profil']) && $user['profil'] === 'administrateur';
 ?>
 
 <!DOCTYPE html>
@@ -240,6 +243,13 @@ try {
             </div>
             
             <div class="header-actions">
+                <?php if ($isAdmin): ?>
+                    <div class="admin-menu">
+                        <a href="../login/public/register.php" class="admin-action-button" title="Inscrire un nouvel utilisateur">
+                            <i class="fas fa-user-plus"></i>
+                        </a>
+                    </div>
+                <?php endif; ?>
                 <a href="/~u22405372/SAE/Pronote/login/public/logout.php" class="logout-button" title="Déconnexion">⏻</a>
                 <div class="user-avatar"><?= $user_initials ?></div>
             </div>

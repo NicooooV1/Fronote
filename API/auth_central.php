@@ -220,3 +220,12 @@ function logout() {
     // Détruire la session
     session_destroy();
 }
+
+/**
+ * Vérifie si la création de comptes administrateur est autorisée
+ * @return bool True si la création de comptes administrateur est autorisée
+ */
+function isAdminCreationAllowed() {
+    $adminLockFile = __DIR__ . '/../admin.lock';
+    return !file_exists($adminLockFile);
+}

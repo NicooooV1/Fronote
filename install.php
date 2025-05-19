@@ -156,6 +156,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $appEnv = filter_input(INPUT_POST, 'app_env', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
             $baseUrlInput = filter_input(INPUT_POST, 'base_url', FILTER_SANITIZE_URL) ?: $baseUrl;
             
+            // Récupérer les informations du compte administrateur
+            $adminNom = filter_input(INPUT_POST, 'admin_nom', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?: '';
+            $adminPrenom = filter_input(INPUT_POST, 'admin_prenom', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?: '';
+            $adminMail = filter_input(INPUT_POST, 'admin_mail', FILTER_SANITIZE_EMAIL) ?: '';
+            $adminPassword = $_POST['admin_password'] ?? '';
+            
             // Valider l'environnement
             $validEnvs = ['development', 'production', 'test'];
             if (!in_array($appEnv, $validEnvs)) {
@@ -165,6 +171,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Validation supplémentaire
             if (empty($dbName) || empty($dbUser)) {
                 throw new Exception("Le nom de la base de données et l'utilisateur sont obligatoires.");
+            }
+            
+            // Validation du compte administrateur
+            if (empty($adminNom) || empty($adminPrenom) || empty($adminMail) || empty($adminPassword)) {
+                throw new Exception("Tous les champs du compte administrateur sont obligatoires.");
+            }
+            
+            if (!filter_var($adminMail, FILTER_VALIDATE_EMAIL)) {
+                throw new Exception("L'adresse email de l'administrateur n'est pas valide.");
+            }
+            
+            // Validation renforcée du mot de passe
+            if (strlen($adminPassword) < 12) {
+                throw new Exception("Le mot de passe administrateur doit contenir au moins 12 caractères.");
+            }
+            
+            // Vérifier la robustesse du mot de passe avec des règles strictes
+            $uppercase = preg_match('/[A-Z]/', $adminPassword);
+            $lowercase = preg_match('/[a-z]/', $adminPassword);
+            $number    = preg_match('/[0-9]/', $adminPassword);
+            $specialChars = preg_match('/[^a-zA-Z0-9]/', $adminPassword);
+            
+            if (!$uppercase || !$lowercase || !$number || !$specialChars) {
+                throw new Exception("Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre et un caractère spécial.");
             }
             
             // Tester la connexion à la base de données
@@ -288,11 +318,86 @@ HTACCESS;
                     }
                 }
                 
+                // Créer le compte administrateur initial
+                // Vérifier d'abord que la table existe
+                $tableExists = false;
+                try {
+                    $checkTable = $pdo->query("SHOW TABLES LIKE 'administrateurs'");
+                    $tableExists = $checkTable && $checkTable->rowCount() > 0;
+                } catch (PDOException $e) {
+                    // Ignorer cette erreur et essayer de créer la table
+                }
+                
+                // Si la table n'existe pas, la créer
+                if (!$tableExists) {
+                    $pdo->exec("CREATE TABLE IF NOT EXISTS `administrateurs` (
+                        `id` int(11) NOT NULL AUTO_INCREMENT,
+                        `nom` varchar(50) NOT NULL,
+                        `prenom` varchar(50) NOT NULL,
+                        `mail` varchar(100) NOT NULL,
+                        `identifiant` varchar(50) NOT NULL,
+                        `mot_de_passe` varchar(255) NOT NULL,
+                        `date_creation` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        `adresse` varchar(255) DEFAULT NULL,
+                        `role` varchar(50) NOT NULL DEFAULT 'administration',
+                        `actif` tinyint(1) NOT NULL DEFAULT '1',
+                        PRIMARY KEY (`id`),
+                        UNIQUE KEY `identifiant` (`identifiant`),
+                        UNIQUE KEY `mail` (`mail`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+                }
+                
+                // Hachage du mot de passe avec une méthode sécurisée
+                $passwordHash = password_hash($adminPassword, PASSWORD_DEFAULT);
+                
+                // Générer un identifiant au format nom.prenom
+                $identifiant = strtolower(
+                    transliterator_transliterate(
+                        'Any-Latin; Latin-ASCII; [^a-zA-Z0-9\.] Remove;', 
+                        $adminNom
+                    ) . '.' . 
+                    transliterator_transliterate(
+                        'Any-Latin; Latin-ASCII; [^a-zA-Z0-9] Remove;', 
+                        $adminPrenom
+                    )
+                );
+                
+                // En cas de problème avec transliterator, utiliser un fallback simple
+                if (empty($identifiant)) {
+                    $identifiant = strtolower(
+                        preg_replace('/[^a-zA-Z0-9]/', '', $adminNom) . '.' . 
+                        preg_replace('/[^a-zA-Z0-9]/', '', $adminPrenom)
+                    );
+                }
+                
+                // Insérer l'administrateur en utilisant une requête préparée
+                $stmt = $pdo->prepare("
+                    INSERT INTO administrateurs 
+                    (nom, prenom, mail, identifiant, mot_de_passe, role, adresse) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([
+                    $adminNom,
+                    $adminPrenom,
+                    $adminMail,
+                    $identifiant,
+                    $passwordHash,
+                    'administrateur', // Rôle par défaut
+                    'N/A' // Adresse par défaut
+                ]);
+                
+                // Créer un fichier de verrouillage des comptes admin
+                $adminLockFile = $installDir . '/admin.lock';
+                $adminLockContent = "ADMIN_CREATED=true\nDATE=" . date('Y-m-d H:i:s');
+                file_put_contents($adminLockFile, $adminLockContent, LOCK_EX);
+                chmod($adminLockFile, 0400); // Rendre le fichier en lecture seule
+                
                 // Créer un fichier de verrou pour empêcher l'exécution future de l'installation
                 $installTime = date('Y-m-d H:i:s');
                 $lockContent = <<<LOCK
 Installation completed on: {$installTime}
 IP: {$clientIP}
+Admin account created: {$adminNom} {$adminPrenom} ({$identifiant})
 DO NOT DELETE THIS FILE UNLESS YOU WANT TO REINSTALL THE APPLICATION
 LOCK;
 
@@ -300,6 +405,7 @@ LOCK;
                 
                 // Indiquer que l'installation est réussie
                 $installed = true;
+                $adminIdentifiant = $identifiant;
                 
                 // Sécuriser le fichier d'installation immédiatement
                 if (file_exists(__DIR__ . '/install_guard.php')) {
@@ -348,7 +454,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input[type="text"], input[type="password"], select { 
+        input[type="text"], input[type="password"], input[type="email"], select { 
             width: 100%; 
             padding: 8px; 
             border: 1px solid #ddd;
@@ -405,6 +511,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius: 3px;
             font-family: monospace;
         }
+        .section-title {
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
     </style>
 </head>
 <body>
@@ -420,7 +531,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="success">
             <h2>Installation réussie!</h2>
             <p>Pronote a été correctement configuré.</p>
-            <p><strong>Important:</strong> Par mesure de sécurité, le script d'installation a été désactivé. Pour réinstaller, supprimez le fichier <code>install.lock</code> du répertoire racine.</p>
+            <p><strong>Compte administrateur créé:</strong> Identifiant: <code><?= htmlspecialchars($adminIdentifiant) ?></code></p>
+            <p><strong>Important:</strong> Par mesure de sécurité, le script d'installation a été désactivé et aucun autre compte administrateur ne pourra être créé ultérieurement.</p>
             <p><a href="<?= htmlspecialchars($baseUrl) ?>/login/public/index.php">Accéder à l'application</a></p>
         </div>
     <?php else: ?>
@@ -457,6 +569,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         <?php else: ?>
             <form method="post" action="">
+                <h2 class="section-title">Configuration de l'application</h2>
                 <div class="form-group">
                     <label for="base_url">URL de base de l'application</label>
                     <input type="text" id="base_url" name="base_url" value="<?= htmlspecialchars($baseUrl) ?>" required>
@@ -472,6 +585,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </select>
                 </div>
                 
+                <h2 class="section-title">Configuration de la base de données</h2>
                 <div class="form-group">
                     <label for="db_host">Hôte de la base de données</label>
                     <input type="text" id="db_host" name="db_host" value="localhost" required>
@@ -492,6 +606,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <input type="password" id="db_pass" name="db_pass">
                 </div>
                 
+                <h2 class="section-title">Création du compte administrateur principal</h2>
+                <p>Ce compte sera le seul compte administrateur autorisé. Aucun autre compte administrateur ne pourra être créé ultérieurement.</p>
+                
+                <div class="form-group">
+                    <label for="admin_nom">Nom</label>
+                    <input type="text" id="admin_nom" name="admin_nom" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="admin_password">Mot de passe</label>
+                    <input type="password" id="admin_password" name="admin_password" required minlength="12" " name="admin_prenom" required>
+                           pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{12,}"
+                           title="Le mot de passe doit contenir au moins 12 caractères, incluant au moins une majuscule, une minuscule, un chiffre et un caractère spécial">
+                    <small>Minimum 12 caractères incluant au moins une majuscule, une minuscule, un chiffre et un caractère spécial</small>
+                </div>
+                    <input type="email" id="admin_mail" name="admin_mail" required>
+                <!-- Champ caché pour le jeton CSRF -->
+                <input type="hidden" name="install_token" value="<?= htmlspecialchars($install_token) ?>">
+                ass="form-group">
+                <button type="submit">Installer</button> <label for="admin_password">Mot de passe</label>
+            </form>             <input type="password" id="admin_password" name="admin_password" required minlength="8">
+        <?php endif; ?>             <small>Minimum 8 caractères</small>
+    <?php endif; ?>                </div>
+
+
+
+</html></body>                
                 <!-- Champ caché pour le jeton CSRF -->
                 <input type="hidden" name="install_token" value="<?= htmlspecialchars($install_token) ?>">
                 

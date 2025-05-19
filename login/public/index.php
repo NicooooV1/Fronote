@@ -46,7 +46,7 @@ $csrfToken = \Pronote\Security\generate_csrf_token();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pronote - Connexion</title>
-    <link rel="stylesheet" href="assets/css/pronote-style.css">
+    <link rel="stylesheet" href="assets/css/pronote-login.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
@@ -56,68 +56,84 @@ $csrfToken = \Pronote\Security\generate_csrf_token();
             <h1 class="app-title">Pronote</h1>
         </div>
         
-        <div class="login-form">
-            <?php if (!empty($error)): ?>
-                <div class="alert alert-error">
-                    <i class="fas fa-exclamation-circle"></i> <?= \Pronote\Security\xss_clean($error) ?>
-                </div>
-            <?php endif; ?>
+        <?php if (!empty($error)): ?>
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-circle"></i>
+                <span><?= \Pronote\Security\xss_clean($error) ?></span>
+            </div>
+        <?php endif; ?>
+        
+        <form method="post" action="" class="login-form">
+            <input type="hidden" name="csrf_token" value="<?= $csrfToken ?>">
             
-            <form method="post" action="">
-                <input type="hidden" name="csrf_token" value="<?= $csrfToken ?>">
+            <div class="profile-selector">
+                <input type="radio" name="profil" id="profile-student" value="eleve" <?= ($profil === 'eleve') ? 'checked' : '' ?>>
+                <label for="profile-student" class="profile-option">
+                    <div class="profile-icon">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <div class="profile-label">Élève</div>
+                </label>
                 
-                <div class="profile-selector">
-                    <input type="radio" name="profil" id="profile-student" value="eleve" <?= ($profil === 'eleve') ? 'checked' : '' ?>>
-                    <label for="profile-student" class="profile-option">
-                        <div class="profile-icon">
-                            <i class="fas fa-user-graduate"></i>
-                        </div>
-                        <div class="profile-label">Élève</div>
-                    </label>
-                    
-                    <input type="radio" name="profil" id="profile-parent" value="parent" <?= ($profil === 'parent') ? 'checked' : '' ?>>
-                    <label for="profile-parent" class="profile-option">
-                        <div class="profile-icon">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <div class="profile-label">Parent</div>
-                    </label>
-                    
-                    <input type="radio" name="profil" id="profile-teacher" value="professeur" <?= ($profil === 'professeur') ? 'checked' : '' ?>>
-                    <label for="profile-teacher" class="profile-option">
-                        <div class="profile-icon">
-                            <i class="fas fa-chalkboard-teacher"></i>
-                        </div>
-                        <div class="profile-label">Professeur</div>
-                    </label>
-                    
-                    <input type="radio" name="profil" id="profile-admin" value="administrateur" <?= ($profil === 'administrateur') ? 'checked' : '' ?>>
-                    <label for="profile-admin" class="profile-option">
-                        <div class="profile-icon">
-                            <i class="fas fa-user-shield"></i>
-                        </div>
-                        <div class="profile-label">Personnel</div>
-                    </label>
-                </div>
+                <input type="radio" name="profil" id="profile-parent" value="parent" <?= ($profil === 'parent') ? 'checked' : '' ?>>
+                <label for="profile-parent" class="profile-option">
+                    <div class="profile-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="profile-label">Parent</div>
+                </label>
                 
-                <div class="form-group">
-                    <label for="identifiant">Identifiant</label>
+                <input type="radio" name="profil" id="profile-teacher" value="professeur" <?= ($profil === 'professeur') ? 'checked' : '' ?>>
+                <label for="profile-teacher" class="profile-option">
+                    <div class="profile-icon">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    </div>
+                    <div class="profile-label">Professeur</div>
+                </label>
+                
+                <input type="radio" name="profil" id="profile-admin" value="administrateur" <?= ($profil === 'administrateur') ? 'checked' : '' ?>>
+                <label for="profile-admin" class="profile-option">
+                    <div class="profile-icon">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                    <div class="profile-label">Personnel</div>
+                </label>
+                
+                <input type="radio" name="profil" id="profile-vie-scolaire" value="vie_scolaire" <?= ($profil === 'vie_scolaire') ? 'checked' : '' ?>>
+                <label for="profile-vie-scolaire" class="profile-option">
+                    <div class="profile-icon">
+                        <i class="fas fa-clipboard-list"></i>
+                    </div>
+                    <div class="profile-label">Vie Scolaire</div>
+                </label>
+            </div>
+            
+            <div class="form-group">
+                <label for="identifiant" class="required-field">Identifiant</label>
+                <div class="input-group">
                     <input type="text" id="identifiant" name="identifiant" value="<?= \Pronote\Security\xss_clean($identifiant) ?>" required>
                 </div>
-                
-                <div class="form-group">
-                    <label for="password">Mot de passe</label>
+            </div>
+            
+            <div class="form-group">
+                <label for="password" class="required-field">Mot de passe</label>
+                <div class="input-group">
                     <input type="password" id="password" name="password" required>
+                    <button type="button" class="visibility-toggle" aria-label="Afficher/Masquer le mot de passe">
+                        <i class="fas fa-eye"></i>
+                    </button>
                 </div>
-                
-                <button type="submit" class="btn-connect">Se connecter</button>
-            </form>
+            </div>
+            
+            <button type="submit" class="btn btn-connect">Se connecter</button>
             
             <div class="help-links">
-                <a href="#" onclick="alert('Contactez votre administrateur pour réinitialiser votre mot de passe.');">Mot de passe oublié ?</a>
-                <a href="register.php" class="register-link">S'inscrire</a>
+                <a href="#" onclick="alert('Contactez votre administrateur pour réinitialiser votre mot de passe.');">
+                    <i class="fas fa-key fa-sm"></i> Mot de passe oublié ?
+                </a>
+                <!-- Le lien d'inscription a été supprimé pour sécuriser l'accès -->
             </div>
-        </div>
+        </form>
     </div>
     
     <script>
@@ -149,6 +165,22 @@ $csrfToken = \Pronote\Security\generate_csrf_token();
             
             if (hasError) {
                 event.preventDefault();
+            }
+        });
+
+        // Toggle password visibility
+        document.querySelector('.visibility-toggle').addEventListener('click', function() {
+            const passwordField = document.getElementById('password');
+            const icon = this.querySelector('i');
+            
+            if (passwordField.type === 'password') {
+                passwordField.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                passwordField.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
             }
         });
     </script>

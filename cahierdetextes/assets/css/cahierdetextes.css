@@ -1,0 +1,253 @@
+/**
+ * Styles spécifiques pour le module Cahier de Textes
+ * Complète le système de design unifié de Pronote
+ */
+
+/* --- Variables spécifiques au module --- */
+:root {
+  --module-color: var(--accent-cahier, #34c759);
+  --module-bg-light: var(--pastel-cahier, rgba(52, 199, 89, 0.15));
+  --urgent-color: #e74c3c;
+  --expired-color: #95a5a6;
+}
+
+/* --- Cartes des devoirs --- */
+.devoir-card {
+  margin-bottom: 20px;
+  border-left: 4px solid var(--module-color);
+}
+
+.devoir-card.urgent {
+  border-left-color: var(--urgent-color);
+}
+
+.devoir-card.expired {
+  border-left-color: var(--expired-color);
+}
+
+.devoir-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-color);
+  margin-bottom: 5px;
+}
+
+.devoir-meta {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.devoir-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.devoir-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.info-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.info-value {
+  font-weight: 500;
+}
+
+.date-rendu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.date-rendu.urgent {
+  color: var(--urgent-color);
+  font-weight: 700;
+}
+
+.date-rendu.expired {
+  color: var(--expired-color);
+}
+
+.devoir-description {
+  background-color: var(--background-color);
+  padding: 15px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 15px;
+}
+
+.devoir-description h4 {
+  font-size: 16px;
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: var(--module-color);
+}
+
+.devoir-description p {
+  margin: 0;
+  white-space: pre-line;
+}
+
+/* --- Badges --- */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 12px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.badge-urgent {
+  background-color: rgba(231, 76, 60, 0.15);
+  color: var(--urgent-color);
+}
+
+.badge-expired {
+  background-color: rgba(149, 165, 166, 0.15);
+  color: var(--expired-color);
+}
+
+/* --- Toolbar de filtres --- */
+.filter-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.filter-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* --- Personnalisation de l'interface --- */
+.card-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+  justify-content: flex-end;
+}
+
+/* --- Adaptation responsive --- */
+@media (max-width: 768px) {
+  .devoir-info-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .filter-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .card-actions {
+    flex-direction: column;
+  }
+}
+
+/* Styles pour la vue détaillée des devoirs */
+.devoir-details {
+  padding: 15px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 20px;
+}
+
+.devoir-details h3 {
+  color: var(--module-color);
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+/* Helpers */
+.mb-4 {
+  margin-bottom: 20px;
+}
+
+.required {
+  color: var(--error-color);
+}
+
+/* Calendrier des devoirs */
+.calendar-container {
+  background: white;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-light);
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--space-md);
+  background: var(--module-bg-light);
+  color: var(--module-color);
+  font-weight: bold;
+  align-items: center;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.calendar-grid.with-hours {
+  grid-template-columns: 80px repeat(7, 1fr);
+}
+
+.calendar-day-label {
+  text-align: center;
+  padding: 10px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--background-color);
+}
+
+.calendar-day {
+  min-height: 100px;
+  border: 1px solid var(--border-color);
+  padding: 5px;
+  background: white;
+  position: relative;
+}
+
+.calendar-day.today {
+  background-color: var(--module-bg-light);
+}
+
+.calendar-day-number {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.calendar-event {
+  padding: 2px 4px;
+  border-radius: 3px;
+  margin-bottom: 2px;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.calendar-event.devoir {
+  background-color: var(--module-bg-light);
+  color: var(--module-color);
+  border-left: 3px solid var(--module-color);
+}
+
+.calendar-event.urgent {
+  border-left-color: var(--urgent-color);
+}
+
+.calendar-event.expired {
+  color: var(--text-muted);
+  border-left-color: var(--expired-color);
+}

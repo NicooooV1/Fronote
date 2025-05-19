@@ -32,6 +32,15 @@ class User {
             return false;
         }
         
+        // Vérifier si la création de compte administrateur est autorisée
+        if ($profil === 'administrateur') {
+            $adminLockFile = __DIR__ . '/../../admin.lock';
+            if (file_exists($adminLockFile)) {
+                $this->errorMessage = "La création de nouveaux comptes administrateurs est désactivée. Contactez l'administrateur principal.";
+                return false;
+            }
+        }
+        
         $table = $this->tableMap[$profil];
 
         // Validation des données
@@ -366,5 +375,172 @@ class User {
         
         $jsonData = json_decode(file_get_contents($jsonFile), true);
         return $jsonData;
+    }
+    
+    /**
+     * Met à jour un utilisateur existant
+     * @param string $profil Type de profil (eleve, parent, professeur, etc.)
+     * @param int $id ID de l'utilisateur
+     * @param array $data Données à mettre à jour
+     * @return bool True si la mise à jour a réussi
+     */
+    public function update($profil, $id, array $data) {
+        if (!isset($this->tableMap[$profil])) {
+            $this->errorMessage = "Type de profil '$profil' invalide.";
+            return false;
+        }
+        
+        // Gestion spéciale pour les comptes administrateur
+        if ($profil === 'administrateur') {
+            // Toujours permettre la mise à jour des administrateurs existants
+            require_once __DIR__ . '/../../API/config/admin_config.php';
+            if (!isAdminManagementAllowed()) {
+                $this->errorMessage = "La modification des comptes administrateurs n'est pas autorisée.";
+                return false;
+            }
+            
+            // Vérification de mot de passe fort si changement de mot de passe
+            if (!empty($data['mot_de_passe'])) {
+                $validation = validateStrongPassword($data['mot_de_passe']);
+                if (!$validation['valid']) {
+                    $this->errorMessage = implode('. ', $validation['errors']);
+                    return false;
+                }
+            }
+        }
+        
+        $table = $this->tableMap[$profil];
+        
+        // Validation des données
+        if (!$this->validateData($data, $profil)) {
+            // Le message d'erreur est déjà défini dans validateData
+            return false;
+        }
+
+        // Génération de l'identifiant au format nom.prenom
+        if (empty($data['identifiant'])) {
+            $data['identifiant'] = $this->generateIdentifier($data['nom'], $data['prenom'], $table);
+        }
+        
+        // Stocker l'identifiant généré pour pouvoir le récupérer plus tard
+        $this->generatedIdentifier = $data['identifiant'];
+
+        // Vérifier unicité identifiant et email
+        $stmt = $this->pdo->prepare(
+            "SELECT id, identifiant, mail FROM `$table` WHERE (identifiant = :id OR mail = :mail) AND id != :userId LIMIT 1"
+        );
+        $stmt->execute([
+            'id'      => $data['identifiant'],
+            'mail'    => $data['mail'],
+            'userId'  => $id,
+        ]);
+        $existingUser = $stmt->fetch();
+        
+        if ($existingUser) {
+            if ($existingUser['identifiant'] === $data['identifiant']) {
+                $this->errorMessage = "L'identifiant '{$data['identifiant']}' est déjà utilisé.";
+            } elseif ($existingUser['mail'] === $data['mail']) {
+                $this->errorMessage = "L'adresse email '{$data['mail']}' est déjà utilisée.";
+            } else {
+                $this->errorMessage = "Un utilisateur avec des informations similaires existe déjà.";
+            }
+            return false;
+        }
+
+        $cols = array_keys($data);
+        $sqlCols = implode(', ', $cols);
+        $sqlVals = ':' . implode(', :', $cols);
+        $sql = "UPDATE `$table` SET $sqlCols = $sqlVals WHERE id = :id";
+
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $data['id'] = $id; // Ajouter l'ID à la liste des données
+            return $stmt->execute($data);
+        } catch (PDOException $e) {
+            $this->errorMessage = "Erreur lors de la mise à jour dans la base de données: " . $e->getMessage();
+            return false;
+        }
+    }
+    
+    /**
+     * Supprime un utilisateur
+     * @param string $profil Type de profil (eleve, parent, professeur, etc.)
+     * @param int $id ID de l'utilisateur
+     * @return bool True si la suppression a réussi
+     */
+    public function delete($profil, $id) {
+        if (!isset($this->tableMap[$profil])) {
+            $this->errorMessage = "Type de profil '$profil' invalide.";
+            return false;
+        }
+        
+        $table = $this->tableMap[$profil];
+        
+        // Vérification supplémentaire pour les administrateurs
+        if ($profil === 'administrateur') {
+            require_once __DIR__ . '/../../API/config/admin_config.php';
+            if (!isAdminManagementAllowed()) {
+                $this->errorMessage = "La suppression des comptes administrateurs n'est pas autorisée.";
+                return false;
+            }
+            
+            // Assurez-vous qu'il reste au moins un administrateur actif
+            try {
+                $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM `$table` WHERE actif = 1");
+                $stmt->execute();
+                $adminCount = (int)$stmt->fetchColumn();
+                
+                if ($adminCount <= 1) {
+                    $this->errorMessage = "Impossible de supprimer le dernier compte administrateur actif.";
+                    return false;
+                }
+            } catch (PDOException $e) {
+                $this->errorMessage = "Erreur lors de la vérification du nombre d'administrateurs: " . $e->getMessage();
+                return false;
+            }
+        }
+        
+        try {
+            $stmt = $this->pdo->prepare("DELETE FROM `$table` WHERE id = ?");
+            return $stmt->execute([$id]);
+        } catch (PDOException $e) {
+            $this->errorMessage = "Erreur lors de la suppression: " . $e->getMessage();
+            return false;
+        }
+    }
+    
+    /**
+     * Change le mot de passe d'un utilisateur
+     * @param string $profil Type de profil (eleve, parent, professeur, etc.)
+     * @param int $id ID de l'utilisateur
+     * @param string $newPassword Nouveau mot de passe
+     * @return bool True si le changement a réussi
+     */
+    public function changePassword($profil, $id, $newPassword) {
+        if (!isset($this->tableMap[$profil])) {
+            $this->errorMessage = "Type de profil '$profil' invalide.";
+            return false;
+        }
+        
+        // Vérification supplémentaire pour les administrateurs
+        if ($profil === 'administrateur') {
+            require_once __DIR__ . '/../../API/config/admin_config.php';
+            $validation = validateStrongPassword($newPassword);
+            if (!$validation['valid']) {
+                $this->errorMessage = implode('. ', $validation['errors']);
+                return false;
+            }
+        }
+        
+        $table = $this->tableMap[$profil];
+        $passwordHash = password_hash($newPassword, PASSWORD_DEFAULT);
+        
+        try {
+            $stmt = $this->pdo->prepare("UPDATE `$table` SET mot_de_passe = ? WHERE id = ?");
+            return $stmt->execute([$passwordHash, $id]);
+        } catch (PDOException $e) {
+            $this->errorMessage = "Erreur lors du changement de mot de passe: " . $e->getMessage();
+            return false;
+        }
     }
 }

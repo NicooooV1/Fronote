@@ -20,7 +20,7 @@ if (!canManageNotes()) {
 // Utiliser les données utilisateur de la session
 $user = $_SESSION['user'] ?? null;
 if (!$user) {
-    header('Location: /~u22405372/SAE/Pronote/login/public/index.php');
+    header('Location: ' . (defined('LOGIN_URL') ? LOGIN_URL : '../login/public/index.php'));
     exit;
 }
 $nom_professeur = $user['prenom'] . ' ' . $user['nom'];
@@ -135,8 +135,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $values[] = $_POST['coefficient'];
     }
     
-    if (in_array('description', $columns)) {
-      $fields[] = 'description = ?';
+    if (in_array('commentaire', $columns)) {
+      $fields[] = 'commentaire = ?';
       $values[] = $_POST['description'];
     }
     
@@ -158,6 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->execute($values);
     
     // Redirection après succès
+    $_SESSION['success_message'] = "La note a été modifiée avec succès.";
     header('Location: notes.php');
     exit;
   } catch (PDOException $e) {
@@ -165,6 +166,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $error_message = "Une erreur est survenue lors de la mise à jour de la note: " . $e->getMessage();
   }
 }
+
+// Définir la configuration de la page
+$pageTitle = "Modifier une note";
+$moduleClass = "notes";
 ?>
 
 <!DOCTYPE html>
@@ -172,21 +177,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Modifier une note</title>
-  <link rel="stylesheet" href="assets/css/style.css">
+  <title><?= htmlspecialchars($pageTitle) ?> - Pronote</title>
+  <link rel="stylesheet" href="../assets/css/pronote-theme.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    .required {
+      color: var(--error-color);
+      margin-left: 3px;
+    }
+    
+    .form-container {
+      background-color: var(--white);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-light);
+      padding: var(--space-md);
+    }
+  </style>
 </head>
 <body>
   <div class="app-container">
     <!-- Sidebar -->
     <div class="sidebar">
-      <a href="../accueil/accueil.php" class="logo-container">
+      <div class="logo-container">
         <div class="app-logo">P</div>
-        <div class="app-title">Pronote Notes</div>
-      </a>
+        <div class="app-title">Pronote</div>
+      </div>
       
+      <!-- Navigation -->
       <div class="sidebar-section">
-        <a href="notes.php" class="action-button secondary">
+        <div class="sidebar-section-header">Navigation</div>
+        <a href="<?= defined('HOME_URL') ? HOME_URL : '../accueil/accueil.php' ?>" class="sidebar-link">
+          <i class="fas fa-home"></i> Accueil
+        </a>
+        <a href="notes.php" class="sidebar-link active">
+          <i class="fas fa-chart-bar"></i> Notes
+        </a>
+        <a href="../absences/absences.php" class="sidebar-link">
+          <i class="fas fa-calendar-times"></i> Absences
+        </a>
+        <a href="../agenda/agenda.php" class="sidebar-link">
+          <i class="fas fa-calendar-alt"></i> Agenda
+        </a>
+        <a href="../cahierdetextes/cahierdetextes.php" class="sidebar-link">
+          <i class="fas fa-book"></i> Cahier de textes
+        </a>
+        <a href="../messagerie/index.php" class="sidebar-link">
+          <i class="fas fa-envelope"></i> Messagerie
+        </a>
+      </div>
+      
+      <!-- Actions -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Actions</div>
+        <a href="notes.php" class="create-button">
           <i class="fas fa-arrow-left"></i> Retour aux notes
         </a>
       </div>
@@ -196,30 +239,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="main-content">
       <div class="top-header">
         <div class="page-title">
-          <h1>Modifier une note</h1>
+          <h1><?= htmlspecialchars($pageTitle) ?></h1>
         </div>
         
         <div class="header-actions">
-          <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">⏻</a>
-          <div class="user-avatar"><?= $user_initials ?></div>
+          <a href="<?= defined('LOGOUT_URL') ? LOGOUT_URL : '../login/public/logout.php' ?>" class="logout-button" title="Déconnexion">
+            <i class="fas fa-sign-out-alt"></i>
+          </a>
+          <div class="user-avatar" title="<?= htmlspecialchars($nom_professeur) ?>">
+            <?= htmlspecialchars($user_initials) ?>
+          </div>
         </div>
       </div>
       
       <div class="content-container">
+        <?php if (isset($error_message)): ?>
+          <div class="alert alert-error">
+            <i class="fas fa-exclamation-circle"></i>
+            <span><?= htmlspecialchars($error_message) ?></span>
+          </div>
+        <?php endif; ?>
+        
         <div class="form-container">
           <form method="post">
-            <div class="form-grid">
+            <div class="form-grid-2">
               <!-- Champ pour la classe -->
               <div class="form-group">
-                <label for="classe">Classe:<span class="required">*</span></label>
-                <select name="classe" id="classe" required>
+                <label for="classe" class="form-label">Classe<span class="required">*</span></label>
+                <select name="classe" id="classe" class="form-select" required>
                   <option value="">Sélectionnez une classe</option>
                   <?php if (!empty($etablissement_data['classes'])): ?>
                     <?php foreach ($etablissement_data['classes'] as $niveau => $niveaux): ?>
                       <optgroup label="<?= ucfirst($niveau) ?>">
                         <?php foreach ($niveaux as $sousniveau => $classes): ?>
                           <?php foreach ($classes as $classe): ?>
-                            <option value="<?= $classe ?>" <?= ($note['classe'] == $classe) ? 'selected' : '' ?>><?= $classe ?></option>
+                            <option value="<?= htmlspecialchars($classe) ?>" <?= ($note['classe'] == $classe) ? 'selected' : '' ?>><?= htmlspecialchars($classe) ?></option>
                           <?php endforeach; ?>
                         <?php endforeach; ?>
                       </optgroup>
@@ -231,7 +285,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <optgroup label="Primaire">
                       <?php foreach ($etablissement_data['primaire'] as $niveau => $classes): ?>
                         <?php foreach ($classes as $classe): ?>
-                          <option value="<?= $classe ?>" <?= ($note['classe'] == $classe) ? 'selected' : '' ?>><?= $classe ?></option>
+                          <option value="<?= htmlspecialchars($classe) ?>" <?= ($note['classe'] == $classe) ? 'selected' : '' ?>><?= htmlspecialchars($classe) ?></option>
                         <?php endforeach; ?>
                       <?php endforeach; ?>
                     </optgroup>
@@ -241,8 +295,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
               <!-- Champ pour l'élève -->
               <div class="form-group">
-                <label for="nom_eleve">Élève:<span class="required">*</span></label>
-                <select name="nom_eleve" id="nom_eleve" required>
+                <label for="nom_eleve" class="form-label">Élève<span class="required">*</span></label>
+                <select name="nom_eleve" id="nom_eleve" class="form-select" required>
                   <option value="">Sélectionnez un élève</option>
                   <?php foreach ($eleves as $eleve): ?>
                     <option value="<?= htmlspecialchars($eleve['prenom']) ?>" 
@@ -256,12 +310,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               
               <!-- Champ pour la matière -->
               <div class="form-group">
-                <label for="nom_matiere">Matière:<span class="required">*</span></label>
-                <select name="nom_matiere" id="nom_matiere" required>
+                <label for="nom_matiere" class="form-label">Matière<span class="required">*</span></label>
+                <select name="nom_matiere" id="nom_matiere" class="form-select" required>
                   <option value="">Sélectionnez une matière</option>
                   <?php if (!empty($etablissement_data['matieres'])): ?>
                     <?php foreach ($etablissement_data['matieres'] as $matiere): ?>
-                      <option value="<?= $matiere['nom'] ?>" <?= ($note['matiere'] == $matiere['nom']) ? 'selected' : '' ?>><?= $matiere['nom'] ?> (<?= $matiere['code'] ?>)</option>
+                      <option value="<?= htmlspecialchars($matiere['nom']) ?>" <?= ($note['matiere'] == $matiere['nom']) ? 'selected' : '' ?>><?= htmlspecialchars($matiere['nom']) ?> (<?= htmlspecialchars($matiere['code']) ?>)</option>
                     <?php endforeach; ?>
                   <?php endif; ?>
                 </select>
@@ -269,13 +323,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               
               <!-- Champ pour le professeur -->
               <div class="form-group">
-                <label for="nom_professeur">Professeur:<span class="required">*</span></label>
+                <label for="nom_professeur" class="form-label">Professeur<span class="required">*</span></label>
                 <?php if (isTeacher() && !isAdmin() && !isVieScolaire()): ?>
                   <!-- Si c'est un professeur, il ne peut pas changer le nom du professeur -->
-                  <input type="text" name="nom_professeur" id="nom_professeur" value="<?= htmlspecialchars($note['nom_professeur']) ?>" readonly>
+                  <input type="text" name="nom_professeur" id="nom_professeur" class="form-control" value="<?= htmlspecialchars($note['nom_professeur']) ?>" readonly>
                 <?php else: ?>
                   <!-- Admin et vie scolaire peuvent choisir n'importe quel professeur -->
-                  <select name="nom_professeur" id="nom_professeur" required>
+                  <select name="nom_professeur" id="nom_professeur" class="form-select" required>
                     <option value="">Sélectionnez un professeur</option>
                     <?php foreach ($professeurs as $prof): ?>
                       <?php $prof_fullname = $prof['prenom'] . ' ' . $prof['nom']; ?>
@@ -291,37 +345,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               
               <!-- Champ pour la note -->
               <div class="form-group">
-                <label for="note">Note:<span class="required">*</span></label>
-                <input type="number" name="note" id="note" max="20" min="0" step="0.1" value="<?= $note['note'] ?>" required>
+                <label for="note" class="form-label">Note<span class="required">*</span></label>
+                <input type="number" name="note" id="note" class="form-control" max="20" min="0" step="0.1" value="<?= htmlspecialchars($note['note']) ?>" required>
               </div>
               
               <!-- Champ pour le coefficient -->
               <div class="form-group">
-                <label for="coefficient">Coefficient:<span class="required">*</span></label>
-                <input type="number" name="coefficient" id="coefficient" min="1" max="10" step="1" value="<?= isset($note['coefficient']) ? $note['coefficient'] : 1 ?>" required>
+                <label for="coefficient" class="form-label">Coefficient<span class="required">*</span></label>
+                <input type="number" name="coefficient" id="coefficient" class="form-control" min="1" max="10" step="1" value="<?= isset($note['coefficient']) ? htmlspecialchars($note['coefficient']) : 1 ?>" required>
               </div>
               
               <!-- Champ pour la date -->
               <div class="form-group">
-                <label for="date_ajout">Date:<span class="required">*</span></label>
-                <input type="date" name="date_ajout" id="date_ajout" value="<?= $note['date_ajout'] ?>" required>
+                <label for="date_ajout" class="form-label">Date<span class="required">*</span></label>
+                <input type="date" name="date_ajout" id="date_ajout" class="form-control" value="<?= htmlspecialchars($note['date_ajout'] ?? $note['date_evaluation'] ?? date('Y-m-d')) ?>" required>
               </div>
               
               <!-- Champ pour le trimestre -->
               <div class="form-group">
-                <label for="trimestre">Trimestre:<span class="required">*</span></label>
-                <select name="trimestre" id="trimestre" required>
+                <label for="trimestre" class="form-label">Trimestre<span class="required">*</span></label>
+                <select name="trimestre" id="trimestre" class="form-select" required>
                   <option value="1" <?= (isset($note['trimestre']) && $note['trimestre'] == 1) ? 'selected' : '' ?>>Trimestre 1</option>
                   <option value="2" <?= (isset($note['trimestre']) && $note['trimestre'] == 2) ? 'selected' : '' ?>>Trimestre 2</option>
                   <option value="3" <?= (isset($note['trimestre']) && $note['trimestre'] == 3) ? 'selected' : '' ?>>Trimestre 3</option>
                 </select>
               </div>
+            </div>
               
-              <!-- Champ pour la description -->
-              <div class="form-group form-full">
-                <label for="description">Intitulé de l'évaluation:<span class="required">*</span></label>
-                <input type="text" name="description" id="description" value="<?= isset($note['description']) ? htmlspecialchars($note['description']) : '' ?>" placeholder="Ex: Contrôle évaluation trimestre" required>
-              </div>
+            <!-- Champ pour la description -->
+            <div class="form-group mt-3">
+              <label for="description" class="form-label">Intitulé de l'évaluation<span class="required">*</span></label>
+              <input type="text" name="description" id="description" class="form-control" value="<?= isset($note['commentaire']) ? htmlspecialchars($note['commentaire']) : (isset($note['description']) ? htmlspecialchars($note['description']) : '') ?>" placeholder="Ex: Contrôle évaluation trimestre" required>
             </div>
             
             <div class="form-actions">
