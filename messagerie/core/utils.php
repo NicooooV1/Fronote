@@ -74,11 +74,21 @@ function formatDate($date) {
 
 /**
  * Convertit un timestamp en texte relatif (temps écoulé)
- * @param int $timestamp Timestamp UNIX à convertir
+ * @param int|string $timestamp Timestamp UNIX ou chaîne de date à convertir
  * @return string Texte affichant le temps écoulé
  */
 function getTimeAgo($timestamp) {
     if (!$timestamp) return 'Date inconnue';
+    
+    // Handle different timestamp formats
+    if (!is_numeric($timestamp)) {
+        // Try to parse date string
+        $parsedTime = strtotime($timestamp);
+        if ($parsedTime === false) {
+            return 'Date invalide';
+        }
+        $timestamp = $parsedTime;
+    }
     
     $current = time();
     $diff = $current - $timestamp;

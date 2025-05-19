@@ -2,14 +2,21 @@
 /**
  * API pour les actions sur les conversations
  */
+// Ensure config is loaded first
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../controllers/conversation.php';
 require_once __DIR__ . '/../core/auth.php';
 require_once __DIR__ . '/../models/message.php';
 require_once __DIR__ . '/../controllers/message.php';
 
+// Debug session if needed
+if (defined('APP_ENV') && APP_ENV === 'development') {
+    error_log('Session ID in API/conversation.php: ' . session_id());
+    error_log('User in session: ' . (isset($_SESSION['user']) ? 'YES' : 'NO'));
+}
+
 // S'assurer que toute sortie avant l'entête JSON est nettoyée
-ob_clean();
+if (ob_get_length()) ob_clean();
 
 // Toujours répondre en JSON
 header('Content-Type: application/json');

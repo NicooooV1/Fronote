@@ -3,8 +3,20 @@
  * Module d'authentification pour la messagerie
  */
 
-// Démarrer la session si nécessaire
+// Utiliser les mêmes paramètres de session que dans config.php
 if (session_status() === PHP_SESSION_NONE) {
+    // Utiliser un nom de session cohérent
+    session_name('pronote_session');
+    
+    // Appliquer des paramètres de session sécurisés
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'secure' => isset($_SERVER['HTTPS']),
+        'httponly' => true,
+        'samesite' => 'Lax'
+    ]);
+    
     session_start();
 }
 

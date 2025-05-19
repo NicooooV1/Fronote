@@ -33,8 +33,20 @@ if ($path_helper) {
  * Configuration du module messagerie
  */
 
-// Démarrer la session si elle n'est pas déjà démarrée
+// Improved session handling with consistent settings
 if (session_status() === PHP_SESSION_NONE) {
+    // Use a consistent session name
+    session_name('pronote_session');
+    
+    // Enforce secure session parameters
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'secure' => isset($_SERVER['HTTPS']),
+        'httponly' => true,
+        'samesite' => 'Lax'
+    ]);
+    
     session_start();
 }
 
@@ -75,6 +87,17 @@ if (!isset($pdo)) {
         }
     }
 }
+
+// Define base URL for the application
+if (!defined('BASE_URL')) {
+    $baseDir = dirname($_SERVER['SCRIPT_NAME']);
+    // Make sure baseDir ends with a trailing slash
+    if (substr($baseDir, -1) !== '/') {
+        $baseDir .= '/';
+    }
+    define('BASE_URL', $baseDir);
+}
+$baseUrl = BASE_URL;
 
 // Forcer l'affichage des erreurs uniquement en développement
 if (defined('APP_ENV') && APP_ENV === 'development') {

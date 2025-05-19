@@ -7,6 +7,12 @@ require_once __DIR__ . '/../controllers/message.php';
 require_once __DIR__ . '/../models/message.php';
 require_once __DIR__ . '/../core/auth.php';
 
+// Debug session if needed
+if (defined('APP_ENV') && APP_ENV === 'development') {
+    error_log('Session ID in API/messages.php: ' . session_id());
+    error_log('User in session: ' . (isset($_SESSION['user']) ? 'YES' : 'NO'));
+}
+
 // Pour le débogage, activer temporairement l'affichage des erreurs
 ini_set('display_errors', defined('APP_ENV') && APP_ENV === 'development' ? 1 : 0);
 error_reporting(defined('APP_ENV') && APP_ENV === 'development' ? E_ALL : 0);

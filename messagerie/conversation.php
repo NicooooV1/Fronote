@@ -3,7 +3,7 @@
  * Affichage et gestion d'une conversation
  */
 
-// Inclure les fichiers nécessaires
+// Ensure config is loaded first for proper session initialization
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/config/constants.php';
 require_once __DIR__ . '/core/utils.php';
@@ -15,8 +15,19 @@ require_once __DIR__ . '/controllers/conversation.php';
 require_once __DIR__ . '/controllers/message.php';
 require_once __DIR__ . '/controllers/participant.php';
 
-// Vérifier l'authentification
-$user = requireAuth();
+// Debug session if needed
+if (defined('APP_ENV') && APP_ENV === 'development') {
+    error_log('Session ID in conversation.php: ' . session_id());
+    error_log('User in session: ' . (isset($_SESSION['user']) ? 'YES' : 'NO'));
+}
+
+// Vérifier l'authentification - use the safer checkAuth() first
+$user = checkAuth();
+
+// If checkAuth failed, try requireAuth which will redirect
+if (!$user) {
+    $user = requireAuth();
+}
 
 // Récupérer l'ID de la conversation
 $convId = isset($_GET['id']) ? (int)$_GET['id'] : 0;

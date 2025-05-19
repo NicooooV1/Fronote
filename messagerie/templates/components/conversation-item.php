@@ -39,7 +39,7 @@ if (isset($typeClasses[$type])) $itemClass .= ' ' . $typeClasses[$type];
         <input type="checkbox" class="conversation-select" data-id="<?= $id ?>" data-read="<?= $isRead ? '1' : '0' ?>">
     </div>
     <div class="conversation-content">
-        <a href="conversation.php?id=<?= $id ?>" class="conversation-link" style="display:block; text-decoration:none; color:inherit;">
+        <a href="<?= $baseUrl ?>conversation.php?id=<?= $id ?>" class="conversation-link" style="display:block; text-decoration:none; color:inherit;">
             <div class="conversation-header">
                 <div class="conversation-info">
                     <div class="conversation-title">

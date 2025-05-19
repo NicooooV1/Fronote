@@ -80,6 +80,19 @@ function setupBeforeUnloadHandler() {
 }
 
 /**
+ * Set common fetch options to ensure credentials are sent
+ * @returns {Object} Fetch options with credentials
+ */
+function getFetchOptions() {
+    return {
+        credentials: 'same-origin',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    };
+}
+
+/**
  * Initialise le système de détection et de suivi des messages lus
  */
 function initReadTracker() {
@@ -131,12 +144,17 @@ function initReadTracker() {
         isMarkingMessage = true;
         
         const convId = new URLSearchParams(window.location.search).get('id');
-        
-        fetch(`api/read_status.php?action=read&conv_id=${convId}`, {
+        const apiPath = `${window.location.origin}${window.location.pathname.split('/').slice(0, -1).join('/')}/api/read_status.php`;
+
+        fetch(`${apiPath}?action=read&conv_id=${convId}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
             body: JSON.stringify({ messageId }),
-            signal: window.activeConnections.abortController.signal
+            signal: window.activeConnections.abortController.signal,
+            credentials: 'same-origin'
         })
         .then(response => {
             if (!response.ok) {
@@ -241,7 +259,11 @@ function initReadTracker() {
             
             // Utiliser le nouvel endpoint de polling au lieu du SSE
             fetch(`api/read_status.php?action=read-polling&conv_id=${convId}&version=${versionSum}&since=${lastReadMessageId}`, {
-                signal: window.activeConnections.abortController.signal
+                signal: window.activeConnections.abortController.signal,
+                credentials: 'same-origin',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
             })
                 .then(response => {
                     if (!response.ok) {
@@ -318,7 +340,11 @@ function initReadTracker() {
         isMarkingMessage = true;
         
         fetch(`api/messages.php?id=${messageId}&action=mark_unread`, {
-            signal: window.activeConnections.abortController.signal
+            signal: window.activeConnections.abortController.signal,
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
         })
             .then(response => {
                 if (!response.ok) {
@@ -403,10 +429,12 @@ function setupRealTimeUpdates() {
         }
         
         isCheckingForUpdates = true;
+        const apiPath = `${window.location.origin}${window.location.pathname.split('/').slice(0, -1).join('/')}/api/messages.php`;
         
         // Requête de vérification avec gestion d'erreur améliorée
-        fetch(`api/messages.php?conv_id=${convId}&action=check_updates&last_timestamp=${lastTimestamp}`, {
-            signal: window.activeConnections.abortController.signal
+        fetch(`${apiPath}?conv_id=${convId}&action=check_updates&last_timestamp=${lastTimestamp}`, {
+            signal: window.activeConnections.abortController.signal,
+            credentials: 'same-origin'  // Add credentials for session management
         })
             .then(response => {
                 if (!response.ok) {
@@ -496,8 +524,11 @@ function setupRealTimeUpdates() {
      * Récupère et ajoute les nouveaux messages à la conversation
      */
     function fetchNewMessages() {
-        fetch(`api/messages.php?conv_id=${convId}&action=get_new&last_timestamp=${lastTimestamp}`, {
-            signal: window.activeConnections.abortController.signal
+        const apiPath = `${window.location.origin}${window.location.pathname.split('/').slice(0, -1).join('/')}/api/messages.php`;
+        
+        fetch(`${apiPath}?conv_id=${convId}&action=get_new&last_timestamp=${lastTimestamp}`, {
+            signal: window.activeConnections.abortController.signal,
+            credentials: 'same-origin'  // Add credentials for session management
         })
             .then(response => {
                 if (!response.ok) {
@@ -548,8 +579,11 @@ function setupRealTimeUpdates() {
      * Actualise la liste des participants
      */
     function refreshParticipantsList() {
-        fetch(`api/participants.php?conv_id=${convId}&action=get_list`, {
-            signal: window.activeConnections.abortController.signal
+        const apiPath = `${window.location.origin}${window.location.pathname.split('/').slice(0, -1).join('/')}/api/participants.php`;
+        
+        fetch(`${apiPath}?conv_id=${convId}&action=get_list`, {
+            signal: window.activeConnections.abortController.signal,
+            credentials: 'same-origin'  // Add credentials for session management
         })
             .then(response => {
                 if (!response.ok) {
@@ -631,10 +665,13 @@ function setupAjaxMessageSending() {
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
         
         // Envoyer la requête AJAX
-        fetch('api/messages.php', {
+        const apiPath = `${window.location.origin}${window.location.pathname.split('/').slice(0, -1).join('/')}/api/messages.php`;
+        
+        fetch(apiPath, {
             method: 'POST',
             body: formData,
-            signal: window.activeConnections.abortController.signal
+            signal: window.activeConnections.abortController.signal,
+            credentials: 'same-origin'  // Add credentials for session management
         })
         .then(response => {
             // Vérifier si la réponse est ok avant de continuer
@@ -1069,8 +1106,11 @@ function loadParticipants() {
     select.innerHTML = '<option value="">Chargement...</option>';
     
     // Faire une requête AJAX pour récupérer les participants
-    fetch(`api/participants.php?type=${type}&conv_id=${convId}`, {
-        signal: window.activeConnections.abortController.signal
+    const apiPath = `${window.location.origin}${window.location.pathname.split('/').slice(0, -1).join('/')}/api/participants.php`;
+    
+    fetch(`${apiPath}?type=${type}&conv_id=${convId}`, {
+        signal: window.activeConnections.abortController.signal,
+        credentials: 'same-origin'  // Add credentials for session management
     })
         .then(response => {
             if (!response.ok) {

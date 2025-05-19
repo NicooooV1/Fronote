@@ -367,13 +367,17 @@ function performBulkAction(action, convIds) {
             btn.disabled = true;
         });
         
+        // Construire le chemin API absolu
+        const apiPath = `${window.location.origin}${window.location.pathname.split('/').slice(0, -1).join('/')}/api/conversation.php`;
+        
         // Envoyer la requête
-        fetch('api/conversation.php?action=bulk', {
+        fetch(`${apiPath}?action=bulk`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(data)
+            body: JSON.stringify(data),
+            credentials: 'same-origin'  // Add credentials for session management
         })
         .then(response => {
             // Vérifier si la réponse est OK avant de continuer
@@ -468,7 +472,11 @@ function toggleQuickActions(id) {
  * @param {number} convId
  */
 function markConversationAsRead(convId) {
-    fetch(`api/conversation.php?id=${convId}&action=mark_read`)
+    const apiPath = `${window.location.origin}${window.location.pathname.split('/').slice(0, -1).join('/')}/api/conversation.php`;
+    
+    fetch(`${apiPath}?id=${convId}&action=mark_read`, {
+        credentials: 'same-origin'  // Add credentials for session management
+    })
         .then(response => {
             if (!response.ok) {
                 throw new Error('Erreur réseau: ' + response.status);
@@ -493,7 +501,11 @@ function markConversationAsRead(convId) {
  * @param {number} convId
  */
 function markConversationAsUnread(convId) {
-    fetch(`api/conversation.php?id=${convId}&action=mark_unread`)
+    const apiPath = `${window.location.origin}${window.location.pathname.split('/').slice(0, -1).join('/')}/api/conversation.php`;
+    
+    fetch(`${apiPath}?id=${convId}&action=mark_unread`, {
+        credentials: 'same-origin'  // Add credentials for session management
+    })
         .then(response => {
             if (!response.ok) {
                 throw new Error('Erreur réseau: ' + response.status);
