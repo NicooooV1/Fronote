@@ -212,18 +212,15 @@ try {
     $professeurs = [];
 }
 
-// Fonction pour vérifier l'existence des fonctions d'autorisation
-if (!function_exists('canManageDevoirs')) {
-    function canManageDevoirs() {
-        $role = isset($_SESSION['user']) ? $_SESSION['user']['profil'] : '';
-        return in_array($role, ['administrateur', 'professeur', 'vie_scolaire']);
-    }
-}
-
 // Variables pour le template
 $pageTitle = "Cahier de Textes";
 $moduleClass = "cahier";
 $moduleColor = "var(--accent-cahier)";
+
+// Contenu additionnel pour le head
+$additionalHead = <<<HTML
+<link rel="stylesheet" href="assets/css/cahierdetextes.css">
+HTML;
 
 // Actions du header
 $headerActions = <<<HTML
@@ -240,6 +237,21 @@ HTML;
 // Contenu de la sidebar
 $sidebarContent = <<<HTML
 <div class="sidebar-section">
+    <div class="sidebar-title">Navigation</div>
+    <div class="sidebar-menu">
+        <a href="cahierdetextes.php" class="sidebar-link active">
+            <i class="fas fa-list"></i> Liste des devoirs
+        </a>
+        
+        <?php if (canManageDevoirs()): ?>
+        <a href="ajouter_devoir.php" class="sidebar-link">
+            <i class="fas fa-plus"></i> Ajouter un devoir
+        </a>
+        <?php endif; ?>
+    </div>
+</div>
+
+<div class="sidebar-section">
     <div class="sidebar-title">Filtres</div>
     <div class="sidebar-menu">
         <div class="sidebar-link filter-link" data-filter="urgent">
@@ -251,21 +263,6 @@ $sidebarContent = <<<HTML
         <div class="sidebar-link filter-link" data-filter="all">
             <i class="fas fa-list"></i> Tous les devoirs
         </div>
-    </div>
-</div>
-
-<div class="sidebar-section">
-    <div class="sidebar-title">Actions</div>
-    <div class="sidebar-menu">
-        <a href="cahierdetextes.php" class="sidebar-link active">
-            <i class="fas fa-list"></i> Liste des devoirs
-        </a>
-        
-        <?php if (canManageDevoirs()): ?>
-        <a href="ajouter_devoir.php" class="sidebar-link">
-            <i class="fas fa-plus"></i> Ajouter un devoir
-        </a>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -291,6 +288,7 @@ $sidebarContent = <<<HTML
 </div>
 HTML;
 
+// Inclure le template d'en-tête standardisé
 include '../assets/css/templates/header-template.php';
 ?>
 
@@ -596,11 +594,6 @@ include '../assets/css/templates/header-template.php';
                 }
                 
                 echo '</div>';
-                
-                // Nouvelle ligne pour dimanche
-                if (($day_of_week + $day) % 7 == 0) {
-                    // echo '</div><div class="calendar-grid">';
-                }
             }
             
             // Cases vides après le dernier jour du mois
@@ -682,6 +675,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <?php
+// Inclure le template de pied de page standardisé
 include '../assets/css/templates/footer-template.php';
 ob_end_flush();
 ?>
