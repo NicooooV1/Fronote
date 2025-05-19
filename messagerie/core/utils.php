@@ -83,21 +83,21 @@ function getTimeAgo($timestamp) {
     $current = time();
     $diff = $current - $timestamp;
     
+    // Ajuster les conditions pour éviter "à l'instant" pour les messages anciens
     if ($diff < 60) {
         return "à l'instant";
     } elseif ($diff < 3600) {
         $minutes = floor($diff / 60);
-        return "il y a $minutes minute" . ($minutes > 1 ? 's' : '');
+        return "il y a $minutes min" . ($minutes > 1 ? 's' : '');
     } elseif ($diff < 86400) {
         $hours = floor($diff / 3600);
-        return "il y a $hours heure" . ($hours > 1 ? 's' : '');
+        return "il y a $hours h" . ($hours > 1 ? '' : '');
     } elseif ($diff < 172800) {
-        return "hier à " . date('H:i', $timestamp);
+        return 'hier à ' . date('H:i', $timestamp);
     } elseif ($diff < 604800) {
-        $days = floor($diff / 86400);
-        return "il y a $days jour" . ($days > 1 ? 's' : '');
+        return date('l', $timestamp) . ' à ' . date('H:i', $timestamp);
     } else {
-        return date('d/m/Y à H:i', $timestamp);
+        return date('d/m/Y', $timestamp);
     }
 }
 

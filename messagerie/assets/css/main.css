@@ -279,6 +279,7 @@ a {
   transition: transform 0.2s, box-shadow 0.2s;
   overflow: hidden;
   display: flex;
+  border-left: 3px solid transparent;
 }
 
 .conversation-item:hover {
@@ -286,10 +287,27 @@ a {
   box-shadow: 0 3px 8px rgba(0,0,0,0.15);
 }
 
+.conversation-item.selected {
+  background-color: #f0f7ff;
+  border-left: 3px solid #00843d;
+}
+
+.conversation-item.unread {
+  border-left: 3px solid #00843d;
+  background-color: #f0f9f6;
+}
+
 .conversation-checkbox {
   padding: 15px;
   display: flex;
   align-items: center;
+  z-index: 10;
+}
+
+.conversation-checkbox input[type="checkbox"] {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
 }
 
 .conversation-content {

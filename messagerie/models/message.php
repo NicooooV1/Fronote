@@ -615,15 +615,15 @@ function markMessageAsUnread($messageId, $userId, $userType) {
     }
 }
 
-/**
- * Vérifie si un utilisateur peut définir une importance pour un message
- * @param string $userType
- * @return bool
- */
-function canSetMessageImportance($userType) {
-    // Seuls les parents, professeurs, vie scolaire et administrateurs peuvent définir des priorités
-    return in_array($userType, ['parent', 'professeur', 'vie_scolaire', 'administrateur']);
-}
+/* 
+* La fonction canReplyToAnnouncement() est déjà déclarée dans core/utils.php
+* Ne pas la redéclarer ici pour éviter l'erreur
+*/
+
+/* 
+* La fonction canSetMessageImportance() est déjà déclarée dans core/utils.php
+* Ne pas la redéclarer ici pour éviter l'erreur
+*/
 
 /**
  * Fonctions liées aux messages

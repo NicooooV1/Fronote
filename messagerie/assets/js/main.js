@@ -189,59 +189,72 @@ function setupBulkActions() {
     const selectAllCheckbox = document.getElementById('select-all-conversations');
     const actionButtons = document.querySelectorAll('.bulk-action-btn');
     
-    if (selectAllCheckbox) {
-        // Sélectionner/désélectionner tous
-        selectAllCheckbox.addEventListener('change', function() {
-            const checkboxes = document.querySelectorAll('.conversation-select');
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = this.checked;
-                
-                // Mettre à jour la classe 'selected' sur l'élément parent
-                const conversationItem = checkbox.closest('.conversation-item');
-                if (conversationItem) {
-                    conversationItem.classList.toggle('selected', checkbox.checked);
+    if (!selectAllCheckbox) return;  // Sortir si l'élément n'existe pas
+    
+    // Sélectionner/désélectionner tous
+    selectAllCheckbox.addEventListener('change', function() {
+        // Utiliser une méthode de debug
+        console.log("Sélection tout changée:", this.checked);
+        
+        const checkboxes = document.querySelectorAll('.conversation-select');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+            
+            // Mettre à jour la classe 'selected' sur l'élément parent
+            const conversationItem = checkbox.closest('.conversation-item');
+            if (conversationItem) {
+                if (this.checked) {
+                    conversationItem.classList.add('selected');
+                } else {
+                    conversationItem.classList.remove('selected');
                 }
-            });
+            }
+        });
+        
+        updateBulkActionButtons();
+    });
+    
+    // Mettre à jour les boutons d'action lorsqu'une case est cochée/décochée
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('conversation-select')) {
+            e.stopPropagation(); // Arrêter la propagation du clic
+            
+            // Mettre à jour la classe 'selected' sur l'élément parent
+            const conversationItem = e.target.closest('.conversation-item');
+            if (conversationItem) {
+                if (e.target.checked) {
+                    conversationItem.classList.add('selected');
+                } else {
+                    conversationItem.classList.remove('selected');
+                }
+            }
             
             updateBulkActionButtons();
+        }
+    });
+    
+    // Configurer les clics sur les boutons d'action
+    actionButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const action = this.dataset.action;
+            if (!action) return;
+            
+            const selectedIds = Array.from(
+                document.querySelectorAll('.conversation-select:checked')
+            ).map(cb => parseInt(cb.dataset.id, 10));
+            
+            if (selectedIds.length === 0) {
+                afficherNotificationErreur('Veuillez sélectionner au moins une conversation');
+                return;
+            }
+            
+            performBulkAction(action, selectedIds);
         });
-        
-        // Mettre à jour les boutons d'action lorsqu'une case est cochée/décochée
-        document.querySelectorAll('.conversation-select').forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                // Mettre à jour la classe 'selected' sur l'élément parent
-                const conversationItem = this.closest('.conversation-item');
-                if (conversationItem) {
-                    conversationItem.classList.toggle('selected', this.checked);
-                }
-                
-                updateBulkActionButtons();
-            });
-        });
-        
-        // Configurer les clics sur les boutons d'action
-        actionButtons.forEach(button => {
-            button.addEventListener('click', function(e) {
-                e.preventDefault();
-                const action = this.dataset.action;
-                if (!action) return;
-                
-                const selectedIds = Array.from(
-                    document.querySelectorAll('.conversation-select:checked')
-                ).map(cb => parseInt(cb.dataset.id, 10));
-                
-                if (selectedIds.length === 0) {
-                    afficherNotificationErreur('Veuillez sélectionner au moins une conversation');
-                    return;
-                }
-                
-                performBulkAction(action, selectedIds);
-            });
-        });
-        
-        // Exécuter une première fois pour initialiser l'état des boutons
-        updateBulkActionButtons();
-    }
+    });
+    
+    // Exécuter une première fois pour initialiser l'état des boutons
+    updateBulkActionButtons();
 }
 
 /**

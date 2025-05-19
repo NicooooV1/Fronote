@@ -78,6 +78,9 @@ $currentFolder = isset($_GET['folder']) ? $_GET['folder'] : 'reception';
 // Récupérer les conversations
 $conversations = getConversations($user['id'], $user['type'], $currentFolder);
 
+// Pour le débogage si nécessaire
+// echo '<pre>'; print_r($conversations); echo '</pre>'; exit;
+
 // Si c'est une requête AJAX, renvoyer seulement le contenu partiel
 if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
     // Inclure uniquement le template de la liste des conversations
@@ -107,48 +110,40 @@ include 'templates/header.php';
         <button class="bulk-action-btn" data-action="mark_unread" data-action-text="Marquer comme non lu" data-icon="envelope" disabled>
             <i class="fas fa-envelope"></i> Marquer comme non lu (0)
         </button>
+        <?php endif; ?>
         
-        <button class="bulk-action-btn danger" data-action="delete" data-action-text="Supprimer" data-icon="trash" disabled>
-            <i class="fas fa-trash"></i> Supprimer (0)
-        </button>
-        
-        <?php if ($currentFolder !== 'archives'): ?>
         <button class="bulk-action-btn" data-action="archive" data-action-text="Archiver" data-icon="archive" disabled>
             <i class="fas fa-archive"></i> Archiver (0)
         </button>
-        <?php else: ?>
-        <button class="bulk-action-btn" data-action="unarchive" data-action-text="Désarchiver" data-icon="inbox" disabled>
-            <i class="fas fa-inbox"></i> Désarchiver (0)
-        </button>
-        <?php endif; ?>
         
-        <?php else: ?>
-        <button class="bulk-action-btn" data-action="restore" data-action-text="Restaurer" data-icon="trash-restore" disabled>
-            <i class="fas fa-trash-restore"></i> Restaurer (0)
+        <?php if ($currentFolder !== 'corbeille'): ?>
+        <button class="bulk-action-btn danger" data-action="delete" data-action-text="Supprimer" data-icon="trash-alt" disabled>
+            <i class="fas fa-trash-alt"></i> Supprimer (0)
         </button>
-        <button class="bulk-action-btn danger" data-action="delete_permanently" data-action-text="Supprimer définitivement" data-icon="trash-alt" disabled>
-            <i class="fas fa-trash-alt"></i> Supprimer définitivement (0)
+        <?php else: ?>
+        <button class="bulk-action-btn" data-action="restore" data-action-text="Restaurer" data-icon="undo" disabled>
+            <i class="fas fa-undo"></i> Restaurer (0)
+        </button>
+        <button class="bulk-action-btn danger" data-action="delete_permanently" data-action-text="Suppr. définitivement" data-icon="trash-alt" disabled>
+            <i class="fas fa-trash-alt"></i> Suppr. définitivement (0)
         </button>
         <?php endif; ?>
-    </div>
-    
-    <div class="conversation-search">
-        <input type="text" id="search-conversations" placeholder="Rechercher...">
     </div>
 </div>
 
-<?php if (empty($conversations)): ?>
-<div class="empty-state">
-    <i class="fas fa-inbox"></i>
-    <p>Aucun message dans ce dossier.</p>
-</div>
-<?php else: ?>
+<!-- Liste des conversations -->
 <div class="conversation-list">
+    <?php if (empty($conversations)): ?>
+    <div class="empty-state">
+        <i class="fas fa-inbox"></i>
+        <p>Aucune conversation dans ce dossier</p>
+    </div>
+    <?php else: ?>
     <?php foreach ($conversations as $conversation): ?>
         <?php include 'templates/components/conversation-item.php'; ?>
     <?php endforeach; ?>
+    <?php endif; ?>
 </div>
-<?php endif; ?>
 
 <?php
 // Inclure le pied de page

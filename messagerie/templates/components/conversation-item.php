@@ -5,11 +5,11 @@
 
 // Extraire les données de la conversation
 $id = $conversation['id'];
-$title = !empty($conversation['title']) ? $conversation['title'] : '(Sans titre)';
-$preview = !empty($conversation['last_message']) ? $conversation['last_message'] : '(Pas de message)';
-$dateCreation = isset($conversation['created_at']) ? strtotime($conversation['created_at']) : time();
-$lastActivity = isset($conversation['updated_at']) ? strtotime($conversation['updated_at']) : time();
-$isRead = isset($conversation['is_read']) ? $conversation['is_read'] : true;
+$title = !empty($conversation['titre']) ? $conversation['titre'] : '(Sans titre)';
+$preview = !empty($conversation['dernier_message']) ? $conversation['dernier_message'] : '(Pas de message)';
+$dateCreation = isset($conversation['date_creation']) ? strtotime($conversation['date_creation']) : time();
+$lastActivity = isset($conversation['date_dernier_message']) ? strtotime($conversation['date_dernier_message']) : time();
+$isRead = isset($conversation['non_lus']) ? $conversation['non_lus'] == 0 : true;
 $participants = $conversation['participants'] ?? [];
 $type = $conversation['type'] ?? 'standard';
 
@@ -25,103 +25,72 @@ $typeIcons = [
     'standard' => 'comments',
     'annonce' => 'bullhorn',
     'information' => 'info-circle',
-    'urgent' => 'exclamation-circle'
+    'urgent' => 'exclamation-triangle'
 ];
 
-$icon = $typeIcons[$type] ?? 'comments';
-$typeClass = $typeClasses[$type] ?? '';
-
-// Formater la liste des participants
-$participantsText = '';
-if (!empty($participants)) {
-    // Limiter à 3 participants affichés
-    $displayParticipants = array_slice($participants, 0, 3);
-    $participantsNames = array_map(function($p) {
-        return $p['prenom'] . ' ' . $p['nom'];
-    }, $displayParticipants);
-    
-    $participantsText = implode(', ', $participantsNames);
-    
-    // Ajouter indicateur si plus de participants
-    if (count($participants) > 3) {
-        $participantsText .= ' et ' . (count($participants) - 3) . ' autres...';
-    }
-}
-
-// Formater la date relative
-$relativeDate = function_exists('getTimeAgo') ? getTimeAgo($lastActivity) : date('d/m/Y H:i', $lastActivity);
-
-// Classes CSS pour la conversation
-$conversationClasses = ['conversation-item'];
-if (!$isRead) {
-    $conversationClasses[] = 'unread';
-}
-if (!empty($typeClass)) {
-    $conversationClasses[] = $typeClass;
-}
-
-$conversationClassesStr = implode(' ', $conversationClasses);
+// Classes CSS pour l'élément de conversation
+$itemClass = 'conversation-item';
+if (!$isRead) $itemClass .= ' unread';
+if (isset($typeClasses[$type])) $itemClass .= ' ' . $typeClasses[$type];
 ?>
 
-<div class="<?= $conversationClassesStr ?>" data-id="<?= $id ?>">
-    <div class="conversation-checkbox">
-        <label class="checkbox-container">
-            <input type="checkbox" class="conversation-select" data-id="<?= $id ?>" data-read="<?= $isRead ? '1' : '0' ?>">
-            <span class="checkmark"></span>
-        </label>
+<div class="<?= $itemClass ?>" data-id="<?= $id ?>">
+    <div class="conversation-checkbox" onclick="event.stopPropagation();">
+        <input type="checkbox" class="conversation-select" data-id="<?= $id ?>" data-read="<?= $isRead ? '1' : '0' ?>">
     </div>
-    
-    <div class="conversation-content" onclick="window.location.href='conversation.php?id=<?= $id ?>'">
-        <div class="conversation-header">
-            <div class="conversation-info">
-                <div class="conversation-title">
-                    <?php if (!$isRead): ?>
-                    <span class="unread-indicator"></span>
+    <div class="conversation-content">
+        <a href="conversation.php?id=<?= $id ?>" class="conversation-link" style="display:block; text-decoration:none; color:inherit;">
+            <div class="conversation-header">
+                <div class="conversation-info">
+                    <div class="conversation-title">
+                        <?php if (!$isRead): ?><span class="unread-indicator"></span><?php endif; ?>
+                        <?= htmlspecialchars($title) ?>
+                    </div>
+                    <?php if (!empty($participants)): ?>
+                    <div class="conversation-participants">
+                        <?php
+                        $displayNames = [];
+                        foreach ($participants as $p) {
+                            if (count($displayNames) < 3) {
+                                $displayNames[] = $p['nom_complet'];
+                            }
+                        }
+                        echo htmlspecialchars(implode(', ', $displayNames));
+                        if (count($participants) > 3) {
+                            echo ' et ' . (count($participants) - 3) . ' autre(s)';
+                        }
+                        ?>
+                    </div>
                     <?php endif; ?>
-                    <?= htmlspecialchars($title) ?>
                 </div>
-                <div class="conversation-participants"><?= htmlspecialchars($participantsText) ?></div>
+                <div class="conversation-timestamp" title="<?= date('d/m/Y H:i', $lastActivity) ?>">
+                    <?= isset($conversation['dernier_message']) ? date('d/m/Y H:i', strtotime($conversation['dernier_message'])) : date('d/m/Y H:i', time()) ?>
+                </div>
             </div>
-            <div class="conversation-timestamp" title="<?= date('d/m/Y H:i', $lastActivity) ?>">
-                <?= $relativeDate ?>
+            <div class="conversation-body">
+                <div class="conversation-preview">
+                    <?= htmlspecialchars($preview) ?>
+                </div>
             </div>
-        </div>
-        
-        <div class="conversation-body">
-            <div class="conversation-preview"><?= htmlspecialchars(strip_tags($preview)) ?></div>
-        </div>
-        
-        <div class="conversation-footer">
-            <div class="conversation-status">
-                <span class="conversation-type">
-                    <i class="fas fa-<?= $icon ?>"></i>
-                    <?= ucfirst($type) ?>
-                </span>
+            <div class="conversation-footer">
+                <div class="conversation-status">
+                    <div class="conversation-type">
+                        <i class="fas fa-<?= $typeIcons[$type] ?? 'comments' ?>"></i>
+                        <?= ucfirst($type) ?>
+                    </div>
+                    <?php if (!$isRead): ?>
+                    <span class="badge badge-primary"><?= isset($conversation['non_lus']) ? $conversation['non_lus'] : '!' ?> non lu(s)</span>
+                    <?php endif; ?>
+                </div>
+                <div class="conversation-actions">
+                    <button class="conversation-action" onclick="event.stopPropagation(); toggleQuickActions(<?= $id ?>)">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                </div>
             </div>
-            
-            <div class="conversation-actions">
-                <?php if ($currentFolder === 'corbeille'): ?>
-                <button class="conversation-action" title="Restaurer" onclick="restoreConversation(<?= $id ?>); event.stopPropagation();">
-                    <i class="fas fa-trash-restore"></i>
-                </button>
-                <button class="conversation-action danger" title="Supprimer définitivement" onclick="confirmDeletePermanently(<?= $id ?>); event.stopPropagation();">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
-                <?php else: ?>
-                <?php if ($currentFolder !== 'archives'): ?>
-                <button class="conversation-action" title="Archiver" onclick="archiveConversation(<?= $id ?>); event.stopPropagation();">
-                    <i class="fas fa-archive"></i>
-                </button>
-                <?php else: ?>
-                <button class="conversation-action" title="Désarchiver" onclick="unarchiveConversation(<?= $id ?>); event.stopPropagation();">
-                    <i class="fas fa-inbox"></i>
-                </button>
-                <?php endif; ?>
-                <button class="conversation-action danger" title="Supprimer" onclick="confirmDelete(<?= $id ?>); event.stopPropagation();">
-                    <i class="fas fa-trash"></i>
-                </button>
-                <?php endif; ?>
-            </div>
-        </div>
+        </a>
+    </div>
+    <div class="quick-actions-menu" id="quick-actions-<?= $id ?>">
+        <!-- Actions rapides ajoutées via JavaScript -->
     </div>
 </div>

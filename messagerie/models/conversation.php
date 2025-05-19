@@ -16,10 +16,11 @@ function getConversations($userId, $userType, $dossier = 'reception') {
     global $pdo;
     
     $baseQuery = "
-        SELECT DISTINCT c.id, c.subject as titre, 
+        SELECT c.id, c.subject as titre, 
                CASE WHEN EXISTS (SELECT 1 FROM messages WHERE conversation_id = c.id AND status = 'annonce') THEN 'annonce' ELSE 'standard' END as type,
                c.created_at as date_creation, 
-               c.updated_at as dernier_message,
+               (SELECT MAX(created_at) FROM messages WHERE conversation_id = c.id) as dernier_message,
+               (SELECT body FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as apercu,
                CASE 
                    WHEN EXISTS (SELECT 1 FROM messages WHERE conversation_id = c.id AND status = 'annonce') THEN 'annonce'
                    ELSE (SELECT status FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1)
@@ -30,45 +31,63 @@ function getConversations($userId, $userType, $dossier = 'reception') {
         WHERE cp.user_id = ? AND cp.user_type = ?
     ";
     
+    // Ajouter des conditions selon le dossier
     $params = [$userId, $userType];
     
     switch ($dossier) {
-        case 'reception':
-            $baseQuery .= " AND cp.is_deleted = 0 AND cp.is_archived = 0
-                           AND EXISTS (SELECT 1 FROM messages WHERE conversation_id = c.id AND (sender_id != ? OR sender_type != ?))";
-            $params[] = $userId;
-            $params[] = $userType;
-            break;
-            
-        case 'envoyes':
-            $baseQuery .= " AND cp.is_deleted = 0 AND cp.is_archived = 0
-                           AND EXISTS (SELECT 1 FROM messages WHERE conversation_id = c.id AND sender_id = ? AND sender_type = ?)";
-            $params[] = $userId;
-            $params[] = $userType;
-            break;
-            
         case 'archives':
             $baseQuery .= " AND cp.is_archived = 1 AND cp.is_deleted = 0";
             break;
-            
-        case 'information':
-            $baseQuery .= " AND cp.is_deleted = 0 
-                           AND EXISTS (SELECT 1 FROM messages WHERE conversation_id = c.id AND status = 'annonce')";
-            break;
-            
         case 'corbeille':
             $baseQuery .= " AND cp.is_deleted = 1";
             break;
-            
+        case 'envoyes':
+            $baseQuery .= " AND cp.is_archived = 0 AND cp.is_deleted = 0 
+                          AND EXISTS (
+                            SELECT 1 FROM messages 
+                            WHERE conversation_id = c.id 
+                            AND sender_id = ? AND sender_type = ?
+                          )";
+            $params[] = $userId;
+            $params[] = $userType;
+            break;
+        case 'reception':
         default:
-            $baseQuery .= " AND cp.is_deleted = 0 AND cp.is_archived = 0";
+            $baseQuery .= " AND cp.is_archived = 0 AND cp.is_deleted = 0";
     }
     
     $baseQuery .= " ORDER BY c.updated_at DESC";
     
     $stmt = $pdo->prepare($baseQuery);
     $stmt->execute($params);
-    return $stmt->fetchAll();
+    $conversations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Enrichir les données avec les participants
+    foreach ($conversations as &$conversation) {
+        $participantsStmt = $pdo->prepare("
+            SELECT 
+                cp.user_id, cp.user_type, cp.is_admin, cp.is_moderator,
+                CASE 
+                    WHEN cp.user_type = 'eleve' THEN 
+                        (SELECT CONCAT(e.prenom, ' ', e.nom) FROM eleves e WHERE e.id = cp.user_id)
+                    WHEN cp.user_type = 'parent' THEN 
+                        (SELECT CONCAT(p.prenom, ' ', p.nom) FROM parents p WHERE p.id = cp.user_id)
+                    WHEN cp.user_type = 'professeur' THEN 
+                        (SELECT CONCAT(p.prenom, ' ', p.nom) FROM professeurs p WHERE p.id = cp.user_id)
+                    WHEN cp.user_type = 'vie_scolaire' THEN 
+                        (SELECT CONCAT(v.prenom, ' ', v.nom) FROM vie_scolaire v WHERE v.id = cp.user_id)
+                    WHEN cp.user_type = 'administrateur' THEN 
+                        (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = cp.user_id)
+                    ELSE 'Inconnu'
+                END as nom_complet
+            FROM conversation_participants cp
+            WHERE cp.conversation_id = ? AND cp.is_deleted = 0
+        ");
+        $participantsStmt->execute([$conversation['id']]);
+        $conversation['participants'] = $participantsStmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
+    return $conversations;
 }
 
 /**
