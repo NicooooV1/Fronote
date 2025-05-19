@@ -52,6 +52,10 @@ $classe = isset($_GET['classe']) ? $_GET['classe'] : '';
 $view = isset($_GET['view']) ? $_GET['view'] : 'list';
 $justifie = isset($_GET['justifie']) ? $_GET['justifie'] : '';
 
+// Initialiser les types sélectionnés
+$selected_types = isset($_GET['type']) && is_array($_GET['type']) ? $_GET['type'] : [];
+$periode_active = isset($_GET['periode']) ? $_GET['periode'] : '';
+
 // Récupérer la liste des absences selon le rôle de l'utilisateur
 $absences = [];
 
@@ -220,17 +224,33 @@ if (!is_dir($views_dir)) {
         </div>');
 }
 
+// Définir la fonction canManageAbsences() si elle n'existe pas
+if (!function_exists('canManageAbsences')) {
+    function canManageAbsences() {
+        $role = isset($_SESSION['user']) ? $_SESSION['user']['profil'] : '';
+        return in_array($role, ['administrateur', 'professeur', 'vie_scolaire']);
+    }
+}
+
 // Récupérer la liste des classes pour le filtre
 $classes = [];
-$etablissement_data = json_decode(file_get_contents('../login/data/etablissement.json'), true);
-if (!empty($etablissement_data['classes'])) {
-    foreach ($etablissement_data['classes'] as $niveau => $niveaux) {
-        foreach ($niveaux as $cycle => $liste_classes) {
-            foreach ($liste_classes as $nom_classe) {
-                $classes[] = $nom_classe;
+$etablissement_data = [];
+
+// Vérifier si le fichier exist avant de le lire
+$etablissementJsonFile = '../login/data/etablissement.json';
+if (file_exists($etablissementJsonFile)) {
+    $etablissement_data = json_decode(file_get_contents($etablissementJsonFile), true);
+    if (!empty($etablissement_data['classes'])) {
+        foreach ($etablissement_data['classes'] as $niveau => $niveaux) {
+            foreach ($niveaux as $cycle => $liste_classes) {
+                foreach ($liste_classes as $nom_classe) {
+                    $classes[] = $nom_classe;
+                }
             }
         }
     }
+} else {
+    error_log("Fichier d'établissement non trouvé: $etablissementJsonFile");
 }
 ?>
 <!DOCTYPE html>
