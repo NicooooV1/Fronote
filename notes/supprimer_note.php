@@ -95,55 +95,8 @@ $moduleClass = "notes";
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($pageTitle) ?> - Pronote</title>
-    <link rel="stylesheet" href="../assets/css/pronote-theme.css">
+    <link rel="stylesheet" href="assets/css/notes.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <style>
-        .confirmation-box {
-            background-color: var(--white);
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-light);
-            padding: var(--space-lg);
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        
-        .note-details {
-            background-color: var(--background-color);
-            border-radius: var(--radius-sm);
-            padding: var(--space-md);
-            margin: var(--space-md) 0;
-        }
-        
-        .warning {
-            display: flex;
-            align-items: center;
-            padding: var(--space-md);
-            background-color: rgba(255, 59, 48, 0.1);
-            color: var(--error-color);
-            border-radius: var(--radius-sm);
-            margin: var(--space-md) 0;
-        }
-        
-        .warning i {
-            font-size: 24px;
-            margin-right: var(--space-md);
-        }
-        
-        .confirmation-actions {
-            display: flex;
-            justify-content: space-between;
-            margin-top: var(--space-lg);
-        }
-        
-        .btn-danger {
-            background-color: var(--error-color);
-            color: var(--white);
-        }
-        
-        .btn-danger:hover {
-            background-color: #d63030;
-        }
-    </style>
 </head>
 <body>
     <div class="app-container">
@@ -151,30 +104,40 @@ $moduleClass = "notes";
         <div class="sidebar">
             <div class="logo-container">
                 <div class="app-logo">P</div>
-                <div class="app-title">Pronote</div>
+                <div class="app-title">PRONOTE</div>
             </div>
             
             <!-- Navigation -->
             <div class="sidebar-section">
                 <div class="sidebar-section-header">Navigation</div>
-                <a href="<?= defined('HOME_URL') ? HOME_URL : '../accueil/accueil.php' ?>" class="sidebar-link">
-                    <i class="fas fa-home"></i> Accueil
-                </a>
-                <a href="notes.php" class="sidebar-link active">
-                    <i class="fas fa-chart-bar"></i> Notes
-                </a>
-                <a href="../absences/absences.php" class="sidebar-link">
-                    <i class="fas fa-calendar-times"></i> Absences
-                </a>
-                <a href="../agenda/agenda.php" class="sidebar-link">
-                    <i class="fas fa-calendar-alt"></i> Agenda
-                </a>
-                <a href="../cahierdetextes/cahierdetextes.php" class="sidebar-link">
-                    <i class="fas fa-book"></i> Cahier de textes
-                </a>
-                <a href="../messagerie/index.php" class="sidebar-link">
-                    <i class="fas fa-envelope"></i> Messagerie
-                </a>
+                <div class="sidebar-nav">
+                    <a href="../accueil/accueil.php" class="sidebar-nav-item">
+                        <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
+                        <span>Accueil</span>
+                    </a>
+                    <a href="notes.php" class="sidebar-nav-item active">
+                        <span class="sidebar-nav-icon"><i class="fas fa-chart-bar"></i></span>
+                        <span>Notes</span>
+                    </a>
+                    <a href="../agenda/agenda.php" class="sidebar-nav-item">
+                        <span class="sidebar-nav-icon"><i class="fas fa-calendar"></i></span>
+                        <span>Agenda</span>
+                    </a>
+                    <a href="../cahierdetextes/cahierdetextes.php" class="sidebar-nav-item">
+                        <span class="sidebar-nav-icon"><i class="fas fa-book"></i></span>
+                        <span>Cahier de textes</span>
+                    </a>
+                    <a href="../messagerie/index.php" class="sidebar-nav-item">
+                        <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
+                        <span>Messagerie</span>
+                    </a>
+                    <?php if ($user['profil'] === 'vie_scolaire' || $user['profil'] === 'administrateur'): ?>
+                    <a href="../absences/absences.php" class="sidebar-nav-item">
+                        <span class="sidebar-nav-icon"><i class="fas fa-calendar-times"></i></span>
+                        <span>Absences</span>
+                    </a>
+                    <?php endif; ?>
+                </div>
             </div>
             
             <!-- Actions -->
@@ -183,6 +146,19 @@ $moduleClass = "notes";
                 <a href="notes.php" class="create-button">
                     <i class="fas fa-arrow-left"></i> Retour aux notes
                 </a>
+            </div>
+            
+            <!-- Informations -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-header">Informations</div>
+                <div class="info-item">
+                    <div class="info-label">Date</div>
+                    <div class="info-value"><?= date('d/m/Y') ?></div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Action</div>
+                    <div class="info-value">Suppression d'une note</div>
+                </div>
             </div>
         </div>
         
@@ -194,7 +170,7 @@ $moduleClass = "notes";
                 </div>
                 
                 <div class="header-actions">
-                    <a href="<?= defined('LOGOUT_URL') ? LOGOUT_URL : '../login/public/logout.php' ?>" class="logout-button" title="Déconnexion">
+                    <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">
                         <i class="fas fa-sign-out-alt"></i>
                     </a>
                     <div class="user-avatar" title="<?= htmlspecialchars($user_fullname) ?>">
@@ -210,6 +186,7 @@ $moduleClass = "notes";
                     
                     <div class="note-details">
                         <p><strong>Élève :</strong> <?= htmlspecialchars($note['nom_eleve']) ?></p>
+                        <p><strong>Classe :</strong> <?= htmlspecialchars($note['classe']) ?></p>
                         <p><strong>Matière :</strong> <?= htmlspecialchars($note['matiere']) ?></p>
                         <p><strong>Note :</strong> <?= htmlspecialchars($note['note']) ?>/<?= htmlspecialchars($note['note_sur'] ?? '20') ?></p>
                         <p><strong>Date :</strong> <?= date('d/m/Y', strtotime($note['date_ajout'] ?? $note['date_evaluation'] ?? date('Y-m-d'))) ?></p>
@@ -220,7 +197,7 @@ $moduleClass = "notes";
                     
                     <div class="warning">
                         <i class="fas fa-exclamation-triangle"></i>
-                        <p>Attention : Cette action est irréversible.</p>
+                        <p>Attention : Cette action est irréversible. Une fois supprimée, la note ne pourra pas être récupérée.</p>
                     </div>
                     
                     <div class="confirmation-actions">

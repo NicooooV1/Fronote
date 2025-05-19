@@ -151,8 +151,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Construire la requête SQL
     $query = 'UPDATE notes SET ' . implode(', ', $fields) . ' WHERE id = ?';
-    error_log("SQL Query: " . $query);
-    error_log("SQL Values: " . print_r($values, true));
     
     $stmt = $pdo->prepare($query);
     $stmt->execute($values);
@@ -178,21 +176,8 @@ $moduleClass = "notes";
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><?= htmlspecialchars($pageTitle) ?> - Pronote</title>
-  <link rel="stylesheet" href="../assets/css/pronote-theme.css">
+  <link rel="stylesheet" href="assets/css/notes.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <style>
-    .required {
-      color: var(--error-color);
-      margin-left: 3px;
-    }
-    
-    .form-container {
-      background-color: var(--white);
-      border-radius: var(--radius-md);
-      box-shadow: var(--shadow-light);
-      padding: var(--space-md);
-    }
-  </style>
 </head>
 <body>
   <div class="app-container">
@@ -200,30 +185,40 @@ $moduleClass = "notes";
     <div class="sidebar">
       <div class="logo-container">
         <div class="app-logo">P</div>
-        <div class="app-title">Pronote</div>
+        <div class="app-title">PRONOTE</div>
       </div>
       
       <!-- Navigation -->
       <div class="sidebar-section">
         <div class="sidebar-section-header">Navigation</div>
-        <a href="<?= defined('HOME_URL') ? HOME_URL : '../accueil/accueil.php' ?>" class="sidebar-link">
-          <i class="fas fa-home"></i> Accueil
-        </a>
-        <a href="notes.php" class="sidebar-link active">
-          <i class="fas fa-chart-bar"></i> Notes
-        </a>
-        <a href="../absences/absences.php" class="sidebar-link">
-          <i class="fas fa-calendar-times"></i> Absences
-        </a>
-        <a href="../agenda/agenda.php" class="sidebar-link">
-          <i class="fas fa-calendar-alt"></i> Agenda
-        </a>
-        <a href="../cahierdetextes/cahierdetextes.php" class="sidebar-link">
-          <i class="fas fa-book"></i> Cahier de textes
-        </a>
-        <a href="../messagerie/index.php" class="sidebar-link">
-          <i class="fas fa-envelope"></i> Messagerie
-        </a>
+        <div class="sidebar-nav">
+          <a href="../accueil/accueil.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
+            <span>Accueil</span>
+          </a>
+          <a href="notes.php" class="sidebar-nav-item active">
+            <span class="sidebar-nav-icon"><i class="fas fa-chart-bar"></i></span>
+            <span>Notes</span>
+          </a>
+          <a href="../agenda/agenda.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-calendar"></i></span>
+            <span>Agenda</span>
+          </a>
+          <a href="../cahierdetextes/cahierdetextes.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-book"></i></span>
+            <span>Cahier de textes</span>
+          </a>
+          <a href="../messagerie/index.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
+            <span>Messagerie</span>
+          </a>
+          <?php if ($user['profil'] === 'vie_scolaire' || $user['profil'] === 'administrateur'): ?>
+          <a href="../absences/absences.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-calendar-times"></i></span>
+            <span>Absences</span>
+          </a>
+          <?php endif; ?>
+        </div>
       </div>
       
       <!-- Actions -->
@@ -232,6 +227,19 @@ $moduleClass = "notes";
         <a href="notes.php" class="create-button">
           <i class="fas fa-arrow-left"></i> Retour aux notes
         </a>
+      </div>
+      
+      <!-- Informations -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Informations</div>
+        <div class="info-item">
+          <div class="info-label">Date</div>
+          <div class="info-value"><?= date('d/m/Y') ?></div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Période</div>
+          <div class="info-value"><?= $trimestre_actuel ?>ème trimestre</div>
+        </div>
       </div>
     </div>
     
@@ -243,7 +251,7 @@ $moduleClass = "notes";
         </div>
         
         <div class="header-actions">
-          <a href="<?= defined('LOGOUT_URL') ? LOGOUT_URL : '../login/public/logout.php' ?>" class="logout-button" title="Déconnexion">
+          <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">
             <i class="fas fa-sign-out-alt"></i>
           </a>
           <div class="user-avatar" title="<?= htmlspecialchars($nom_professeur) ?>">
@@ -265,7 +273,7 @@ $moduleClass = "notes";
             <div class="form-grid-2">
               <!-- Champ pour la classe -->
               <div class="form-group">
-                <label for="classe" class="form-label">Classe<span class="required">*</span></label>
+                <label for="classe">Classe<span class="required">*</span></label>
                 <select name="classe" id="classe" class="form-select" required>
                   <option value="">Sélectionnez une classe</option>
                   <?php if (!empty($etablissement_data['classes'])): ?>
@@ -295,7 +303,7 @@ $moduleClass = "notes";
 
               <!-- Champ pour l'élève -->
               <div class="form-group">
-                <label for="nom_eleve" class="form-label">Élève<span class="required">*</span></label>
+                <label for="nom_eleve">Élève<span class="required">*</span></label>
                 <select name="nom_eleve" id="nom_eleve" class="form-select" required>
                   <option value="">Sélectionnez un élève</option>
                   <?php foreach ($eleves as $eleve): ?>
@@ -310,7 +318,7 @@ $moduleClass = "notes";
               
               <!-- Champ pour la matière -->
               <div class="form-group">
-                <label for="nom_matiere" class="form-label">Matière<span class="required">*</span></label>
+                <label for="nom_matiere">Matière<span class="required">*</span></label>
                 <select name="nom_matiere" id="nom_matiere" class="form-select" required>
                   <option value="">Sélectionnez une matière</option>
                   <?php if (!empty($etablissement_data['matieres'])): ?>
@@ -323,7 +331,7 @@ $moduleClass = "notes";
               
               <!-- Champ pour le professeur -->
               <div class="form-group">
-                <label for="nom_professeur" class="form-label">Professeur<span class="required">*</span></label>
+                <label for="nom_professeur">Professeur<span class="required">*</span></label>
                 <?php if (isTeacher() && !isAdmin() && !isVieScolaire()): ?>
                   <!-- Si c'est un professeur, il ne peut pas changer le nom du professeur -->
                   <input type="text" name="nom_professeur" id="nom_professeur" class="form-control" value="<?= htmlspecialchars($note['nom_professeur']) ?>" readonly>
@@ -345,25 +353,25 @@ $moduleClass = "notes";
               
               <!-- Champ pour la note -->
               <div class="form-group">
-                <label for="note" class="form-label">Note<span class="required">*</span></label>
+                <label for="note">Note<span class="required">*</span></label>
                 <input type="number" name="note" id="note" class="form-control" max="20" min="0" step="0.1" value="<?= htmlspecialchars($note['note']) ?>" required>
               </div>
               
               <!-- Champ pour le coefficient -->
               <div class="form-group">
-                <label for="coefficient" class="form-label">Coefficient<span class="required">*</span></label>
+                <label for="coefficient">Coefficient<span class="required">*</span></label>
                 <input type="number" name="coefficient" id="coefficient" class="form-control" min="1" max="10" step="1" value="<?= isset($note['coefficient']) ? htmlspecialchars($note['coefficient']) : 1 ?>" required>
               </div>
               
               <!-- Champ pour la date -->
               <div class="form-group">
-                <label for="date_ajout" class="form-label">Date<span class="required">*</span></label>
+                <label for="date_ajout">Date<span class="required">*</span></label>
                 <input type="date" name="date_ajout" id="date_ajout" class="form-control" value="<?= htmlspecialchars($note['date_ajout'] ?? $note['date_evaluation'] ?? date('Y-m-d')) ?>" required>
               </div>
               
               <!-- Champ pour le trimestre -->
               <div class="form-group">
-                <label for="trimestre" class="form-label">Trimestre<span class="required">*</span></label>
+                <label for="trimestre">Trimestre<span class="required">*</span></label>
                 <select name="trimestre" id="trimestre" class="form-select" required>
                   <option value="1" <?= (isset($note['trimestre']) && $note['trimestre'] == 1) ? 'selected' : '' ?>>Trimestre 1</option>
                   <option value="2" <?= (isset($note['trimestre']) && $note['trimestre'] == 2) ? 'selected' : '' ?>>Trimestre 2</option>
@@ -374,7 +382,7 @@ $moduleClass = "notes";
               
             <!-- Champ pour la description -->
             <div class="form-group mt-3">
-              <label for="description" class="form-label">Intitulé de l'évaluation<span class="required">*</span></label>
+              <label for="description">Intitulé de l'évaluation<span class="required">*</span></label>
               <input type="text" name="description" id="description" class="form-control" value="<?= isset($note['commentaire']) ? htmlspecialchars($note['commentaire']) : (isset($note['description']) ? htmlspecialchars($note['description']) : '') ?>" placeholder="Ex: Contrôle évaluation trimestre" required>
             </div>
             

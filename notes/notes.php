@@ -234,6 +234,16 @@ if ($total_coef_general > 0) {
     $moyenne_generale = 'N/A';
 }
 
+// Récupérer le trimestre actuel pour l'affichage
+$current_month = (int)date('n'); // 1-12
+if ($current_month >= 9 && $current_month <= 12) {
+  $trimestre_actuel = 1; // Septembre-Décembre
+} elseif ($current_month >= 1 && $current_month <= 3) {
+  $trimestre_actuel = 2; // Janvier-Mars
+} else {
+  $trimestre_actuel = 3; // Avril-Août
+}
+
 // Définir la configuration de la page
 $pageTitle = "Notes";
 $moduleClass = "notes";
@@ -244,130 +254,8 @@ $moduleClass = "notes";
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($pageTitle) ?> - Pronote</title>
-    <link rel="stylesheet" href="../assets/css/pronote-theme.css">
+    <link rel="stylesheet" href="assets/css/notes.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <style>
-        /* Styles spécifiques au module Notes */
-        .note-value {
-            font-weight: 600;
-            color: var(--accent-notes);
-        }
-        
-        .filter-form {
-            background-color: var(--white);
-            padding: var(--space-md);
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-light);
-            margin-bottom: var(--space-lg);
-        }
-        
-        .filter-form .form-grid {
-            grid-template-columns: repeat(3, 1fr);
-            gap: var(--space-md);
-        }
-        
-        .matiere-section {
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .matiere-header {
-            padding: var(--space-md);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            background-color: rgba(255, 149, 0, 0.05);
-        }
-
-        .matiere-header:hover {
-            background-color: rgba(255, 149, 0, 0.1);
-        }
-
-        .matiere-icon {
-            margin-right: var(--space-sm);
-            color: var(--accent-notes);
-        }
-
-        .matiere-title {
-            font-weight: 600;
-            color: var(--text-color);
-        }
-
-        .matiere-moyenne {
-            font-weight: 700;
-            color: var(--accent-notes);
-        }
-
-        .notes-list {
-            padding: 0;
-        }
-
-        .note-item {
-            display: flex;
-            align-items: center;
-            padding: var(--space-sm) var(--space-md);
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .note-item:last-child {
-            border-bottom: none;
-        }
-
-        .note-date {
-            width: 100px;
-            color: var(--text-muted);
-            font-size: 14px;
-        }
-
-        .note-description {
-            flex: 1;
-            font-weight: 500;
-        }
-
-        .note-coefficient {
-            width: 80px;
-            text-align: center;
-            color: var(--text-light);
-        }
-
-        .moyenne-generale {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--accent-notes);
-            background-color: rgba(255, 149, 0, 0.1);
-            padding: var(--space-sm) var(--space-md);
-            border-radius: var(--radius-md);
-            display: inline-block;
-        }
-
-        .no-data-message {
-            text-align: center;
-            padding: var(--space-lg);
-            background-color: var(--white);
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-light);
-        }
-        
-        .no-data-message i {
-            font-size: 48px;
-            color: var(--text-muted);
-            margin-bottom: var(--space-sm);
-        }
-        
-        @media (max-width: 768px) {
-            .filter-form .form-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .note-item {
-                flex-wrap: wrap;
-            }
-            
-            .note-date {
-                width: 80px;
-            }
-        }
-    </style>
 </head>
 <body>
     <div class="app-container">
@@ -375,47 +263,70 @@ $moduleClass = "notes";
         <div class="sidebar">
             <div class="logo-container">
                 <div class="app-logo">P</div>
-                <div class="app-title">Pronote</div>
+                <div class="app-title">PRONOTE</div>
+            </div>
+            
+            <!-- Périodes -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-header">Périodes</div>
+                <div class="sidebar-nav">
+                    <a href="?trimestre=1<?= !empty($classe_filtre) ? '&classe=' . urlencode($classe_filtre) : '' ?><?= !empty($matiere_filtre) ? '&matiere=' . urlencode($matiere_filtre) : '' ?>" class="sidebar-nav-item <?= $trimestre_filtre == 1 ? 'active' : '' ?>">
+                        <span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span>
+                        <span>Trimestre 1</span>
+                    </a>
+                    <a href="?trimestre=2<?= !empty($classe_filtre) ? '&classe=' . urlencode($classe_filtre) : '' ?><?= !empty($matiere_filtre) ? '&matiere=' . urlencode($matiere_filtre) : '' ?>" class="sidebar-nav-item <?= $trimestre_filtre == 2 ? 'active' : '' ?>">
+                        <span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span>
+                        <span>Trimestre 2</span>
+                    </a>
+                    <a href="?trimestre=3<?= !empty($classe_filtre) ? '&classe=' . urlencode($classe_filtre) : '' ?><?= !empty($matiere_filtre) ? '&matiere=' . urlencode($matiere_filtre) : '' ?>" class="sidebar-nav-item <?= $trimestre_filtre == 3 ? 'active' : '' ?>">
+                        <span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span>
+                        <span>Trimestre 3</span>
+                    </a>
+                </div>
             </div>
             
             <!-- Navigation -->
             <div class="sidebar-section">
                 <div class="sidebar-section-header">Navigation</div>
-                <a href="<?= defined('HOME_URL') ? HOME_URL : '../accueil/accueil.php' ?>" class="sidebar-link">
-                    <i class="fas fa-home"></i> Accueil
-                </a>
-                <a href="../notes/notes.php" class="sidebar-link active">
-                    <i class="fas fa-chart-bar"></i> Notes
-                </a>
-                <a href="../absences/absences.php" class="sidebar-link">
-                    <i class="fas fa-calendar-times"></i> Absences
-                </a>
-                <a href="../agenda/agenda.php" class="sidebar-link">
-                    <i class="fas fa-calendar-alt"></i> Agenda
-                </a>
-                <a href="../cahierdetextes/cahierdetextes.php" class="sidebar-link">
-                    <i class="fas fa-book"></i> Cahier de textes
-                </a>
-                <a href="../messagerie/index.php" class="sidebar-link">
-                    <i class="fas fa-envelope"></i> Messagerie
-                </a>
+                <div class="sidebar-nav">
+                    <a href="../accueil/accueil.php" class="sidebar-nav-item">
+                        <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
+                        <span>Accueil</span>
+                    </a>
+                    <a href="notes.php" class="sidebar-nav-item active">
+                        <span class="sidebar-nav-icon"><i class="fas fa-chart-bar"></i></span>
+                        <span>Notes</span>
+                    </a>
+                    <a href="../agenda/agenda.php" class="sidebar-nav-item">
+                        <span class="sidebar-nav-icon"><i class="fas fa-calendar"></i></span>
+                        <span>Agenda</span>
+                    </a>
+                    <a href="../cahierdetextes/cahierdetextes.php" class="sidebar-nav-item">
+                        <span class="sidebar-nav-icon"><i class="fas fa-book"></i></span>
+                        <span>Cahier de textes</span>
+                    </a>
+                    <a href="../messagerie/index.php" class="sidebar-nav-item">
+                        <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
+                        <span>Messagerie</span>
+                    </a>
+                    <?php if ($user['profil'] === 'vie_scolaire' || $user['profil'] === 'administrateur'): ?>
+                    <a href="../absences/absences.php" class="sidebar-nav-item">
+                        <span class="sidebar-nav-icon"><i class="fas fa-calendar-times"></i></span>
+                        <span>Absences</span>
+                    </a>
+                    <?php endif; ?>
+                </div>
             </div>
             
             <!-- Filtres -->
+            <?php if (isAdmin() || isTeacher() || isVieScolaire()): ?>
             <div class="sidebar-section">
                 <div class="sidebar-section-header">Filtres</div>
                 <form id="filter-form" method="get" action="">
-                    <div class="form-group">
-                        <label for="trimestre">Trimestre</label>
-                        <select id="trimestre" name="trimestre" class="form-select" onchange="this.form.submit()">
-                            <option value="">Tous les trimestres</option>
-                            <option value="1" <?= $trimestre_filtre === 1 ? 'selected' : '' ?>>Trimestre 1</option>
-                            <option value="2" <?= $trimestre_filtre === 2 ? 'selected' : '' ?>>Trimestre 2</option>
-                            <option value="3" <?= $trimestre_filtre === 3 ? 'selected' : '' ?>>Trimestre 3</option>
-                        </select>
-                    </div>
+                    <?php if (!empty($trimestre_filtre)): ?>
+                    <input type="hidden" name="trimestre" value="<?= $trimestre_filtre ?>">
+                    <?php endif; ?>
                     
-                    <?php if (isAdmin() || isTeacher() || isVieScolaire()): ?>
                     <div class="form-group">
                         <label for="classe">Classe</label>
                         <select id="classe" name="classe" class="form-select" onchange="this.form.submit()">
@@ -427,7 +338,6 @@ $moduleClass = "notes";
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <?php endif; ?>
                     
                     <div class="form-group">
                         <label for="matiere">Matière</label>
@@ -442,6 +352,7 @@ $moduleClass = "notes";
                     </div>
                 </form>
             </div>
+            <?php endif; ?>
             
             <!-- Actions -->
             <?php if (canManageNotes()): ?>
@@ -457,6 +368,19 @@ $moduleClass = "notes";
                 <?php endif; ?>
             </div>
             <?php endif; ?>
+            
+            <!-- Informations -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-header">Informations</div>
+                <div class="info-item">
+                    <div class="info-label">Date</div>
+                    <div class="info-value"><?= date('d/m/Y') ?></div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Période actuelle</div>
+                    <div class="info-value"><?= $trimestre_actuel ?>ème trimestre</div>
+                </div>
+            </div>
         </div>
         
         <!-- Main Content -->
@@ -464,10 +388,23 @@ $moduleClass = "notes";
             <div class="top-header">
                 <div class="page-title">
                     <h1><?= htmlspecialchars($pageTitle) ?></h1>
+                    <p class="subtitle">
+                        <?php if (!empty($classe_filtre)): ?>
+                            Classe <?= htmlspecialchars($classe_filtre) ?> - 
+                        <?php endif; ?>
+                        <?php if (!empty($matiere_filtre)): ?>
+                            <?= htmlspecialchars($matiere_filtre) ?> - 
+                        <?php endif; ?>
+                        <?php if (!empty($trimestre_filtre)): ?>
+                            Trimestre <?= $trimestre_filtre ?>
+                        <?php else: ?>
+                            Tous les trimestres
+                        <?php endif; ?>
+                    </p>
                 </div>
                 
                 <div class="header-actions">
-                    <a href="<?= defined('LOGOUT_URL') ? LOGOUT_URL : '../login/public/logout.php' ?>" class="logout-button" title="Déconnexion">
+                    <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">
                         <i class="fas fa-sign-out-alt"></i>
                     </a>
                     <div class="user-avatar" title="<?= htmlspecialchars($user_fullname) ?>">
@@ -497,6 +434,11 @@ $moduleClass = "notes";
                         <i class="fas fa-info-circle"></i>
                         <h3>Aucune note disponible</h3>
                         <p>Aucune note ne correspond aux critères sélectionnés.</p>
+                        <?php if (canManageNotes()): ?>
+                            <a href="ajouter_note.php" class="btn btn-primary mt-3">
+                                <i class="fas fa-plus"></i> Ajouter une note
+                            </a>
+                        <?php endif; ?>
                     </div>
                 <?php else: ?>
                     <!-- Affichage des notes par matière pour les élèves et parents -->
