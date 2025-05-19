@@ -149,9 +149,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $values[] = $_POST['coefficient'];
     }
     
-    // Vérifier si la colonne 'description' existe
-    if (in_array('description', $columns)) {
-      $fields[] = 'description';
+    // Vérifier si la colonne 'commentaire' existe
+    if (in_array('commentaire', $columns)) {
+      $fields[] = 'commentaire';
       $placeholders[] = '?';
       $values[] = $_POST['description'];
     }
@@ -172,6 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->execute($values);
     
     // Redirection après succès
+    $_SESSION['success_message'] = "La note a été ajoutée avec succès.";
     header('Location: notes.php');
     exit;
   } catch (PDOException $e) {
@@ -191,20 +192,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ajouter une note - Pronote</title>
-  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="../assets/css/pronote-theme.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    .required {
+      color: var(--error-color);
+      margin-left: 3px;
+    }
+    
+    .form-container {
+      background-color: var(--white);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-light);
+      padding: var(--space-md);
+    }
+  </style>
 </head>
 <body>
   <div class="app-container">
     <!-- Sidebar -->
     <div class="sidebar">
-      <a href="../accueil/accueil.php" class="logo-container">
+      <div class="logo-container">
         <div class="app-logo">P</div>
-        <div class="app-title">Pronote Notes</div>
-      </a>
+        <div class="app-title">Pronote</div>
+      </div>
       
+      <!-- Navigation -->
       <div class="sidebar-section">
-        <a href="notes.php" class="action-button secondary">
+        <div class="sidebar-section-header">Navigation</div>
+        <a href="<?= defined('HOME_URL') ? HOME_URL : '../accueil/accueil.php' ?>" class="sidebar-link">
+          <i class="fas fa-home"></i> Accueil
+        </a>
+        <a href="notes.php" class="sidebar-link active">
+          <i class="fas fa-chart-bar"></i> Notes
+        </a>
+        <a href="../absences/absences.php" class="sidebar-link">
+          <i class="fas fa-calendar-times"></i> Absences
+        </a>
+        <a href="../agenda/agenda.php" class="sidebar-link">
+          <i class="fas fa-calendar-alt"></i> Agenda
+        </a>
+        <a href="../cahierdetextes/cahierdetextes.php" class="sidebar-link">
+          <i class="fas fa-book"></i> Cahier de textes
+        </a>
+        <a href="../messagerie/index.php" class="sidebar-link">
+          <i class="fas fa-envelope"></i> Messagerie
+        </a>
+      </div>
+      
+      <!-- Actions -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Actions</div>
+        <a href="notes.php" class="create-button">
           <i class="fas fa-arrow-left"></i> Retour aux notes
         </a>
       </div>
@@ -218,15 +257,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         
         <div class="header-actions">
-          <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">⏻</a>
-          <div class="user-avatar"><?= $user_initials ?></div>
+          <a href="<?= defined('LOGOUT_URL') ? LOGOUT_URL : '../login/public/logout.php' ?>" class="logout-button" title="Déconnexion">
+            <i class="fas fa-sign-out-alt"></i>
+          </a>
+          <div class="user-avatar" title="<?= htmlspecialchars($nom_professeur) ?>">
+            <?= htmlspecialchars($user_initials) ?>
+          </div>
         </div>
       </div>
       
       <div class="content-container">
         <?php if (isset($error_message)): ?>
           <div class="alert alert-error">
-            <p><?= htmlspecialchars($error_message) ?></p>
+            <i class="fas fa-exclamation-circle"></i>
+            <span><?= htmlspecialchars($error_message) ?></span>
           </div>
         <?php endif; ?>
         
@@ -235,65 +279,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="form-grid">
               <!-- Champ pour la classe -->
               <div class="form-group">
-                <label for="classe">Classe:<span class="required">*</span></label>
-                <select name="classe" id="classe" required>
+                <label for="classe">Classe<span class="required">*</span></label>
+                <select name="classe" id="classe" class="form-select" required>
                   <option value="">Sélectionnez une classe</option>
                   <?php if (!empty($etablissement_data['classes'])): ?>
                     <?php foreach ($etablissement_data['classes'] as $niveau => $niveaux): ?>
                       <optgroup label="<?= ucfirst($niveau) ?>">
                         <?php foreach ($niveaux as $sousniveau => $classes): ?>
                           <?php foreach ($classes as $classe): ?>
-                            <option value="<?= $classe ?>"><?= $classe ?></option>
+                            <option value="<?= htmlspecialchars($classe) ?>"><?= htmlspecialchars($classe) ?></option>
                           <?php endforeach; ?>
                         <?php endforeach; ?>
                       </optgroup>
                     <?php endforeach; ?>
-                  <?php endif; ?>
-                  
-                  <!-- Ajout des classes primaires si elles existent -->
-                  <?php if (!empty($etablissement_data['primaire'])): ?>
-                    <optgroup label="Primaire">
-                      <?php foreach ($etablissement_data['primaire'] as $niveau => $classes): ?>
-                        <?php foreach ($classes as $classe): ?>
-                          <option value="<?= $classe ?>"><?= $classe ?></option>
-                        <?php endforeach; ?>
-                      <?php endforeach; ?>
-                    </optgroup>
                   <?php endif; ?>
                 </select>
               </div>
 
               <!-- Champ pour l'élève -->
               <div class="form-group">
-                <label for="nom_eleve">Élève:<span class="required">*</span></label>
-                <select name="nom_eleve" id="nom_eleve" required>
+                <label for="nom_eleve">Élève<span class="required">*</span></label>
+                <select name="nom_eleve" id="nom_eleve" class="form-select" required>
                   <option value="">Sélectionnez un élève</option>
                   <?php foreach ($eleves as $eleve): ?>
-                    <option value="<?= htmlspecialchars($eleve['prenom']) ?>" data-classe="<?= htmlspecialchars($eleve['classe']) ?>"><?= htmlspecialchars($eleve['prenom'] . ' ' . $eleve['nom']) ?> (<?= htmlspecialchars($eleve['classe']) ?>)</option>
+                    <option value="<?= htmlspecialchars($eleve['prenom']) ?>" data-classe="<?= htmlspecialchars($eleve['classe']) ?>">
+                      <?= htmlspecialchars($eleve['prenom'] . ' ' . $eleve['nom']) ?> (<?= htmlspecialchars($eleve['classe']) ?>)
+                    </option>
                   <?php endforeach; ?>
                 </select>
               </div>
 
               <!-- Champ pour la matière -->
               <div class="form-group">
-                <label for="nom_matiere">Matière:<span class="required">*</span></label>
+                <label for="nom_matiere">Matière<span class="required">*</span></label>
                 <?php if (isTeacher()): ?>
                   <!-- Si c'est un professeur, on présélectionne sa matière -->
-                  <select name="nom_matiere" id="nom_matiere" required>
+                  <select name="nom_matiere" id="nom_matiere" class="form-select" required>
                     <option value="">Sélectionnez une matière</option>
                     <?php if (!empty($etablissement_data['matieres'])): ?>
                       <?php foreach ($etablissement_data['matieres'] as $matiere): ?>
-                        <option value="<?= $matiere['nom'] ?>" <?= ($prof_matiere == $matiere['nom']) ? 'selected' : '' ?>><?= $matiere['nom'] ?> (<?= $matiere['code'] ?>)</option>
+                        <option value="<?= htmlspecialchars($matiere['nom']) ?>" <?= ($prof_matiere == $matiere['nom']) ? 'selected' : '' ?>>
+                          <?= htmlspecialchars($matiere['nom']) ?> (<?= htmlspecialchars($matiere['code']) ?>)
+                        </option>
                       <?php endforeach; ?>
                     <?php endif; ?>
                   </select>
                 <?php else: ?>
                   <!-- Pour admin/vie scolaire -->
-                  <select name="nom_matiere" id="nom_matiere" required>
+                  <select name="nom_matiere" id="nom_matiere" class="form-select" required>
                     <option value="">Sélectionnez une matière</option>
                     <?php if (!empty($etablissement_data['matieres'])): ?>
                       <?php foreach ($etablissement_data['matieres'] as $matiere): ?>
-                        <option value="<?= $matiere['nom'] ?>"><?= $matiere['nom'] ?> (<?= $matiere['code'] ?>)</option>
+                        <option value="<?= htmlspecialchars($matiere['nom']) ?>">
+                          <?= htmlspecialchars($matiere['nom']) ?> (<?= htmlspecialchars($matiere['code']) ?>)
+                        </option>
                       <?php endforeach; ?>
                     <?php endif; ?>
                   </select>
@@ -302,16 +341,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
               <!-- Champ pour le professeur -->
               <div class="form-group">
-                <label for="nom_professeur">Professeur:<span class="required">*</span></label>
+                <label for="nom_professeur">Professeur<span class="required">*</span></label>
                 <?php if (isTeacher()): ?>
                   <!-- Si c'est un professeur, il ne peut ajouter que des notes en son nom -->
-                  <input type="text" name="nom_professeur" id="nom_professeur" value="<?= htmlspecialchars($nom_professeur) ?>" readonly>
+                  <input type="text" name="nom_professeur" id="nom_professeur" class="form-control" value="<?= htmlspecialchars($nom_professeur) ?>" readonly>
                 <?php else: ?>
                   <!-- Admin et vie scolaire peuvent choisir n'importe quel professeur -->
-                  <select name="nom_professeur" id="nom_professeur" required>
+                  <select name="nom_professeur" id="nom_professeur" class="form-select" required>
                     <option value="">Sélectionnez un professeur</option>
                     <?php foreach ($professeurs as $prof): ?>
-                      <option value="<?= htmlspecialchars($prof['prenom'] . ' ' . $prof['nom']) ?>" data-matiere="<?= htmlspecialchars($prof['matiere']) ?>"><?= htmlspecialchars($prof['prenom'] . ' ' . $prof['nom']) ?></option>
+                      <option value="<?= htmlspecialchars($prof['prenom'] . ' ' . $prof['nom']) ?>" data-matiere="<?= htmlspecialchars($prof['matiere']) ?>">
+                        <?= htmlspecialchars($prof['prenom'] . ' ' . $prof['nom']) ?>
+                      </option>
                     <?php endforeach; ?>
                   </select>
                 <?php endif; ?>
@@ -319,37 +360,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               
               <!-- Champ pour la note -->
               <div class="form-group">
-                <label for="note">Note:<span class="required">*</span></label>
-                <input type="number" name="note" id="note" max="20" min="0" step="0.1" placeholder="Note sur 20" required>
+                <label for="note">Note<span class="required">*</span></label>
+                <input type="number" name="note" id="note" class="form-control" max="20" min="0" step="0.1" placeholder="Note sur 20" required>
               </div>
               
               <!-- Champ pour le coefficient -->
               <div class="form-group">
-                <label for="coefficient">Coefficient:<span class="required">*</span></label>
-                <input type="number" name="coefficient" id="coefficient" min="1" max="10" step="1" value="1" required>
+                <label for="coefficient">Coefficient<span class="required">*</span></label>
+                <input type="number" name="coefficient" id="coefficient" class="form-control" min="1" max="10" step="1" value="1" required>
               </div>
               
               <!-- Champ pour la date -->
               <div class="form-group">
-                <label for="date_ajout">Date:<span class="required">*</span></label>
-                <input type="date" name="date_ajout" id="date_ajout" value="<?= date('Y-m-d') ?>" required>
+                <label for="date_ajout">Date<span class="required">*</span></label>
+                <input type="date" name="date_ajout" id="date_ajout" class="form-control" value="<?= date('Y-m-d') ?>" required>
               </div>
               
               <!-- Champ pour le trimestre -->
               <div class="form-group">
-                <label for="trimestre">Trimestre:<span class="required">*</span></label>
-                <select name="trimestre" id="trimestre" required>
+                <label for="trimestre">Trimestre<span class="required">*</span></label>
+                <select name="trimestre" id="trimestre" class="form-select" required>
                   <option value="1" <?= $trimestre_actuel == 1 ? 'selected' : '' ?>>Trimestre 1</option>
                   <option value="2" <?= $trimestre_actuel == 2 ? 'selected' : '' ?>>Trimestre 2</option>
                   <option value="3" <?= $trimestre_actuel == 3 ? 'selected' : '' ?>>Trimestre 3</option>
                 </select>
               </div>
+            </div>
               
-              <!-- Champ pour la description (intitulé) -->
-              <div class="form-group form-full">
-                <label for="description">Intitulé de l'évaluation:<span class="required">*</span></label>
-                <input type="text" name="description" id="description" placeholder="Ex: Contrôle évaluation trimestre" required>
-              </div>
+            <!-- Champ pour la description (intitulé) -->
+            <div class="form-group mt-3">
+              <label for="description">Intitulé de l'évaluation<span class="required">*</span></label>
+              <input type="text" name="description" id="description" class="form-control" placeholder="Ex: Contrôle évaluation trimestre" required>
             </div>
             
             <div class="form-actions">
