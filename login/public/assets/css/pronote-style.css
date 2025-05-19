@@ -251,7 +251,84 @@ textarea:focus {
   margin-top: 10px;
 }
 
-/* ======= SUGGESTIONS ET DROPDOWNS ======= */
+/* ======= LOGIN PAGE SPECIFIC STYLES ======= */
+.profile-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+  justify-content: center;
+}
+
+.profile-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  padding: 10px;
+}
+
+.profile-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: #f0f0f0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.profile-icon i {
+  font-size: 24px;
+  color: #333;
+}
+
+.profile-label {
+  font-size: 14px;
+  color: #333;
+}
+
+/* Style pour l'option sélectionnée */
+input[type="radio"]:checked + .profile-option .profile-icon {
+  background-color: #009b72;
+}
+
+input[type="radio"]:checked + .profile-option .profile-icon i {
+  color: white;
+}
+
+input[type="radio"]:checked + .profile-option .profile-label {
+  font-weight: bold;
+}
+
+/* Cacher le radio button */
+.profile-selector input[type="radio"] {
+  display: none;
+}
+
+.help-links {
+  margin-top: 20px;
+  font-size: 14px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.help-links a {
+  color: #009b72;
+  text-decoration: none;
+}
+
+.help-links a:hover {
+  text-decoration: underline;
+}
+
+.register-link {
+  margin-left: auto;
+  font-weight: bold;
+}
+
+/* ======= REGISTRATION PAGE SPECIFIC STYLES ======= */
 .suggestions-container {
   position: absolute;
   width: 100%;
@@ -263,7 +340,6 @@ textarea:focus {
   border-radius: 0 0 4px 4px;
   z-index: 10;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  display: none;
 }
 
 .suggestion-item {
@@ -274,115 +350,72 @@ textarea:focus {
 
 .suggestion-item:hover {
   background-color: #f5f5f5;
+  font-weight: bold;
 }
 
-/* ======= PASSWORD STRENGTH ======= */
-.password-strength {
-  margin-top: 10px;
-}
-
-.strength-meter {
-  height: 4px;
-  background-color: #f1f1f1;
-  border-radius: 2px;
-  margin-bottom: 5px;
-  overflow: hidden;
-}
-
-.strength-meter-fill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.3s ease, background-color 0.3s ease;
-}
-
-.strength-text {
-  font-size: 12px;
-  margin-bottom: 10px;
-}
-
-.password-requirements {
-  margin-top: 15px;
-  padding: 10px;
-  background-color: #f9f9f9;
-  border-radius: 4px;
-}
-
-.requirement {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: #666;
-  margin-bottom: 5px;
-}
-
-.requirement i {
-  font-size: 14px;
-}
-
-.requirement.valid {
-  color: #2e7d32;
-}
-
-.requirement.invalid {
-  color: #666;
-}
-
-/* ======= AVATAR ET USER INFO ======= */
-.avatar {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.user-avatar {
-  width: 80px;
-  height: 80px;
-  background-color: #009b72;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: 500;
-  font-size: 32px;
-  margin-bottom: 10px;
-}
-
-.user-info {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.user-name {
-  font-size: 18px;
-  font-weight: 500;
-  margin-bottom: 5px;
-}
-
-.user-role {
-  color: #666;
-  font-size: 14px;
-}
-
-/* ======= REGISTER FORM ======= */
 .register-form {
   max-height: 600px;
   overflow-y: auto;
   padding-right: 10px;
 }
 
-/* Style pour les champs spécifiques dynamiques */
 #dynamicFields {
   margin-top: 15px;
 }
 
+/* ======= PASSWORD CHANGE PAGE SPECIFIC STYLES ======= */
 @keyframes pulse {
   0% { box-shadow: 0 0 0 0 rgba(32, 201, 151, 0.4); }
   70% { box-shadow: 0 0 0 5px rgba(32, 201, 151, 0); }
   100% { box-shadow: 0 0 0 0 rgba(32, 201, 151, 0); }
 }
 
-/* ======= RESPONSIVE ======= */
+.password-strength-meter {
+  height: 8px;
+  width: 100%;
+  background-color: #f3f3f3;
+  border-radius: 4px;
+  margin: 10px 0;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.password-strength-meter .strength-indicator {
+  height: 100%;
+  width: 0;
+  border-radius: 4px;
+  transition: width 0.4s ease-out, background-color 0.4s ease-out;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.2);
+}
+
+.password-strength-text {
+  margin-top: 5px;
+  font-size: 12px;
+  text-align: right;
+  font-weight: 600;
+}
+
+.requirement-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 3px;
+}
+
+.requirement-status {
+  margin-right: 5px;
+  font-size: 14px;
+}
+
+.valid {
+  color: #28a745;
+}
+
+.invalid {
+  color: #dc3545;
+}
+
+/* ======= RESPONSIVE DESIGN ======= */
 @media (max-width: 520px) {
   .login-container,
   .register-container,
@@ -394,5 +427,26 @@ textarea:focus {
   
   .form-actions {
     flex-direction: column;
+  }
+  
+  .profile-selector {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 380px) {
+  .profile-icon {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .profile-icon i {
+    font-size: 20px;
+  }
+  
+  .app-logo {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
   }
 }

@@ -18,6 +18,13 @@ if (!canManageDevoirs()) {
   exit;
 }
 
+// Générer le token CSRF
+session_start();
+if (empty($_SESSION['csrf_token'])) {
+  $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrf_token = $_SESSION['csrf_token'];
+
 // Récupérer les informations de l'utilisateur connecté
 $user = getCurrentUser();
 $user_fullname = getUserFullName();
@@ -53,8 +60,12 @@ $erreur = '';
 
 // Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  // Vérification du token CSRF
+  if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $csrf_token) {
+    $erreur = "Erreur de validation du formulaire. Veuillez réessayer.";
+  }
   // Validation
-  if (empty($_POST['titre']) || empty($_POST['classe']) || 
+  else if (empty($_POST['titre']) || empty($_POST['classe']) || 
       empty($_POST['nom_matiere']) || empty($_POST['nom_professeur']) || 
       empty($_POST['description']) || empty($_POST['date_ajout']) || 
       empty($_POST['date_rendu'])) {
@@ -64,22 +75,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (strtotime($_POST['date_rendu']) <= strtotime($_POST['date_ajout'])) {
       $erreur = "La date de rendu doit être postérieure à la date d'ajout.";
     } else {
-      // Insertion dans la base de données
-      $stmt = $pdo->prepare('INSERT INTO devoirs (titre, description, classe, nom_matiere, nom_professeur, date_ajout, date_rendu) VALUES (?, ?, ?, ?, ?, ?, ?)');
-      $stmt->execute([
-        $_POST['titre'],
-        $_POST['description'],
-        $_POST['classe'],
-        $_POST['nom_matiere'],
-        $_POST['nom_professeur'],
-        $_POST['date_ajout'],
-        $_POST['date_rendu']
-      ]);
-      
-      $message = "Le devoir a été ajouté avec succès.";
-      
-      // Redirection après un court délai
-      header('refresh:2;url=cahierdetextes.php');
+      try {
+        // Sanitize input data
+        $titre = trim($_POST['titre']);
+        $description = trim($_POST['description']);
+        
+        // Insertion dans la base de données
+        $stmt = $pdo->prepare('INSERT INTO devoirs (titre, description, classe, nom_matiere, nom_professeur, date_ajout, date_rendu) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        $stmt->execute([
+          $titre,
+          $description,
+          $_POST['classe'],
+          $_POST['nom_matiere'],
+          $_POST['nom_professeur'],
+          $_POST['date_ajout'],
+          $_POST['date_rendu']
+        ]);
+        
+        $message = "Le devoir a été ajouté avec succès.";
+        
+        // Redirection après un court délai
+        header('refresh:2;url=cahierdetextes.php?success=added');
+      } catch (PDOException $e) {
+        error_log("Erreur d'ajout dans ajouter_devoir.php: " . $e->getMessage());
+        $erreur = "Une erreur est survenue lors de l'ajout du devoir.";
+      }
     }
   }
 }
@@ -140,19 +160,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if ($message): ?>
           <div class="alert alert-success">
             <i class="fas fa-check-circle"></i>
-            <div><?= $message ?></div>
+            <div><?= htmlspecialchars($message) ?></div>
           </div>
         <?php endif; ?>
         
         <?php if ($erreur): ?>
           <div class="alert alert-error">
             <i class="fas fa-exclamation-circle"></i>
-            <div><?= $erreur ?></div>
+            <div><?= htmlspecialchars($erreur) ?></div>
           </div>
         <?php endif; ?>
         
         <div class="form-container">
           <form method="post">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
             <div class="form-grid">
               <div class="form-group form-full">
                 <label for="titre">Titre du devoir <span class="required">*</span></label>

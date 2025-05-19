@@ -100,6 +100,13 @@ $avatars = [
 ];
 $avatarImg = $avatars[$profil] ?? 'student.png';
 $espaceTitle = 'Création compte ' . ucfirst($profil);
+
+// Générer un token CSRF pour la sécurité du formulaire
+$csrfToken = bin2hex(random_bytes(32));
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+$_SESSION['csrf_token'] = $csrfToken;
 ?>
 <!DOCTYPE html>
 <html>
@@ -109,44 +116,7 @@ $espaceTitle = 'Création compte ' . ucfirst($profil);
     <title>Pronote - Inscription</title>
     <link rel="stylesheet" href="assets/css/pronote-style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <style>
-        /* Styles pour les conteneurs de suggestions */
-        .autocomplete-container {
-            position: relative;
-            width: 100%;
-        }
-        
-        .suggestions-container {
-            position: absolute;
-            width: 100%;
-            max-height: 200px;
-            overflow-y: auto;
-            background-color: white;
-            border: 1px solid #ddd;
-            border-top: none;
-            border-radius: 0 0 4px 4px;
-            z-index: 9999;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            top: 100%;
-            left: 0;
-        }
-        
-        .suggestion-item {
-            padding: 10px 15px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        
-        .suggestion-item:hover {
-            background-color: #f5f5f5;
-            font-weight: bold;
-        }
-        
-        /* Force la position relative sur les form-group pour le positionnement absolu */
-        .form-group {
-            position: relative;
-        }
-    </style>
+    <!-- Les styles de suggestions sont maintenant intégrés dans pronote-style.css -->
 </head>
 <body>
     <div class="register-container">
@@ -156,7 +126,7 @@ $espaceTitle = 'Création compte ' . ucfirst($profil);
         </div>
         
         <?php if (!empty($success)): ?>
-            <div class="success-message">
+            <div class="alert alert-success">
                 <i class="fas fa-check-circle"></i>
                 <p><?php echo htmlspecialchars($success); ?></p>
                 
@@ -180,6 +150,8 @@ $espaceTitle = 'Création compte ' . ucfirst($profil);
             <?php endif; ?>
             
             <form action="register.php" method="post" class="register-form">
+                <input type="hidden" name="csrf_token" value="<?= $csrfToken ?>">
+                
                 <div class="form-group">
                     <label for="profil">Profil</label>
                     <select id="profil" name="profil" required>

@@ -48,87 +48,17 @@ $csrfToken = \Pronote\Security\generate_csrf_token();
     <title>Pronote - Connexion</title>
     <link rel="stylesheet" href="assets/css/pronote-style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <style>
-        /* Styles pour la page de connexion */
-        .profile-selector {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 20px;
-            justify-content: center;
-        }
-        
-        .profile-option {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            cursor: pointer;
-            padding: 10px;
-        }
-        
-        .profile-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background-color: #f0f0f0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        
-        .profile-icon i {
-            font-size: 24px;
-            color: #333;
-        }
-        
-        .profile-label {
-            font-size: 14px;
-            color: #333;
-        }
-        
-        /* Style pour l'option sélectionnée */
-        input[type="radio"]:checked + .profile-option .profile-icon {
-            background-color: #00843d;
-        }
-        
-        input[type="radio"]:checked + .profile-option .profile-icon i {
-            color: white;
-        }
-        
-        input[type="radio"]:checked + .profile-option .profile-label {
-            font-weight: bold;
-        }
-        
-        /* Cacher le radio button */
-        .profile-selector input[type="radio"] {
-            display: none;
-        }
-        
-        .login-form {
-            max-width: 400px;
-            margin: 0 auto;
-        }
-        
-        .error-message {
-            background-color: #ffdddd;
-            border-left: 4px solid #f44336;
-            padding: 10px;
-            margin-bottom: 20px;
-            color: #333;
-        }
-    </style>
 </head>
 <body>
     <div class="login-container">
-        <div class="login-header">
-            <div class="logo">P</div>
-            <h1>Pronote</h1>
+        <div class="app-header">
+            <div class="app-logo">P</div>
+            <h1 class="app-title">Pronote</h1>
         </div>
         
         <div class="login-form">
             <?php if (!empty($error)): ?>
-                <div class="error-message">
+                <div class="alert alert-error">
                     <i class="fas fa-exclamation-circle"></i> <?= \Pronote\Security\xss_clean($error) ?>
                 </div>
             <?php endif; ?>
@@ -180,11 +110,12 @@ $csrfToken = \Pronote\Security\generate_csrf_token();
                     <input type="password" id="password" name="password" required>
                 </div>
                 
-                <button type="submit" class="login-button">Se connecter</button>
+                <button type="submit" class="btn-connect">Se connecter</button>
             </form>
             
             <div class="help-links">
                 <a href="#" onclick="alert('Contactez votre administrateur pour réinitialiser votre mot de passe.');">Mot de passe oublié ?</a>
+                <a href="register.php" class="register-link">S'inscrire</a>
             </div>
         </div>
     </div>

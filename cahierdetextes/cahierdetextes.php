@@ -36,6 +36,44 @@ $filterMatiere = isset($_GET['matiere']) ? $_GET['matiere'] : '';
 $filterProfesseur = isset($_GET['professeur']) ? $_GET['professeur'] : '';
 $displayMode = isset($_GET['mode']) ? $_GET['mode'] : 'list';
 
+// Traitement des messages de notification
+$notification = '';
+$notificationType = '';
+
+if (isset($_GET['success'])) {
+    switch ($_GET['success']) {
+        case 'added':
+            $notification = "Le devoir a été ajouté avec succès.";
+            $notificationType = "success";
+            break;
+        case 'updated':
+            $notification = "Le devoir a été mis à jour avec succès.";
+            $notificationType = "success";
+            break;
+        case 'deleted':
+            $notification = "Le devoir a été supprimé avec succès.";
+            $notificationType = "success";
+            break;
+    }
+}
+
+if (isset($_GET['error'])) {
+    switch ($_GET['error']) {
+        case 'notfound':
+            $notification = "Le devoir demandé n'existe pas.";
+            $notificationType = "error";
+            break;
+        case 'unauthorized':
+            $notification = "Vous n'avez pas les droits nécessaires pour cette action.";
+            $notificationType = "error";
+            break;
+        case 'dbfailed':
+            $notification = "Une erreur est survenue lors de l'opération.";
+            $notificationType = "error";
+            break;
+    }
+}
+
 // Charger la liste des devoirs
 try {
     // Vérifier si la table existe
@@ -250,6 +288,13 @@ if (!function_exists('canManageDevoirs')) {
       
       <!-- Content -->
       <div class="content-container">
+        <?php if ($notification): ?>
+          <div class="alert alert-<?= $notificationType ?>">
+            <i class="fas fa-<?= $notificationType === 'success' ? 'check-circle' : 'exclamation-circle' ?>"></i>
+            <div><?= htmlspecialchars($notification) ?></div>
+          </div>
+        <?php endif; ?>
+        
         <div class="devoirs-list">
           <?php
           // Récupération des devoirs selon le rôle de l'utilisateur
@@ -462,6 +507,21 @@ if (!function_exists('canManageDevoirs')) {
       
       // Appliquer les filtres au chargement
       applyFilters();
+    });
+    
+    // Auto-hide notifications after 5 seconds
+    document.addEventListener('DOMContentLoaded', function() {
+      const alerts = document.querySelectorAll('.alert');
+      if (alerts.length > 0) {
+        setTimeout(function() {
+          alerts.forEach(function(alert) {
+            alert.style.opacity = '0';
+            setTimeout(function() { 
+              alert.style.display = 'none'; 
+            }, 500);
+          });
+        }, 5000);
+      }
     });
   </script>
 </body>

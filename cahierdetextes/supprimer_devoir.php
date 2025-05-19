@@ -21,26 +21,40 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
   exit;
 }
 
-$id = $_GET['id'];
+$id = intval($_GET['id']); // Sanitize with intval to ensure numeric value
+
+// Vérifier que le devoir existe avant d'essayer de le supprimer
+$check_stmt = $pdo->prepare('SELECT * FROM devoirs WHERE id = ?');
+$check_stmt->execute([$id]);
+$devoir = $check_stmt->fetch();
+
+if (!$devoir) {
+  // Le devoir n'existe pas
+  header('Location: cahierdetextes.php?error=notfound');
+  exit;
+}
 
 // Si l'utilisateur est un professeur (et pas un admin ou vie scolaire), 
 // il peut seulement supprimer ses propres devoirs
 if (isTeacher() && !isAdmin() && !isVieScolaire()) {
-  $stmt = $pdo->prepare('SELECT * FROM devoirs WHERE id = ? AND nom_professeur = ?');
-  $stmt->execute([$id, $user_fullname]);
-  
-  if ($stmt->rowCount() === 0) {
-    // Le devoir n'existe pas ou n'appartient pas au professeur connecté
-    header('Location: cahierdetextes.php');
+  if ($devoir['nom_professeur'] !== $user_fullname) {
+    // Le devoir n'appartient pas au professeur connecté
+    header('Location: cahierdetextes.php?error=unauthorized');
     exit;
   }
 }
 
-// Supprimer le devoir
-$stmt = $pdo->prepare('DELETE FROM devoirs WHERE id = ?');
-$stmt->execute([$id]);
-
-header('Location: cahierdetextes.php');
+try {
+  // Supprimer le devoir
+  $stmt = $pdo->prepare('DELETE FROM devoirs WHERE id = ?');
+  $stmt->execute([$id]);
+  
+  header('Location: cahierdetextes.php?success=deleted');
+} catch (PDOException $e) {
+  // Journal d'erreurs
+  error_log("Erreur de suppression dans supprimer_devoir.php: " . $e->getMessage());
+  header('Location: cahierdetextes.php?error=dbfailed');
+}
 exit;
 
 // Terminer la mise en mémoire tampon et envoyer la sortie

@@ -41,17 +41,14 @@ header('Content-Type: text/html; charset=utf-8');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Débogage Pronote</title>
+    <link rel="stylesheet" href="assets/css/pronote-style.css">
     <style>
-        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
+        body { padding: 20px; display: block; }
         h1, h2 { color: #009b72; }
         h3 { color: #444; background: #f1f1f1; padding: 10px; }
         pre { background: #f9f9f9; padding: 10px; overflow: auto; border: 1px solid #ddd; }
         hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }
         .action { margin: 20px 0; }
-        button, a.button { padding: 10px 15px; background: #009b72; color: white; 
-                           border: none; cursor: pointer; text-decoration: none; display: inline-block; margin-right: 10px; }
-        button:hover, a.button:hover { background: #007c5a; }
-        .warning { color: #e74c3c; }
     </style>
 </head>
 <body>
@@ -59,10 +56,10 @@ header('Content-Type: text/html; charset=utf-8');
     <p>Cette page affiche des informations techniques pour aider à résoudre les problèmes d'authentification et de redirection.</p>
     
     <div class="action">
-        <a href="../public/index.php" class="button">Page de connexion</a>
-        <a href="../../accueil/accueil.php" class="button">Page d'accueil</a>
+        <a href="../public/index.php" class="btn-connect">Page de connexion</a>
+        <a href="../../accueil/accueil.php" class="btn-connect">Page d'accueil</a>
         <?php if (isset($_SESSION['user'])): ?>
-            <a href="../public/logout.php" class="button">Déconnexion</a>
+            <a href="../public/logout.php" class="btn-cancel">Déconnexion</a>
         <?php endif; ?>
     </div>
     

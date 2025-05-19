@@ -9,6 +9,13 @@ if (!canManageDevoirs()) {
   exit;
 }
 
+// Générer ou vérifier le token CSRF
+session_start();
+if (empty($_SESSION['csrf_token'])) {
+  $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrf_token = $_SESSION['csrf_token'];
+
 $user = getCurrentUser();
 $user_fullname = getUserFullName();
 $user_role = getUserRole();
@@ -19,21 +26,28 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
   exit;
 }
 
-$id = $_GET['id'];
-$stmt = $pdo->prepare('SELECT * FROM devoirs WHERE id = ?');
-$stmt->execute([$id]);
-$devoir = $stmt->fetch();
+$id = intval($_GET['id']); // Sanitize with intval
 
-if (!$devoir) {
-  header('Location: cahierdetextes.php');
-  exit;
-}
+try {
+  $stmt = $pdo->prepare('SELECT * FROM devoirs WHERE id = ?');
+  $stmt->execute([$id]);
+  $devoir = $stmt->fetch();
 
-if (isTeacher() && !isAdmin() && !isVieScolaire()) {
-  if ($devoir['nom_professeur'] !== $user_fullname) {
-    header('Location: cahierdetextes.php');
+  if (!$devoir) {
+    header('Location: cahierdetextes.php?error=notfound');
     exit;
   }
+
+  if (isTeacher() && !isAdmin() && !isVieScolaire()) {
+    if ($devoir['nom_professeur'] !== $user_fullname) {
+      header('Location: cahierdetextes.php?error=unauthorized');
+      exit;
+    }
+  }
+} catch (PDOException $e) {
+  error_log("Erreur dans modifier_devoir.php: " . $e->getMessage());
+  header('Location: cahierdetextes.php?error=dbfailed');
+  exit;
 }
 
 // Récupérer la liste des professeurs
@@ -61,8 +75,12 @@ $erreur = '';
 
 // Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  // Vérification du token CSRF
+  if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $csrf_token) {
+    $erreur = "Erreur de validation du formulaire. Veuillez réessayer.";
+  }
   // Validation des champs
-  if (empty($_POST['titre']) || empty($_POST['description']) || empty($_POST['classe']) ||
+  else if (empty($_POST['titre']) || empty($_POST['description']) || empty($_POST['classe']) ||
       empty($_POST['nom_matiere']) || empty($_POST['nom_professeur']) || 
       empty($_POST['date_ajout']) || empty($_POST['date_rendu'])) {
     $erreur = "Veuillez remplir tous les champs obligatoires.";
@@ -71,28 +89,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (strtotime($_POST['date_rendu']) <= strtotime($_POST['date_ajout'])) {
       $erreur = "La date de rendu doit être postérieure à la date d'ajout.";
     } else {
-      // Mettre à jour le devoir dans la base de données
-      $stmt = $pdo->prepare('UPDATE devoirs SET titre = ?, description = ?, classe = ?, nom_matiere = ?, nom_professeur = ?, date_ajout = ?, date_rendu = ? WHERE id = ?');
-      $stmt->execute([
-        $_POST['titre'],
-        $_POST['description'],
-        $_POST['classe'],
-        $_POST['nom_matiere'],
-        $_POST['nom_professeur'],
-        $_POST['date_ajout'],
-        $_POST['date_rendu'],
-        $id
-      ]);
-      
-      $message = "Le devoir a été mis à jour avec succès.";
-      
-      // Recharger les données du devoir
-      $stmt = $pdo->prepare('SELECT * FROM devoirs WHERE id = ?');
-      $stmt->execute([$id]);
-      $devoir = $stmt->fetch();
-      
-      // Redirection après un court délai
-      header('refresh:2;url=cahierdetextes.php');
+      try {
+        // Mettre à jour le devoir dans la base de données
+        $stmt = $pdo->prepare('UPDATE devoirs SET titre = ?, description = ?, classe = ?, nom_matiere = ?, nom_professeur = ?, date_ajout = ?, date_rendu = ? WHERE id = ?');
+        $stmt->execute([
+          trim($_POST['titre']), // Trim pour enlever les espaces inutiles
+          trim($_POST['description']),
+          $_POST['classe'],
+          $_POST['nom_matiere'],
+          $_POST['nom_professeur'],
+          $_POST['date_ajout'],
+          $_POST['date_rendu'],
+          $id
+        ]);
+        
+        $message = "Le devoir a été mis à jour avec succès.";
+        
+        // Recharger les données du devoir
+        $stmt = $pdo->prepare('SELECT * FROM devoirs WHERE id = ?');
+        $stmt->execute([$id]);
+        $devoir = $stmt->fetch();
+        
+        // Redirection après un court délai
+        header('refresh:2;url=cahierdetextes.php?success=updated');
+      } catch (PDOException $e) {
+        error_log("Erreur de mise à jour dans modifier_devoir.php: " . $e->getMessage());
+        $erreur = "Une erreur est survenue lors de la mise à jour du devoir.";
+      }
     }
   }
 }
@@ -168,19 +191,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if ($message): ?>
           <div class="alert alert-success">
             <i class="fas fa-check-circle"></i>
-            <div><?= $message ?></div>
+            <div><?= htmlspecialchars($message) ?></div>
           </div>
         <?php endif; ?>
         
         <?php if ($erreur): ?>
           <div class="alert alert-error">
             <i class="fas fa-exclamation-circle"></i>
-            <div><?= $erreur ?></div>
+            <div><?= htmlspecialchars($erreur) ?></div>
           </div>
         <?php endif; ?>
         
         <div class="form-container">
           <form method="post">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
             <div class="form-grid">
               <div class="form-group form-full">
                 <label for="titre">Titre du devoir <span class="required">*</span></label>
