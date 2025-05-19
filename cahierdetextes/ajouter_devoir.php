@@ -8,7 +8,7 @@ include 'includes/auth.php';
 
 // Vérifier que l'utilisateur est connecté
 if (!isLoggedIn()) {
-    header('Location: ../login/public/login.php');
+    header('Location: ../login/public/index.php');
     exit;
 }
 
@@ -108,198 +108,260 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Variables pour le template
 $pageTitle = "Ajouter un devoir";
-$moduleClass = "cahier";
-$moduleColor = "var(--accent-cahier)";
-
-// Contenu additionnel pour le head
-$additionalHead = <<<HTML
-<link rel="stylesheet" href="../cahierdetextes/assets/css/cahierdetextes.css">
-HTML;
-
-// Contenu de la sidebar
-$sidebarContent = <<<HTML
-<div class="sidebar-section">
-  <div class="sidebar-title">Navigation</div>
-  <div class="sidebar-menu">
-    <a href="cahierdetextes.php" class="sidebar-link">
-      <i class="fas fa-list"></i> Liste des devoirs
-    </a>
-    <a href="ajouter_devoir.php" class="sidebar-link active">
-      <i class="fas fa-plus"></i> Ajouter un devoir
-    </a>
-  </div>
-</div>
-
-<div class="sidebar-section">
-  <div class="sidebar-title">Autres modules</div>
-  <div class="sidebar-menu">
-    <a href="../notes/notes.php" class="sidebar-link">
-      <i class="fas fa-chart-bar"></i> Notes
-    </a>
-    <a href="../absences/absences.php" class="sidebar-link">
-      <i class="fas fa-calendar-times"></i> Absences
-    </a>
-    <a href="../agenda/agenda.php" class="sidebar-link">
-      <i class="fas fa-calendar-alt"></i> Agenda
-    </a>
-    <a href="../messagerie/index.php" class="sidebar-link">
-      <i class="fas fa-envelope"></i> Messagerie
-    </a>
-    <a href="../accueil/accueil.php" class="sidebar-link">
-      <i class="fas fa-home"></i> Accueil
-    </a>
-  </div>
-</div>
-HTML;
-
-// Actions du header
-$headerActions = <<<HTML
-<a href="cahierdetextes.php" class="header-icon-button" title="Retour à la liste">
-  <i class="fas fa-arrow-left"></i>
-</a>
-HTML;
-
-include '../assets/css/templates/header-template.php';
 ?>
 
-<!-- Bannière de bienvenue -->
-<div class="welcome-banner">
-    <div class="welcome-content">
-        <h2>Ajouter un devoir</h2>
-        <p>Créez un nouveau devoir pour le cahier de textes</p>
-    </div>
-    <div class="welcome-icon">
-        <i class="fas fa-plus-circle"></i>
-    </div>
-</div>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= $pageTitle ?> - PRONOTE</title>
+    <link rel="stylesheet" href="assets/css/cahierdetextes.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
 
-<div class="section">
-  <?php if ($message): ?>
-    <div class="alert-banner alert-<?= $success ? 'success' : 'error' ?>">
-      <i class="fas fa-<?= $success ? 'check-circle' : 'exclamation-circle' ?>"></i>
-      <?= htmlspecialchars($message) ?>
-      <button class="alert-close">&times;</button>
-    </div>
-  <?php endif; ?>
-  
-  <?php if ($erreur): ?>
-    <div class="alert-banner alert-error">
-      <i class="fas fa-exclamation-circle"></i>
-      <?= htmlspecialchars($erreur) ?>
-      <button class="alert-close">&times;</button>
-    </div>
-  <?php endif; ?>
-  
-  <div class="card">
-    <div class="card-header">
-      <div class="devoir-title"><i class="fas fa-edit"></i> Créer un nouveau devoir</div>
-      <div class="devoir-meta">Remplissez le formulaire ci-dessous avec les détails du devoir</div>
-    </div>
-    
-    <div class="card-body">
-      <form method="post" id="ajout-devoir-form">
-        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
+<div class="app-container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo-container">
+            <div class="app-logo">P</div>
+            <div class="app-title">PRONOTE</div>
+        </div>
         
-        <div class="form-grid">
-          <div class="form-group" style="grid-column: span 2;">
-            <label class="form-label" for="titre">Titre du devoir <span class="required">*</span></label>
-            <input type="text" name="titre" id="titre" class="form-control" required placeholder="Titre du devoir">
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label" for="classe">Classe <span class="required">*</span></label>
-            <select name="classe" id="classe" class="form-select" required>
-              <option value="">Sélectionnez une classe</option>
-              <?php if (!empty($etablissement_data['classes'])): ?>
-                <?php foreach ($etablissement_data['classes'] as $niveau => $niveaux): ?>
-                  <optgroup label="<?= ucfirst($niveau) ?>">
-                    <?php foreach ($niveaux as $sousniveau => $classes): ?>
-                      <?php foreach ($classes as $classe): ?>
-                        <option value="<?= $classe ?>"><?= $classe ?></option>
-                      <?php endforeach; ?>
-                    <?php endforeach; ?>
-                  </optgroup>
-                <?php endforeach; ?>
-              <?php endif; ?>
+        <div class="sidebar-section">
+            <div class="sidebar-section-header">Navigation</div>
+            <div class="sidebar-nav">
+                <a href="../accueil/accueil.php" class="sidebar-nav-item">
+                    <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
+                    <span>Accueil</span>
+                </a>
+                <a href="../notes/notes.php" class="sidebar-nav-item">
+                    <span class="sidebar-nav-icon"><i class="fas fa-chart-bar"></i></span>
+                    <span>Notes</span>
+                </a>
+                <a href="../agenda/agenda.php" class="sidebar-nav-item">
+                    <span class="sidebar-nav-icon"><i class="fas fa-calendar"></i></span>
+                    <span>Agenda</span>
+                </a>
+                <a href="cahierdetextes.php" class="sidebar-nav-item active">
+                    <span class="sidebar-nav-icon"><i class="fas fa-book"></i></span>
+                    <span>Cahier de textes</span>
+                </a>
+                <a href="../messagerie/index.php" class="sidebar-nav-item">
+                    <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
+                    <span>Messagerie</span>
+                </a>
+                <?php if ($user_role === 'vie_scolaire' || $user_role === 'administrateur'): ?>
+                <a href="../absences/absences.php" class="sidebar-nav-item">
+                    <span class="sidebar-nav-icon"><i class="fas fa-calendar-times"></i></span>
+                    <span>Absences</span>
+                </a>
+                <?php endif; ?>
+            </div>
+        </div>
+        
+        <div class="sidebar-section">
+            <div class="sidebar-section-header">Actions</div>
+            <div class="sidebar-nav">
+                <a href="cahierdetextes.php" class="sidebar-nav-item">
+                    <span class="sidebar-nav-icon"><i class="fas fa-list"></i></span>
+                    <span>Liste des devoirs</span>
+                </a>
+                <a href="ajouter_devoir.php" class="sidebar-nav-item active">
+                    <span class="sidebar-nav-icon"><i class="fas fa-plus"></i></span>
+                    <span>Ajouter un devoir</span>
+                </a>
+            </div>
+        </div>
+        
+        <div class="sidebar-section">
+            <div class="sidebar-section-header">Informations</div>
+            <div class="info-item">
+                <div class="info-label">Date</div>
+                <div class="info-value"><?= date('d/m/Y') ?></div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Utilisateur</div>
+                <div class="info-value"><?= htmlspecialchars($user_fullname) ?></div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Profil</div>
+                <div class="info-value"><?= ucfirst(htmlspecialchars($user_role)) ?></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="top-header">
+            <div class="page-title">
+                <h1>Ajouter un devoir</h1>
+            </div>
+            
+            <div class="header-actions">
+                <a href="cahierdetextes.php" class="btn btn-secondary" title="Retour à la liste">
+                    <i class="fas fa-arrow-left"></i> Retour
+                </a>
+                <a href="/~u22405372/SAE/Pronote/login/public/logout.php" class="logout-button" title="Déconnexion">⏻</a>
+                <div class="user-avatar"><?= $user_initials ?></div>
+            </div>
+        </div>
+
+        <!-- Welcome Banner -->
+        <div class="welcome-banner">
+            <div class="welcome-content">
+                <h2>Ajouter un devoir</h2>
+                <p>Créez un nouveau devoir pour le cahier de textes</p>
+            </div>
+            <div class="welcome-logo">
+                <i class="fas fa-plus-circle"></i>
+            </div>
+        </div>
+        
+        <!-- Main Dashboard Content -->
+        <div class="dashboard-content">
+            <?php if ($message): ?>
+                <div class="alert-banner alert-<?= $success ? 'success' : 'error' ?>">
+                  <i class="fas fa-<?= $success ? 'check-circle' : 'exclamation-circle' ?>"></i>
+                  <?= htmlspecialchars($message) ?>
+                  <button class="alert-close">&times;</button>
+                </div>
+            <?php endif; ?>
               
-              <?php if (!empty($etablissement_data['primaire'])): ?>
-                <optgroup label="Primaire">
-                  <?php foreach ($etablissement_data['primaire'] as $niveau => $classes): ?>
-                    <?php foreach ($classes as $classe): ?>
-                      <option value="<?= $classe ?>"><?= $classe ?></option>
-                    <?php endforeach; ?>
-                  <?php endforeach; ?>
-                </optgroup>
-              <?php endif; ?>
-            </select>
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label" for="nom_matiere">Matière <span class="required">*</span></label>
-            <?php if (isTeacher()): ?>
-              <select name="nom_matiere" id="nom_matiere" class="form-select" required>
-                <option value="">Sélectionnez une matière</option>
-                <?php if (!empty($etablissement_data['matieres'])): ?>
-                  <?php foreach ($etablissement_data['matieres'] as $matiere): ?>
-                    <option value="<?= $matiere['nom'] ?>" <?= ($prof_matiere == $matiere['nom']) ? 'selected' : '' ?>><?= $matiere['nom'] ?> (<?= $matiere['code'] ?>)</option>
-                  <?php endforeach; ?>
-                <?php endif; ?>
-              </select>
-            <?php else: ?>
-              <select name="nom_matiere" id="nom_matiere" class="form-select" required>
-                <option value="">Sélectionnez une matière</option>
-                <?php if (!empty($etablissement_data['matieres'])): ?>
-                  <?php foreach ($etablissement_data['matieres'] as $matiere): ?>
-                    <option value="<?= $matiere['nom'] ?>"><?= $matiere['nom'] ?> (<?= $matiere['code'] ?>)</option>
-                  <?php endforeach; ?>
-                <?php endif; ?>
-              </select>
+            <?php if ($erreur): ?>
+                <div class="alert-banner alert-error">
+                  <i class="fas fa-exclamation-circle"></i>
+                  <?= htmlspecialchars($erreur) ?>
+                  <button class="alert-close">&times;</button>
+                </div>
             <?php endif; ?>
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label" for="nom_professeur">Professeur <span class="required">*</span></label>
-            <?php if (isTeacher()): ?>
-              <div class="form-control selected-user-display"><?= htmlspecialchars($nom_professeur) ?></div>
-              <input type="hidden" name="nom_professeur" id="nom_professeur" value="<?= htmlspecialchars($nom_professeur) ?>">
-            <?php else: ?>
-              <select name="nom_professeur" id="nom_professeur" class="form-select" required>
-                <option value="">Sélectionnez un professeur</option>
-                <?php foreach ($professeurs as $prof): ?>
-                  <option value="<?= htmlspecialchars($prof['prenom'] . ' ' . $prof['nom']) ?>" data-matiere="<?= htmlspecialchars($prof['matiere']) ?>"><?= htmlspecialchars($prof['prenom'] . ' ' . $prof['nom']) ?></option>
-                <?php endforeach; ?>
-              </select>
-            <?php endif; ?>
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label" for="date_ajout">Date d'ajout <span class="required">*</span></label>
-            <input type="date" name="date_ajout" id="date_ajout" class="form-control" value="<?= date('Y-m-d') ?>" required>
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label" for="date_rendu">Date de rendu <span class="required">*</span></label>
-            <input type="date" name="date_rendu" id="date_rendu" class="form-control" required>
-            <div class="text-muted" id="jours-restants" style="margin-top: 5px;"></div>
-          </div>
-          
-          <div class="form-group" style="grid-column: span 2;">
-            <label class="form-label" for="description">Description <span class="required">*</span></label>
-            <textarea name="description" id="description" class="form-control" rows="6" required placeholder="Description détaillée du devoir"></textarea>
-          </div>
+              
+            <div class="devoir-card">
+                <div class="card-header">
+                  <div class="devoir-title"><i class="fas fa-edit"></i> Créer un nouveau devoir</div>
+                  <div class="devoir-meta">Remplissez le formulaire ci-dessous avec les détails du devoir</div>
+                </div>
+                
+                <div class="card-body">
+                  <form method="post" id="ajout-devoir-form">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
+                    
+                    <div class="form-grid">
+                      <div class="form-group" style="grid-column: span 2;">
+                        <label class="form-label" for="titre">Titre du devoir <span class="required">*</span></label>
+                        <input type="text" name="titre" id="titre" class="form-control" required placeholder="Titre du devoir">
+                      </div>
+                      
+                      <div class="form-group">
+                        <label class="form-label" for="classe">Classe <span class="required">*</span></label>
+                        <select name="classe" id="classe" class="form-select" required>
+                          <option value="">Sélectionnez une classe</option>
+                          <?php if (!empty($etablissement_data['classes'])): ?>
+                            <?php foreach ($etablissement_data['classes'] as $niveau => $niveaux): ?>
+                              <optgroup label="<?= ucfirst($niveau) ?>">
+                                <?php foreach ($niveaux as $sousniveau => $classes): ?>
+                                  <?php foreach ($classes as $classe): ?>
+                                    <option value="<?= $classe ?>"><?= $classe ?></option>
+                                  <?php endforeach; ?>
+                                <?php endforeach; ?>
+                              </optgroup>
+                            <?php endforeach; ?>
+                          <?php endif; ?>
+                          
+                          <?php if (!empty($etablissement_data['primaire'])): ?>
+                            <optgroup label="Primaire">
+                              <?php foreach ($etablissement_data['primaire'] as $niveau => $classes): ?>
+                                <?php foreach ($classes as $classe): ?>
+                                  <option value="<?= $classe ?>"><?= $classe ?></option>
+                                <?php endforeach; ?>
+                              <?php endforeach; ?>
+                            </optgroup>
+                          <?php endif; ?>
+                        </select>
+                      </div>
+                      
+                      <div class="form-group">
+                        <label class="form-label" for="nom_matiere">Matière <span class="required">*</span></label>
+                        <?php if (isTeacher()): ?>
+                          <select name="nom_matiere" id="nom_matiere" class="form-select" required>
+                            <option value="">Sélectionnez une matière</option>
+                            <?php if (!empty($etablissement_data['matieres'])): ?>
+                              <?php foreach ($etablissement_data['matieres'] as $matiere): ?>
+                                <option value="<?= $matiere['nom'] ?>" <?= ($prof_matiere == $matiere['nom']) ? 'selected' : '' ?>><?= $matiere['nom'] ?> (<?= $matiere['code'] ?>)</option>
+                              <?php endforeach; ?>
+                            <?php endif; ?>
+                          </select>
+                        <?php else: ?>
+                          <select name="nom_matiere" id="nom_matiere" class="form-select" required>
+                            <option value="">Sélectionnez une matière</option>
+                            <?php if (!empty($etablissement_data['matieres'])): ?>
+                              <?php foreach ($etablissement_data['matieres'] as $matiere): ?>
+                                <option value="<?= $matiere['nom'] ?>"><?= $matiere['nom'] ?> (<?= $matiere['code'] ?>)</option>
+                              <?php endforeach; ?>
+                            <?php endif; ?>
+                          </select>
+                        <?php endif; ?>
+                      </div>
+                      
+                      <div class="form-group">
+                        <label class="form-label" for="nom_professeur">Professeur <span class="required">*</span></label>
+                        <?php if (isTeacher()): ?>
+                          <div class="selected-user-display"><?= htmlspecialchars($nom_professeur) ?></div>
+                          <input type="hidden" name="nom_professeur" id="nom_professeur" value="<?= htmlspecialchars($nom_professeur) ?>">
+                        <?php else: ?>
+                          <select name="nom_professeur" id="nom_professeur" class="form-select" required>
+                            <option value="">Sélectionnez un professeur</option>
+                            <?php foreach ($professeurs as $prof): ?>
+                              <option value="<?= htmlspecialchars($prof['prenom'] . ' ' . $prof['nom']) ?>" data-matiere="<?= htmlspecialchars($prof['matiere']) ?>"><?= htmlspecialchars($prof['prenom'] . ' ' . $prof['nom']) ?></option>
+                            <?php endforeach; ?>
+                          </select>
+                        <?php endif; ?>
+                      </div>
+                      
+                      <div class="form-group">
+                        <label class="form-label" for="date_ajout">Date d'ajout <span class="required">*</span></label>
+                        <input type="date" name="date_ajout" id="date_ajout" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                      </div>
+                      
+                      <div class="form-group">
+                        <label class="form-label" for="date_rendu">Date de rendu <span class="required">*</span></label>
+                        <input type="date" name="date_rendu" id="date_rendu" class="form-control" required>
+                        <div class="text-muted" id="jours-restants" style="margin-top: 5px;"></div>
+                      </div>
+                      
+                      <div class="form-group" style="grid-column: span 2;">
+                        <label class="form-label" for="description">Description <span class="required">*</span></label>
+                        <textarea name="description" id="description" class="form-control" rows="6" required placeholder="Description détaillée du devoir"></textarea>
+                      </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                      <a href="cahierdetextes.php" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Annuler
+                      </a>
+                      <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Ajouter le devoir
+                      </button>
+                    </div>
+                  </form>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <div class="footer-content">
+                    <div class="footer-links">
+                        <a href="#">Mentions Légales</a>
+                    </div>
+                    <div class="footer-copyright">
+                        &copy; <?= date('Y') ?> PRONOTE - Tous droits réservés
+                    </div>
+                </div>
+            </div>
         </div>
-        
-        <div class="form-actions">
-          <a href="cahierdetextes.php" class="btn btn-secondary">
-            <i class="fas fa-times"></i> Annuler
-          </a>
-          <button type="submit" class="btn btn-primary">
-            <i class="fas fa-save"></i> Ajouter le devoir
-          </button>
-        </div>
-      </form>
     </div>
-  </div>
 </div>
 
 <script>
@@ -356,7 +418,7 @@ document.getElementById('date_rendu').addEventListener('change', function() {
   // Vérifier que la date de rendu est après la date d'ajout
   if (dateRendu <= dateAjout) {
     document.getElementById('jours-restants').textContent = 'La date de rendu doit être postérieure à la date d\'ajout';
-    document.getElementById('jours-restants').style.color = 'var(--error-color)';
+    document.getElementById('jours-restants').style.color = 'var(--urgent-color)';
     return;
   }
   
@@ -415,7 +477,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+</body>
+</html>
+
 <?php
-include '../assets/css/templates/footer-template.php';
 ob_end_flush();
 ?>
