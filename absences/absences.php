@@ -251,68 +251,81 @@ if (!empty($etablissement_data['classes'])) {
         <div class="app-logo">P</div>
         <div class="app-title">Pronote Absences</div>
       </a>
-      
-      <!-- Filtres -->
+
+      <!-- Filtres par période -->
       <div class="sidebar-section">
-        <form id="filters-form" method="get" action="absences.php">
-          <input type="hidden" name="view" value="<?= $view ?>">
-          
-          <div class="form-group">
-            <label for="date_debut">Du</label>
-            <input type="date" id="date_debut" name="date_debut" value="<?= $date_debut ?>" max="<?= date('Y-m-d') ?>">
-          </div>
-          
-          <div class="form-group">
-            <label for="date_fin">Au</label>
-            <input type="date" id="date_fin" name="date_fin" value="<?= $date_fin ?>" max="<?= date('Y-m-d') ?>">
-          </div>
-          
-          <?php if (isAdmin() || isVieScolaire() || isTeacher()): ?>
-          <div class="form-group">
-            <label for="classe">Classe</label>
-            <select id="classe" name="classe">
-              <option value="">Toutes les classes</option>
-              <?php foreach ($classes as $c): ?>
-              <option value="<?= $c ?>" <?= $classe == $c ? 'selected' : '' ?>><?= $c ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-          <?php endif; ?>
-          
-          <div class="form-group">
-            <label for="justifie">Justification</label>
-            <select id="justifie" name="justifie">
-              <option value="">Toutes</option>
-              <option value="oui" <?= $justifie == 'oui' ? 'selected' : '' ?>>Justifiées</option>
-              <option value="non" <?= $justifie == 'non' ? 'selected' : '' ?>>Non justifiées</option>
-            </select>
-          </div>
-          
-          <button type="submit" class="filter-button">Appliquer les filtres</button>
-        </form>
+        <h3 class="sidebar-section-header">Périodes</h3>
+        <div class="sidebar-nav">
+          <a href="?periode=semaine" class="sidebar-nav-item <?= ($periode_active == 'semaine' ? 'active' : '') ?>">
+            <span class="sidebar-nav-icon"><i class="fas fa-calendar-week"></i></span>
+            <span>Cette semaine</span>
+          </a>
+          <a href="?periode=mois" class="sidebar-nav-item <?= ($periode_active == 'mois' ? 'active' : '') ?>">
+            <span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span>
+            <span>Ce mois</span>
+          </a>
+          <a href="?periode=trimestre" class="sidebar-nav-item <?= ($periode_active == 'trimestre' ? 'active' : '') ?>">
+            <span class="sidebar-nav-icon"><i class="fas fa-calendar"></i></span>
+            <span>Ce trimestre</span>
+          </a>
+        </div>
       </div>
-      
-      <!-- Actions -->
+
+      <!-- Filtres par type -->
       <div class="sidebar-section">
-        <?php if (canManageAbsences()): ?>
+        <h3 class="sidebar-section-header">Type d'absences</h3>
+        <div class="filter-option">
+          <span class="filter-label">Non justifiées</span>
+          <input type="checkbox" class="filter-checkbox" name="type[]" value="non_justifiee" <?= (in_array('non_justifiee', $selected_types) ? 'checked' : '') ?>>
+        </div>
+        <div class="filter-option">
+          <span class="filter-label">Justifiées</span>
+          <input type="checkbox" class="filter-checkbox" name="type[]" value="justifiee" <?= (in_array('justifiee', $selected_types) ? 'checked' : '') ?>>
+        </div>
+        <div class="filter-option">
+          <span class="filter-label">Retards</span>
+          <input type="checkbox" class="filter-checkbox" name="type[]" value="retard" <?= (in_array('retard', $selected_types) ? 'checked' : '') ?>>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <?php if (canManageAbsences()): ?>
+      <div class="sidebar-section">
+        <h3 class="sidebar-section-header">Actions</h3>
         <a href="ajouter_absence.php" class="action-button">
-          <i class="fas fa-plus"></i> Ajouter une absence
+          <i class="fas fa-plus"></i> Signaler une absence
         </a>
-        <?php endif; ?>
-        
-        <a href="retards.php" class="action-button secondary">
-          <i class="fas fa-clock"></i> Voir les retards
+        <a href="appel.php" class="action-button secondary">
+          <i class="fas fa-clipboard-list"></i> Faire l'appel
         </a>
-        
-        <?php if (canManageAbsences()): ?>
-        <a href="justificatifs.php" class="action-button secondary">
-          <i class="fas fa-file-alt"></i> Justificatifs
-        </a>
-        <?php endif; ?>
-        
-        <a href="statistiques.php" class="action-button secondary">
-          <i class="fas fa-chart-bar"></i> Statistiques
-        </a>
+      </div>
+      <?php endif; ?>
+
+      <!-- Autres modules -->
+      <div class="sidebar-section">
+        <h3 class="sidebar-section-header">Autres modules</h3>
+        <div class="sidebar-nav">
+          <a href="../notes/notes.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-chart-bar"></i></span>
+            <span>Notes</span>
+          </a>
+          <a href="../messagerie/index.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
+            <span>Messagerie</span>
+          </a>
+          <a href="../agenda/agenda.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-calendar"></i></span>
+            <span>Agenda</span>
+          </a>
+          <a href="../cahierdetextes/cahierdetextes.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-book"></i></span>
+            <span>Cahier de textes</span>
+          </a>
+          <a href="../accueil/accueil.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
+            <span>Accueil</span>
+          </a>
+        </div>
       </div>
     </div>
     

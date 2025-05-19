@@ -131,6 +131,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </div>
     </div>
     
+    <!-- Remplacer par une sidebar cohérente avec les autres modules -->
+    <div class="sidebar">
+      <a href="../accueil/accueil.php" class="logo-container">
+        <div class="app-logo">P</div>
+        <div class="app-title">Pronote Cahier de Textes</div>
+      </a>
+      
+      <!-- Actions -->
+      <div class="sidebar-section">
+        <h3 class="sidebar-section-header">Actions</h3>
+        <a href="cahierdetextes.php" class="action-button secondary">
+          <i class="fas fa-list"></i> Liste des devoirs
+        </a>
+      </div>
+      
+      <!-- Autres modules -->
+      <div class="sidebar-section">
+        <h3 class="sidebar-section-header">Autres modules</h3>
+        <div class="sidebar-nav">
+          <a href="../notes/notes.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-chart-bar"></i></span>
+            <span>Notes</span>
+          </a>
+          <a href="../messagerie/index.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
+            <span>Messagerie</span>
+          </a>
+          <a href="../absences/absences.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-calendar-times"></i></span>
+            <span>Absences</span>
+          </a>
+          <a href="../agenda/agenda.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-calendar"></i></span>
+            <span>Agenda</span>
+          </a>
+          <a href="../accueil/accueil.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
+            <span>Accueil</span>
+          </a>
+        </div>
+      </div>
+    </div>
+    
     <!-- Main Content -->
     <div class="main-content">
       <!-- Header -->

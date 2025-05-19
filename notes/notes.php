@@ -302,7 +302,6 @@ $moyenne_generale = $total_coef_global > 0 ? round($moyenne_generale / $total_co
 
 // Créer un tableau de couleurs pour les matières
 $couleurs_matieres = [
-    'Français' => 'francais',
     'Mathématiques' => 'mathematiques',
     'Histoire-Géographie' => 'histoire-geo',
     'Anglais' => 'anglais',
@@ -330,101 +329,108 @@ $couleurs_matieres = [
 </head>
 <body>
     <div class="app-container">
+        <!-- Sidebar -->
         <div class="sidebar">
             <a href="../accueil/accueil.php" class="logo-container">
                 <div class="app-logo">P</div>
                 <div class="app-title">Pronote Notes</div>
             </a>
             
+            <!-- Périodes -->
             <div class="sidebar-section">
-                <div class="section-title">Filtres</div>
-                <form method="get" action="notes.php">
-                    <div class="form-group">
-                        <label for="classe">Classe</label>
-                        <select id="classe" name="classe" onchange="this.form.submit()">
-                            <?php foreach ($classes as $classe): ?>
-                            <option value="<?= htmlspecialchars($classe) ?>" <?= $classe_selectionnee === $classe ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($classe) ?>
-                            </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="trimestre">Trimestre</label>
-                        <select id="trimestre" name="trimestre" onchange="this.form.submit()">
-                            <option value="1" <?= $trimestre_selectionne == 1 ? 'selected' : '' ?>>Trimestre 1</option>
-                            <option value="2" <?= $trimestre_selectionne == 2 ? 'selected' : '' ?>>Trimestre 2</option>
-                            <option value="3" <?= $trimestre_selectionne == 3 ? 'selected' : '' ?>>Trimestre 3</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="matiere">Matière</label>
-                        <select id="matiere" name="matiere" onchange="this.form.submit()">
-                            <option value="">Toutes les matières</option>
-                            <?php foreach ($matieres as $matiere): ?>
-                            <option value="<?= htmlspecialchars($matiere) ?>" <?= $selected_subject === $matiere ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($matiere) ?>
-                            </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    
-                    <?php if (!empty($dates)): ?>
-                    <div class="form-group">
-                        <label for="date">Date d'évaluation</label>
-                        <select id="date" name="date" onchange="this.form.submit()">
-                            <option value="">Toutes les dates</option>
-                            <?php foreach ($dates as $date): ?>
-                            <option value="<?= htmlspecialchars($date) ?>" <?= $date_filter === $date ? 'selected' : '' ?>>
-                                <?= htmlspecialchars(date('d/m/Y', strtotime($date))) ?>
-                            </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <?php endif; ?>
-                </form>
+                <h3 class="sidebar-section-header">Périodes</h3>
+                <div class="sidebar-nav">
+                    <a href="?trimestre=1<?= !empty($classe_selectionnee) ? '&classe=' . urlencode($classe_selectionnee) : '' ?>" class="sidebar-nav-item <?= $trimestre_selectionne == 1 ? 'active' : '' ?>">
+                        <span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span>
+                        <span>Trimestre 1</span>
+                    </a>
+                    <a href="?trimestre=2<?= !empty($classe_selectionnee) ? '&classe=' . urlencode($classe_selectionnee) : '' ?>" class="sidebar-nav-item <?= $trimestre_selectionne == 2 ? 'active' : '' ?>">
+                        <span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span>
+                        <span>Trimestre 2</span>
+                    </a>
+                    <a href="?trimestre=3<?= !empty($classe_selectionnee) ? '&classe=' . urlencode($classe_selectionnee) : '' ?>" class="sidebar-nav-item <?= $trimestre_selectionne == 3 ? 'active' : '' ?>">
+                        <span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span>
+                        <span>Trimestre 3</span>
+                    </a>
+                </div>
             </div>
             
+            <!-- Classes -->
+            <?php if (isAdmin() || isTeacher() || isVieScolaire()): ?>
+            <div class="sidebar-section">
+                <h3 class="sidebar-section-header">Classes</h3>
+                <div class="sidebar-nav">
+                    <?php foreach ($classes as $classe): ?>
+                    <a href="?classe=<?= urlencode($classe) ?>&trimestre=<?= $trimestre_selectionne ?>" class="sidebar-nav-item <?= $classe_selectionnee === $classe ? 'active' : '' ?>">
+                        <span class="sidebar-nav-icon"><i class="fas fa-users"></i></span>
+                        <span><?= htmlspecialchars($classe) ?></span>
+                    </a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+            
+            <!-- Actions -->
             <?php if (canManageNotes()): ?>
             <div class="sidebar-section">
-                <div class="section-title">Actions</div>
-                <a href="ajouter_note.php" class="sidebar-button">
-                    <i class="fas fa-plus"></i>
-                    Ajouter une note
+                <h3 class="sidebar-section-header">Actions</h3>
+                <a href="ajouter_note.php" class="action-button">
+                    <i class="fas fa-plus"></i> Ajouter une note
+                </a>
+                <a href="statistiques.php" class="action-button secondary">
+                    <i class="fas fa-chart-bar"></i> Statistiques
                 </a>
             </div>
             <?php endif; ?>
+            
+            <!-- Autres modules -->
+            <div class="sidebar-section">
+                <h3 class="sidebar-section-header">Autres modules</h3>
+                <div class="sidebar-nav">
+                    <a href="../messagerie/index.php" class="sidebar-nav-item">
+                        <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
+                        <span>Messagerie</span>
+                    </a>
+                    <a href="../absences/absences.php" class="sidebar-nav-item">
+                        <span class="sidebar-nav-icon"><i class="fas fa-calendar-times"></i></span>
+                        <span>Absences</span>
+                    </a>
+                    <a href="../agenda/agenda.php" class="sidebar-nav-item">
+                        <span class="sidebar-nav-icon"><i class="fas fa-calendar"></i></span>
+                        <span>Agenda</span>
+                    </a>
+                    <a href="../cahierdetextes/cahierdetextes.php" class="sidebar-nav-item">
+                        <span class="sidebar-nav-icon"><i class="fas fa-book"></i></span>
+                        <span>Cahier de textes</span>
+                    </a>
+                    <a href="../accueil/accueil.php" class="sidebar-nav-item">
+                        <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
+                        <span>Accueil</span>
+                    </a>
+                </div>
+            </div>
         </div>
-
+        
+        <!-- Main Content -->
         <div class="main-content">
+            <!-- Header -->
             <div class="top-header">
                 <div class="page-title">
-                    <h1>Notes et évaluations</h1>
+                    <h1>Gestion des notes</h1>
                     <p class="subtitle">
-                        <?php if ($classe_selectionnee): ?>
-                            Classe <?= htmlspecialchars($classe_selectionnee) ?> -
+                        <?php if (!empty($classe_selectionnee)): ?>
+                            Classe <?= htmlspecialchars($classe_selectionnee) ?> - 
                         <?php endif; ?>
-                        
-                        <?php if ($selected_subject): ?>
-                            <?= htmlspecialchars($selected_subject) ?> -
-                        <?php endif; ?>
-                        
-                        Trimestre <?= htmlspecialchars($trimestre_selectionne) ?>
+                        Trimestre <?= $trimestre_selectionne ?>
                     </p>
                 </div>
-                
-                <div class="user-profile">
-                    <div class="logout-button" title="Déconnexion">
-                        <a href="../login/public/logout.php">
-                            <i class="fas fa-power-off"></i>
-                        </a>
-                    </div>
+                <div class="header-actions">
+                    <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">⏻</a>
+                    <div class="user-avatar"><?= $user_initials ?></div>
                 </div>
             </div>
             
-            <!-- Reste du contenu -->
+            <!-- Contenu principal -->
             <div class="content-container">
                 <?php if (empty($notes)): ?>
                     <div class="notes-container">

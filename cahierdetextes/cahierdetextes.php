@@ -157,7 +157,7 @@ if (!function_exists('canManageDevoirs')) {
       
       <!-- Section des filtres -->
       <div class="sidebar-section">
-        <div class="sidebar-section-header">Filtres</div>
+        <h3 class="sidebar-section-header">Filtres</h3>
         
         <div class="filter-option">
           <span class="filter-label">À rendre cette semaine</span>
@@ -178,20 +178,40 @@ if (!function_exists('canManageDevoirs')) {
       </div>
       
       <!-- Actions -->
+      <?php if (canManageDevoirs()): ?>
       <div class="sidebar-section">
-        <?php if (canManageDevoirs()): ?>
-        <a href="ajouter_devoir.php" class="create-button">
+        <h3 class="sidebar-section-header">Actions</h3>
+        <a href="ajouter_devoir.php" class="action-button">
           <i class="fas fa-plus"></i> Ajouter un devoir
         </a>
-        <?php endif; ?>
-        
-        <a href="../notes/notes.php" class="action-button secondary">
-          <i class="fas fa-graduation-cap"></i> Système de Notes
-        </a>
-        
-        <a href="../accueil/accueil.php" class="action-button secondary">
-          <i class="fas fa-home"></i> Accueil Pronote
-        </a>
+      </div>
+      <?php endif; ?>
+      
+      <!-- Autres modules -->
+      <div class="sidebar-section">
+        <h3 class="sidebar-section-header">Autres modules</h3>
+        <div class="sidebar-nav">
+          <a href="../notes/notes.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-chart-bar"></i></span>
+            <span>Notes</span>
+          </a>
+          <a href="../messagerie/index.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
+            <span>Messagerie</span>
+          </a>
+          <a href="../absences/absences.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-calendar-times"></i></span>
+            <span>Absences</span>
+          </a>
+          <a href="../agenda/agenda.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-calendar"></i></span>
+            <span>Agenda</span>
+          </a>
+          <a href="../accueil/accueil.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
+            <span>Accueil</span>
+          </a>
+        </div>
       </div>
     </div>
     

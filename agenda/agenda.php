@@ -841,24 +841,25 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
       </a>
       
       <!-- Mini-calendrier pour la navigation -->
-      <div class="mini-calendar">
-        <?= generateMiniCalendar($month, $year, $date) ?>
+      <div class="sidebar-section">
+        <h3 class="sidebar-section-header">Calendrier</h3>
+        <div class="mini-calendar">
+          <?= generateMiniCalendar($month, $year, $date) ?>
+        </div>
       </div>
       
       <!-- Créer un événement -->
       <div class="sidebar-section">
+        <h3 class="sidebar-section-header">Actions</h3>
         <a href="ajouter_evenement.php" class="create-button">
-          <span>+</span> Créer un événement
+          <i class="fas fa-plus"></i> Créer un événement
         </a>
       </div>
       
       <!-- Filtres par type d'événement -->
       <?php if (!empty($available_event_types)): ?>
       <div class="sidebar-section">
-        <div class="sidebar-section-header">
-          <span>Types d'événements</span>
-          <button class="toggle-button">▾</button>
-        </div>
+        <h3 class="sidebar-section-header">Types d'événements</h3>
         <div class="calendar-filters">
           <?php foreach ($types_evenements as $code => $nom): ?>
             <?php if (in_array($code, $available_event_types)): ?>
@@ -877,6 +878,33 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
         </div>
       </div>
       <?php endif; ?>
+      
+      <!-- Autres modules -->
+      <div class="sidebar-section">
+        <h3 class="sidebar-section-header">Autres modules</h3>
+        <div class="sidebar-nav">
+          <a href="../notes/notes.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-chart-bar"></i></span>
+            <span>Notes</span>
+          </a>
+          <a href="../messagerie/index.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
+            <span>Messagerie</span>
+          </a>
+          <a href="../absences/absences.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-calendar-times"></i></span>
+            <span>Absences</span>
+          </a>
+          <a href="../cahierdetextes/cahierdetextes.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-book"></i></span>
+            <span>Cahier de textes</span>
+          </a>
+          <a href="../accueil/accueil.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
+            <span>Accueil</span>
+          </a>
+        </div>
+      </div>
 
       <!-- Hidden input to preserve filter state -->
       <input type="hidden" id="filter-set-flag" value="1">
@@ -1285,33 +1313,6 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
       if (!event.target.closest('.classes-dropdown')) {
         document.getElementById('classes-dropdown').classList.remove('show');
       }
-    });
-  </script>
-</body>
-</html>
-    // Événements pour la navigation par clics sur les jours du calendrier
-    document.querySelectorAll('.calendar-day:not(.other-month)').forEach(day => {
-      day.addEventListener('click', function(e) {
-        if (e.target === this || e.target.classList.contains('calendar-day-number')) {
-          const date = this.getAttribute('data-date');
-          if (date) {
-            let url = `?view=day&date=${date}`;
-            url += getFilterParams();
-            window.location.href = url;
-          }
-        }
-      });
-    });
-    
-    // Événements pour les clics sur les événements du calendrier
-    document.querySelectorAll('.calendar-event').forEach(event => {
-      event.addEventListener('click', function(e) {
-        e.stopPropagation();
-        const eventId = this.getAttribute('data-event-id');
-        if (eventId) {
-          window.location.href = `details_evenement.php?id=${eventId}`;
-        }
-      });
     });
   </script>
 </body>
