@@ -313,7 +313,7 @@ $couleurs_matieres = [
     'Arts Plastiques' => 'arts',
     'Musique' => 'musique',
     'EPS' => 'eps'
-];
+};
 ?>
 
 <!-- Structure HTML de la page -->
@@ -331,8 +331,9 @@ $couleurs_matieres = [
     <div class="app-container">
         <!-- Sidebar -->
         <div class="sidebar">
-            <a href="../accueil/accueil.php" class="logo-container">
+            <div class="logo-container">
                 <div class="app-logo">P</div>
+<<<<<<< HEAD
                 <div class="app-title">Pronote Notes</div>
             </a>
             
@@ -364,6 +365,35 @@ $couleurs_matieres = [
                     <a href="?classe=<?= urlencode($classe) ?>&trimestre=<?= $trimestre_selectionne ?>" class="sidebar-nav-item <?= $classe_selectionnee === $classe ? 'active' : '' ?>">
                         <span class="sidebar-nav-icon"><i class="fas fa-users"></i></span>
                         <span><?= htmlspecialchars($classe) ?></span>
+=======
+                <div class="app-title">Notes</div>
+            </div>
+            
+            <!-- Périodes -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-header">Périodes</div>
+                <div class="folder-menu">
+                    <a href="?trimestre=1<?= !empty($classe_selectionnee) ? '&classe=' . urlencode($classe_selectionnee) : '' ?>" class="<?= $trimestre_selectionne == 1 ? 'active' : '' ?>">
+                        <i class="fas fa-calendar-alt"></i> Trimestre 1
+                    </a>
+                    <a href="?trimestre=2<?= !empty($classe_selectionnee) ? '&classe=' . urlencode($classe_selectionnee) : '' ?>" class="<?= $trimestre_selectionne == 2 ? 'active' : '' ?>">
+                        <i class="fas fa-calendar-alt"></i> Trimestre 2
+                    </a>
+                    <a href="?trimestre=3<?= !empty($classe_selectionnee) ? '&classe=' . urlencode($classe_selectionnee) : '' ?>" class="<?= $trimestre_selectionne == 3 ? 'active' : '' ?>">
+                        <i class="fas fa-calendar-alt"></i> Trimestre 3
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Classes -->
+            <?php if (isAdmin() || isTeacher() || isVieScolaire()): ?>
+            <div class="sidebar-section">
+                <div class="sidebar-section-header">Classes</div>
+                <div class="folder-menu">
+                    <?php foreach ($classes as $classe): ?>
+                    <a href="?classe=<?= urlencode($classe) ?>&trimestre=<?= $trimestre_selectionne ?>" class="<?= $classe_selectionnee === $classe ? 'active' : '' ?>">
+                        <i class="fas fa-users"></i> <?= htmlspecialchars($classe) ?>
+>>>>>>> design
                     </a>
                     <?php endforeach; ?>
                 </div>
@@ -373,11 +403,19 @@ $couleurs_matieres = [
             <!-- Actions -->
             <?php if (canManageNotes()): ?>
             <div class="sidebar-section">
+<<<<<<< HEAD
                 <h3 class="sidebar-section-header">Actions</h3>
                 <a href="ajouter_note.php" class="action-button">
                     <i class="fas fa-plus"></i> Ajouter une note
                 </a>
                 <a href="statistiques.php" class="action-button secondary">
+=======
+                <div class="sidebar-section-header">Actions</div>
+                <a href="ajouter_note.php" class="create-button">
+                    <i class="fas fa-plus"></i> Ajouter une note
+                </a>
+                <a href="statistiques.php" class="button button-secondary">
+>>>>>>> design
                     <i class="fas fa-chart-bar"></i> Statistiques
                 </a>
             </div>
@@ -385,6 +423,7 @@ $couleurs_matieres = [
             
             <!-- Autres modules -->
             <div class="sidebar-section">
+<<<<<<< HEAD
                 <h3 class="sidebar-section-header">Autres modules</h3>
                 <div class="sidebar-nav">
                     <a href="../messagerie/index.php" class="sidebar-nav-item">
@@ -406,6 +445,24 @@ $couleurs_matieres = [
                     <a href="../accueil/accueil.php" class="sidebar-nav-item">
                         <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
                         <span>Accueil</span>
+=======
+                <div class="sidebar-section-header">Autres modules</div>
+                <div class="folder-menu">
+                    <a href="../messagerie/index.php" class="module-link">
+                        <i class="fas fa-envelope"></i> Messagerie
+                    </a>
+                    <a href="../absences/absences.php" class="module-link">
+                        <i class="fas fa-calendar-times"></i> Absences
+                    </a>
+                    <a href="../agenda/agenda.php" class="module-link">
+                        <i class="fas fa-calendar"></i> Agenda
+                    </a>
+                    <a href="../cahierdetextes/cahierdetextes.php" class="module-link">
+                        <i class="fas fa-book"></i> Cahier de textes
+                    </a>
+                    <a href="../accueil/accueil.php" class="module-link">
+                        <i class="fas fa-home"></i> Accueil
+>>>>>>> design
                     </a>
                 </div>
             </div>

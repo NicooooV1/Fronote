@@ -234,12 +234,12 @@ if (!empty($etablissement_data['classes'])) {
 }
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gestion des absences - Pronote</title>
-  <link rel="stylesheet" href="../agenda/assets/css/calendar.css">
+  <title>Absences - Pronote</title>
+  <link rel="stylesheet" href="../notes/assets/css/style.css">
   <link rel="stylesheet" href="assets/css/absences.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
@@ -247,8 +247,9 @@ if (!empty($etablissement_data['classes'])) {
   <div class="app-container">
     <!-- Sidebar -->
     <div class="sidebar">
-      <a href="../accueil/accueil.php" class="logo-container">
+      <div class="logo-container">
         <div class="app-logo">P</div>
+<<<<<<< HEAD
         <div class="app-title">Pronote Absences</div>
       </a>
 
@@ -285,17 +286,68 @@ if (!empty($etablissement_data['classes'])) {
         <div class="filter-option">
           <span class="filter-label">Retards</span>
           <input type="checkbox" class="filter-checkbox" name="type[]" value="retard" <?= (in_array('retard', $selected_types) ? 'checked' : '') ?>>
+=======
+        <div class="app-title">Absences</div>
+      </div>
+
+      <!-- Filtres par période -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Périodes</div>
+        <div class="folder-menu">
+          <a href="?periode=semaine" class="<?= ($periode_active == 'semaine' ? 'active' : '') ?>">
+            <i class="fas fa-calendar-week"></i> Cette semaine
+          </a>
+          <a href="?periode=mois" class="<?= ($periode_active == 'mois' ? 'active' : '') ?>">
+            <i class="fas fa-calendar-alt"></i> Ce mois
+          </a>
+          <a href="?periode=trimestre" class="<?= ($periode_active == 'trimestre' ? 'active' : '') ?>">
+            <i class="fas fa-calendar"></i> Ce trimestre
+          </a>
+        </div>
+      </div>
+
+      <!-- Filtres par type -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Type d'absences</div>
+        <div class="folder-menu">
+          <div class="filter-option">
+            <label>
+              <input type="checkbox" class="filter-checkbox" name="type[]" value="non_justifiee" <?= (in_array('non_justifiee', $selected_types) ? 'checked' : '') ?>>
+              <span class="filter-label">Non justifiées</span>
+            </label>
+          </div>
+          <div class="filter-option">
+            <label>
+              <input type="checkbox" class="filter-checkbox" name="type[]" value="justifiee" <?= (in_array('justifiee', $selected_types) ? 'checked' : '') ?>>
+              <span class="filter-label">Justifiées</span>
+            </label>
+          </div>
+          <div class="filter-option">
+            <label>
+              <input type="checkbox" class="filter-checkbox" name="type[]" value="retard" <?= (in_array('retard', $selected_types) ? 'checked' : '') ?>>
+              <span class="filter-label">Retards</span>
+            </label>
+          </div>
+>>>>>>> design
         </div>
       </div>
 
       <!-- Actions -->
       <?php if (canManageAbsences()): ?>
       <div class="sidebar-section">
+<<<<<<< HEAD
         <h3 class="sidebar-section-header">Actions</h3>
         <a href="ajouter_absence.php" class="action-button">
           <i class="fas fa-plus"></i> Signaler une absence
         </a>
         <a href="appel.php" class="action-button secondary">
+=======
+        <div class="sidebar-section-header">Actions</div>
+        <a href="ajouter_absence.php" class="create-button">
+          <i class="fas fa-plus"></i> Signaler une absence
+        </a>
+        <a href="appel.php" class="button button-secondary">
+>>>>>>> design
           <i class="fas fa-clipboard-list"></i> Faire l'appel
         </a>
       </div>
@@ -303,6 +355,7 @@ if (!empty($etablissement_data['classes'])) {
 
       <!-- Autres modules -->
       <div class="sidebar-section">
+<<<<<<< HEAD
         <h3 class="sidebar-section-header">Autres modules</h3>
         <div class="sidebar-nav">
           <a href="../notes/notes.php" class="sidebar-nav-item">
@@ -324,41 +377,43 @@ if (!empty($etablissement_data['classes'])) {
           <a href="../accueil/accueil.php" class="sidebar-nav-item">
             <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
             <span>Accueil</span>
+=======
+        <div class="sidebar-section-header">Autres modules</div>
+        <div class="folder-menu">
+          <a href="../notes/notes.php" class="module-link">
+            <i class="fas fa-chart-bar"></i> Notes
+          </a>
+          <a href="../messagerie/index.php" class="module-link">
+            <i class="fas fa-envelope"></i> Messagerie
+          </a>
+          <a href="../agenda/agenda.php" class="module-link">
+            <i class="fas fa-calendar"></i> Agenda
+          </a>
+          <a href="../cahierdetextes/cahierdetextes.php" class="module-link">
+            <i class="fas fa-book"></i> Cahier de textes
+          </a>
+          <a href="../accueil/accueil.php" class="module-link">
+            <i class="fas fa-home"></i> Accueil
+>>>>>>> design
           </a>
         </div>
       </div>
     </div>
-    
+
     <!-- Main Content -->
     <div class="main-content">
       <!-- Header -->
       <div class="top-header">
         <div class="page-title">
-          <h1>Gestion des absences</h1>
+          <h1>Gestion des Absences</h1>
         </div>
-        
-        <div class="view-toggle">
-          <a href="?view=list<?= !empty($classe) ? '&classe='.$classe : '' ?>&date_debut=<?= $date_debut ?>&date_fin=<?= $date_fin ?>&justifie=<?= $justifie ?>" 
-             class="view-toggle-option <?= $view === 'list' ? 'active' : '' ?>">
-            <i class="fas fa-list"></i> Liste
-          </a>
-          <a href="?view=calendar<?= !empty($classe) ? '&classe='.$classe : '' ?>&date_debut=<?= $date_debut ?>&date_fin=<?= $date_fin ?>&justifie=<?= $justifie ?>" 
-             class="view-toggle-option <?= $view === 'calendar' ? 'active' : '' ?>">
-            <i class="fas fa-calendar-alt"></i> Calendrier
-          </a>
-          <a href="?view=stats<?= !empty($classe) ? '&classe='.$classe : '' ?>&date_debut=<?= $date_debut ?>&date_fin=<?= $date_fin ?>&justifie=<?= $justifie ?>" 
-             class="view-toggle-option <?= $view === 'stats' ? 'active' : '' ?>">
-            <i class="fas fa-chart-pie"></i> Statistiques
-          </a>
-        </div>
-        
         <div class="header-actions">
           <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">⏻</a>
-          <div class="user-avatar"><?= $user_initials ?></div>
+          <div class="user-avatar"><?= $user_initials ?? '' ?></div>
         </div>
       </div>
       
-      <!-- Content -->
+      <!-- Contenu principal de la page -->
       <div class="content-container">
         <?php if (empty($absences)): ?>
           <div class="no-data-message">

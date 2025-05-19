@@ -411,8 +411,6 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
   <title>Agenda Pronote</title>
   <link rel="stylesheet" href="assets/css/calendar.css">
   <style>
-    /* Styles mis à jour basés sur les retours */
-    
     /* Structure principale */
     .app-container {
       display: flex;
@@ -835,14 +833,18 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
   <div class="app-container">
     <!-- Sidebar -->
     <div class="sidebar">
-      <a href="../accueil/accueil.php" class="logo-container">
+      <div class="logo-container">
         <div class="app-logo">P</div>
-        <div class="app-title">Pronote Agenda</div>
-      </a>
+        <div class="app-title">Agenda</div>
+      </div>
       
       <!-- Mini-calendrier pour la navigation -->
       <div class="sidebar-section">
+<<<<<<< HEAD
         <h3 class="sidebar-section-header">Calendrier</h3>
+=======
+        <div class="sidebar-section-header">Calendrier</div>
+>>>>>>> design
         <div class="mini-calendar">
           <?= generateMiniCalendar($month, $year, $date) ?>
         </div>
@@ -850,7 +852,11 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
       
       <!-- Créer un événement -->
       <div class="sidebar-section">
+<<<<<<< HEAD
         <h3 class="sidebar-section-header">Actions</h3>
+=======
+        <div class="sidebar-section-header">Actions</div>
+>>>>>>> design
         <a href="ajouter_evenement.php" class="create-button">
           <i class="fas fa-plus"></i> Créer un événement
         </a>
@@ -859,19 +865,26 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
       <!-- Filtres par type d'événement -->
       <?php if (!empty($available_event_types)): ?>
       <div class="sidebar-section">
+<<<<<<< HEAD
         <h3 class="sidebar-section-header">Types d'événements</h3>
         <div class="calendar-filters">
+=======
+        <div class="sidebar-section-header">Types d'événements</div>
+        <div class="folder-menu">
+>>>>>>> design
           <?php foreach ($types_evenements as $code => $nom): ?>
             <?php if (in_array($code, $available_event_types)): ?>
               <div class="filter-option">
-                <span class="color-dot color-<?= $code ?>"></span>
-                <span class="filter-label"><?= $nom ?></span>
-                <input type="checkbox" class="filter-checkbox" 
-                       id="filter-<?= $code ?>" 
-                       name="types[]" 
-                       value="<?= $code ?>" 
-                       <?= in_array($code, $filter_types) ? 'checked' : '' ?> 
-                       data-filter-type="type">
+                <label>
+                  <span class="color-dot color-<?= $code ?>"></span>
+                  <input type="checkbox" class="filter-checkbox" 
+                         id="filter-<?= $code ?>" 
+                         name="types[]" 
+                         value="<?= $code ?>" 
+                         <?= in_array($code, $filter_types) ? 'checked' : '' ?> 
+                         data-filter-type="type">
+                  <span class="filter-label"><?= $nom ?></span>
+                </label>
               </div>
             <?php endif; ?>
           <?php endforeach; ?>
@@ -881,6 +894,7 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
       
       <!-- Autres modules -->
       <div class="sidebar-section">
+<<<<<<< HEAD
         <h3 class="sidebar-section-header">Autres modules</h3>
         <div class="sidebar-nav">
           <a href="../notes/notes.php" class="sidebar-nav-item">
@@ -902,6 +916,24 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
           <a href="../accueil/accueil.php" class="sidebar-nav-item">
             <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
             <span>Accueil</span>
+=======
+        <div class="sidebar-section-header">Autres modules</div>
+        <div class="folder-menu">
+          <a href="../notes/notes.php" class="module-link">
+            <i class="fas fa-chart-bar"></i> Notes
+          </a>
+          <a href="../messagerie/index.php" class="module-link">
+            <i class="fas fa-envelope"></i> Messagerie
+          </a>
+          <a href="../absences/absences.php" class="module-link">
+            <i class="fas fa-calendar-times"></i> Absences
+          </a>
+          <a href="../cahierdetextes/cahierdetextes.php" class="module-link">
+            <i class="fas fa-book"></i> Cahier de textes
+          </a>
+          <a href="../accueil/accueil.php" class="module-link">
+            <i class="fas fa-home"></i> Accueil
+>>>>>>> design
           </a>
         </div>
       </div>

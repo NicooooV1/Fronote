@@ -110,24 +110,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <div class="app-container">
     <!-- Sidebar -->
     <div class="sidebar">
-      <a href="../accueil/accueil.php" class="logo-container">
+      <div class="logo-container">
         <div class="app-logo">P</div>
-        <div class="app-title">Pronote Cahier de Textes</div>
-      </a>
+        <div class="app-title">Cahier de Textes</div>
+      </div>
       
       <!-- Actions -->
       <div class="sidebar-section">
-        <a href="cahierdetextes.php" class="action-button secondary">
+        <div class="sidebar-section-header">Actions</div>
+        <a href="cahierdetextes.php" class="button button-secondary">
           <i class="fas fa-list"></i> Liste des devoirs
         </a>
-        
-        <a href="../notes/notes.php" class="action-button secondary">
-          <i class="fas fa-graduation-cap"></i> Système de Notes
-        </a>
-        
-        <a href="../accueil/accueil.php" class="action-button secondary">
-          <i class="fas fa-home"></i> Accueil Pronote
-        </a>
+      </div>
+      
+      <!-- Autres modules -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Autres modules</div>
+        <div class="folder-menu">
+          <a href="../notes/notes.php" class="module-link">
+            <i class="fas fa-chart-bar"></i> Notes
+          </a>
+          <a href="../messagerie/index.php" class="module-link">
+            <i class="fas fa-envelope"></i> Messagerie
+          </a>
+          <a href="../absences/absences.php" class="module-link">
+            <i class="fas fa-calendar-times"></i> Absences
+          </a>
+          <a href="../agenda/agenda.php" class="module-link">
+            <i class="fas fa-calendar"></i> Agenda
+          </a>
+          <a href="../accueil/accueil.php" class="module-link">
+            <i class="fas fa-home"></i> Accueil
+          </a>
+        </div>
       </div>
     </div>
     
