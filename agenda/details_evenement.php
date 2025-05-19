@@ -2,45 +2,46 @@
 // Démarrer la mise en mémoire tampon de sortie pour éviter l'erreur "headers already sent"
 ob_start();
 
-// Enable error reporting for debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// Désactiver l'affichage des erreurs en production
+if (defined('APP_ENV') && APP_ENV !== 'development') {
+    error_reporting(0);
+    ini_set('display_errors', 0);
+} else {
+    // En développement, activer les erreurs
+    error_reporting(E_ALL);
+    ini_set('display_errors', 1);
+}
 
-// Inclusion des fichiers nécessaires
-include 'includes/db.php';
-include 'includes/auth.php';
+// Inclusion des fichiers nécessaires - utiliser require_once pour éviter les inclusions multiples
+require_once __DIR__ . '/../API/auth_central.php';
+require_once 'includes/db.php';
 
-// Vérifier que l'utilisateur est connecté
+// Vérifier que l'utilisateur est connecté avec le système centralisé
 if (!isLoggedIn()) {
-    header('Location: ../login/public/login.php');
+    header('Location: ' . LOGIN_URL);
     exit;
 }
 
 // Récupérer les informations de l'utilisateur connecté
-$user = $_SESSION['user'];
-$user_fullname = $user['prenom'] . ' ' . $user['nom'];
-$user_role = $user['profil'];
-$user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
+$user = getCurrentUser();
+$user_fullname = getUserFullName();
+$user_role = getUserRole();
+$user_initials = getUserInitials();
 
-// Vérifier que l'ID est fourni
-if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
+// Vérifier que l'ID est fourni et valide avec filter_input
+$id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+if (!$id) {
     header('Location: agenda.php');
     exit;
 }
 
-$id = $_GET['id'];
-
-// Vérifier si la colonne 'personnes_concernees' existe
+// Utiliser try-catch pour gérer les erreurs de base de données
 try {
+    // Vérifier si la colonne 'personnes_concernees' existe
     $stmt_check_column = $pdo->query("SHOW COLUMNS FROM evenements LIKE 'personnes_concernees'");
     $personnes_concernees_exists = $stmt_check_column && $stmt_check_column->rowCount() > 0;
-} catch (PDOException $e) {
-    // La colonne n'existe probablement pas
-    $personnes_concernees_exists = false;
-}
 
-// Récupérer les détails de l'événement
-try {
+    // Récupérer les détails de l'événement avec une requête préparée
     $stmt = $pdo->prepare('SELECT * FROM evenements WHERE id = ?');
     $stmt->execute([$id]);
     $evenement = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -51,7 +52,12 @@ try {
         exit;
     }
 } catch (PDOException $e) {
-    echo "Erreur lors de la récupération de l'événement : " . $e->getMessage();
+    // Journaliser l'erreur mais ne pas l'afficher en production
+    error_log("Erreur lors de la récupération de l'événement ID=$id: " . $e->getMessage());
+    
+    // Rediriger vers la page principale avec un message d'erreur
+    $_SESSION['error_message'] = "Impossible de récupérer les détails de l'événement.";
+    header('Location: agenda.php');
     exit;
 }
 
@@ -89,7 +95,7 @@ else {
             // Récupérer la classe de l'élève
             $classe_eleve = isset($user['classe']) ? $user['classe'] : '';
             
-            if (in_array($classe_eleve, $classes_concernees)) {
+            if (!empty($classe_eleve) && in_array($classe_eleve, $classes_concernees)) {
                 $can_view = true;
             }
         }
@@ -185,211 +191,224 @@ $personnes_concernees_array = [];
 if ($personnes_concernees_exists && !empty($evenement['personnes_concernees'])) {
     $personnes_concernees_array = explode(',', $evenement['personnes_concernees']);
 }
+
+// Ajouter un message flash si l'événement vient d'être mis à jour
+$updated = filter_input(INPUT_GET, 'updated', FILTER_VALIDATE_INT);
+$updateMessage = '';
+if ($updated === 1) {
+    $updateMessage = "L'événement a été mis à jour avec succès.";
+}
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><?= htmlspecialchars($evenement['titre']) ?> - Agenda Pronote</title>
-  <link rel="stylesheet" href="assets/css/calendar.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <!-- Rest of your head content -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= htmlspecialchars($evenement['titre']) ?> - Agenda Pronote</title>
+    <link rel="stylesheet" href="assets/css/calendar.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Rest of your head content -->
 </head>
 <body>
-  <div class="app-container">
-    <!-- Sidebar -->
-    <div class="sidebar">
-      <a href="../accueil/accueil.php" class="logo-container">
-        <div class="app-logo">P</div>
-        <div class="app-title">Pronote Agenda</div>
-      </a>
-      
-      <!-- Mini-calendrier pour la navigation -->
-      <div class="mini-calendar">
-        <!-- Le mini-calendrier sera généré dynamiquement -->
-      </div>
-      
-      <!-- Créer un événement -->
-      <div class="sidebar-section">
-        <a href="ajouter_evenement.php" class="create-button">
-          <span>+</span> Créer un événement
-        </a>
-      </div>
-    </div>
-    
-    <!-- Main Content -->
-    <div class="main-content">
-      <!-- Header -->
-      <div class="top-header">
-        <div class="calendar-navigation">
-          <a href="agenda.php" class="back-button">
-            <span class="back-icon">
-              <i class="fas fa-arrow-left"></i>
-            </span>
-            Retour à l'agenda
-          </a>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <a href="../accueil/accueil.php" class="logo-container">
+                <div class="app-logo">P</div>
+                <div class="app-title">Pronote Agenda</div>
+            </a>
+            
+            <!-- Mini-calendrier pour la navigation -->
+            <div class="mini-calendar">
+                <!-- Le mini-calendrier sera généré dynamiquement -->
+            </div>
+            
+            <!-- Créer un événement -->
+            <div class="sidebar-section">
+                <a href="ajouter_evenement.php" class="create-button">
+                    <span>+</span> Créer un événement
+                </a>
+            </div>
         </div>
         
-        <div class="header-actions">
-          <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">⏻</a>
-          <div class="user-avatar"><?= $user_initials ?></div>
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <div class="top-header">
+                <div class="calendar-navigation">
+                    <a href="agenda.php" class="back-button">
+                        <span class="back-icon">
+                            <i class="fas fa-arrow-left"></i>
+                        </span>
+                        Retour à l'agenda
+                    </a>
+                </div>
+                
+                <div class="header-actions">
+                    <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">⏻</a>
+                    <div class="user-avatar"><?= $user_initials ?></div>
+                </div>
+            </div>
+            
+            <!-- Container principal -->
+            <div class="calendar-container">
+                <div class="event-details-container">
+                    <div class="event-header">
+                        <div class="event-header-top">
+                            <div class="event-title-container">
+                                <h1 class="event-title"><?= htmlspecialchars($evenement['titre']) ?></h1>
+                                <div class="event-subtitle">Créé par <?= htmlspecialchars($evenement['createur']) ?></div>
+                            </div>
+                            
+                            <?php if ($evenement['statut'] !== 'actif'): ?>
+                                <div class="event-status <?= $evenement['statut'] === 'annulé' ? 'cancelled' : 'postponed' ?>">
+                                    <i class="fas fa-<?= $evenement['statut'] === 'annulé' ? 'ban' : 'clock' ?>"></i>
+                                    <?= $evenement['statut'] === 'annulé' ? 'Annulé' : 'Reporté' ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        
+                        <div class="event-type" style="background-color: <?= $type_info['couleur'] ?>;">
+                            <i class="fas fa-<?= $type_info['icone'] ?>"></i>
+                            <?= $type_info['nom'] ?>
+                        </div>
+                        
+                        <div class="event-timing">
+                            <div class="event-date-display">
+                                <i class="far fa-calendar-alt"></i>
+                                <?php if ($date_debut->format('Y-m-d') === $date_fin->format('Y-m-d')): ?>
+                                    <?= $date_debut->format($format_date) ?>
+                                <?php else: ?>
+                                    Du <?= $date_debut->format($format_date) ?> au <?= $date_fin->format($format_date) ?>
+                                <?php endif; ?>
+                                
+                                <?php if ($is_today): ?>
+                                    <span class="event-badge today">Aujourd'hui</span>
+                                <?php elseif ($is_tomorrow): ?>
+                                    <span class="event-badge tomorrow">Demain</span>
+                                <?php elseif ($is_future): ?>
+                                    <span class="event-badge future">Dans <?= $days_until ?> jour<?= $days_until > 1 ? 's' : '' ?></span>
+                                <?php elseif ($is_past): ?>
+                                    <span class="event-badge past">Passé</span>
+                                <?php endif; ?>
+                            </div>
+                            
+                            <div class="event-date-display">
+                                <i class="far fa-clock"></i>
+                                <?php if ($date_debut->format('Y-m-d') === $date_fin->format('Y-m-d')): ?>
+                                    De <?= $date_debut->format($format_heure) ?> à <?= $date_fin->format($format_heure) ?>
+                                <?php else: ?>
+                                    De <?= $date_debut->format($format_date . ' à ' . $format_heure) ?> à <?= $date_fin->format($format_date . ' à ' . $format_heure) ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="event-body">
+                        <!-- Description -->
+                        <?php if (!empty($evenement['description'])): ?>
+                        <div class="event-section">
+                            <h3 class="section-title">
+                                <i class="fas fa-align-left"></i>
+                                Description
+                            </h3>
+                            <div class="section-content description">
+                                <?= nl2br(htmlspecialchars($evenement['description'])) ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <!-- Informations supplémentaires -->
+                        <div class="event-section">
+                            <h3 class="section-title">
+                                <i class="fas fa-info-circle"></i>
+                                Informations
+                            </h3>
+                            <div class="info-grid">
+                                <?php if (!empty($evenement['lieu'])): ?>
+                                <div class="info-item">
+                                    <div class="info-label">Lieu</div>
+                                    <div class="info-value">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                        <?= htmlspecialchars($evenement['lieu']) ?>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+                                
+                                <div class="info-item">
+                                    <div class="info-label">Visibilité</div>
+                                    <div class="info-value">
+                                        <i class="fas fa-<?= $visibilite_icone ?>"></i>
+                                        <?= $visibilite_texte ?>
+                                    </div>
+                                </div>
+                                
+                                <?php if (!empty($evenement['matieres'])): ?>
+                                <div class="info-item">
+                                    <div class="info-label">Matière</div>
+                                    <div class="info-value">
+                                        <i class="fas fa-book"></i>
+                                        <?= htmlspecialchars($evenement['matieres']) ?>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                            
+                            <?php if (!empty($classes_array)): ?>
+                            <div class="tags-container">
+                                <?php foreach ($classes_array as $classe): ?>
+                                    <div class="tag"><?= htmlspecialchars($classe) ?></div>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                        
+                        <?php if ($personnes_concernees_exists && !empty($personnes_concernees_array)): ?>
+                        <div class="event-section">
+                            <h3 class="section-title">
+                                <i class="fas fa-users"></i>
+                                Personnes concernées
+                            </h3>
+                            <div class="tags-container">
+                                <?php foreach ($personnes_concernees_array as $personne): ?>
+                                    <div class="tag"><?= htmlspecialchars($personne) ?></div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <!-- Actions -->
+                        <div class="event-actions">
+                            <a href="agenda.php" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i>
+                                Retour à l'agenda
+                            </a>
+                            
+                            <?php if ($can_edit): ?>
+                            <a href="modifier_evenement.php?id=<?= $id ?>" class="btn btn-primary">
+                                <i class="fas fa-edit"></i>
+                                Modifier
+                            </a>
+                            <?php endif; ?>
+                            
+                            <?php if ($can_delete): ?>
+                            <a href="supprimer_evenement.php?id=<?= $id ?>" class="btn btn-danger">
+                                <i class="fas fa-trash-alt"></i>
+                                Supprimer
+                            </a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-      
-      <!-- Container principal -->
-      <div class="calendar-container">
-        <div class="event-details-container">
-          <div class="event-header">
-            <div class="event-header-top">
-              <div class="event-title-container">
-                <h1 class="event-title"><?= htmlspecialchars($evenement['titre']) ?></h1>
-                <div class="event-subtitle">Créé par <?= htmlspecialchars($evenement['createur']) ?></div>
-              </div>
-              
-              <?php if ($evenement['statut'] !== 'actif'): ?>
-                <div class="event-status <?= $evenement['statut'] === 'annulé' ? 'cancelled' : 'postponed' ?>">
-                  <i class="fas fa-<?= $evenement['statut'] === 'annulé' ? 'ban' : 'clock' ?>"></i>
-                  <?= $evenement['statut'] === 'annulé' ? 'Annulé' : 'Reporté' ?>
-                </div>
-              <?php endif; ?>
-            </div>
-            
-            <div class="event-type" style="background-color: <?= $type_info['couleur'] ?>;">
-              <i class="fas fa-<?= $type_info['icone'] ?>"></i>
-              <?= $type_info['nom'] ?>
-            </div>
-            
-            <div class="event-timing">
-              <div class="event-date-display">
-                <i class="far fa-calendar-alt"></i>
-                <?php if ($date_debut->format('Y-m-d') === $date_fin->format('Y-m-d')): ?>
-                  <?= $date_debut->format($format_date) ?>
-                <?php else: ?>
-                  Du <?= $date_debut->format($format_date) ?> au <?= $date_fin->format($format_date) ?>
-                <?php endif; ?>
-                
-                <?php if ($is_today): ?>
-                  <span class="event-badge today">Aujourd'hui</span>
-                <?php elseif ($is_tomorrow): ?>
-                  <span class="event-badge tomorrow">Demain</span>
-                <?php elseif ($is_future): ?>
-                  <span class="event-badge future">Dans <?= $days_until ?> jour<?= $days_until > 1 ? 's' : '' ?></span>
-                <?php elseif ($is_past): ?>
-                  <span class="event-badge past">Passé</span>
-                <?php endif; ?>
-              </div>
-              
-              <div class="event-date-display">
-                <i class="far fa-clock"></i>
-                <?php if ($date_debut->format('Y-m-d') === $date_fin->format('Y-m-d')): ?>
-                  De <?= $date_debut->format($format_heure) ?> à <?= $date_fin->format($format_heure) ?>
-                <?php else: ?>
-                  De <?= $date_debut->format($format_date . ' à ' . $format_heure) ?> à <?= $date_fin->format($format_date . ' à ' . $format_heure) ?>
-                <?php endif; ?>
-              </div>
-            </div>
-          </div>
-          
-          <div class="event-body">
-            <!-- Description -->
-            <?php if (!empty($evenement['description'])): ?>
-            <div class="event-section">
-              <h3 class="section-title">
-                <i class="fas fa-align-left"></i>
-                Description
-              </h3>
-              <div class="section-content description">
-                <?= nl2br(htmlspecialchars($evenement['description'])) ?>
-              </div>
-            </div>
-            <?php endif; ?>
-            
-            <!-- Informations supplémentaires -->
-            <div class="event-section">
-              <h3 class="section-title">
-                <i class="fas fa-info-circle"></i>
-                Informations
-              </h3>
-              <div class="info-grid">
-                <?php if (!empty($evenement['lieu'])): ?>
-                <div class="info-item">
-                  <div class="info-label">Lieu</div>
-                  <div class="info-value">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <?= htmlspecialchars($evenement['lieu']) ?>
-                  </div>
-                </div>
-                <?php endif; ?>
-                
-                <div class="info-item">
-                  <div class="info-label">Visibilité</div>
-                  <div class="info-value">
-                    <i class="fas fa-<?= $visibilite_icone ?>"></i>
-                    <?= $visibilite_texte ?>
-                  </div>
-                </div>
-                
-                <?php if (!empty($evenement['matieres'])): ?>
-                <div class="info-item">
-                  <div class="info-label">Matière</div>
-                  <div class="info-value">
-                    <i class="fas fa-book"></i>
-                    <?= htmlspecialchars($evenement['matieres']) ?>
-                  </div>
-                </div>
-                <?php endif; ?>
-              </div>
-              
-              <?php if (!empty($classes_array)): ?>
-              <div class="tags-container">
-                <?php foreach ($classes_array as $classe): ?>
-                  <div class="tag"><?= htmlspecialchars($classe) ?></div>
-                <?php endforeach; ?>
-              </div>
-              <?php endif; ?>
-            </div>
-            
-            <?php if ($personnes_concernees_exists && !empty($personnes_concernees_array)): ?>
-            <div class="event-section">
-              <h3 class="section-title">
-                <i class="fas fa-users"></i>
-                Personnes concernées
-              </h3>
-              <div class="tags-container">
-                <?php foreach ($personnes_concernees_array as $personne): ?>
-                  <div class="tag"><?= htmlspecialchars($personne) ?></div>
-                <?php endforeach; ?>
-              </div>
-            </div>
-            <?php endif; ?>
-            
-            <!-- Actions -->
-            <div class="event-actions">
-              <a href="agenda.php" class="btn btn-secondary">
-                <i class="fas fa-arrow-left"></i>
-                Retour à l'agenda
-              </a>
-              
-              <?php if ($can_edit): ?>
-              <a href="modifier_evenement.php?id=<?= $id ?>" class="btn btn-primary">
-                <i class="fas fa-edit"></i>
-                Modifier
-              </a>
-              <?php endif; ?>
-              
-              <?php if ($can_delete): ?>
-              <a href="supprimer_evenement.php?id=<?= $id ?>" class="btn btn-danger">
-                <i class="fas fa-trash-alt"></i>
-                Supprimer
-              </a>
-              <?php endif; ?>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
-  </div>
+    
+    <?php if ($updateMessage): ?>
+    <div class="alert-success">
+        <i class="fas fa-check-circle"></i> <?= htmlspecialchars($updateMessage) ?>
+    </div>
+    <?php endif; ?>
 </body>
 </html>
 

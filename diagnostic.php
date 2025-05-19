@@ -11,125 +11,94 @@ session_start();
 if (!isset($_SESSION['user']) || !isset($_SESSION['user']['profil']) || $_SESSION['user']['profil'] !== 'administrateur') {
     // Rediriger vers la page de connexion ou afficher un message d'erreur
     http_response_code(403); // Forbidden
-    echo '<h1>Accès refusé</h1><p>Seuls les administrateurs peuvent accéder à cette page.</p>';
+    echo '<!DOCTYPE html><html><head><title>Accès refusé</title><meta charset="UTF-8"></head>';
+    echo '<body><h1>Accès refusé</h1><p>Seuls les administrateurs peuvent accéder à cette page.</p>';
+    echo '<p><a href="login/public/index.php">Connexion</a></p></body></html>';
     exit;
 }
 
-// Maintenant, charger le système d'autoloading
-require_once __DIR__ . '/API/autoload.php';
-
-// Initialiser l'application
-if (function_exists('bootstrap')) {
-    bootstrap();
+// Fonction pour masquer les informations sensibles
+function sanitizeSensitiveData($content) {
+    // Masquer les mots de passe
+    $content = preg_replace('/([\'"]DB_PASS[\'"]\s*,\s*[\'"]).*?([\'"])/', '$1********$2', $content);
+    $content = preg_replace('/(\$db_pass\s*=\s*[\'"]).*?([\'"])/', '$1********$2', $content);
+    
+    // Masquer les jetons de sécurité
+    $content = preg_replace('/(csrf_token|token|secret|key)\s*=\s*[\'"].*?[\'"]/', '$1="********"', $content);
+    
+    // Masquer les identifiants de session
+    $content = preg_replace('/PHPSESSID=([a-zA-Z0-9]{3}).*?;/', 'PHPSESSID=$1***;', $content);
+    
+    return $content;
 }
 
-// Double vérification que l'utilisateur est administrateur
-if (!function_exists('\Pronote\Auth\isAdmin') || !\Pronote\Auth\isAdmin()) {
-    http_response_code(403);
-    echo '<h1>Accès refusé</h1><p>Seuls les administrateurs peuvent accéder à cette page.</p>';
-    exit;
+// Fonction pour masquer les chemins absolus dans les messages d'erreur
+function sanitizePath($path) {
+    if (defined('APP_ROOT')) {
+        // Remplacer le chemin absolu par un chemin relatif
+        return str_replace(APP_ROOT, '[APP_ROOT]', $path);
+    } else {
+        // Masquer au moins le début du chemin absolu
+        $parts = explode(DIRECTORY_SEPARATOR, $path);
+        
+        // Ne garder que les 2 dernières parties du chemin pour anonymiser
+        if (count($parts) > 2) {
+            return '...' . DIRECTORY_SEPARATOR . implode(DIRECTORY_SEPARATOR, array_slice($parts, -2));
+        }
+    }
+    
+    return $path;
 }
 
-// Limiter l'accès au diagnostic par IP
-$allowedIPs = ['127.0.0.1', '::1', 'SERVER_IP_HERE']; // Ajouter les IPs autorisées
-/**
- * Teste les permissions d'un répertoire
- * @param string $directory Chemin du répertoire
- * @return array Résultats des tests
- */
-function testDirectoryPermissions($directory) {
+// Fonction pour générer un token anti-CSRF
+function generateDiagToken() {
+    if (!isset($_SESSION['diag_token'])) {
+        $_SESSION['diag_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['diag_token'];
+}
+
+// Fonction pour tester la sécurité de configuration PHP
+function testPhpSecurity() {
     $results = [];
     
-    try {
-        // Vérifier si le répertoire existe
-        if (is_dir($directory)) {
-            $results['exists'] = true;
-            
-            // Vérifier les permissions
-            $results['readable'] = is_readable($directory);
-            $results['writable'] = is_writable($directory);
-            
-            // Essayer de créer un fichier temporaire
-            $testFile = $directory . '/test_' . time() . '.txt';
-            $canWrite = false;
-            try {
-                $canWrite = file_put_contents($testFile, 'Test') !== false;
-            } catch (\Exception $e) {
-                $canWrite = false;
-            }
-            $results['can_write_file'] = $canWrite;
-            
-            // Supprimer le fichier de test s'il a été créé
-            if ($canWrite && file_exists($testFile)) {
-                @unlink($testFile);
-            }
-        } else {
-            $results['exists'] = false;
-            $results['readable'] = false;
-            $results['writable'] = false;
-            $results['can_write_file'] = false;
-            
-            // Essayer de créer le répertoire
-            $canCreate = false;
-            try {
-                $canCreate = @mkdir($directory, 0755, true);
-                if ($canCreate) {
-                    @rmdir($directory); // Supprimer le répertoire créé
-                }
-            } catch (\Exception $e) {
-                $canCreate = false;
-            }
-            $results['can_create'] = $canCreate;
-        }
-    } catch (\Exception $e) {
-        $results['error'] = $e->getMessage();
-    }
+    // Vérifier les directives de configuration importantes
+    $results['display_errors'] = [
+        'name' => 'display_errors',
+        'value' => ini_get('display_errors'),
+        'recommendation' => 'Off en production',
+        'status' => ini_get('display_errors') ? 'warning' : 'success'
+    ];
+    
+    $results['session.use_strict_mode'] = [
+        'name' => 'session.use_strict_mode',
+        'value' => ini_get('session.use_strict_mode'),
+        'recommendation' => '1',
+        'status' => ini_get('session.use_strict_mode') ? 'success' : 'error'
+    ];
+    
+    $results['session.cookie_secure'] = [
+        'name' => 'session.cookie_secure',
+        'value' => ini_get('session.cookie_secure'),
+        'recommendation' => '1 si HTTPS',
+        'status' => ini_get('session.cookie_secure') ? 'success' : 'warning'
+    ];
+    
+    $results['session.cookie_httponly'] = [
+        'name' => 'session.cookie_httponly',
+        'value' => ini_get('session.cookie_httponly'),
+        'recommendation' => '1',
+        'status' => ini_get('session.cookie_httponly') ? 'success' : 'error'
+    ];
     
     return $results;
 }
 
-/**
- * Teste l'accessibilité d'une page
- * @param string $url URL à tester
- * @return array Résultats du test
- */
-function testPageAccess($url) {
-    $result = [
-        'url' => $url,
-        'code' => 0,
-        'accessible' => false,
-        'error' => null
-    ];
-    
-    try {
-        $ch = curl_init($url);
-        if ($ch === false) {
-            throw new \Exception('Impossible d\'initialiser cURL');
-        }
-        
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HEADER, true);
-        curl_setopt($ch, CURLOPT_NOBODY, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10); // 10 secondes est long pour un diagnostic
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        
-        $response = curl_exec($ch);
-        
-        if ($response === false) {
-            $result['error'] = curl_error($ch);
-        } else {
-            $result['code'] = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $result['accessible'] = ($result['code'] >= 200 && $result['code'] < 400);
-        }
-        
-        curl_close($ch);
-    } catch (\Exception $e) {
-        $result['error'] = $e->getMessage();
-    }
-    
-    return $result;
-}
+// Chargement du système d'authentification centralisé si possible
+require_once __DIR__ . '/API/autoload.php';
+
+// Génération d'un token pour la protection du formulaire de diagnostic
+$diagToken = generateDiagToken();
 
 // Répertoires à tester
 $directories = [
@@ -168,9 +137,7 @@ foreach ($configFiles as $name => $path) {
     if (file_exists($path)) {
         // Charger le contenu mais masquer les informations sensibles
         $content = file_get_contents($path);
-        // Masquer les mots de passe et informations sensibles
-        $content = preg_replace('/define\s*\(\s*([\'"])DB_PASS\1\s*,\s*([\'"])(.*?)\2\s*\)/', 'define(\'DB_PASS\', \'********\')', $content);
-        $content = preg_replace('/\$db_pass\s*=\s*([\'"])(.*?)\1/', '$db_pass = \'********\'', $content);
+        $content = sanitizeSensitiveData($content);
         $configContents[$name] = $content;
     } else {
         $configContents[$name] = 'Fichier non trouvé';
@@ -203,6 +170,55 @@ foreach ($authFiles as $name => $path) {
         'exists' => file_exists($path),
         'readable' => is_readable($path),
         'modified' => file_exists($path) ? date('Y-m-d H:i:s', filemtime($path)) : 'N/A'
+    ];
+}
+
+// Tests de sécurité PHP
+$phpSecurity = testPhpSecurity();
+
+// Vérifier la structure des tables essentielles
+try {
+    $dbStatus = ['connected' => false, 'tables' => []];
+    
+    if (function_exists('getDBConnection')) {
+        $pdo = getDBConnection();
+        $dbStatus['connected'] = true;
+        
+        // Vérifier les tables critiques
+        $criticalTables = [
+            'administrateurs', 'eleves', 'professeurs', 'vie_scolaire',
+            'notes', 'absences', 'evenements', 'messages'
+        ];
+        
+        foreach ($criticalTables as $table) {
+            try {
+                $stmt = $pdo->query("SHOW TABLES LIKE '$table'");
+                $exists = $stmt && $stmt->rowCount() > 0;
+                
+                if ($exists) {
+                    $countStmt = $pdo->query("SELECT COUNT(*) FROM `$table`");
+                    $count = $countStmt ? $countStmt->fetchColumn() : '?';
+                } else {
+                    $count = 'N/A';
+                }
+                
+                $dbStatus['tables'][$table] = [
+                    'exists' => $exists,
+                    'count' => $count
+                ];
+            } catch (PDOException $e) {
+                $dbStatus['tables'][$table] = [
+                    'exists' => false,
+                    'count' => 'N/A',
+                    'error' => $e->getMessage()
+                ];
+            }
+        }
+    }
+} catch (Exception $e) {
+    $dbStatus = [
+        'connected' => false,
+        'error' => $e->getMessage()
     ];
 }
 ?>
@@ -281,12 +297,81 @@ foreach ($authFiles as $name => $path) {
         .button:hover {
             background: #2980b9;
         }
+        .security-good {
+            color: #2ecc71;
+        }
+        .security-warning {
+            color: #f39c12;
+        }
+        .security-bad {
+            color: #e74c3c;
+        }
+        .copy-button {
+            padding: 3px 8px;
+            background: #7f8c8d;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .copy-button:hover {
+            background: #95a5a6;
+        }
     </style>
 </head>
 <body>
     <div class="section">
         <h1>Diagnostic Pronote - Administration</h1>
         <p>Cette page est réservée aux administrateurs pour diagnostiquer les problèmes de configuration, de permissions et de redirections dans l'application Pronote.</p>
+    </div>
+    
+    <div class="section">
+        <h2>Sécurité PHP</h2>
+        <table>
+            <tr>
+                <th>Directive</th>
+                <th>Valeur actuelle</th>
+                <th>Recommandation</th>
+                <th>Statut</th>
+            </tr>
+            <?php foreach ($phpSecurity as $setting): ?>
+                <tr>
+                    <td><?= htmlspecialchars($setting['name']) ?></td>
+                    <td><?= htmlspecialchars($setting['value']) ?></td>
+                    <td><?= htmlspecialchars($setting['recommendation']) ?></td>
+                    <td class="security-<?= $setting['status'] ?>"><?= ucfirst($setting['status']) ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </table>
+    </div>
+    
+    <div class="section">
+        <h2>État de la Base de Données</h2>
+        <?php if ($dbStatus['connected']): ?>
+            <p class="success">✓ Connexion à la base de données réussie</p>
+            <h3>Tables critiques</h3>
+            <table>
+                <tr>
+                    <th>Table</th>
+                    <th>Existe</th>
+                    <th>Nombre d'entrées</th>
+                </tr>
+                <?php foreach ($dbStatus['tables'] as $tableName => $tableInfo): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($tableName) ?></td>
+                        <td class="<?= $tableInfo['exists'] ? 'success' : 'error' ?>"><?= $tableInfo['exists'] ? 'Oui' : 'Non' ?></td>
+                        <td><?= htmlspecialchars($tableInfo['count']) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </table>
+        <?php else: ?>
+            <p class="error">✗ Impossible de se connecter à la base de données</p>
+            <?php if (isset($dbStatus['error'])): ?>
+                <p>Erreur: <?= htmlspecialchars($dbStatus['error']) ?></p>
+            <?php endif; ?>
+        <?php endif; ?>
     </div>
     
     <div class="section">
@@ -397,6 +482,15 @@ foreach ($authFiles as $name => $path) {
             <a href="<?= $baseUrl ?>/accueil/accueil.php" class="button">Page d'accueil</a>
             <a href="<?= $baseUrl ?>/login/public/logout.php" class="button">Déconnexion</a>
         </p>
+    </div>
+    
+    <div class="section">
+        <h2>Rapport de diagnostic</h2>
+        <p>Vous pouvez générer un rapport de diagnostic complet pour le support technique. Ce rapport ne contient pas d'informations sensibles comme les mots de passe.</p>
+        <form id="diagnostic-form" method="post" action="generate_report.php">
+            <input type="hidden" name="diag_token" value="<?= htmlspecialchars($diagToken) ?>">
+            <button type="submit" class="button">Générer un rapport de diagnostic</button>
+        </form>
     </div>
 </body>
 </html>
