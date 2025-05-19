@@ -17,18 +17,21 @@ if (!function_exists('\\Pronote\\Logging\\error')) {
     if (file_exists($loggingPath)) {
         require_once $loggingPath;
     } else {
-        /**
-         * Fonction de secours si le système de journalisation n'est pas disponible
-         */
-        namespace Pronote\Logging {
-            if (!function_exists('error')) {
-                function error($message, $context = []) {
+        // Définir des fonctions de secours en namespace global
+        // car on ne peut pas définir de fonctions dans un namespace différent
+        // au milieu d'un fichier
+        
+        // On les stocke donc en namespace global et on les utilisera par leur nom complet
+        namespace {
+            if (!function_exists('Pronote\\Logging\\error')) {
+                function pronote_logging_error($message, $context = []) {
                     error_log($message);
                     return true;
                 }
             }
-            if (!function_exists('critical')) {
-                function critical($message, $context = []) {
+            
+            if (!function_exists('Pronote\\Logging\\critical')) {
+                function pronote_logging_critical($message, $context = []) {
                     error_log('CRITICAL: ' . $message);
                     return true;
                 }
@@ -73,7 +76,8 @@ namespace Pronote\Errors {
             ]);
         } else {
             // Fallback si le système de journalisation n'est pas disponible
-            error_log("{$severity}: {$message} in {$file} on line {$line}\n{$trace}");
+            // On utilise la fonction définie dans le namespace global
+            \pronote_logging_error("{$severity}: {$message} in {$file} on line {$line}\n{$trace}");
         }
     }
     
@@ -92,12 +96,21 @@ namespace Pronote\Errors {
         }
         
         // Déterminer la gravité de l'erreur
-        $severity = match($errno) {
-            E_ERROR, E_USER_ERROR => "ERROR",
-            E_WARNING, E_USER_WARNING => "WARNING",
-            E_NOTICE, E_USER_NOTICE => "NOTICE",
-            default => "UNKNOWN"
-        };
+        $severity = "UNKNOWN";
+        switch ($errno) {
+            case E_ERROR:
+            case E_USER_ERROR:
+                $severity = "ERROR";
+                break;
+            case E_WARNING:
+            case E_USER_WARNING:
+                $severity = "WARNING";
+                break;
+            case E_NOTICE:
+            case E_USER_NOTICE:
+                $severity = "NOTICE";
+                break;
+        }
         
         // Journaliser l'erreur
         if (function_exists('\\Pronote\\Logging\\error')) {
@@ -107,7 +120,7 @@ namespace Pronote\Errors {
             ]);
         } else {
             // Fallback
-            error_log("{$severity}: {$errstr} in {$errfile} on line {$errline}");
+            \pronote_logging_error("{$severity}: {$errstr} in {$errfile} on line {$errline}");
         }
         
         // Retourner true pour empêcher l'exécution du gestionnaire d'erreurs standard de PHP
@@ -134,7 +147,7 @@ namespace Pronote\Errors {
                 ]);
             } else {
                 // Fallback
-                error_log("{$severity}: {$message} in {$file} on line {$line}");
+                \pronote_logging_critical("{$severity}: {$message} in {$file} on line {$line}");
             }
         }
     }
