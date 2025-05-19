@@ -91,20 +91,24 @@ $csrfToken = \Pronote\Security\generate_csrf_token();
                     <div class="profile-label">Professeur</div>
                 </label>
                 
-                <input type="radio" name="profil" id="profile-admin" value="administrateur" <?= ($profil === 'administrateur') ? 'checked' : '' ?>>
+                <input type="radio" name="profil" id="profile-admin" value="administrateur" <?= ($profil === 'administrateur' || $profil === 'vie_scolaire') ? 'checked' : '' ?>>
                 <label for="profile-admin" class="profile-option">
                     <div class="profile-icon">
                         <i class="fas fa-user-shield"></i>
                     </div>
                     <div class="profile-label">Personnel</div>
                 </label>
-                
-                <input type="radio" name="profil" id="profile-vie-scolaire" value="vie_scolaire" <?= ($profil === 'vie_scolaire') ? 'checked' : '' ?>>
-                <label for="profile-vie-scolaire" class="profile-option">
-                    <div class="profile-icon">
-                        <i class="fas fa-clipboard-list"></i>
-                    </div>
-                    <div class="profile-label">Vie Scolaire</div>
+            </div>
+            
+            <!-- Un sous-menu pour choisir entre Administrateur et Vie Scolaire -->
+            <div id="personnel-submenu" class="personnel-options" style="display: none;">
+                <label>
+                    <input type="radio" name="profil" value="administrateur" <?= ($profil === 'administrateur') ? 'checked' : '' ?>>
+                    <span>Administrateur</span>
+                </label>
+                <label>
+                    <input type="radio" name="profil" value="vie_scolaire" <?= ($profil === 'vie_scolaire') ? 'checked' : '' ?>>
+                    <span>Vie Scolaire</span>
                 </label>
             </div>
             
@@ -137,6 +141,36 @@ $csrfToken = \Pronote\Security\generate_csrf_token();
     </div>
     
     <script>
+        // Gestion du sous-menu Personnel
+        document.addEventListener('DOMContentLoaded', function() {
+            const adminRadio = document.getElementById('profile-admin');
+            const personnelSubmenu = document.getElementById('personnel-submenu');
+            
+            // Fonction pour afficher/masquer le sous-menu Personnel
+            function togglePersonnelSubmenu() {
+                if (adminRadio.checked) {
+                    personnelSubmenu.style.display = 'block';
+                    
+                    // Si aucune option n'est sélectionnée dans le sous-menu, sélectionner la première par défaut
+                    const selectedSubOption = personnelSubmenu.querySelector('input[type="radio"]:checked');
+                    if (!selectedSubOption) {
+                        const firstSubOption = personnelSubmenu.querySelector('input[type="radio"]');
+                        if (firstSubOption) firstSubOption.checked = true;
+                    }
+                } else {
+                    personnelSubmenu.style.display = 'none';
+                }
+            }
+            
+            // Vérifier l'état initial
+            togglePersonnelSubmenu();
+            
+            // Ajouter l'écouteur d'événements pour tous les boutons radio de profil
+            document.querySelectorAll('.profile-selector input[type="radio"]').forEach(radio => {
+                radio.addEventListener('change', togglePersonnelSubmenu);
+            });
+        });
+        
         // Validation du formulaire côté client
         document.querySelector('form').addEventListener('submit', function(event) {
             const profil = document.querySelector('input[name="profil"]:checked');

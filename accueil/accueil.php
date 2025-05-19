@@ -79,6 +79,7 @@ try {
             $params = [$date_actuelle, '%' . $classe . '%', '%' . $classe . '%'];
         } elseif ($user_role == 'professeur') {
             $query .= " AND (visibilite = 'public' OR visibilite = 'professeurs' OR nom_professeur = ?)";
+
             $params = [$date_actuelle, $eleve_nom];
         } else {
             // Admin, vie scolaire, etc.
@@ -214,6 +215,13 @@ $isAdmin = isset($user['profil']) && $user['profil'] === 'administrateur';
                     <span>Absences</span>
                 </a>
                 <?php endif; ?>
+                
+                <?php if ($isAdmin): ?>
+                <a href="../admin/reset_user_password.php" class="sidebar-nav-item">
+                    <span class="sidebar-nav-icon"><i class="fas fa-key"></i></span>
+                    <span>Gestion des mots de passe</span>
+                </a>
+                <?php endif; ?>
             </div>
         </div>
         
@@ -247,6 +255,9 @@ $isAdmin = isset($user['profil']) && $user['profil'] === 'administrateur';
                     <div class="admin-menu">
                         <a href="../login/public/register.php" class="admin-action-button" title="Inscrire un nouvel utilisateur">
                             <i class="fas fa-user-plus"></i>
+                        </a>
+                        <a href="../admin/reset_user_password.php" class="admin-action-button" title="Réinitialiser le mot de passe d'un utilisateur">
+                            <i class="fas fa-key"></i>
                         </a>
                     </div>
                 <?php endif; ?>

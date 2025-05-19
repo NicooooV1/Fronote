@@ -3,7 +3,10 @@ require __DIR__ . '/../config/database.php';
 require __DIR__ . '/../src/auth.php';
 require __DIR__ . '/../src/user.php';
 
-session_start();
+// Vérifier si la session n'est pas déjà démarrée
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Vérification de sécurité: seuls les administrateurs connectés peuvent accéder à cette page
 if (!isset($_SESSION['user']) || 

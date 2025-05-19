@@ -562,3 +562,37 @@ input[type="radio"]:checked + .profile-option .profile-label {
     width: 100%;
   }
 }
+
+/* Style pour le sous-menu personnel */
+.personnel-options {
+    margin-top: -10px;
+    margin-bottom: 20px;
+    padding: 10px 15px;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-around;
+}
+
+.personnel-options label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.personnel-options label:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.personnel-options input[type="radio"] {
+    margin: 0;
+}
+
+.personnel-options input[type="radio"]:checked + span {
+    font-weight: bold;
+    color: #00843d;
+}
