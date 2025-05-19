@@ -1,4 +1,4 @@
-/* style.css - Style général commun */
+/* style.css - Style général commun harmonisé */
 
 /* ======= RESET ET BASE ======= */
 * {
@@ -9,9 +9,6 @@
 
 html, body {
   height: 100%;
-}
-
-body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   font-size: 16px;
   line-height: 1.5;
@@ -205,23 +202,22 @@ ul, ol {
 .create-button {
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin: var(--space-md) 0;
   padding: var(--space-sm) var(--space-md);
   background-color: rgba(255, 255, 255, 0.15);
   color: white;
   border-radius: var(--radius-sm);
   font-weight: 500;
-  transition: background-color 0.2s ease;
   text-decoration: none;
+  margin-bottom: var(--space-sm);
+  transition: background-color 0.2s ease;
 }
 
 .create-button:hover {
   background-color: rgba(255, 255, 255, 0.25);
 }
 
-.create-button i, .create-button span {
-  margin-right: var(--space-xs);
+.create-button i {
+  margin-right: var(--space-sm);
 }
 
 /* ======= Header du contenu principal ======= */
@@ -236,23 +232,29 @@ ul, ol {
   font-size: 28px;
   font-weight: 500;
   color: var(--primary-color);
+  margin: 0;
+}
+
+.page-title .subtitle {
+  color: var(--text-muted);
+  margin-top: 5px;
+  font-size: 14px;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
+  gap: 15px;
 }
 
 .logout-button {
-  text-decoration: none;
-  color: #777;
+  color: var(--text-muted);
   font-size: 20px;
-  margin-right: 20px;
   transition: color 0.2s;
 }
 
 .logout-button:hover {
-  color: var(--primary-dark);
+  color: var(--error-color);
 }
 
 .user-avatar {
@@ -266,6 +268,76 @@ ul, ol {
   justify-content: center;
   font-weight: 500;
   font-size: 16px;
+}
+
+/* ======= Contenu principal ======= */
+.content-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* ======= Bannière de bienvenue ======= */
+.welcome-banner {
+  background: linear-gradient(to right, var(--primary-color), var(--primary-light));
+  color: white;
+  border-radius: 10px;
+  padding: 25px 30px;
+  margin-bottom: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.welcome-content h2 {
+  font-size: 24px;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: white;
+}
+
+.welcome-content p {
+  font-size: 16px;
+  opacity: 0.9;
+}
+
+.welcome-logo {
+  font-size: 48px;
+  opacity: 0.8;
+}
+
+/* ======= Widgets et cartes ======= */
+.widget {
+  background-color: white;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-light);
+  margin-bottom: var(--space-md);
+}
+
+.widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.widget-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.widget-content {
+  padding: var(--space-md);
+}
+
+.widget-content.p-0 {
+  padding: 0;
 }
 
 /* ======= Formulaires ======= */
@@ -290,11 +362,12 @@ ul, ol {
 .form-label {
   display: block;
   margin-bottom: var(--space-xs);
-  color: var(--text-color);
   font-weight: 500;
+  color: var(--text-color);
 }
 
-.form-control, .form-select {
+.form-control, 
+.form-select {
   width: 100%;
   padding: var(--space-sm);
   border: 1px solid var(--border-color);
@@ -304,7 +377,8 @@ ul, ol {
   transition: border-color 0.2s;
 }
 
-.form-control:focus, .form-select:focus {
+.form-control:focus, 
+.form-select:focus {
   outline: none;
   border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(15, 76, 129, 0.1);
@@ -329,8 +403,8 @@ ul, ol {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 16px;
-  border-radius: 4px;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -341,7 +415,7 @@ ul, ol {
 }
 
 .btn i {
-  margin-right: 8px;
+  margin-right: var(--space-xs);
 }
 
 .btn-primary {
@@ -354,12 +428,12 @@ ul, ol {
 }
 
 .btn-secondary {
-  background-color: #f1f3f4;
-  color: #555;
+  background-color: rgba(15, 76, 129, 0.1);
+  color: var(--primary-color);
 }
 
 .btn-secondary:hover {
-  background-color: #e5e7e9;
+  background-color: rgba(15, 76, 129, 0.2);
 }
 
 .btn-danger {
@@ -368,7 +442,7 @@ ul, ol {
 }
 
 .btn-danger:hover {
-  background-color: #d63031;
+  background-color: #e12e1c;
 }
 
 .btn-sm {
@@ -379,17 +453,18 @@ ul, ol {
 .btn-icon {
   width: 30px;
   height: 30px;
-  padding: 0;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: #f5f5f5;
-  color: #555;
+  background-color: rgba(15, 76, 129, 0.1);
+  color: var(--primary-color);
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
 
 .btn-icon:hover {
-  background-color: #e0e0e0;
+  background-color: rgba(15, 76, 129, 0.2);
 }
 
 .btn-icon.btn-danger {
@@ -401,7 +476,38 @@ ul, ol {
   background-color: rgba(255, 59, 48, 0.2);
 }
 
-/* ======= Alertes ======= */
+/* ======= Tableaux de données ======= */
+.table-responsive {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  padding: var(--space-sm);
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.data-table th {
+  font-weight: 600;
+  color: var(--primary-color);
+  background-color: rgba(15, 76, 129, 0.05);
+}
+
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tr:hover td {
+  background-color: rgba(15, 76, 129, 0.03);
+}
+
+/* ======= Messages d'alerte ======= */
 .alert {
   padding: var(--space-md);
   border-radius: var(--radius-md);
@@ -433,6 +539,79 @@ ul, ol {
   border-left: 4px solid var(--warning-color);
 }
 
+.alert-info {
+  background-color: rgba(0, 122, 255, 0.1);
+  color: var(--info-color);
+  border-left: 4px solid var(--info-color);
+}
+
+/* ======= Message vide ======= */
+.no-data-message {
+  text-align: center;
+  padding: var(--space-lg);
+  background-color: white;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-light);
+}
+
+.no-data-message i {
+  font-size: 48px;
+  color: var(--text-muted);
+  opacity: 0.3;
+  margin-bottom: var(--space-sm);
+}
+
+/* ======= Confirmation suppression ======= */
+.confirmation-box {
+  background-color: white;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-medium);
+  padding: var(--space-lg);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.note-details {
+  background-color: var(--background-color);
+  border-radius: var(--radius-sm);
+  padding: var(--space-md);
+  margin: var(--space-md) 0;
+}
+
+.warning {
+  display: flex;
+  align-items: center;
+  padding: var(--space-md);
+  background-color: rgba(255, 59, 48, 0.1);
+  color: var(--error-color);
+  border-radius: var(--radius-sm);
+  margin: var(--space-md) 0;
+}
+
+.warning i {
+  font-size: 24px;
+  margin-right: var(--space-md);
+}
+
+.confirmation-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-lg);
+}
+
+/* ======= Utilitaires ======= */
+.mt-1 { margin-top: var(--space-xs); }
+.mt-2 { margin-top: var(--space-sm); }
+.mt-3 { margin-top: var(--space-md); }
+.mb-1 { margin-bottom: var(--space-xs); }
+.mb-2 { margin-bottom: var(--space-sm); }
+.mb-3 { margin-bottom: var(--space-md); }
+.mb-4 { margin-bottom: var(--space-lg); }
+
+.d-flex { display: flex; }
+.align-items-center { align-items: center; }
+.justify-content-between { justify-content: space-between; }
+
 /* ======= Responsive design ======= */
 @media (max-width: 1024px) {
   .form-grid {
@@ -446,18 +625,14 @@ ul, ol {
   }
   
   .sidebar {
-    position: relative;
     width: 100%;
     height: auto;
+    position: relative;
     max-height: 300px;
   }
   
   .main-content {
     margin-left: 0;
-  }
-  
-  .top-header {
-    flex-wrap: wrap;
   }
 }
 
@@ -467,13 +642,10 @@ ul, ol {
     align-items: flex-start;
   }
   
-  .page-title {
-    margin-bottom: 10px;
-  }
-  
   .header-actions {
     width: 100%;
     justify-content: flex-end;
+    margin-top: var(--space-sm);
   }
   
   .form-actions {

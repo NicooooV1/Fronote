@@ -3,8 +3,8 @@
 ob_start();
 
 // Inclure les fichiers nécessaires
-require_once __DIR__ . '/../API/auth_central.php';
 require_once 'includes/db.php';
+require_once 'includes/auth.php';
 
 // Vérifier les permissions pour gérer les notes
 if (!canManageNotes()) {
@@ -17,6 +17,7 @@ $user = getCurrentUser();
 $user_fullname = getUserFullName();
 $user_initials = isset($user['prenom'], $user['nom']) ? 
     strtoupper(mb_substr($user['prenom'], 0, 1) . mb_substr($user['nom'], 0, 1)) : '';
+$user_role = $user['profil'];
 
 // Validation de l'ID
 $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
@@ -86,7 +87,6 @@ $_SESSION['csrf_token'] = $csrf_token;
 
 // Définir la configuration de la page
 $pageTitle = "Supprimer une note";
-$moduleClass = "notes";
 ?>
 
 <!DOCTYPE html>
@@ -131,7 +131,7 @@ $moduleClass = "notes";
                         <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
                         <span>Messagerie</span>
                     </a>
-                    <?php if ($user['profil'] === 'vie_scolaire' || $user['profil'] === 'administrateur'): ?>
+                    <?php if ($user_role === 'vie_scolaire' || $user_role === 'administrateur'): ?>
                     <a href="../absences/absences.php" class="sidebar-nav-item">
                         <span class="sidebar-nav-icon"><i class="fas fa-calendar-times"></i></span>
                         <span>Absences</span>
@@ -179,6 +179,17 @@ $moduleClass = "notes";
                 </div>
             </div>
             
+            <!-- Welcome Banner -->
+            <div class="welcome-banner">
+                <div class="welcome-content">
+                    <h2>Supprimer une note</h2>
+                    <p>Vous êtes sur le point de supprimer définitivement cette note</p>
+                </div>
+                <div class="welcome-logo">
+                    <i class="fas fa-trash-alt"></i>
+                </div>
+            </div>
+            
             <div class="content-container">
                 <div class="confirmation-box">
                     <h2>Confirmer la suppression</h2>
@@ -201,10 +212,14 @@ $moduleClass = "notes";
                     </div>
                     
                     <div class="confirmation-actions">
-                        <a href="notes.php" class="btn btn-secondary">Annuler</a>
+                        <a href="notes.php" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Annuler
+                        </a>
                         <form method="post" action="">
                             <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
-                            <button type="submit" class="btn btn-danger">Confirmer la suppression</button>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash-alt"></i> Confirmer la suppression
+                            </button>
                         </form>
                     </div>
                 </div>

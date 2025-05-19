@@ -2,13 +2,13 @@
 // Démarrer la mise en mémoire tampon de sortie pour éviter l'erreur "headers already sent"
 ob_start();
 
-// Charger le système d'authentification central
-require_once __DIR__ . '/../API/auth_central.php';
+// Charger le système d'authentification
 require_once 'includes/db.php';
+require_once 'includes/auth.php';
 
 // Vérifier si l'utilisateur est connecté
 if (!isLoggedIn()) {
-    // Rediriger vers la page de login, en utilisant la constante dynamique
+    // Rediriger vers la page de login
     $loginUrl = defined('LOGIN_URL') ? LOGIN_URL : '../login/public/index.php';
     header('Location: ' . $loginUrl);
     exit;
@@ -23,12 +23,10 @@ if (!$user) {
     exit;
 }
 
+// Informations utilisateur
 $user_fullname = getUserFullName();
 $user_role = getUserRole();
 $user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
-
-// Journalisation des événements
-error_log("Utilisateur {$user_fullname} a accédé au module des notes");
 
 // Vérifier si la table notes existe
 try {
@@ -163,31 +161,6 @@ $error_message = isset($_SESSION['error_message']) ? $_SESSION['error_message'] 
 // Effacer les messages après les avoir récupérés
 unset($_SESSION['success_message'], $_SESSION['error_message']);
 
-// Fonction pour formater l'affichage des notes
-function formatNoteDisplay($note) {
-    global $note_affichage;
-    
-    // Assurer que la note est un nombre
-    $note_value = floatval($note['note']);
-    
-    // Utiliser une valeur par défaut de 20 si note_sur n'est pas défini
-    $note_sur = isset($note['note_sur']) ? intval($note['note_sur']) : 20;
-    
-    // Formater selon le paramètre global
-    if (isset($note_affichage) && $note_affichage === 'sur_vingt') {
-        // Convertir la note sur 20 si nécessaire
-        if ($note_sur != 20 && $note_sur > 0) {
-            $note_value = ($note_value / $note_sur) * 20;
-            return number_format($note_value, 1) . '/20';
-        } else {
-            return number_format($note_value, 1) . '/20';
-        }
-    } else {
-        // Afficher la note telle quelle
-        return $note_value . '/' . $note_sur;
-    }
-}
-
 // Calculer la moyenne par matière
 $notes_par_matiere = [];
 $moyennes_par_matiere = [];
@@ -244,16 +217,24 @@ if ($current_month >= 9 && $current_month <= 12) {
   $trimestre_actuel = 3; // Avril-Août
 }
 
-// Définir la configuration de la page
-$pageTitle = "Notes";
-$moduleClass = "notes";
+// Fonction pour déterminer la classe CSS en fonction de la valeur de la note
+function getNoteClass($note) {
+    $note_value = floatval($note);
+    if ($note_value >= 14) {
+        return 'good';
+    } elseif ($note_value >= 10) {
+        return 'average';
+    } else {
+        return 'bad';
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($pageTitle) ?> - Pronote</title>
+    <title>Notes - PRONOTE</title>
     <link rel="stylesheet" href="assets/css/notes.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
@@ -264,25 +245,6 @@ $moduleClass = "notes";
             <div class="logo-container">
                 <div class="app-logo">P</div>
                 <div class="app-title">PRONOTE</div>
-            </div>
-            
-            <!-- Périodes -->
-            <div class="sidebar-section">
-                <div class="sidebar-section-header">Périodes</div>
-                <div class="sidebar-nav">
-                    <a href="?trimestre=1<?= !empty($classe_filtre) ? '&classe=' . urlencode($classe_filtre) : '' ?><?= !empty($matiere_filtre) ? '&matiere=' . urlencode($matiere_filtre) : '' ?>" class="sidebar-nav-item <?= $trimestre_filtre == 1 ? 'active' : '' ?>">
-                        <span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span>
-                        <span>Trimestre 1</span>
-                    </a>
-                    <a href="?trimestre=2<?= !empty($classe_filtre) ? '&classe=' . urlencode($classe_filtre) : '' ?><?= !empty($matiere_filtre) ? '&matiere=' . urlencode($matiere_filtre) : '' ?>" class="sidebar-nav-item <?= $trimestre_filtre == 2 ? 'active' : '' ?>">
-                        <span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span>
-                        <span>Trimestre 2</span>
-                    </a>
-                    <a href="?trimestre=3<?= !empty($classe_filtre) ? '&classe=' . urlencode($classe_filtre) : '' ?><?= !empty($matiere_filtre) ? '&matiere=' . urlencode($matiere_filtre) : '' ?>" class="sidebar-nav-item <?= $trimestre_filtre == 3 ? 'active' : '' ?>">
-                        <span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span>
-                        <span>Trimestre 3</span>
-                    </a>
-                </div>
             </div>
             
             <!-- Navigation -->
@@ -309,7 +271,7 @@ $moduleClass = "notes";
                         <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
                         <span>Messagerie</span>
                     </a>
-                    <?php if ($user['profil'] === 'vie_scolaire' || $user['profil'] === 'administrateur'): ?>
+                    <?php if ($user_role === 'vie_scolaire' || $user_role === 'administrateur'): ?>
                     <a href="../absences/absences.php" class="sidebar-nav-item">
                         <span class="sidebar-nav-icon"><i class="fas fa-calendar-times"></i></span>
                         <span>Absences</span>
@@ -318,7 +280,26 @@ $moduleClass = "notes";
                 </div>
             </div>
             
-            <!-- Filtres -->
+            <!-- Périodes -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-header">Périodes</div>
+                <div class="sidebar-nav">
+                    <a href="?trimestre=1<?= !empty($classe_filtre) ? '&classe=' . urlencode($classe_filtre) : '' ?><?= !empty($matiere_filtre) ? '&matiere=' . urlencode($matiere_filtre) : '' ?>" class="sidebar-nav-item <?= $trimestre_filtre == 1 ? 'active' : '' ?>">
+                        <span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span>
+                        <span>Trimestre 1</span>
+                    </a>
+                    <a href="?trimestre=2<?= !empty($classe_filtre) ? '&classe=' . urlencode($classe_filtre) : '' ?><?= !empty($matiere_filtre) ? '&matiere=' . urlencode($matiere_filtre) : '' ?>" class="sidebar-nav-item <?= $trimestre_filtre == 2 ? 'active' : '' ?>">
+                        <span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span>
+                        <span>Trimestre 2</span>
+                    </a>
+                    <a href="?trimestre=3<?= !empty($classe_filtre) ? '&classe=' . urlencode($classe_filtre) : '' ?><?= !empty($matiere_filtre) ? '&matiere=' . urlencode($matiere_filtre) : '' ?>" class="sidebar-nav-item <?= $trimestre_filtre == 3 ? 'active' : '' ?>">
+                        <span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span>
+                        <span>Trimestre 3</span>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Filtres (uniquement pour admin/professeurs) -->
             <?php if (isAdmin() || isTeacher() || isVieScolaire()): ?>
             <div class="sidebar-section">
                 <div class="sidebar-section-header">Filtres</div>
@@ -328,7 +309,7 @@ $moduleClass = "notes";
                     <?php endif; ?>
                     
                     <div class="form-group">
-                        <label for="classe">Classe</label>
+                        <label for="classe" class="form-label">Classe</label>
                         <select id="classe" name="classe" class="form-select" onchange="this.form.submit()">
                             <option value="">Toutes les classes</option>
                             <?php foreach ($classes as $classe): ?>
@@ -340,7 +321,7 @@ $moduleClass = "notes";
                     </div>
                     
                     <div class="form-group">
-                        <label for="matiere">Matière</label>
+                        <label for="matiere" class="form-label">Matière</label>
                         <select id="matiere" name="matiere" class="form-select" onchange="this.form.submit()">
                             <option value="">Toutes les matières</option>
                             <?php foreach ($matieres as $matiere): ?>
@@ -387,7 +368,7 @@ $moduleClass = "notes";
         <div class="main-content">
             <div class="top-header">
                 <div class="page-title">
-                    <h1><?= htmlspecialchars($pageTitle) ?></h1>
+                    <h1>Notes</h1>
                     <p class="subtitle">
                         <?php if (!empty($classe_filtre)): ?>
                             Classe <?= htmlspecialchars($classe_filtre) ?> - 
@@ -404,12 +385,28 @@ $moduleClass = "notes";
                 </div>
                 
                 <div class="header-actions">
+                    <?php if (canManageNotes()): ?>
+                        <a href="ajouter_note.php" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Ajouter une note
+                        </a>
+                    <?php endif; ?>
                     <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">
                         <i class="fas fa-sign-out-alt"></i>
                     </a>
                     <div class="user-avatar" title="<?= htmlspecialchars($user_fullname) ?>">
                         <?= htmlspecialchars($user_initials) ?>
                     </div>
+                </div>
+            </div>
+            
+            <!-- Welcome Banner -->
+            <div class="welcome-banner">
+                <div class="welcome-content">
+                    <h2>Gestion des notes</h2>
+                    <p>Consultez et gérez les notes des élèves</p>
+                </div>
+                <div class="welcome-logo">
+                    <i class="fas fa-chart-bar"></i>
                 </div>
             </div>
             
@@ -448,6 +445,40 @@ $moduleClass = "notes";
                                 <h2 class="widget-title">Moyenne générale</h2>
                                 <span class="moyenne-generale"><?= $moyenne_generale ?>/20</span>
                             </div>
+                            
+                            <!-- Répartition des notes -->
+                            <div class="widget-content">
+                                <div class="grade-distribution">
+                                    <?php
+                                    $notes_basses = 0;
+                                    $notes_moyennes = 0;
+                                    $notes_hautes = 0;
+                                    
+                                    foreach ($notes as $note) {
+                                        $note_value = floatval($note['note']);
+                                        if ($note_value < 10) {
+                                            $notes_basses++;
+                                        } elseif ($note_value < 14) {
+                                            $notes_moyennes++;
+                                        } else {
+                                            $notes_hautes++;
+                                        }
+                                    }
+                                    ?>
+                                    <div class="grade-section low">
+                                        <div class="grade-section-value"><?= $notes_basses ?></div>
+                                        <div class="grade-section-label">Notes < 10</div>
+                                    </div>
+                                    <div class="grade-section mid">
+                                        <div class="grade-section-value"><?= $notes_moyennes ?></div>
+                                        <div class="grade-section-label">Notes entre 10 et 14</div>
+                                    </div>
+                                    <div class="grade-section high">
+                                        <div class="grade-section-value"><?= $notes_hautes ?></div>
+                                        <div class="grade-section-label">Notes > 14</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         
                         <div class="widget">
@@ -458,9 +489,9 @@ $moduleClass = "notes";
                                 <?php foreach ($notes_par_matiere as $matiere => $notes_matiere): ?>
                                     <div class="matiere-section">
                                         <div class="matiere-header" onclick="toggleNotes(this)">
-                                            <div class="d-flex align-items-center">
+                                            <div class="matiere-title">
                                                 <i class="fas fa-chevron-right matiere-icon"></i>
-                                                <span class="matiere-title"><?= htmlspecialchars($matiere) ?></span>
+                                                <?= htmlspecialchars($matiere) ?>
                                             </div>
                                             <div class="matiere-moyenne"><?= $moyennes_par_matiere[$matiere] ?>/20</div>
                                         </div>
@@ -474,10 +505,10 @@ $moduleClass = "notes";
                                                         <?= !empty($note['commentaire']) ? htmlspecialchars($note['commentaire']) : 'Évaluation' ?>
                                                     </div>
                                                     <div class="note-coefficient">
-                                                        Coef. <?= htmlspecialchars($note['coefficient']) ?>
+                                                        Coef. <?= htmlspecialchars($note['coefficient'] ?? '1') ?>
                                                     </div>
-                                                    <div class="note-value">
-                                                        <?= formatNoteDisplay($note) ?>
+                                                    <div class="note-value <?= getNoteClass($note['note']) ?>">
+                                                        <?= htmlspecialchars($note['note']) ?>/20
                                                     </div>
                                                 </div>
                                             <?php endforeach; ?>
@@ -488,14 +519,33 @@ $moduleClass = "notes";
                         </div>
                     <?php else: ?>
                         <!-- Tableau des notes pour les professeurs et administrateurs -->
+                        <div class="filter-toolbar">
+                            <div class="filter-buttons">
+                                <a href="?<?= !empty($trimestre_filtre) ? 'trimestre=' . $trimestre_filtre : '' ?>" class="btn <?= empty($classe_filtre) && empty($matiere_filtre) ? 'btn-primary' : 'btn-secondary' ?>">
+                                    <i class="fas fa-list"></i> Toutes les notes
+                                </a>
+                                <?php if (!empty($classe_filtre)): ?>
+                                    <a href="?<?= !empty($trimestre_filtre) ? 'trimestre=' . $trimestre_filtre : '' ?>" class="btn btn-secondary">
+                                        <i class="fas fa-times"></i> <?= htmlspecialchars($classe_filtre) ?>
+                                    </a>
+                                <?php endif; ?>
+                                <?php if (!empty($matiere_filtre)): ?>
+                                    <a href="?<?= !empty($trimestre_filtre) ? 'trimestre=' . $trimestre_filtre : '' ?><?= !empty($classe_filtre) ? '&classe=' . urlencode($classe_filtre) : '' ?>" class="btn btn-secondary">
+                                        <i class="fas fa-times"></i> <?= htmlspecialchars($matiere_filtre) ?>
+                                    </a>
+                                <?php endif; ?>
+                            </div>
+                            
+                            <?php if (canManageNotes()): ?>
+                                <a href="ajouter_note.php" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Ajouter une note
+                                </a>
+                            <?php endif; ?>
+                        </div>
+                        
                         <div class="widget">
                             <div class="widget-header">
                                 <h2 class="widget-title">Liste des notes</h2>
-                                <?php if (canManageNotes()): ?>
-                                    <a href="ajouter_note.php" class="btn btn-primary btn-sm">
-                                        <i class="fas fa-plus"></i> Ajouter
-                                    </a>
-                                <?php endif; ?>
                             </div>
                             <div class="widget-content p-0">
                                 <div class="table-responsive">
@@ -520,17 +570,17 @@ $moduleClass = "notes";
                                                     <td><?= htmlspecialchars($note['nom_eleve']) ?></td>
                                                     <td><?= htmlspecialchars($note['classe']) ?></td>
                                                     <td><?= htmlspecialchars($note['matiere']) ?></td>
-                                                    <td class="note-value"><?= formatNoteDisplay($note) ?></td>
-                                                    <td><?= htmlspecialchars($note['coefficient']) ?></td>
+                                                    <td class="note-value <?= getNoteClass($note['note']) ?>"><?= htmlspecialchars($note['note']) ?>/20</td>
+                                                    <td><?= htmlspecialchars($note['coefficient'] ?? '1') ?></td>
                                                     <td><?= date('d/m/Y', strtotime($note['date_evaluation'] ?? $note['date_creation'])) ?></td>
                                                     <td><?= htmlspecialchars($note['commentaire'] ?? '') ?></td>
                                                     <?php if (canManageNotes()): ?>
                                                         <td>
-                                                            <div class="d-flex">
+                                                            <div class="d-flex align-items-center">
                                                                 <a href="modifier_note.php?id=<?= $note['id'] ?>" class="btn-icon" title="Modifier">
                                                                     <i class="fas fa-edit"></i>
                                                                 </a>
-                                                                <a href="supprimer_note.php?id=<?= $note['id'] ?>" class="btn-icon btn-danger" title="Supprimer" onclick="return confirm('Voulez-vous vraiment supprimer cette note ?');">
+                                                                <a href="supprimer_note.php?id=<?= $note['id'] ?>" class="btn-icon btn-danger" title="Supprimer">
                                                                     <i class="fas fa-trash"></i>
                                                                 </a>
                                                             </div>
@@ -564,6 +614,19 @@ $moduleClass = "notes";
                 icon.classList.add('fa-chevron-right');
             }
         }
+        
+        // Fermer automatiquement les alertes après 5 secondes
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    alert.style.opacity = '0';
+                    setTimeout(() => {
+                        alert.style.display = 'none';
+                    }, 300);
+                }, 5000);
+            });
+        });
     </script>
 </body>
 </html>
