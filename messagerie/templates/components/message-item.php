@@ -9,7 +9,16 @@
 
 // Classes CSS pour le message
 $messageClasses = [];
-$isSelf = isCurrentUser($message['expediteur_id'], $message['expediteur_type'], $user);
+
+// Ensure all keys we need are available with default values
+$message['sender_id'] = $message['sender_id'] ?? ($message['expediteur_id'] ?? 0);
+$message['sender_type'] = $message['sender_type'] ?? ($message['expediteur_type'] ?? '');
+$message['body'] = $message['body'] ?? ($message['contenu'] ?? '');
+$message['created_at'] = $message['created_at'] ?? ($message['date_envoi'] ?? '');
+$message['expediteur_nom'] = $message['expediteur_nom'] ?? 'Utilisateur inconnu';
+
+// Check if message is from current user
+$isSelf = isCurrentUser($message['sender_id'], $message['sender_type'], $user);
 if ($isSelf) {
     $messageClasses[] = 'self';
 }
@@ -30,32 +39,38 @@ if (isset($conversation) && isset($conversation['type']) && $conversation['type'
 
 // Filtrer les classes vides
 $messageClasses = array_filter($messageClasses);
+$messageClassString = implode(' ', $messageClasses);
+
+// Format timestamp for display
+$timestamp = isset($message['timestamp']) ? (int)$message['timestamp'] : time();
+$formattedDate = formatTimeAgo($timestamp);
+
+// Prepare content safely
+$messageContent = nl2br(htmlspecialchars($message['body']));
 ?>
 
-<div class="message <?= implode(' ', $messageClasses) ?>" data-id="<?= (int)$message['id'] ?>" data-timestamp="<?= $message['timestamp'] ?>">
+<div class="message <?= $messageClassString ?>" data-id="<?= $message['id'] ?>" data-timestamp="<?= $timestamp ?>">
     <div class="message-header">
         <div class="sender">
             <strong><?= htmlspecialchars($message['expediteur_nom']) ?></strong>
-            <span class="sender-type"><?= getParticipantType($message['expediteur_type']) ?></span>
+            <span class="sender-type"><?= getParticipantType($message['sender_type']) ?></span>
         </div>
         <div class="message-meta">
             <?php if ($importance !== 'normal'): ?>
-            <span class="importance-tag <?= htmlspecialchars($importance) ?>">
-                <?= htmlspecialchars($importance) ?>
-            </span>
+            <span class="importance-tag <?= $importance ?>"><?= ucfirst($importance) ?></span>
             <?php endif; ?>
-            <span class="date"><?= formatDate($message['date_envoi']) ?></span>
+            <span class="date" title="<?= date('d/m/Y H:i', $timestamp) ?>"><?= $formattedDate ?></span>
         </div>
     </div>
     
     <div class="message-content">
-        <?= nl2br(linkify(htmlspecialchars($message['contenu']))) ?>
+        <?= $messageContent ?>
         
         <?php if (!empty($message['pieces_jointes'])): ?>
         <div class="attachments">
-            <?php foreach ($message['pieces_jointes'] as $attachment): ?>
-            <a href="<?= isset($baseUrl) ? $baseUrl : '' ?><?= htmlspecialchars($attachment['chemin']) ?>" class="attachment" target="_blank">
-                <i class="fas fa-paperclip"></i> <?= htmlspecialchars($attachment['nom_fichier']) ?>
+            <?php foreach ($message['pieces_jointes'] as $piece): ?>
+            <a href="<?= $piece['chemin'] ?>" class="attachment" target="_blank" download>
+                <i class="fas fa-paperclip"></i> <?= htmlspecialchars($piece['nom_fichier']) ?>
             </a>
             <?php endforeach; ?>
         </div>
@@ -63,36 +78,23 @@ $messageClasses = array_filter($messageClasses);
     </div>
     
     <div class="message-footer">
-        <!-- Affichage amélioré du statut de lecture -->
-        <div class="message-status">
-            <?php if ($isSelf): ?>
-                <div class="message-read-status" data-message-id="<?= (int)$message['id'] ?>">
-                    <?php if (isset($message['read_status']) && $message['read_status']['all_read']): ?>
-                        <!-- Badge bleu quand tous ont lu (conformément au cahier des charges) -->
-                        <div class="all-read">
-                            <i class="fas fa-check-double"></i> Vu
-                        </div>
-                    <?php elseif (isset($message['read_status']) && $message['read_status']['read_by_count'] > 0): ?>
-                        <!-- Badge gris avec détail des lecteurs (conformément au cahier des charges) -->
-                        <div class="partial-read">
-                            <i class="fas fa-check"></i> 
-                            <span class="read-count"><?= $message['read_status']['read_by_count'] ?>/<?= $message['read_status']['total_participants'] - 1 ?></span>
-                            <?php if (!empty($message['read_status']['readers'])): ?>
-                            <span class="read-tooltip" title="<?= htmlspecialchars(implode(', ', array_column($message['read_status']['readers'], 'nom_complet'))) ?>">
-                                <i class="fas fa-info-circle"></i>
-                            </span>
-                            <?php endif; ?>
-                        </div>
-                    <?php endif; ?>
-                </div>
+        <?php if ($isSelf): ?>
+        <!-- Pour ses propres messages: Status de lecture -->
+        <div class="message-read-status">
+            <?php if (isset($message['est_lu']) && $message['est_lu']): ?>
+            <div class="all-read"><i class="fas fa-check-double"></i> Vu</div>
+            <?php else: ?>
+            <div class="partial-read"><i class="fas fa-check"></i></div>
             <?php endif; ?>
         </div>
-            
-        <?php if (isset($canReply) && $canReply && !$isSelf): ?>
+        <?php else: ?>
+        <!-- Pour les messages des autres: Actions -->
         <div class="message-actions">
-            <button class="btn-icon" onclick="replyToMessage(<?= (int)$message['id'] ?>, '<?= htmlspecialchars(addslashes($message['expediteur_nom'])) ?>')">
+            <?php if ($canReply): ?>
+            <button class="btn-icon reply-btn" onclick="replyToMessage(<?= $message['id'] ?>, '<?= htmlspecialchars($message['expediteur_nom']) ?>')">
                 <i class="fas fa-reply"></i> Répondre
             </button>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
     </div>

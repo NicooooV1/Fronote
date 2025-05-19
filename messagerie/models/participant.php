@@ -11,30 +11,35 @@ require_once __DIR__ . '/../config/config.php';
  */
 function getParticipants($convId) {
     global $pdo;
-    $sql = "
-        SELECT cp.id, cp.user_id as utilisateur_id, cp.user_type as utilisateur_type, 
-               cp.is_admin as est_administrateur, cp.is_moderator as est_moderateur, 
-               cp.is_deleted as a_quitte,
-               CASE 
-                   WHEN cp.user_type = 'eleve' THEN 
-                       (SELECT CONCAT(e.prenom, ' ', e.nom) FROM eleves e WHERE e.id = cp.user_id)
-                   WHEN cp.user_type = 'parent' THEN 
-                       (SELECT CONCAT(p.prenom, ' ', p.nom) FROM parents p WHERE p.id = cp.user_id)
-                   WHEN cp.user_type = 'professeur' THEN 
-                       (SELECT CONCAT(p.prenom, ' ', p.nom) FROM professeurs p WHERE p.id = cp.user_id)
-                   WHEN cp.user_type = 'vie_scolaire' THEN 
-                       (SELECT CONCAT(v.prenom, ' ', v.nom) FROM vie_scolaire v WHERE v.id = cp.user_id)
-                   WHEN cp.user_type = 'administrateur' THEN 
-                       (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = cp.user_id)
-                   ELSE 'Inconnu'
-               END as nom_complet
-        FROM conversation_participants cp
-        WHERE cp.conversation_id = ?
-        ORDER BY cp.is_admin DESC, cp.is_moderator DESC, cp.is_deleted ASC, nom_complet ASC
-    ";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([$convId]);
-    return $stmt->fetchAll();
+    try {
+        $sql = "
+            SELECT cp.id, cp.user_id as utilisateur_id, cp.user_type as utilisateur_type, 
+                cp.is_admin as est_administrateur, cp.is_moderator as est_moderateur, 
+                cp.is_deleted as a_quitte,
+                CASE 
+                    WHEN cp.user_type = 'eleve' THEN 
+                        (SELECT CONCAT(e.prenom, ' ', e.nom) FROM eleves e WHERE e.id = cp.user_id)
+                    WHEN cp.user_type = 'parent' THEN 
+                        (SELECT CONCAT(p.prenom, ' ', p.nom) FROM parents p WHERE p.id = cp.user_id)
+                    WHEN cp.user_type = 'professeur' THEN 
+                        (SELECT CONCAT(p.prenom, ' ', p.nom) FROM professeurs p WHERE p.id = cp.user_id)
+                    WHEN cp.user_type = 'vie_scolaire' THEN 
+                        (SELECT CONCAT(v.prenom, ' ', v.nom) FROM vie_scolaire v WHERE v.id = cp.user_id)
+                    WHEN cp.user_type = 'administrateur' THEN 
+                        (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = cp.user_id)
+                    ELSE 'Inconnu'
+                END as nom_complet
+            FROM conversation_participants cp
+            WHERE cp.conversation_id = ?
+            ORDER BY cp.is_admin DESC, cp.is_moderator DESC, cp.is_deleted ASC, nom_complet ASC
+        ";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$convId]);
+        return $stmt->fetchAll();
+    } catch (Exception $e) {
+        error_log("Error getting participants: " . $e->getMessage());
+        return []; // Return empty array in case of error
+    }
 }
 
 /**

@@ -112,40 +112,6 @@ function getTimeAgo($timestamp) {
 }
 
 /**
- * Vérifie si un utilisateur est l'utilisateur courant
- * @param int $id
- * @param string $type
- * @param array $user
- * @return bool
- */
-function isCurrentUser($id, $type, $user) {
-    return $id == $user['id'] && $type == $user['type'];
-}
-
-/**
- * Échappe le texte pour l'affichage HTML
- * @param string $text
- * @return string
- */
-function h($text) {
-    return htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
-}
-
-/**
- * Transforme les URLs en liens cliquables
- * @param string $text
- * @return string
- */
-function linkify($text) {
-    $pattern = '~(https?://[^\s<]+)~i';
-    return preg_replace(
-        $pattern,
-        '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
-        $text
-    );
-}
-
-/**
  * Renvoie l'icône correspondant à un dossier
  * @param string $folder Identifiant du dossier
  * @return string Nom de l'icône Font Awesome
@@ -230,11 +196,15 @@ function getParticipantIcon($type) {
 }
 
 /**
- * Retourne le libellé du type de participant
- * @param string $type
- * @return string
+ * Renvoie le libellé du type de participant
+ * @param string|null $type Type de participant
+ * @return string Libellé formaté
  */
 function getParticipantType($type) {
+    if (empty($type)) {
+        return 'Utilisateur';
+    }
+    
     $types = [
         'eleve' => 'Élève',
         'parent' => 'Parent',
@@ -242,7 +212,47 @@ function getParticipantType($type) {
         'vie_scolaire' => 'Vie scolaire',
         'administrateur' => 'Administrateur'
     ];
-    return $types[$type] ?? ucfirst($type);
+    
+    return isset($types[$type]) ? $types[$type] : ucfirst($type);
+}
+
+/**
+ * Vérifie si un utilisateur est l'utilisateur connecté
+ * @param int $senderId ID de l'expéditeur
+ * @param string $senderType Type d'expéditeur
+ * @param array $user Utilisateur connecté
+ * @return bool
+ */
+function isCurrentUser($senderId, $senderType, $user) {
+    // If user data is incomplete, return false
+    if (!isset($user['id']) || empty($senderType) || empty($senderId)) {
+        return false;
+    }
+    
+    return ($senderId == $user['id'] && $senderType == $user['type']);
+}
+
+/**
+ * Échappe le texte pour l'affichage HTML
+ * @param string $text
+ * @return string
+ */
+function h($text) {
+    return htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+}
+
+/**
+ * Transforme les URLs en liens cliquables
+ * @param string $text
+ * @return string
+ */
+function linkify($text) {
+    $pattern = '~(https?://[^\s<]+)~i';
+    return preg_replace(
+        $pattern,
+        '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
+        $text
+    );
 }
 
 /**

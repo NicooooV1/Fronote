@@ -88,7 +88,12 @@ try {
     // Récupérer les messages et participants seulement si la conversation n'est pas supprimée
     // ou si on a besoin de les afficher même si supprimée (comportement à définir)
     if (!$isDeleted) {
-        $messages = getMessages($convId, $user['id'], $user['type']);
+        try {
+            $messages = getMessages($convId, $user['id'], $user['type']);
+        } catch (Exception $messageError) {
+            error_log("Error fetching messages: " . $messageError->getMessage());
+            $messages = []; // Fallback to empty array in case of error
+        }
         $participants = getParticipants($convId);
     } else {
         // Pour les conversations dans la corbeille, on peut vouloir quand même

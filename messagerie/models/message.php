@@ -7,6 +7,32 @@ require_once __DIR__ . '/../core/utils.php';
 require_once __DIR__ . '/../core/uploader.php';
 
 /**
+ * Marque une conversation comme lue pour un utilisateur
+ * @param int $convId ID de la conversation
+ * @param int $userId ID de l'utilisateur
+ * @param string $userType Type d'utilisateur
+ * @return bool Succès de l'opération
+ */
+function markConversationAsRead($convId, $userId, $userType) {
+    global $pdo;
+    
+    try {
+        // Mettre à jour la date de dernière lecture du participant
+        $stmt = $pdo->prepare("
+            UPDATE conversation_participants 
+            SET last_read_at = NOW(), unread_count = 0
+            WHERE conversation_id = ? AND user_id = ? AND user_type = ?
+        ");
+        $stmt->execute([$convId, $userId, $userType]);
+        
+        return $stmt->rowCount() > 0;
+    } catch (Exception $e) {
+        error_log("Erreur lors du marquage de la conversation comme lue: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
  * Récupère les messages d'une conversation
  * @param int $convId
  * @param int $userId
@@ -26,7 +52,8 @@ function getMessages($convId, $userId, $userType) {
         throw new Exception("Vous n'êtes pas autorisé à accéder à cette conversation");
     }
     
-    // Récupérer les messages - Remove the is_deleted condition since the column doesn't exist
+    // Récupérer les messages - Remove is_deleted condition since column doesn't exist
+    // and use consistent field names
     $stmt = $pdo->prepare("
         SELECT m.*, 
                CASE 
@@ -37,6 +64,8 @@ function getMessages($convId, $userId, $userType) {
                    WHEN m.sender_id = ? AND m.sender_type = ? THEN 1
                    ELSE 0
                END as is_self,
+               m.sender_id, 
+               m.sender_type,
                CASE 
                    WHEN m.sender_type = 'eleve' THEN 
                        (SELECT CONCAT(e.prenom, ' ', e.nom) FROM eleves e WHERE e.id = m.sender_id)
@@ -63,6 +92,18 @@ function getMessages($convId, $userId, $userType) {
     $stmt->execute([$userId, $userType, $userId, $userType, $convId]);
     $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
+    // Get attachments for each message
+    $attachmentStmt = $pdo->prepare("
+        SELECT id, message_id, file_name as nom_fichier, file_path as chemin
+        FROM message_attachments 
+        WHERE message_id = ?
+    ");
+    
+    foreach ($messages as &$message) {
+        $attachmentStmt->execute([$message['id']]);
+        $message['pieces_jointes'] = $attachmentStmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
     // Marquer la conversation comme lue
     markConversationAsRead($convId, $userId, $userType);
     
@@ -70,7 +111,7 @@ function getMessages($convId, $userId, $userType) {
 }
 
 /**
- * Récupère les messages d'une conversation même si elle est dans la corbeille
+ * Récupère les messages d'une conversation même si elle est supprimée
  * @param int $convId
  * @param int $userId
  * @param string $userType
@@ -79,7 +120,7 @@ function getMessages($convId, $userId, $userType) {
 function getMessagesEvenIfDeleted($convId, $userId, $userType) {
     global $pdo;
     
-    // Ne pas vérifier is_deleted=0 pour les participants
+    // Vérifier que l'utilisateur est participant à la conversation
     $checkParticipant = $pdo->prepare("
         SELECT id FROM conversation_participants 
         WHERE conversation_id = ? AND user_id = ? AND user_type = ?
@@ -89,16 +130,19 @@ function getMessagesEvenIfDeleted($convId, $userId, $userType) {
         throw new Exception("Vous n'êtes pas autorisé à accéder à cette conversation");
     }
     
-    $sql = "
+    // Use the same query as getMessages to ensure consistency
+    $stmt = $pdo->prepare("
         SELECT m.*, 
                CASE 
-                   WHEN cp.last_read_message_id IS NULL OR m.id > cp.last_read_message_id THEN 0
+                   WHEN cp.last_read_at IS NULL OR m.created_at > cp.last_read_at THEN 0
                    ELSE 1
                END as est_lu,
                CASE 
                    WHEN m.sender_id = ? AND m.sender_type = ? THEN 1
                    ELSE 0
                END as is_self,
+               m.sender_id, 
+               m.sender_type,
                CASE 
                    WHEN m.sender_type = 'eleve' THEN 
                        (SELECT CONCAT(e.prenom, ' ', e.nom) FROM eleves e WHERE e.id = m.sender_id)
@@ -121,11 +165,23 @@ function getMessagesEvenIfDeleted($convId, $userId, $userType) {
         )
         WHERE m.conversation_id = ?
         ORDER BY m.created_at ASC
-    ";
-    
-    $stmt = $pdo->prepare($sql);
+    ");
     $stmt->execute([$userId, $userType, $userId, $userType, $convId]);
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Get attachments for each message
+    $attachmentStmt = $pdo->prepare("
+        SELECT id, message_id, file_name as nom_fichier, file_path as chemin
+        FROM message_attachments 
+        WHERE message_id = ?
+    ");
+    
+    foreach ($messages as &$message) {
+        $attachmentStmt->execute([$message['id']]);
+        $message['pieces_jointes'] = $attachmentStmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
+    return $messages;
 }
 
 /**
