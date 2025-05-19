@@ -77,22 +77,78 @@ if (isTeacher()) {
   $prof_matiere = $prof_data ? $prof_data['matiere'] : '';
 }
 
+// Récupérer le trimestre actuel (1, 2 ou 3 en fonction de la date)
+$current_month = (int)date('n'); // 1-12
+if ($current_month >= 9 && $current_month <= 12) {
+  $trimestre_actuel = 1; // Septembre-Décembre
+} elseif ($current_month >= 1 && $current_month <= 3) {
+  $trimestre_actuel = 2; // Janvier-Mars
+} else {
+  $trimestre_actuel = 3; // Avril-Août
+}
+
 // Traitement du formulaire soumis
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $stmt = $pdo->prepare('UPDATE notes SET nom_eleve = ?, matiere = ?, nom_professeur = ?, note = ?, date_ajout = ?, classe = ?, coefficient = ?, description = ? WHERE id = ?');
-  $stmt->execute([
-    $_POST['nom_eleve'],
-    $_POST['nom_matiere'],
-    $_POST['nom_professeur'],
-    $_POST['note'],
-    $_POST['date_ajout'],
-    $_POST['classe'],
-    $_POST['coefficient'],
-    $_POST['description'],
-    $id
-  ]);
-  header('Location: notes.php');
-  exit;
+  try {
+    // Vérifier si la colonne trimestre existe
+    $check_columns = $pdo->query("SHOW COLUMNS FROM notes");
+    $columns = $check_columns->fetchAll(PDO::FETCH_COLUMN);
+    
+    // Préparer les champs à mettre à jour
+    $fields = [];
+    $values = [];
+    
+    // Champs de base
+    $fields[] = 'nom_eleve = ?';
+    $values[] = $_POST['nom_eleve'];
+    
+    $fields[] = 'matiere = ?';
+    $values[] = $_POST['nom_matiere'];
+    
+    $fields[] = 'nom_professeur = ?';
+    $values[] = $_POST['nom_professeur'];
+    
+    $fields[] = 'note = ?';
+    $values[] = $_POST['note'];
+    
+    $fields[] = 'date_evaluation = ?';
+    $values[] = $_POST['date_ajout'];
+    
+    $fields[] = 'classe = ?';
+    $values[] = $_POST['classe'];
+    
+    if (in_array('coefficient', $columns)) {
+      $fields[] = 'coefficient = ?';
+      $values[] = $_POST['coefficient'];
+    }
+    
+    if (in_array('description', $columns)) {
+      $fields[] = 'description = ?';
+      $values[] = $_POST['description'];
+    }
+    
+    // Vérifier si la colonne 'trimestre' existe
+    if (in_array('trimestre', $columns)) {
+      $fields[] = 'trimestre = ?';
+      $values[] = isset($_POST['trimestre']) ? $_POST['trimestre'] : $trimestre_actuel;
+    }
+    
+    // Ajouter l'ID de la note à la fin
+    $values[] = $id;
+    
+    // Construire la requête SQL
+    $query = 'UPDATE notes SET ' . implode(', ', $fields) . ' WHERE id = ?';
+    
+    $stmt = $pdo->prepare($query);
+    $stmt->execute($values);
+    
+    // Redirection après succès
+    header('Location: notes.php');
+    exit;
+  } catch (PDOException $e) {
+    error_log("Erreur lors de la mise à jour de la note: " . $e->getMessage());
+    $error_message = "Une erreur est survenue lors de la mise à jour de la note.";
+  }
 }
 ?>
 
@@ -234,6 +290,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <div class="form-group">
                 <label for="date_ajout">Date:<span class="required">*</span></label>
                 <input type="date" name="date_ajout" id="date_ajout" value="<?= $note['date_ajout'] ?>" required>
+              </div>
+              
+              <!-- Champ pour le trimestre -->
+              <div class="form-group">
+                <label for="trimestre">Trimestre:<span class="required">*</span></label>
+                <select name="trimestre" id="trimestre" required>
+                  <option value="1" <?= (isset($note['trimestre']) && $note['trimestre'] == 1) ? 'selected' : '' ?>>Trimestre 1</option>
+                  <option value="2" <?= (isset($note['trimestre']) && $note['trimestre'] == 2) ? 'selected' : '' ?>>Trimestre 2</option>
+                  <option value="3" <?= (isset($note['trimestre']) && $note['trimestre'] == 3) ? 'selected' : '' ?>>Trimestre 3</option>
+                </select>
               </div>
               
               <!-- Champ pour la description -->

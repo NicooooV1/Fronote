@@ -59,6 +59,9 @@ if ($current_month >= 9 && $current_month <= 12) {
 // Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
+    // Debug: Log POST data to help troubleshoot
+    error_log("POST data: " . print_r($_POST, true));
+    
     // Vérifier la structure de la table
     $check_columns = $pdo->query("SHOW COLUMNS FROM notes");
     $columns = $check_columns->fetchAll(PDO::FETCH_COLUMN);
@@ -95,9 +98,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $placeholders[] = '?';
     $values[] = $_POST['classe'];
     
-    $fields[] = 'matiere'; // Utiliser matiere pour la colonne, nom_matiere pour le formulaire
-    $placeholders[] = '?';
-    $values[] = $_POST['nom_matiere'];
+    // S'assurer que le champ matiere est correctement défini
+    if (isset($_POST['nom_matiere']) && !empty($_POST['nom_matiere'])) {
+      $fields[] = 'matiere';
+      $placeholders[] = '?';
+      $values[] = $_POST['nom_matiere'];
+    } else {
+      // Si on n'a pas de matière, utiliser celle du professeur (pour les enseignants)
+      if (!empty($prof_matiere)) {
+        $fields[] = 'matiere';
+        $placeholders[] = '?';
+        $values[] = $prof_matiere;
+      } else {
+        throw new Exception("Le champ matière est obligatoire.");
+      }
+    }
     
     $fields[] = 'note';
     $placeholders[] = '?';
@@ -151,6 +166,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Construire et exécuter la requête
     $query = 'INSERT INTO notes (' . implode(', ', $fields) . ') VALUES (' . implode(', ', $placeholders) . ')';
+    error_log("SQL Query: " . $query); // Log the SQL query
+    error_log("SQL Values: " . print_r($values, true)); // Log the values
+    
     $stmt = $pdo->prepare($query);
     $stmt->execute($values);
     
@@ -159,8 +177,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
   } catch (PDOException $e) {
     // Enregistrer l'erreur et afficher un message d'erreur à l'utilisateur
-    error_log("Erreur lors de l'ajout d'une note: " . $e->getMessage());
-    $error_message = "Une erreur s'est produite lors de l'ajout de la note. Veuillez réessayer.";
+    error_log("Erreur SQL lors de l'ajout d'une note: " . $e->getMessage());
+    $error_message = "Une erreur s'est produite lors de l'ajout de la note: " . $e->getMessage();
+  } catch (Exception $e) {
+    error_log("Erreur générale: " . $e->getMessage());
+    $error_message = $e->getMessage();
   }
 }
 ?>

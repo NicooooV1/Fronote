@@ -98,8 +98,22 @@ if ($table_exists) {
     
     // Filtre par trimestre (uniquement si la colonne existe)
     if ($trimestre_exists) {
-        $query .= ' AND (trimestre = ? OR trimestre IS NULL)';
-        $params[] = $trimestre_selectionne;
+        // Vérifier si la colonne existe et créer la colonne si nécessaire
+        try {
+            $check_trimestre = $pdo->query("SHOW COLUMNS FROM notes LIKE 'trimestre'");
+            if ($check_trimestre && $check_trimestre->rowCount() == 0) {
+                // La colonne n'existe pas, la créer
+                $pdo->exec("ALTER TABLE notes ADD COLUMN trimestre INT DEFAULT 1");
+                error_log("Colonne 'trimestre' ajoutée à la table notes");
+            }
+            
+            // Filtrer par trimestre
+            $query .= ' AND trimestre = ?';
+            $params[] = $trimestre_selectionne;
+        } catch (PDOException $e) {
+            error_log("Erreur lors de la vérification/création de la colonne trimestre: " . $e->getMessage());
+            // Si erreur, pas de filtrage par trimestre
+        }
     }
     
     // Si l'utilisateur est un professeur (et pas un admin), limiter aux notes qu'il a créées

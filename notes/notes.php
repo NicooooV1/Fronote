@@ -85,6 +85,24 @@ if ($table_exists) {
     }
 }
 
+// Vérifier si la colonne 'trimestre' existe et l'ajouter si nécessaire
+try {
+    if ($table_exists) {
+        $check_trimestre = $pdo->query("SHOW COLUMNS FROM notes LIKE 'trimestre'");
+        $trimestre_exists = $check_trimestre && $check_trimestre->rowCount() > 0;
+        
+        if (!$trimestre_exists) {
+            // La colonne n'existe pas, on la crée
+            $pdo->exec("ALTER TABLE notes ADD COLUMN trimestre INT DEFAULT 1");
+            error_log("Colonne 'trimestre' ajoutée à la table notes");
+            $trimestre_exists = true;
+        }
+    }
+} catch (PDOException $e) {
+    error_log("Erreur lors de la vérification/création de la colonne trimestre: " . $e->getMessage());
+    $trimestre_exists = false;
+}
+
 // Récupérer toutes les classes disponibles après s'être assuré que la table existe
 $classes = [];
 try {
@@ -101,7 +119,7 @@ $selected_class = isset($_GET['classe']) ? $_GET['classe'] : ($classes[0] ?? '')
 $classe_selectionnee = $selected_class; // Ajouter cette variable pour corriger l'erreur
 
 // Définir le trimestre sélectionné (si présent dans l'URL ou par défaut le premier)
-$trimestre_selectionne = isset($_GET['trimestre']) ? $_GET['trimestre'] : 1;
+$trimestre_selectionne = isset($_GET['trimestre']) ? (int)$_GET['trimestre'] : 1;
 
 // Définir la matière sélectionnée (si présente dans l'URL ou vide par défaut)
 $selected_subject = isset($_GET['matiere']) ? $_GET['matiere'] : '';
@@ -148,6 +166,12 @@ $params = [];
 if (!empty($selected_class)) {
     $query .= ' AND classe = ?';
     $params[] = $selected_class;
+}
+
+// Filtre par trimestre si la colonne existe
+if ($trimestre_exists) {
+    $query .= ' AND trimestre = ?';
+    $params[] = $trimestre_selectionne;
 }
 
 if (!empty($selected_subject) && $matiere_exists) {
