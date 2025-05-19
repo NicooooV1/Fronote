@@ -13,6 +13,178 @@
   --deadline-soon: #ff9500;
 }
 
+/* Réinitialisation des styles et styles de base */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+  background-color: #f5f6fa;
+  color: #333;
+  line-height: 1.6;
+}
+
+/* Structure principale de l'application */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* Barre latérale */
+.sidebar {
+  width: 260px;
+  background-color: #0f4c81;
+  color: white;
+  padding: 20px 0;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 20px;
+}
+
+.app-logo {
+  width: 40px;
+  height: 40px;
+  background-color: #fff;
+  color: #0f4c81;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 24px;
+  margin-right: 10px;
+}
+
+.app-title {
+  font-size: 22px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.sidebar-section {
+  margin-bottom: 30px;
+  padding: 0 20px;
+}
+
+.sidebar-section-header {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 600;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-nav-item {
+  padding: 12px 15px;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.8);
+  border-radius: 6px;
+  margin-bottom: 5px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.sidebar-nav-item:hover, .sidebar-nav-item.active {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.sidebar-nav-icon {
+  margin-right: 10px;
+  width: 24px;
+  text-align: center;
+  font-size: 16px;
+}
+
+.info-item {
+  padding: 8px 0;
+}
+
+.info-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 3px;
+}
+
+.info-value {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Contenu principal */
+.main-content {
+  flex: 1;
+  margin-left: 260px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* En-tête */
+.top-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.page-title h1 {
+  font-size: 28px;
+  font-weight: 500;
+  color: #0f4c81;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.logout-button {
+  text-decoration: none;
+  color: #777;
+  font-size: 20px;
+  transition: color 0.2s;
+}
+
+.logout-button:hover {
+  color: #ff3b30;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  background-color: #0f4c81;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  font-size: 16px;
+}
+
 /* Bannière de bienvenue */
 .welcome-banner {
   background: linear-gradient(to right, #0f4c81, #2d7dd2);
@@ -38,17 +210,30 @@
   opacity: 0.9;
 }
 
+.welcome-date {
+  margin-top: 8px;
+  font-size: 14px;
+  opacity: 0.8;
+}
+
 .welcome-logo {
   font-size: 48px;
   opacity: 0.8;
 }
 
 /* Dashboard des devoirs */
+.dashboard-content {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  flex: 1;
+}
+
 .devoirs-dashboard {
   display: flex;
   flex-wrap: wrap;
   gap: 20px;
-  margin-bottom: 30px;
+  margin-bottom: 10px;
 }
 
 .summary-card {
@@ -60,6 +245,12 @@
   min-width: 250px;
   display: flex;
   align-items: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.summary-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
 }
 
 .summary-icon {
@@ -71,6 +262,10 @@
   justify-content: center;
   margin-right: 15px;
   font-size: 20px;
+}
+
+.summary-content {
+  flex: 1;
 }
 
 .summary-value {
@@ -121,7 +316,7 @@
 
 .btn {
   padding: 8px 16px;
-  border-radius: 4px;
+  border-radius: 6px;
   border: none;
   cursor: pointer;
   font-weight: 500;
@@ -130,6 +325,7 @@
   align-items: center;
   gap: 8px;
   font-size: 14px;
+  text-decoration: none;
 }
 
 .btn-primary {
@@ -159,12 +355,46 @@
   background-color: #e12e1c;
 }
 
+/* View toggle */
+.view-toggle {
+  display: flex;
+  overflow: hidden;
+  border-radius: 6px;
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+}
+
+.view-toggle-option {
+  padding: 8px 15px;
+  cursor: pointer;
+  font-size: 14px;
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #555;
+  transition: all 0.2s;
+}
+
+.view-toggle-option.active {
+  background-color: var(--module-bg-light);
+  color: var(--module-color);
+  font-weight: 500;
+}
+
 /* Cartes des devoirs */
+.devoirs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
 .devoir-card {
   background-color: white;
   border-radius: 10px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  margin-bottom: 20px;
   overflow: hidden;
   border-left: 4px solid var(--module-color);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -243,13 +473,13 @@
   flex-direction: column;
 }
 
-.info-label {
+.devoir-info .info-label {
   font-size: 12px;
   color: #777;
   margin-bottom: 4px;
 }
 
-.info-value {
+.devoir-info .info-value {
   font-weight: 500;
   color: #333;
 }
@@ -301,6 +531,7 @@
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  margin-bottom: 30px;
 }
 
 .calendar-header {
@@ -311,6 +542,10 @@
   background-color: var(--module-bg-light);
   color: var(--module-color);
   font-weight: 600;
+}
+
+.calendar-title {
+  font-size: 18px;
 }
 
 .calendar-nav {
@@ -329,6 +564,12 @@
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  color: var(--module-color);
+  text-decoration: none;
+}
+
+.calendar-nav-btn:hover {
+  background-color: #f5f5f5;
 }
 
 .calendar-grid {
@@ -551,28 +792,35 @@ textarea.form-control {
   color: #333;
 }
 
-.view-toggle {
-  display: flex;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.view-toggle-option {
-  padding: 8px 15px;
+/* Footer */
+.footer {
+  margin-top: auto;
   background-color: white;
-  cursor: pointer;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.2s;
+  border-top: 1px solid #eee;
+  padding: 15px 20px;
+  font-size: 13px;
+  color: #777;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.03);
+  border-radius: 10px;
 }
 
-.view-toggle-option.active {
-  background-color: var(--module-bg-light);
-  color: var(--module-color);
-  font-weight: 500;
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer-links a {
+  color: #0f4c81;
+  text-decoration: none;
+}
+
+.footer-links a:hover {
+  text-decoration: underline;
+}
+
+.footer-copyright {
+  text-align: right;
 }
 
 /* Responsive */
@@ -587,8 +835,19 @@ textarea.form-control {
 }
 
 @media (max-width: 768px) {
-  .devoirs-dashboard {
+  .app-container {
     flex-direction: column;
+  }
+  
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+    overflow: visible;
+  }
+  
+  .main-content {
+    margin-left: 0;
   }
   
   .filter-toolbar {
@@ -633,6 +892,10 @@ textarea.form-control {
   }
   
   .card-actions {
+    flex-direction: column;
+  }
+  
+  .devoirs-dashboard {
     flex-direction: column;
   }
 }

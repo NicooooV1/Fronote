@@ -479,7 +479,3 @@ document.addEventListener('DOMContentLoaded', function() {
 
 </body>
 </html>
-
-<?php
-ob_end_flush();
-?>

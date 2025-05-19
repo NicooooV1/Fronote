@@ -374,17 +374,17 @@ $pageTitle = "Cahier de textes";
             <!-- Barre de filtres -->
             <div class="filter-toolbar">
                 <div class="filter-buttons">
-                    <a href="?order=date_rendu" class="btn <?= (!isset($_GET['order']) || $_GET['order'] == 'date_rendu') ? 'btn-primary' : 'btn-secondary' ?>">
+                    <a href="?order=date_rendu<?= $displayMode === 'calendar' ? '&mode=calendar' : '' ?>" class="btn <?= (!isset($_GET['order']) || $_GET['order'] == 'date_rendu') ? 'btn-primary' : 'btn-secondary' ?>">
                         <i class="fas fa-calendar-day"></i> Par date de rendu
                     </a>
-                    <a href="?order=date_ajout" class="btn <?= (isset($_GET['order']) && $_GET['order'] == 'date_ajout') ? 'btn-primary' : 'btn-secondary' ?>">
+                    <a href="?order=date_ajout<?= $displayMode === 'calendar' ? '&mode=calendar' : '' ?>" class="btn <?= (isset($_GET['order']) && $_GET['order'] == 'date_ajout') ? 'btn-primary' : 'btn-secondary' ?>">
                         <i class="fas fa-clock"></i> Par date d'ajout
                     </a>
-                    <a href="?order=nom_matiere" class="btn <?= (isset($_GET['order']) && $_GET['order'] == 'nom_matiere') ? 'btn-primary' : 'btn-secondary' ?>">
+                    <a href="?order=nom_matiere<?= $displayMode === 'calendar' ? '&mode=calendar' : '' ?>" class="btn <?= (isset($_GET['order']) && $_GET['order'] == 'nom_matiere') ? 'btn-primary' : 'btn-secondary' ?>">
                         <i class="fas fa-book"></i> Par matière
                     </a>
                     <?php if (!isStudent() && !isParent()): ?>
-                    <a href="?order=classe" class="btn <?= (isset($_GET['order']) && $_GET['order'] == 'classe') ? 'btn-primary' : 'btn-secondary' ?>">
+                    <a href="?order=classe<?= $displayMode === 'calendar' ? '&mode=calendar' : '' ?>" class="btn <?= (isset($_GET['order']) && $_GET['order'] == 'classe') ? 'btn-primary' : 'btn-secondary' ?>">
                         <i class="fas fa-users"></i> Par classe
                     </a>
                     <?php endif; ?>
@@ -589,13 +589,13 @@ $pageTitle = "Cahier de textes";
                             <?= $months[$month] ?> <?= $year ?>
                         </div>
                         <div class="calendar-nav">
-                            <a href="?mode=calendar&month=<?= $prev_month ?>&year=<?= $prev_year ?>" class="calendar-nav-btn">
+                            <a href="?mode=calendar&month=<?= $prev_month ?>&year=<?= $prev_year ?>&order=<?= $order['field'] ?>" class="calendar-nav-btn">
                                 <i class="fas fa-chevron-left"></i>
                             </a>
-                            <a href="?mode=calendar&month=<?= $current_month ?>&year=<?= $current_year ?>" class="calendar-nav-btn">
+                            <a href="?mode=calendar&month=<?= $current_month ?>&year=<?= $current_year ?>&order=<?= $order['field'] ?>" class="calendar-nav-btn">
                                 <i class="fas fa-circle"></i>
                             </a>
-                            <a href="?mode=calendar&month=<?= $next_month ?>&year=<?= $next_year ?>" class="calendar-nav-btn">
+                            <a href="?mode=calendar&month=<?= $next_month ?>&year=<?= $next_year ?>&order=<?= $order['field'] ?>" class="calendar-nav-btn">
                                 <i class="fas fa-chevron-right"></i>
                             </a>
                         </div>
