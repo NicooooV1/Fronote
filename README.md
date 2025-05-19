@@ -1,6 +1,6 @@
 # Pronote - Système de Gestion Scolaire
 
-Bienvenue sur le projet Pronote, une application web de gestion scolaire inspirée du célèbre logiciel Pronote. Cette application permet de gérer les notes, absences, cahiers de textes, messagerie et agenda dans un établissement scolaire.
+Bienvenue dans le projet Pronote, une application web complète de gestion scolaire inspirée du célèbre logiciel Pronote. Cette application permet de gérer les notes, absences, cahiers de textes, messagerie et agenda dans un établissement scolaire de manière sécurisée et centralisée.
 
 ## Table des matières
 
@@ -8,26 +8,22 @@ Bienvenue sur le projet Pronote, une application web de gestion scolaire inspir�
 2. [Installation](#installation)
 3. [Configuration](#configuration)
 4. [Structure du projet](#structure-du-projet)
-5. [Modules](#modules)
-   - [Accueil](#module-accueil)
-   - [Notes](#module-notes)
-   - [Absences](#module-absences)
-   - [Cahier de textes](#module-cahier-de-textes)
-   - [Agenda](#module-agenda)
-   - [Messagerie](#module-messagerie)
-6. [Rôles utilisateurs](#rôles-utilisateurs)
-7. [API](#api)
-8. [Dépannage](#dépannage)
-9. [Contribution](#contribution)
+5. [Sécurité](#sécurité)
+6. [Modules](#modules)
+7. [Utilisation](#utilisation)
+8. [Maintenance](#maintenance)
+9. [Dépannage](#dépannage)
+10. [Contribution](#contribution)
 
 ## Prérequis
 
 Pour installer et utiliser cette application, vous aurez besoin de :
 
 - PHP 7.4 ou supérieur
-- MySQL ou MariaDB
-- Serveur web (Apache, Nginx, etc.)
+- MySQL 5.7+ ou MariaDB 10.3+
+- Serveur web (Apache, Nginx)
 - Extensions PHP requises : pdo, pdo_mysql, json, mbstring, session
+- Recommandé : Extension intl pour la gestion des dates/formats internationaux
 
 ## Installation
 
@@ -35,19 +31,25 @@ Pour installer et utiliser cette application, vous aurez besoin de :
 
 1. **Téléchargement** : Téléchargez l'archive du projet et décompressez-la dans le répertoire web de votre serveur.
 
-2. **Accès à l'installation** : Accédez à `http://votre-serveur/pronote/install.php` depuis votre navigateur.
+2. **Préparation** : Assurez-vous que votre serveur web est correctement configuré et que PHP a les autorisations d'écriture sur les dossiers:
+   - `API/logs`
+   - `API/config`
+   - `uploads`
+   - `temp`
 
-3. **Configuration** : Suivez les instructions pour configurer l'application :
-   - Renseignez l'URL de base de l'application (par exemple, `/pronote`)
+3. **Accès à l'installation** : Accédez à `http://votre-serveur/pronote/install.php` depuis votre navigateur.
+
+4. **Configuration** : Suivez les instructions pour configurer l'application :
+   - Renseignez l'URL de base de l'application (par exemple, `/pronote` ou laisser vide si à la racine)
    - Sélectionnez l'environnement (`development`, `production` ou `test`)
    - Entrez les informations de connexion à votre base de données
    - Cliquez sur "Installer"
 
-4. **Finalisation** : Une fois l'installation terminée, vous serez redirigé vers la page de connexion.
+5. **Finalisation** : Une fois l'installation terminée, vous serez redirigé vers la page de connexion.
 
-### Méthode 2 : Installation manuelle
+### Méthode 2 : Installation manuelle (pour utilisateurs avancés)
 
-1. **Téléchargement** : Téléchargez l'archive du projet et décompressez-la dans le répertoire web de votre serveur.
+1. **Téléchargement et déploiement** : Décompressez l'archive dans le répertoire web de votre serveur.
 
 2. **Configuration** : Créez un fichier `env.php` dans le répertoire `API/config/` avec le contenu suivant :
    ```php
@@ -76,12 +78,14 @@ Pour installer et utiliser cette application, vous aurez besoin de :
    if (!defined('DB_CHARSET')) define('DB_CHARSET', 'utf8mb4');
    ```
 
-3. **Création des répertoires** : Assurez-vous que les répertoires suivants existent et sont accessibles en écriture :
+3. **Création des répertoires** : Assurez-vous que ces répertoires existent et sont accessibles en écriture :
    - `API/logs`
    - `uploads`
    - `temp`
 
-4. **Base de données** : La configuration de la base de données sera ajoutée ultérieurement.
+4. **Importation de la base de données** : Importez le fichier SQL `API/schema.sql` dans votre base de données.
+
+5. **Finition** : Créez un fichier `install.lock` à la racine du projet pour désactiver l'installation.
 
 ## Configuration
 
@@ -89,9 +93,7 @@ Pour installer et utiliser cette application, vous aurez besoin de :
 
 #### Apache
 
-Si vous utilisez Apache, assurez-vous que le module `mod_rewrite` est activé. Un fichier `.htaccess` est inclus dans le projet pour gérer les redirections.
-
-Exemple de configuration VirtualHost :
+Voici un exemple de configuration pour Apache avec un VirtualHost :
 
 ```apache
 <VirtualHost *:80>
@@ -137,18 +139,24 @@ server {
 
 ### Configuration des permissions
 
-Certains répertoires doivent être accessibles en écriture par le serveur web :
+Pour assurer un fonctionnement optimal et sécurisé :
 
 ```bash
+# Permissions de base
 chmod -R 755 .
+
+# Dossiers nécessitant des permissions d'écriture
 chmod -R 775 API/logs
 chmod -R 775 uploads
 chmod -R 775 temp
+
+# Protéger les fichiers de configuration
+chmod 640 API/config/env.php
 ```
 
 ## Structure du projet
 
-L'application est organisée en modules distincts :
+L'application est organisée en modules distincts suivant une architecture modulaire :
 
 ```
 pronote/
@@ -163,6 +171,15 @@ pronote/
 ├── uploads/           # Dossier pour les fichiers uploadés
 └── temp/              # Dossier temporaire
 ```
+
+## Sécurité
+
+La sécurité est une priorité dans le développement de cette application. Voici quelques-unes des mesures mises en place :
+
+- **Validation et assainissement des entrées** : Toutes les données utilisateur sont systématiquement validées et assainies pour prévenir les injections SQL et les attaques XSS.
+- **Gestion des sessions** : Les sessions sont gérées de manière sécurisée, avec des identifiants de session uniques et des protections contre le détournement de session.
+- **Chiffrement des données sensibles** : Les mots de passe et autres données sensibles sont chiffrés à l'aide d'algorithmes robustes.
+- **Contrôle d'accès** : Des contrôles d'accès stricts sont appliqués pour s'assurer que les utilisateurs n'ont accès qu'aux fonctionnalités et données qui les concernent.
 
 ## Modules
 
@@ -238,58 +255,22 @@ Ce module permet la communication interne entre les différents acteurs :
 - **Nouvelle conversation** : `/messagerie/nouvelle_conversation.php`
 - **Lecture d'une conversation** : `/messagerie/conversation.php?id=[ID_CONVERSATION]`
 
-## Rôles utilisateurs
+## Utilisation
 
-L'application gère différents types d'utilisateurs avec des permissions spécifiques :
+Après l'installation et la configuration, voici comment utiliser l'application :
 
-1. **Élève** (`eleve`) :
-   - Consultation de ses propres notes, absences et devoirs
-   - Accès à l'agenda et à la messagerie
+1. **Connexion** : Accédez à la page de connexion à l'URL configurée (par exemple, `http://votre-serveur/pronote/login/public/index.php`).
+2. **Tableau de bord** : Après connexion, vous serez redirigé vers le tableau de bord adapté à votre rôle (élève, professeur, administrateur, etc.).
+3. **Navigation** : Utilisez le menu pour naviguer entre les différents modules (notes, absences, cahier de textes, agenda, messagerie).
+4. **Déconnexion** : Pour vous déconnecter, cliquez sur le lien de déconnexion dans le menu.
 
-2. **Parent** (`parent`) :
-   - Consultation des notes, absences et devoirs de ses enfants
-   - Accès à l'agenda et à la messagerie
+## Maintenance
 
-3. **Professeur** (`professeur`) :
-   - Gestion des notes pour ses classes et matières
-   - Saisie des absences pour ses cours
-   - Ajout de devoirs et gestion du cahier de textes
-   - Création d'événements pour ses classes
+Pour assurer le bon fonctionnement de l'application, voici quelques tâches de maintenance régulières :
 
-4. **Vie scolaire** (`vie_scolaire`) :
-   - Gestion complète des absences
-   - Consultation des notes et devoirs
-   - Communication avec les élèves, parents et professeurs
-
-5. **Administrateur** (`administrateur`) :
-   - Accès complet à toutes les fonctionnalités
-   - Gestion des utilisateurs
-   - Paramétrage de l'application
-
-## API
-
-L'application dispose d'une API centralisée pour gérer l'authentification, les sessions et les opérations communes.
-
-Pour utiliser l'API dans un nouveau module :
-
-```php
-// Inclure le bootstrap de l'API
-require_once __DIR__ . '/../API/bootstrap.php';
-
-// Vérifier si l'utilisateur est connecté
-if (!isLoggedIn()) {
-    header('Location: ' . LOGIN_URL);
-    exit;
-}
-
-// Accéder à la connexion PDO
-$pdo = $GLOBALS['pdo'];
-
-// Vérifier les permissions
-if (canManageNotes()) {
-    // Code pour la gestion des notes
-}
-```
+- **Sauvegardes** : Effectuez des sauvegardes régulières de la base de données et des fichiers importants.
+- **Mises à jour** : Tenez l'application à jour avec les dernières versions pour bénéficier des améliorations et correctifs de sécurité.
+- **Surveillance** : Surveillez les journaux d'erreurs et d'accès pour détecter d'éventuels problèmes ou tentatives d'intrusion.
 
 ## Dépannage
 

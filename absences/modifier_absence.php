@@ -2,25 +2,31 @@
 // Démarrer la mise en mémoire tampon
 ob_start();
 
-// Inclusion des fichiers nécessaires
-include 'includes/db.php';
-include 'includes/auth.php';
-include 'includes/functions.php';
+// Inclusion des fichiers nécessaires - Utiliser le système centralisé
+require_once __DIR__ . '/../API/auth_central.php';
+require_once 'includes/db.php';
+require_once 'includes/functions.php';
 
-// Vérifier que l'utilisateur est connecté et autorisé
+// Vérifier que l'utilisateur est connecté et autorisé avec le système centralisé
 if (!isLoggedIn() || !canManageAbsences()) {
-    header('Location: ../login/public/index.php');
+    header('Location: ' . LOGIN_URL);
     exit;
 }
 
-// Récupérer les informations de l'utilisateur connecté
-$user = $_SESSION['user'];
-$user_fullname = $user['prenom'] . ' ' . $user['nom'];
-$user_role = $user['profil'];
-$user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
+// Récupérer les informations de l'utilisateur connecté via le système centralisé
+$user = getCurrentUser();
+$user_fullname = getUserFullName();
+$user_role = getUserRole();
+$user_initials = getUserInitials();
 
-// Récupérer l'ID de l'absence à modifier
-$id_absence = isset($_GET['id']) ? intval($_GET['id']) : 0;
+// Récupérer l'ID de l'absence à modifier avec validation
+$id_absence = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+if (!$id_absence) {
+    // Redirection si l'ID n'est pas valide
+    $_SESSION['error_message'] = "Identifiant d'absence non valide";
+    header('Location: absences.php');
+    exit;
+}
 
 // Récupérer les détails de l'absence
 $absence = getAbsenceById($pdo, $id_absence);
@@ -35,42 +41,72 @@ if (!$absence) {
 $message = '';
 $erreur = '';
 
-// Traitement du formulaire
+// Traitement du formulaire avec validation renforcée
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Validation des données du formulaire
-    if (empty($_POST['date_debut']) || empty($_POST['heure_debut']) || 
-        empty($_POST['date_fin']) || empty($_POST['heure_fin']) || empty($_POST['type_absence'])) {
-        $erreur = "Veuillez remplir tous les champs obligatoires.";
+    // Vérification du jeton CSRF
+    if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || 
+        !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        $erreur = "Erreur de sécurité. Veuillez réessayer.";
     } else {
-        // Formater les dates et heures
-        $date_debut = $_POST['date_debut'] . ' ' . $_POST['heure_debut'] . ':00';
-        $date_fin = $_POST['date_fin'] . ' ' . $_POST['heure_fin'] . ':00';
+        // Validation des données du formulaire avec filter_input
+        $date_debut = filter_input(INPUT_POST, 'date_debut', FILTER_SANITIZE_STRING);
+        $heure_debut = filter_input(INPUT_POST, 'heure_debut', FILTER_SANITIZE_STRING);
+        $date_fin = filter_input(INPUT_POST, 'date_fin', FILTER_SANITIZE_STRING);
+        $heure_fin = filter_input(INPUT_POST, 'heure_fin', FILTER_SANITIZE_STRING);
+        $type_absence = filter_input(INPUT_POST, 'type_absence', FILTER_SANITIZE_STRING);
+        $motif = filter_input(INPUT_POST, 'motif', FILTER_SANITIZE_STRING);
+        $justifie = isset($_POST['justifie']) ? 1 : 0;
+        $commentaire = filter_input(INPUT_POST, 'commentaire', FILTER_SANITIZE_STRING);
         
-        // S'assurer que la date de fin est après la date de début
-        if (strtotime($date_fin) <= strtotime($date_debut)) {
-            $erreur = "La date/heure de fin doit être après la date/heure de début.";
+        // Vérifications supplémentaires
+        $types_valides = ['cours', 'demi-journee', 'journee'];
+        $motifs_valides = ['', 'maladie', 'rdv_medical', 'familial', 'transport', 'autre'];
+        
+        if (empty($date_debut) || empty($heure_debut) || empty($date_fin) || 
+            empty($heure_fin) || empty($type_absence)) {
+            $erreur = "Veuillez remplir tous les champs obligatoires.";
+        } elseif (!in_array($type_absence, $types_valides)) {
+            $erreur = "Type d'absence invalide.";
+        } elseif (!empty($motif) && !in_array($motif, $motifs_valides)) {
+            $erreur = "Motif invalide.";
         } else {
-            // Préparer les données pour la mise à jour
-            $data = [
-                'date_debut' => $date_debut,
-                'date_fin' => $date_fin,
-                'type_absence' => $_POST['type_absence'],
-                'motif' => $_POST['motif'] ?? '',
-                'justifie' => isset($_POST['justifie']) ? true : false,
-                'commentaire' => $_POST['commentaire'] ?? ''
-            ];
+            // Formater les dates et les valider
+            $datetime_debut = $date_debut . ' ' . $heure_debut . ':00';
+            $datetime_fin = $date_fin . ' ' . $heure_fin . ':00';
             
-            // Mettre à jour l'absence dans la base de données
-            $success = modifierAbsence($pdo, $id_absence, $data);
+            // Valider le format des dates
+            $format = 'Y-m-d H:i:s';
+            $d1 = DateTime::createFromFormat($format, $datetime_debut);
+            $d2 = DateTime::createFromFormat($format, $datetime_fin);
             
-            if ($success) {
-                $message = "L'absence a été modifiée avec succès.";
-                // Mettre à jour les données affichées
-                $absence = getAbsenceById($pdo, $id_absence);
-                // Redirection après un court délai
-                header('refresh:2;url=details_absence.php?id=' . $id_absence);
+            if (!$d1 || $d1->format($format) !== $datetime_debut || 
+                !$d2 || $d2->format($format) !== $datetime_fin) {
+                $erreur = "Format de date ou d'heure invalide.";
+            } elseif (strtotime($datetime_fin) <= strtotime($datetime_debut)) {
+                $erreur = "La date/heure de fin doit être après la date/heure de début.";
             } else {
-                $erreur = "Une erreur est survenue lors de la modification de l'absence.";
+                // Préparer les données pour la mise à jour
+                $data = [
+                    'date_debut' => $datetime_debut,
+                    'date_fin' => $datetime_fin,
+                    'type_absence' => $type_absence,
+                    'motif' => $motif,
+                    'justifie' => $justifie,
+                    'commentaire' => $commentaire
+                ];
+                
+                // Mettre à jour l'absence dans la base de données
+                $success = modifierAbsence($pdo, $id_absence, $data);
+                
+                if ($success) {
+                    $message = "L'absence a été modifiée avec succès.";
+                    // Mettre à jour les données affichées
+                    $absence = getAbsenceById($pdo, $id_absence);
+                    // Redirection après un court délai
+                    header('refresh:2;url=details_absence.php?id=' . $id_absence);
+                } else {
+                    $erreur = "Une erreur est survenue lors de la modification de l'absence.";
+                }
             }
         }
     }
@@ -79,6 +115,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Extraire les composantes de date et heure
 $date_debut = new DateTime($absence['date_debut']);
 $date_fin = new DateTime($absence['date_fin']);
+
+// Ajouter un jeton CSRF pour le formulaire
+$csrf_token = bin2hex(random_bytes(32));
+$_SESSION['csrf_token'] = $csrf_token;
 ?>
 <!DOCTYPE html>
 <html>
@@ -135,6 +175,7 @@ $date_fin = new DateTime($absence['date_fin']);
         
         <div class="form-container">
           <form method="post" action="modifier_absence.php?id=<?= $id_absence ?>">
+            <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
             <div class="form-grid">
               <div class="form-group form-full">
                 <h3>Élève: <?= htmlspecialchars($absence['prenom'] . ' ' . $absence['nom'] . ' (' . $absence['classe'] . ')') ?></h3>

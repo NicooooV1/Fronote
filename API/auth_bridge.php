@@ -292,9 +292,17 @@ if (!function_exists('getUserInitials')) {
     }
 }
 
-if (!function_exists('canManagerDevoirs')) {
+if (!function_exists('canManageDevoirs') && function_exists('canManagerDevoirs')) {
     /**
-     * Alias pour corriger les fautes de frappe courantes
+     * Fonction correctement nommée pour la gestion des devoirs
+     * Évite la confusion avec l'ancienne fonction mal orthographiée
+     */
+    function canManageDevoirs() {
+        return canManagerDevoirs();
+    }
+} elseif (!function_exists('canManagerDevoirs') && function_exists('canManageDevoirs')) {
+    /**
+     * Alias pour maintenir la compatibilité avec le code existant
      */
     function canManagerDevoirs() {
         return canManageDevoirs();

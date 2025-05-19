@@ -2,28 +2,28 @@
 // Démarrer la mise en mémoire tampon
 ob_start();
 
-// Inclusion des fichiers nécessaires
-include 'includes/db.php';
-include 'includes/auth.php';
-include 'includes/functions.php';
+// Inclusion des fichiers nécessaires - Utiliser le système centralisé
+require_once __DIR__ . '/../API/auth_central.php';
+require_once 'includes/db.php';
+require_once 'includes/functions.php';
 
-// Vérifier que l'utilisateur est connecté et autorisé
+// Vérifier que l'utilisateur est connecté et autorisé avec le système centralisé
 if (!isLoggedIn() || !canManageAbsences()) {
-    header('Location: ../login/public/index.php');
+    header('Location: ' . LOGIN_URL);
     exit;
 }
 
-// Récupérer les informations de l'utilisateur connecté
-$user = $_SESSION['user'];
-$user_fullname = $user['prenom'] . ' ' . $user['nom'];
-$user_role = $user['profil'];
-$user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
+// Récupérer les informations de l'utilisateur connecté via le système centralisé
+$user = getCurrentUser();
+$user_fullname = getUserFullName();
+$user_role = getUserRole();
+$user_initials = getUserInitials();
 
-// Définir les filtres par défaut
-$date_debut = isset($_GET['date_debut']) ? $_GET['date_debut'] : date('Y-m-d', strtotime('-30 days'));
-$date_fin = isset($_GET['date_fin']) ? $_GET['date_fin'] : date('Y-m-d');
-$classe = isset($_GET['classe']) ? $_GET['classe'] : '';
-$traite = isset($_GET['traite']) ? $_GET['traite'] : '';
+// Définir les filtres par défaut avec validation
+$date_debut = filter_input(INPUT_GET, 'date_debut', FILTER_SANITIZE_STRING) ?: date('Y-m-d', strtotime('-30 days'));
+$date_fin = filter_input(INPUT_GET, 'date_fin', FILTER_SANITIZE_STRING) ?: date('Y-m-d');
+$classe = filter_input(INPUT_GET, 'classe', FILTER_SANITIZE_STRING) ?: '';
+$traite = filter_input(INPUT_GET, 'traite', FILTER_SANITIZE_STRING) ?: '';
 
 // Vérifier si la table justificatifs existe
 try {
@@ -70,22 +70,25 @@ $justificatifs = [];
 
 if (isAdmin() || isVieScolaire()) {
     try {
-        // Construire la requête en utilisant la colonne de date déterminée
+        // Construire la requête en utilisant la colonne de date déterminée avec paramètres nommés
         $sql = "SELECT j.*, e.nom, e.prenom, e.classe 
                 FROM justificatifs j 
                 JOIN eleves e ON j.id_eleve = e.id 
-                WHERE j.$dateColumn BETWEEN ? AND ? ";
+                WHERE j.$dateColumn BETWEEN :date_debut AND :date_fin ";
                 
-        $params = [$date_debut, $date_fin];
+        $params = [
+            ':date_debut' => $date_debut,
+            ':date_fin' => $date_fin
+        ];
         
         if (!empty($classe)) {
-            $sql .= "AND e.classe = ? ";
-            $params[] = $classe;
+            $sql .= "AND e.classe = :classe ";
+            $params[':classe'] = $classe;
         }
         
         if ($traite !== '') {
-            $sql .= "AND j.traite = ? ";
-            $params[] = $traite === 'oui';
+            $sql .= "AND j.traite = :traite ";
+            $params[':traite'] = ($traite === 'oui') ? 1 : 0; // Conversion explicite en booléen
         }
         
         $sql .= "ORDER BY j.$dateColumn DESC";
@@ -94,36 +97,61 @@ if (isAdmin() || isVieScolaire()) {
         $stmt->execute($params);
         $justificatifs = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
-        error_log("Erreur lors de la récupération des justificatifs: " . $e->getMessage());
+        // Journalisation et gestion de l'erreur
+        \Pronote\Logging\error("Erreur lors de la récupération des justificatifs: " . $e->getMessage());
+        $justificatifs = [];
     }
 }
 
-// Traitement du formulaire de justification
+// Traitement du formulaire de justification avec validation CSRF
 $message = '';
 $erreur = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'traiter') {
-    $id_justificatif = intval($_POST['id_justificatif']);
-    $approuve = isset($_POST['approuve']) ? true : false;
-    $commentaire = $_POST['commentaire'] ?? '';
-    
-    // Mise à jour du justificatif
-    $stmt = $pdo->prepare("UPDATE justificatifs SET traite = 1, approuve = ?, commentaire_admin = ?, date_traitement = NOW(), traite_par = ? WHERE id = ?");
-    
-    if ($stmt->execute([$approuve, $commentaire, $user_fullname, $id_justificatif])) {
-        // Si approuvé, mettre à jour l'absence
-        if ($approuve && isset($_POST['id_absence'])) {
-            $id_absence = intval($_POST['id_absence']);
-            $stmt = $pdo->prepare("UPDATE absences SET justifie = 1 WHERE id = ?");
-            $stmt->execute([$id_absence]);
-        }
-        
-        $message = "Le justificatif a été traité avec succès.";
-        // Recharger la liste des justificatifs
-        header('Location: justificatifs.php?success=1');
-        exit;
+    // Vérifier le jeton CSRF
+    if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || 
+        !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        $erreur = "Erreur de sécurité. Veuillez réessayer.";
     } else {
-        $erreur = "Une erreur est survenue lors du traitement du justificatif.";
+        $id_justificatif = filter_input(INPUT_POST, 'id_justificatif', FILTER_VALIDATE_INT);
+        if (!$id_justificatif) {
+            $erreur = "Identifiant de justificatif invalide";
+        } else {
+            $approuve = isset($_POST['approuve']) ? 1 : 0;
+            $commentaire = filter_input(INPUT_POST, 'commentaire', FILTER_SANITIZE_STRING) ?: '';
+            
+            // Mise à jour du justificatif avec paramètres nommés
+            $stmt = $pdo->prepare("
+                UPDATE justificatifs 
+                SET traite = 1, 
+                    approuve = :approuve, 
+                    commentaire_admin = :commentaire, 
+                    date_traitement = NOW(), 
+                    traite_par = :traite_par 
+                WHERE id = :id
+            ");
+            
+            if ($stmt->execute([
+                ':approuve' => $approuve, 
+                ':commentaire' => $commentaire, 
+                ':traite_par' => $user_fullname, 
+                ':id' => $id_justificatif
+            ])) {
+                // Si approuvé, mettre à jour l'absence
+                if ($approuve && isset($_POST['id_absence'])) {
+                    $id_absence = intval($_POST['id_absence']);
+                    $stmt = $pdo->prepare("UPDATE absences SET justifie = 1 WHERE id = ?");
+                    $stmt->execute([$id_absence]);
+                }
+                
+                $message = "Le justificatif a été traité avec succès.";
+                // Recharger la liste des justificatifs
+                header('Location: justificatifs.php?success=1');
+                exit;
+            } else {
+                $erreur = "Une erreur est survenue lors du traitement du justificatif.";
+            }
+        }
     }
 }
 
@@ -249,12 +277,12 @@ try {
                   <div class="list-cell"><?= htmlspecialchars($justificatif['prenom'] . ' ' . $justificatif['nom']) ?></div>
                   <div class="list-cell"><?= htmlspecialchars($justificatif['classe']) ?></div>
                   <div class="list-cell">
-                    <?= isset($justificatif[$dateColumn]) ? date('d/m/Y', strtotime($justificatif[$dateColumn])) : 'N/A' ?>
+                    <?= isset($justificatif[$dateColumn]) ? htmlspecialchars(date('d/m/Y', strtotime($justificatif[$dateColumn]))) : 'N/A' ?>
                   </div>
                   <div class="list-cell">
-                    Du <?= date('d/m/Y', strtotime($justificatif['date_debut_absence'])) ?>
+                    Du <?= htmlspecialchars(date('d/m/Y', strtotime($justificatif['date_debut_absence']))) ?>
                     <br>
-                    au <?= date('d/m/Y', strtotime($justificatif['date_fin_absence'])) ?>
+                    au <?= htmlspecialchars(date('d/m/Y', strtotime($justificatif['date_fin_absence']))) ?>
                   </div>
                   <div class="list-cell"><?= htmlspecialchars($justificatif['motif'] ?? 'Non spécifié') ?></div>
                   <div class="list-cell">

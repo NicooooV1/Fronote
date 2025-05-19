@@ -120,7 +120,10 @@ class Auth {
         
         error_log($message);
         
-        // TODO: Enregistrer dans une table de logs si nécessaire
+        // Utiliser le système de journalisation central si disponible
+        if (function_exists('\\Pronote\\Logging\\authAction')) {
+            \Pronote\Logging\authAction('login', $identifiant, $success);
+        }
     }
     
     /**

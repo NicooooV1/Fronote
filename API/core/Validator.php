@@ -2,6 +2,8 @@
 /**
  * Classe de validation de formulaire
  */
+namespace Pronote\Validation;
+
 class Validator
 {
     private $data;
@@ -27,7 +29,7 @@ class Validator
      * @param string $message   Message d'erreur personnalisé
      * @return Validator Instance courante pour chaînage
      */
-    public function rule($field, $rule, $options = null, $message = null)
+    public function addRule($field, $rule, $options = null, $message = null)
     {
         $this->rules[$field][] = [
             'rule' => $rule,
@@ -181,7 +183,7 @@ class Validator
      * @param string $field Nom du champ
      * @return string|null Message d'erreur ou null
      */
-    public function getError($field)
+    public function getFirstError($field)
     {
         return isset($this->errors[$field]) ? $this->errors[$field] : null;
     }

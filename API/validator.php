@@ -2,7 +2,15 @@
 /**
  * Système de validation standardisé pour toute l'application
  * Fournit des méthodes pour valider et filtrer les entrées utilisateur
+ * 
+ * Compatibilité assurée entre l'ancien et le nouveau système
  */
+
+// Vérifier si la classe Validator a déjà été incluse
+if (!class_exists('\\Pronote\\Validation\\Validator')) {
+    // Inclure le validateur orienté objet
+    require_once __DIR__ . '/core/Validator.php';
+}
 
 /**
  * Valide une chaîne de caractères
@@ -270,5 +278,39 @@ function sanitizeOutput($input, $allowHTML = false) {
         return strip_tags($value, $allowedTags);
     } else {
         return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+    }
+}
+
+/**
+ * Adaptateur pour utiliser le nouveau validateur avec l'ancienne interface
+ * @param mixed $input Valeur à valider
+ * @param array $rules Règles de validation
+ * @return array [bool $valid, mixed $value, string $error]
+ */
+function validateWithRules($input, $rules) {
+    $validator = new \Pronote\Validation\Validator(['value' => $input]);
+    
+    foreach ($rules as $rule => $params) {
+        if (is_int($rule)) {
+            // Format simple: ['required', 'email']
+            $validator->addRule('value', $params);
+        } else {
+            // Format avec options: ['min' => 3, 'max' => 10]
+            $validator->addRule('value', $rule, $params);
+        }
+    }
+    
+    if ($validator->validate()) {
+        return [
+            'valid' => true,
+            'value' => $input,
+            'error' => ''
+        ];
+    } else {
+        return [
+            'valid' => false,
+            'value' => $input,
+            'error' => $validator->getFirstError('value') ?: 'Validation échouée'
+        ];
     }
 }

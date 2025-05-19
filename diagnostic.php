@@ -4,34 +4,34 @@
  * Cette page permet de diagnostiquer les problèmes de configuration, de permissions et de redirections
  */
 
-// Charger le système d'autoloading
-require_once __DIR__ . '/API/autoload.php';
+// Démarrer la session pour la vérification d'authentification
+session_start();
 
-// Initialiser l'application
-bootstrap();
-
-// Vérifier que l'utilisateur est administrateur
-if (!\Pronote\Auth\isAdmin()) {
+// Vérifier si l'utilisateur est administrateur avant même de charger d'autres fichiers
+if (!isset($_SESSION['user']) || !isset($_SESSION['user']['profil']) || $_SESSION['user']['profil'] !== 'administrateur') {
     // Rediriger vers la page de connexion ou afficher un message d'erreur
-    if (!\Pronote\Auth\isLoggedIn()) {
-        if (!defined('BASE_URL')) {
-            define('BASE_URL', '/~u22405372/SAE/Pronote');
-        }
-        header('Location: ' . BASE_URL . '/login/public/index.php');
-    } else {
-        http_response_code(403); // Forbidden
-        echo '<h1>Accès refusé</h1><p>Seuls les administrateurs peuvent accéder à cette page.</p>';
-    }
+    http_response_code(403); // Forbidden
+    echo '<h1>Accès refusé</h1><p>Seuls les administrateurs peuvent accéder à cette page.</p>';
     exit;
 }
 
-// Journaliser l'accès à la page de diagnostic
-\Pronote\Logging\info('Accès à la page de diagnostic', 'security');
+// Maintenant, charger le système d'autoloading
+require_once __DIR__ . '/API/autoload.php';
 
-// Afficher les erreurs pour le diagnostic
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+// Initialiser l'application
+if (function_exists('bootstrap')) {
+    bootstrap();
+}
 
+// Double vérification que l'utilisateur est administrateur
+if (!function_exists('\Pronote\Auth\isAdmin') || !\Pronote\Auth\isAdmin()) {
+    http_response_code(403);
+    echo '<h1>Accès refusé</h1><p>Seuls les administrateurs peuvent accéder à cette page.</p>';
+    exit;
+}
+
+// Limiter l'accès au diagnostic par IP
+$allowedIPs = ['127.0.0.1', '::1', 'SERVER_IP_HERE']; // Ajouter les IPs autorisées
 /**
  * Teste les permissions d'un répertoire
  * @param string $directory Chemin du répertoire

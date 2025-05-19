@@ -2,28 +2,28 @@
 // Démarrer la mise en mémoire tampon
 ob_start();
 
-// Inclusion des fichiers nécessaires
-include 'includes/db.php';
-include 'includes/auth.php';
-include 'includes/functions.php';
+// Inclusion des fichiers nécessaires - Utiliser le système centralisé
+require_once __DIR__ . '/../API/auth_central.php';
+require_once 'includes/db.php';
+require_once 'includes/functions.php';
 
-// Vérifier que l'utilisateur est connecté
+// Vérifier que l'utilisateur est connecté de façon centralisée
 if (!isLoggedIn()) {
-    header('Location: ../login/public/index.php');
+    header('Location: ' . LOGIN_URL);
     exit;
 }
 
-// Récupérer les informations de l'utilisateur connecté
-$user = $_SESSION['user'];
-$user_fullname = $user['prenom'] . ' ' . $user['nom'];
-$user_role = $user['profil'];
-$user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
+// Récupérer les informations de l'utilisateur connecté via le système centralisé
+$user = getCurrentUser();
+$user_fullname = getUserFullName();
+$user_role = getUserRole();
+$user_initials = getUserInitials();
 
-// Définir les filtres par défaut
-$date_debut = isset($_GET['date_debut']) ? $_GET['date_debut'] : date('Y-m-d', strtotime('-30 days'));
-$date_fin = isset($_GET['date_fin']) ? $_GET['date_fin'] : date('Y-m-d');
-$classe = isset($_GET['classe']) ? $_GET['classe'] : '';
-$justifie = isset($_GET['justifie']) ? $_GET['justifie'] : '';
+// Définir les filtres par défaut avec validation des entrées
+$date_debut = filter_input(INPUT_GET, 'date_debut', FILTER_SANITIZE_STRING) ?: date('Y-m-d', strtotime('-30 days'));
+$date_fin = filter_input(INPUT_GET, 'date_fin', FILTER_SANITIZE_STRING) ?: date('Y-m-d');
+$classe = filter_input(INPUT_GET, 'classe', FILTER_SANITIZE_STRING) ?: '';
+$justifie = filter_input(INPUT_GET, 'justifie', FILTER_SANITIZE_STRING) ?: '';
 
 // Vérifier si la table retards existe
 try {
@@ -33,8 +33,10 @@ try {
         createRetardsTableIfNotExists($pdo);
     }
 } catch (PDOException $e) {
-    error_log("Erreur lors de la vérification de la table retards: " . $e->getMessage());
-    // Pas de traitement spécifique en cas d'erreur, l'application continue
+    // Utiliser le système de journalisation centralisé
+    \Pronote\Logging\error("Erreur lors de la vérification/création de la table retards: " . $e->getMessage());
+    // Afficher un message convivial
+    $error_message = "Un problème est survenu lors de l'initialisation du module. Veuillez contacter l'administrateur.";
 }
 
 // Récupérer la liste des retards selon le rôle de l'utilisateur
@@ -66,7 +68,7 @@ if (isAdmin() || isVieScolaire()) {
         $retards = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 } elseif (isTeacher()) {
-    // Fix the query to get the classes taught by the teacher
+    // Récupérer les classes du professeur avec requête préparée
     $stmt = $pdo->prepare("
         SELECT DISTINCT c.nom_classe as classe
         FROM professeur_classes c
@@ -75,7 +77,7 @@ if (isAdmin() || isVieScolaire()) {
     $stmt->execute([$user['id']]);
     $prof_classes = $stmt->fetchAll(PDO::FETCH_COLUMN);
     
-    // If no classes found for this professor, use an empty array to avoid SQL errors
+    // Si aucune classe trouvée, utiliser un tableau vide
     if (empty($prof_classes)) {
         $prof_classes = [];
     }
@@ -83,27 +85,33 @@ if (isAdmin() || isVieScolaire()) {
     if (!empty($classe) && in_array($classe, $prof_classes)) {
         $retards = getRetardsClasse($pdo, $classe, $date_debut, $date_fin);
     } else {
-        // Tous les retards des classes du professeur
-        $placeholders = implode(',', array_fill(0, count($prof_classes), '?'));
-        $sql = "SELECT r.*, e.nom, e.prenom, e.classe 
-                FROM retards r 
-                JOIN eleves e ON r.id_eleve = e.id 
-                WHERE e.classe IN ($placeholders) 
-                AND ((r.date_retard BETWEEN ? AND ?) OR 
-                     (DATE(r.date_retard) BETWEEN ? AND ?))";
-                
-        if ($justifie !== '') {
-            $sql .= "AND r.justifie = ? ";
-            $params = array_merge($prof_classes, [$date_debut, $date_fin, $date_debut, $date_fin, $justifie === 'oui']);
+        // Tous les retards des classes du professeur - Gestion sécurisée des placeholders
+        if (empty($prof_classes)) {
+            // Aucune classe à afficher
+            $retards = [];
         } else {
+            // Construire la requête de manière sécurisée
+            $placeholders = implode(',', array_fill(0, count($prof_classes), '?'));
+            $sql = "SELECT r.*, e.nom, e.prenom, e.classe 
+                    FROM retards r 
+                    JOIN eleves e ON r.id_eleve = e.id 
+                    WHERE e.classe IN ($placeholders) 
+                    AND ((r.date_retard BETWEEN ? AND ?) OR 
+                         (DATE(r.date_retard) BETWEEN ? AND ?))";
+                
             $params = array_merge($prof_classes, [$date_debut, $date_fin, $date_debut, $date_fin]);
+            
+            if ($justifie !== '') {
+                $sql .= " AND r.justifie = ?";
+                $params[] = ($justifie === 'oui') ? 1 : 0; // Convertir explicitement en booléen
+            }
+            
+            $sql .= " ORDER BY e.classe, e.nom, e.prenom, r.date_retard DESC";
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            $retards = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
-        
-        $sql .= "ORDER BY e.classe, e.nom, e.prenom, r.date_retard DESC";
-        
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
-        $retards = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 } elseif (isStudent()) {
     // Élèves voient leurs propres retards
@@ -316,6 +324,14 @@ if (!empty($etablissement_data['classes'])) {
                 </div>
               <?php endforeach; ?>
             </div>
+          </div>
+        <?php endif; ?>
+        
+        <!-- Afficher les erreurs de façon conviviale -->
+        <?php if (isset($error_message)): ?>
+          <div class="alert alert-error">
+            <i class="fas fa-exclamation-circle"></i>
+            <?= htmlspecialchars($error_message) ?>
           </div>
         <?php endif; ?>
       </div>

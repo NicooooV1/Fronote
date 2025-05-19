@@ -2,67 +2,75 @@
 // Démarrer la mise en mémoire tampon
 ob_start();
 
-// Enable error reporting for debugging
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+// Utiliser le système de gestion d'erreurs centralisé au lieu d'activer manuellement l'affichage des erreurs
+require_once __DIR__ . '/../API/errors.php';
 
-// Inclusion des fichiers nécessaires
-include 'includes/db.php';
-include 'includes/auth.php';
-include 'includes/functions.php';
+// Inclusion des fichiers nécessaires - Utiliser le système centralisé
+require_once __DIR__ . '/../API/auth_central.php';
+require_once 'includes/db.php';
+require_once 'includes/functions.php';
 
 // Vérifier que l'utilisateur est connecté et autorisé
 if (!isLoggedIn() || !canManageAbsences()) {
-    header('Location: ../login/public/index.php');
+    header('Location: ' . LOGIN_URL);
     exit;
 }
 
-// Récupérer les informations de l'utilisateur connecté
-$user = $_SESSION['user'];
-$user_fullname = $user['prenom'] . ' ' . $user['nom'];
-$user_role = $user['profil'];
-$user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
+// Récupérer les informations de l'utilisateur connecté via le système centralisé
+$user = getCurrentUser();
+$user_fullname = getUserFullName();
+$user_role = getUserRole();
+$user_initials = getUserInitials();
+
+// Ajouter un jeton CSRF pour protéger le formulaire
+$csrf_token = bin2hex(random_bytes(32));
+$_SESSION['csrf_token'] = $csrf_token;
 
 // Message de succès ou d'erreur
 $message = '';
 $erreur = '';
 
-// Traitement du formulaire
+// Traitement du formulaire avec vérification CSRF
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Validation des données du formulaire
-    if (empty($_POST['id_eleve']) || empty($_POST['date_debut']) || empty($_POST['heure_debut']) || 
-        empty($_POST['date_fin']) || empty($_POST['heure_fin']) || empty($_POST['type_absence'])) {
-        $erreur = "Veuillez remplir tous les champs obligatoires.";
+    // Vérification du jeton CSRF
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        $erreur = "Erreur de sécurité. Veuillez réessayer.";
     } else {
-        // Formater les dates et heures
-        $date_debut = $_POST['date_debut'] . ' ' . $_POST['heure_debut'] . ':00';
-        $date_fin = $_POST['date_fin'] . ' ' . $_POST['heure_fin'] . ':00';
-        
-        // S'assurer que la date de fin est après la date de début
-        if (strtotime($date_fin) <= strtotime($date_debut)) {
-            $erreur = "La date/heure de fin doit être après la date/heure de début.";
+        // Validation des données du formulaire
+        if (empty($_POST['id_eleve']) || empty($_POST['date_debut']) || empty($_POST['heure_debut']) || 
+            empty($_POST['date_fin']) || empty($_POST['heure_fin']) || empty($_POST['type_absence'])) {
+            $erreur = "Veuillez remplir tous les champs obligatoires.";
         } else {
-            // Préparer les données pour l'insertion
-            $data = [
-                'id_eleve' => intval($_POST['id_eleve']),
-                'date_debut' => $date_debut,
-                'date_fin' => $date_fin,
-                'type_absence' => $_POST['type_absence'],
-                'motif' => !empty($_POST['motif']) ? $_POST['motif'] : null,
-                'justifie' => isset($_POST['justifie']),
-                'commentaire' => !empty($_POST['commentaire']) ? $_POST['commentaire'] : null,
-                'signale_par' => $user_fullname
-            ];
+            // Formater les dates et heures
+            $date_debut = $_POST['date_debut'] . ' ' . $_POST['heure_debut'] . ':00';
+            $date_fin = $_POST['date_fin'] . ' ' . $_POST['heure_fin'] . ':00';
             
-            // Ajouter l'absence dans la base de données
-            $id_absence = ajouterAbsence($pdo, $data);
-            
-            if ($id_absence) {
-                $message = "L'absence a été ajoutée avec succès.";
-                // Redirection après un court délai
-                header('refresh:2;url=absences.php');
+            // S'assurer que la date de fin est après la date de début
+            if (strtotime($date_fin) <= strtotime($date_debut)) {
+                $erreur = "La date/heure de fin doit être après la date/heure de début.";
             } else {
-                $erreur = "Une erreur est survenue lors de l'ajout de l'absence. Veuillez vérifier les logs pour plus de détails.";
+                // Préparer les données pour l'insertion
+                $data = [
+                    'id_eleve' => intval($_POST['id_eleve']),
+                    'date_debut' => $date_debut,
+                    'date_fin' => $date_fin,
+                    'type_absence' => $_POST['type_absence'],
+                    'motif' => !empty($_POST['motif']) ? $_POST['motif'] : null,
+                    'justifie' => isset($_POST['justifie']),
+                    'commentaire' => !empty($_POST['commentaire']) ? $_POST['commentaire'] : null,
+                    'signale_par' => $user_fullname
+                ];
+                
+                // Ajouter l'absence dans la base de données
+                $id_absence = ajouterAbsence($pdo, $data);
+                
+                if ($id_absence) {
+                    $message = "L'absence a été ajoutée avec succès.";
+                    // Redirection après un court délai
+                    header('refresh:2;url=absences.php');
+                } else {
+                    $erreur = "Une erreur est survenue lors de l'ajout de l'absence. Veuillez vérifier les logs pour plus de détails.";
+                }
             }
         }
     }
@@ -74,7 +82,10 @@ try {
     $stmt = $pdo->query("SELECT id, nom, prenom, classe FROM eleves ORDER BY classe, nom, prenom");
     $eleves = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    $erreur = "Erreur lors de la récupération de la liste des élèves: " . $e->getMessage();
+    // Journaliser l'erreur
+    \Pronote\Logging\error("Erreur lors de la récupération des élèves: " . $e->getMessage());
+    // Message générique pour l'utilisateur
+    $erreur = "Une erreur est survenue lors du chargement des données. Veuillez réessayer ultérieurement.";
 }
 
 // Récupérer la date à suggérer (aujourd'hui ou date passée en paramètre)
@@ -138,6 +149,7 @@ $id_eleve_suggere = isset($_GET['eleve']) ? $_GET['eleve'] : '';
         
         <div class="form-container">
           <form method="post" action="ajouter_absence.php">
+            <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
             <div class="form-grid">
               <div class="form-group form-full">
                 <label for="id_eleve">Élève <span class="required">*</span></label>

@@ -1,171 +1,136 @@
 <?php
 /**
- * Système de journalisation centralisé
+ * Système de journalisation pour Pronote
+ * Ce fichier fournit des fonctions de journalisation centralisées
  */
 namespace Pronote\Logging;
 
-// Niveaux de journalisation
-define('LOG_LEVEL_DEBUG', 100);
-define('LOG_LEVEL_INFO', 200);
-define('LOG_LEVEL_WARNING', 300);
-define('LOG_LEVEL_ERROR', 400);
-define('LOG_LEVEL_CRITICAL', 500);
-
-// Tableau associant les niveaux de log à leur nom
-$GLOBALS['log_levels'] = [
-    LOG_LEVEL_DEBUG => 'DEBUG',
-    LOG_LEVEL_INFO => 'INFO',
-    LOG_LEVEL_WARNING => 'WARNING',
-    LOG_LEVEL_ERROR => 'ERROR',
-    LOG_LEVEL_CRITICAL => 'CRITICAL',
-];
+// Constantes pour les niveaux de journalisation
+const LEVEL_DEBUG = 'debug';
+const LEVEL_INFO = 'info';
+const LEVEL_WARNING = 'warning';
+const LEVEL_ERROR = 'error';
+const LEVEL_CRITICAL = 'critical';
 
 /**
- * Écrit un message dans le fichier de log
- * @param string $message Le message à journaliser
- * @param int $level Le niveau de journalisation
- * @param string $category La catégorie du message
- * @return bool True si l'écriture a réussi
+ * Journalise un message
+ * @param string $message Message à journaliser
+ * @param string $level Niveau de journalisation
+ * @param array $context Contexte additionnel
+ * @return bool True si le message a été journalisé
  */
-function log_message($message, $level = LOG_LEVEL_INFO, $category = 'general') {
+function log($message, $level = LEVEL_INFO, $context = []) {
     // Vérifier si la journalisation est activée
     if (!defined('LOG_ENABLED') || !LOG_ENABLED) {
         return false;
     }
     
-    // Vérifier le niveau minimum de journalisation
-    $min_level = get_min_log_level();
-    if ($level < $min_level) {
+    // Vérifier le niveau de journalisation
+    $logLevel = defined('LOG_LEVEL') ? LOG_LEVEL : LEVEL_INFO;
+    $levels = [LEVEL_DEBUG, LEVEL_INFO, LEVEL_WARNING, LEVEL_ERROR, LEVEL_CRITICAL];
+    
+    if (array_search($level, $levels) < array_search($logLevel, $levels)) {
         return false;
     }
     
-    // Déterminer le chemin du fichier de log
-    $log_dir = defined('LOGS_PATH') ? LOGS_PATH : (__DIR__ . '/../../logs');
-    
-    // Créer le répertoire s'il n'existe pas
-    if (!is_dir($log_dir)) {
-        if (!@mkdir($log_dir, 0755, true)) {
-            // Utiliser le répertoire temporaire si on ne peut pas créer le dossier
-            $log_dir = sys_get_temp_dir();
-        }
-    }
-    
-    // Vérifier si le répertoire est accessible en écriture
-    if (!is_writable($log_dir)) {
-        // Utiliser le répertoire temporaire si le dossier n'est pas accessible en écriture
-        $log_dir = sys_get_temp_dir();
-    }
-    
-    // Construire le nom du fichier de log
-    $log_file = $log_dir . '/pronote_' . date('Y-m-d') . '.log';
-    
-    // Formater le message de log
-    $level_name = $GLOBALS['log_levels'][$level] ?? 'UNKNOWN';
-    $timestamp = date('Y-m-d H:i:s');
-    $remote_addr = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-    $user_info = '';
-    
-    // Ajouter les informations de l'utilisateur si disponibles
-    if (isset($_SESSION['user']) && !empty($_SESSION['user'])) {
-        $user_info = "| User: {$_SESSION['user']['prenom']} {$_SESSION['user']['nom']} ({$_SESSION['user']['profil']})";
-    }
-    
     // Préparer le message de log
-    $formatted_message = "[$timestamp] [$level_name] [$category] [$remote_addr] $user_info | $message\n";
+    $timestamp = date('Y-m-d H:i:s');
+    $user = isset($_SESSION['user']) ? $_SESSION['user']['prenom'] . ' ' . $_SESSION['user']['nom'] : 'Système';
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+    
+    $logMessage = "[$timestamp] [$level] [$ip] [$user] $message";
+    
+    // Ajouter le contexte si présent
+    if (!empty($context)) {
+        $logMessage .= PHP_EOL . json_encode($context, JSON_PRETTY_PRINT);
+    }
+    
+    // Déterminer le fichier de log
+    $logDir = defined('LOGS_PATH') ? LOGS_PATH : __DIR__ . '/../logs';
+    if (!is_dir($logDir)) {
+        mkdir($logDir, 0755, true);
+    }
+    
+    $logFile = $logDir . '/pronote-' . date('Y-m-d') . '.log';
     
     // Écrire dans le fichier de log
-    return @file_put_contents($log_file, $formatted_message, FILE_APPEND) !== false;
-}
-
-/**
- * Détermine le niveau minimum de journalisation
- * @return int Le niveau minimum
- */
-function get_min_log_level() {
-    if (!defined('LOG_LEVEL')) {
-        return LOG_LEVEL_INFO;
-    }
-    
-    switch (strtolower(LOG_LEVEL)) {
-        case 'debug':
-            return LOG_LEVEL_DEBUG;
-        case 'info':
-            return LOG_LEVEL_INFO;
-        case 'warning':
-            return LOG_LEVEL_WARNING;
-        case 'error':
-            return LOG_LEVEL_ERROR;
-        case 'critical':
-            return LOG_LEVEL_CRITICAL;
-        default:
-            return LOG_LEVEL_INFO;
-    }
+    return error_log($logMessage . PHP_EOL, 3, $logFile);
 }
 
 /**
  * Journalise un message de débogage
- * @param string $message Le message
- * @param string $category La catégorie
- * @return bool Résultat de l'opération
+ * @param string $message Message à journaliser
+ * @param array $context Contexte additionnel
+ * @return bool True si le message a été journalisé
  */
-function debug($message, $category = 'debug') {
-    return log_message($message, LOG_LEVEL_DEBUG, $category);
+function debug($message, $context = []) {
+    return log($message, LEVEL_DEBUG, $context);
 }
 
 /**
  * Journalise un message d'information
- * @param string $message Le message
- * @param string $category La catégorie
- * @return bool Résultat de l'opération
+ * @param string $message Message à journaliser
+ * @param array $context Contexte additionnel
+ * @return bool True si le message a été journalisé
  */
-function info($message, $category = 'info') {
-    return log_message($message, LOG_LEVEL_INFO, $category);
+function info($message, $context = []) {
+    return log($message, LEVEL_INFO, $context);
 }
 
 /**
  * Journalise un avertissement
- * @param string $message Le message
- * @param string $category La catégorie
- * @return bool Résultat de l'opération
+ * @param string $message Message à journaliser
+ * @param array $context Contexte additionnel
+ * @return bool True si le message a été journalisé
  */
-function warning($message, $category = 'warning') {
-    return log_message($message, LOG_LEVEL_WARNING, $category);
+function warning($message, $context = []) {
+    return log($message, LEVEL_WARNING, $context);
 }
 
 /**
  * Journalise une erreur
- * @param string $message Le message
- * @param string $category La catégorie
- * @return bool Résultat de l'opération
+ * @param string $message Message à journaliser
+ * @param array $context Contexte additionnel
+ * @return bool True si le message a été journalisé
  */
-function error($message, $category = 'error') {
-    return log_message($message, LOG_LEVEL_ERROR, $category);
+function error($message, $context = []) {
+    return log($message, LEVEL_ERROR, $context);
 }
 
 /**
  * Journalise une erreur critique
- * @param string $message Le message
- * @param string $category La catégorie
- * @return bool Résultat de l'opération
+ * @param string $message Message à journaliser
+ * @param array $context Contexte additionnel
+ * @return bool True si le message a été journalisé
  */
-function critical($message, $category = 'critical') {
-    return log_message($message, LOG_LEVEL_CRITICAL, $category);
+function critical($message, $context = []) {
+    return log($message, LEVEL_CRITICAL, $context);
 }
 
-// Alias de fonctions sans namespace pour la compatibilité
-function_alias('Pronote\Logging\debug', 'debug_log');
-function_alias('Pronote\Logging\info', 'info_log');
-function_alias('Pronote\Logging\warning', 'warning_log');
-function_alias('Pronote\Logging\error', 'error_log_custom');
-function_alias('Pronote\Logging\critical', 'critical_log');
+/**
+ * Journalise un accès à une page
+ * @return bool True si le message a été journalisé
+ */
+function pageAccess() {
+    $page = $_SERVER['REQUEST_URI'] ?? 'Unknown';
+    $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+    $referer = $_SERVER['HTTP_REFERER'] ?? 'Direct';
+    
+    return info("Accès à la page $page [$method] depuis $referer");
+}
 
 /**
- * Crée un alias de fonction s'il n'existe pas déjà
- * @param string $original Nom de la fonction originale
- * @param string $alias Nom de l'alias à créer
+ * Journalise une action d'authentification
+ * @param string $action Type d'action (login, logout, session_expired, etc.)
+ * @param string $username Nom d'utilisateur concerné
+ * @param bool $success Succès ou échec de l'action
+ * @param array $context Contexte additionnel
+ * @return bool True si le message a été journalisé
  */
-function function_alias($original, $alias) {
-    if (!function_exists($alias) && function_exists($original)) {
-        eval("function $alias() { return call_user_func_array('$original', func_get_args()); }");
-    }
+function authAction($action, $username, $success = true, $context = []) {
+    $status = $success ? 'Succès' : 'Échec';
+    $message = "Authentication $action: $username - $status";
+    $level = $success ? LEVEL_INFO : LEVEL_WARNING;
+    
+    return log($message, $level, $context);
 }

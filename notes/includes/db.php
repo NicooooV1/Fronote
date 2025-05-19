@@ -1,33 +1,33 @@
 <?php
 /**
- * Database connection for notes module
- * This file uses the centralized database connection
+ * Connexion à la base de données pour le module Notes
+ * Ce fichier utilise la connexion centralisée à la base de données
  */
 
-// Check if the global PDO object already exists
+// Vérifier si l'objet PDO global existe déjà
 if (!isset($GLOBALS['pdo']) || !($GLOBALS['pdo'] instanceof PDO)) {
-    // Try to use the centralized connection
+    // Essayer d'utiliser la connexion centralisée
     $dbPath = __DIR__ . '/../../API/database.php';
     if (file_exists($dbPath)) {
         require_once $dbPath;
         $pdo = getDBConnection();
     } else {
-        // Fallback if the centralized file is not available
+        // Fallback si le fichier centralisé n'est pas disponible
         try {
-            // Path to the configuration file
+            // Chemin vers le fichier de configuration
             $configPath = __DIR__ . '/../../API/config/config.php';
             if (file_exists($configPath)) {
                 require_once $configPath;
             }
             
-            // Retrieve configuration constants or use default values
+            // Récupération des constantes de configuration ou utilisation de valeurs par défaut
             $host = defined('DB_HOST') ? DB_HOST : 'localhost';
             $dbname = defined('DB_NAME') ? DB_NAME : 'pronote';
             $user = defined('DB_USER') ? DB_USER : 'root';
             $pass = defined('DB_PASS') ? DB_PASS : '';
             $charset = defined('DB_CHARSET') ? DB_CHARSET : 'utf8mb4';
             
-            // Create the PDO connection
+            // Création de la connexion PDO
             $dsn = "mysql:host=$host;dbname=$dbname;charset=$charset";
             $options = [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -37,15 +37,15 @@ if (!isset($GLOBALS['pdo']) || !($GLOBALS['pdo'] instanceof PDO)) {
             
             $pdo = new PDO($dsn, $user, $pass, $options);
         } catch (PDOException $e) {
-            error_log("Database connection error: " . $e->getMessage());
-            die("Database connection error. Please try again later.");
+            error_log("Erreur de connexion à la base de données: " . $e->getMessage());
+            die("Erreur de connexion à la base de données. Veuillez réessayer plus tard.");
         }
     }
     
-    // Store the connection in a global variable for reuse
+    // Stocker la connexion dans une variable globale pour la réutiliser
     $GLOBALS['pdo'] = $pdo;
 } else {
-    // Reuse the existing connection
+    // Réutiliser la connexion existante
     $pdo = $GLOBALS['pdo'];
 }
 ?>

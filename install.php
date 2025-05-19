@@ -32,6 +32,14 @@ if (!empty($missingExtensions)) {
     die('Extensions PHP requises manquantes : ' . implode(', ', $missingExtensions));
 }
 
+// Limiter l'accès à l'installation par IP
+$allowedIPs = ['127.0.0.1', '::1', 'SERVER_IP_HERE']; // Ajouter les IPs autorisées
+$clientIP = $_SERVER['REMOTE_ADDR'] ?? '';
+
+if (!in_array($clientIP, $allowedIPs) && $_SERVER['SERVER_ADDR'] !== $clientIP) {
+    die('Accès non autorisé depuis votre adresse IP.');
+}
+
 // Détecter le chemin absolu du répertoire d'installation
 $installDir = __DIR__;
 $baseUrl = isset($_SERVER['REQUEST_URI']) ? 
@@ -40,12 +48,13 @@ $baseUrl = isset($_SERVER['REQUEST_URI']) ?
 
 // Si le chemin est la racine, ajuster la valeur
 if ($baseUrl === '/.') {
-    $baseUrl = '/';
+    $baseUrl = '';
 }
 
 // Vérifier les permissions des dossiers
 $directories = [
     'API/logs',
+    'API/config',
     'uploads',
     'temp'
 ];
@@ -84,47 +93,52 @@ $installed = false;
 $dbError = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    try {
-        // Valider les entrées utilisateur
-        $dbHost = filter_input(INPUT_POST, 'db_host', FILTER_SANITIZE_STRING) ?: 'localhost';
-        $dbName = filter_input(INPUT_POST, 'db_name', FILTER_SANITIZE_STRING) ?: '';
-        $dbUser = filter_input(INPUT_POST, 'db_user', FILTER_SANITIZE_STRING) ?: '';
-        $dbPass = $_POST['db_pass'] ?? ''; // Ne pas filtrer le mot de passe pour permettre les caractères spéciaux
-        $appEnv = filter_input(INPUT_POST, 'app_env', FILTER_SANITIZE_STRING) ?: 'production';
-        $baseUrlInput = filter_input(INPUT_POST, 'base_url', FILTER_SANITIZE_STRING) ?: $baseUrl;
-        
-        // Validation supplémentaire
-        if (empty($dbName) || empty($dbUser)) {
-            throw new Exception("Le nom de la base de données et l'utilisateur sont obligatoires.");
-        }
-        
-        // Tester la connexion à la base de données
+    // Ajouter un jeton CSRF pour protéger le formulaire d'installation
+    if (!isset($_POST['install_token']) || !isset($_SESSION['install_token']) || 
+        $_POST['install_token'] !== $_SESSION['install_token']) {
+        $dbError = "Erreur de sécurité lors de la soumission du formulaire.";
+    } else {
         try {
-            $dsn = "mysql:host={$dbHost};charset=utf8mb4";
-            $options = [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES => false
-            ];
+            // Valider les entrées utilisateur
+            $dbHost = filter_input(INPUT_POST, 'db_host', FILTER_SANITIZE_STRING) ?: 'localhost';
+            $dbName = filter_input(INPUT_POST, 'db_name', FILTER_SANITIZE_STRING) ?: '';
+            $dbUser = filter_input(INPUT_POST, 'db_user', FILTER_SANITIZE_STRING) ?: '';
+            $dbPass = $_POST['db_pass'] ?? ''; // Ne pas filtrer le mot de passe pour permettre les caractères spéciaux
+            $appEnv = filter_input(INPUT_POST, 'app_env', FILTER_SANITIZE_STRING) ?: 'production';
+            $baseUrlInput = filter_input(INPUT_POST, 'base_url', FILTER_SANITIZE_STRING) ?: $baseUrl;
             
-            $pdo = new PDO($dsn, $dbUser, $dbPass, $options);
-            
-            // Créer la base de données si elle n'existe pas
-            $pdo->exec("CREATE DATABASE IF NOT EXISTS `" . str_replace('`', '', $dbName) . "`");
-            $pdo->exec("USE `" . str_replace('`', '', $dbName) . "`");
-            
-            // Créer le fichier de configuration
-            $apiDir = $installDir . '/API';
-            $configDir = $apiDir . '/config';
-            
-            if (!is_dir($configDir)) {
-                if (!mkdir($configDir, 0755, true)) {
-                    throw new Exception("Impossible de créer le répertoire de configuration.");
-                }
+            // Validation supplémentaire
+            if (empty($dbName) || empty($dbUser)) {
+                throw new Exception("Le nom de la base de données et l'utilisateur sont obligatoires.");
             }
             
-            // Créer le contenu du fichier de configuration en évitant les injections
-            $configContent = <<<CONFIG
+            // Tester la connexion à la base de données
+            try {
+                $dsn = "mysql:host={$dbHost};charset=utf8mb4";
+                $options = [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES => false
+                ];
+                
+                $pdo = new PDO($dsn, $dbUser, $dbPass, $options);
+                
+                // Créer la base de données si elle n'existe pas
+                $pdo->exec("CREATE DATABASE IF NOT EXISTS `" . str_replace('`', '', $dbName) . "`");
+                $pdo->exec("USE `" . str_replace('`', '', $dbName) . "`");
+                
+                // Créer le fichier de configuration
+                $apiDir = $installDir . '/API';
+                $configDir = $apiDir . '/config';
+                
+                if (!is_dir($configDir)) {
+                    if (!mkdir($configDir, 0755, true)) {
+                        throw new Exception("Impossible de créer le répertoire de configuration.");
+                    }
+                }
+                
+                // Créer le contenu du fichier de configuration en évitant les injections
+                $configContent = <<<CONFIG
 <?php
 /**
  * Configuration d'environnement
@@ -167,12 +181,12 @@ if (!defined('LOG_ENABLED')) define('LOG_ENABLED', true);
 if (!defined('LOG_LEVEL')) define('LOG_LEVEL', '{$appEnv}' === 'development' ? 'debug' : 'error');
 CONFIG;
 
-            if (file_put_contents($apiDir . '/config/env.php', $configContent) === false) {
-                throw new Exception("Impossible d'écrire le fichier de configuration.");
-            }
-            
-            // Créer un fichier .htaccess pour protéger les fichiers de config
-            $htaccessContent = <<<HTACCESS
+                if (file_put_contents($apiDir . '/config/env.php', $configContent) === false) {
+                    throw new Exception("Impossible d'écrire le fichier de configuration.");
+                }
+                
+                // Créer un fichier .htaccess pour protéger les fichiers de config
+                $htaccessContent = <<<HTACCESS
 # Protéger les fichiers de configuration
 <Files ~ "\.php$">
     Order allow,deny
@@ -180,21 +194,27 @@ CONFIG;
 </Files>
 HTACCESS;
 
-            file_put_contents($configDir . '/.htaccess', $htaccessContent);
-            
-            // Créer un fichier de verrou pour empêcher l'exécution future de l'installation
-            file_put_contents($installLockFile, date('Y-m-d H:i:s'));
-            
-            // Indiquer que l'installation est réussie
-            $installed = true;
-            
-        } catch (PDOException $e) {
-            throw new Exception("Erreur de connexion à la base de données: " . $e->getMessage());
+                file_put_contents($configDir . '/.htaccess', $htaccessContent);
+                
+                // Créer un fichier de verrou pour empêcher l'exécution future de l'installation
+                file_put_contents($installLockFile, date('Y-m-d H:i:s'));
+                
+                // Indiquer que l'installation est réussie
+                $installed = true;
+                
+            } catch (PDOException $e) {
+                throw new Exception("Erreur de connexion à la base de données: " . $e->getMessage());
+            }
+        } catch (Exception $e) {
+            $dbError = $e->getMessage();
         }
-    } catch (Exception $e) {
-        $dbError = $e->getMessage();
     }
 }
+
+// Générer un jeton CSRF
+session_start();
+$_SESSION['install_token'] = bin2hex(random_bytes(32));
+$install_token = $_SESSION['install_token'];
 ?>
 <!DOCTYPE html>
 <html>
@@ -264,6 +284,9 @@ HTACCESS;
                 <label for="db_pass">Mot de passe de la base de données</label>
                 <input type="password" id="db_pass" name="db_pass">
             </div>
+            
+            <!-- Champ caché pour le jeton CSRF -->
+            <input type="hidden" name="install_token" value="<?= htmlspecialchars($install_token) ?>">
             
             <button type="submit">Installer</button>
         </form>

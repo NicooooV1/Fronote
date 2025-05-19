@@ -1,29 +1,21 @@
 <?php
-require __DIR__ . '/../config/database.php';
-require __DIR__ . '/../src/auth.php';
-
 /**
- * Script de déconnexion
- * Ce script détruit la session et redirige vers la page de connexion
+ * Script de déconnexion pour Pronote
+ * Déconnecte l'utilisateur et redirige vers la page de connexion
  */
 
-// Démarrer la session si nécessaire
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+// Inclure le système d'authentification central
+require_once __DIR__ . '/../../API/auth_central.php';
 
-// Sauvegarder le message de redirection si nécessaire
-$redirect_message = isset($_SESSION['flash']['warning']) ? $_SESSION['flash']['warning'] : [];
+// Utiliser la fonction de déconnexion du système d'authentification central
+logout(LOGIN_URL);
 
-// Détruire toutes les données de session
+// Code qui ne sera jamais exécuté à cause du exit dans logout()
+// Mais en cas de problème avec le système d'authentification central, voici un fallback
+session_start();
 $_SESSION = [];
 
-// Réinitialiser les messages flash si nécessaire
-if (!empty($redirect_message)) {
-    $_SESSION['flash']['warning'] = $redirect_message;
-}
-
-// Détruire le cookie de session si utilisé
+// Détruire le cookie de session
 if (ini_get("session.use_cookies")) {
     $params = session_get_cookie_params();
     setcookie(
@@ -40,10 +32,10 @@ if (ini_get("session.use_cookies")) {
 // Détruire la session
 session_destroy();
 
-// Définir les URLs de base
-$base_url = '/~u22405372/SAE/Pronote';
-$loginUrl = $base_url . '/login/public/index.php';
-
 // Rediriger vers la page de connexion
-header("Location: $loginUrl");
+$loginUrl = '../login/public/index.php';
+if (defined('LOGIN_URL')) {
+    $loginUrl = LOGIN_URL;
+}
+header("Location: " . $loginUrl);
 exit;

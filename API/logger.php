@@ -1,9 +1,16 @@
 <?php
 /**
  * Système de journalisation centralisé
+ * Fournit une compatibilité avec l'ancien système et le nouveau
  */
 
-// Constantes pour les niveaux de log
+// Inclure le système de journalisation de base s'il existe
+$loggingPath = __DIR__ . '/core/logging.php';
+if (file_exists($loggingPath)) {
+    require_once $loggingPath;
+}
+
+// Constantes pour les niveaux de log (pour compatibilité)
 if (!defined('LOG_LEVEL_DEBUG')) define('LOG_LEVEL_DEBUG', 100);
 if (!defined('LOG_LEVEL_INFO')) define('LOG_LEVEL_INFO', 200);
 if (!defined('LOG_LEVEL_WARNING')) define('LOG_LEVEL_WARNING', 300);
@@ -11,24 +18,41 @@ if (!defined('LOG_LEVEL_ERROR')) define('LOG_LEVEL_ERROR', 400);
 if (!defined('LOG_LEVEL_CRITICAL')) define('LOG_LEVEL_CRITICAL', 500);
 
 /**
- * Écrire un message dans le journal
+ * Convertit un niveau numérique en chaîne
+ * @param int $level Niveau numérique
+ * @return string Niveau en chaîne
+ */
+function getLogLevelString($level) {
+    switch ($level) {
+        case LOG_LEVEL_DEBUG:
+            return \Pronote\Logging\LEVEL_DEBUG;
+        case LOG_LEVEL_INFO:
+            return \Pronote\Logging\LEVEL_INFO;
+        case LOG_LEVEL_WARNING:
+            return \Pronote\Logging\LEVEL_WARNING;
+        case LOG_LEVEL_ERROR:
+            return \Pronote\Logging\LEVEL_ERROR;
+        case LOG_LEVEL_CRITICAL:
+            return \Pronote\Logging\LEVEL_CRITICAL;
+        default:
+            return \Pronote\Logging\LEVEL_INFO;
+    }
+}
+
+/**
+ * Écrire un message dans le journal (compatible avec l'ancien système)
  * @param string $message Message à journaliser
  * @param int $level Niveau de log (LOG_LEVEL_*)
  * @param string $category Catégorie du message
  * @return bool True si l'écriture a réussi
  */
 function log_message($message, $level = LOG_LEVEL_INFO, $category = 'general') {
-    // Vérifier si la journalisation est activée
-    if (!defined('LOG_ENABLED') || !LOG_ENABLED) {
-        return false;
+    if (function_exists('\\Pronote\\Logging\\log')) {
+        $levelString = getLogLevelString($level);
+        return \Pronote\Logging\log($message, $levelString, ['category' => $category]);
     }
     
-    // Déterminer le niveau minimal de log
-    $minLevel = get_min_log_level();
-    if ($level < $minLevel) {
-        return false;
-    }
-    
+    // Implémentation de secours si le nouveau système n'est pas disponible
     // Déterminer le chemin du fichier de log
     $logDir = defined('LOGS_PATH') ? LOGS_PATH : (__DIR__ . '/logs');
     
@@ -77,66 +101,39 @@ function log_message($message, $level = LOG_LEVEL_INFO, $category = 'general') {
     return @file_put_contents($logFile, $formattedMessage, FILE_APPEND) !== false;
 }
 
-/**
- * Détermine le niveau minimum de journalisation
- * @return int Niveau minimum de log
- */
-function get_min_log_level() {
-    if (!defined('LOG_LEVEL')) {
-        return LOG_LEVEL_INFO; // Par défaut
-    }
-    
-    switch (strtolower(LOG_LEVEL)) {
-        case 'debug': return LOG_LEVEL_DEBUG;
-        case 'info': return LOG_LEVEL_INFO;
-        case 'warning': return LOG_LEVEL_WARNING;
-        case 'error': return LOG_LEVEL_ERROR;
-        case 'critical': return LOG_LEVEL_CRITICAL;
-        default: return LOG_LEVEL_INFO;
+// Fonctions d'alias pour compatibilité
+if (!function_exists('debug_log')) {
+    function debug_log($message, $category = 'debug') {
+        if (function_exists('\\Pronote\\Logging\\debug')) {
+            return \Pronote\Logging\debug($message, ['category' => $category]);
+        }
+        return log_message($message, LOG_LEVEL_DEBUG, $category);
     }
 }
 
-/**
- * Journaliser un message de débogage
- * @param string $message Message à journaliser
- * @param string $category Catégorie du message
- */
-function debug_log($message, $category = 'debug') {
-    return log_message($message, LOG_LEVEL_DEBUG, $category);
+if (!function_exists('info_log')) {
+    function info_log($message, $category = 'info') {
+        return log_message($message, LOG_LEVEL_INFO, $category);
+    }
 }
 
-/**
- * Journaliser un message d'information
- * @param string $message Message à journaliser
- * @param string $category Catégorie du message
- */
-function info_log($message, $category = 'info') {
-    return log_message($message, LOG_LEVEL_INFO, $category);
+if (!function_exists('warning_log')) {
+    function warning_log($message, $category = 'warning') {
+        return log_message($message, LOG_LEVEL_WARNING, $category);
+    }
 }
 
-/**
- * Journaliser un avertissement
- * @param string $message Message à journaliser
- * @param string $category Catégorie du message
- */
-function warning_log($message, $category = 'warning') {
-    return log_message($message, LOG_LEVEL_WARNING, $category);
+if (!function_exists('error_log_custom')) {
+    function error_log_custom($message, $category = 'error') {
+        if (function_exists('\\Pronote\\Logging\\error')) {
+            return \Pronote\Logging\error($message, ['category' => $category]);
+        }
+        return log_message($message, LOG_LEVEL_ERROR, $category);
+    }
 }
 
-/**
- * Journaliser une erreur
- * @param string $message Message à journaliser
- * @param string $category Catégorie du message
- */
-function error_log_custom($message, $category = 'error') {
-    return log_message($message, LOG_LEVEL_ERROR, $category);
-}
-
-/**
- * Journaliser une erreur critique
- * @param string $message Message à journaliser
- * @param string $category Catégorie du message
- */
-function critical_log($message, $category = 'critical') {
-    return log_message($message, LOG_LEVEL_CRITICAL, $category);
+if (!function_exists('critical_log')) {
+    function critical_log($message, $category = 'critical') {
+        return log_message($message, LOG_LEVEL_CRITICAL, $category);
+    }
 }

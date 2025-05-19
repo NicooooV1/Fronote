@@ -15,7 +15,8 @@ if (!canManageNotes()) {
 // Récupérer les informations de l'utilisateur connecté
 $user = getCurrentUser();
 $user_fullname = getUserFullName();
-$user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
+$user_initials = isset($user['prenom'], $user['nom']) ? 
+    strtoupper(mb_substr($user['prenom'], 0, 1) . mb_substr($user['nom'], 0, 1)) : '';
 
 // Validation de l'ID
 $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
