@@ -72,5 +72,38 @@ if (!columnExists('conversation_participants', 'version')) {
     echo "La colonne version existe déjà dans la table conversation_participants.<br>";
 }
 
+// Vérifier et ajouter la colonne type à la table conversations si elle n'existe pas
+if (!columnExists('conversations', 'type')) {
+    echo "Ajout de la colonne type à la table conversations...<br>";
+    
+    if (executeSQL("ALTER TABLE conversations ADD COLUMN type VARCHAR(50) DEFAULT 'standard'")) {
+        echo "Colonne type ajoutée avec succès.<br>";
+        
+        // Mettre à jour les types de conversations existantes
+        echo "Mise à jour des types de conversation basés sur les messages...<br>";
+        $updateSQL = "
+            UPDATE conversations c
+            SET c.type = 
+                CASE 
+                    WHEN EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id AND m.status = 'annonce') THEN 'annonce'
+                    ELSE 'standard'
+                END
+        ";
+        
+        if (executeSQL($updateSQL)) {
+            echo "Types de conversations mis à jour avec succès.<br>";
+        } else {
+            echo "Échec de la mise à jour des types de conversations.<br>";
+        }
+    } else {
+        echo "Échec de l'ajout de la colonne type.<br>";
+    }
+} else {
+    echo "La colonne type existe déjà dans la table conversations.<br>";
+}
+
 echo "<p>Mise à jour terminée.</p>";
+
+// Ajouter un lien pour retourner à l'application
+echo '<p><a href="../index.php" style="display: inline-block; padding: 8px 12px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">Retourner à l\'application</a></p>';
 ?>

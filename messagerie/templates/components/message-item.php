@@ -43,7 +43,13 @@ $messageClassString = implode(' ', $messageClasses);
 
 // Format timestamp for display
 $timestamp = isset($message['timestamp']) ? (int)$message['timestamp'] : time();
-$formattedDate = formatTimeAgo($timestamp);
+
+// Check if formatTimeAgo function exists, otherwise use a simpler formatting
+if (function_exists('formatTimeAgo')) {
+    $formattedDate = formatTimeAgo($timestamp);
+} else {
+    $formattedDate = date('d/m/Y H:i', $timestamp);
+}
 
 // Prepare content safely
 $messageContent = nl2br(htmlspecialchars($message['body']));

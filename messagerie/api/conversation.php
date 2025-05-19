@@ -28,6 +28,43 @@ if (!$user) {
     exit;
 }
 
+// --- IMPORTANT: Fonction pour sécuriser les transactions PDO ---
+function safeTransaction($callback) {
+    global $pdo;
+    
+    // Vérifier si une transaction est déjà active
+    if ($pdo->inTransaction()) {
+        try {
+            // Si c'est le cas, on l'annule et on journalise l'événement
+            $pdo->rollBack();
+            logApiRequest("Une transaction active a été détectée et annulée avant d'en démarrer une nouvelle");
+        } catch (Exception $e) {
+            logApiRequest("Erreur lors de l'annulation d'une transaction active: " . $e->getMessage());
+        }
+    }
+    
+    // Démarrer une nouvelle transaction
+    $pdo->beginTransaction();
+    
+    try {
+        // Exécuter la fonction de callback
+        $result = $callback();
+        
+        // Valider la transaction
+        $pdo->commit();
+        
+        return $result;
+    } catch (Exception $e) {
+        // En cas d'erreur, annuler la transaction
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        
+        // Propager l'exception
+        throw $e;
+    }
+}
+
 // Point d'entrée pour les actions en masse
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'bulk') {
     // Récupérer les données JSON
@@ -259,6 +296,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id']) && isset($_GET['a
         $result = null;
         
         switch ($action) {
+            case 'mark_read':
+                $result = safeTransaction(function() use ($pdo, $convId, $user) {
+                    // Vérifier que l'utilisateur est participant à la conversation
+                    $checkStmt = $pdo->prepare("
+                        SELECT id FROM conversation_participants 
+                        WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND is_deleted = 0
+                    ");
+                    $checkStmt->execute([$convId, $user['id'], $user['type']]);
+                    
+                    if (!$checkStmt->fetch()) {
+                        throw new Exception("Vous n'êtes pas autorisé à accéder à cette conversation");
+                    }
+                    
+                    // Mettre à jour la date de dernière lecture
+                    $updateStmt = $pdo->prepare("
+                        UPDATE conversation_participants 
+                        SET last_read_at = NOW(), unread_count = 0
+                        WHERE conversation_id = ? AND user_id = ? AND user_type = ?
+                    ");
+                    $updateStmt->execute([$convId, $user['id'], $user['type']]);
+                    
+                    return [
+                        'success' => true, 
+                        'message' => "Conversation marquée comme lue"
+                    ];
+                });
+                break;
+            
+            case 'mark_unread':
+                $result = safeTransaction(function() use ($pdo, $convId, $user) {
+                    // Vérifier que l'utilisateur est participant à la conversation
+                    $checkStmt = $pdo->prepare("
+                        SELECT id FROM conversation_participants 
+                        WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND is_deleted = 0
+                    ");
+                    $checkStmt->execute([$convId, $user['id'], $user['type']]);
+                    
+                    if (!$checkStmt->fetch()) {
+                        throw new Exception("Vous n'êtes pas autorisé à accéder à cette conversation");
+                    }
+                    
+                    // Réinitialiser la date de dernière lecture et définir un message non lu
+                    $updateStmt = $pdo->prepare("
+                        UPDATE conversation_participants 
+                        SET last_read_at = NULL, unread_count = 1
+                        WHERE conversation_id = ? AND user_id = ? AND user_type = ?
+                    ");
+                    $updateStmt->execute([$convId, $user['id'], $user['type']]);
+                    
+                    return [
+                        'success' => true, 
+                        'message' => "Conversation marquée comme non lue"
+                    ];
+                });
+                break;
+                
             case 'archive':
                 $result = handleArchiveConversation($convId, $user);
                 break;
@@ -281,6 +374,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id']) && isset($_GET['a
         
         echo json_encode($result);
     } catch (Exception $e) {
+        // Assurer qu'aucune transaction n'est laissée ouverte
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
     exit;

@@ -6,6 +6,7 @@
 // Ensure config is loaded first for proper session initialization
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/config/constants.php';
+// Make sure utils is included before we use any of its functions
 require_once __DIR__ . '/core/utils.php';
 require_once __DIR__ . '/core/auth.php';
 require_once __DIR__ . '/models/conversation.php';

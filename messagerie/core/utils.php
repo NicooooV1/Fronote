@@ -77,7 +77,7 @@ function formatDate($date) {
  * @param int|string $timestamp Timestamp UNIX ou chaîne de date à convertir
  * @return string Texte affichant le temps écoulé
  */
-function getTimeAgo($timestamp) {
+function formatTimeAgo($timestamp) {
     if (!$timestamp) return 'Date inconnue';
     
     // Handle different timestamp formats

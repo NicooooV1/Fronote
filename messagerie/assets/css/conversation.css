@@ -57,6 +57,7 @@
   background-color: #f8f9fa;
 }
 
+/* Fix for the "Participants" title alignment */
 .conversation-info h3 {
   display: flex;
   justify-content: space-between;
@@ -66,6 +67,28 @@
   margin-bottom: 15px;
   padding-bottom: 8px;
   border-bottom: 1px solid #e9ecef;
+}
+
+.conversation-info h3 span {
+  flex: 1;
+}
+
+#add-participant-btn {
+  margin-left: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #00843d;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+#add-participant-btn:hover {
+  background-color: #f1f3f5;
 }
 
 .conversation-actions {

@@ -75,6 +75,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['con
 // Récupérer le dossier courant
 $currentFolder = isset($_GET['folder']) ? $_GET['folder'] : 'reception';
 
+// Définir le titre de la page en fonction du dossier
+switch ($currentFolder) {
+    case 'archives':
+        $folderTitle = 'Archives';
+        break;
+    case 'envoyes':
+        $folderTitle = 'Messages envoyés';
+        break;
+    case 'corbeille':
+        $folderTitle = 'Corbeille';
+        break;
+    case 'information':
+        $folderTitle = 'Informations & Annonces';
+        break;
+    default:
+        $folderTitle = 'Boîte de réception';
+}
+
+$pageTitle = 'Pronote - Messagerie - ' . $folderTitle;
+
 // Récupérer les conversations
 $conversations = getConversations($user['id'], $user['type'], $currentFolder);
 

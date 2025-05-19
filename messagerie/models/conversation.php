@@ -17,14 +17,14 @@ function getConversations($userId, $userType, $dossier = 'reception') {
     
     $baseQuery = "
         SELECT c.id, c.subject as titre, 
-               CASE WHEN EXISTS (SELECT 1 FROM messages WHERE conversation_id = c.id AND status = 'annonce') THEN 'annonce' ELSE 'standard' END as type,
+               CASE 
+                   WHEN EXISTS (SELECT 1 FROM messages WHERE conversation_id = c.id AND status = 'annonce') THEN 'annonce'
+                   ELSE 'standard'
+               END as type,
                c.created_at as date_creation, 
                (SELECT MAX(created_at) FROM messages WHERE conversation_id = c.id) as dernier_message,
                (SELECT body FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as apercu,
-               CASE 
-                   WHEN EXISTS (SELECT 1 FROM messages WHERE conversation_id = c.id AND status = 'annonce') THEN 'annonce'
-                   ELSE (SELECT status FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1)
-               END as status,
+               (SELECT status FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as status,
                cp.unread_count as non_lus
         FROM conversations c
         JOIN conversation_participants cp ON c.id = cp.conversation_id
@@ -51,9 +51,14 @@ function getConversations($userId, $userType, $dossier = 'reception') {
             $params[] = $userId;
             $params[] = $userType;
             break;
+        case 'information':
+            $baseQuery .= " AND cp.is_archived = 0 AND cp.is_deleted = 0 
+                          AND EXISTS (SELECT 1 FROM messages WHERE conversation_id = c.id AND status = 'annonce')";
+            break;
         case 'reception':
         default:
-            $baseQuery .= " AND cp.is_archived = 0 AND cp.is_deleted = 0";
+            $baseQuery .= " AND cp.is_archived = 0 AND cp.is_deleted = 0 
+                          AND NOT EXISTS (SELECT 1 FROM messages WHERE conversation_id = c.id AND status = 'annonce')";
     }
     
     $baseQuery .= " ORDER BY c.updated_at DESC";
