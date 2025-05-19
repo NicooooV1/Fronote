@@ -8,10 +8,12 @@
 require_once __DIR__ . '/../../API/auth_central.php';
 
 // Utiliser la fonction de déconnexion du système d'authentification central
-logout(LOGIN_URL);
+if (function_exists('logout')) {
+    logout();
+}
 
-// Code qui ne sera jamais exécuté à cause du exit dans logout()
-// Mais en cas de problème avec le système d'authentification central, voici un fallback
+// Code qui sera exécuté si la fonction logout() n'existe pas ou ne termine pas l'exécution
+// Déconnexion manuelle
 session_start();
 $_SESSION = [];
 
@@ -32,10 +34,11 @@ if (ini_get("session.use_cookies")) {
 // Détruire la session
 session_destroy();
 
-// Rediriger vers la page de connexion
-$loginUrl = '../login/public/index.php';
+// Rediriger vers la page de connexion - FIX: removed duplicate 'login' in the path
+$loginUrl = '../public/index.php';
 if (defined('LOGIN_URL')) {
     $loginUrl = LOGIN_URL;
 }
-header("Location: " . $loginUrl);
+
+header("Location: $loginUrl");
 exit;

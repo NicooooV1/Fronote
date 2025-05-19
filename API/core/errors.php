@@ -12,7 +12,7 @@ if (defined('PRONOTE_ERRORS_LOADED')) {
 define('PRONOTE_ERRORS_LOADED', true);
 
 // Chargement du système de journalisation
-if (!function_exists('\Pronote\Logging\error')) {
+if (!function_exists('\\Pronote\\Logging\\error')) {
     $loggingPath = __DIR__ . '/logging.php';
     if (file_exists($loggingPath)) {
         require_once $loggingPath;

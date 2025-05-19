@@ -10,12 +10,12 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Constantes pour les rôles
-define('USER_TYPE_ADMIN', 'administrateur');
-define('USER_TYPE_TEACHER', 'professeur');
-define('USER_TYPE_STUDENT', 'eleve');
-define('USER_TYPE_PARENT', 'parent');
-define('USER_TYPE_STAFF', 'vie_scolaire');
+// Constantes pour les rôles - vérifier si elles sont déjà définies
+if (!defined('USER_TYPE_ADMIN')) define('USER_TYPE_ADMIN', 'administrateur');
+if (!defined('USER_TYPE_TEACHER')) define('USER_TYPE_TEACHER', 'professeur');
+if (!defined('USER_TYPE_STUDENT')) define('USER_TYPE_STUDENT', 'eleve');
+if (!defined('USER_TYPE_PARENT')) define('USER_TYPE_PARENT', 'parent');
+if (!defined('USER_TYPE_STAFF')) define('USER_TYPE_STAFF', 'vie_scolaire');
 
 /**
  * Vérifie si l'utilisateur est connecté

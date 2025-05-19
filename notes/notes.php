@@ -9,7 +9,8 @@ require_once 'includes/db.php';
 // Vérifier si l'utilisateur est connecté
 if (!isLoggedIn()) {
     // Rediriger vers la page de login, en utilisant la constante dynamique
-    header('Location: ' . LOGIN_URL);
+    $loginUrl = defined('LOGIN_URL') ? LOGIN_URL : '../login/public/index.php';
+    header('Location: ' . $loginUrl);
     exit;
 }
 
@@ -17,7 +18,8 @@ if (!isLoggedIn()) {
 $user = getCurrentUser();
 if (!$user) {
     // Double vérification, ne devrait pas arriver
-    header('Location: ' . LOGIN_URL);
+    $loginUrl = defined('LOGIN_URL') ? LOGIN_URL : '../login/public/index.php';
+    header('Location: ' . $loginUrl);
     exit;
 }
 
@@ -160,6 +162,31 @@ $error_message = isset($_SESSION['error_message']) ? $_SESSION['error_message'] 
 
 // Effacer les messages après les avoir récupérés
 unset($_SESSION['success_message'], $_SESSION['error_message']);
+
+// FIX: Ajouter une valeur par défaut pour note_sur à la ligne 317
+function formatNoteDisplay($note) {
+    global $note_affichage;
+    
+    // Assurer que la note est un nombre
+    $note_value = floatval($note['note']);
+    
+    // Utiliser une valeur par défaut de 20 si note_sur n'est pas défini
+    $note_sur = isset($note['note_sur']) ? intval($note['note_sur']) : 20;
+    
+    // Formater selon le paramètre global
+    if ($note_affichage === 'sur_vingt') {
+        // Convertir la note sur 20 si nécessaire
+        if ($note_sur != 20 && $note_sur > 0) {
+            $note_value = ($note_value / $note_sur) * 20;
+            return number_format($note_value, 1) . '/20';
+        } else {
+            return number_format($note_value, 1) . '/20';
+        }
+    } else {
+        // Afficher la note telle quelle
+        return $note_value . '/' . $note_sur;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
