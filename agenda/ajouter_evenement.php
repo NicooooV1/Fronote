@@ -396,6 +396,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_persons' && isset($_GET['
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ajouter un événement - Agenda Pronote</title>
   <link rel="stylesheet" href="assets/css/calendar.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
     /* Styles spécifiques pour la page de création d'événement */
     body {
@@ -737,163 +738,204 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_persons' && isset($_GET['
   </style>
 </head>
 <body>
-  <div class="event-creation-container">
-    <div class="event-creation-header">
-      <a href="agenda.php" class="back-button">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M10 19L3 12L10 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M3 12H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        Retour
-      </a>
-      <h2>Ajouter un événement</h2>
-      <?php if ($user_role === 'eleve' || $user_role === 'parent'): ?>
-        <div class="role-indicator">Événement personnel</div>
-      <?php endif; ?>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="logo-container">
+        <div class="app-logo">P</div>
+        <div class="app-title">Agenda</div>
+      </div>
+      
+      <!-- Actions -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Actions</div>
+        <a href="agenda.php" class="button button-secondary">
+          <i class="fas fa-calendar"></i> Retour à l'agenda
+        </a>
+      </div>
+      
+      <!-- Autres modules -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Autres modules</div>
+        <div class="folder-menu">
+          <a href="../notes/notes.php" class="module-link">
+            <i class="fas fa-chart-bar"></i> Notes
+          </a>
+          <a href="../messagerie/index.php" class="module-link">
+            <i class="fas fa-envelope"></i> Messagerie
+          </a>
+          <a href="../absences/absences.php" class="module-link">
+            <i class="fas fa-calendar-times"></i> Absences
+          </a>
+          <a href="../cahierdetextes/cahierdetextes.php" class="module-link">
+            <i class="fas fa-book"></i> Cahier de textes
+          </a>
+          <a href="../accueil/accueil.php" class="module-link">
+            <i class="fas fa-home"></i> Accueil
+          </a>
+        </div>
+      </div>
     </div>
     
-    <div class="event-creation-form">
-      <?php if ($message): ?>
-        <div class="message success"><?= $message ?></div>
-      <?php endif; ?>
+    <!-- Main Content -->
+    <div class="event-creation-container">
+      <div class="event-creation-header">
+        <a href="agenda.php" class="back-button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10 19L3 12L10 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M3 12H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Retour
+        </a>
+        <h2>Ajouter un événement</h2>
+        <?php if ($user_role === 'eleve' || $user_role === 'parent'): ?>
+          <div class="role-indicator">Événement personnel</div>
+        <?php endif; ?>
+      </div>
       
-      <?php if ($erreur): ?>
-        <div class="message error"><?= $erreur ?></div>
-      <?php endif; ?>
-      
-      <form method="post">
-        <div class="form-grid">
-          <div class="form-group form-full">
-            <label for="titre">Titre*</label>
-            <input type="text" name="titre" id="titre" required placeholder="Titre de l'événement">
-          </div>
-          
-          <div class="form-group">
-            <label for="type_evenement">Type d'événement*</label>
-            <select name="type_evenement" id="type_evenement" required onchange="toggleTypePersonnalise()">
-              <?php if (count($types_evenements) > 1): ?>
-                <option value="">Sélectionnez un type</option>
-              <?php endif; ?>
-              <?php foreach ($types_evenements as $code => $nom): ?>
-                <option value="<?= $code ?>"><?= $nom ?></option>
-              <?php endforeach; ?>
-            </select>
+      <div class="event-creation-form">
+        <?php if ($message): ?>
+          <div class="message success"><?= $message ?></div>
+        <?php endif; ?>
+        
+        <?php if ($erreur): ?>
+          <div class="message error"><?= $erreur ?></div>
+        <?php endif; ?>
+        
+        <form method="post">
+          <div class="form-grid">
+            <div class="form-group form-full">
+              <label for="titre">Titre*</label>
+              <input type="text" name="titre" id="titre" required placeholder="Titre de l'événement">
+            </div>
             
-            <!-- Champ pour le type personnalisé (affiché seulement si "Autre" est sélectionné) -->
-            <div id="type_personnalise_container" class="type-personnalise">
-              <label for="type_personnalise">Précisez le type</label>
-              <input type="text" name="type_personnalise" id="type_personnalise" placeholder="Type d'événement personnalisé">
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label for="visibilite">Visibilité*</label>
-            <select id="visibilite" name="visibilite" required>
-              <option value="public">Public - Visible par tous</option>
-              <option value="professeurs">Professeurs uniquement</option>
-              <option value="eleves">Élèves uniquement</option>
-              <option value="parents">Parents uniquement</option>
-              <option value="vie_scolaire">Vie scolaire uniquement</option>
-              <option value="administration">Administration uniquement</option>
-              
-              <?php foreach ($classes as $classe): ?>
-                  <option value="classes:<?= htmlspecialchars($classe) ?>">Classe: <?= htmlspecialchars($classe) ?></option>
-              <?php endforeach; ?>
-            </select>
-            <small>Détermine qui peut voir cet événement.</small>
-          </div>
-          
-          <div class="form-group">
-            <label for="date_debut">Date de début*</label>
-            <input type="date" name="date_debut" id="date_debut" value="<?= $date_par_defaut ?>" required>
-          </div>
-          
-          <div class="form-group">
-            <label for="heure_debut">Heure de début*</label>
-            <input type="time" name="heure_debut" id="heure_debut" value="<?= $heure_debut_defaut ?>" required>
-          </div>
-          
-          <div class="form-group">
-            <label for="date_fin">Date de fin*</label>
-            <input type="date" name="date_fin" id="date_fin" value="<?= $date_par_defaut ?>" required>
-          </div>
-          
-          <div class="form-group">
-            <label for="heure_fin">Heure de fin*</label>
-            <input type="time" name="heure_fin" id="heure_fin" value="<?= $heure_fin_defaut ?>" required>
-          </div>
-          
-          <!-- Section pour les classes (visible uniquement si "Classes spécifiques" est sélectionné) -->
-          <div id="section_classes" class="form-group form-full" style="display: none;">
-            <label>Classes concernées</label>
-            <div class="multiselect-container">
-              <div class="multiselect-search">
-                <input type="text" id="classes_search" placeholder="Rechercher une classe" oninput="filterOptions('classes_search', 'class-option')">
-              </div>
-              <div class="multiselect-actions">
-                <button type="button" class="multiselect-action" onclick="selectAll('class-checkbox')">Tout sélectionner</button>
-                <button type="button" class="multiselect-action" onclick="deselectAll('class-checkbox')">Tout désélectionner</button>
-              </div>
-              <div class="multiselect-options">
-                <?php foreach ($classes as $classe): ?>
-                  <div class="multiselect-option class-option">
-                    <label>
-                      <input type="checkbox" name="classes[]" class="class-checkbox" value="<?= $classe ?>">
-                      <?= $classe ?>
-                    </label>
-                  </div>
+            <div class="form-group">
+              <label for="type_evenement">Type d'événement*</label>
+              <select name="type_evenement" id="type_evenement" required onchange="toggleTypePersonnalise()">
+                <?php if (count($types_evenements) > 1): ?>
+                  <option value="">Sélectionnez un type</option>
+                <?php endif; ?>
+                <?php foreach ($types_evenements as $code => $nom): ?>
+                  <option value="<?= $code ?>"><?= $nom ?></option>
                 <?php endforeach; ?>
+              </select>
+              
+              <!-- Champ pour le type personnalisé (affiché seulement si "Autre" est sélectionné) -->
+              <div id="type_personnalise_container" class="type-personnalise">
+                <label for="type_personnalise">Précisez le type</label>
+                <input type="text" name="type_personnalise" id="type_personnalise" placeholder="Type d'événement personnalisé">
               </div>
             </div>
-          </div>
-          
-          <!-- Personnes concernées -->
-          <div class="form-group form-full" id="personnesContainer">
-            <label for="personnes">Personnes concernées</label>
-            <div class="persons-selector">
-              <div class="persons-actions">
-                <button type="button" class="persons-action" id="selectAllPersons">Tout sélectionner</button>
-                <button type="button" class="persons-action" id="deselectAllPersons">Tout désélectionner</button>
-              </div>
-              <input type="text" id="searchPersons" class="persons-search" placeholder="Rechercher...">
-              <div class="persons-list" id="personsList">
-                <div class="loading-indicator">Chargement des personnes concernées...</div>
-              </div>
-              <div class="persons-count" id="personsCount">0 personne(s) sélectionnée(s)</div>
-            </div>
-            <small>Sélectionnez les personnes spécifiquement concernées par cet événement.</small>
-          </div>
-          
-          <div class="form-group">
-            <label for="lieu">Lieu</label>
-            <input type="text" name="lieu" id="lieu" placeholder="Salle, bâtiment, etc.">
-          </div>
-          
-          <?php if (isTeacher()): ?>
+            
             <div class="form-group">
-              <label for="matieres">Matière associée</label>
-              <input type="text" name="matieres" id="matieres" value="<?= htmlspecialchars($prof_matiere) ?>" readonly>
+              <label for="visibilite">Visibilité*</label>
+              <select id="visibilite" name="visibilite" required>
+                <option value="public">Public - Visible par tous</option>
+                <option value="professeurs">Professeurs uniquement</option>
+                <option value="eleves">Élèves uniquement</option>
+                <option value="parents">Parents uniquement</option>
+                <option value="vie_scolaire">Vie scolaire uniquement</option>
+                <option value="administration">Administration uniquement</option>
+                
+                <?php foreach ($classes as $classe): ?>
+                    <option value="classes:<?= htmlspecialchars($classe) ?>">Classe: <?= htmlspecialchars($classe) ?></option>
+                <?php endforeach; ?>
+              </select>
+              <small>Détermine qui peut voir cet événement.</small>
             </div>
-          <?php else: ?>
+            
             <div class="form-group">
-              <label for="matieres">Matière associée</label>
-              <input type="text" name="matieres" id="matieres" placeholder="Matière concernée">
+              <label for="date_debut">Date de début*</label>
+              <input type="date" name="date_debut" id="date_debut" value="<?= $date_par_defaut ?>" required>
             </div>
-          <?php endif; ?>
-          
-          <div class="form-group form-full">
-            <label for="description">Description</label>
-            <textarea name="description" id="description" rows="4" placeholder="Détails de l'événement..."></textarea>
-          </div>
-          
-          <div class="form-full">
-            <div class="form-actions">
-              <a href="agenda.php" class="btn-cancel">Annuler</a>
-              <button type="submit" class="btn-submit">Créer l'événement</button>
+            
+            <div class="form-group">
+              <label for="heure_debut">Heure de début*</label>
+              <input type="time" name="heure_debut" id="heure_debut" value="<?= $heure_debut_defaut ?>" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="date_fin">Date de fin*</label>
+              <input type="date" name="date_fin" id="date_fin" value="<?= $date_par_defaut ?>" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="heure_fin">Heure de fin*</label>
+              <input type="time" name="heure_fin" id="heure_fin" value="<?= $heure_fin_defaut ?>" required>
+            </div>
+            
+            <!-- Section pour les classes (visible uniquement si "Classes spécifiques" est sélectionné) -->
+            <div id="section_classes" class="form-group form-full" style="display: none;">
+              <label>Classes concernées</label>
+              <div class="multiselect-container">
+                <div class="multiselect-search">
+                  <input type="text" id="classes_search" placeholder="Rechercher une classe" oninput="filterOptions('classes_search', 'class-option')">
+                </div>
+                <div class="multiselect-actions">
+                  <button type="button" class="multiselect-action" onclick="selectAll('class-checkbox')">Tout sélectionner</button>
+                  <button type="button" class="multiselect-action" onclick="deselectAll('class-checkbox')">Tout désélectionner</button>
+                </div>
+                <div class="multiselect-options">
+                  <?php foreach ($classes as $classe): ?>
+                    <div class="multiselect-option class-option">
+                      <label>
+                        <input type="checkbox" name="classes[]" class="class-checkbox" value="<?= $classe ?>">
+                        <?= $classe ?>
+                      </label>
+                    </div>
+                  <?php endforeach; ?>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Personnes concernées -->
+            <div class="form-group form-full" id="personnesContainer">
+              <label for="personnes">Personnes concernées</label>
+              <div class="persons-selector">
+                <div class="persons-actions">
+                  <button type="button" class="persons-action" id="selectAllPersons">Tout sélectionner</button>
+                  <button type="button" class="persons-action" id="deselectAllPersons">Tout désélectionner</button>
+                </div>
+                <input type="text" id="searchPersons" class="persons-search" placeholder="Rechercher...">
+                <div class="persons-list" id="personsList">
+                  <div class="loading-indicator">Chargement des personnes concernées...</div>
+                </div>
+                <div class="persons-count" id="personsCount">0 personne(s) sélectionnée(s)</div>
+              </div>
+              <small>Sélectionnez les personnes spécifiquement concernées par cet événement.</small>
+            </div>
+            
+            <div class="form-group">
+              <label for="lieu">Lieu</label>
+              <input type="text" name="lieu" id="lieu" placeholder="Salle, bâtiment, etc.">
+            </div>
+            
+            <?php if (isTeacher()): ?>
+              <div class="form-group">
+                <label for="matieres">Matière associée</label>
+                <input type="text" name="matieres" id="matieres" value="<?= htmlspecialchars($prof_matiere) ?>" readonly>
+              </div>
+            <?php else: ?>
+              <div class="form-group">
+                <label for="matieres">Matière associée</label>
+                <input type="text" name="matieres" id="matieres" placeholder="Matière concernée">
+              </div>
+            <?php endif; ?>
+            
+            <div class="form-group form-full">
+              <label for="description">Description</label>
+              <textarea name="description" id="description" rows="4" placeholder="Détails de l'événement..."></textarea>
+            </div>
+            
+            <div class="form-full">
+              <div class="form-actions">
+                <a href="agenda.php" class="btn-cancel">Annuler</a>
+                <button type="submit" class="btn-submit">Créer l'événement</button>
+              </div>
             </div>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   </div>
   

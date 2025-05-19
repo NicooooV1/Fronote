@@ -234,12 +234,12 @@ if (!empty($etablissement_data['classes'])) {
 }
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gestion des absences - Pronote</title>
-  <link rel="stylesheet" href="../agenda/assets/css/calendar.css">
+  <title>Absences - Pronote</title>
+  <link rel="stylesheet" href="../notes/assets/css/style.css">
   <link rel="stylesheet" href="assets/css/absences.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
@@ -247,105 +247,102 @@ if (!empty($etablissement_data['classes'])) {
   <div class="app-container">
     <!-- Sidebar -->
     <div class="sidebar">
-      <a href="../accueil/accueil.php" class="logo-container">
+      <div class="logo-container">
         <div class="app-logo">P</div>
-        <div class="app-title">Pronote Absences</div>
-      </a>
-      
-      <!-- Filtres -->
-      <div class="sidebar-section">
-        <form id="filters-form" method="get" action="absences.php">
-          <input type="hidden" name="view" value="<?= $view ?>">
-          
-          <div class="form-group">
-            <label for="date_debut">Du</label>
-            <input type="date" id="date_debut" name="date_debut" value="<?= $date_debut ?>" max="<?= date('Y-m-d') ?>">
-          </div>
-          
-          <div class="form-group">
-            <label for="date_fin">Au</label>
-            <input type="date" id="date_fin" name="date_fin" value="<?= $date_fin ?>" max="<?= date('Y-m-d') ?>">
-          </div>
-          
-          <?php if (isAdmin() || isVieScolaire() || isTeacher()): ?>
-          <div class="form-group">
-            <label for="classe">Classe</label>
-            <select id="classe" name="classe">
-              <option value="">Toutes les classes</option>
-              <?php foreach ($classes as $c): ?>
-              <option value="<?= $c ?>" <?= $classe == $c ? 'selected' : '' ?>><?= $c ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-          <?php endif; ?>
-          
-          <div class="form-group">
-            <label for="justifie">Justification</label>
-            <select id="justifie" name="justifie">
-              <option value="">Toutes</option>
-              <option value="oui" <?= $justifie == 'oui' ? 'selected' : '' ?>>Justifiées</option>
-              <option value="non" <?= $justifie == 'non' ? 'selected' : '' ?>>Non justifiées</option>
-            </select>
-          </div>
-          
-          <button type="submit" class="filter-button">Appliquer les filtres</button>
-        </form>
+        <div class="app-title">Absences</div>
       </div>
-      
-      <!-- Actions -->
+
+      <!-- Filtres par période -->
       <div class="sidebar-section">
-        <?php if (canManageAbsences()): ?>
-        <a href="ajouter_absence.php" class="action-button">
-          <i class="fas fa-plus"></i> Ajouter une absence
+        <div class="sidebar-section-header">Périodes</div>
+        <div class="folder-menu">
+          <a href="?periode=semaine" class="<?= ($periode_active == 'semaine' ? 'active' : '') ?>">
+            <i class="fas fa-calendar-week"></i> Cette semaine
+          </a>
+          <a href="?periode=mois" class="<?= ($periode_active == 'mois' ? 'active' : '') ?>">
+            <i class="fas fa-calendar-alt"></i> Ce mois
+          </a>
+          <a href="?periode=trimestre" class="<?= ($periode_active == 'trimestre' ? 'active' : '') ?>">
+            <i class="fas fa-calendar"></i> Ce trimestre
+          </a>
+        </div>
+      </div>
+
+      <!-- Filtres par type -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Type d'absences</div>
+        <div class="folder-menu">
+          <div class="filter-option">
+            <label>
+              <input type="checkbox" class="filter-checkbox" name="type[]" value="non_justifiee" <?= (in_array('non_justifiee', $selected_types) ? 'checked' : '') ?>>
+              <span class="filter-label">Non justifiées</span>
+            </label>
+          </div>
+          <div class="filter-option">
+            <label>
+              <input type="checkbox" class="filter-checkbox" name="type[]" value="justifiee" <?= (in_array('justifiee', $selected_types) ? 'checked' : '') ?>>
+              <span class="filter-label">Justifiées</span>
+            </label>
+          </div>
+          <div class="filter-option">
+            <label>
+              <input type="checkbox" class="filter-checkbox" name="type[]" value="retard" <?= (in_array('retard', $selected_types) ? 'checked' : '') ?>>
+              <span class="filter-label">Retards</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <?php if (canManageAbsences()): ?>
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Actions</div>
+        <a href="ajouter_absence.php" class="create-button">
+          <i class="fas fa-plus"></i> Signaler une absence
         </a>
-        <?php endif; ?>
-        
-        <a href="retards.php" class="action-button secondary">
-          <i class="fas fa-clock"></i> Voir les retards
+        <a href="appel.php" class="button button-secondary">
+          <i class="fas fa-clipboard-list"></i> Faire l'appel
         </a>
-        
-        <?php if (canManageAbsences()): ?>
-        <a href="justificatifs.php" class="action-button secondary">
-          <i class="fas fa-file-alt"></i> Justificatifs
-        </a>
-        <?php endif; ?>
-        
-        <a href="statistiques.php" class="action-button secondary">
-          <i class="fas fa-chart-bar"></i> Statistiques
-        </a>
+      </div>
+      <?php endif; ?>
+
+      <!-- Autres modules -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Autres modules</div>
+        <div class="folder-menu">
+          <a href="../notes/notes.php" class="module-link">
+            <i class="fas fa-chart-bar"></i> Notes
+          </a>
+          <a href="../messagerie/index.php" class="module-link">
+            <i class="fas fa-envelope"></i> Messagerie
+          </a>
+          <a href="../agenda/agenda.php" class="module-link">
+            <i class="fas fa-calendar"></i> Agenda
+          </a>
+          <a href="../cahierdetextes/cahierdetextes.php" class="module-link">
+            <i class="fas fa-book"></i> Cahier de textes
+          </a>
+          <a href="../accueil/accueil.php" class="module-link">
+            <i class="fas fa-home"></i> Accueil
+          </a>
+        </div>
       </div>
     </div>
-    
+
     <!-- Main Content -->
     <div class="main-content">
       <!-- Header -->
       <div class="top-header">
         <div class="page-title">
-          <h1>Gestion des absences</h1>
+          <h1>Gestion des Absences</h1>
         </div>
-        
-        <div class="view-toggle">
-          <a href="?view=list<?= !empty($classe) ? '&classe='.$classe : '' ?>&date_debut=<?= $date_debut ?>&date_fin=<?= $date_fin ?>&justifie=<?= $justifie ?>" 
-             class="view-toggle-option <?= $view === 'list' ? 'active' : '' ?>">
-            <i class="fas fa-list"></i> Liste
-          </a>
-          <a href="?view=calendar<?= !empty($classe) ? '&classe='.$classe : '' ?>&date_debut=<?= $date_debut ?>&date_fin=<?= $date_fin ?>&justifie=<?= $justifie ?>" 
-             class="view-toggle-option <?= $view === 'calendar' ? 'active' : '' ?>">
-            <i class="fas fa-calendar-alt"></i> Calendrier
-          </a>
-          <a href="?view=stats<?= !empty($classe) ? '&classe='.$classe : '' ?>&date_debut=<?= $date_debut ?>&date_fin=<?= $date_fin ?>&justifie=<?= $justifie ?>" 
-             class="view-toggle-option <?= $view === 'stats' ? 'active' : '' ?>">
-            <i class="fas fa-chart-pie"></i> Statistiques
-          </a>
-        </div>
-        
         <div class="header-actions">
           <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">⏻</a>
-          <div class="user-avatar"><?= $user_initials ?></div>
+          <div class="user-avatar"><?= $user_initials ?? '' ?></div>
         </div>
       </div>
       
-      <!-- Content -->
+      <!-- Contenu principal de la page -->
       <div class="content-container">
         <?php if (empty($absences)): ?>
           <div class="no-data-message">

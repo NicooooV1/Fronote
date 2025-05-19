@@ -466,21 +466,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <div class="app-container">
     <!-- Sidebar -->
     <div class="sidebar">
-      <a href="../accueil/accueil.php" class="logo-container">
+      <div class="logo-container">
         <div class="app-logo">P</div>
-        <div class="app-title">Pronote Agenda</div>
-      </a>
-      
-      <!-- Mini-calendrier pour la navigation -->
-      <div class="mini-calendar">
-        <!-- Insérer ici le mini-calendrier -->
+        <div class="app-title">Agenda</div>
       </div>
       
-      <!-- Créer un événement -->
+      <!-- Actions -->
       <div class="sidebar-section">
-        <a href="ajouter_evenement.php" class="create-button">
-          <span>+</span> Créer un événement
+        <div class="sidebar-section-header">Actions</div>
+        <a href="agenda.php" class="button button-secondary">
+          <i class="fas fa-calendar"></i> Retour à l'agenda
         </a>
+        <a href="details_evenement.php?id=<?= $id ?>" class="button button-secondary">
+          <i class="fas fa-eye"></i> Voir l'événement
+        </a>
+      </div>
+      
+      <!-- Autres modules -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Autres modules</div>
+        <div class="folder-menu">
+          <a href="../notes/notes.php" class="module-link">
+            <i class="fas fa-chart-bar"></i> Notes
+          </a>
+          <a href="../messagerie/index.php" class="module-link">
+            <i class="fas fa-envelope"></i> Messagerie
+          </a>
+          <a href="../absences/absences.php" class="module-link">
+            <i class="fas fa-calendar-times"></i> Absences
+          </a>
+          <a href="../cahierdetextes/cahierdetextes.php" class="module-link">
+            <i class="fas fa-book"></i> Cahier de textes
+          </a>
+          <a href="../accueil/accueil.php" class="module-link">
+            <i class="fas fa-home"></i> Accueil
+          </a>
+        </div>
       </div>
     </div>
     

@@ -74,20 +74,22 @@ $isProfesseur = isset($user) && $user['type'] === 'professeur';
     <!-- Navigation vers d'autres modules -->
     <div class="sidebar-section">
         <div class="sidebar-section-header">Autres modules</div>
-        <a href="../notes/notes.php" class="module-link notes">
-            <i class="fas fa-chart-bar"></i> Notes
-        </a>
-        <a href="../absences/absences.php" class="module-link absences">
-            <i class="fas fa-calendar-times"></i> Absences
-        </a>
-        <a href="../agenda/agenda.php" class="module-link agenda">
-            <i class="fas fa-calendar"></i> Agenda
-        </a>
-        <a href="../cahierdetextes/cahierdetextes.php" class="module-link cahier">
-            <i class="fas fa-book"></i> Cahier de textes
-        </a>
-        <a href="../accueil/accueil.php" class="module-link home">
-            <i class="fas fa-home"></i> Accueil
-        </a>
+        <div class="folder-menu">
+            <a href="../notes/notes.php" class="module-link">
+                <i class="fas fa-chart-bar"></i> Notes
+            </a>
+            <a href="../absences/absences.php" class="module-link">
+                <i class="fas fa-calendar-times"></i> Absences
+            </a>
+            <a href="../agenda/agenda.php" class="module-link">
+                <i class="fas fa-calendar"></i> Agenda
+            </a>
+            <a href="../cahierdetextes/cahierdetextes.php" class="module-link">
+                <i class="fas fa-book"></i> Cahier de textes
+            </a>
+            <a href="../accueil/accueil.php" class="module-link">
+                <i class="fas fa-home"></i> Accueil
+            </a>
+        </div>
     </div>
 </div>

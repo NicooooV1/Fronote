@@ -150,48 +150,70 @@ if (!function_exists('canManageDevoirs')) {
   <div class="app-container">
     <!-- Sidebar -->
     <div class="sidebar">
-      <a href="../accueil/accueil.php" class="logo-container">
+      <div class="logo-container">
         <div class="app-logo">P</div>
-        <div class="app-title">Pronote Cahier de Textes</div>
-      </a>
+        <div class="app-title">Cahier de Textes</div>
+      </div>
       
       <!-- Section des filtres -->
       <div class="sidebar-section">
         <div class="sidebar-section-header">Filtres</div>
-        
-        <div class="filter-option">
-          <span class="filter-label">À rendre cette semaine</span>
-          <input type="checkbox" class="filter-checkbox" id="filter-semaine">
+        <div class="folder-menu">
+          <div class="filter-option">
+            <label>
+              <input type="checkbox" class="filter-checkbox" id="filter-semaine">
+              <span class="filter-label">À rendre cette semaine</span>
+            </label>
+          </div>
+          
+          <div class="filter-option">
+            <label>
+              <input type="checkbox" class="filter-checkbox" id="filter-mois">
+              <span class="filter-label">À rendre ce mois</span>
+            </label>
+          </div>
+          
+          <?php if (!isStudent() && !isParent()): ?>
+          <div class="filter-option">
+            <label>
+              <input type="checkbox" class="filter-checkbox" id="filter-tous" checked>
+              <span class="filter-label">Tous les devoirs</span>
+            </label>
+          </div>
+          <?php endif; ?>
         </div>
-        
-        <div class="filter-option">
-          <span class="filter-label">À rendre ce mois</span>
-          <input type="checkbox" class="filter-checkbox" id="filter-mois">
-        </div>
-        
-        <?php if (!isStudent() && !isParent()): ?>
-        <div class="filter-option">
-          <span class="filter-label">Tous les devoirs</span>
-          <input type="checkbox" class="filter-checkbox" id="filter-tous" checked>
-        </div>
-        <?php endif; ?>
       </div>
       
       <!-- Actions -->
+      <?php if (canManageDevoirs()): ?>
       <div class="sidebar-section">
-        <?php if (canManageDevoirs()): ?>
+        <div class="sidebar-section-header">Actions</div>
         <a href="ajouter_devoir.php" class="create-button">
           <i class="fas fa-plus"></i> Ajouter un devoir
         </a>
-        <?php endif; ?>
-        
-        <a href="../notes/notes.php" class="action-button secondary">
-          <i class="fas fa-graduation-cap"></i> Système de Notes
-        </a>
-        
-        <a href="../accueil/accueil.php" class="action-button secondary">
-          <i class="fas fa-home"></i> Accueil Pronote
-        </a>
+      </div>
+      <?php endif; ?>
+      
+      <!-- Autres modules -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Autres modules</div>
+        <div class="folder-menu">
+          <a href="../notes/notes.php" class="module-link">
+            <i class="fas fa-chart-bar"></i> Notes
+          </a>
+          <a href="../messagerie/index.php" class="module-link">
+            <i class="fas fa-envelope"></i> Messagerie
+          </a>
+          <a href="../absences/absences.php" class="module-link">
+            <i class="fas fa-calendar-times"></i> Absences
+          </a>
+          <a href="../agenda/agenda.php" class="module-link">
+            <i class="fas fa-calendar"></i> Agenda
+          </a>
+          <a href="../accueil/accueil.php" class="module-link">
+            <i class="fas fa-home"></i> Accueil
+          </a>
+        </div>
       </div>
     </div>
     

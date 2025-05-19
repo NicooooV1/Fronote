@@ -411,8 +411,6 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
   <title>Agenda Pronote</title>
   <link rel="stylesheet" href="assets/css/calendar.css">
   <style>
-    /* Styles mis à jour basés sur les retours */
-    
     /* Structure principale */
     .app-container {
       display: flex;
@@ -835,48 +833,73 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
   <div class="app-container">
     <!-- Sidebar -->
     <div class="sidebar">
-      <a href="../accueil/accueil.php" class="logo-container">
+      <div class="logo-container">
         <div class="app-logo">P</div>
-        <div class="app-title">Pronote Agenda</div>
-      </a>
+        <div class="app-title">Agenda</div>
+      </div>
       
       <!-- Mini-calendrier pour la navigation -->
-      <div class="mini-calendar">
-        <?= generateMiniCalendar($month, $year, $date) ?>
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Calendrier</div>
+        <div class="mini-calendar">
+          <?= generateMiniCalendar($month, $year, $date) ?>
+        </div>
       </div>
       
       <!-- Créer un événement -->
       <div class="sidebar-section">
+        <div class="sidebar-section-header">Actions</div>
         <a href="ajouter_evenement.php" class="create-button">
-          <span>+</span> Créer un événement
+          <i class="fas fa-plus"></i> Créer un événement
         </a>
       </div>
       
       <!-- Filtres par type d'événement -->
       <?php if (!empty($available_event_types)): ?>
       <div class="sidebar-section">
-        <div class="sidebar-section-header">
-          <span>Types d'événements</span>
-          <button class="toggle-button">▾</button>
-        </div>
-        <div class="calendar-filters">
+        <div class="sidebar-section-header">Types d'événements</div>
+        <div class="folder-menu">
           <?php foreach ($types_evenements as $code => $nom): ?>
             <?php if (in_array($code, $available_event_types)): ?>
               <div class="filter-option">
-                <span class="color-dot color-<?= $code ?>"></span>
-                <span class="filter-label"><?= $nom ?></span>
-                <input type="checkbox" class="filter-checkbox" 
-                       id="filter-<?= $code ?>" 
-                       name="types[]" 
-                       value="<?= $code ?>" 
-                       <?= in_array($code, $filter_types) ? 'checked' : '' ?> 
-                       data-filter-type="type">
+                <label>
+                  <span class="color-dot color-<?= $code ?>"></span>
+                  <input type="checkbox" class="filter-checkbox" 
+                         id="filter-<?= $code ?>" 
+                         name="types[]" 
+                         value="<?= $code ?>" 
+                         <?= in_array($code, $filter_types) ? 'checked' : '' ?> 
+                         data-filter-type="type">
+                  <span class="filter-label"><?= $nom ?></span>
+                </label>
               </div>
             <?php endif; ?>
           <?php endforeach; ?>
         </div>
       </div>
       <?php endif; ?>
+      
+      <!-- Autres modules -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Autres modules</div>
+        <div class="folder-menu">
+          <a href="../notes/notes.php" class="module-link">
+            <i class="fas fa-chart-bar"></i> Notes
+          </a>
+          <a href="../messagerie/index.php" class="module-link">
+            <i class="fas fa-envelope"></i> Messagerie
+          </a>
+          <a href="../absences/absences.php" class="module-link">
+            <i class="fas fa-calendar-times"></i> Absences
+          </a>
+          <a href="../cahierdetextes/cahierdetextes.php" class="module-link">
+            <i class="fas fa-book"></i> Cahier de textes
+          </a>
+          <a href="../accueil/accueil.php" class="module-link">
+            <i class="fas fa-home"></i> Accueil
+          </a>
+        </div>
+      </div>
 
       <!-- Hidden input to preserve filter state -->
       <input type="hidden" id="filter-set-flag" value="1">
@@ -1285,33 +1308,6 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
       if (!event.target.closest('.classes-dropdown')) {
         document.getElementById('classes-dropdown').classList.remove('show');
       }
-    });
-  </script>
-</body>
-</html>
-    // Événements pour la navigation par clics sur les jours du calendrier
-    document.querySelectorAll('.calendar-day:not(.other-month)').forEach(day => {
-      day.addEventListener('click', function(e) {
-        if (e.target === this || e.target.classList.contains('calendar-day-number')) {
-          const date = this.getAttribute('data-date');
-          if (date) {
-            let url = `?view=day&date=${date}`;
-            url += getFilterParams();
-            window.location.href = url;
-          }
-        }
-      });
-    });
-    
-    // Événements pour les clics sur les événements du calendrier
-    document.querySelectorAll('.calendar-event').forEach(event => {
-      event.addEventListener('click', function(e) {
-        e.stopPropagation();
-        const eventId = this.getAttribute('data-event-id');
-        if (eventId) {
-          window.location.href = `details_evenement.php?id=${eventId}`;
-        }
-      });
     });
   </script>
 </body>
