@@ -29,21 +29,23 @@ $classe = isset($user['classe']) ? $user['classe'] : '';
 $user_role = $user['profil'];
 $user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
 
-// Fonction pour déterminer le semestre actuel
-function getSemestre() {
+// Fonction pour déterminer le trimestre actuel
+function getTrimestre() {
     $mois = date('n');
     if ($mois >= 9 && $mois <= 12) {
-        return "1er semestre";
-    } elseif ($mois >= 1 && $mois <= 6) {
-        return "2ème semestre";
+        return "1er trimestre";
+    } elseif ($mois >= 1 && $mois <= 3) {
+        return "2ème trimestre";
+    } elseif ($mois >= 4 && $mois <= 6) {
+        return "3ème trimestre";
     } else {
         return "Période estivale";
     }
 }
 
-// Récupérer la date du jour et le semestre
+// Récupérer la date du jour et le trimestre
 $aujourdhui = date('d/m/Y');
-$semestre = getSemestre();
+$trimestre = getTrimestre();
 
 // Déterminer le jour de la semaine en français
 $jours = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
@@ -224,7 +226,7 @@ try {
             </div>
             <div class="info-item">
                 <div class="info-label">Période</div>
-                <div class="info-value"><?= $semestre ?></div>
+                <div class="info-value"><?= $trimestre ?></div>
             </div>
         </div>
     </div>
@@ -250,7 +252,7 @@ try {
                 <?php if (!empty($classe)): ?>
                 <p>Classe de <?= htmlspecialchars($classe) ?></p>
                 <?php endif; ?>
-                <p class="welcome-date"><?= $jour . ' ' . $aujourdhui ?> - <?= $semestre ?></p>
+                <p class="welcome-date"><?= $jour . ' ' . $aujourdhui ?> - <?= $trimestre ?></p>
             </div>
             <div class="welcome-logo">
                 <i class="fas fa-school"></i>
@@ -402,6 +404,18 @@ try {
                             </ul>
                         <?php endif; ?>
                     </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-content">
+                <div class="footer-links">
+                    <a href="#">Mentions Légales</a>
+                </div>
+                <div class="footer-copyright">
+                    &copy; <?= date('Y') ?> PRONOTE - Tous droits réservés
                 </div>
             </div>
         </div>
