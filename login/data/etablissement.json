@@ -1,4 +1,11 @@
 {
+  "nom": "Cité Scolaire Jean Moulin",
+  "adresse": "12 rue de l'Éducation",
+  "code_postal": "75000",
+  "ville": "Paris",
+  "academie": "Paris",
+  "telephone": "01 23 45 67 89",
+  "email": "contact@cs-jeanmoulin.fr",
   "classes": {
     "college": {
       "sixieme": ["6A", "6B", "6C", "6D"],
