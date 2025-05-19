@@ -249,44 +249,6 @@ if (!empty($etablissement_data['classes'])) {
     <div class="sidebar">
       <div class="logo-container">
         <div class="app-logo">P</div>
-<<<<<<< HEAD
-        <div class="app-title">Pronote Absences</div>
-      </a>
-
-      <!-- Filtres par période -->
-      <div class="sidebar-section">
-        <h3 class="sidebar-section-header">Périodes</h3>
-        <div class="sidebar-nav">
-          <a href="?periode=semaine" class="sidebar-nav-item <?= ($periode_active == 'semaine' ? 'active' : '') ?>">
-            <span class="sidebar-nav-icon"><i class="fas fa-calendar-week"></i></span>
-            <span>Cette semaine</span>
-          </a>
-          <a href="?periode=mois" class="sidebar-nav-item <?= ($periode_active == 'mois' ? 'active' : '') ?>">
-            <span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span>
-            <span>Ce mois</span>
-          </a>
-          <a href="?periode=trimestre" class="sidebar-nav-item <?= ($periode_active == 'trimestre' ? 'active' : '') ?>">
-            <span class="sidebar-nav-icon"><i class="fas fa-calendar"></i></span>
-            <span>Ce trimestre</span>
-          </a>
-        </div>
-      </div>
-
-      <!-- Filtres par type -->
-      <div class="sidebar-section">
-        <h3 class="sidebar-section-header">Type d'absences</h3>
-        <div class="filter-option">
-          <span class="filter-label">Non justifiées</span>
-          <input type="checkbox" class="filter-checkbox" name="type[]" value="non_justifiee" <?= (in_array('non_justifiee', $selected_types) ? 'checked' : '') ?>>
-        </div>
-        <div class="filter-option">
-          <span class="filter-label">Justifiées</span>
-          <input type="checkbox" class="filter-checkbox" name="type[]" value="justifiee" <?= (in_array('justifiee', $selected_types) ? 'checked' : '') ?>>
-        </div>
-        <div class="filter-option">
-          <span class="filter-label">Retards</span>
-          <input type="checkbox" class="filter-checkbox" name="type[]" value="retard" <?= (in_array('retard', $selected_types) ? 'checked' : '') ?>>
-=======
         <div class="app-title">Absences</div>
       </div>
 
@@ -328,26 +290,17 @@ if (!empty($etablissement_data['classes'])) {
               <span class="filter-label">Retards</span>
             </label>
           </div>
->>>>>>> design
         </div>
       </div>
 
       <!-- Actions -->
       <?php if (canManageAbsences()): ?>
       <div class="sidebar-section">
-<<<<<<< HEAD
-        <h3 class="sidebar-section-header">Actions</h3>
-        <a href="ajouter_absence.php" class="action-button">
-          <i class="fas fa-plus"></i> Signaler une absence
-        </a>
-        <a href="appel.php" class="action-button secondary">
-=======
         <div class="sidebar-section-header">Actions</div>
         <a href="ajouter_absence.php" class="create-button">
           <i class="fas fa-plus"></i> Signaler une absence
         </a>
         <a href="appel.php" class="button button-secondary">
->>>>>>> design
           <i class="fas fa-clipboard-list"></i> Faire l'appel
         </a>
       </div>
@@ -355,29 +308,6 @@ if (!empty($etablissement_data['classes'])) {
 
       <!-- Autres modules -->
       <div class="sidebar-section">
-<<<<<<< HEAD
-        <h3 class="sidebar-section-header">Autres modules</h3>
-        <div class="sidebar-nav">
-          <a href="../notes/notes.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-chart-bar"></i></span>
-            <span>Notes</span>
-          </a>
-          <a href="../messagerie/index.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
-            <span>Messagerie</span>
-          </a>
-          <a href="../agenda/agenda.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-calendar"></i></span>
-            <span>Agenda</span>
-          </a>
-          <a href="../cahierdetextes/cahierdetextes.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-book"></i></span>
-            <span>Cahier de textes</span>
-          </a>
-          <a href="../accueil/accueil.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
-            <span>Accueil</span>
-=======
         <div class="sidebar-section-header">Autres modules</div>
         <div class="folder-menu">
           <a href="../notes/notes.php" class="module-link">
@@ -394,7 +324,6 @@ if (!empty($etablissement_data['classes'])) {
           </a>
           <a href="../accueil/accueil.php" class="module-link">
             <i class="fas fa-home"></i> Accueil
->>>>>>> design
           </a>
         </div>
       </div>

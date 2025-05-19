@@ -840,11 +840,7 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
       
       <!-- Mini-calendrier pour la navigation -->
       <div class="sidebar-section">
-<<<<<<< HEAD
-        <h3 class="sidebar-section-header">Calendrier</h3>
-=======
         <div class="sidebar-section-header">Calendrier</div>
->>>>>>> design
         <div class="mini-calendar">
           <?= generateMiniCalendar($month, $year, $date) ?>
         </div>
@@ -852,11 +848,7 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
       
       <!-- Créer un événement -->
       <div class="sidebar-section">
-<<<<<<< HEAD
-        <h3 class="sidebar-section-header">Actions</h3>
-=======
         <div class="sidebar-section-header">Actions</div>
->>>>>>> design
         <a href="ajouter_evenement.php" class="create-button">
           <i class="fas fa-plus"></i> Créer un événement
         </a>
@@ -865,13 +857,8 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
       <!-- Filtres par type d'événement -->
       <?php if (!empty($available_event_types)): ?>
       <div class="sidebar-section">
-<<<<<<< HEAD
-        <h3 class="sidebar-section-header">Types d'événements</h3>
-        <div class="calendar-filters">
-=======
         <div class="sidebar-section-header">Types d'événements</div>
         <div class="folder-menu">
->>>>>>> design
           <?php foreach ($types_evenements as $code => $nom): ?>
             <?php if (in_array($code, $available_event_types)): ?>
               <div class="filter-option">
@@ -894,29 +881,6 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
       
       <!-- Autres modules -->
       <div class="sidebar-section">
-<<<<<<< HEAD
-        <h3 class="sidebar-section-header">Autres modules</h3>
-        <div class="sidebar-nav">
-          <a href="../notes/notes.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-chart-bar"></i></span>
-            <span>Notes</span>
-          </a>
-          <a href="../messagerie/index.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
-            <span>Messagerie</span>
-          </a>
-          <a href="../absences/absences.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-calendar-times"></i></span>
-            <span>Absences</span>
-          </a>
-          <a href="../cahierdetextes/cahierdetextes.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-book"></i></span>
-            <span>Cahier de textes</span>
-          </a>
-          <a href="../accueil/accueil.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
-            <span>Accueil</span>
-=======
         <div class="sidebar-section-header">Autres modules</div>
         <div class="folder-menu">
           <a href="../notes/notes.php" class="module-link">
@@ -933,7 +897,6 @@ function generateMiniCalendar($month, $year, $selected_date = null) {
           </a>
           <a href="../accueil/accueil.php" class="module-link">
             <i class="fas fa-home"></i> Accueil
->>>>>>> design
           </a>
         </div>
       </div>

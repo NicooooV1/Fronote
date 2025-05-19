@@ -468,45 +468,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="sidebar">
       <div class="logo-container">
         <div class="app-logo">P</div>
-<<<<<<< HEAD
-        <div class="app-title">Pronote Agenda</div>
-      </a>
-      
-      <!-- Actions -->
-      <div class="sidebar-section">
-        <h3 class="sidebar-section-header">Actions</h3>
-        <a href="agenda.php" class="action-button secondary">
-          <i class="fas fa-calendar"></i> Retour à l'agenda
-        </a>
-        <a href="details_evenement.php?id=<?= $id ?>" class="action-button secondary">
-          <i class="fas fa-eye"></i> Voir l'événement
-        </a>
-      </div>
-      
-      <!-- Autres modules -->
-      <div class="sidebar-section">
-        <h3 class="sidebar-section-header">Autres modules</h3>
-        <div class="sidebar-nav">
-          <a href="../notes/notes.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-chart-bar"></i></span>
-            <span>Notes</span>
-          </a>
-          <a href="../messagerie/index.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
-            <span>Messagerie</span>
-          </a>
-          <a href="../absences/absences.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-calendar-times"></i></span>
-            <span>Absences</span>
-          </a>
-          <a href="../cahierdetextes/cahierdetextes.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-book"></i></span>
-            <span>Cahier de textes</span>
-          </a>
-          <a href="../accueil/accueil.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
-            <span>Accueil</span>
-=======
         <div class="app-title">Agenda</div>
       </div>
       
@@ -539,7 +500,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </a>
           <a href="../accueil/accueil.php" class="module-link">
             <i class="fas fa-home"></i> Accueil
->>>>>>> design
           </a>
         </div>
       </div>

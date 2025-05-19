@@ -157,13 +157,6 @@ if (!function_exists('canManageDevoirs')) {
       
       <!-- Section des filtres -->
       <div class="sidebar-section">
-<<<<<<< HEAD
-        <h3 class="sidebar-section-header">Filtres</h3>
-        
-        <div class="filter-option">
-          <span class="filter-label">À rendre cette semaine</span>
-          <input type="checkbox" class="filter-checkbox" id="filter-semaine">
-=======
         <div class="sidebar-section-header">Filtres</div>
         <div class="folder-menu">
           <div class="filter-option">
@@ -188,20 +181,14 @@ if (!function_exists('canManageDevoirs')) {
             </label>
           </div>
           <?php endif; ?>
->>>>>>> design
         </div>
       </div>
       
       <!-- Actions -->
       <?php if (canManageDevoirs()): ?>
       <div class="sidebar-section">
-<<<<<<< HEAD
-        <h3 class="sidebar-section-header">Actions</h3>
-        <a href="ajouter_devoir.php" class="action-button">
-=======
         <div class="sidebar-section-header">Actions</div>
         <a href="ajouter_devoir.php" class="create-button">
->>>>>>> design
           <i class="fas fa-plus"></i> Ajouter un devoir
         </a>
       </div>
@@ -209,29 +196,6 @@ if (!function_exists('canManageDevoirs')) {
       
       <!-- Autres modules -->
       <div class="sidebar-section">
-<<<<<<< HEAD
-        <h3 class="sidebar-section-header">Autres modules</h3>
-        <div class="sidebar-nav">
-          <a href="../notes/notes.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-chart-bar"></i></span>
-            <span>Notes</span>
-          </a>
-          <a href="../messagerie/index.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
-            <span>Messagerie</span>
-          </a>
-          <a href="../absences/absences.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-calendar-times"></i></span>
-            <span>Absences</span>
-          </a>
-          <a href="../agenda/agenda.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-calendar"></i></span>
-            <span>Agenda</span>
-          </a>
-          <a href="../accueil/accueil.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
-            <span>Accueil</span>
-=======
         <div class="sidebar-section-header">Autres modules</div>
         <div class="folder-menu">
           <a href="../notes/notes.php" class="module-link">
@@ -248,7 +212,6 @@ if (!function_exists('canManageDevoirs')) {
           </a>
           <a href="../accueil/accueil.php" class="module-link">
             <i class="fas fa-home"></i> Accueil
->>>>>>> design
           </a>
         </div>
       </div>

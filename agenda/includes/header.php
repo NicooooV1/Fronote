@@ -11,16 +11,6 @@
   <div class="app-container">
     <!-- Sidebar -->
     <div class="sidebar">
-<<<<<<< HEAD
-      <a href="../accueil/accueil.php" class="logo-container">
-        <div class="app-logo">P</div>
-        <div class="app-title">Pronote Agenda</div>
-      </a>
-      
-      <!-- Mini-calendrier pour la navigation -->
-      <div class="sidebar-section">
-        <h3 class="sidebar-section-header">Calendrier</h3>
-=======
       <div class="logo-container">
         <div class="app-logo">P</div>
         <div class="app-title">Agenda</div>
@@ -29,20 +19,14 @@
       <!-- Mini-calendrier pour la navigation -->
       <div class="sidebar-section">
         <div class="sidebar-section-header">Calendrier</div>
->>>>>>> design
         <!-- Insérer ici le mini-calendrier -->
       </div>
       
       <?php if (isset($_SESSION['user']) && (in_array($_SESSION['user']['profil'], ['professeur', 'administrateur', 'vie_scolaire']))): ?>
       <!-- Actions -->
       <div class="sidebar-section">
-<<<<<<< HEAD
-        <h3 class="sidebar-section-header">Actions</h3>
-        <a href="ajouter_evenement.php" class="action-button">
-=======
         <div class="sidebar-section-header">Actions</div>
         <a href="ajouter_evenement.php" class="create-button">
->>>>>>> design
           <i class="fas fa-plus"></i> Ajouter un événement
         </a>
       </div>
@@ -50,29 +34,6 @@
       
       <!-- Autres modules -->
       <div class="sidebar-section">
-<<<<<<< HEAD
-        <h3 class="sidebar-section-header">Autres modules</h3>
-        <div class="sidebar-nav">
-          <a href="../notes/notes.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-chart-bar"></i></span>
-            <span>Notes</span>
-          </a>
-          <a href="../messagerie/index.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
-            <span>Messagerie</span>
-          </a>
-          <a href="../absences/absences.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-calendar-times"></i></span>
-            <span>Absences</span>
-          </a>
-          <a href="../cahierdetextes/cahierdetextes.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-book"></i></span>
-            <span>Cahier de textes</span>
-          </a>
-          <a href="../accueil/accueil.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
-            <span>Accueil</span>
-=======
         <div class="sidebar-section-header">Autres modules</div>
         <div class="folder-menu">
           <a href="../notes/notes.php" class="module-link">
@@ -89,7 +50,6 @@
           </a>
           <a href="../accueil/accueil.php" class="module-link">
             <i class="fas fa-home"></i> Accueil
->>>>>>> design
           </a>
         </div>
       </div>

@@ -741,17 +741,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_persons' && isset($_GET['
   <div class="app-container">
     <!-- Sidebar -->
     <div class="sidebar">
-<<<<<<< HEAD
-      <a href="../accueil/accueil.php" class="logo-container">
-        <div class="app-logo">P</div>
-        <div class="app-title">Pronote Agenda</div>
-      </a>
-      
-      <!-- Actions -->
-      <div class="sidebar-section">
-        <h3 class="sidebar-section-header">Actions</h3>
-        <a href="agenda.php" class="action-button secondary">
-=======
       <div class="logo-container">
         <div class="app-logo">P</div>
         <div class="app-title">Agenda</div>
@@ -761,36 +750,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_persons' && isset($_GET['
       <div class="sidebar-section">
         <div class="sidebar-section-header">Actions</div>
         <a href="agenda.php" class="button button-secondary">
->>>>>>> design
           <i class="fas fa-calendar"></i> Retour à l'agenda
         </a>
       </div>
       
       <!-- Autres modules -->
       <div class="sidebar-section">
-<<<<<<< HEAD
-        <h3 class="sidebar-section-header">Autres modules</h3>
-        <div class="sidebar-nav">
-          <a href="../notes/notes.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-chart-bar"></i></span>
-            <span>Notes</span>
-          </a>
-          <a href="../messagerie/index.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
-            <span>Messagerie</span>
-          </a>
-          <a href="../absences/absences.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-calendar-times"></i></span>
-            <span>Absences</span>
-          </a>
-          <a href="../cahierdetextes/cahierdetextes.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-book"></i></span>
-            <span>Cahier de textes</span>
-          </a>
-          <a href="../accueil/accueil.php" class="sidebar-nav-item">
-            <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
-            <span>Accueil</span>
-=======
         <div class="sidebar-section-header">Autres modules</div>
         <div class="folder-menu">
           <a href="../notes/notes.php" class="module-link">
@@ -807,386 +772,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_persons' && isset($_GET['
           </a>
           <a href="../accueil/accueil.php" class="module-link">
             <i class="fas fa-home"></i> Accueil
->>>>>>> design
           </a>
         </div>
       </div>
     </div>
     
     <!-- Main Content -->
-<<<<<<< HEAD
-    <div class="main-content">
-      <!-- Header -->
-      <div class="top-header">
-        <div class="calendar-navigation">
-          <a href="agenda.php" class="back-button">
-            <span class="back-icon">
-              <i class="fas fa-arrow-left"></i>
-            </span>
-            Retour à l'agenda
-          </a>
-        </div>
-        
-        <div class="header-actions">
-          <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">⏻</a>
-          <div class="user-avatar"><?= $user_initials ?></div>
-        </div>
-      </div>
-      
-      <!-- Container principal -->
-      <div class="event-creation-container">
-        <div class="event-creation-header">
-          <a href="agenda.php" class="back-button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M10 19L3 12L10 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M3 12H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            Retour
-          </a>
-          <h2>Ajouter un événement</h2>
-          <?php if ($user_role === 'eleve' || $user_role === 'parent'): ?>
-            <div class="role-indicator">Événement personnel</div>
-          <?php endif; ?>
-        </div>
-        
-        <div class="event-creation-form">
-          <?php if ($message): ?>
-            <div class="message success"><?= $message ?></div>
-          <?php endif; ?>
-          
-          <?php if ($erreur): ?>
-            <div class="message error"><?= $erreur ?></div>
-          <?php endif; ?>
-          
-          <form method="post">
-            <div class="form-grid">
-              <div class="form-group form-full">
-                <label for="titre">Titre*</label>
-                <input type="text" name="titre" id="titre" required placeholder="Titre de l'événement">
-              </div>
-              
-              <div class="form-group">
-                <label for="type_evenement">Type d'événement*</label>
-                <select name="type_evenement" id="type_evenement" required onchange="toggleTypePersonnalise()">
-                  <?php if (count($types_evenements) > 1): ?>
-                    <option value="">Sélectionnez un type</option>
-                  <?php endif; ?>
-                  <?php foreach ($types_evenements as $code => $nom): ?>
-                    <option value="<?= $code ?>"><?= $nom ?></option>
-                  <?php endforeach; ?>
-                </select>
-                
-                <!-- Champ pour le type personnalisé (affiché seulement si "Autre" est sélectionné) -->
-                <div id="type_personnalise_container" class="type-personnalise">
-                  <label for="type_personnalise">Précisez le type</label>
-                  <input type="text" name="type_personnalise" id="type_personnalise" placeholder="Type d'événement personnalisé">
-                </div>
-              </div>
-              
-              <div class="form-group">
-                <label for="visibilite">Visibilité*</label>
-                <select id="visibilite" name="visibilite" required>
-                  <option value="public">Public - Visible par tous</option>
-                  <option value="professeurs">Professeurs uniquement</option>
-                  <option value="eleves">Élèves uniquement</option>
-                  <option value="parents">Parents uniquement</option>
-                  <option value="vie_scolaire">Vie scolaire uniquement</option>
-                  <option value="administration">Administration uniquement</option>
-                  
-                  <?php foreach ($classes as $classe): ?>
-                      <option value="classes:<?= htmlspecialchars($classe) ?>">Classe: <?= htmlspecialchars($classe) ?></option>
-                  <?php endforeach; ?>
-                </select>
-                <small>Détermine qui peut voir cet événement.</small>
-              </div>
-              
-              <div class="form-group">
-                <label for="date_debut">Date de début*</label>
-                <input type="date" name="date_debut" id="date_debut" value="<?= $date_par_defaut ?>" required>
-              </div>
-              
-              <div class="form-group">
-                <label for="heure_debut">Heure de début*</label>
-                <input type="time" name="heure_debut" id="heure_debut" value="<?= $heure_debut_defaut ?>" required>
-              </div>
-              
-              <div class="form-group">
-                <label for="date_fin">Date de fin*</label>
-                <input type="date" name="date_fin" id="date_fin" value="<?= $date_par_defaut ?>" required>
-              </div>
-              
-              <div class="form-group">
-                <label for="heure_fin">Heure de fin*</label>
-                <input type="time" name="heure_fin" id="heure_fin" value="<?= $heure_fin_defaut ?>" required>
-              </div>
-              
-              <!-- Section pour les classes (visible uniquement si "Classes spécifiques" est sélectionné) -->
-              <div id="section_classes" class="form-group form-full" style="display: none;">
-                <label>Classes concernées</label>
-                <div class="multiselect-container">
-                  <div class="multiselect-search">
-                    <input type="text" id="classes_search" placeholder="Rechercher une classe" oninput="filterOptions('classes_search', 'class-option')">
-                  </div>
-                  <div class="multiselect-actions">
-                    <button type="button" class="multiselect-action" onclick="selectAll('class-checkbox')">Tout sélectionner</button>
-                    <button type="button" class="multiselect-action" onclick="deselectAll('class-checkbox')">Tout désélectionner</button>
-                  </div>
-                  <div class="multiselect-options">
-                    <?php foreach ($classes as $classe): ?>
-                      <div class="multiselect-option class-option">
-                        <label>
-                          <input type="checkbox" name="classes[]" class="class-checkbox" value="<?= $classe ?>">
-                          <?= $classe ?>
-                        </label>
-                      </div>
-                    <?php endforeach; ?>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Personnes concernées -->
-              <div class="form-group form-full" id="personnesContainer">
-                <label for="personnes">Personnes concernées</label>
-                <div class="persons-selector">
-                  <div class="persons-actions">
-                    <button type="button" class="persons-action" id="selectAllPersons">Tout sélectionner</button>
-                    <button type="button" class="persons-action" id="deselectAllPersons">Tout désélectionner</button>
-                  </div>
-                  <input type="text" id="searchPersons" class="persons-search" placeholder="Rechercher...">
-                  <div class="persons-list" id="personsList">
-                    <div class="loading-indicator">Chargement des personnes concernées...</div>
-                  </div>
-                  <div class="persons-count" id="personsCount">0 personne(s) sélectionnée(s)</div>
-                </div>
-                <small>Sélectionnez les personnes spécifiquement concernées par cet événement.</small>
-              </div>
-              
-              <div class="form-group">
-                <label for="lieu">Lieu</label>
-                <input type="text" name="lieu" id="lieu" placeholder="Salle, bâtiment, etc.">
-              </div>
-              
-              <?php if (isTeacher()): ?>
-                <div class="form-group">
-                  <label for="matieres">Matière associée</label>
-                  <input type="text" name="matieres" id="matieres" value="<?= htmlspecialchars($prof_matiere) ?>" readonly>
-                </div>
-              <?php else: ?>
-                <div class="form-group">
-                  <label for="matieres">Matière associée</label>
-                  <input type="text" name="matieres" id="matieres" placeholder="Matière concernée">
-                </div>
-              <?php endif; ?>
-              
-              <div class="form-group form-full">
-                <label for="description">Description</label>
-                <textarea name="description" id="description" rows="4" placeholder="Détails de l'événement..."></textarea>
-              </div>
-              
-              <div class="form-full">
-                <div class="form-actions">
-                  <a href="agenda.php" class="btn-cancel">Annuler</a>
-                  <button type="submit" class="btn-submit">Créer l'événement</button>
-                </div>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
-      
-      <script>
-        // Synchroniser les dates de début et de fin
-        document.getElementById('date_debut').addEventListener('change', function() {
-          const dateFinInput = document.getElementById('date_fin');
-          // Si la date de fin est vide ou si elle est avant la date de début
-          if (!dateFinInput.value || dateFinInput.value < this.value) {
-            dateFinInput.value = this.value;
-          }
-        });
-        
-        // Afficher/masquer la section des classes selon la visibilité sélectionnée
-        function toggleClassesSection() {
-          const visibiliteSelect = document.getElementById('visibilite');
-          const sectionClasses = document.getElementById('section_classes');
-          
-          if (visibiliteSelect.value === 'classes_specifiques') {
-            sectionClasses.style.display = 'block';
-          } else {
-            sectionClasses.style.display = 'none';
-          }
-        }
-        
-        // Afficher/masquer le champ de type personnalisé
-        function toggleTypePersonnalise() {
-          const typeSelect = document.getElementById('type_evenement');
-          const typePersonnaliseContainer = document.getElementById('type_personnalise_container');
-          
-          if (typeSelect.value === 'autre') {
-            typePersonnaliseContainer.style.display = 'block';
-          } else {
-            typePersonnaliseContainer.style.display = 'none';
-          }
-        }
-        
-        // Fonction pour filtrer les options dans un multiselect
-        function filterOptions(searchId, optionClass) {
-          const searchText = document.getElementById(searchId).value.toLowerCase();
-          document.querySelectorAll('.' + optionClass).forEach(option => {
-            const text = option.textContent.toLowerCase();
-            option.style.display = text.includes(searchText) ? 'block' : 'none';
-          });
-        }
-        
-        // Sélectionner toutes les options
-        function selectAll(checkboxClass) {
-          document.querySelectorAll('.' + checkboxClass).forEach(checkbox => {
-            checkbox.checked = true;
-          });
-        }
-        
-        // Désélectionner toutes les options
-        function deselectAll(checkboxClass) {
-          document.querySelectorAll('.' + checkboxClass).forEach(checkbox => {
-            checkbox.checked = false;
-          });
-        }
-        
-        // Fonction pour gérer le chargement des personnes en fonction de la visibilité
-        document.addEventListener('DOMContentLoaded', function() {
-          const visibiliteSelect = document.getElementById('visibilite');
-          const personnesContainer = document.getElementById('personnesContainer');
-          const personsList = document.getElementById('personsList');
-          const searchInput = document.getElementById('searchPersons');
-          const selectAllBtn = document.getElementById('selectAllPersons');
-          const deselectAllBtn = document.getElementById('deselectAllPersons');
-          const personsCount = document.getElementById('personsCount');
-          
-          let selectedPersons = [];
-          
-          // Fonction pour charger les personnes selon la visibilité
-          function loadPersons(visibility) {
-            personsList.innerHTML = '<div class="loading-indicator">Chargement des personnes concernées...</div>';
-            
-            // Définir la visibilité du conteneur en fonction du type de visibilité
-            if (visibility === 'public') {
-              personnesContainer.style.display = 'none';
-            } else {
-              personnesContainer.style.display = 'block';
-            }
-            
-            // Appel AJAX pour récupérer les personnes
-            fetch(`ajouter_evenement.php?action=get_persons&visibility=${encodeURIComponent(visibility)}`)
-              .then(response => response.json())
-              .then(data => {
-                if (data.success && data.persons.length > 0) {
-                  renderPersons(data.persons);
-                } else {
-                  personsList.innerHTML = '<div class="no-persons">Aucune personne trouvée pour cette visibilité.</div>';
-                }
-              })
-              .catch(error => {
-                console.error('Erreur lors du chargement des personnes:', error);
-                personsList.innerHTML = '<div class="no-persons">Erreur lors du chargement des personnes.</div>';
-              });
-          }
-          
-          // Fonction pour afficher les personnes
-          function renderPersons(persons) {
-            personsList.innerHTML = '';
-            
-            persons.forEach(person => {
-              const personItem = document.createElement('div');
-              personItem.className = 'person-item';
-              
-              const checkbox = document.createElement('input');
-              checkbox.type = 'checkbox';
-              checkbox.className = 'person-checkbox';
-              checkbox.name = 'personnes_concernees[]';
-              checkbox.value = `${person.type}:${person.id}`;
-              checkbox.id = `person-${person.type}-${person.id}`;
-              checkbox.addEventListener('change', updateSelectedCount);
-              
-              const label = document.createElement('label');
-              label.htmlFor = checkbox.id;
-              label.className = 'person-label';
-              
-              const nameSpan = document.createElement('span');
-              nameSpan.className = 'person-name';
-              nameSpan.textContent = person.name;
-              
-              const infoSpan = document.createElement('span');
-              infoSpan.className = 'person-info';
-              infoSpan.textContent = person.info || '';
-              
-              label.appendChild(nameSpan);
-              label.appendChild(infoSpan);
-              
-              personItem.appendChild(checkbox);
-              personItem.appendChild(label);
-              
-              personsList.appendChild(personItem);
-            });
-            
-            updateSelectedCount();
-          }
-          
-          // Fonction pour filtrer les personnes
-          function filterPersons() {
-            const searchTerm = searchInput.value.toLowerCase();
-            const personItems = document.querySelectorAll('.person-item');
-            
-            personItems.forEach(item => {
-              const name = item.querySelector('.person-name').textContent.toLowerCase();
-              const info = item.querySelector('.person-info').textContent.toLowerCase();
-              
-              if (name.includes(searchTerm) || info.includes(searchTerm)) {
-                item.style.display = 'flex';
-              } else {
-                item.style.display = 'none';
-              }
-            });
-          }
-          
-          // Fonction pour mettre à jour le compteur de sélection
-          function updateSelectedCount() {
-            const checkedBoxes = document.querySelectorAll('.person-checkbox:checked');
-            personsCount.textContent = checkedBoxes.length + ' personne(s) sélectionnée(s)';
-          }
-          
-          // Initialisation des écouteurs d'événements
-          visibiliteSelect.addEventListener('change', function() {
-            loadPersons(this.value);
-          });
-          
-          searchInput.addEventListener('input', filterPersons);
-          
-          selectAllBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            document.querySelectorAll('.person-checkbox').forEach(checkbox => {
-              checkbox.checked = true;
-            });
-            updateSelectedCount();
-          });
-          
-          deselectAllBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            document.querySelectorAll('.person-checkbox').forEach(checkbox => {
-              checkbox.checked = false;
-            });
-            updateSelectedCount();
-          });
-          
-          // Charger les personnes au chargement initial selon la valeur par défaut
-          loadPersons(visibiliteSelect.value);
-        });
-        
-        // Initialiser les sections cachées au chargement
-        window.addEventListener('load', function() {
-          toggleClassesSection();
-          toggleTypePersonnalise();
-        });
-      </script>
-=======
     <div class="event-creation-container">
       <div class="event-creation-header">
         <a href="agenda.php" class="back-button">
@@ -1345,11 +936,205 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_persons' && isset($_GET['
           </div>
         </form>
       </div>
->>>>>>> design
     </div>
   </div>
   
-  <?php
-  // Terminer la mise en mémoire tampon et envoyer la sortie
-  ob_end_flush();
-  ?>
+  <script>
+    // Synchroniser les dates de début et de fin
+    document.getElementById('date_debut').addEventListener('change', function() {
+      const dateFinInput = document.getElementById('date_fin');
+      // Si la date de fin est vide ou si elle est avant la date de début
+      if (!dateFinInput.value || dateFinInput.value < this.value) {
+        dateFinInput.value = this.value;
+      }
+    });
+    
+    // Afficher/masquer la section des classes selon la visibilité sélectionnée
+    function toggleClassesSection() {
+      const visibiliteSelect = document.getElementById('visibilite');
+      const sectionClasses = document.getElementById('section_classes');
+      
+      if (visibiliteSelect.value === 'classes_specifiques') {
+        sectionClasses.style.display = 'block';
+      } else {
+        sectionClasses.style.display = 'none';
+      }
+    }
+    
+    // Afficher/masquer le champ de type personnalisé
+    function toggleTypePersonnalise() {
+      const typeSelect = document.getElementById('type_evenement');
+      const typePersonnaliseContainer = document.getElementById('type_personnalise_container');
+      
+      if (typeSelect.value === 'autre') {
+        typePersonnaliseContainer.style.display = 'block';
+      } else {
+        typePersonnaliseContainer.style.display = 'none';
+      }
+    }
+    
+    // Fonction pour filtrer les options dans un multiselect
+    function filterOptions(searchId, optionClass) {
+      const searchText = document.getElementById(searchId).value.toLowerCase();
+      document.querySelectorAll('.' + optionClass).forEach(option => {
+        const text = option.textContent.toLowerCase();
+        option.style.display = text.includes(searchText) ? 'block' : 'none';
+      });
+    }
+    
+    // Sélectionner toutes les options
+    function selectAll(checkboxClass) {
+      document.querySelectorAll('.' + checkboxClass).forEach(checkbox => {
+        checkbox.checked = true;
+      });
+    }
+    
+    // Désélectionner toutes les options
+    function deselectAll(checkboxClass) {
+      document.querySelectorAll('.' + checkboxClass).forEach(checkbox => {
+        checkbox.checked = false;
+      });
+    }
+    
+    // Fonction pour gérer le chargement des personnes en fonction de la visibilité
+    document.addEventListener('DOMContentLoaded', function() {
+      const visibiliteSelect = document.getElementById('visibilite');
+      const personnesContainer = document.getElementById('personnesContainer');
+      const personsList = document.getElementById('personsList');
+      const searchInput = document.getElementById('searchPersons');
+      const selectAllBtn = document.getElementById('selectAllPersons');
+      const deselectAllBtn = document.getElementById('deselectAllPersons');
+      const personsCount = document.getElementById('personsCount');
+      
+      let selectedPersons = [];
+      
+      // Fonction pour charger les personnes selon la visibilité
+      function loadPersons(visibility) {
+        personsList.innerHTML = '<div class="loading-indicator">Chargement des personnes concernées...</div>';
+        
+        // Définir la visibilité du conteneur en fonction du type de visibilité
+        if (visibility === 'public') {
+          personnesContainer.style.display = 'none';
+        } else {
+          personnesContainer.style.display = 'block';
+        }
+        
+        // Appel AJAX pour récupérer les personnes
+        fetch(`ajouter_evenement.php?action=get_persons&visibility=${encodeURIComponent(visibility)}`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.success && data.persons.length > 0) {
+              renderPersons(data.persons);
+            } else {
+              personsList.innerHTML = '<div class="no-persons">Aucune personne trouvée pour cette visibilité.</div>';
+            }
+          })
+          .catch(error => {
+            console.error('Erreur lors du chargement des personnes:', error);
+            personsList.innerHTML = '<div class="no-persons">Erreur lors du chargement des personnes.</div>';
+          });
+      }
+      
+      // Fonction pour afficher les personnes
+      function renderPersons(persons) {
+        personsList.innerHTML = '';
+        
+        persons.forEach(person => {
+          const personItem = document.createElement('div');
+          personItem.className = 'person-item';
+          
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.className = 'person-checkbox';
+          checkbox.name = 'personnes_concernees[]';
+          checkbox.value = `${person.type}:${person.id}`;
+          checkbox.id = `person-${person.type}-${person.id}`;
+          checkbox.addEventListener('change', updateSelectedCount);
+          
+          const label = document.createElement('label');
+          label.htmlFor = checkbox.id;
+          label.className = 'person-label';
+          
+          const nameSpan = document.createElement('span');
+          nameSpan.className = 'person-name';
+          nameSpan.textContent = person.name;
+          
+          const infoSpan = document.createElement('span');
+          infoSpan.className = 'person-info';
+          infoSpan.textContent = person.info || '';
+          
+          label.appendChild(nameSpan);
+          label.appendChild(infoSpan);
+          
+          personItem.appendChild(checkbox);
+          personItem.appendChild(label);
+          
+          personsList.appendChild(personItem);
+        });
+        
+        updateSelectedCount();
+      }
+      
+      // Fonction pour filtrer les personnes
+      function filterPersons() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const personItems = document.querySelectorAll('.person-item');
+        
+        personItems.forEach(item => {
+          const name = item.querySelector('.person-name').textContent.toLowerCase();
+          const info = item.querySelector('.person-info').textContent.toLowerCase();
+          
+          if (name.includes(searchTerm) || info.includes(searchTerm)) {
+            item.style.display = 'flex';
+          } else {
+            item.style.display = 'none';
+          }
+        });
+      }
+      
+      // Fonction pour mettre à jour le compteur de sélection
+      function updateSelectedCount() {
+        const checkedBoxes = document.querySelectorAll('.person-checkbox:checked');
+        personsCount.textContent = checkedBoxes.length + ' personne(s) sélectionnée(s)';
+      }
+      
+      // Initialisation des écouteurs d'événements
+      visibiliteSelect.addEventListener('change', function() {
+        loadPersons(this.value);
+      });
+      
+      searchInput.addEventListener('input', filterPersons);
+      
+      selectAllBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelectorAll('.person-checkbox').forEach(checkbox => {
+          checkbox.checked = true;
+        });
+        updateSelectedCount();
+      });
+      
+      deselectAllBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelectorAll('.person-checkbox').forEach(checkbox => {
+          checkbox.checked = false;
+        });
+        updateSelectedCount();
+      });
+      
+      // Charger les personnes au chargement initial selon la valeur par défaut
+      loadPersons(visibiliteSelect.value);
+    });
+    
+    // Initialiser les sections cachées au chargement
+    window.addEventListener('load', function() {
+      toggleClassesSection();
+      toggleTypePersonnalise();
+    });
+  </script>
+</body>
+</html>
+
+<?php
+// Terminer la mise en mémoire tampon et envoyer la sortie
+ob_end_flush();
+?>
