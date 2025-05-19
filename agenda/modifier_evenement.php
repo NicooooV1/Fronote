@@ -2,12 +2,28 @@
 // Démarrer la mise en mémoire tampon de sortie pour éviter l'erreur "headers already sent"
 ob_start();
 
+// Définir l'environnement si non défini
+if (!defined('APP_ENV')) {
+    define('APP_ENV', isset($_SERVER['APP_ENV']) ? $_SERVER['APP_ENV'] : 'production');
+}
+
+// Configuration de la gestion des erreurs selon l'environnement
+if (APP_ENV !== 'development') {
+    error_reporting(0);
+    ini_set('display_errors', 0);
+} else {
+    error_reporting(E_ALL);
+    ini_set('display_errors', 1);
+}
+
 // Inclusion des fichiers nécessaires - utiliser require_once pour éviter les inclusions multiples
 require_once __DIR__ . '/../API/auth_central.php'; // Utiliser le système d'authentification centralisé
-require_once 'includes/db.php';
+require_once __DIR__ . '/includes/db.php';
 
 // Vérifier que l'utilisateur est connecté avec le système centralisé
 if (!isLoggedIn()) {
+    // Journaliser la tentative d'accès non autorisée
+    error_log("Tentative d'accès non autorisée à modifier_evenement.php - Utilisateur non connecté");
     header('Location: ' . LOGIN_URL); // Utiliser la constante définie dans config.php
     exit;
 }
@@ -21,18 +37,30 @@ $user_initials = getUserInitials();
 // Vérifier que l'ID est fourni et valide en utilisant filter_input
 $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
 if (!$id) {
-    header('Location: agenda.php');
+    // Journaliser l'erreur
+    error_log("Tentative d'accès à modifier_evenement.php avec un ID invalide");
+    header('Location: agenda.php?error=invalid_id');
     exit;
 }
 
-// Récupérer les détails de l'événement avec une requête préparée
-$stmt = $pdo->prepare('SELECT * FROM evenements WHERE id = ?');
-$stmt->execute([$id]);
-$evenement = $stmt->fetch(PDO::FETCH_ASSOC);
-
-// Vérifier que l'événement existe
-if (!$evenement) {
-    header('Location: agenda.php');
+// Utiliser un bloc try-catch pour gérer les erreurs de base de données
+try {
+    // Récupérer les détails de l'événement avec une requête préparée
+    $stmt = $pdo->prepare('SELECT * FROM evenements WHERE id = ?');
+    $stmt->execute([$id]);
+    $evenement = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    // Vérifier que l'événement existe
+    if (!$evenement) {
+        // Journaliser l'erreur
+        error_log("Tentative d'accès à un événement inexistant (ID: $id)");
+        header('Location: agenda.php?error=event_not_found');
+        exit;
+    }
+} catch (PDOException $e) {
+    // Journaliser l'erreur
+    error_log("Erreur de base de données lors de la récupération de l'événement (ID: $id): " . $e->getMessage());
+    header('Location: agenda.php?error=database_error');
     exit;
 }
 
@@ -49,7 +77,9 @@ elseif (isTeacher() && $evenement['createur'] === $user_fullname) {
 }
 
 if (!$can_edit) {
-    header('Location: details_evenement.php?id=' . $id);
+    // Journaliser la tentative d'accès non autorisée
+    error_log("Tentative non autorisée de modification de l'événement (ID: $id) par l'utilisateur: $user_fullname");
+    header('Location: details_evenement.php?id=' . $id . '&error=unauthorized');
     exit;
 }
 
@@ -113,149 +143,181 @@ $options_statut = [
 // Récupérer la liste des classes de façon plus sécurisée
 $classes = [];
 $json_file = __DIR__ . '/../login/data/etablissement.json';
-if (file_exists($json_file)) {
-    $json_content = file_get_contents($json_file);
-    if ($json_content !== false) {
+try {
+    if (file_exists($json_file)) {
+        $json_content = file_get_contents($json_file);
+        if ($json_content === false) {
+            throw new Exception("Impossible de lire le fichier etablissement.json");
+        }
+        
         $etablissement_data = json_decode($json_content, true);
-        if (json_last_error() === JSON_ERROR_NONE) {
-            // Extraire les classes du secondaire
-            if (!empty($etablissement_data['classes'])) {
-                foreach ($etablissement_data['classes'] as $niveau => $niveaux) {
-                    foreach ($niveaux as $sousniveau => $classe_array) {
-                        foreach ($classe_array as $classe) {
-                            $classes[] = $classe;
-                        }
-                    }
-                }
-            }
-            
-            // Extraire les classes du primaire
-            if (!empty($etablissement_data['primaire'])) {
-                foreach ($etablissement_data['primaire'] as $niveau => $classe_array) {
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception("Erreur de parsing JSON dans etablissement.json: " . json_last_error_msg());
+        }
+        
+        // Extraire les classes du secondaire
+        if (!empty($etablissement_data['classes'])) {
+            foreach ($etablissement_data['classes'] as $niveau => $niveaux) {
+                foreach ($niveaux as $sousniveau => $classe_array) {
                     foreach ($classe_array as $classe) {
                         $classes[] = $classe;
                     }
                 }
             }
-        } else {
-            // Journaliser l'erreur de parsing JSON
-            error_log("Erreur de parsing JSON dans etablissement.json: " . json_last_error_msg());
+        }
+        
+        // Extraire les classes du primaire
+        if (!empty($etablissement_data['primaire'])) {
+            foreach ($etablissement_data['primaire'] as $niveau => $classe_array) {
+                foreach ($classe_array as $classe) {
+                    $classes[] = $classe;
+                }
+            }
         }
     }
+} catch (Exception $e) {
+    // Journaliser l'erreur mais ne pas interrompre l'application
+    error_log("Erreur lors du chargement des classes: " . $e->getMessage());
 }
 
 // Si c'est un professeur, récupérer sa matière
 $prof_matiere = '';
-if (isTeacher()) {
-    $stmt_prof = $pdo->prepare('SELECT matiere FROM professeurs WHERE nom = ? AND prenom = ?');
-    $stmt_prof->execute([$user['nom'], $user['prenom']]);
-    $prof_data = $stmt_prof->fetch();
-    $prof_matiere = $prof_data ? $prof_data['matiere'] : '';
+try {
+    if (isTeacher()) {
+        $stmt_prof = $pdo->prepare('SELECT matiere FROM professeurs WHERE nom = ? AND prenom = ?');
+        $stmt_prof->execute([$user['nom'], $user['prenom']]);
+        $prof_data = $stmt_prof->fetch();
+        $prof_matiere = $prof_data ? $prof_data['matiere'] : '';
+    }
+} catch (PDOException $e) {
+    // Journaliser l'erreur mais ne pas interrompre l'application
+    error_log("Erreur lors de la récupération de la matière du professeur: " . $e->getMessage());
 }
 
-// Générer un token CSRF pour protéger le formulaire
+// Générer un token CSRF pour protéger le formulaire et le stocker en session avec une expiration
 $csrf_token = bin2hex(random_bytes(32));
 $_SESSION['csrf_token'] = $csrf_token;
+$_SESSION['csrf_token_time'] = time(); // Ajouter un timestamp pour l'expiration
 
 // Traitement du formulaire
 $message = '';
 $erreur = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Vérifier le token CSRF
+    // Vérifier le token CSRF et sa validité temporelle (30 minutes max)
     if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || 
-        !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
-        $erreur = "Erreur de sécurité: formulaire invalide.";
+        !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token']) ||
+        !isset($_SESSION['csrf_token_time']) || 
+        (time() - $_SESSION['csrf_token_time']) > 1800) {
+        
+        // Journaliser la tentative potentielle de CSRF
+        error_log("Tentative potentielle de CSRF lors de la modification de l'événement ID: $id");
+        $erreur = "Erreur de sécurité: formulaire invalide ou expiré. Veuillez actualiser la page et réessayer.";
     } else {
-        // Validation des champs obligatoires avec filter_input
-        $titre = filter_input(INPUT_POST, 'titre', FILTER_SANITIZE_STRING);
-        $description = filter_input(INPUT_POST, 'description', FILTER_SANITIZE_STRING) ?? '';
-        $date_debut = filter_input(INPUT_POST, 'date_debut', FILTER_SANITIZE_STRING);
-        $heure_debut = filter_input(INPUT_POST, 'heure_debut', FILTER_SANITIZE_STRING);
-        $date_fin = filter_input(INPUT_POST, 'date_fin', FILTER_SANITIZE_STRING);
-        $heure_fin = filter_input(INPUT_POST, 'heure_fin', FILTER_SANITIZE_STRING);
-        $type_evenement = filter_input(INPUT_POST, 'type_evenement', FILTER_SANITIZE_STRING);
-        $statut = filter_input(INPUT_POST, 'statut', FILTER_SANITIZE_STRING) ?? 'actif';
-        $visibilite = filter_input(INPUT_POST, 'visibilite', FILTER_SANITIZE_STRING);
-        $lieu = filter_input(INPUT_POST, 'lieu', FILTER_SANITIZE_STRING) ?? '';
-        $matieres = filter_input(INPUT_POST, 'matieres', FILTER_SANITIZE_STRING) ?? '';
+        // Validation des champs obligatoires avec filtrage approprié
+        $titre = filter_input(INPUT_POST, 'titre', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+        $description = filter_input(INPUT_POST, 'description', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? '';
+        $date_debut = filter_input(INPUT_POST, 'date_debut', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+        $heure_debut = filter_input(INPUT_POST, 'heure_debut', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+        $date_fin = filter_input(INPUT_POST, 'date_fin', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+        $heure_fin = filter_input(INPUT_POST, 'heure_fin', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+        $type_evenement = filter_input(INPUT_POST, 'type_evenement', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+        $statut = filter_input(INPUT_POST, 'statut', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? 'actif';
+        $visibilite = filter_input(INPUT_POST, 'visibilite', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+        $lieu = filter_input(INPUT_POST, 'lieu', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? '';
+        $matieres = filter_input(INPUT_POST, 'matieres', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? '';
         
         if (!$titre || !$date_debut || !$heure_debut || !$date_fin || !$heure_fin || !$type_evenement) {
             $erreur = "Veuillez remplir tous les champs obligatoires.";
         } else {
             // Formatage des dates
-            $date_debut_obj = DateTime::createFromFormat('Y-m-d H:i:s', $date_debut . ' ' . $heure_debut . ':00');
-            $date_fin_obj = DateTime::createFromFormat('Y-m-d H:i:s', $date_fin . ' ' . $heure_fin . ':00');
-            
-            if (!$date_debut_obj || !$date_fin_obj) {
-                $erreur = "Format de date ou d'heure invalide.";
-            } else {
+            try {
+                $date_debut_obj = DateTime::createFromFormat('Y-m-d H:i:s', $date_debut . ' ' . $heure_debut . ':00');
+                $date_fin_obj = DateTime::createFromFormat('Y-m-d H:i:s', $date_fin . ' ' . $heure_fin . ':00');
+                
+                if (!$date_debut_obj || !$date_fin_obj) {
+                    throw new Exception("Format de date ou d'heure invalide.");
+                }
+                
                 $date_debut_str = $date_debut_obj->format('Y-m-d H:i:s');
                 $date_fin_str = $date_fin_obj->format('Y-m-d H:i:s');
                 
                 // Vérifier que la date de fin est après la date de début
                 if ($date_fin_obj <= $date_debut_obj) {
-                    $erreur = "La date/heure de fin doit être après la date/heure de début.";
-                } else {
-                    // Traitement de la visibilité et des classes sélectionnées
-                    $visibilite_db = $visibilite;
-                    $classes_selectionnees = '';
-                    
-                    if ($visibilite === 'classes_specifiques' && isset($_POST['classes'])) {
-                        // Validation des classes sélectionnées
-                        if (is_array($_POST['classes'])) {
-                            $selected_classes = array_filter($_POST['classes'], function($class) use ($classes) {
-                                return in_array($class, $classes);
-                            });
-                            $classes_selectionnees = implode(',', $selected_classes);
-                            $visibilite_db = 'classes:' . $classes_selectionnees;
+                    throw new Exception("La date/heure de fin doit être après la date/heure de début.");
+                }
+                
+                // Traitement de la visibilité et des classes sélectionnées
+                $visibilite_db = $visibilite;
+                $classes_selectionnees = '';
+                
+                if ($visibilite === 'classes_specifiques' && isset($_POST['classes'])) {
+                    // Validation des classes sélectionnées
+                    if (is_array($_POST['classes'])) {
+                        // Filtrer pour ne garder que les classes valides
+                        $selected_classes = array_filter($_POST['classes'], function($class) use ($classes) {
+                            return in_array($class, $classes);
+                        });
+                        
+                        if (empty($selected_classes)) {
+                            throw new Exception("Aucune classe valide n'a été sélectionnée.");
                         }
-                    }
-                    
-                    // Mise à jour dans la base de données avec des requêtes préparées
-                    try {
-                        $stmt = $pdo->prepare('UPDATE evenements SET 
-                                               titre = ?, 
-                                               description = ?, 
-                                               date_debut = ?, 
-                                               date_fin = ?, 
-                                               type_evenement = ?, 
-                                               statut = ?, 
-                                               visibilite = ?, 
-                                               lieu = ?, 
-                                               classes = ?, 
-                                               matieres = ?,
-                                               date_modification = CURRENT_TIMESTAMP
-                                              WHERE id = ?');
                         
-                        $stmt->execute([
-                            $titre,
-                            $description,
-                            $date_debut_str,
-                            $date_fin_str,
-                            $type_evenement,
-                            $statut,
-                            $visibilite_db,
-                            $lieu,
-                            $visibilite === 'classes_specifiques' ? $classes_selectionnees : $evenement['classes'],
-                            $matieres,
-                            $id
-                        ]);
-                        
-                        // Journaliser la modification
-                        error_log("Événement ID=$id modifié par {$user_fullname}");
-                        
-                        $message = "L'événement a été mis à jour avec succès.";
-                        
-                        // Redirection après un court délai
-                        header('Location: details_evenement.php?id=' . $id . '&updated=1');
-                        exit;
-                    } catch (PDOException $e) {
-                        // Journaliser l'erreur mais ne pas l'afficher directement
-                        error_log("Erreur lors de la mise à jour de l'événement ID=$id: " . $e->getMessage());
-                        $erreur = "Une erreur est survenue lors de la mise à jour de l'événement.";
+                        $classes_selectionnees = implode(',', $selected_classes);
+                        $visibilite_db = 'classes:' . $classes_selectionnees;
+                    } else {
+                        throw new Exception("Format des classes sélectionnées invalide.");
                     }
                 }
+                
+                // Mise à jour dans la base de données avec des requêtes préparées
+                $stmt = $pdo->prepare('UPDATE evenements SET 
+                                      titre = ?, 
+                                      description = ?, 
+                                      date_debut = ?, 
+                                      date_fin = ?, 
+                                      type_evenement = ?, 
+                                      statut = ?, 
+                                      visibilite = ?, 
+                                      lieu = ?, 
+                                      classes = ?, 
+                                      matieres = ?,
+                                      date_modification = CURRENT_TIMESTAMP,
+                                      modifie_par = ?
+                                      WHERE id = ?');
+                
+                $stmt->execute([
+                    $titre,
+                    $description,
+                    $date_debut_str,
+                    $date_fin_str,
+                    $type_evenement,
+                    $statut,
+                    $visibilite_db,
+                    $lieu,
+                    $visibilite === 'classes_specifiques' ? $classes_selectionnees : $evenement['classes'],
+                    $matieres,
+                    $user_fullname, // Ajouter qui a modifié l'événement
+                    $id
+                ]);
+                
+                // Journaliser la modification
+                error_log("Événement ID=$id modifié par {$user_fullname}");
+                
+                $message = "L'événement a été mis à jour avec succès.";
+                
+                // Régénérer un token CSRF après une soumission réussie
+                $csrf_token = bin2hex(random_bytes(32));
+                $_SESSION['csrf_token'] = $csrf_token;
+                $_SESSION['csrf_token_time'] = time();
+                
+                // Redirection après un court délai
+                header('Location: details_evenement.php?id=' . $id . '&updated=1');
+                exit;
+            } catch (Exception $e) {
+                // Capturer toutes les exceptions
+                $erreur = $e->getMessage();
+                error_log("Erreur lors de la mise à jour de l'événement ID=$id: " . $e->getMessage());
             }
         }
     }
@@ -266,9 +328,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com">
     <title>Modifier l'événement - Agenda Pronote</title>
     <link rel="stylesheet" href="assets/css/calendar.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" integrity="sha512-Fo3rlrZj/k7ujTnHg4CGR2D7kSs0v4LLanw2qksYuRlEzO+tcaEPQogQ0KaoGN26/zrn20ImR1DfuLWnOo7aBA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
     /* Styles spécifiques pour la page de modification d'événement */
     .event-edit-container {
@@ -523,7 +588,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <a href="agenda.php" class="button button-secondary">
           <i class="fas fa-calendar"></i> Retour à l'agenda
         </a>
-        <a href="details_evenement.php?id=<?= $id ?>" class="button button-secondary">
+        <a href="details_evenement.php?id=<?= htmlspecialchars($id) ?>" class="button button-secondary">
           <i class="fas fa-eye"></i> Voir l'événement
         </a>
       </div>
@@ -556,7 +621,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <!-- Header -->
       <div class="top-header">
         <div class="calendar-navigation">
-          <a href="details_evenement.php?id=<?= $id ?>" class="back-button">
+          <a href="details_evenement.php?id=<?= htmlspecialchars($id) ?>" class="back-button">
             <span class="back-icon">
               <i class="fas fa-arrow-left"></i>
             </span>
@@ -566,7 +631,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         <div class="header-actions">
           <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">⏻</a>
-          <div class="user-avatar"><?= $user_initials ?></div>
+          <div class="user-avatar"><?= htmlspecialchars($user_initials) ?></div>
         </div>
       </div>
       
@@ -611,7 +676,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     Description
                   </label>
                   <textarea name="description" id="description" class="form-control" 
-                            maxlength="2000"><?= htmlspecialchars($evenement['description']) ?></textarea>
+                            maxlength="2000"><?= htmlspecialchars($evenement['description'] ?? '') ?></textarea>
                 </div>
                 
                 <div class="form-group">
@@ -651,7 +716,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <i class="fas fa-map-marker-alt"></i>
                     Lieu
                   </label>
-                  <input type="text" name="lieu" id="lieu" class="form-control" value="<?= htmlspecialchars($evenement['lieu']) ?>">
+                  <input type="text" name="lieu" id="lieu" class="form-control" value="<?= htmlspecialchars($evenement['lieu'] ?? '') ?>">
                 </div>
                 
                 <div class="form-group">
@@ -662,7 +727,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   <?php if (isTeacher() && !empty($prof_matiere)): ?>
                     <input type="text" name="matieres" id="matieres" class="form-control" value="<?= htmlspecialchars($prof_matiere) ?>" readonly>
                   <?php else: ?>
-                    <input type="text" name="matieres" id="matieres" class="form-control" value="<?= htmlspecialchars($evenement['matieres']) ?>">
+                    <input type="text" name="matieres" id="matieres" class="form-control" value="<?= htmlspecialchars($evenement['matieres'] ?? '') ?>">
                   <?php endif; ?>
                 </div>
                 
@@ -671,11 +736,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   <div class="radio-group" id="type-group">
                     <?php foreach ($types_evenements as $key => $type): ?>
                       <label class="radio-option <?= ($evenement['type_evenement'] === $key) ? 'selected' : '' ?>">
-                        <input type="radio" name="type_evenement" value="<?= $key ?>" <?= ($evenement['type_evenement'] === $key) ? 'checked' : '' ?> required>
-                        <span class="radio-option-icon" style="color: <?= $type['couleur'] ?>">
-                          <i class="fas fa-<?= $type['icone'] ?>"></i>
+                        <input type="radio" name="type_evenement" value="<?= htmlspecialchars($key) ?>" <?= ($evenement['type_evenement'] === $key) ? 'checked' : '' ?> required>
+                        <span class="radio-option-icon" style="color: <?= htmlspecialchars($type['couleur']) ?>">
+                          <i class="fas fa-<?= htmlspecialchars($type['icone']) ?>"></i>
                         </span>
-                        <span><?= $type['nom'] ?></span>
+                        <span><?= htmlspecialchars($type['nom']) ?></span>
                       </label>
                     <?php endforeach; ?>
                   </div>
@@ -686,11 +751,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   <div class="radio-group" id="statut-group">
                     <?php foreach ($options_statut as $key => $statut): ?>
                       <label class="radio-option <?= ($evenement['statut'] === $key) ? 'selected' : '' ?>">
-                        <input type="radio" name="statut" value="<?= $key ?>" <?= ($evenement['statut'] === $key) ? 'checked' : '' ?> required>
-                        <span class="radio-option-icon" style="color: <?= $statut['couleur'] ?>">
-                          <i class="fas fa-<?= $statut['icone'] ?>"></i>
+                        <input type="radio" name="statut" value="<?= htmlspecialchars($key) ?>" <?= ($evenement['statut'] === $key) ? 'checked' : '' ?> required>
+                        <span class="radio-option-icon" style="color: <?= htmlspecialchars($statut['couleur']) ?>">
+                          <i class="fas fa-<?= htmlspecialchars($statut['icone']) ?>"></i>
                         </span>
-                        <span><?= $statut['nom'] ?></span>
+                        <span><?= htmlspecialchars($statut['nom']) ?></span>
                       </label>
                     <?php endforeach; ?>
                   </div>
@@ -701,11 +766,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   <div class="radio-group" id="visibilite-group">
                     <?php foreach ($options_visibilite as $key => $visibilite): ?>
                       <label class="radio-option <?= ($visibilite_actuelle === $key) ? 'selected' : '' ?>">
-                        <input type="radio" name="visibilite" value="<?= $key ?>" <?= ($visibilite_actuelle === $key) ? 'checked' : '' ?> required>
+                        <input type="radio" name="visibilite" value="<?= htmlspecialchars($key) ?>" <?= ($visibilite_actuelle === $key) ? 'checked' : '' ?> required>
                         <span class="radio-option-icon">
-                          <i class="fas fa-<?= $visibilite['icone'] ?>"></i>
+                          <i class="fas fa-<?= htmlspecialchars($visibilite['icone']) ?>"></i>
                         </span>
-                        <span><?= $visibilite['nom'] ?></span>
+                        <span><?= htmlspecialchars($visibilite['nom']) ?></span>
                       </label>
                     <?php endforeach; ?>
                   </div>
@@ -718,8 +783,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="classes-grid">
                       <?php foreach ($classes as $classe): ?>
                         <label class="class-option">
-                          <input type="checkbox" name="classes[]" value="<?= $classe ?>" <?= in_array($classe, $classes_selectionnees) ? 'checked' : '' ?>>
-                          <?= $classe ?>
+                          <input type="checkbox" name="classes[]" value="<?= htmlspecialchars($classe) ?>" <?= in_array($classe, $classes_selectionnees) ? 'checked' : '' ?>>
+                          <?= htmlspecialchars($classe) ?>
                         </label>
                       <?php endforeach; ?>
                     </div>
@@ -728,7 +793,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 <div class="form-full">
                   <div class="form-actions">
-                    <a href="details_evenement.php?id=<?= $id ?>" class="btn btn-secondary">
+                    <a href="details_evenement.php?id=<?= htmlspecialchars($id) ?>" class="btn btn-secondary">
                       <i class="fas fa-times"></i>
                       Annuler
                     </a>
@@ -748,39 +813,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   
   <script>
     // Fonctions pour la sélection des options radio avec style
-    document.querySelectorAll('.radio-option').forEach(option => {
-      option.addEventListener('click', function() {
-        const input = this.querySelector('input[type="radio"]');
-        const group = this.closest('.radio-group');
-        
-        // Désélectionner toutes les options du groupe
-        group.querySelectorAll('.radio-option').forEach(opt => {
-          opt.classList.remove('selected');
+    document.addEventListener('DOMContentLoaded', function() {
+        // Gérer les options radio
+        document.querySelectorAll('.radio-option').forEach(option => {
+          option.addEventListener('click', function() {
+            const input = this.querySelector('input[type="radio"]');
+            const group = this.closest('.radio-group');
+            
+            // Désélectionner toutes les options du groupe
+            group.querySelectorAll('.radio-option').forEach(opt => {
+              opt.classList.remove('selected');
+            });
+            
+            // Sélectionner cette option
+            this.classList.add('selected');
+            input.checked = true;
+            
+            // Si c'est le groupe visibilité, gérer l'affichage de la sélection des classes
+            if (group.id === 'visibilite-group') {
+              const classesSelection = document.getElementById('classes-selection');
+              if (input.value === 'classes_specifiques') {
+                classesSelection.style.display = 'block';
+              } else {
+                classesSelection.style.display = 'none';
+              }
+            }
+          });
         });
         
-        // Sélectionner cette option
-        this.classList.add('selected');
-        input.checked = true;
-        
-        // Si c'est le groupe visibilité, gérer l'affichage de la sélection des classes
-        if (group.id === 'visibilite-group') {
-          const classesSelection = document.getElementById('classes-selection');
-          if (input.value === 'classes_specifiques') {
-            classesSelection.style.display = 'block';
-          } else {
-            classesSelection.style.display = 'none';
+        // Synchroniser les dates de début et de fin
+        document.getElementById('date_debut').addEventListener('change', function() {
+          const dateFinInput = document.getElementById('date_fin');
+          // Si la date de fin est vide ou si elle est avant la date de début
+          if (!dateFinInput.value || dateFinInput.value < this.value) {
+            dateFinInput.value = this.value;
           }
-        }
-      });
-    });
-    
-    // Synchroniser les dates de début et de fin
-    document.getElementById('date_debut').addEventListener('change', function() {
-      const dateFinInput = document.getElementById('date_fin');
-      // Si la date de fin est vide ou si elle est avant la date de début
-      if (!dateFinInput.value || dateFinInput.value < this.value) {
-        dateFinInput.value = this.value;
-      }
+        });
+        
+        // Vérifier la cohérence des dates lors de la soumission du formulaire
+        document.getElementById('event-form').addEventListener('submit', function(e) {
+            const dateDebut = document.getElementById('date_debut').value;
+            const heureDebut = document.getElementById('heure_debut').value;
+            const dateFin = document.getElementById('date_fin').value;
+            const heureFin = document.getElementById('heure_fin').value;
+            
+            const debutDateTime = new Date(`${dateDebut}T${heureDebut}:00`);
+            const finDateTime = new Date(`${dateFin}T${heureFin}:00`);
+            
+            if (finDateTime <= debutDateTime) {
+                e.preventDefault();
+                alert("La date/heure de fin doit être postérieure à la date/heure de début.");
+            }
+        });
     });
     
     // Fonction pour filtrer les classes
