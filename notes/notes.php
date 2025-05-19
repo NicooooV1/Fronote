@@ -258,6 +258,63 @@ try {
 } catch (PDOException $e) {
     error_log("Erreur lors de la récupération des dates: " . $e->getMessage());
 }
+
+// Grouper les notes par matière pour l'affichage
+$notes_par_matiere = [];
+foreach ($notes as $note) {
+    $matiere = $note['matiere'];
+    if (!isset($notes_par_matiere[$matiere])) {
+        $notes_par_matiere[$matiere] = [];
+    }
+    $notes_par_matiere[$matiere][] = $note;
+}
+
+// Calculer les moyennes par matière
+$moyennes_par_matiere = [];
+foreach ($notes_par_matiere as $matiere => $notes_matiere) {
+    $total = 0;
+    $total_coef = 0;
+    foreach ($notes_matiere as $note) {
+        $coef = isset($note['coefficient']) ? $note['coefficient'] : 1;
+        $total += $note['note'] * $coef;
+        $total_coef += $coef;
+    }
+    $moyennes_par_matiere[$matiere] = $total_coef > 0 ? round($total / $total_coef, 2) : 'N/A';
+}
+
+// Calculer la moyenne générale
+$moyenne_generale = 0;
+$total_coef_global = 0;
+foreach ($notes_par_matiere as $matiere => $notes_matiere) {
+    $total_matiere = 0;
+    $total_coef_matiere = 0;
+    foreach ($notes_matiere as $note) {
+        $coef = isset($note['coefficient']) ? $note['coefficient'] : 1;
+        $total_matiere += $note['note'] * $coef;
+        $total_coef_matiere += $coef;
+    }
+    if ($total_coef_matiere > 0) {
+        $moyenne_generale += $total_matiere;
+        $total_coef_global += $total_coef_matiere;
+    }
+}
+$moyenne_generale = $total_coef_global > 0 ? round($moyenne_generale / $total_coef_global, 2) : 'N/A';
+
+// Créer un tableau de couleurs pour les matières
+$couleurs_matieres = [
+    'Français' => 'francais',
+    'Mathématiques' => 'mathematiques',
+    'Histoire-Géographie' => 'histoire-geo',
+    'Anglais' => 'anglais',
+    'Espagnol' => 'espagnol',
+    'Allemand' => 'allemand',
+    'Physique-Chimie' => 'physique-chimie',
+    'SVT' => 'svt',
+    'Technologie' => 'technologie',
+    'Arts Plastiques' => 'arts',
+    'Musique' => 'musique',
+    'EPS' => 'eps'
+];
 ?>
 
 <!-- Structure HTML de la page -->
@@ -368,9 +425,135 @@ try {
             </div>
             
             <!-- Reste du contenu -->
-
+            <div class="content-container">
+                <?php if (empty($notes)): ?>
+                    <div class="notes-container">
+                        <div class="notes-header">
+                            <h2>Aucune note disponible pour cette période</h2>
+                        </div>
+                        <div style="padding: 20px; text-align: center;">
+                            <p>Il n'y a pas encore de notes enregistrées pour le trimestre <?= $trimestre_selectionne ?>.</p>
+                            <?php if (canManageNotes()): ?>
+                                <a href="ajouter_note.php" class="btn btn-primary" style="margin-top: 15px; display: inline-block;">
+                                    <i class="fas fa-plus"></i> Ajouter une note
+                                </a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <?php if (isStudent() || isParent()): ?>
+                        <!-- Affichage pour élèves et parents: carte avec moyenne et notes par matière -->
+                        <div class="eleve-card">
+                            <div class="eleve-card-header">
+                                <h3>
+                                    <?php if (isParent() && isset($notes[0])): ?>
+                                        Notes de <?= htmlspecialchars($notes[0]['nom_eleve']) ?>
+                                    <?php else: ?>
+                                        Mes notes
+                                    <?php endif; ?>
+                                </h3>
+                                <div class="eleve-moyenne"><?= $moyenne_generale ?>/20</div>
+                            </div>
+                            <div class="eleve-card-body">
+                                <?php foreach ($notes_par_matiere as $matiere => $notes_matiere): ?>
+                                    <div class="matiere-section">
+                                        <div class="matiere-header" onclick="toggleMatiereNotes(this)">
+                                            <h4>
+                                                <?php
+                                                $color_class = $couleurs_matieres[str_replace(' ', '-', $matiere)] ?? 'default';
+                                                ?>
+                                                <span class="matiere-indicator color-<?= $color_class ?>"></span>
+                                                <?= htmlspecialchars($matiere) ?>
+                                            </h4>
+                                            <div class="matiere-moyenne"><?= $moyennes_par_matiere[$matiere] ?>/20</div>
+                                        </div>
+                                        <div class="matiere-notes" style="display: none;">
+                                            <?php foreach ($notes_matiere as $note): ?>
+                                                <div class="note-item">
+                                                    <div class="note-date">
+                                                        <?= date('d/m/Y', strtotime($note['date_evaluation'] ?? $note['date_ajout'] ?? $note['date_creation'] ?? date('Y-m-d'))) ?>
+                                                    </div>
+                                                    <div class="note-desc">
+                                                        <?= htmlspecialchars($note['description'] ?? 'Évaluation') ?>
+                                                    </div>
+                                                    <div class="note-prof">
+                                                        <?= htmlspecialchars($note['nom_professeur']) ?>
+                                                    </div>
+                                                    <div class="note-coef">
+                                                        coef. <?= htmlspecialchars($note['coefficient'] ?? '1') ?>
+                                                    </div>
+                                                    <div class="note-val">
+                                                        <?= htmlspecialchars($note['note']) ?>/<?= htmlspecialchars($note['note_sur'] ?? '20') ?>
+                                                    </div>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <!-- Affichage pour professeurs et administration: tableau des notes -->
+                        <div class="notes-container">
+                            <table class="notes-list">
+                                <thead>
+                                    <tr class="notes-header-row">
+                                        <th class="notes-header-cell">Élève</th>
+                                        <th class="notes-header-cell">Classe</th>
+                                        <th class="notes-header-cell">Matière</th>
+                                        <th class="notes-header-cell">Évaluation</th>
+                                        <th class="notes-header-cell">Date</th>
+                                        <th class="notes-header-cell">Coefficient</th>
+                                        <th class="notes-header-cell">Note</th>
+                                        <th class="notes-header-cell">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($notes as $note): ?>
+                                        <tr class="notes-row">
+                                            <td class="notes-cell"><?= htmlspecialchars($note['nom_eleve']) ?></td>
+                                            <td class="notes-cell"><?= htmlspecialchars($note['classe']) ?></td>
+                                            <td class="notes-cell"><?= htmlspecialchars($note['matiere']) ?></td>
+                                            <td class="notes-cell"><?= htmlspecialchars($note['description'] ?? 'Évaluation') ?></td>
+                                            <td class="notes-cell">
+                                                <?= date('d/m/Y', strtotime($note['date_evaluation'] ?? $note['date_ajout'] ?? $note['date_creation'] ?? date('Y-m-d'))) ?>
+                                            </td>
+                                            <td class="notes-cell"><?= htmlspecialchars($note['coefficient'] ?? '1') ?></td>
+                                            <td class="notes-cell">
+                                                <span class="note-value"><?= htmlspecialchars($note['note']) ?>/<?= htmlspecialchars($note['note_sur'] ?? '20') ?></span>
+                                            </td>
+                                            <td class="notes-cell">
+                                                <div class="note-actions">
+                                                    <a href="modifier_note.php?id=<?= $note['id'] ?>" class="btn-icon" title="Modifier">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a href="supprimer_note.php?id=<?= $note['id'] ?>" class="btn-icon btn-danger" title="Supprimer">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
+
+    <script>
+    // Fonction pour afficher/masquer les notes par matière
+    function toggleMatiereNotes(element) {
+        const notesContainer = element.nextElementSibling;
+        if (notesContainer.style.display === 'none') {
+            notesContainer.style.display = 'block';
+        } else {
+            notesContainer.style.display = 'none';
+        }
+    }
+    </script>
 </body>
 </html>
 <?php
