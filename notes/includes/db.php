@@ -1,35 +1,51 @@
 <?php
 /**
  * Database connection for notes module
+ * This file uses the centralized database connection
  */
 
-// Locate and include the API path helper
-$path_helper = null;
-$possible_paths = [
-    dirname(dirname(dirname(__DIR__))) . '/API/path_helper.php', // Standard path
-    dirname(dirname(__DIR__)) . '/API/path_helper.php', // Alternate path
-    dirname(dirname(dirname(dirname(__DIR__)))) . '/API/path_helper.php', // Another possible path
-];
-
-foreach ($possible_paths as $path) {
-    if (file_exists($path)) {
-        $path_helper = $path;
-        break;
-    }
-}
-
-if ($path_helper) {
-    // Define ABSPATH for security check in path_helper.php
-    if (!defined('ABSPATH')) define('ABSPATH', dirname(dirname(__FILE__)));
-    require_once $path_helper;
-    require_once API_CORE_PATH;
-} else {
-    // Fallback to direct inclusion if path_helper.php is not found
-    $api_dir = dirname(dirname(dirname(__DIR__))) . '/API';
-    if (file_exists($api_dir . '/core.php')) {
-        require_once $api_dir . '/core.php';
+// Check if the global PDO object already exists
+if (!isset($GLOBALS['pdo']) || !($GLOBALS['pdo'] instanceof PDO)) {
+    // Try to use the centralized connection
+    $dbPath = __DIR__ . '/../../API/database.php';
+    if (file_exists($dbPath)) {
+        require_once $dbPath;
+        $pdo = getDBConnection();
     } else {
-        die("Cannot locate the API directory. Please check your installation.");
+        // Fallback if the centralized file is not available
+        try {
+            // Path to the configuration file
+            $configPath = __DIR__ . '/../../API/config/config.php';
+            if (file_exists($configPath)) {
+                require_once $configPath;
+            }
+            
+            // Retrieve configuration constants or use default values
+            $host = defined('DB_HOST') ? DB_HOST : 'localhost';
+            $dbname = defined('DB_NAME') ? DB_NAME : 'pronote';
+            $user = defined('DB_USER') ? DB_USER : 'root';
+            $pass = defined('DB_PASS') ? DB_PASS : '';
+            $charset = defined('DB_CHARSET') ? DB_CHARSET : 'utf8mb4';
+            
+            // Create the PDO connection
+            $dsn = "mysql:host=$host;dbname=$dbname;charset=$charset";
+            $options = [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false
+            ];
+            
+            $pdo = new PDO($dsn, $user, $pass, $options);
+        } catch (PDOException $e) {
+            error_log("Database connection error: " . $e->getMessage());
+            die("Database connection error. Please try again later.");
+        }
     }
+    
+    // Store the connection in a global variable for reuse
+    $GLOBALS['pdo'] = $pdo;
+} else {
+    // Reuse the existing connection
+    $pdo = $GLOBALS['pdo'];
 }
 ?>

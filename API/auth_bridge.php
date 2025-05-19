@@ -213,3 +213,90 @@ if (!function_exists('canSendAnnouncement') && !function_exists('canSendMessage'
         return in_array($user['profil'] ?? '', ['administrateur', 'vie_scolaire']);
     }
 }
+
+/**
+ * Pont d'authentification pour les modules Pronote
+ * Ce fichier facilite la transition vers le système d'authentification centralisé
+ * pour assurer la compatibilité avec les modules existants
+ */
+
+// Vérifier si le fichier d'authentification central est déjà inclus
+if (defined('AUTH_CENTRAL_INCLUDED')) {
+    return;
+}
+
+// Inclure le fichier d'authentification central
+require_once __DIR__ . '/auth_central.php';
+
+// Fonctions de compatibilité pour les anciens modules
+if (!function_exists('checkAuth')) {
+    /**
+     * Vérifie l'authentification et redirige si nécessaire
+     * - Compatible avec les anciens modules
+     * 
+     * @param string|null $redirectUrl URL de redirection si non authentifié
+     * @return array Données de l'utilisateur connecté
+     */
+    function checkAuth($redirectUrl = null) {
+        return requireLogin($redirectUrl);
+    }
+}
+
+if (!function_exists('isProfesseur')) {
+    /**
+     * Vérifie si l'utilisateur est un professeur
+     * - Compatible avec les anciens modules qui utilisent 'professeur' au lieu de 'teacher'
+     * 
+     * @return bool True si l'utilisateur est un professeur
+     */
+    function isProfesseur() {
+        return isTeacher();
+    }
+}
+
+if (!function_exists('isParentEleve')) {
+    /**
+     * Vérifie si l'utilisateur est un parent d'élève
+     * - Compatible avec les anciens modules qui utilisent 'parent_eleve'
+     * 
+     * @return bool True si l'utilisateur est un parent
+     */
+    function isParentEleve() {
+        return isParent();
+    }
+}
+
+if (!function_exists('getBaseUrl')) {
+    /**
+     * Récupère l'URL de base configurée
+     * - Compatibilité avec les anciens modules
+     * 
+     * @return string URL de base
+     */
+    function getBaseUrl() {
+        return defined('BASE_URL') ? BASE_URL : '';
+    }
+}
+
+if (!function_exists('getUserInitials')) {
+    /**
+     * Récupère les initiales de l'utilisateur
+     * @return string Initiales de l'utilisateur
+     */
+    function getUserInitials() {
+        $user = getCurrentUser();
+        if ($user && isset($user['prenom']) && isset($user['nom'])) {
+            return strtoupper(mb_substr($user['prenom'], 0, 1) . mb_substr($user['nom'], 0, 1));
+        }
+        return '';
+    }
+}
+
+if (!function_exists('canManagerDevoirs')) {
+    /**
+     * Alias pour corriger les fautes de frappe courantes
+     */
+    function canManagerDevoirs() {
+        return canManageDevoirs();
+    }
+}
