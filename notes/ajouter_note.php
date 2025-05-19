@@ -46,44 +46,6 @@ if (isTeacher()) {
   $prof_matiere = $prof_data ? $prof_data['matiere'] : '';
 }
 
-// Traitement du formulaire
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  // Vérifier si la table contient la colonne 'trimestre'
-  $check_trimestre = $pdo->query("SHOW COLUMNS FROM notes LIKE 'trimestre'");
-  $trimestre_exists = $check_trimestre && $check_trimestre->rowCount() > 0;
-  
-  // Construire la requête SQL en fonction des colonnes disponibles
-  if ($trimestre_exists) {
-    $stmt = $pdo->prepare('INSERT INTO notes (nom_eleve, matiere, nom_professeur, note, date_ajout, classe, coefficient, description, trimestre) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    $stmt->execute([
-      $_POST['nom_eleve'],
-      $_POST['nom_matiere'], // On utilise nom_matiere du formulaire pour la colonne matiere de la BDD
-      $_POST['nom_professeur'],
-      $_POST['note'],
-      $_POST['date_ajout'],
-      $_POST['classe'],
-      $_POST['coefficient'],
-      $_POST['description'],
-      $_POST['trimestre'] ?? 1 // On utilise le trimestre du formulaire ou 1 par défaut
-    ]);
-  } else {
-    $stmt = $pdo->prepare('INSERT INTO notes (nom_eleve, matiere, nom_professeur, note, date_ajout, classe, coefficient, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-    $stmt->execute([
-      $_POST['nom_eleve'],
-      $_POST['nom_matiere'], // On utilise nom_matiere du formulaire pour la colonne matiere de la BDD
-      $_POST['nom_professeur'],
-      $_POST['note'],
-      $_POST['date_ajout'],
-      $_POST['classe'],
-      $_POST['coefficient'],
-      $_POST['description']
-    ]);
-  }
-  
-  header('Location: notes.php');
-  exit;
-}
-
 // Récupérer le trimestre actuel (1, 2 ou 3 en fonction de la date)
 $current_month = (int)date('n'); // 1-12
 if ($current_month >= 9 && $current_month <= 12) {
@@ -92,6 +54,114 @@ if ($current_month >= 9 && $current_month <= 12) {
   $trimestre_actuel = 2; // Janvier-Mars
 } else {
   $trimestre_actuel = 3; // Avril-Août
+}
+
+// Traitement du formulaire
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  try {
+    // Vérifier la structure de la table
+    $check_columns = $pdo->query("SHOW COLUMNS FROM notes");
+    $columns = $check_columns->fetchAll(PDO::FETCH_COLUMN);
+    
+    // Vérifier si la colonne 'eleve_id' existe
+    $eleve_id_exists = in_array('eleve_id', $columns);
+    
+    // Récupérer l'ID de l'élève si la colonne existe
+    $eleve_id = 0;
+    if ($eleve_id_exists) {
+      $stmt_eleve = $pdo->prepare("SELECT id FROM eleves WHERE prenom = ? LIMIT 1");
+      $stmt_eleve->execute([$_POST['nom_eleve']]);
+      $eleve = $stmt_eleve->fetch();
+      $eleve_id = $eleve ? $eleve['id'] : 0;
+    }
+    
+    // Construire la requête SQL en fonction des colonnes existantes
+    $fields = [];
+    $placeholders = [];
+    $values = [];
+    
+    // Champs obligatoires
+    if ($eleve_id_exists) {
+      $fields[] = 'eleve_id';
+      $placeholders[] = '?';
+      $values[] = $eleve_id;
+    }
+    
+    $fields[] = 'nom_eleve';
+    $placeholders[] = '?';
+    $values[] = $_POST['nom_eleve'];
+    
+    $fields[] = 'classe';
+    $placeholders[] = '?';
+    $values[] = $_POST['classe'];
+    
+    $fields[] = 'matiere'; // Utiliser matiere pour la colonne, nom_matiere pour le formulaire
+    $placeholders[] = '?';
+    $values[] = $_POST['nom_matiere'];
+    
+    $fields[] = 'note';
+    $placeholders[] = '?';
+    $values[] = $_POST['note'];
+    
+    // Vérifier si la colonne 'note_sur' existe
+    if (in_array('note_sur', $columns)) {
+      $fields[] = 'note_sur';
+      $placeholders[] = '?';
+      $values[] = 20; // Par défaut sur 20
+    }
+    
+    $fields[] = 'nom_professeur';
+    $placeholders[] = '?';
+    $values[] = $_POST['nom_professeur'];
+    
+    // Vérifier si la colonne 'date_ajout' existe
+    if (in_array('date_ajout', $columns)) {
+      $fields[] = 'date_ajout';
+      $placeholders[] = '?';
+      $values[] = $_POST['date_ajout'];
+    }
+    
+    // Vérifier si la colonne 'date_evaluation' existe
+    if (in_array('date_evaluation', $columns)) {
+      $fields[] = 'date_evaluation';
+      $placeholders[] = '?';
+      $values[] = $_POST['date_ajout']; // On utilise la même date
+    }
+    
+    // Vérifier si la colonne 'coefficient' existe
+    if (in_array('coefficient', $columns)) {
+      $fields[] = 'coefficient';
+      $placeholders[] = '?';
+      $values[] = $_POST['coefficient'];
+    }
+    
+    // Vérifier si la colonne 'description' existe
+    if (in_array('description', $columns)) {
+      $fields[] = 'description';
+      $placeholders[] = '?';
+      $values[] = $_POST['description'];
+    }
+    
+    // Vérifier si la colonne 'trimestre' existe
+    if (in_array('trimestre', $columns)) {
+      $fields[] = 'trimestre';
+      $placeholders[] = '?';
+      $values[] = $_POST['trimestre'] ?? $trimestre_actuel;
+    }
+    
+    // Construire et exécuter la requête
+    $query = 'INSERT INTO notes (' . implode(', ', $fields) . ') VALUES (' . implode(', ', $placeholders) . ')';
+    $stmt = $pdo->prepare($query);
+    $stmt->execute($values);
+    
+    // Redirection après succès
+    header('Location: notes.php');
+    exit;
+  } catch (PDOException $e) {
+    // Enregistrer l'erreur et afficher un message d'erreur à l'utilisateur
+    error_log("Erreur lors de l'ajout d'une note: " . $e->getMessage());
+    $error_message = "Une erreur s'est produite lors de l'ajout de la note. Veuillez réessayer.";
+  }
 }
 ?>
 
@@ -134,6 +204,12 @@ if ($current_month >= 9 && $current_month <= 12) {
       </div>
       
       <div class="content-container">
+        <?php if (isset($error_message)): ?>
+          <div class="alert alert-error">
+            <p><?= htmlspecialchars($error_message) ?></p>
+          </div>
+        <?php endif; ?>
+        
         <div class="form-container">
           <form method="post">
             <div class="form-grid">
