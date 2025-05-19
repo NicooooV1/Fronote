@@ -29,6 +29,21 @@ if (!$user) {
     $user = requireAuth();
 }
 
+// Make sure user array has all required fields
+if (!isset($user['id'])) {
+    error_log('User ID is missing from session data');
+    die('Erreur de session: ID utilisateur manquant');
+}
+
+// Handle type/profil compatibility - some systems use 'type', others use 'profil'
+if (!isset($user['type']) && isset($user['profil'])) {
+    $user['type'] = $user['profil'];
+} elseif (!isset($user['type'])) {
+    // Default to a safe value if neither exists
+    $user['type'] = 'eleve';
+    error_log('Warning: User type not found in session, defaulting to "eleve"');
+}
+
 // Récupérer l'ID de la conversation
 $convId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 

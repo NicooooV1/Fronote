@@ -26,7 +26,7 @@ function getMessages($convId, $userId, $userType) {
         throw new Exception("Vous n'êtes pas autorisé à accéder à cette conversation");
     }
     
-    // Récupérer les messages
+    // Récupérer les messages - Remove the is_deleted condition since the column doesn't exist
     $stmt = $pdo->prepare("
         SELECT m.*, 
                CASE 
@@ -57,7 +57,7 @@ function getMessages($convId, $userId, $userType) {
             cp.user_id = ? AND 
             cp.user_type = ?
         )
-        WHERE m.conversation_id = ? AND m.is_deleted = 0
+        WHERE m.conversation_id = ?
         ORDER BY m.created_at ASC
     ");
     $stmt->execute([$userId, $userType, $userId, $userType, $convId]);
@@ -613,6 +613,53 @@ function markMessageAsUnread($messageId, $userId, $userType) {
         $pdo->rollBack();
         return false;
     }
+}
+
+/**
+ * Marque un message comme supprimé
+ * @param int $messageId
+ * @param int $userId
+ * @param string $userType
+ * @return bool
+ */
+function deleteMessage($messageId, $userId, $userType) {
+    global $pdo;
+    
+    // Vérifier que l'utilisateur est l'auteur du message
+    $stmt = $pdo->prepare("
+        SELECT conversation_id, sender_id, sender_type 
+        FROM messages 
+        WHERE id = ?
+    ");
+    $stmt->execute([$messageId]);
+    $message = $stmt->fetch();
+    
+    if (!$message) {
+        return false;
+    }
+    
+    // Vérifier si l'utilisateur est l'auteur ou un modérateur
+    if ($message['sender_id'] != $userId || $message['sender_type'] != $userType) {
+        // Si ce n'est pas l'auteur, vérifier s'il est modérateur
+        $isModerator = $pdo->prepare("
+            SELECT id FROM conversation_participants
+            WHERE conversation_id = ? AND user_id = ? AND user_type = ? 
+            AND (is_moderator = 1 OR is_admin = 1) AND is_deleted = 0
+        ");
+        $isModerator->execute([$message['conversation_id'], $userId, $userType]);
+        
+        if (!$isModerator->fetch()) {
+            return false; // Ni auteur ni modérateur
+        }
+    }
+    
+    // Comme la colonne is_deleted n'existe pas, nous allons simplement supprimer le message
+    // Dans un système de production, vous devriez probablement ajouter cette colonne
+    // pour permettre une suppression "soft" plutôt qu'une suppression réelle
+    $delete = $pdo->prepare("DELETE FROM messages WHERE id = ?");
+    $delete->execute([$messageId]);
+    
+    return $delete->rowCount() > 0;
 }
 
 /* 

@@ -32,36 +32,70 @@ if (file_exists($authCentralPath)) {
     }
 }
 
-// Vérifier si les fonctions d'authentification nécessaires existent, sinon les définir localement
-if (!function_exists('checkAuth')) {
-    /**
-     * Vérifie si l'utilisateur est authentifié
-     * @return array|false Données utilisateur ou false si non connecté
-     */
-    function checkAuth() {
-        return $_SESSION['user'] ?? false;
+/**
+ * Vérifie si l'utilisateur est authentifié
+ * @return array|false Données utilisateur ou false si non connecté
+ */
+function checkAuth() {
+    // Vérifier si l'utilisateur est authentifié dans la session
+    if (isset($_SESSION['user'])) {
+        $user = $_SESSION['user'];
+        
+        // Journaliser des informations de diagnostic en mode développement
+        if (defined('APP_ENV') && APP_ENV === 'development') {
+            error_log('Utilisateur de session trouvé : ' . json_encode($user));
+        }
+        
+        // S'assurer que les données utilisateur ont les champs essentiels
+        if (!isset($user['id'])) {
+            error_log('ID utilisateur manquant dans les données de session');
+            return false;
+        }
+        
+        // Gérer la compatibilité type/profil
+        if (!isset($user['type']) && isset($user['profil'])) {
+            $user['type'] = $user['profil'];
+        }
+        
+        return $user;
     }
+    
+    // Essayer de charger à partir de l'auth central si disponible
+    if (function_exists('getCurrentUser')) {
+        $user = getCurrentUser();
+        if ($user) {
+            // Mettre en cache dans la session
+            $_SESSION['user'] = $user;
+            return $user;
+        }
+    }
+    
+    return false;
 }
 
-if (!function_exists('requireAuth')) {
-    /**
-     * Force l'authentification
-     * @return array Données utilisateur
-     */
-    function requireAuth() {
-        if (!isset($_SESSION['user'])) {
-            // Utiliser BASE_URL si défini, sinon un chemin relatif
-            $baseUrl = defined('BASE_URL') ? BASE_URL : '/~u22405372/SAE/Pronote';
-            $loginUrl = $baseUrl . '/login/public/index.php';
-            
-            // Stocker l'URL actuelle pour redirection après connexion
-            $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
-            
-            header("Location: $loginUrl");
-            exit;
-        }
-        return $_SESSION['user'];
+/**
+ * Vérifie l'authentification et redirige si nécessaire
+ * @param string $redirect URL de redirection
+ * @return array Données utilisateur
+ */
+function requireAuth($redirect = 'login.php') {
+    $user = checkAuth();
+    
+    if (!$user) {
+        // Déterminer l'URL de connexion absolue en fonction de la configuration
+        $loginUrl = defined('LOGIN_URL') ? LOGIN_URL : $redirect;
+        
+        // Ajouter un paramètre d'URL de retour
+        $returnUrl = urlencode($_SERVER['REQUEST_URI']);
+        $delimiter = (strpos($loginUrl, '?') === false) ? '?' : '&';
+        $redirectUrl = $loginUrl . $delimiter . 'return=' . $returnUrl;
+        
+        // Rediriger
+        header('Location: ' . $redirectUrl);
+        exit;
     }
+    
+    return $user;
 }
 
 // S'assurer que la fonction countUnreadNotifications est disponible

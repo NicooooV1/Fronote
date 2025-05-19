@@ -10,7 +10,7 @@ require_once __DIR__ . '/../core/auth.php';
 // Debug session if needed
 if (defined('APP_ENV') && APP_ENV === 'development') {
     error_log('Session ID in API/messages.php: ' . session_id());
-    error_log('User in session: ' . (isset($_SESSION['user']) ? 'YES' : 'NO'));
+    error_log('User in session: ' . (isset($_SESSION['user']) ? print_r($_SESSION['user'], true) : 'NO'));
 }
 
 // Pour le débogage, activer temporairement l'affichage des erreurs
@@ -42,8 +42,32 @@ header('Content-Type: application/json');
 // Vérifier l'authentification
 $user = checkAuth();
 if (!$user) {
-    echo json_encode(['success' => false, 'error' => 'Non authentifié']);
+    // Log authentication failure
+    logApiMessage("Authentication failed in messages.php API");
+    
+    echo json_encode([
+        'success' => false, 
+        'error' => 'Non authentifié', 
+        'session_id' => session_id(),
+        'session_status' => session_status()
+    ]);
     exit;
+}
+
+// Make sure user has required fields
+if (!isset($user['id'])) {
+    logApiMessage("User ID missing from authentication data", $user);
+    echo json_encode(['success' => false, 'error' => 'ID utilisateur manquant']);
+    exit;
+}
+
+// Handle type/profil compatibility
+if (!isset($user['type']) && isset($user['profil'])) {
+    $user['type'] = $user['profil'];
+}
+if (!isset($user['type'])) {
+    $user['type'] = 'eleve';  // Default value
+    logApiMessage("User type not found, defaulting to 'eleve'");
 }
 
 // Inclure le fichier qui contient les fonctions nécessaires
@@ -146,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['conv_id']) && isset($_G
             throw new Exception("Vous n'êtes pas autorisé à accéder à cette conversation");
         }
         
-        // Récupérer les nouveaux messages
+        // Récupérer les nouveaux messages - Remove reference to m.is_deleted
         $stmt = $pdo->prepare("
             SELECT m.*, 
                    CASE 

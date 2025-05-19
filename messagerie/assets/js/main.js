@@ -193,8 +193,8 @@ function setupBulkActions() {
     
     // Sélectionner/désélectionner tous
     selectAllCheckbox.addEventListener('change', function() {
-        // Utiliser une méthode de debug
-        console.log("Sélection tout changée:", this.checked);
+        // Log selection change for debugging
+        console.log("Select all changed:", this.checked);
         
         const checkboxes = document.querySelectorAll('.conversation-select');
         checkboxes.forEach(checkbox => {
@@ -214,15 +214,18 @@ function setupBulkActions() {
         updateBulkActionButtons();
     });
     
-    // Mettre à jour les boutons d'action lorsqu'une case est cochée/décochée
+    // Fix individual checkbox selection event handling
     document.addEventListener('click', function(e) {
-        if (e.target && e.target.classList.contains('conversation-select')) {
-            e.stopPropagation(); // Arrêter la propagation du clic
+        let target = e.target;
+        
+        // Check if target is a conversation checkbox
+        if (target && target.classList.contains('conversation-select')) {
+            e.stopPropagation(); // Prevent bubbling up to parent elements
             
-            // Mettre à jour la classe 'selected' sur l'élément parent
-            const conversationItem = e.target.closest('.conversation-item');
+            // Update parent conversation item styling
+            const conversationItem = target.closest('.conversation-item');
             if (conversationItem) {
-                if (e.target.checked) {
+                if (target.checked) {
                     conversationItem.classList.add('selected');
                 } else {
                     conversationItem.classList.remove('selected');
@@ -231,6 +234,37 @@ function setupBulkActions() {
             
             updateBulkActionButtons();
         }
+    }, true); // Use capture phase to ensure this runs before other handlers
+    
+    // Make sure the conversation items don't interfere with checkbox clicks
+    document.querySelectorAll('.conversation-checkbox').forEach(function(element) {
+        element.addEventListener('click', function(e) {
+            // Prevent click from affecting parent elements
+            e.stopPropagation();
+            
+            // Get the checkbox inside this element
+            const checkbox = this.querySelector('input[type="checkbox"]');
+            if (checkbox) {
+                // Toggle the checkbox
+                checkbox.checked = !checkbox.checked;
+                
+                // Trigger change event manually
+                const event = new Event('change', { 'bubbles': true });
+                checkbox.dispatchEvent(event);
+                
+                // Update styling
+                const conversationItem = this.closest('.conversation-item');
+                if (conversationItem) {
+                    if (checkbox.checked) {
+                        conversationItem.classList.add('selected');
+                    } else {
+                        conversationItem.classList.remove('selected');
+                    }
+                }
+                
+                updateBulkActionButtons();
+            }
+        });
     });
     
     // Configurer les clics sur les boutons d'action

@@ -32,6 +32,11 @@ $typeIcons = [
 $itemClass = 'conversation-item';
 if (!$isRead) $itemClass .= ' unread';
 if (isset($typeClasses[$type])) $itemClass .= ' ' . $typeClasses[$type];
+
+// Make sure baseUrl is defined
+if (!isset($baseUrl)) {
+    $baseUrl = defined('BASE_URL') ? BASE_URL : '';
+}
 ?>
 
 <div class="<?= $itemClass ?>" data-id="<?= $id ?>">
