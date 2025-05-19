@@ -44,13 +44,13 @@ namespace Pronote\Errors {
      */
     function registerErrorHandlers() {
         // Gestionnaire d'exceptions personnalisé
-        set_exception_handler('\Pronote\Errors\handleException');
+        set_exception_handler('\\Pronote\\Errors\\handleException');
         
         // Gestionnaire d'erreurs personnalisé
-        set_error_handler('\Pronote\Errors\handleError');
+        set_error_handler('\\Pronote\\Errors\\handleError');
         
         // Gestionnaire de shutdown
-        register_shutdown_function('\Pronote\Errors\handleShutdown');
+        register_shutdown_function('\\Pronote\\Errors\\handleShutdown');
     }
     
     /**
@@ -65,7 +65,7 @@ namespace Pronote\Errors {
         $trace = $e->getTraceAsString();
         
         // Journaliser l'exception avec le système de journalisation
-        if (function_exists('\Pronote\Logging\error')) {
+        if (function_exists('\\Pronote\\Logging\\error')) {
             \Pronote\Logging\error("{$severity}: {$message}", [
                 'file' => $file,
                 'line' => $line,
@@ -100,7 +100,7 @@ namespace Pronote\Errors {
         };
         
         // Journaliser l'erreur
-        if (function_exists('\Pronote\Logging\error')) {
+        if (function_exists('\\Pronote\\Logging\\error')) {
             \Pronote\Logging\error("{$severity}: {$errstr}", [
                 'file' => $errfile,
                 'line' => $errline
@@ -127,7 +127,7 @@ namespace Pronote\Errors {
             $line = $error['line'];
             
             // Journaliser l'erreur fatale
-            if (function_exists('\Pronote\Logging\critical')) {
+            if (function_exists('\\Pronote\\Logging\\critical')) {
                 \Pronote\Logging\critical("{$severity}: {$message}", [
                     'file' => $file,
                     'line' => $line
