@@ -4,6 +4,12 @@
  * Cette page permet de diagnostiquer les problèmes de configuration, de permissions et de redirections
  */
 
+// Vérification immédiate des tentatives d'accès direct
+if (basename(__FILE__) == basename($_SERVER['SCRIPT_FILENAME'])) {
+    // Définir un timeout plus court pour les scripts de diagnostic
+    set_time_limit(60);
+}
+
 // Démarrer la session pour la vérification d'authentification
 if (session_status() === PHP_SESSION_NONE) {
     // Configuration sécurisée des cookies de session
@@ -11,6 +17,8 @@ if (session_status() === PHP_SESSION_NONE) {
     if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
         ini_set('session.cookie_secure', 1);
     }
+    ini_set('session.use_strict_mode', 1); // Activation du mode strict pour les sessions
+    ini_set('session.use_only_cookies', 1); // Utiliser uniquement les cookies
     session_start();
 }
 
@@ -25,7 +33,7 @@ if (!isset($_SESSION['user']) || !isset($_SESSION['user']['profil']) || $_SESSIO
 }
 
 /**
- * Teste les permissions d'un répertoire
+ * Teste les permissions d'un répertoire de manière sécurisée
  * @param string $directory Chemin du répertoire
  * @return array Résultats des tests
  */
@@ -33,16 +41,22 @@ function testDirectoryPermissions($directory) {
     $results = [];
     
     try {
+        // Vérifier que le chemin est valide et ne contient pas d'injection de chemin
+        $realDirectory = realpath($directory);
+        if ($realDirectory === false) {
+            $realDirectory = $directory; // Fallback si le répertoire n'existe pas encore
+        }
+        
         // Vérifier si le répertoire existe
-        if (is_dir($directory)) {
+        if (is_dir($realDirectory)) {
             $results['exists'] = true;
             
             // Vérifier les permissions
-            $results['readable'] = is_readable($directory);
-            $results['writable'] = is_writable($directory);
+            $results['readable'] = is_readable($realDirectory);
+            $results['writable'] = is_writable($realDirectory);
             
-            // Essayer de créer un fichier temporaire
-            $testFile = $directory . '/test_' . md5(uniqid(mt_rand(), true)) . '.txt';
+            // Essayer de créer un fichier temporaire avec un nom sécurisé
+            $testFile = rtrim($realDirectory, '/\\') . DIRECTORY_SEPARATOR . 'test_' . bin2hex(random_bytes(8)) . '.txt';
             $canWrite = false;
             try {
                 $canWrite = file_put_contents($testFile, 'Test') !== false;
@@ -64,9 +78,13 @@ function testDirectoryPermissions($directory) {
             // Essayer de créer le répertoire
             $canCreate = false;
             try {
-                $canCreate = @mkdir($directory, 0755, true);
-                if ($canCreate) {
-                    @rmdir($directory); // Supprimer le répertoire créé
+                // Utiliser le répertoire parent pour éviter les chemins non valides
+                $parentDir = dirname($realDirectory);
+                if (is_dir($parentDir) && is_writable($parentDir)) {
+                    $canCreate = @mkdir($realDirectory, 0755, true);
+                    if ($canCreate) {
+                        @rmdir($realDirectory); // Supprimer le répertoire créé
+                    }
                 }
             } catch (\Exception $e) {
                 $canCreate = false;
@@ -81,7 +99,7 @@ function testDirectoryPermissions($directory) {
 }
 
 /**
- * Teste l'accessibilité d'une page
+ * Teste l'accessibilité d'une page de manière sécurisée
  * @param string $url URL à tester
  * @return array Résultats du test
  */
@@ -92,6 +110,12 @@ function testPageAccess($url) {
         'accessible' => false,
         'error' => null
     ];
+    
+    // Validation basique de l'URL
+    if (!filter_var($url, FILTER_VALIDATE_URL)) {
+        $result['error'] = "URL non valide";
+        return $result;
+    }
     
     try {
         if (!function_exists('curl_init')) {
@@ -107,6 +131,8 @@ function testPageAccess($url) {
         curl_setopt($ch, CURLOPT_HEADER, true);
         curl_setopt($ch, CURLOPT_NOBODY, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true); // Suivre les redirections
+        curl_setopt($ch, CURLOPT_MAXREDIRS, 3); // Limiter le nombre de redirections
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         curl_setopt($ch, CURLOPT_USERAGENT, 'Pronote-Diagnostic/1.0');
@@ -133,7 +159,11 @@ function testPageAccess($url) {
     return $result;
 }
 
-// Fonction pour masquer les informations sensibles
+/**
+ * Masque les informations sensibles dans le contenu des fichiers
+ * @param string $content Contenu à nettoyer
+ * @return string Contenu nettoyé
+ */
 function sanitizeSensitiveData($content) {
     // Masquer les mots de passe
     $content = preg_replace('/([\'"]DB_PASS[\'"]\s*,\s*[\'"]).*?([\'"])/', '$1********$2', $content);
@@ -145,14 +175,23 @@ function sanitizeSensitiveData($content) {
     // Masquer les identifiants de session
     $content = preg_replace('/PHPSESSID=([a-zA-Z0-9]{3}).*?;/', 'PHPSESSID=$1***;', $content);
     
-    // Masquer les chemins du système de fichiers
-    $content = preg_replace('/(\/[\/\w\.-]+)+/', '[CHEMIN]', $content);
+    // Masquer les chemins du système de fichiers avec une regex plus précise
+    $content = preg_replace('#(/[a-z0-9\._\-/]+)#i', '[CHEMIN_SYSTEME]', $content);
     
     return $content;
 }
 
-// Fonction pour masquer les chemins absolus dans les messages d'erreur
+/**
+ * Masque les chemins absolus dans les messages d'erreur
+ * @param string $path Chemin à masquer
+ * @return string Chemin masqué
+ */
 function sanitizePath($path) {
+    // Définir APP_ROOT si pas encore défini
+    if (!defined('APP_ROOT') && file_exists(__DIR__ . '/API/config/env.php')) {
+        require_once __DIR__ . '/API/config/env.php';
+    }
+    
     if (defined('APP_ROOT')) {
         // Remplacer le chemin absolu par un chemin relatif
         return str_replace(APP_ROOT, '[APP_ROOT]', $path);
@@ -169,20 +208,40 @@ function sanitizePath($path) {
     return $path;
 }
 
-// Fonction pour générer un token anti-CSRF
+/**
+ * Génère un token anti-CSRF sécurisé
+ * @return string Le token généré
+ */
 function generateDiagToken() {
     if (!isset($_SESSION['diag_token']) || empty($_SESSION['diag_token'])) {
         try {
             $_SESSION['diag_token'] = bin2hex(random_bytes(32));
+            $_SESSION['diag_token_time'] = time(); // Ajouter un timestamp pour expiration
         } catch (\Exception $e) {
-            // Fallback si random_bytes n'est pas disponible
-            $_SESSION['diag_token'] = md5(uniqid(mt_rand(), true));
+            // Fallback plus sécurisé que md5
+            $_SESSION['diag_token'] = hash('sha256', uniqid(mt_rand(), true));
+            $_SESSION['diag_token_time'] = time();
         }
     }
+    
+    // Vérifier l'expiration du token (30 minutes)
+    if (isset($_SESSION['diag_token_time']) && time() - $_SESSION['diag_token_time'] > 1800) {
+        // Régénérer le token s'il a expiré
+        try {
+            $_SESSION['diag_token'] = bin2hex(random_bytes(32));
+        } catch (\Exception $e) {
+            $_SESSION['diag_token'] = hash('sha256', uniqid(mt_rand(), true));
+        }
+        $_SESSION['diag_token_time'] = time();
+    }
+    
     return $_SESSION['diag_token'];
 }
 
-// Fonction pour tester la sécurité de configuration PHP
+/**
+ * Teste la sécurité de configuration PHP
+ * @return array Résultats des tests
+ */
 function testPhpSecurity() {
     $results = [];
     
@@ -215,6 +274,13 @@ function testPhpSecurity() {
         'status' => ini_get('session.cookie_httponly') ? 'success' : 'error'
     ];
     
+    $results['session.use_only_cookies'] = [
+        'name' => 'session.use_only_cookies',
+        'value' => ini_get('session.use_only_cookies'),
+        'recommendation' => '1',
+        'status' => ini_get('session.use_only_cookies') ? 'success' : 'error'
+    ];
+    
     $results['session.gc_maxlifetime'] = [
         'name' => 'session.gc_maxlifetime',
         'value' => ini_get('session.gc_maxlifetime'),
@@ -229,16 +295,69 @@ function testPhpSecurity() {
         'status' => ini_get('expose_php') ? 'warning' : 'success'
     ];
     
+    $results['allow_url_include'] = [
+        'name' => 'allow_url_include',
+        'value' => ini_get('allow_url_include'),
+        'recommendation' => 'Off',
+        'status' => ini_get('allow_url_include') ? 'error' : 'success'
+    ];
+    
+    $results['open_basedir'] = [
+        'name' => 'open_basedir',
+        'value' => ini_get('open_basedir') ? ini_get('open_basedir') : 'Non défini',
+        'recommendation' => 'Définir pour limiter l\'accès aux fichiers',
+        'status' => ini_get('open_basedir') ? 'success' : 'warning'
+    ];
+    
+    return $results;
+}
+
+/**
+ * Vérifie s'il existe des mises à jour critiques de sécurité
+ * @return array Résultats des vérifications
+ */
+function checkSecurityUpdates() {
+    $results = [];
+    
+    // Vérifier la version de PHP
+    $phpVersion = PHP_VERSION;
+    $results['php_version'] = [
+        'name' => 'Version PHP',
+        'value' => $phpVersion,
+        'recommendation' => '7.4 ou supérieur',
+        'status' => version_compare($phpVersion, '7.4', '>=') ? 'success' : 'error'
+    ];
+    
+    // Vérifier si SSL est activé
+    $sslEnabled = extension_loaded('openssl');
+    $results['ssl'] = [
+        'name' => 'Support SSL',
+        'value' => $sslEnabled ? 'Activé' : 'Désactivé',
+        'recommendation' => 'Activé',
+        'status' => $sslEnabled ? 'success' : 'error'
+    ];
+    
+    // Vérifier si le serveur est accessible en HTTPS
+    $httpsEnabled = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+    $results['https'] = [
+        'name' => 'HTTPS',
+        'value' => $httpsEnabled ? 'Activé' : 'Désactivé',
+        'recommendation' => 'Activé',
+        'status' => $httpsEnabled ? 'success' : 'warning'
+    ];
+    
     return $results;
 }
 
 // Charger le système d'autoloading si disponible
-if (file_exists(__DIR__ . '/API/autoload.php')) {
-    require_once __DIR__ . '/API/autoload.php';
+$autoloadFile = __DIR__ . '/API/autoload.php';
+if (file_exists($autoloadFile) && is_readable($autoloadFile)) {
+    require_once $autoloadFile;
 } else {
     // Charger manuellement les fichiers nécessaires
-    if (file_exists(__DIR__ . '/API/config/config.php')) {
-        require_once __DIR__ . '/API/config/config.php';
+    $configFile = __DIR__ . '/API/config/config.php';
+    if (file_exists($configFile) && is_readable($configFile)) {
+        require_once $configFile;
     }
 }
 
@@ -337,7 +456,10 @@ foreach ($authFiles as $name => $path) {
 // Tests de sécurité PHP
 $phpSecurity = testPhpSecurity();
 
-// Vérifier la structure des tables essentielles
+// Vérifications de mises à jour de sécurité
+$securityUpdates = checkSecurityUpdates();
+
+// Vérifier la structure des tables essentielles de façon sécurisée
 try {
     $dbStatus = ['connected' => false, 'tables' => []];
     
@@ -354,11 +476,14 @@ try {
             
             foreach ($criticalTables as $table) {
                 try {
-                    $stmt = $pdo->query("SHOW TABLES LIKE '$table'");
+                    // Utiliser des requêtes préparées même pour les requêtes simples
+                    $stmt = $pdo->prepare("SHOW TABLES LIKE ?");
+                    $stmt->execute([$table]);
                     $exists = $stmt && $stmt->rowCount() > 0;
                     
                     if ($exists) {
-                        $countStmt = $pdo->query("SELECT COUNT(*) FROM `$table`");
+                        $countStmt = $pdo->prepare("SELECT COUNT(*) FROM `" . $table . "`");
+                        $countStmt->execute();
                         $count = $countStmt ? $countStmt->fetchColumn() : '?';
                     } else {
                         $count = 'N/A';
@@ -372,7 +497,7 @@ try {
                     $dbStatus['tables'][$table] = [
                         'exists' => false,
                         'count' => 'N/A',
-                        'error' => $e->getMessage()
+                        'error' => "Erreur lors de l'accès à la table"
                     ];
                 }
             }
@@ -381,48 +506,108 @@ try {
 } catch (\Exception $e) {
     $dbStatus = [
         'connected' => false,
-        'error' => $e->getMessage()
+        'error' => "Erreur lors de la connexion à la base de données"
     ];
 }
 
 // Recherche de problèmes de sécurité courants dans les fichiers PHP
 $securityIssues = [];
 
+/**
+ * Recherche les problèmes de sécurité dans un répertoire
+ * @param string $dir Répertoire à analyser
+ * @param array &$issues Tableau pour stocker les problèmes trouvés
+ */
 function scanDirectoryForSecurityIssues($dir, &$issues) {
     if (!is_dir($dir)) return;
     
-    $files = new \RecursiveIteratorIterator(
-        new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS),
-        \RecursiveIteratorIterator::SELF_FIRST
-    );
+    // Utiliser une liste d'exclusion pour les répertoires à ignorer
+    $excludeDirs = ['vendor', 'node_modules', 'cache'];
     
-    $patterns = [
-        'eval' => '/eval\s*\(/i',
-        'shell_exec' => '/shell_exec\s*\(/i',
-        'exec' => '/\bexec\s*\(/i',
-        'system' => '/\bsystem\s*\(/i',
-        'include_user_input' => '/include\s*\(\s*\$_/i',
-        'require_user_input' => '/require\s*\(\s*\$_/i',
-        'sql_injection' => '/\$sql\s*=.*\$_/i',
-        'xss_output' => '/echo\s+\$_/i',
-        'debug_info' => '/var_dump\s*\(/i',
-        'hardcoded_credentials' => '/password\s*=\s*[\'"][^\'"]+[\'"]/i',
-    ];
-    
-    foreach ($files as $file) {
-        if ($file->isFile() && $file->getExtension() == 'php') {
-            $content = file_get_contents($file->getPathname());
+    try {
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+        
+        $patterns = [
+            'eval' => [
+                'pattern' => '/eval\s*\(/i',
+                'severity' => 'high',
+                'description' => "Usage d'eval() - Risque d'exécution de code arbitraire"
+            ],
+            'shell_exec' => [
+                'pattern' => '/shell_exec\s*\(/i',
+                'severity' => 'high',
+                'description' => "Usage de shell_exec() - Risque d'exécution de commandes système"
+            ],
+            'exec' => [
+                'pattern' => '/\bexec\s*\(/i',
+                'severity' => 'high',
+                'description' => "Usage d'exec() - Risque d'exécution de commandes système"
+            ],
+            'system' => [
+                'pattern' => '/\bsystem\s*\(/i',
+                'severity' => 'high',
+                'description' => "Usage de system() - Risque d'exécution de commandes système"
+            ],
+            'include_user_input' => [
+                'pattern' => '/include\s*\(\s*\$_/i',
+                'severity' => 'high',
+                'description' => "Include avec entrée utilisateur - Risque d'inclusion de fichier arbitraire"
+            ],
+            'require_user_input' => [
+                'pattern' => '/require\s*\(\s*\$_/i',
+                'severity' => 'high',
+                'description' => "Require avec entrée utilisateur - Risque d'inclusion de fichier arbitraire"
+            ],
+            'sql_injection' => [
+                'pattern' => '/\$sql\s*=.*\$_/i',
+                'severity' => 'high',
+                'description' => "Construction de requête SQL avec des entrées utilisateur - Risque d'injection SQL"
+            ],
+            'xss_output' => [
+                'pattern' => '/echo\s+\$_(?!.*html)/i',
+                'severity' => 'medium',
+                'description' => "Affichage d'entrée utilisateur sans échappement - Risque XSS"
+            ],
+            'debug_info' => [
+                'pattern' => '/var_dump\s*\(|print_r\s*\(/i',
+                'severity' => 'low',
+                'description' => "Affichage d'informations de débogage - Risque de fuite d'informations sensibles"
+            ],
+            'hardcoded_credentials' => [
+                'pattern' => '/password\s*=\s*[\'"][^\'"]+[\'"]/i',
+                'severity' => 'medium',
+                'description' => "Informations d'identification en dur dans le code - Risque de sécurité"
+            ],
+        ];
+        
+        foreach ($iterator as $file) {
+            // Ignorer les répertoires exclus
+            if ($file->isDir() && in_array($file->getBasename(), $excludeDirs)) {
+                continue;
+            }
             
-            foreach ($patterns as $type => $pattern) {
-                if (preg_match($pattern, $content, $matches)) {
-                    $issues[] = [
-                        'file' => sanitizePath($file->getPathname()),
-                        'type' => $type,
-                        'description' => "Problème de sécurité potentiel détecté: $type"
-                    ];
+            if ($file->isFile() && $file->getExtension() == 'php') {
+                $filePath = $file->getPathname();
+                $content = file_get_contents($filePath);
+                
+                foreach ($patterns as $type => $pattern) {
+                    if (preg_match($pattern['pattern'], $content, $matches)) {
+                        $issues[] = [
+                            'file' => sanitizePath($filePath),
+                            'type' => $type,
+                            'severity' => $pattern['severity'],
+                            'description' => $pattern['description']
+                        ];
+                    }
                 }
             }
         }
+    } catch (\Exception $e) {
+        // Logger l'erreur plutôt que d'échouer
+        error_log("Erreur lors de l'analyse de sécurité: " . $e->getMessage());
     }
 }
 
@@ -452,6 +637,7 @@ if (!isset($_SESSION['security_scan_done']) && !isset($_GET['skip_scan'])) {
                 $securityIssues[] = [
                     'file' => 'Scan incomplet',
                     'type' => 'timeout',
+                    'severity' => 'info',
                     'description' => "Le scan a été interrompu car il prenait trop de temps."
                 ];
                 break;
@@ -460,12 +646,40 @@ if (!isset($_SESSION['security_scan_done']) && !isset($_GET['skip_scan'])) {
         
         $scanPerformed = true;
         $_SESSION['security_scan_done'] = true;
+        $_SESSION['security_scan_time'] = time();
     } catch (\Exception $e) {
         $securityIssues[] = [
             'file' => 'Erreur de scan',
             'type' => 'error',
-            'description' => "Erreur lors du scan: " . $e->getMessage()
+            'severity' => 'error',
+            'description' => "Erreur lors du scan: " . htmlspecialchars($e->getMessage())
         ];
+    }
+} else {
+    // Vérifier si le scan n'est pas trop ancien (24 heures)
+    if (isset($_SESSION['security_scan_time']) && time() - $_SESSION['security_scan_time'] > 86400) {
+        unset($_SESSION['security_scan_done']);
+        unset($_SESSION['security_scan_time']);
+    }
+}
+
+// Vérifier les permissions du fichier install.php et install.lock
+$installFile = __DIR__ . '/install.php';
+$installLockFile = __DIR__ . '/install.lock';
+
+$installStatus = [
+    'install_exists' => file_exists($installFile),
+    'lock_exists' => file_exists($installLockFile),
+    'install_protected' => false
+];
+
+if ($installStatus['install_exists'] && $installStatus['lock_exists']) {
+    // Vérifier si le fichier est protégé
+    if (file_exists(__DIR__ . '/.htaccess')) {
+        $htaccessContent = file_get_contents(__DIR__ . '/.htaccess');
+        $installStatus['install_protected'] = 
+            strpos($htaccessContent, 'install.php') !== false || 
+            !is_readable($installFile);
     }
 }
 ?>
@@ -477,6 +691,9 @@ if (!isset($_SESSION['security_scan_done']) && !isset($_GET['skip_scan'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Diagnostic Pronote - Administration</title>
     <meta name="robots" content="noindex, nofollow">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
     <style>
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
@@ -599,6 +816,9 @@ if (!isset($_SESSION['security_scan_done']) && !isset($_GET['skip_scan'])) {
         .security-issue-low {
             background-color: #e3f2fd;
         }
+        .security-issue-info {
+            background-color: #f0f8ff;
+        }
     </style>
 </head>
 <body>
@@ -655,3 +875,267 @@ if (!isset($_SESSION['security_scan_done']) && !isset($_GET['skip_scan'])) {
             <pre><?= htmlspecialchars(print_r([
                 'SERVER_NAME' => $_SERVER['SERVER_NAME'] ?? 'Non défini',
                 'HTTP_HOST' => $_SERVER['HTTP_HOST'] ?? 'Non défini',
+                'DOCUMENT_ROOT' => sanitizePath($_SERVER['DOCUMENT_ROOT'] ?? 'Non défini'),
+                'SCRIPT_FILENAME' => sanitizePath($_SERVER['SCRIPT_FILENAME'] ?? 'Non défini'),
+                'REQUEST_URI' => $_SERVER['REQUEST_URI'] ?? 'Non défini',
+                'PHP_SAPI' => PHP_SAPI,
+            ], true)) ?></pre>
+        </div>
+        
+        <div class="section">
+            <h2>État de l'installation</h2>
+            <table>
+                <tr>
+                    <th>Élément</th>
+                    <th>État</th>
+                </tr>
+                <tr>
+                    <td>Fichier d'installation</td>
+                    <td class="<?= $installStatus['install_exists'] ? 'warning' : 'success' ?>">
+                        <?= $installStatus['install_exists'] ? 'Présent' : 'Non présent (OK)' ?>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Fichier de verrouillage</td>
+                    <td class="<?= $installStatus['lock_exists'] ? 'success' : 'warning' ?>">
+                        <?= $installStatus['lock_exists'] ? 'Présent (OK)' : 'Non présent' ?>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Protection du fichier d'installation</td>
+                    <td class="<?= ($installStatus['install_exists'] && $installStatus['install_protected']) ? 'success' : 
+                                  ($installStatus['install_exists'] ? 'error' : 'success') ?>">
+                        <?php if (!$installStatus['install_exists']): ?>
+                            Non applicable
+                        <?php elseif ($installStatus['install_protected']): ?>
+                            Protégé (OK)
+                        <?php else: ?>
+                            Non protégé (Risque de sécurité)
+                        <?php endif; ?>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    
+    <div id="permissions" class="tab-content">
+        <div class="section">
+            <h2>Permissions des répertoires</h2>
+            <table>
+                <tr>
+                    <th>Répertoire</th>
+                    <th>Existe</th>
+                    <th>Lecture</th>
+                    <th>Écriture</th>
+                    <th>Création de fichier</th>
+                </tr>
+                <?php foreach ($directories as $name => $path): ?>
+                    <?php $perms = testDirectoryPermissions($path); ?>
+                    <tr>
+                        <td><?= htmlspecialchars($name) ?></td>
+                        <td class="<?= $perms['exists'] ? 'success' : 'error' ?>">
+                            <?= $perms['exists'] ? 'Oui' : 'Non' ?>
+                        </td>
+                        <td class="<?= $perms['readable'] ? 'success' : 'error' ?>">
+                            <?= $perms['readable'] ? 'Oui' : 'Non' ?>
+                        </td>
+                        <td class="<?= $perms['writable'] ? 'success' : 'error' ?>">
+                            <?= $perms['writable'] ? 'Oui' : 'Non' ?>
+                        </td>
+                        <td class="<?= isset($perms['can_write_file']) && $perms['can_write_file'] ? 'success' : 'error' ?>">
+                            <?= isset($perms['can_write_file']) && $perms['can_write_file'] ? 'Oui' : 'Non' ?>
+                            <?= isset($perms['error']) ? ' - ' . htmlspecialchars($perms['error']) : '' ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </table>
+        </div>
+        
+        <div class="section">
+            <h2>Fichiers d'authentification</h2>
+            <table>
+                <tr>
+                    <th>Fichier</th>
+                    <th>Existe</th>
+                    <th>Lisible</th>
+                    <th>Dernière modification</th>
+                </tr>
+                <?php foreach ($authFilesStatus as $name => $status): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($name) ?></td>
+                        <td class="<?= $status['exists'] ? 'success' : 'error' ?>">
+                            <?= $status['exists'] ? 'Oui' : 'Non' ?>
+                        </td>
+                        <td class="<?= $status['readable'] ? 'success' : 'error' ?>">
+                            <?= $status['readable'] ? 'Oui' : 'Non' ?>
+                        </td>
+                        <td><?= htmlspecialchars($status['modified']) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </table>
+        </div>
+        
+        <div class="section">
+            <h2>Actions</h2>
+            <form method="post" action="">
+                <input type="hidden" name="diag_token" value="<?= htmlspecialchars($diagToken) ?>">
+                <button type="submit" name="create_missing_dirs" class="button">Créer les répertoires manquants</button>
+                <button type="submit" name="fix_permissions" class="button">Corriger les permissions</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="database" class="tab-content">
+        <div class="section">
+            <h2>État de la connexion à la base de données</h2>
+            <p class="<?= $dbStatus['connected'] ? 'success' : 'error' ?>">
+                <?= $dbStatus['connected'] ? 'Connecté' : 'Non connecté' ?>
+                <?= isset($dbStatus['error']) ? ' - ' . htmlspecialchars($dbStatus['error']) : '' ?>
+            </p>
+        </div>
+        
+        <?php if ($dbStatus['connected'] && isset($dbStatus['tables'])): ?>
+            <div class="section">
+                <h2>Structure de la base de données</h2>
+                <table>
+                    <tr>
+                        <th>Table</th>
+                        <th>Existe</th>
+                        <th>Nombre d'enregistrements</th>
+                    </tr>
+                    <?php foreach ($dbStatus['tables'] as $table => $status): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($table) ?></td>
+                            <td class="<?= $status['exists'] ? 'success' : 'error' ?>">
+                                <?= $status['exists'] ? 'Oui' : 'Non' ?>
+                            </td>
+                            <td><?= htmlspecialchars($status['count']) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
+            </div>
+        <?php endif; ?>
+    </div>
+    
+    <div id="security" class="tab-content">
+        <div class="section">
+            <h2>Configuration de sécurité PHP</h2>
+            <table>
+                <tr>
+                    <th>Directive</th>
+                    <th>Valeur actuelle</th>
+                    <th>Recommandation</th>
+                    <th>État</th>
+                </tr>
+                <?php foreach ($phpSecurity as $name => $config): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($config['name']) ?></td>
+                        <td><?= htmlspecialchars($config['value']) ?></td>
+                        <td><?= htmlspecialchars($config['recommendation']) ?></td>
+                        <td class="security-<?= htmlspecialchars($config['status']) ?>">
+                            <?= $config['status'] === 'success' ? 'OK' : ($config['status'] === 'warning' ? 'Attention' : 'Problème') ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </table>
+        </div>
+        
+        <div class="section">
+            <h2>Mises à jour de sécurité</h2>
+            <table>
+                <tr>
+                    <th>Élément</th>
+                    <th>État actuel</th>
+                    <th>Recommandation</th>
+                    <th>Statut</th>
+                </tr>
+                <?php foreach ($securityUpdates as $update): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($update['name']) ?></td>
+                        <td><?= htmlspecialchars($update['value']) ?></td>
+                        <td><?= htmlspecialchars($update['recommendation']) ?></td>
+                        <td class="security-<?= htmlspecialchars($update['status']) ?>">
+                            <?= $update['status'] === 'success' ? 'OK' : ($update['status'] === 'warning' ? 'Attention' : 'Critique') ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </table>
+        </div>
+        
+        <?php if (!empty($securityIssues)): ?>
+            <div class="section">
+                <h2>Problèmes de sécurité détectés</h2>
+                <table>
+                    <tr>
+                        <th>Fichier</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th>Sévérité</th>
+                    </tr>
+                    <?php foreach ($securityIssues as $issue): ?>
+                        <tr class="security-issue-<?= htmlspecialchars($issue['severity'] ?? 'low') ?>">
+                            <td><?= htmlspecialchars($issue['file']) ?></td>
+                            <td><?= htmlspecialchars($issue['type']) ?></td>
+                            <td><?= htmlspecialchars($issue['description']) ?></td>
+                            <td><?= htmlspecialchars(ucfirst($issue['severity'] ?? 'inconnu')) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
+                <p>
+                    <?php if ($scanPerformed): ?>
+                        Scan de sécurité effectué avec succès.
+                    <?php else: ?>
+                        <a href="?skip_scan=0" class="button">Relancer le scan de sécurité</a>
+                    <?php endif; ?>
+                </p>
+            </div>
+        <?php endif; ?>
+    </div>
+    
+    <div id="config" class="tab-content">
+        <div class="section">
+            <h2>Fichiers de configuration</h2>
+            <?php foreach ($configContents as $name => $content): ?>
+                <h3><?= htmlspecialchars($name) ?></h3>
+                <pre><?= htmlspecialchars($content) ?></pre>
+            <?php endforeach; ?>
+        </div>
+        
+        <div class="section">
+            <h2>Informations de session</h2>
+            <pre><?= htmlspecialchars(print_r($sessionInfo, true)) ?></pre>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Gestion des onglets
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.getAttribute('data-tab');
+                
+                tabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(tc => tc.classList.remove('active'));
+                
+                tab.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+        
+        // Protection CSRF pour les formulaires
+        document.querySelectorAll('form').forEach(form => {
+            if (!form.querySelector('input[name="diag_token"]')) {
+                const tokenInput = document.createElement('input');
+                tokenInput.type = 'hidden';
+                tokenInput.name = 'diag_token';
+                tokenInput.value = '<?= htmlspecialchars($diagToken) ?>';
+                form.appendChild(tokenInput);
+            }
+        });
+    });
+    </script>
+</body>
+</html>

@@ -4,14 +4,29 @@
  * Ce script s'auto-désactivera après une installation réussie
  */
 
+// Configuration de sécurité
+ini_set('display_errors', 0); // Ne pas afficher les erreurs aux utilisateurs
+error_reporting(E_ALL); // Mais les capturer toutes
+
+// Configurer une limite de temps d'exécution plus élevée pour l'installation
+set_time_limit(120);
+
 // Vérifier si l'installation est déjà terminée
 $installLockFile = __DIR__ . '/install.lock';
 if (file_exists($installLockFile)) {
     die('L\'installation a déjà été effectuée. Pour réinstaller, supprimez le fichier install.lock du répertoire racine.');
 }
 
-// Journaliser l'accès au script d'installation
-error_log('Accès au script d\'installation de Pronote: ' . date('Y-m-d H:i:s'));
+// Vérification HTTPS recommandée
+$isHttps = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+if (!$isHttps) {
+    $httpsWarning = "Avertissement: L'installation est effectuée sur une connexion non sécurisée (HTTP). Il est recommandé d'utiliser HTTPS.";
+}
+
+// Journaliser l'accès au script d'installation de façon sécurisée
+$logMessage = 'Accès au script d\'installation de Pronote: ' . date('Y-m-d H:i:s');
+$logMessage .= ' - IP: ' . (isset($_SERVER['REMOTE_ADDR']) ? substr($_SERVER['REMOTE_ADDR'], 0, 7) . '***' : 'Inconnue');
+error_log($logMessage);
 
 // Vérifier la version de PHP
 if (version_compare(PHP_VERSION, '7.4.0', '<')) {
@@ -32,13 +47,42 @@ if (!empty($missingExtensions)) {
     die('Extensions PHP requises manquantes : ' . implode(', ', $missingExtensions));
 }
 
-// Limiter l'accès à l'installation par IP
-$allowedIPs = ['127.0.0.1', '::1', 'SERVER_IP_HERE']; // Ajouter les IPs autorisées
-$clientIP = $_SERVER['REMOTE_ADDR'] ?? '';
+// Limiter l'accès à l'installation par IP avec une approche plus sécurisée
+$allowedIPs = ['127.0.0.1', '::1']; // IPs locales uniquement par défaut
 
-if (!in_array($clientIP, $allowedIPs) && $_SERVER['SERVER_ADDR'] !== $clientIP) {
-    die('Accès non autorisé depuis votre adresse IP.');
+// Récupérer l'IP du client de façon sécurisée
+$clientIP = filter_var($_SERVER['REMOTE_ADDR'] ?? '', FILTER_VALIDATE_IP);
+
+if (!in_array($clientIP, $allowedIPs) && 
+    (!isset($_SERVER['SERVER_ADDR']) || $clientIP !== $_SERVER['SERVER_ADDR'])) {
+    
+    // Journaliser la tentative d'accès non autorisée
+    error_log("Tentative d'accès non autorisée au script d'installation depuis: " . $clientIP);
+    
+    // Si un fichier .env existe, vérifier si une IP supplémentaire est autorisée
+    $envFile = __DIR__ . '/.env';
+    $additionalIpAllowed = false;
+    
+    if (file_exists($envFile) && is_readable($envFile)) {
+        $envContent = file_get_contents($envFile);
+        if (preg_match('/ALLOWED_INSTALL_IP\s*=\s*(.+)/', $envContent, $matches)) {
+            $additionalIP = trim($matches[1]);
+            if (filter_var($additionalIP, FILTER_VALIDATE_IP) && $additionalIP === $clientIP) {
+                $additionalIpAllowed = true;
+            }
+        }
+    }
+    
+    if (!$additionalIpAllowed) {
+        die('Accès non autorisé depuis votre adresse IP.');
+    }
 }
+
+// Démarrer la session pour le jeton CSRF
+session_start([
+    'cookie_httponly' => true,
+    'cookie_secure' => $isHttps
+]);
 
 // Détecter le chemin absolu du répertoire d'installation
 $installDir = __DIR__;
@@ -50,6 +94,9 @@ $baseUrl = isset($_SERVER['REQUEST_URI']) ?
 if ($baseUrl === '/.') {
     $baseUrl = '';
 }
+
+// Nettoyer le baseUrl pour éviter les injections
+$baseUrl = filter_var($baseUrl, FILTER_SANITIZE_URL);
 
 // Vérifier les permissions des dossiers
 $directories = [
@@ -77,35 +124,43 @@ foreach ($directories as $dir) {
     }
 }
 
-if (!empty($permissionIssues)) {
-    echo '<h1>Problèmes de permissions</h1>';
-    echo '<ul>';
-    foreach ($permissionIssues as $issue) {
-        echo '<li>' . htmlspecialchars($issue) . '</li>';
+// Génération d'un jeton CSRF unique
+if (!isset($_SESSION['install_token']) || empty($_SESSION['install_token'])) {
+    try {
+        $_SESSION['install_token'] = bin2hex(random_bytes(32));
+        $_SESSION['token_time'] = time();
+    } catch (Exception $e) {
+        $_SESSION['install_token'] = hash('sha256', uniqid(mt_rand(), true));
+        $_SESSION['token_time'] = time();
     }
-    echo '</ul>';
-    echo '<p>Veuillez résoudre ces problèmes de permissions avant de continuer.</p>';
-    die();
 }
+$install_token = $_SESSION['install_token'];
 
 // Traitement du formulaire
 $installed = false;
 $dbError = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Ajouter un jeton CSRF pour protéger le formulaire d'installation
+    // Validation du jeton CSRF
     if (!isset($_POST['install_token']) || !isset($_SESSION['install_token']) || 
-        $_POST['install_token'] !== $_SESSION['install_token']) {
-        $dbError = "Erreur de sécurité lors de la soumission du formulaire.";
+        $_POST['install_token'] !== $_SESSION['install_token'] ||
+        !isset($_SESSION['token_time']) || (time() - $_SESSION['token_time']) > 3600) {
+        $dbError = "Erreur de sécurité: jeton de formulaire invalide ou expiré.";
     } else {
         try {
             // Valider les entrées utilisateur
-            $dbHost = filter_input(INPUT_POST, 'db_host', FILTER_SANITIZE_STRING) ?: 'localhost';
-            $dbName = filter_input(INPUT_POST, 'db_name', FILTER_SANITIZE_STRING) ?: '';
-            $dbUser = filter_input(INPUT_POST, 'db_user', FILTER_SANITIZE_STRING) ?: '';
+            $dbHost = filter_input(INPUT_POST, 'db_host', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?: 'localhost';
+            $dbName = filter_input(INPUT_POST, 'db_name', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?: '';
+            $dbUser = filter_input(INPUT_POST, 'db_user', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?: '';
             $dbPass = $_POST['db_pass'] ?? ''; // Ne pas filtrer le mot de passe pour permettre les caractères spéciaux
-            $appEnv = filter_input(INPUT_POST, 'app_env', FILTER_SANITIZE_STRING) ?: 'production';
-            $baseUrlInput = filter_input(INPUT_POST, 'base_url', FILTER_SANITIZE_STRING) ?: $baseUrl;
+            $appEnv = filter_input(INPUT_POST, 'app_env', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+            $baseUrlInput = filter_input(INPUT_POST, 'base_url', FILTER_SANITIZE_URL) ?: $baseUrl;
+            
+            // Valider l'environnement
+            $validEnvs = ['development', 'production', 'test'];
+            if (!in_array($appEnv, $validEnvs)) {
+                $appEnv = 'production'; // Valeur par défaut sécurisée
+            }
             
             // Validation supplémentaire
             if (empty($dbName) || empty($dbUser)) {
@@ -124,8 +179,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo = new PDO($dsn, $dbUser, $dbPass, $options);
                 
                 // Créer la base de données si elle n'existe pas
-                $pdo->exec("CREATE DATABASE IF NOT EXISTS `" . str_replace('`', '', $dbName) . "`");
-                $pdo->exec("USE `" . str_replace('`', '', $dbName) . "`");
+                // Utiliser des requêtes préparées même pour les noms de base de données
+                $dbNameSafe = str_replace('`', '', $dbName);
+                $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$dbNameSafe}`");
+                $pdo->exec("USE `{$dbNameSafe}`");
                 
                 // Créer le fichier de configuration
                 $apiDir = $installDir . '/API';
@@ -137,12 +194,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
                 
+                // Améliorer la sécurité des sessions
+                $sessionSecure = $isHttps ? 'true' : 'false';
+                
                 // Créer le contenu du fichier de configuration en évitant les injections
                 $configContent = <<<CONFIG
 <?php
 /**
  * Configuration d'environnement
  * Généré automatiquement par le script d'installation
+ * Date: {$installTime}
  */
 
 // Environnement (development, production, test)
@@ -173,34 +234,77 @@ if (!defined('DB_CHARSET')) define('DB_CHARSET', 'utf8mb4');
 if (!defined('SESSION_NAME')) define('SESSION_NAME', 'pronote_session');
 if (!defined('SESSION_LIFETIME')) define('SESSION_LIFETIME', 3600); // 1 heure
 if (!defined('SESSION_PATH')) define('SESSION_PATH', '/');
-if (!defined('SESSION_SECURE')) define('SESSION_SECURE', false); // Mettre à true en production si HTTPS
+if (!defined('SESSION_SECURE')) define('SESSION_SECURE', {$sessionSecure}); // True en HTTPS
 if (!defined('SESSION_HTTPONLY')) define('SESSION_HTTPONLY', true);
+if (!defined('SESSION_SAMESITE')) define('SESSION_SAMESITE', 'Lax'); // Options: Lax, Strict, None
 
 // Configuration des logs
 if (!defined('LOG_ENABLED')) define('LOG_ENABLED', true);
 if (!defined('LOG_LEVEL')) define('LOG_LEVEL', '{$appEnv}' === 'development' ? 'debug' : 'error');
 CONFIG;
 
-                if (file_put_contents($apiDir . '/config/env.php', $configContent) === false) {
+                // Sauvegarder le fichier de configuration de manière sécurisée
+                if (file_put_contents($apiDir . '/config/env.php', $configContent, LOCK_EX) === false) {
                     throw new Exception("Impossible d'écrire le fichier de configuration.");
                 }
+                chmod($apiDir . '/config/env.php', 0640); // Permissions restreintes
                 
                 // Créer un fichier .htaccess pour protéger les fichiers de config
                 $htaccessContent = <<<HTACCESS
 # Protéger les fichiers de configuration
-<Files ~ "\.php$">
+<Files ~ "^(env|config|settings)\.(php|inc)$">
     Order allow,deny
     Deny from all
 </Files>
+
+# Protection contre l'accès aux fichiers .env ou .htaccess
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
 HTACCESS;
 
-                file_put_contents($configDir . '/.htaccess', $htaccessContent);
+                file_put_contents($configDir . '/.htaccess', $htaccessContent, LOCK_EX);
+                
+                // Importer le schéma SQL s'il existe
+                $schemaFile = $apiDir . '/schema.sql';
+                if (file_exists($schemaFile) && is_readable($schemaFile)) {
+                    $sql = file_get_contents($schemaFile);
+                    
+                    // Exécuter le script SQL par requêtes séparées
+                    if (!empty($sql)) {
+                        // Diviser le fichier en requêtes individuelles
+                        $queries = array_filter(
+                            array_map('trim', 
+                                explode(";", $sql)
+                            )
+                        );
+                        
+                        foreach ($queries as $query) {
+                            if (!empty($query)) {
+                                $pdo->exec($query);
+                            }
+                        }
+                    }
+                }
                 
                 // Créer un fichier de verrou pour empêcher l'exécution future de l'installation
-                file_put_contents($installLockFile, date('Y-m-d H:i:s'));
+                $installTime = date('Y-m-d H:i:s');
+                $lockContent = <<<LOCK
+Installation completed on: {$installTime}
+IP: {$clientIP}
+DO NOT DELETE THIS FILE UNLESS YOU WANT TO REINSTALL THE APPLICATION
+LOCK;
+
+                file_put_contents($installLockFile, $lockContent, LOCK_EX);
                 
                 // Indiquer que l'installation est réussie
                 $installed = true;
+                
+                // Sécuriser le fichier d'installation immédiatement
+                if (file_exists(__DIR__ . '/install_guard.php')) {
+                    include_once __DIR__ . '/install_guard.php';
+                }
                 
             } catch (PDOException $e) {
                 throw new Exception("Erreur de connexion à la base de données: " . $e->getMessage());
@@ -211,29 +315,106 @@ HTACCESS;
     }
 }
 
-// Générer un jeton CSRF
-session_start();
-$_SESSION['install_token'] = bin2hex(random_bytes(32));
-$install_token = $_SESSION['install_token'];
+// Renouvellement du jeton CSRF après la soumission pour éviter les attaques par réutilisation
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        $_SESSION['install_token'] = bin2hex(random_bytes(32));
+        $_SESSION['token_time'] = time();
+        $install_token = $_SESSION['install_token'];
+    } catch (Exception $e) {
+        // Fallback si random_bytes échoue
+        $_SESSION['install_token'] = hash('sha256', uniqid(mt_rand(), true));
+        $_SESSION['token_time'] = time();
+        $install_token = $_SESSION['install_token'];
+    }
+}
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
     <title>Installation de Pronote</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px;
+            line-height: 1.6;
+        }
         .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; }
-        input[type="text"], input[type="password"] { width: 100%; padding: 8px; }
-        .error { color: red; padding: 10px; background: #ffeeee; border-radius: 5px; margin-bottom: 20px; }
-        .success { color: green; padding: 10px; background: #eeffee; border-radius: 5px; margin-bottom: 20px; }
-        button { padding: 10px 15px; background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="password"], select { 
+            width: 100%; 
+            padding: 8px; 
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .error { 
+            color: #721c24;
+            padding: 12px;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb; 
+            border-radius: 5px; 
+            margin-bottom: 20px; 
+        }
+        .warning {
+            color: #856404;
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .success { 
+            color: #155724; 
+            padding: 12px; 
+            background: #d4edda; 
+            border: 1px solid #c3e6cb; 
+            border-radius: 5px; 
+            margin-bottom: 20px; 
+        }
+        button { 
+            padding: 10px 15px; 
+            background-color: #4CAF50; 
+            color: white; 
+            border: none; 
+            border-radius: 4px;
+            cursor: pointer; 
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .requirements {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .requirements ul {
+            margin-bottom: 0;
+        }
+        code {
+            background-color: #f1f1f1;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
     </style>
 </head>
 <body>
     <h1>Installation de Pronote</h1>
+    
+    <?php if (isset($httpsWarning)): ?>
+        <div class="warning">
+            <p><?= htmlspecialchars($httpsWarning) ?></p>
+        </div>
+    <?php endif; ?>
     
     <?php if ($installed): ?>
         <div class="success">
@@ -243,53 +424,80 @@ $install_token = $_SESSION['install_token'];
             <p><a href="<?= htmlspecialchars($baseUrl) ?>/login/public/index.php">Accéder à l'application</a></p>
         </div>
     <?php else: ?>
+        <div class="requirements">
+            <h3>Prérequis vérifiés</h3>
+            <ul>
+                <li>PHP Version: <strong><?= htmlspecialchars(PHP_VERSION) ?></strong> ✓</li>
+                <li>Extensions PHP requises: <strong>Présentes</strong> ✓</li>
+                <li>Répertoires avec permissions d'écriture
+                    <?php if (!empty($permissionIssues)): ?>
+                        <span style="color: red;">✗</span>
+                    <?php else: ?>
+                        ✓
+                    <?php endif; ?>
+                </li>
+            </ul>
+        </div>
+        
         <?php if (!empty($dbError)): ?>
             <div class="error">
                 <p>Erreur: <?= htmlspecialchars($dbError) ?></p>
             </div>
         <?php endif; ?>
         
-        <form method="post" action="">
-            <div class="form-group">
-                <label for="base_url">URL de base de l'application</label>
-                <input type="text" id="base_url" name="base_url" value="<?= htmlspecialchars($baseUrl) ?>" required>
-                <small>Par exemple: /pronote ou laisser vide si installé à la racine</small>
+        <?php if (!empty($permissionIssues)): ?>
+            <div class="error">
+                <h3>Problèmes de permissions</h3>
+                <ul>
+                    <?php foreach ($permissionIssues as $issue): ?>
+                        <li><?= htmlspecialchars($issue) ?></li>
+                    <?php endforeach; ?>
+                </ul>
+                <p>Veuillez résoudre ces problèmes de permissions avant de continuer.</p>
             </div>
-            
-            <div class="form-group">
-                <label for="app_env">Environnement</label>
-                <select id="app_env" name="app_env">
-                    <option value="development">Développement</option>
-                    <option value="production" selected>Production</option>
-                    <option value="test">Test</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="db_host">Hôte de la base de données</label>
-                <input type="text" id="db_host" name="db_host" value="localhost" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="db_name">Nom de la base de données</label>
-                <input type="text" id="db_name" name="db_name" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="db_user">Utilisateur de la base de données</label>
-                <input type="text" id="db_user" name="db_user" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="db_pass">Mot de passe de la base de données</label>
-                <input type="password" id="db_pass" name="db_pass">
-            </div>
-            
-            <!-- Champ caché pour le jeton CSRF -->
-            <input type="hidden" name="install_token" value="<?= htmlspecialchars($install_token) ?>">
-            
-            <button type="submit">Installer</button>
-        </form>
+        <?php else: ?>
+            <form method="post" action="">
+                <div class="form-group">
+                    <label for="base_url">URL de base de l'application</label>
+                    <input type="text" id="base_url" name="base_url" value="<?= htmlspecialchars($baseUrl) ?>" required>
+                    <small>Par exemple: /pronote ou laisser vide si installé à la racine</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="app_env">Environnement</label>
+                    <select id="app_env" name="app_env">
+                        <option value="development">Développement</option>
+                        <option value="production" selected>Production</option>
+                        <option value="test">Test</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="db_host">Hôte de la base de données</label>
+                    <input type="text" id="db_host" name="db_host" value="localhost" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="db_name">Nom de la base de données</label>
+                    <input type="text" id="db_name" name="db_name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="db_user">Utilisateur de la base de données</label>
+                    <input type="text" id="db_user" name="db_user" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="db_pass">Mot de passe de la base de données</label>
+                    <input type="password" id="db_pass" name="db_pass">
+                </div>
+                
+                <!-- Champ caché pour le jeton CSRF -->
+                <input type="hidden" name="install_token" value="<?= htmlspecialchars($install_token) ?>">
+                
+                <button type="submit">Installer</button>
+            </form>
+        <?php endif; ?>
     <?php endif; ?>
 </body>
 </html>

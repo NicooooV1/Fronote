@@ -37,15 +37,20 @@ Pour installer et utiliser cette application, vous aurez besoin de :
    - `uploads`
    - `temp`
 
-3. **Accès à l'installation** : Accédez à `http://votre-serveur/pronote/install.php` depuis votre navigateur.
+3. **Sécurité préliminaire** : Pour une installation sécurisée, créez un fichier `.env` à la racine avec le contenu suivant, en remplaçant `VOTRE_IP` par votre adresse IP:
+   ```
+   ALLOWED_INSTALL_IP=VOTRE_IP
+   ```
 
-4. **Configuration** : Suivez les instructions pour configurer l'application :
+4. **Accès à l'installation** : Accédez à `http://votre-serveur/pronote/install.php` depuis votre navigateur.
+
+5. **Configuration** : Suivez les instructions pour configurer l'application :
    - Renseignez l'URL de base de l'application (par exemple, `/pronote` ou laisser vide si à la racine)
    - Sélectionnez l'environnement (`development`, `production` ou `test`)
    - Entrez les informations de connexion à votre base de données
    - Cliquez sur "Installer"
 
-5. **Finalisation** : Une fois l'installation terminée, vous serez redirigé vers la page de connexion.
+6. **Finalisation** : Une fois l'installation terminée, vous serez redirigé vers la page de connexion.
 
 ### Méthode 2 : Installation manuelle (pour utilisateurs avancés)
 
@@ -76,16 +81,35 @@ Pour installer et utiliser cette application, vous aurez besoin de :
    if (!defined('DB_USER')) define('DB_USER', 'votre_utilisateur');
    if (!defined('DB_PASS')) define('DB_PASS', 'votre_mot_de_passe');
    if (!defined('DB_CHARSET')) define('DB_CHARSET', 'utf8mb4');
+   
+   // Configuration des sessions
+   if (!defined('SESSION_NAME')) define('SESSION_NAME', 'pronote_session');
+   if (!defined('SESSION_LIFETIME')) define('SESSION_LIFETIME', 3600); // 1 heure
+   if (!defined('SESSION_PATH')) define('SESSION_PATH', '/');
+   if (!defined('SESSION_SECURE')) define('SESSION_SECURE', false); // Mettre à true en production si HTTPS
+   if (!defined('SESSION_HTTPONLY')) define('SESSION_HTTPONLY', true);
+   if (!defined('SESSION_SAMESITE')) define('SESSION_SAMESITE', 'Lax'); // Options: Lax, Strict, None
    ```
 
 3. **Création des répertoires** : Assurez-vous que ces répertoires existent et sont accessibles en écriture :
    - `API/logs`
    - `uploads`
    - `temp`
+   
+   ```bash
+   mkdir -p API/logs uploads temp
+   chmod 775 API/logs uploads temp
+   ```
 
 4. **Importation de la base de données** : Importez le fichier SQL `API/schema.sql` dans votre base de données.
+   ```bash
+   mysql -u votre_utilisateur -p votre_base_de_donnees < API/schema.sql
+   ```
 
 5. **Finition** : Créez un fichier `install.lock` à la racine du projet pour désactiver l'installation.
+   ```bash
+   echo "Installation completed on: $(date)" > install.lock
+   ```
 
 ## Configuration
 
@@ -111,6 +135,28 @@ Voici un exemple de configuration pour Apache avec un VirtualHost :
 </VirtualHost>
 ```
 
+Pour une configuration sécurisée en HTTPS (recommandé) :
+
+```apache
+<VirtualHost *:443>
+    ServerName pronote.example.com
+    DocumentRoot /chemin/vers/pronote
+
+    SSLEngine on
+    SSLCertificateFile /chemin/vers/certificat.crt
+    SSLCertificateKeyFile /chemin/vers/cle.key
+
+    <Directory "/chemin/vers/pronote">
+        Options FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog ${APACHE_LOG_DIR}/pronote_error.log
+    CustomLog ${APACHE_LOG_DIR}/pronote_access.log combined
+</VirtualHost>
+```
+
 #### Nginx
 
 Pour Nginx, voici un exemple de configuration :
@@ -119,8 +165,24 @@ Pour Nginx, voici un exemple de configuration :
 server {
     listen 80;
     server_name pronote.example.com;
+    return 301 https://$host$request_uri;  # Redirection vers HTTPS
+}
+
+server {
+    listen 443 ssl;
+    server_name pronote.example.com;
     root /chemin/vers/pronote;
     index index.php index.html;
+
+    ssl_certificate /chemin/vers/certificat.crt;
+    ssl_certificate_key /chemin/vers/cle.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+
+    # Protection contre les attaques courants
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
 
     location / {
         try_files $uri $uri/ /index.php?$query_string;
@@ -129,10 +191,18 @@ server {
     location ~ \.php$ {
         include snippets/fastcgi-php.conf;
         fastcgi_pass unix:/var/run/php/php7.4-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
     }
 
     location ~ /\.ht {
         deny all;
+    }
+    
+    # Restreindre l'accès aux fichiers de configuration
+    location ~ ^/(API/config|\.env) {
+        deny all;
+        return 404;
     }
 }
 ```
@@ -143,7 +213,8 @@ Pour assurer un fonctionnement optimal et sécurisé :
 
 ```bash
 # Permissions de base
-chmod -R 755 .
+find . -type f -exec chmod 644 {} \;
+find . -type d -exec chmod 755 {} \;
 
 # Dossiers nécessitant des permissions d'écriture
 chmod -R 775 API/logs
@@ -152,6 +223,10 @@ chmod -R 775 temp
 
 # Protéger les fichiers de configuration
 chmod 640 API/config/env.php
+chmod 640 API/config/*.php
+
+# Si les fichiers sont gérés par un groupe spécifique (www-data par exemple)
+chown -R :www-data API/logs uploads temp
 ```
 
 ## Structure du projet
