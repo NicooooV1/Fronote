@@ -179,14 +179,41 @@ $headerActions = <<<HTML
 HTML;
 
 include '../assets/css/templates/header-template.php';
+
+// Calculer l'état du devoir
+$date_rendu = new DateTime($devoir['date_rendu']);
+$aujourdhui = new DateTime();
+$diff = $aujourdhui->diff($date_rendu);
+
+$statusClass = '';
+$statusText = '';
+
+if ($date_rendu < $aujourdhui) {
+    $statusClass = 'expired';
+    $statusText = 'Expiré';
+} elseif ($diff->days <= 3) {
+    $statusClass = 'urgent';
+    $statusText = 'Urgent (< 3 jours)';
+} elseif ($diff->days <= 7) {
+    $statusClass = 'soon';
+    $statusText = 'Cette semaine';
+} else {
+    $statusText = 'À venir';
+}
 ?>
 
-<div class="section">
-  <div class="section-header">
-    <h2>Modification du devoir</h2>
-    <p class="text-muted">Modifiez les informations du devoir ci-dessous</p>
-  </div>
+<!-- Bannière de bienvenue -->
+<div class="welcome-banner">
+    <div class="welcome-content">
+        <h2>Modifier un devoir</h2>
+        <p>Mise à jour du devoir : <?= htmlspecialchars($devoir['titre']) ?></p>
+    </div>
+    <div class="welcome-icon">
+        <i class="fas fa-edit"></i>
+    </div>
+</div>
 
+<div class="section">
   <?php if ($message): ?>
     <div class="alert-banner alert-<?= $success ? 'success' : 'error' ?>">
       <i class="fas fa-<?= $success ? 'check-circle' : 'exclamation-circle' ?>"></i>
@@ -204,8 +231,18 @@ include '../assets/css/templates/header-template.php';
   <?php endif; ?>
   
   <div class="card">
+    <div class="card-header">
+      <div class="devoir-title">
+        <i class="fas fa-edit"></i> Modifier le devoir
+        <?php if ($statusClass): ?>
+          <span class="badge badge-<?= $statusClass ?>"><?= $statusText ?></span>
+        <?php endif; ?>
+      </div>
+      <div class="devoir-meta">Créé le: <?= date('d/m/Y', strtotime($devoir['date_creation'])) ?></div>
+    </div>
+    
     <div class="card-body">
-      <form method="post">
+      <form method="post" id="modifier-devoir-form">
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
         
         <div class="form-grid">
@@ -257,7 +294,8 @@ include '../assets/css/templates/header-template.php';
           <div class="form-group">
             <label class="form-label" for="nom_professeur">Professeur <span class="required">*</span></label>
             <?php if (isTeacher() && !isAdmin() && !isVieScolaire()): ?>
-              <input type="text" name="nom_professeur" id="nom_professeur" class="form-control" value="<?= htmlspecialchars($devoir['nom_professeur']) ?>" readonly>
+              <div class="form-control selected-user-display"><?= htmlspecialchars($devoir['nom_professeur']) ?></div>
+              <input type="hidden" name="nom_professeur" id="nom_professeur" value="<?= htmlspecialchars($devoir['nom_professeur']) ?>">
             <?php else: ?>
               <select name="nom_professeur" id="nom_professeur" class="form-select" required>
                 <option value="">Sélectionnez un professeur</option>
@@ -280,6 +318,7 @@ include '../assets/css/templates/header-template.php';
           <div class="form-group">
             <label class="form-label" for="date_rendu">Date de rendu <span class="required">*</span></label>
             <input type="date" name="date_rendu" id="date_rendu" class="form-control" required value="<?= htmlspecialchars($devoir['date_rendu']) ?>">
+            <div class="text-muted" id="jours-restants" style="margin-top: 5px;"></div>
           </div>
           
           <div class="form-group" style="grid-column: span 2;">
@@ -289,8 +328,12 @@ include '../assets/css/templates/header-template.php';
         </div>
         
         <div class="form-actions">
-          <a href="cahierdetextes.php" class="btn btn-secondary">Annuler</a>
-          <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+          <a href="cahierdetextes.php" class="btn btn-secondary">
+            <i class="fas fa-times"></i> Annuler
+          </a>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i> Enregistrer les modifications
+          </button>
         </div>
       </form>
     </div>
@@ -298,61 +341,145 @@ include '../assets/css/templates/header-template.php';
 </div>
 
 <script>
-<?php if (!isTeacher() || isAdmin() || isVieScolaire()): ?>
-document.getElementById('nom_professeur').addEventListener('change', function() {
-  if (this.selectedIndex > 0) {
-    const matiereProf = this.options[this.selectedIndex].getAttribute('data-matiere');
-    const selectMatiere = document.getElementById('nom_matiere');
+// Calculer et afficher les jours restants jusqu'à la date de rendu
+function updateJoursRestants() {
+  const dateRendu = new Date(document.getElementById('date_rendu').value);
+  const aujourdhui = new Date();
+  
+  // Vérifier que la date est valide
+  if (isNaN(dateRendu.getTime())) {
+    document.getElementById('jours-restants').textContent = '';
+    return;
+  }
+  
+  // Calculer la différence en jours
+  const diffTime = dateRendu - aujourdhui;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  // Afficher le résultat
+  if (diffDays < 0) {
+    document.getElementById('jours-restants').textContent = 'Expiré (depuis ' + Math.abs(diffDays) + ' jours)';
+    document.getElementById('jours-restants').style.color = 'var(--expired-color)';
+  } else if (diffDays === 0) {
+    document.getElementById('jours-restants').textContent = 'À rendre aujourd\'hui !';
+    document.getElementById('jours-restants').style.color = 'var(--urgent-color)';
+  } else if (diffDays === 1) {
+    document.getElementById('jours-restants').textContent = 'À rendre demain';
+    document.getElementById('jours-restants').style.color = 'var(--urgent-color)';
+  } else {
+    document.getElementById('jours-restants').textContent = `À rendre dans ${diffDays} jours`;
     
-    for (let i = 0; i < selectMatiere.options.length; i++) {
-      if (selectMatiere.options[i].value === matiereProf) {
-        selectMatiere.selectedIndex = i;
-        break;
-      }
-    }
-  }
-});
-
-document.getElementById('nom_matiere').addEventListener('change', function() {
-  const matiereSelectionnee = this.value;
-  const selectProf = document.getElementById('nom_professeur');
-  const options = selectProf.options;
-  
-  if (selectProf.selectedIndex > 0) {
-    const matiereProf = options[selectProf.selectedIndex].getAttribute('data-matiere');
-    if (matiereProf !== matiereSelectionnee) {
-      // Optionnel: un avertissement que le prof ne correspond pas à la matière
-    }
-  }
-  
-  for (let i = 1; i < options.length; i++) {
-    const matiereProf = options[i].getAttribute('data-matiere');
-    if (matiereSelectionnee === '' || matiereProf === matiereSelectionnee) {
-      options[i].style.display = '';
+    // Changer la couleur en fonction du nombre de jours
+    if (diffDays <= 3) {
+      document.getElementById('jours-restants').style.color = 'var(--urgent-color)';
+    } else if (diffDays <= 7) {
+      document.getElementById('jours-restants').style.color = 'var(--deadline-soon, #ff9500)';
     } else {
-      options[i].style.display = 'none';
+      document.getElementById('jours-restants').style.color = 'var(--module-color)';
     }
   }
-});
+}
 
-window.addEventListener('load', function() {
-  const selectProf = document.getElementById('nom_professeur');
-  if (selectProf.tagName === 'SELECT' && selectProf.selectedIndex > 0) {
-    // Déclencher l'événement change pour filtrer la liste des professeurs
-    const event = new Event('change');
-    document.getElementById('nom_matiere').dispatchEvent(event);
-  }
-});
-<?php endif; ?>
-
-document.querySelector('form').addEventListener('submit', function(e) {
+// Vérifier la relation entre date d'ajout et date de rendu
+function validateDates() {
   const dateAjout = new Date(document.getElementById('date_ajout').value);
   const dateRendu = new Date(document.getElementById('date_rendu').value);
   
-  if (dateRendu <= dateAjout) {
-    e.preventDefault();
-    alert("La date de rendu doit être postérieure à la date d'ajout.");
+  // Vérifier que les dates sont valides
+  if (isNaN(dateAjout.getTime()) || isNaN(dateRendu.getTime())) {
+    return;
   }
+  
+  // Vérifier que la date de rendu est après la date d'ajout
+  if (dateRendu <= dateAjout) {
+    document.getElementById('jours-restants').textContent = 'La date de rendu doit être postérieure à la date d\'ajout';
+    document.getElementById('jours-restants').style.color = 'var(--error-color)';
+  } else {
+    updateJoursRestants();
+  }
+}
+
+// Ajouter les écouteurs d'événements
+document.addEventListener('DOMContentLoaded', function() {
+  // Afficher les jours restants lors du chargement initial
+  updateJoursRestants();
+  
+  // Mettre à jour lorsque la date de rendu change
+  document.getElementById('date_rendu').addEventListener('change', validateDates);
+  
+  // Mettre à jour lorsque la date d'ajout change
+  document.getElementById('date_ajout').addEventListener('change', validateDates);
+  
+  // Validation du formulaire avant soumission
+  document.getElementById('modifier-devoir-form').addEventListener('submit', function(e) {
+    const dateAjout = new Date(document.getElementById('date_ajout').value);
+    const dateRendu = new Date(document.getElementById('date_rendu').value);
+    
+    if (dateRendu <= dateAjout) {
+      e.preventDefault();
+      alert("La date de rendu doit être ultérieure à la date d'ajout.");
+    }
+  });
+  
+  <?php if (!isTeacher() || isAdmin() || isVieScolaire()): ?>
+  // Synchroniser la matière avec le professeur sélectionné
+  document.getElementById('nom_professeur').addEventListener('change', function() {
+    if (this.selectedIndex > 0) {
+      const matiereProf = this.options[this.selectedIndex].getAttribute('data-matiere');
+      const selectMatiere = document.getElementById('nom_matiere');
+      
+      for (let i = 0; i < selectMatiere.options.length; i++) {
+        if (selectMatiere.options[i].value === matiereProf) {
+          selectMatiere.selectedIndex = i;
+          break;
+        }
+      }
+    }
+  });
+  
+  // Filtrer les professeurs en fonction de la matière sélectionnée
+  document.getElementById('nom_matiere').addEventListener('change', function() {
+    const matiereSelectionnee = this.value;
+    const selectProf = document.getElementById('nom_professeur');
+    const options = selectProf.options;
+    const selectedProfOption = selectProf.options[selectProf.selectedIndex];
+    const selectedProfMatiere = selectedProfOption ? selectedProfOption.getAttribute('data-matiere') : null;
+    
+    // Afficher/cacher les options en fonction de la matière
+    for (let i = 1; i < options.length; i++) {
+      const matiereProf = options[i].getAttribute('data-matiere');
+      if (matiereSelectionnee === '' || matiereProf === matiereSelectionnee) {
+        options[i].style.display = '';
+      } else {
+        options[i].style.display = 'none';
+        // Si le prof actuellement sélectionné est caché, on réinitialise la sélection
+        if (options[i].selected && matiereProf !== matiereSelectionnee) {
+          selectProf.selectedIndex = 0;
+        }
+      }
+    }
+  });
+  <?php endif; ?>
+  
+  // Fermer automatiquement les alertes après 5 secondes
+  document.querySelectorAll('.alert-banner').forEach(function(alert) {
+    setTimeout(function() {
+      alert.style.opacity = '0';
+      setTimeout(function() {
+        alert.style.display = 'none';
+      }, 300);
+    }, 5000);
+  });
+  
+  document.querySelectorAll('.alert-close').forEach(function(button) {
+    button.addEventListener('click', function() {
+      const alert = this.parentElement;
+      alert.style.opacity = '0';
+      setTimeout(function() {
+        alert.style.display = 'none';
+      }, 300);
+    });
+  });
 });
 </script>
 

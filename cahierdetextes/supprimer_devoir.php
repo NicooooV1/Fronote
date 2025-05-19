@@ -1,5 +1,5 @@
 <?php
-// Démarrer la mise en mémoire tampon de sortie pour éviter l'erreur "headers already sent"
+// Démarrer la mise en mémoire tampon de sortie
 ob_start();
 
 include 'includes/db.php';
@@ -62,6 +62,27 @@ if (isTeacher() && !isAdmin() && !isVieScolaire()) {
   }
 }
 
+// Calculer l'état du devoir
+$date_rendu = new DateTime($devoir['date_rendu']);
+$aujourdhui = new DateTime();
+$diff = $aujourdhui->diff($date_rendu);
+
+$statusClass = '';
+$statusText = '';
+
+if ($date_rendu < $aujourdhui) {
+    $statusClass = 'expired';
+    $statusText = 'Expiré';
+} elseif ($diff->days <= 3) {
+    $statusClass = 'urgent';
+    $statusText = 'Urgent (< 3 jours)';
+} elseif ($diff->days <= 7) {
+    $statusClass = 'soon';
+    $statusText = 'Cette semaine';
+} else {
+    $statusText = 'À venir';
+}
+
 // Variables pour le template
 $pageTitle = "Supprimer un devoir";
 $moduleClass = "cahier";
@@ -112,51 +133,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
   </a>
   HTML;
 
+  // Contenu additionnel pour le head
+  $additionalHead = <<<HTML
+  <link rel="stylesheet" href="../cahierdetextes/assets/css/cahierdetextes.css">
+  HTML;
+
   include '../assets/css/templates/header-template.php';
   ?>
 
+  <!-- Bannière de bienvenue -->
+  <div class="welcome-banner">
+      <div class="welcome-content">
+          <h2>Supprimer un devoir</h2>
+          <p>Vous êtes sur le point de supprimer définitivement ce devoir</p>
+      </div>
+      <div class="welcome-icon">
+          <i class="fas fa-trash-alt"></i>
+      </div>
+  </div>
+
   <div class="section">
-    <div class="section-header">
-      <h2>Confirmer la suppression</h2>
-      <p class="text-muted">Voulez-vous vraiment supprimer ce devoir ?</p>
-    </div>
-    
     <div class="card">
+      <div class="card-header">
+        <div class="devoir-title">
+          <i class="fas fa-exclamation-triangle"></i> Confirmation de suppression
+        </div>
+        <div class="devoir-meta">Cette action est irréversible</div>
+      </div>
+      
       <div class="card-body">
         <div class="alert-banner alert-warning">
           <i class="fas fa-exclamation-triangle"></i>
-          <p>Attention : Cette action est irréversible. Le devoir sera définitivement supprimé.</p>
+          <p>Attention : Cette action est irréversible. Le devoir sera définitivement supprimé de la base de données.</p>
         </div>
         
-        <div class="devoir-details mb-4">
-          <h3><?= htmlspecialchars($devoir['titre']) ?></h3>
-          <div class="devoir-info-grid">
-            <div class="devoir-info">
-              <div class="info-label">Classe:</div>
-              <div class="info-value"><?= htmlspecialchars($devoir['classe']) ?></div>
+        <div class="devoir-card <?= $statusClass ?>" style="margin-top: 20px;">
+          <div class="card-header">
+            <div class="devoir-title">
+              <i class="fas fa-book"></i> <?= htmlspecialchars($devoir['titre']) ?>
+              <?php if ($statusClass): ?>
+                <span class="badge badge-<?= $statusClass ?>"><?= $statusText ?></span>
+              <?php endif; ?>
+            </div>
+            <div class="devoir-meta">
+              Ajouté le: <?= date('d/m/Y', strtotime($devoir['date_ajout'])) ?>
+            </div>
+          </div>
+          
+          <div class="card-body">
+            <div class="devoir-info-grid">
+              <div class="devoir-info">
+                <div class="info-label">Classe:</div>
+                <div class="info-value"><?= htmlspecialchars($devoir['classe']) ?></div>
+              </div>
+              
+              <div class="devoir-info">
+                <div class="info-label">Matière:</div>
+                <div class="info-value"><?= htmlspecialchars($devoir['nom_matiere']) ?></div>
+              </div>
+              
+              <div class="devoir-info">
+                <div class="info-label">Professeur:</div>
+                <div class="info-value"><?= htmlspecialchars($devoir['nom_professeur']) ?></div>
+              </div>
+              
+              <div class="devoir-info">
+                <div class="info-label">Date de rendu:</div>
+                <div class="info-value date-rendu <?= $statusClass ?>">
+                  <?= date('d/m/Y', strtotime($devoir['date_rendu'])) ?>
+                </div>
+              </div>
             </div>
             
-            <div class="devoir-info">
-              <div class="info-label">Matière:</div>
-              <div class="info-value"><?= htmlspecialchars($devoir['nom_matiere']) ?></div>
-            </div>
-            
-            <div class="devoir-info">
-              <div class="info-label">Professeur:</div>
-              <div class="info-value"><?= htmlspecialchars($devoir['nom_professeur']) ?></div>
-            </div>
-            
-            <div class="devoir-info">
-              <div class="info-label">Date de rendu:</div>
-              <div class="info-value"><?= date('d/m/Y', strtotime($devoir['date_rendu'])) ?></div>
+            <div class="devoir-description">
+              <h4>Description:</h4>
+              <p><?= nl2br(htmlspecialchars($devoir['description'])) ?></p>
             </div>
           </div>
         </div>
         
-        <form method="post" action="">
+        <form method="post" style="margin-top: 20px;">
           <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
           <div class="form-actions">
-            <a href="cahierdetextes.php" class="btn btn-secondary">Annuler</a>
+            <a href="cahierdetextes.php" class="btn btn-secondary">
+              <i class="fas fa-arrow-left"></i> Annuler
+            </a>
             <button type="submit" class="btn btn-danger">
               <i class="fas fa-trash"></i> Confirmer la suppression
             </button>

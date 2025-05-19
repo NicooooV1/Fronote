@@ -162,12 +162,18 @@ HTML;
 include '../assets/css/templates/header-template.php';
 ?>
 
-<div class="section">
-  <div class="section-header">
-    <h2>Nouveau devoir</h2>
-    <p class="text-muted">Complétez le formulaire pour ajouter un devoir au cahier de textes</p>
-  </div>
+<!-- Bannière de bienvenue -->
+<div class="welcome-banner">
+    <div class="welcome-content">
+        <h2>Ajouter un devoir</h2>
+        <p>Créez un nouveau devoir pour le cahier de textes</p>
+    </div>
+    <div class="welcome-icon">
+        <i class="fas fa-plus-circle"></i>
+    </div>
+</div>
 
+<div class="section">
   <?php if ($message): ?>
     <div class="alert-banner alert-<?= $success ? 'success' : 'error' ?>">
       <i class="fas fa-<?= $success ? 'check-circle' : 'exclamation-circle' ?>"></i>
@@ -185,8 +191,13 @@ include '../assets/css/templates/header-template.php';
   <?php endif; ?>
   
   <div class="card">
+    <div class="card-header">
+      <div class="devoir-title"><i class="fas fa-edit"></i> Créer un nouveau devoir</div>
+      <div class="devoir-meta">Remplissez le formulaire ci-dessous avec les détails du devoir</div>
+    </div>
+    
     <div class="card-body">
-      <form method="post">
+      <form method="post" id="ajout-devoir-form">
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
         
         <div class="form-grid">
@@ -249,7 +260,8 @@ include '../assets/css/templates/header-template.php';
           <div class="form-group">
             <label class="form-label" for="nom_professeur">Professeur <span class="required">*</span></label>
             <?php if (isTeacher()): ?>
-              <input type="text" name="nom_professeur" id="nom_professeur" class="form-control" value="<?= htmlspecialchars($nom_professeur) ?>" readonly>
+              <div class="form-control selected-user-display"><?= htmlspecialchars($nom_professeur) ?></div>
+              <input type="hidden" name="nom_professeur" id="nom_professeur" value="<?= htmlspecialchars($nom_professeur) ?>">
             <?php else: ?>
               <select name="nom_professeur" id="nom_professeur" class="form-select" required>
                 <option value="">Sélectionnez un professeur</option>
@@ -268,6 +280,7 @@ include '../assets/css/templates/header-template.php';
           <div class="form-group">
             <label class="form-label" for="date_rendu">Date de rendu <span class="required">*</span></label>
             <input type="date" name="date_rendu" id="date_rendu" class="form-control" required>
+            <div class="text-muted" id="jours-restants" style="margin-top: 5px;"></div>
           </div>
           
           <div class="form-group" style="grid-column: span 2;">
@@ -277,7 +290,9 @@ include '../assets/css/templates/header-template.php';
         </div>
         
         <div class="form-actions">
-          <a href="cahierdetextes.php" class="btn btn-secondary">Annuler</a>
+          <a href="cahierdetextes.php" class="btn btn-secondary">
+            <i class="fas fa-times"></i> Annuler
+          </a>
           <button type="submit" class="btn btn-primary">
             <i class="fas fa-save"></i> Ajouter le devoir
           </button>
@@ -327,8 +342,47 @@ document.getElementById('nom_matiere').addEventListener('change', function() {
 });
 <?php endif; ?>
 
+// Calculer et afficher les jours restants jusqu'à la date de rendu
+document.getElementById('date_rendu').addEventListener('change', function() {
+  const dateRendu = new Date(this.value);
+  const dateAjout = new Date(document.getElementById('date_ajout').value);
+  
+  // Vérifier que la date est valide
+  if (isNaN(dateRendu.getTime())) {
+    document.getElementById('jours-restants').textContent = '';
+    return;
+  }
+  
+  // Vérifier que la date de rendu est après la date d'ajout
+  if (dateRendu <= dateAjout) {
+    document.getElementById('jours-restants').textContent = 'La date de rendu doit être postérieure à la date d\'ajout';
+    document.getElementById('jours-restants').style.color = 'var(--error-color)';
+    return;
+  }
+  
+  // Calculer la différence en jours
+  const diffTime = Math.abs(dateRendu - dateAjout);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  // Afficher le résultat
+  if (diffDays === 1) {
+    document.getElementById('jours-restants').textContent = 'À rendre dans 1 jour';
+  } else {
+    document.getElementById('jours-restants').textContent = `À rendre dans ${diffDays} jours`;
+  }
+  
+  // Changer la couleur en fonction du nombre de jours
+  if (diffDays <= 3) {
+    document.getElementById('jours-restants').style.color = 'var(--urgent-color)';
+  } else if (diffDays <= 7) {
+    document.getElementById('jours-restants').style.color = 'var(--deadline-soon, #ff9500)';
+  } else {
+    document.getElementById('jours-restants').style.color = 'var(--module-color)';
+  }
+});
+
 // Valider que la date de rendu est ultérieure à la date d'ajout
-document.querySelector('form').addEventListener('submit', function(e) {
+document.getElementById('ajout-devoir-form').addEventListener('submit', function(e) {
   const dateAjout = new Date(document.getElementById('date_ajout').value);
   const dateRendu = new Date(document.getElementById('date_rendu').value);
   
@@ -336,6 +390,28 @@ document.querySelector('form').addEventListener('submit', function(e) {
     e.preventDefault();
     alert("La date de rendu doit être ultérieure à la date d'ajout.");
   }
+});
+
+// Fermer automatiquement les alertes après 5 secondes
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.alert-banner').forEach(function(alert) {
+    setTimeout(function() {
+      alert.style.opacity = '0';
+      setTimeout(function() {
+        alert.style.display = 'none';
+      }, 300);
+    }, 5000);
+  });
+  
+  document.querySelectorAll('.alert-close').forEach(function(button) {
+    button.addEventListener('click', function() {
+      const alert = this.parentElement;
+      alert.style.opacity = '0';
+      setTimeout(function() {
+        alert.style.display = 'none';
+      }, 300);
+    });
+  });
 });
 </script>
 
