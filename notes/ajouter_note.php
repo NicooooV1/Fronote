@@ -48,19 +48,50 @@ if (isTeacher()) {
 
 // Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $stmt = $pdo->prepare('INSERT INTO notes (nom_eleve, nom_matiere, nom_professeur, note, date_ajout, classe, coefficient, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-  $stmt->execute([
-    $_POST['nom_eleve'],
-    $_POST['nom_matiere'],
-    $_POST['nom_professeur'],
-    $_POST['note'],
-    $_POST['date_ajout'],
-    $_POST['classe'],
-    $_POST['coefficient'],
-    $_POST['description']
-  ]);
+  // Vérifier si la table contient la colonne 'trimestre'
+  $check_trimestre = $pdo->query("SHOW COLUMNS FROM notes LIKE 'trimestre'");
+  $trimestre_exists = $check_trimestre && $check_trimestre->rowCount() > 0;
+  
+  // Construire la requête SQL en fonction des colonnes disponibles
+  if ($trimestre_exists) {
+    $stmt = $pdo->prepare('INSERT INTO notes (nom_eleve, matiere, nom_professeur, note, date_ajout, classe, coefficient, description, trimestre) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    $stmt->execute([
+      $_POST['nom_eleve'],
+      $_POST['nom_matiere'], // On utilise nom_matiere du formulaire pour la colonne matiere de la BDD
+      $_POST['nom_professeur'],
+      $_POST['note'],
+      $_POST['date_ajout'],
+      $_POST['classe'],
+      $_POST['coefficient'],
+      $_POST['description'],
+      $_POST['trimestre'] ?? 1 // On utilise le trimestre du formulaire ou 1 par défaut
+    ]);
+  } else {
+    $stmt = $pdo->prepare('INSERT INTO notes (nom_eleve, matiere, nom_professeur, note, date_ajout, classe, coefficient, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+    $stmt->execute([
+      $_POST['nom_eleve'],
+      $_POST['nom_matiere'], // On utilise nom_matiere du formulaire pour la colonne matiere de la BDD
+      $_POST['nom_professeur'],
+      $_POST['note'],
+      $_POST['date_ajout'],
+      $_POST['classe'],
+      $_POST['coefficient'],
+      $_POST['description']
+    ]);
+  }
+  
   header('Location: notes.php');
   exit;
+}
+
+// Récupérer le trimestre actuel (1, 2 ou 3 en fonction de la date)
+$current_month = (int)date('n'); // 1-12
+if ($current_month >= 9 && $current_month <= 12) {
+  $trimestre_actuel = 1; // Septembre-Décembre
+} elseif ($current_month >= 1 && $current_month <= 3) {
+  $trimestre_actuel = 2; // Janvier-Mars
+} else {
+  $trimestre_actuel = 3; // Avril-Août
 }
 ?>
 
@@ -206,6 +237,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <div class="form-group">
                 <label for="date_ajout">Date:<span class="required">*</span></label>
                 <input type="date" name="date_ajout" id="date_ajout" value="<?= date('Y-m-d') ?>" required>
+              </div>
+              
+              <!-- Champ pour le trimestre -->
+              <div class="form-group">
+                <label for="trimestre">Trimestre:<span class="required">*</span></label>
+                <select name="trimestre" id="trimestre" required>
+                  <option value="1" <?= $trimestre_actuel == 1 ? 'selected' : '' ?>>Trimestre 1</option>
+                  <option value="2" <?= $trimestre_actuel == 2 ? 'selected' : '' ?>>Trimestre 2</option>
+                  <option value="3" <?= $trimestre_actuel == 3 ? 'selected' : '' ?>>Trimestre 3</option>
+                </select>
               </div>
               
               <!-- Champ pour la description (intitulé) -->

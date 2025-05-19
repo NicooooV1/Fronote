@@ -67,6 +67,23 @@ try {
     error_log("Erreur lors de la récupération des matières: " . $e->getMessage());
 }
 
+// Vérifier si la colonne 'trimestre' existe
+$trimestre_exists = false;
+try {
+    if ($table_exists) {
+        $check_trimestre = $pdo->query("SHOW COLUMNS FROM notes LIKE 'trimestre'");
+        $trimestre_exists = $check_trimestre && $check_trimestre->rowCount() > 0;
+        
+        // Si la colonne n'existe pas, l'ajouter
+        if (!$trimestre_exists) {
+            $pdo->exec("ALTER TABLE notes ADD COLUMN trimestre INT DEFAULT 1");
+            $trimestre_exists = true;
+        }
+    }
+} catch (PDOException $e) {
+    error_log("Erreur lors de la vérification de la colonne trimestre: " . $e->getMessage());
+}
+
 // Récupérer les notes en fonction des filtres
 $notes = [];
 
@@ -79,10 +96,11 @@ if ($table_exists) {
         $params[] = $classe_selectionnee;
     }
     
-    // Filtre par trimestre (à adapter selon votre modèle de données)
-    // Supposons que vous stockez le trimestre dans une colonne "trimestre"
-    $query .= ' AND (trimestre = ? OR trimestre IS NULL)';
-    $params[] = $trimestre_selectionne;
+    // Filtre par trimestre (uniquement si la colonne existe)
+    if ($trimestre_exists) {
+        $query .= ' AND (trimestre = ? OR trimestre IS NULL)';
+        $params[] = $trimestre_selectionne;
+    }
     
     // Si l'utilisateur est un professeur (et pas un admin), limiter aux notes qu'il a créées
     if (isTeacher() && !isAdmin() && !isVieScolaire()) {
