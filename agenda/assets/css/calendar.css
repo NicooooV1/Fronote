@@ -27,13 +27,16 @@ a {
 }
 
 .sidebar {
-  width: 250px;
-  background-color: white;
-  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  width: 260px;
+  background-color: #0f4c81; /* Bleu de la page d'accueil */
+  color: white;
+  padding: 20px 0;
   display: flex;
   flex-direction: column;
-  z-index: 10;
+  position: fixed;
+  height: 100vh;
   overflow-y: auto;
+  z-index: 10;
 }
 
 .main-content {
@@ -42,6 +45,7 @@ a {
   background-color: #f5f5f5;
   display: flex;
   flex-direction: column;
+  margin-left: 260px;
 }
 
 .top-header {
@@ -64,28 +68,29 @@ a {
 .logo-container {
   display: flex;
   align-items: center;
-  gap: 10px;
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: 20px;
-  padding: 15px 20px;
-  border-bottom: 1px solid #eee;
 }
 
 .app-logo {
-  width: 32px;
-  height: 32px;
-  background-color: #00843d;
+  width: 40px;
+  height: 40px;
+  background-color: #fff;
+  color: #0f4c81; /* Bleu au lieu du vert */
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
   font-weight: bold;
+  font-size: 24px;
+  margin-right: 10px;
 }
 
 .app-title {
-  font-size: 18px;
-  font-weight: 500;
-  color: #333;
+  font-size: 22px;
+  font-weight: bold;
+  letter-spacing: 1px;
 }
 
 .header-actions {
@@ -103,7 +108,7 @@ a {
 .user-avatar {
   width: 32px;
   height: 32px;
-  background-color: #00843d;
+  background-color: #0f4c81; /* Bleu au lieu du vert */
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -113,20 +118,25 @@ a {
 }
 
 .create-button {
-  background-color: #00843d;
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.1);
   color: white;
   border: none;
   padding: 10px 15px;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   font-weight: 500;
+  margin-top: 10px;
+  transition: background-color 0.2s;
+  text-decoration: none;
 }
 
 .create-button:hover {
-  background-color: #006e32;
+  background-color: rgba(255, 255, 255, 0.2);
 }
 
 .calendar-title {
@@ -188,80 +198,24 @@ a {
 }
 
 .view-toggle-option.active {
-  background-color: #e0f2e9;
-  color: #00843d;
+  background-color: #e0eaf4; /* Bleu clair au lieu de vert clair */
+  color: #0f4c81; /* Bleu au lieu du vert */
   font-weight: 500;
 }
 
 /* ======= SIDEBAR ======= */
-.mini-calendar {
-  padding: 15px;
-  border-bottom: 1px solid #eee;
-}
-
-.mini-calendar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.mini-calendar-title {
-  font-weight: 500;
-}
-
-.mini-calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
-}
-
-.mini-calendar-day-name {
-  text-align: center;
-  font-size: 11px;
-  color: #777;
-  margin-bottom: 5px;
-}
-
-.mini-calendar-day {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.mini-calendar-day:hover {
-  background-color: #f0f0f0;
-}
-
-.mini-calendar-day.other-month {
-  color: #bbb;
-}
-
-.mini-calendar-day.today {
-  background-color: #00843d;
-  color: white;
-  font-weight: 500;
-}
-
-.mini-calendar-day.selected {
-  background-color: #e0f2e9;
-  color: #00843d;
-  font-weight: 500;
-}
-
 .sidebar-section {
-  padding: 15px;
-  border-bottom: 1px solid #eee;
+  margin-bottom: 30px;
+  padding: 0 20px;
 }
 
 .sidebar-section-header {
-  font-weight: 500;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
   margin-bottom: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 600;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -272,7 +226,126 @@ a {
   border: none;
   cursor: pointer;
   font-size: 18px;
-  color: #777;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Style des liens de navigation */
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-nav-item {
+  padding: 12px 15px;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.8);
+  border-radius: 6px;
+  margin-bottom: 5px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.sidebar-nav-item:hover, .sidebar-nav-item.active {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.sidebar-nav-icon {
+  margin-right: 10px;
+  width: 24px;
+  text-align: center;
+  font-size: 16px;
+}
+
+.mini-calendar {
+  padding: 15px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.mini-calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.mini-calendar-title {
+  font-weight: 500;
+  font-size: 16px;
+  color: white;
+}
+
+.mini-calendar-nav {
+  display: flex;
+  gap: 5px;
+}
+
+.mini-calendar-nav-btn {
+  background: none;
+  border: none;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 50%;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  transition: background-color 0.2s;
+}
+
+.mini-calendar-nav-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.mini-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.mini-calendar-day-name {
+  text-align: center;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 5px 0;
+}
+
+.mini-calendar-day {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.mini-calendar-day:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.mini-calendar-day.other-month {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.mini-calendar-day.today {
+  background-color: white;
+  color: #0f4c81; /* Bleu au lieu du vert */
+  font-weight: 500;
+}
+
+.mini-calendar-day.selected {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-weight: 500;
 }
 
 /* ======= FILTRES ======= */
@@ -290,6 +363,7 @@ a {
   gap: 8px;
   padding: 6px 0;
   cursor: pointer;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .color-dot {
@@ -298,7 +372,7 @@ a {
   border-radius: 50%;
 }
 
-.color-cours { background-color: #00843d; }
+.color-cours { background-color: #0f4c81; } /* Bleu au lieu du vert */
 .color-devoirs { background-color: #4285f4; }
 .color-reunion { background-color: #ff9800; }
 .color-examen { background-color: #f44336; }
@@ -328,14 +402,20 @@ a {
 .classes-dropdown-toggle {
   width: 100%;
   padding: 8px 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background-color: white;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: none;
+  border-radius: 6px;
   cursor: pointer;
   text-align: left;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  transition: background-color 0.2s;
+}
+
+.classes-dropdown-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.2);
 }
 
 .dropdown-menu {
@@ -368,7 +448,7 @@ a {
   border: none;
   font-size: 12px;
   cursor: pointer;
-  color: #00843d;
+  color: #0f4c81; /* Bleu au lieu du vert */
 }
 
 .dropdown-action:hover {
@@ -415,7 +495,7 @@ a {
 
 .apply-button {
   padding: 6px 12px;
-  background-color: #00843d;
+  background-color: #0f4c81; /* Bleu au lieu du vert */
   color: white;
   border: none;
   border-radius: 4px;
@@ -424,7 +504,7 @@ a {
 }
 
 .apply-button:hover {
-  background-color: #006e32;
+  background-color: #0d3d6a; /* Version plus foncée */
 }
 
 /* ======= CALENDRIER PRINCIPAL ======= */
@@ -478,7 +558,7 @@ a {
 }
 
 .calendar-day.today {
-  background-color: #e6f7ef;
+  background-color: #e0eaf4; /* Bleu clair au lieu de vert clair */
 }
 
 .calendar-day-number {
@@ -489,7 +569,7 @@ a {
 }
 
 .today .calendar-day-number {
-  background-color: #00843d;
+  background-color: #0f4c81; /* Bleu au lieu du vert */
   color: white;
   border-radius: 50%;
   width: 24px;
@@ -518,7 +598,7 @@ a {
   cursor: pointer;
 }
 
-.event-cours { background-color: #00843d; }
+.event-cours { background-color: #0f4c81; } /* Bleu au lieu du vert */
 .event-devoirs { background-color: #4285f4; }
 .event-reunion { background-color: #ff9800; }
 .event-examen { background-color: #f44336; }
@@ -640,7 +720,7 @@ a {
 }
 
 .week-day-header.today {
-  background-color: #e6f7ef;
+  background-color: #e0eaf4; /* Bleu clair au lieu de vert clair */
 }
 
 .week-day-name {
@@ -677,7 +757,81 @@ a {
 }
 
 .week-day-column.today {
-  background-color: #e6f7ef;
+  background-color: #e0eaf4; /* Bleu clair au lieu de vert clair */
+}
+
+/* Styles spécifiques de la page d'accueil */
+.folder-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.module-link {
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.8);
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.module-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.module-link i {
+  width: 20px;
+  text-align: center;
+}
+
+.logout-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #666;
+  font-size: 24px;
+  padding: 5px;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+  margin-right: 20px;
+  text-decoration: none;
+}
+
+.logout-button:hover {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background-color: #f5f5f5;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #555;
+  transition: background-color 0.2s;
+}
+
+.back-button:hover {
+  background-color: #e0e0e0;
+}
+
+.back-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
 }
 
 /* ======= RESPONSIVE ======= */
@@ -688,10 +842,13 @@ a {
   
   .sidebar {
     width: 100%;
-    max-height: 300px;
+    height: auto;
+    position: relative;
+    overflow: visible;
   }
   
   .main-content {
+    margin-left: 0;
     height: auto;
   }
   
