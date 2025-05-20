@@ -19,11 +19,19 @@ $user_fullname = getUserFullName();
 $user_role = getUserRole();
 $user_initials = getUserInitials();
 
+// Configuration de la page
+$pageTitle = 'Justificatifs d\'absence';
+$currentPage = 'justificatifs';
+
 // Définir les filtres par défaut avec validation
 $date_debut = filter_input(INPUT_GET, 'date_debut', FILTER_SANITIZE_STRING) ?: date('Y-m-d', strtotime('-30 days'));
 $date_fin = filter_input(INPUT_GET, 'date_fin', FILTER_SANITIZE_STRING) ?: date('Y-m-d');
 $classe = filter_input(INPUT_GET, 'classe', FILTER_SANITIZE_STRING) ?: '';
 $traite = filter_input(INPUT_GET, 'traite', FILTER_SANITIZE_STRING) ?: '';
+
+// Formatage des dates pour l'affichage convivial
+$date_debut_formattee = date('d/m/Y', strtotime($date_debut));
+$date_fin_formattee = date('d/m/Y', strtotime($date_fin));
 
 // Vérifier si la table justificatifs existe
 try {
@@ -171,149 +179,144 @@ try {
 } catch (Exception $e) {
     error_log("Erreur lors de la récupération des classes: " . $e->getMessage());
 }
+
+// Inclure l'en-tête
+include 'includes/header.php';
 ?>
 
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Justificatifs d'absence - Pronote</title>
-  <link rel="stylesheet" href="../agenda/assets/css/calendar.css">
-  <link rel="stylesheet" href="assets/css/absences.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-</head>
-<body>
-  <div class="app-container">
-    <!-- Sidebar -->
-    <div class="sidebar">
-      <a href="../accueil/accueil.php" class="logo-container">
-        <div class="app-logo">P</div>
-        <div class="app-title">Pronote Absences</div>
-      </a>
-      
-      <!-- Filtres -->
-      <div class="sidebar-section">
-        <form id="filters-form" method="get" action="">
-          <div class="form-group">
-            <label for="date_debut">Du</label>
-            <input type="date" id="date_debut" name="date_debut" value="<?= $date_debut ?>" max="<?= date('Y-m-d') ?>">
-          </div>
-          
-          <div class="form-group">
-            <label for="date_fin">Au</label>
-            <input type="date" id="date_fin" name="date_fin" value="<?= $date_fin ?>" max="<?= date('Y-m-d') ?>">
-          </div>
-          
-          <div class="form-group">
-            <label for="classe">Classe</label>
-            <select id="classe" name="classe">
-              <option value="">Toutes les classes</option>
-              <?php foreach ($classes as $c): ?>
-              <option value="<?= $c ?>" <?= $classe == $c ? 'selected' : '' ?>><?= $c ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-          
-          <div class="form-group">
-            <label for="traite">Statut</label>
-            <select id="traite" name="traite">
-              <option value="">Tous</option>
-              <option value="oui" <?= $traite == 'oui' ? 'selected' : '' ?>>Traités</option>
-              <option value="non" <?= $traite == 'non' ? 'selected' : '' ?>>Non traités</option>
-            </select>
-          </div>
-          
-          <button type="submit" class="filter-button">Appliquer les filtres</button>
-        </form>
-      </div>
-      
-      <!-- Actions -->
-      <div class="sidebar-section">
-        <a href="absences.php" class="action-button secondary">
-          <i class="fas fa-arrow-left"></i> Retour aux absences
-        </a>
-      </div>
+<!-- Bannière de bienvenue pour le contexte des justificatifs -->
+<div class="welcome-banner">
+    <div class="welcome-content">
+        <h2>Gestion des Justificatifs</h2>
+        <p>Consultez et traitez les justificatifs d'absences soumis par les élèves et leurs parents.</p>
     </div>
-    
-    <!-- Main Content -->
-    <div class="main-content">
-      <!-- Header -->
-      <div class="top-header">
-        <div class="page-title">
-          <h1>Gestion des justificatifs</h1>
+    <div class="welcome-icon">
+        <i class="fas fa-file-alt"></i>
+    </div>
+</div>
+
+<!-- Barre de filtres -->
+<div class="filters-bar">
+    <form id="filter-form" class="filter-form" method="get" action="justificatifs.php">
+        <div class="filter-item">
+            <label for="date_debut" class="filter-label">Du</label>
+            <input type="date" id="date_debut" name="date_debut" value="<?= $date_debut ?>" max="<?= date('Y-m-d') ?>">
         </div>
         
-        <div class="header-actions">
-          <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">⏻</a>
-          <div class="user-avatar"><?= $user_initials ?></div>
+        <div class="filter-item">
+            <label for="date_fin" class="filter-label">Au</label>
+            <input type="date" id="date_fin" name="date_fin" value="<?= $date_fin ?>" max="<?= date('Y-m-d') ?>">
         </div>
-      </div>
-      
-      <!-- Content -->
-      <div class="content-container">
-        <?php if (empty($justificatifs)): ?>
-          <div class="no-data-message">
-            <i class="fas fa-info-circle"></i>
-            <p>Aucun justificatif ne correspond aux critères sélectionnés.</p>
-          </div>
-        <?php else: ?>
-          <div class="justificatifs-list">
-            <div class="list-header">
-              <div class="list-row header-row">
-                <div class="list-cell header-cell">Élève</div>
-                <div class="list-cell header-cell">Classe</div>
-                <div class="list-cell header-cell">Date de dépôt</div>
-                <div class="list-cell header-cell">Période</div>
-                <div class="list-cell header-cell">Motif</div>
-                <div class="list-cell header-cell">Statut</div>
-                <div class="list-cell header-cell">Actions</div>
-              </div>
-            </div>
-            
-            <div class="list-body">
-              <?php foreach ($justificatifs as $justificatif): ?>
-                <div class="list-row justificatif-row <?= $justificatif['traite'] ? 'traite' : 'non-traite' ?>">
-                  <div class="list-cell"><?= htmlspecialchars($justificatif['prenom'] . ' ' . $justificatif['nom']) ?></div>
-                  <div class="list-cell"><?= htmlspecialchars($justificatif['classe']) ?></div>
-                  <div class="list-cell">
-                    <?= isset($justificatif[$dateColumn]) ? htmlspecialchars(date('d/m/Y', strtotime($justificatif[$dateColumn]))) : 'N/A' ?>
-                  </div>
-                  <div class="list-cell">
-                    Du <?= htmlspecialchars(date('d/m/Y', strtotime($justificatif['date_debut_absence']))) ?>
-                    <br>
-                    au <?= htmlspecialchars(date('d/m/Y', strtotime($justificatif['date_fin_absence']))) ?>
-                  </div>
-                  <div class="list-cell"><?= htmlspecialchars($justificatif['motif'] ?? 'Non spécifié') ?></div>
-                  <div class="list-cell">
-                    <?php if ($justificatif['traite']): ?>
-                      <span class="badge badge-success">Traité</span>
-                      <span class="badge <?= $justificatif['approuve'] ? 'badge-success' : 'badge-danger' ?>">
-                        <?= $justificatif['approuve'] ? 'Approuvé' : 'Rejeté' ?>
-                      </span>
-                    <?php else: ?>
-                      <span class="badge badge-warning">En attente</span>
-                    <?php endif; ?>
-                  </div>
-                  <div class="list-cell">
-                    <div class="action-buttons">
-                      <a href="details_justificatif.php?id=<?= $justificatif['id'] ?>" class="btn-icon" title="Voir les détails">
-                        <i class="fas fa-eye"></i>
-                      </a>
-                      <a href="traiter_justificatif.php?id=<?= $justificatif['id'] ?>" class="btn-icon" title="Traiter">
-                        <i class="fas fa-check-circle"></i>
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              <?php endforeach; ?>
-            </div>
-          </div>
-        <?php endif; ?>
-      </div>
-    </div>
-  </div>
-</body>
-</html>
+        
+        <div class="filter-item">
+            <label for="classe" class="filter-label">Classe</label>
+            <select id="classe" name="classe">
+                <option value="">Toutes les classes</option>
+                <?php foreach ($classes as $c): ?>
+                <option value="<?= htmlspecialchars($c) ?>" <?= $classe === $c ? 'selected' : '' ?>><?= htmlspecialchars($c) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        
+        <div class="filter-item">
+            <label for="traite" class="filter-label">Statut</label>
+            <select id="traite" name="traite">
+                <option value="">Tous</option>
+                <option value="oui" <?= $traite === 'oui' ? 'selected' : '' ?>>Traités</option>
+                <option value="non" <?= $traite === 'non' ? 'selected' : '' ?>>Non traités</option>
+            </select>
+        </div>
+        
+        <div class="filter-buttons">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-filter"></i> Filtrer
+            </button>
+            <a href="justificatifs.php" class="btn btn-secondary">
+                <i class="fas fa-redo"></i> Réinitialiser
+            </a>
+        </div>
+    </form>
+</div>
 
-<?php ob_end_flush(); ?>
+<!-- Contenu principal -->
+<div class="content-container">
+    <div class="content-header">
+        <h2>Justificatifs du <?= $date_debut_formattee ?> au <?= $date_fin_formattee ?></h2>
+        <div class="content-actions">
+            <a href="export_justificatifs.php?format=excel&<?= http_build_query($_GET) ?>" class="btn btn-outline">
+                <i class="fas fa-file-excel"></i> Exporter
+            </a>
+        </div>
+    </div>
+
+    <div class="content-body">
+        <?php if (empty($justificatifs)): ?>
+            <div class="no-data-message">
+                <i class="fas fa-file-alt"></i>
+                <p>Aucun justificatif ne correspond aux critères sélectionnés.</p>
+            </div>
+        <?php else: ?>
+            <div class="justificatifs-list absences-list">
+                <div class="list-header">
+                    <div class="list-row header-row">
+                        <div class="list-cell">Élève</div>
+                        <div class="list-cell">Classe</div>
+                        <div class="list-cell">Date de dépôt</div>
+                        <div class="list-cell">Période</div>
+                        <div class="list-cell">Motif</div>
+                        <div class="list-cell">Statut</div>
+                        <div class="list-actions">Actions</div>
+                    </div>
+                </div>
+                
+                <div class="list-body">
+                    <?php foreach ($justificatifs as $justificatif): ?>
+                        <div class="list-row justificatif-row <?= $justificatif['traite'] ? 'traite' : 'non-traite' ?>">
+                            <div class="list-cell">
+                                <strong><?= htmlspecialchars($justificatif['nom']) ?></strong> <?= htmlspecialchars($justificatif['prenom']) ?>
+                            </div>
+                            <div class="list-cell"><?= htmlspecialchars($justificatif['classe']) ?></div>
+                            <div class="list-cell">
+                                <?= isset($justificatif[$dateColumn]) ? date('d/m/Y', strtotime($justificatif[$dateColumn])) : 'N/A' ?>
+                            </div>
+                            <div class="list-cell">
+                                Du <?= date('d/m/Y', strtotime($justificatif['date_debut_absence'])) ?>
+                                <br>
+                                au <?= date('d/m/Y', strtotime($justificatif['date_fin_absence'])) ?>
+                            </div>
+                            <div class="list-cell"><?= htmlspecialchars($justificatif['motif'] ?? 'Non spécifié') ?></div>
+                            <div class="list-cell">
+                                <?php if ($justificatif['traite']): ?>
+                                    <span class="badge badge-success">Traité</span>
+                                    <span class="badge <?= $justificatif['approuve'] ? 'badge-success' : 'badge-danger' ?>">
+                                        <?= $justificatif['approuve'] ? 'Approuvé' : 'Rejeté' ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span class="badge badge-warning">En attente</span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="list-actions">
+                                <div class="action-buttons">
+                                    <a href="details_justificatif.php?id=<?= $justificatif['id'] ?>" class="btn-icon" title="Voir les détails">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <?php if (!$justificatif['traite']): ?>
+                                    <a href="traiter_justificatif.php?id=<?= $justificatif['id'] ?>" class="btn-icon" title="Traiter">
+                                        <i class="fas fa-check-circle"></i>
+                                    </a>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<?php
+// Inclure le pied de page
+include 'includes/footer.php';
+ob_end_flush();
+?>

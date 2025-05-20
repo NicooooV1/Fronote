@@ -95,12 +95,11 @@ $heure_fin_suggere = isset($_GET['fin']) ? $_GET['fin'] : '09:00';
 $id_eleve_suggere = isset($_GET['eleve']) ? $_GET['eleve'] : '';
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ajouter une absence - Pronote</title>
-  <link rel="stylesheet" href="../agenda/assets/css/calendar.css">
+  <title>Ajouter une absence - PRONOTE</title>
   <link rel="stylesheet" href="assets/css/absences.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
@@ -108,10 +107,56 @@ $id_eleve_suggere = isset($_GET['eleve']) ? $_GET['eleve'] : '';
   <div class="app-container">
     <!-- Sidebar -->
     <div class="sidebar">
-      <a href="../accueil/accueil.php" class="logo-container">
+      <div class="logo-container">
         <div class="app-logo">P</div>
-        <div class="app-title">Pronote Absences</div>
-      </a>
+        <div class="app-title">PRONOTE</div>
+      </div>
+      
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Navigation</div>
+        <div class="sidebar-nav">
+          <a href="absences.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-calendar-times"></i></span>
+            <span>Liste des absences</span>
+          </a>
+          
+          <a href="ajouter_absence.php" class="sidebar-nav-item active">
+            <span class="sidebar-nav-icon"><i class="fas fa-plus"></i></span>
+            <span>Signaler une absence</span>
+          </a>
+          <a href="appel.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-clipboard-list"></i></span>
+            <span>Faire l'appel</span>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Autres modules -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Autres modules</div>
+        <div class="sidebar-nav">
+          <a href="../notes/notes.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-chart-bar"></i></span>
+            <span>Notes</span>
+          </a>
+          <a href="../messagerie/index.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
+            <span>Messagerie</span>
+          </a>
+          <a href="../agenda/agenda.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span>
+            <span>Agenda</span>
+          </a>
+          <a href="../cahierdetextes/cahierdetextes.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-book"></i></span>
+            <span>Cahier de textes</span>
+          </a>
+          <a href="../accueil/accueil.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
+            <span>Accueil</span>
+          </a>
+        </div>
+      </div>
     </div>
     
     <!-- Main Content -->
@@ -122,7 +167,7 @@ $id_eleve_suggere = isset($_GET['eleve']) ? $_GET['eleve'] : '';
           <a href="absences.php" class="back-button">
             <i class="fas fa-arrow-left"></i>
           </a>
-          <h1>Ajouter une absence</h1>
+          <h1>Signaler une absence</h1>
         </div>
         
         <div class="header-actions">
@@ -171,85 +216,85 @@ $id_eleve_suggere = isset($_GET['eleve']) ? $_GET['eleve'] : '';
               <div class="form-group">
                 <label for="heure_debut">Heure de début <span class="required">*</span></label>
                 <input type="time" name="heure_debut" id="heure_debut" value="<?= $heure_debut_suggere ?>" required>
-              </div>
-              
-              <div class="form-group">
+            </div>
+            
+            <div class="form-group">
                 <label for="date_fin">Date de fin <span class="required">*</span></label>
                 <input type="date" name="date_fin" id="date_fin" value="<?= $date_suggere ?>" required max="<?= date('Y-m-d') ?>">
-              </div>
-              
-              <div class="form-group">
+            </div>
+            
+            <div class="form-group">
                 <label for="heure_fin">Heure de fin <span class="required">*</span></label>
                 <input type="time" name="heure_fin" id="heure_fin" value="<?= $heure_fin_suggere ?>" required>
-              </div>
-              
-              <div class="form-group">
+            </div>
+            
+            <div class="form-group">
                 <label for="type_absence">Type d'absence <span class="required">*</span></label>
                 <select name="type_absence" id="type_absence" required>
-                  <option value="">Sélectionner un type</option>
-                  <option value="cours">Cours</option>
-                  <option value="demi-journee">Demi-journée</option>
-                  <option value="journee">Journée complète</option>
+                    <option value="">Sélectionner un type</option>
+                    <option value="cours">Cours</option>
+                    <option value="demi-journee">Demi-journée</option>
+                    <option value="journee">Journée complète</option>
                 </select>
-              </div>
-              
-              <div class="form-group">
+            </div>
+            
+            <div class="form-group">
                 <label for="motif">Motif</label>
                 <select name="motif" id="motif">
-                  <option value="">Sélectionner un motif</option>
-                  <option value="maladie">Maladie</option>
-                  <option value="rdv_medical">Rendez-vous médical</option>
-                  <option value="familial">Raison familiale</option>
-                  <option value="transport">Problème de transport</option>
-                  <option value="autre">Autre</option>
+                    <option value="">Sélectionner un motif</option>
+                    <option value="maladie">Maladie</option>
+                    <option value="rdv_medical">Rendez-vous médical</option>
+                    <option value="familial">Raison familiale</option>
+                    <option value="transport">Problème de transport</option>
+                    <option value="autre">Autre</option>
                 </select>
-              </div>
-              
-              <div class="form-group form-full">
+            </div>
+            
+            <div class="form-group form-full">
                 <div class="checkbox-group">
-                  <input type="checkbox" name="justifie" id="justifie">
-                  <label for="justifie">Absence justifiée</label>
+                    <input type="checkbox" name="justifie" id="justifie">
+                    <label for="justifie">Absence justifiée</label>
                 </div>
-              </div>
-              
-              <div class="form-group form-full">
+            </div>
+            
+            <div class="form-group form-full">
                 <label for="commentaire">Commentaire</label>
                 <textarea name="commentaire" id="commentaire" rows="4"></textarea>
-              </div>
-              
-              <div class="form-actions form-full">
+            </div>
+            
+            <div class="form-actions form-full">
                 <a href="absences.php" class="btn btn-secondary">Annuler</a>
                 <button type="submit" class="btn btn-primary">Enregistrer l'absence</button>
-              </div>
             </div>
-          </form>
         </div>
-      </div>
-    </div>
-  </div>
-  
-  <script>
+    </form>
+</div>
+
+<script>
     // Script pour synchroniser les dates de début et fin
     document.getElementById('date_debut').addEventListener('change', function() {
-      document.getElementById('date_fin').value = this.value;
+        document.getElementById('date_fin').value = this.value;
     });
     
     // Script pour valider que la date de fin est après la date de début
     document.querySelector('form').addEventListener('submit', function(e) {
-      const dateDebut = document.getElementById('date_debut').value;
-      const dateFin = document.getElementById('date_fin').value;
-      const heureDebut = document.getElementById('heure_debut').value;
-      const heureFin = document.getElementById('heure_fin').value;
-      
-      const debutComplet = new Date(dateDebut + 'T' + heureDebut);
-      const finComplet = new Date(dateFin + 'T' + heureFin);
-      
-      if (finComplet <= debutComplet) {
-        alert("La date et l'heure de fin doivent être après la date et l'heure de début.");
-        e.preventDefault();
-      }
+        const dateDebut = document.getElementById('date_debut').value;
+        const dateFin = document.getElementById('date_fin').value;
+        const heureDebut = document.getElementById('heure_debut').value;
+        const heureFin = document.getElementById('heure_fin').value;
+        
+        const debutComplet = new Date(dateDebut + 'T' + heureDebut);
+        const finComplet = new Date(dateFin + 'T' + heureFin);
+        
+        if (finComplet <= debutComplet) {
+            alert("La date et l'heure de fin doivent être après la date et l'heure de début.");
+            e.preventDefault();
+        }
     });
-  </script>
-</body>
-</html>
-<?php ob_end_flush(); ?>
+</script>
+
+<?php
+// Inclure le pied de page
+include 'includes/footer.php';
+ob_end_flush();
+?>

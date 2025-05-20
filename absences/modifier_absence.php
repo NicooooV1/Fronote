@@ -121,12 +121,11 @@ $csrf_token = bin2hex(random_bytes(32));
 $_SESSION['csrf_token'] = $csrf_token;
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Modifier une absence - Pronote</title>
-  <link rel="stylesheet" href="../agenda/assets/css/calendar.css">
+  <title>Modifier une absence - PRONOTE</title>
   <link rel="stylesheet" href="assets/css/absences.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
@@ -134,10 +133,56 @@ $_SESSION['csrf_token'] = $csrf_token;
   <div class="app-container">
     <!-- Sidebar -->
     <div class="sidebar">
-      <a href="../accueil/accueil.php" class="logo-container">
+      <div class="logo-container">
         <div class="app-logo">P</div>
-        <div class="app-title">Pronote Absences</div>
-      </a>
+        <div class="app-title">PRONOTE</div>
+      </div>
+      
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Navigation</div>
+        <div class="sidebar-nav">
+          <a href="absences.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-calendar-times"></i></span>
+            <span>Liste des absences</span>
+          </a>
+          
+          <a href="ajouter_absence.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-plus"></i></span>
+            <span>Signaler une absence</span>
+          </a>
+          <a href="appel.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-clipboard-list"></i></span>
+            <span>Faire l'appel</span>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Autres modules -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Autres modules</div>
+        <div class="sidebar-nav">
+          <a href="../notes/notes.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-chart-bar"></i></span>
+            <span>Notes</span>
+          </a>
+          <a href="../messagerie/index.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
+            <span>Messagerie</span>
+          </a>
+          <a href="../agenda/agenda.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span>
+            <span>Agenda</span>
+          </a>
+          <a href="../cahierdetextes/cahierdetextes.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-book"></i></span>
+            <span>Cahier de textes</span>
+          </a>
+          <a href="../accueil/accueil.php" class="sidebar-nav-item">
+            <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
+            <span>Accueil</span>
+          </a>
+        </div>
+      </div>
     </div>
     
     <!-- Main Content -->
