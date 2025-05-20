@@ -2,7 +2,7 @@
 // Démarrer la mise en mémoire tampon
 ob_start();
 
-// Inclure les fichiers nécessaires - s'assurer que db.php est chargé avant functions.php
+// Inclure les fichiers nécessaires
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/functions.php';
@@ -20,30 +20,14 @@ if (!$user) {
     exit;
 }
 
-// S'assurer que la connection PDO est disponible
-if (!isset($pdo) || !($pdo instanceof PDO)) {
-    error_log("Erreur critique: Connexion PDO non disponible dans absences.php");
-    die("Erreur de connexion à la base de données. Veuillez contacter l'administrateur du système.");
-}
-
+// Initialiser les variables nécessaires
 $user_fullname = $user['prenom'] . ' ' . $user['nom'];
 $user_role = $user['profil'];
 $user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
 
-// Vérifier si la table absences existe avec protection contre les erreurs
-try {
-    $tableCheck = $pdo->query("SHOW TABLES LIKE 'absences'");
-    $tableExists = $tableCheck && $tableCheck->rowCount() > 0;
-    
-    if (!$tableExists) {
-        // Créer la table si elle n'existe pas
-        createAbsencesTableIfNotExists($pdo);
-    }
-} catch (PDOException $e) {
-    error_log("Erreur lors de la vérification de la table absences: " . $e->getMessage());
-    // Continuer l'exécution, mais préparer un message pour l'utilisateur
-    $dbError = "Un problème est survenu avec la base de données. Certaines fonctionnalités peuvent être limitées.";
-}
+// Configuration de la page
+$pageTitle = 'Absences';
+$currentPage = 'liste';
 
 // Définir les filtres par défaut
 $date_debut = isset($_GET['date_debut']) ? $_GET['date_debut'] : date('Y-m-d', strtotime('-30 days'));
@@ -51,9 +35,6 @@ $date_fin = isset($_GET['date_fin']) ? $_GET['date_fin'] : date('Y-m-d');
 $classe = isset($_GET['classe']) ? $_GET['classe'] : '';
 $view = isset($_GET['view']) ? $_GET['view'] : 'list';
 $justifie = isset($_GET['justifie']) ? $_GET['justifie'] : '';
-
-// Initialiser les types sélectionnés
-$selected_types = isset($_GET['type']) && is_array($_GET['type']) ? $_GET['type'] : [];
 $periode_active = isset($_GET['periode']) ? $_GET['periode'] : '';
 
 // Récupérer la liste des absences selon le rôle de l'utilisateur
@@ -224,19 +205,11 @@ if (!is_dir($views_dir)) {
         </div>');
 }
 
-// Définir la fonction canManageAbsences() si elle n'existe pas
-if (!function_exists('canManageAbsences')) {
-    function canManageAbsences() {
-        $role = isset($_SESSION['user']) ? $_SESSION['user']['profil'] : '';
-        return in_array($role, ['administrateur', 'professeur', 'vie_scolaire']);
-    }
-}
-
 // Récupérer la liste des classes pour le filtre
 $classes = [];
 $etablissement_data = [];
 
-// Vérifier si le fichier exist avant de le lire
+// Vérifier si le fichier existe avant de le lire
 $etablissementJsonFile = '../login/data/etablissement.json';
 if (file_exists($etablissementJsonFile)) {
     $etablissement_data = json_decode(file_get_contents($etablissementJsonFile), true);
@@ -252,135 +225,181 @@ if (file_exists($etablissementJsonFile)) {
 } else {
     error_log("Fichier d'établissement non trouvé: $etablissementJsonFile");
 }
+
+// Formatage des dates pour affichage convivial
+$date_debut_formattee = date('d/m/Y', strtotime($date_debut));
+$date_fin_formattee = date('d/m/Y', strtotime($date_fin));
+
+// Inclure l'en-tête
+include 'includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Absences - Pronote</title>
-  <link rel="stylesheet" href="../notes/assets/css/style.css">
-  <link rel="stylesheet" href="assets/css/absences.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-</head>
-<body>
-  <div class="app-container">
-    <!-- Sidebar -->
-    <div class="sidebar">
-      <div class="logo-container">
-        <div class="app-logo">P</div>
-        <div class="app-title">Absences</div>
-      </div>
 
-      <!-- Filtres par période -->
-      <div class="sidebar-section">
-        <div class="sidebar-section-header">Périodes</div>
-        <div class="folder-menu">
-          <a href="?periode=semaine" class="<?= ($periode_active == 'semaine' ? 'active' : '') ?>">
-            <i class="fas fa-calendar-week"></i> Cette semaine
-          </a>
-          <a href="?periode=mois" class="<?= ($periode_active == 'mois' ? 'active' : '') ?>">
-            <i class="fas fa-calendar-alt"></i> Ce mois
-          </a>
-          <a href="?periode=trimestre" class="<?= ($periode_active == 'trimestre' ? 'active' : '') ?>">
-            <i class="fas fa-calendar"></i> Ce trimestre
-          </a>
-        </div>
-      </div>
-
-      <!-- Filtres par type -->
-      <div class="sidebar-section">
-        <div class="sidebar-section-header">Type d'absences</div>
-        <div class="folder-menu">
-          <div class="filter-option">
-            <label>
-              <input type="checkbox" class="filter-checkbox" name="type[]" value="non_justifiee" <?= (in_array('non_justifiee', $selected_types) ? 'checked' : '') ?>>
-              <span class="filter-label">Non justifiées</span>
-            </label>
-          </div>
-          <div class="filter-option">
-            <label>
-              <input type="checkbox" class="filter-checkbox" name="type[]" value="justifiee" <?= (in_array('justifiee', $selected_types) ? 'checked' : '') ?>>
-              <span class="filter-label">Justifiées</span>
-            </label>
-          </div>
-          <div class="filter-option">
-            <label>
-              <input type="checkbox" class="filter-checkbox" name="type[]" value="retard" <?= (in_array('retard', $selected_types) ? 'checked' : '') ?>>
-              <span class="filter-label">Retards</span>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <!-- Actions -->
-      <?php if (canManageAbsences()): ?>
-      <div class="sidebar-section">
-        <div class="sidebar-section-header">Actions</div>
-        <a href="ajouter_absence.php" class="create-button">
-          <i class="fas fa-plus"></i> Signaler une absence
-        </a>
-        <a href="appel.php" class="button button-secondary">
-          <i class="fas fa-clipboard-list"></i> Faire l'appel
-        </a>
-      </div>
-      <?php endif; ?>
-
-      <!-- Autres modules -->
-      <div class="sidebar-section">
-        <div class="sidebar-section-header">Autres modules</div>
-        <div class="folder-menu">
-          <a href="../notes/notes.php" class="module-link">
-            <i class="fas fa-chart-bar"></i> Notes
-          </a>
-          <a href="../messagerie/index.php" class="module-link">
-            <i class="fas fa-envelope"></i> Messagerie
-          </a>
-          <a href="../agenda/agenda.php" class="module-link">
-            <i class="fas fa-calendar"></i> Agenda
-          </a>
-          <a href="../cahierdetextes/cahierdetextes.php" class="module-link">
-            <i class="fas fa-book"></i> Cahier de textes
-          </a>
-          <a href="../accueil/accueil.php" class="module-link">
-            <i class="fas fa-home"></i> Accueil
-          </a>
-        </div>
-      </div>
+<!-- Bannière de bienvenue conditionnelle basée sur les rôles -->
+<?php if (isAdmin() || isVieScolaire()): ?>
+<div class="welcome-banner">
+    <div class="welcome-content">
+        <h2>Gestion des Absences</h2>
+        <p>Consultez, gérez et suivez les absences des élèves de l'établissement.</p>
     </div>
+    <div class="welcome-icon">
+        <i class="fas fa-user-clock"></i>
+    </div>
+</div>
+<?php elseif (isTeacher()): ?>
+<div class="welcome-banner">
+    <div class="welcome-content">
+        <h2>Suivi des Absences</h2>
+        <p>Consultez les absences des élèves de vos classes et signalez de nouvelles absences.</p>
+    </div>
+    <div class="welcome-icon">
+        <i class="fas fa-chalkboard-teacher"></i>
+    </div>
+</div>
+<?php else: ?>
+<div class="welcome-banner">
+    <div class="welcome-content">
+        <h2>Mes Absences</h2>
+        <p>Consultez l'historique de vos absences et leurs justificatifs.</p>
+    </div>
+    <div class="welcome-icon">
+        <i class="fas fa-calendar-check"></i>
+    </div>
+</div>
+<?php endif; ?>
 
-    <!-- Main Content -->
-    <div class="main-content">
-      <!-- Header -->
-      <div class="top-header">
-        <div class="page-title">
-          <h1>Gestion des Absences</h1>
+<!-- Barre de filtres -->
+<div class="filters-bar">
+    <form id="filter-form" class="filter-form" method="get" action="absences.php">
+        <div class="filter-item">
+            <label for="date_debut" class="filter-label">Du</label>
+            <input type="date" id="date_debut" name="date_debut" value="<?= $date_debut ?>" max="<?= date('Y-m-d') ?>">
         </div>
-        <div class="header-actions">
-          <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">⏻</a>
-          <div class="user-avatar"><?= $user_initials ?? '' ?></div>
+        
+        <div class="filter-item">
+            <label for="date_fin" class="filter-label">Au</label>
+            <input type="date" id="date_fin" name="date_fin" value="<?= $date_fin ?>" max="<?= date('Y-m-d') ?>">
         </div>
-      </div>
-      
-      <!-- Contenu principal de la page -->
-      <div class="content-container">
-        <?php if (empty($absences)): ?>
-          <div class="no-data-message">
-            <i class="fas fa-info-circle"></i>
-            <p>Aucune absence ne correspond aux critères sélectionnés.</p>
-          </div>
-        <?php else: ?>
-          <?php if ($view === 'list'): ?>
-            <?php include 'views/list_view.php'; ?>
-          <?php elseif ($view === 'calendar'): ?>
-            <?php include 'views/calendar_view.php'; ?>
-          <?php elseif ($view === 'stats'): ?>
-            <?php include 'views/stats_view.php'; ?>
-          <?php endif; ?>
+        
+        <?php if (isAdmin() || isVieScolaire() || isTeacher()): ?>
+        <div class="filter-item">
+            <label for="classe" class="filter-label">Classe</label>
+            <select id="classe" name="classe">
+                <option value="">Toutes les classes</option>
+                <?php foreach ($classes as $c): ?>
+                <option value="<?= htmlspecialchars($c) ?>" <?= $classe === $c ? 'selected' : '' ?>><?= htmlspecialchars($c) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
         <?php endif; ?>
-      </div>
+        
+        <div class="filter-item">
+            <label for="justifie" class="filter-label">Justification</label>
+            <select id="justifie" name="justifie">
+                <option value="">Toutes</option>
+                <option value="oui" <?= $justifie === 'oui' ? 'selected' : '' ?>>Justifiées</option>
+                <option value="non" <?= $justifie === 'non' ? 'selected' : '' ?>>Non justifiées</option>
+            </select>
+        </div>
+        
+        <div class="filter-item">
+            <label for="view" class="filter-label">Vue</label>
+            <select id="view" name="view">
+                <option value="list" <?= $view === 'list' ? 'selected' : '' ?>>Liste</option>
+                <option value="calendar" <?= $view === 'calendar' ? 'selected' : '' ?>>Calendrier</option>
+                <?php if (isAdmin() || isVieScolaire()): ?>
+                <option value="stats" <?= $view === 'stats' ? 'selected' : '' ?>>Statistiques</option>
+                <?php endif; ?>
+            </select>
+        </div>
+        
+        <div class="filter-buttons">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-filter"></i> Filtrer
+            </button>
+            <a href="absences.php" class="btn btn-secondary">
+                <i class="fas fa-redo"></i> Réinitialiser
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- Contenu principal selon le type de vue sélectionné -->
+<div class="content-container">
+    <div class="content-header">
+        <h2>
+            <?php if (!empty($classe)): ?>
+                Absences de la classe <?= htmlspecialchars($classe) ?>
+            <?php else: ?>
+                <?= isStudent() ? 'Mes absences' : 'Absences' ?> du <?= $date_debut_formattee ?> au <?= $date_fin_formattee ?>
+            <?php endif; ?>
+        </h2>
+        <div class="content-actions">
+            <?php if (canManageAbsences()): ?>
+                <?php if ($view === 'list'): ?>
+                <a href="export.php?format=excel&<?= http_build_query($_GET) ?>" class="btn btn-outline">
+                    <i class="fas fa-file-excel"></i> Exporter
+                </a>
+                <?php endif; ?>
+                <?php if (isAdmin() || isVieScolaire()): ?>
+                <a href="imprimer_absences.php?<?= http_build_query($_GET) ?>" class="btn btn-outline" target="_blank">
+                    <i class="fas fa-print"></i> Imprimer
+                </a>
+                <?php endif; ?>
+            <?php endif; ?>
+        </div>
     </div>
-  </div>
-</body>
-</html>
-<?php ob_end_flush(); ?>
+
+    <?php if (isset($dbError)): ?>
+        <div class="alert alert-error">
+            <i class="fas fa-exclamation-circle"></i>
+            <span><?= $dbError ?></span>
+            <button class="alert-close"><i class="fas fa-times"></i></button>
+        </div>
+    <?php endif; ?>
+    
+    <?php if (isset($_SESSION['success_message'])): ?>
+        <div class="alert alert-success">
+            <i class="fas fa-check-circle"></i>
+            <span><?= $_SESSION['success_message'] ?></span>
+            <button class="alert-close"><i class="fas fa-times"></i></button>
+        </div>
+        <?php unset($_SESSION['success_message']); ?>
+    <?php endif; ?>
+    
+    <?php if (isset($_SESSION['error_message'])): ?>
+        <div class="alert alert-error">
+            <i class="fas fa-exclamation-circle"></i>
+            <span><?= $_SESSION['error_message'] ?></span>
+            <button class="alert-close"><i class="fas fa-times"></i></button>
+        </div>
+        <?php unset($_SESSION['error_message']); ?>
+    <?php endif; ?>
+    
+    <div class="content-body">
+        <?php if (empty($absences)): ?>
+            <div class="no-data-message">
+                <i class="fas fa-calendar-times"></i>
+                <p>Aucune absence ne correspond aux critères sélectionnés.</p>
+                <?php if (canManageAbsences()): ?>
+                <a href="ajouter_absence.php" class="btn btn-primary mt-3">
+                    <i class="fas fa-plus"></i> Signaler une absence
+                </a>
+                <?php endif; ?>
+            </div>
+        <?php else: ?>
+            <?php if ($view === 'list'): ?>
+                <?php include 'views/list_view.php'; ?>
+            <?php elseif ($view === 'calendar'): ?>
+                <?php include 'views/calendar_view.php'; ?>
+            <?php elseif ($view === 'stats'): ?>
+                <?php include 'views/stats_view.php'; ?>
+            <?php endif; ?>
+        <?php endif; ?>
+    </div>
+</div>
+
+<?php
+// Inclure le pied de page
+include 'includes/footer.php';
+ob_end_flush();
+?>
