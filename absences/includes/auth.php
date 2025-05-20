@@ -15,6 +15,7 @@ if (file_exists($authCentralPath)) {
     require_once $authCentralPath;
 } else {
     // Fallback si le fichier central n'est pas disponible
+    // Vérifions si les fonctions existent déjà pour éviter les redéclarations
     if (!function_exists('isLoggedIn')) {
         /**
          * Vérifie si l'utilisateur est connecté

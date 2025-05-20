@@ -2,9 +2,9 @@
 // Démarrer la mise en mémoire tampon
 ob_start();
 
-// Inclure les fichiers nécessaires
+// Inclure les fichiers nécessaires dans le bon ordre
+require_once __DIR__ . '/includes/auth.php';  // Ceci inclut auth_central.php
 require_once __DIR__ . '/includes/db.php';
-require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/functions.php';
 
 // Vérifier que l'utilisateur est connecté

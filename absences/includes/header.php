@@ -20,11 +20,14 @@ function isActiveLink($page) {
     return $currentPage === $page ? 'active' : '';
 }
 
-// Vérifie les permissions pour l'interface
-function canManageAbsences() {
-    if (!isset($_SESSION['user'])) return false;
-    $role = $_SESSION['user']['profil'];
-    return in_array($role, ['administrateur', 'professeur', 'vie_scolaire']);
+// Vérifier si la fonction canManageAbsences existe déjà avant de la déclarer
+if (!function_exists('canManageAbsences')) {
+    // Vérifie les permissions pour l'interface
+    function canManageAbsences() {
+        if (!isset($_SESSION['user'])) return false;
+        $role = $_SESSION['user']['profil'];
+        return in_array($role, ['administrateur', 'professeur', 'vie_scolaire']);
+    }
 }
 ?>
 <!DOCTYPE html>
