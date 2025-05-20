@@ -1,21 +1,25 @@
 <?php
 /**
  * Template d'en-tête pour PRONOTE
- * Ce template génère la structure HTML commune à toutes les pages
+ * 
+ * @param string $pageTitle - Titre de la page
+ * @param string $moduleClass - Classe CSS du module (notes, agenda, cahier, messagerie, absences)
+ * @param string $moduleName - Nom du module à afficher
+ * @param string $moduleIcon - Icône Font Awesome du module
  */
 
 // Valeurs par défaut
 $pageTitle = $pageTitle ?? 'PRONOTE';
 $moduleClass = $moduleClass ?? '';
 $moduleName = $moduleName ?? 'PRONOTE';
-$welcomeMessage = $welcomeMessage ?? 'Bienvenue dans votre espace PRONOTE';
 $moduleIcon = $moduleIcon ?? 'fa-home';
+$welcomeMessage = $welcomeMessage ?? 'Bienvenue dans votre espace PRONOTE';
 
-// Générer les initiales de l'utilisateur
+// Obtenir l'utilisateur et générer les initiales
 if (isset($_SESSION['user'])) {
     $user = $_SESSION['user'];
-    $userFullName = $user['prenom'] . ' ' . $user['nom'] ?? 'Utilisateur';
-    $userInitials = strtoupper(mb_substr($user['prenom'] ?? 'U', 0, 1) . mb_substr($user['nom'] ?? 'T', 0, 1));
+    $userFullName = $user['prenom'] . ' ' . $user['nom'];
+    $userInitials = strtoupper(substr($user['prenom'] ?? 'U', 0, 1) . substr($user['nom'] ?? 'T', 0, 1));
     $userRole = $user['profil'] ?? '';
 } else {
     $userFullName = 'Utilisateur';
@@ -32,6 +36,9 @@ if ($currentMonth >= 9 && $currentMonth <= 12) {
 } else {
     $currentTrimester = 3; // Avril-Août
 }
+
+// Trimestre sélectionné (pour les pages avec filtrage par trimestre)
+$selectedTrimester = $_GET['trimestre'] ?? $currentTrimester;
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -39,7 +46,7 @@ if ($currentMonth >= 9 && $currentMonth <= 12) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($pageTitle) ?> - PRONOTE</title>
-    <link rel="stylesheet" href="/assets/css/pronote-design-system.css">
+    <link rel="stylesheet" href="/assets/css/pronote-main.css">
     <?php if (!empty($moduleClass)): ?>
     <link rel="stylesheet" href="/assets/css/modules/<?= $moduleClass ?>.css">
     <?php endif; ?>
@@ -48,7 +55,7 @@ if ($currentMonth >= 9 && $currentMonth <= 12) {
 </head>
 <body>
     <div class="app-container">
-        <!-- Mobile menu toggle -->
+        <!-- Menu mobile -->
         <div class="mobile-menu-toggle" id="mobile-menu-toggle">
             <i class="fas fa-bars"></i>
         </div>
@@ -61,7 +68,7 @@ if ($currentMonth >= 9 && $currentMonth <= 12) {
                 <div class="app-title">PRONOTE</div>
             </div>
             
-            <!-- Navigation principale -->
+            <!-- Navigation -->
             <div class="sidebar-section">
                 <div class="sidebar-section-header">Navigation</div>
                 <div class="sidebar-nav">
@@ -94,31 +101,34 @@ if ($currentMonth >= 9 && $currentMonth <= 12) {
                 </div>
             </div>
             
+            <!-- Sections spécifiques au module -->
             <?php if ($moduleClass === 'notes'): ?>
-            <!-- Section spécifique au module Notes -->
             <div class="sidebar-section">
                 <div class="sidebar-section-header">Périodes</div>
                 <div class="sidebar-nav">
-                    <a href="?trimestre=1<?= isset($_GET['classe']) ? '&classe=' . urlencode($_GET['classe']) : '' ?>" class="sidebar-nav-item <?= ($_GET['trimestre'] ?? $currentTrimester) == 1 ? 'active' : '' ?>">
+                    <a href="?trimestre=1<?= isset($_GET['classe']) ? '&classe=' . urlencode($_GET['classe']) : '' ?>" 
+                       class="sidebar-nav-item <?= $selectedTrimester == 1 ? 'active' : '' ?>">
                         <span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span>
                         <span>Trimestre 1</span>
                     </a>
-                    <a href="?trimestre=2<?= isset($_GET['classe']) ? '&classe=' . urlencode($_GET['classe']) : '' ?>" class="sidebar-nav-item <?= ($_GET['trimestre'] ?? $currentTrimester) == 2 ? 'active' : '' ?>">
+                    <a href="?trimestre=2<?= isset($_GET['classe']) ? '&classe=' . urlencode($_GET['classe']) : '' ?>" 
+                       class="sidebar-nav-item <?= $selectedTrimester == 2 ? 'active' : '' ?>">
                         <span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span>
                         <span>Trimestre 2</span>
                     </a>
-                    <a href="?trimestre=3<?= isset($_GET['classe']) ? '&classe=' . urlencode($_GET['classe']) : '' ?>" class="sidebar-nav-item <?= ($_GET['trimestre'] ?? $currentTrimester) == 3 ? 'active' : '' ?>">
+                    <a href="?trimestre=3<?= isset($_GET['classe']) ? '&classe=' . urlencode($_GET['classe']) : '' ?>" 
+                       class="sidebar-nav-item <?= $selectedTrimester == 3 ? 'active' : '' ?>">
                         <span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span>
                         <span>Trimestre 3</span>
                     </a>
                 </div>
             </div>
             <?php endif; ?>
-
-            <?php if (isset($sidebarContent)): echo $sidebarContent; endif; ?>
             
-            <?php if ($moduleClass === 'notes' && ($userRole === 'professeur' || $userRole === 'administrateur' || $userRole === 'vie_scolaire')): ?>
+            <?php if (isset($sidebarCustomContent)): echo $sidebarCustomContent; endif; ?>
+            
             <!-- Actions pour les enseignants / admin -->
+            <?php if ($moduleClass === 'notes' && ($userRole === 'professeur' || $userRole === 'administrateur' || $userRole === 'vie_scolaire')): ?>
             <div class="sidebar-section">
                 <div class="sidebar-section-header">Actions</div>
                 <div class="sidebar-nav">
@@ -129,7 +139,7 @@ if ($currentMonth >= 9 && $currentMonth <= 12) {
             </div>
             <?php endif; ?>
             
-            <!-- Informations contextuelles -->
+            <!-- Informations -->
             <div class="sidebar-section">
                 <div class="sidebar-section-header">Informations</div>
                 <div class="info-item">
@@ -138,7 +148,7 @@ if ($currentMonth >= 9 && $currentMonth <= 12) {
                 </div>
                 <div class="info-item">
                     <div class="info-label">Période</div>
-                    <div class="info-value"><?= isset($_GET['trimestre']) ? $_GET['trimestre'] : $currentTrimester ?>ème trimestre</div>
+                    <div class="info-value"><?= isset($selectedTrimester) ? $selectedTrimester : $currentTrimester ?>ème trimestre</div>
                 </div>
                 <?php if (isset($additionalInfoContent)): echo $additionalInfoContent; endif; ?>
             </div>
@@ -163,8 +173,8 @@ if ($currentMonth >= 9 && $currentMonth <= 12) {
                 </div>
             </div>
 
-            <!-- Banner de bienvenue -->
-            <?php if (!isset($hideBanner) || !$hideBanner): ?>
+            <!-- Bannière de bienvenue -->
+            <?php if (!isset($hideBanner)): ?>
             <div class="welcome-banner">
                 <div class="welcome-content">
                     <h2><?= htmlspecialchars($moduleName) ?></h2>
@@ -179,21 +189,21 @@ if ($currentMonth >= 9 && $currentMonth <= 12) {
             
             <!-- Messages d'alerte -->
             <?php if (isset($_SESSION['success_message'])): ?>
-            <div class="alert alert-success" id="success-message">
+            <div class="alert-banner alert-success" id="success-message">
                 <i class="fas fa-check-circle"></i>
                 <div><?= htmlspecialchars($_SESSION['success_message']) ?></div>
             </div>
             <?php unset($_SESSION['success_message']); endif; ?>
             
             <?php if (isset($_SESSION['error_message'])): ?>
-            <div class="alert alert-error" id="error-message">
+            <div class="alert-banner alert-error" id="error-message">
                 <i class="fas fa-exclamation-circle"></i>
                 <div><?= htmlspecialchars($_SESSION['error_message']) ?></div>
             </div>
             <?php unset($_SESSION['error_message']); endif; ?>
             
             <?php if (isset($_SESSION['info_message'])): ?>
-            <div class="alert alert-info" id="info-message">
+            <div class="alert-banner alert-info" id="info-message">
                 <i class="fas fa-info-circle"></i>
                 <div><?= htmlspecialchars($_SESSION['info_message']) ?></div>
             </div>

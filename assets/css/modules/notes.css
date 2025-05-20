@@ -3,13 +3,13 @@
  * Styles spécifiques au module Notes
  */
 
-/* ===== Variables du module ===== */
+/* Variables spécifiques au module */
 :root {
   --module-color: #ff9500;
   --module-light: rgba(255, 149, 0, 0.1);
   --module-medium: rgba(255, 149, 0, 0.3);
   
-  /* États des notes */
+  /* Niveaux de notes */
   --note-good: #34c759;
   --note-average: #ff9500;
   --note-bad: #ff3b30;
@@ -33,14 +33,11 @@
   --color-default: #7f8c8d;
 }
 
-/* ===== Styles spécifiques pour le module Notes ===== */
-
-/* Modifier l'apparence de la bannière de bienvenue pour ce module */
+/* Modifier l'apparence pour ce module */
 .welcome-banner {
   background: linear-gradient(to right, #e67e00, #ff9500);
 }
 
-/* Modification du bouton principal du module */
 .btn-primary {
   background-color: var(--module-color);
 }
@@ -49,22 +46,18 @@
   background-color: #e67e00;
 }
 
-/* Indicateur du module actif dans la sidebar */
 .sidebar-nav-item.active {
   border-left: 3px solid var(--module-color);
 }
 
-/* ===== Composants spécifiques aux notes ===== */
-
-/* Style pour afficher une note */
+/* Affichage des notes */
 .note-value {
   font-weight: 700;
   padding: 4px 8px;
   border-radius: 4px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 40px;
+  display: inline-block;
+  text-align: center;
+  min-width: 50px;
 }
 
 .note-value.good {
@@ -82,7 +75,7 @@
   background-color: var(--note-bad-bg);
 }
 
-/* Style pour la moyenne générale */
+/* Moyenne générale */
 .moyenne-generale {
   font-size: 24px;
   font-weight: 700;
@@ -93,7 +86,7 @@
   display: inline-block;
 }
 
-/* Carte de matière */
+/* Cards de matières */
 .matiere-card {
   background-color: white;
   border-radius: 10px;
@@ -141,7 +134,7 @@
   border-radius: 12px;
 }
 
-/* Liste des notes par matière */
+/* Liste des notes */
 .notes-list {
   background-color: rgba(245, 245, 245, 0.5);
 }
@@ -183,12 +176,12 @@
   gap: 8px;
 }
 
-/* Graphique de distribution des notes */
+/* Distribution des notes */
 .grade-distribution {
   display: flex;
   justify-content: space-between;
-  gap: 15px;
   margin-bottom: 30px;
+  gap: 15px;
 }
 
 .grade-section {
@@ -265,7 +258,7 @@
   margin-right: 20px;
 }
 
-/* Couleurs des indicateurs de matières */
+/* Couleurs des matières */
 .color-francais { background-color: var(--color-francais); }
 .color-mathematiques { background-color: var(--color-mathematiques); }
 .color-histoire-geo { background-color: var(--color-histoire-geo); }
@@ -280,10 +273,11 @@
 .color-eps { background-color: var(--color-eps); }
 .color-default { background-color: var(--color-default); }
 
-/* Responsive pour les composants spécifiques */
+/* Responsive pour les notes */
 @media (max-width: 768px) {
   .grade-distribution {
     flex-direction: column;
+    gap: 10px;
   }
   
   .note-item {

@@ -20,9 +20,8 @@
     </div> <!-- Fin de app-container -->
 
     <script>
-        // Navigation mobile
         document.addEventListener('DOMContentLoaded', function() {
-            // Gestion du menu mobile
+            // Navigation mobile
             const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
             const sidebar = document.getElementById('sidebar');
             const pageOverlay = document.getElementById('page-overlay');
@@ -39,10 +38,10 @@
                 });
             }
             
-            // Messages d'alerte auto-disparaissants
-            const alerts = document.querySelectorAll('.alert');
-            if (alerts.length > 0) {
-                alerts.forEach(alert => {
+            // Auto-masquer les messages d'alerte après 5 secondes
+            const alertBanners = document.querySelectorAll('.alert-banner');
+            if (alertBanners.length > 0) {
+                alertBanners.forEach(alert => {
                     setTimeout(() => {
                         alert.style.opacity = '0';
                         setTimeout(() => {
@@ -56,6 +55,6 @@
         });
     </script>
     
-    <?php if (isset($footerScripts)): echo $footerScripts; endif; ?>
+    <?php if (isset($additionalScripts)): echo $additionalScripts; endif; ?>
 </body>
 </html>
