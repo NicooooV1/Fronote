@@ -85,151 +85,183 @@ try {
 $csrf_token = bin2hex(random_bytes(32));
 $_SESSION['csrf_token'] = $csrf_token;
 
-// Définir la configuration de la page
+// Variables pour le template
 $pageTitle = "Supprimer une note";
 ?>
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($pageTitle) ?> - Pronote</title>
-    <link rel="stylesheet" href="assets/css/notes.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><?= $pageTitle ?> - PRONOTE</title>
+  <link rel="stylesheet" href="assets/css/notes.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
-    <div class="app-container">
-        <!-- Sidebar -->
-        <div class="sidebar">
-            <div class="logo-container">
-                <div class="app-logo">P</div>
-                <div class="app-title">PRONOTE</div>
+  <div class="app-container">
+    <!-- Menu mobile -->
+    <div class="mobile-menu-toggle" id="mobile-menu-toggle">
+        <i class="fas fa-bars"></i>
+    </div>
+    <div class="page-overlay" id="page-overlay"></div>
+    
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="logo-container">
+            <div class="app-logo">P</div>
+            <div class="app-title">PRONOTE</div>
+        </div>
+        
+        <div class="sidebar-section">
+            <div class="sidebar-section-header">Navigation</div>
+            <div class="sidebar-nav">
+                <a href="../accueil/accueil.php" class="sidebar-nav-item">
+                    <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
+                    <span>Accueil</span>
+                </a>
+                <a href="notes.php" class="sidebar-nav-item active">
+                    <span class="sidebar-nav-icon"><i class="fas fa-chart-bar"></i></span>
+                    <span>Notes</span>
+                </a>
+                <a href="../agenda/agenda.php" class="sidebar-nav-item">
+                    <span class="sidebar-nav-icon"><i class="fas fa-calendar"></i></span>
+                    <span>Agenda</span>
+                </a>
+                <a href="../cahierdetextes/cahierdetextes.php" class="sidebar-nav-item">
+                    <span class="sidebar-nav-icon"><i class="fas fa-book"></i></span>
+                    <span>Cahier de textes</span>
+                </a>
+                <a href="../messagerie/index.php" class="sidebar-nav-item">
+                    <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
+                    <span>Messagerie</span>
+                </a>
+                <?php if ($user_role === 'vie_scolaire' || $user_role === 'administrateur'): ?>
+                <a href="../absences/absences.php" class="sidebar-nav-item">
+                    <span class="sidebar-nav-icon"><i class="fas fa-calendar-times"></i></span>
+                    <span>Absences</span>
+                </a>
+                <?php endif; ?>
             </div>
-            
-            <!-- Navigation -->
-            <div class="sidebar-section">
-                <div class="sidebar-section-header">Navigation</div>
-                <div class="sidebar-nav">
-                    <a href="../accueil/accueil.php" class="sidebar-nav-item">
-                        <span class="sidebar-nav-icon"><i class="fas fa-home"></i></span>
-                        <span>Accueil</span>
-                    </a>
-                    <a href="notes.php" class="sidebar-nav-item active">
-                        <span class="sidebar-nav-icon"><i class="fas fa-chart-bar"></i></span>
-                        <span>Notes</span>
-                    </a>
-                    <a href="../agenda/agenda.php" class="sidebar-nav-item">
-                        <span class="sidebar-nav-icon"><i class="fas fa-calendar"></i></span>
-                        <span>Agenda</span>
-                    </a>
-                    <a href="../cahierdetextes/cahierdetextes.php" class="sidebar-nav-item">
-                        <span class="sidebar-nav-icon"><i class="fas fa-book"></i></span>
-                        <span>Cahier de textes</span>
-                    </a>
-                    <a href="../messagerie/index.php" class="sidebar-nav-item">
-                        <span class="sidebar-nav-icon"><i class="fas fa-envelope"></i></span>
-                        <span>Messagerie</span>
-                    </a>
-                    <?php if ($user_role === 'vie_scolaire' || $user_role === 'administrateur'): ?>
-                    <a href="../absences/absences.php" class="sidebar-nav-item">
-                        <span class="sidebar-nav-icon"><i class="fas fa-calendar-times"></i></span>
-                        <span>Absences</span>
-                    </a>
-                    <?php endif; ?>
-                </div>
-            </div>
-            
-            <!-- Actions -->
-            <div class="sidebar-section">
-                <div class="sidebar-section-header">Actions</div>
+        </div>
+        
+        <div class="sidebar-section">
+            <div class="sidebar-section-header">Actions</div>
+            <div class="sidebar-nav">
                 <a href="notes.php" class="create-button">
                     <i class="fas fa-arrow-left"></i> Retour aux notes
                 </a>
             </div>
-            
-            <!-- Informations -->
-            <div class="sidebar-section">
-                <div class="sidebar-section-header">Informations</div>
-                <div class="info-item">
-                    <div class="info-label">Date</div>
-                    <div class="info-value"><?= date('d/m/Y') ?></div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">Action</div>
-                    <div class="info-value">Suppression d'une note</div>
-                </div>
-            </div>
         </div>
         
-        <!-- Main Content -->
-        <div class="main-content">
-            <div class="top-header">
-                <div class="page-title">
-                    <h1><?= htmlspecialchars($pageTitle) ?></h1>
-                </div>
-                
-                <div class="header-actions">
-                    <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">
-                        <i class="fas fa-sign-out-alt"></i>
-                    </a>
-                    <div class="user-avatar" title="<?= htmlspecialchars($user_fullname) ?>">
-                        <?= htmlspecialchars($user_initials) ?>
-                    </div>
-                </div>
+        <div class="sidebar-section">
+            <div class="sidebar-section-header">Informations</div>
+            <div class="info-item">
+                <div class="info-label">Date</div>
+                <div class="info-value"><?= date('d/m/Y') ?></div>
             </div>
-            
-            <!-- Welcome Banner -->
-            <div class="welcome-banner">
-                <div class="welcome-content">
-                    <h2>Supprimer une note</h2>
-                    <p>Vous êtes sur le point de supprimer définitivement cette note</p>
-                </div>
-                <div class="welcome-logo">
-                    <i class="fas fa-trash-alt"></i>
-                </div>
-            </div>
-            
-            <div class="content-container">
-                <div class="confirmation-box">
-                    <h2>Confirmer la suppression</h2>
-                    <p>Vous êtes sur le point de supprimer définitivement la note suivante :</p>
-                    
-                    <div class="note-details">
-                        <p><strong>Élève :</strong> <?= htmlspecialchars($note['nom_eleve']) ?></p>
-                        <p><strong>Classe :</strong> <?= htmlspecialchars($note['classe']) ?></p>
-                        <p><strong>Matière :</strong> <?= htmlspecialchars($note['matiere']) ?></p>
-                        <p><strong>Note :</strong> <?= htmlspecialchars($note['note']) ?>/<?= htmlspecialchars($note['note_sur'] ?? '20') ?></p>
-                        <p><strong>Date :</strong> <?= date('d/m/Y', strtotime($note['date_ajout'] ?? $note['date_evaluation'] ?? date('Y-m-d'))) ?></p>
-                        <?php if (!empty($note['commentaire'])): ?>
-                            <p><strong>Commentaire :</strong> <?= htmlspecialchars($note['commentaire']) ?></p>
-                        <?php endif; ?>
-                    </div>
-                    
-                    <div class="warning">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <p>Attention : Cette action est irréversible. Une fois supprimée, la note ne pourra pas être récupérée.</p>
-                    </div>
-                    
-                    <div class="confirmation-actions">
-                        <a href="notes.php" class="btn btn-secondary">
-                            <i class="fas fa-times"></i> Annuler
-                        </a>
-                        <form method="post" action="">
-                            <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
-                            <button type="submit" class="btn btn-danger">
-                                <i class="fas fa-trash-alt"></i> Confirmer la suppression
-                            </button>
-                        </form>
-                    </div>
-                </div>
+            <div class="info-item">
+                <div class="info-label">Période</div>
+                <div class="info-value"><?= $trimestre_actuel ?>ème trimestre</div>
             </div>
         </div>
     </div>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+      <div class="top-header">
+        <div class="page-title">
+          <h1>Supprimer une note</h1>
+        </div>
+        
+        <div class="header-actions">
+          <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">
+            <i class="fas fa-sign-out-alt"></i>
+          </a>
+          <div class="user-avatar" title="<?= htmlspecialchars($nom_utilisateur) ?>"><?= $user_initials ?></div>
+        </div>
+      </div>
+      
+      <!-- Welcome Banner -->
+      <div class="welcome-banner">
+          <div class="welcome-content">
+              <h2>Supprimer une note</h2>
+              <p>Vous êtes sur le point de supprimer définitivement une note</p>
+          </div>
+          <div class="welcome-logo">
+              <i class="fas fa-trash"></i>
+          </div>
+      </div>
+      
+      <div class="content-container">
+        <div class="confirmation-box">
+          <h3>Confirmation de suppression</h3>
+          
+          <div class="note-details">
+            <p><strong>Élève :</strong> <?= htmlspecialchars($note['nom_eleve']) ?></p>
+            <p><strong>Classe :</strong> <?= htmlspecialchars($note['classe']) ?></p>
+            <p><strong>Matière :</strong> <?= htmlspecialchars($note['matiere']) ?></p>
+            <p><strong>Note :</strong> <?= number_format($note['note'], 1) ?>/20</p>
+            <p><strong>Coefficient :</strong> <?= $note['coefficient'] ?></p>
+            <p><strong>Date :</strong> <?= date('d/m/Y', strtotime($note['date_ajout'])) ?></p>
+            <p><strong>Description :</strong> <?= htmlspecialchars($note['commentaire']) ?></p>
+          </div>
+          
+          <div class="warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>Attention : cette action est irréversible. La note sera définitivement supprimée.</p>
+          </div>
+          
+          <div class="confirmation-actions">
+            <a href="notes.php" class="btn btn-secondary">
+              <i class="fas fa-times"></i> Annuler
+            </a>
+            <form method="post">
+              <input type="hidden" name="confirm_delete" value="1">
+              <button type="submit" class="btn btn-danger">
+                <i class="fas fa-trash"></i> Confirmer la suppression
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div class="footer">
+          <div class="footer-content">
+              <div class="footer-links">
+                  <a href="#">Mentions Légales</a>
+              </div>
+              <div class="footer-copyright">
+                  &copy; <?= date('Y') ?> PRONOTE - Tous droits réservés
+              </div>
+          </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Navigation mobile
+    document.addEventListener('DOMContentLoaded', function() {
+        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const pageOverlay = document.getElementById('page-overlay');
+        
+        if (mobileMenuToggle && sidebar && pageOverlay) {
+            mobileMenuToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('mobile-visible');
+                pageOverlay.classList.toggle('visible');
+            });
+            
+            pageOverlay.addEventListener('click', function() {
+                sidebar.classList.remove('mobile-visible');
+                pageOverlay.classList.remove('visible');
+            });
+        }
+    });
+  </script>
 </body>
 </html>
 
 <?php
-// Terminer la mise en mémoire tampon et envoyer la sortie
 ob_end_flush();
 ?>

@@ -199,8 +199,14 @@ $pageTitle = "Ajouter une note";
 <body>
 
 <div class="app-container">
+    <!-- Menu mobile -->
+    <div class="mobile-menu-toggle" id="mobile-menu-toggle">
+        <i class="fas fa-bars"></i>
+    </div>
+    <div class="page-overlay" id="page-overlay"></div>
+
     <!-- Sidebar -->
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
         <div class="logo-container">
             <div class="app-logo">P</div>
             <div class="app-title">PRONOTE</div>
@@ -269,10 +275,10 @@ $pageTitle = "Ajouter une note";
             </div>
             
             <div class="header-actions">
-                <a href="/~u22405372/SAE/Pronote/login/public/logout.php" class="logout-button" title="Déconnexion">
+                <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">
                     <i class="fas fa-sign-out-alt"></i>
                 </a>
-                <div class="user-avatar"><?= $user_initials ?></div>
+                <div class="user-avatar" title="<?= htmlspecialchars($nom_professeur) ?>"><?= $user_initials ?></div>
             </div>
         </div>
 
@@ -290,7 +296,7 @@ $pageTitle = "Ajouter une note";
         <!-- Main Content -->
         <div class="content-container">
             <?php if ($error_message): ?>
-                <div class="alert alert-error">
+                <div class="alert-banner alert-error">
                     <i class="fas fa-exclamation-circle"></i>
                     <span><?= htmlspecialchars($error_message) ?></span>
                 </div>
@@ -426,10 +432,43 @@ $pageTitle = "Ajouter une note";
                 </form>
             </div>
         </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-content">
+                <div class="footer-links">
+                    <a href="#">Mentions Légales</a>
+                </div>
+                <div class="footer-copyright">
+                    &copy; <?= date('Y') ?> PRONOTE - Tous droits réservés
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
+// Navigation mobile
+document.addEventListener('DOMContentLoaded', function() {
+    const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const pageOverlay = document.getElementById('page-overlay');
+    
+    if (mobileMenuToggle && sidebar && pageOverlay) {
+        mobileMenuToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('mobile-visible');
+            pageOverlay.classList.toggle('visible');
+            document.body.classList.toggle('menu-open');
+        });
+        
+        pageOverlay.addEventListener('click', function() {
+            sidebar.classList.remove('mobile-visible');
+            pageOverlay.classList.remove('visible');
+            document.body.classList.remove('menu-open');
+        });
+    }
+});
+
 // Script pour filtrer les élèves en fonction de la classe sélectionnée
 document.getElementById('classe').addEventListener('change', function() {
     const classeSelectionnee = this.value;

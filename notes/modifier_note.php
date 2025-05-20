@@ -1,5 +1,5 @@
 <?php
-// Démarrer la mise en mémoire tampon de sortie pour éviter l'erreur "headers already sent"
+// Démarrer la mise en mémoire tampon
 ob_start();
 
 // Démarrer la session si nécessaire
@@ -168,21 +168,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $error_message = "Une erreur est survenue lors de la mise à jour de la note: " . $e->getMessage();
   }
 }
-?>
 
+// Variables pour le template
+$pageTitle = "Modifier une note";
+?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Modifier une note - PRONOTE</title>
+  <title><?= $pageTitle ?> - PRONOTE</title>
   <link rel="stylesheet" href="assets/css/notes.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
   <div class="app-container">
+    <!-- Menu mobile -->
+    <div class="mobile-menu-toggle" id="mobile-menu-toggle">
+        <i class="fas fa-bars"></i>
+    </div>
+    <div class="page-overlay" id="page-overlay"></div>
+    
     <!-- Sidebar -->
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
         <div class="logo-container">
             <div class="app-logo">P</div>
             <div class="app-title">PRONOTE</div>
@@ -253,9 +261,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <a href="../login/public/logout.php" class="logout-button" title="Déconnexion">
             <i class="fas fa-sign-out-alt"></i>
           </a>
-          <div class="user-avatar" title="<?= htmlspecialchars($nom_professeur) ?>">
-            <?= htmlspecialchars($user_initials) ?>
-          </div>
+          <div class="user-avatar" title="<?= htmlspecialchars($nom_professeur) ?>"><?= $user_initials ?></div>
         </div>
       </div>
       
@@ -272,7 +278,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       
       <div class="content-container">
         <?php if ($error_message): ?>
-          <div class="alert alert-error">
+          <div class="alert-banner alert-error">
             <i class="fas fa-exclamation-circle"></i>
             <span><?= htmlspecialchars($error_message) ?></span>
           </div>
@@ -407,112 +413,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </form>
         </div>
       </div>
+      
+      <!-- Footer -->
+      <div class="footer">
+          <div class="footer-content">
+              <div class="footer-links">
+                  <a href="#">Mentions Légales</a>
+              </div>
+              <div class="footer-copyright">
+                  &copy; <?= date('Y') ?> PRONOTE - Tous droits réservés
+              </div>
+          </div>
+      </div>
     </div>
   </div>
-
+  
   <script>
-  // Script pour filtrer les élèves en fonction de la classe sélectionnée
-  document.getElementById('classe').addEventListener('change', function() {
-    const classeSelectionnee = this.value;
-    const selectEleve = document.getElementById('nom_eleve');
-    const options = selectEleve.options;
-    
-    // Réinitialiser le sélecteur d'élève si la classe change
-    if (selectEleve.selectedIndex > 0) {
-      const classeEleve = options[selectEleve.selectedIndex].getAttribute('data-classe');
-      if (classeEleve !== classeSelectionnee) {
-        selectEleve.selectedIndex = 0;
-      }
-    }
-    
-    // Afficher/cacher les options en fonction de la classe
-    for (let i = 1; i < options.length; i++) {
-      const classeEleve = options[i].getAttribute('data-classe');
-      if (classeSelectionnee === '' || classeEleve === classeSelectionnee) {
-        options[i].style.display = '';
-      } else {
-        options[i].style.display = 'none';
-      }
-    }
-  });
-
-  // Script pour définir automatiquement la classe lorsqu'un élève est sélectionné
-  document.getElementById('nom_eleve').addEventListener('change', function() {
-    if (this.selectedIndex > 0) {
-      const classeEleve = this.options[this.selectedIndex].getAttribute('data-classe');
-      const selectClasse = document.getElementById('classe');
-      
-      // Parcourir toutes les options pour trouver la classe correspondante
-      for (let i = 0; i < selectClasse.options.length; i++) {
-        if (selectClasse.options[i].value === classeEleve) {
-          selectClasse.selectedIndex = i;
-          break;
+    // Navigation mobile
+    document.addEventListener('DOMContentLoaded', function() {
+        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const pageOverlay = document.getElementById('page-overlay');
+        
+        if (mobileMenuToggle && sidebar && pageOverlay) {
+            mobileMenuToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('mobile-visible');
+                pageOverlay.classList.toggle('visible');
+            });
+            
+            pageOverlay.addEventListener('click', function() {
+                sidebar.classList.remove('mobile-visible');
+                pageOverlay.classList.remove('visible');
+            });
         }
-      }
-    }
-  });
-
-  <?php if (!isTeacher() || isAdmin() || isVieScolaire()): ?>
-  // Filtrer les professeurs en fonction de la matière sélectionnée
-  document.getElementById('nom_matiere').addEventListener('change', function() {
-    const matiereSelectionnee = this.value;
-    const selectProf = document.getElementById('nom_professeur');
-    const options = selectProf.options;
-    
-    // Réinitialiser le sélecteur de professeur si la matière change
-    if (selectProf.selectedIndex > 0) {
-      const matiereProf = options[selectProf.selectedIndex].getAttribute('data-matiere');
-      if (matiereProf !== matiereSelectionnee) {
-        selectProf.selectedIndex = 0;
-      }
-    }
-    
-    // Afficher/cacher les options en fonction de la matière
-    for (let i = 1; i < options.length; i++) {
-      const matiereProf = options[i].getAttribute('data-matiere');
-      if (matiereSelectionnee === '' || matiereProf === matiereSelectionnee) {
-        options[i].style.display = '';
-      } else {
-        options[i].style.display = 'none';
-      }
-    }
-  });
-
-  // Si un administrateur ou vie scolaire sélectionne un professeur, 
-  // sélectionner automatiquement sa matière
-  document.getElementById('nom_professeur').addEventListener('change', function() {
-    if (this.selectedIndex > 0) {
-      const matiereProf = this.options[this.selectedIndex].getAttribute('data-matiere');
-      const selectMatiere = document.getElementById('nom_matiere');
-      
-      // Parcourir toutes les options pour trouver la matière correspondante
-      for (let i = 0; i < selectMatiere.options.length; i++) {
-        if (selectMatiere.options[i].value === matiereProf) {
-          selectMatiere.selectedIndex = i;
-          break;
-        }
-      }
-    }
-  });
-
-  // Déclencher l'événement au chargement pour synchroniser la matière avec le professeur sélectionné
-  window.addEventListener('load', function() {
-    const selectProf = document.getElementById('nom_professeur');
-    if (selectProf.tagName === 'SELECT' && selectProf.selectedIndex > 0) {
-      selectProf.dispatchEvent(new Event('change'));
-    }
-  });
-  <?php endif; ?>
-
-  // Déclencher l'événement de changement de classe au chargement pour filtrer les élèves
-  window.addEventListener('load', function() {
-    document.getElementById('classe').dispatchEvent(new Event('change'));
-  });
+    });
   </script>
 </body>
 </html>
 
 <?php
-// Terminer la mise en mémoire tampon et envoyer la sortie
 ob_end_flush();
 ?>

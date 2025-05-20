@@ -92,13 +92,12 @@ ul, ol {
   width: var(--sidebar-width);
   background-color: var(--primary-color);
   color: white;
-  padding: 20px 0;
   display: flex;
   flex-direction: column;
   position: fixed;
   height: 100vh;
   overflow-y: auto;
-  z-index: 10;
+  z-index: 1000;
 }
 
 .main-content {
@@ -115,44 +114,45 @@ ul, ol {
 .logo-container {
   display: flex;
   align-items: center;
-  padding: 0 20px 20px;
+  padding: var(--space-md);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 20px;
+  margin-bottom: var(--space-md);
 }
 
 .app-logo {
   width: 40px;
   height: 40px;
-  background-color: #fff;
+  background-color: white;
   color: var(--primary-color);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
   font-size: 24px;
-  margin-right: 10px;
+  margin-right: var(--space-sm);
 }
 
 .app-title {
-  font-size: 22px;
-  font-weight: bold;
-  letter-spacing: 1px;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 /* ======= Sections de la barre latérale ======= */
 .sidebar-section {
-  margin-bottom: 30px;
-  padding: 0 20px;
+  margin-bottom: var(--space-md);
+  padding: 0 var(--space-md);
 }
 
 .sidebar-section-header {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 1px;
-  margin-bottom: 10px;
+  margin-bottom: var(--space-xs);
   color: rgba(255, 255, 255, 0.6);
   font-weight: 600;
+  padding: var(--space-xs) 0;
 }
 
 .sidebar-nav {
@@ -161,13 +161,13 @@ ul, ol {
 }
 
 .sidebar-nav-item {
-  padding: 12px 15px;
+  padding: var(--space-sm) var(--space-md);
   display: flex;
   align-items: center;
   text-decoration: none;
   color: rgba(255, 255, 255, 0.8);
-  border-radius: 6px;
-  margin-bottom: 5px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 2px;
   transition: background-color 0.2s, color 0.2s;
 }
 
@@ -177,15 +177,14 @@ ul, ol {
 }
 
 .sidebar-nav-icon {
-  margin-right: 10px;
-  width: 24px;
+  margin-right: var(--space-sm);
+  width: 20px;
   text-align: center;
-  font-size: 16px;
 }
 
 /* ======= Informations et actions dans la barre latérale ======= */
 .info-item {
-  padding: 8px 0;
+  padding: var(--space-xs) 0;
 }
 
 .info-label {
@@ -225,7 +224,7 @@ ul, ol {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
+  margin-bottom: var(--space-lg);
 }
 
 .page-title h1 {
@@ -237,14 +236,14 @@ ul, ol {
 
 .page-title .subtitle {
   color: var(--text-muted);
-  margin-top: 5px;
+  margin-top: var(--space-xs);
   font-size: 14px;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: var(--space-md);
 }
 
 .logout-button {
@@ -262,7 +261,7 @@ ul, ol {
   height: 40px;
   background-color: var(--primary-color);
   color: white;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -282,18 +281,18 @@ ul, ol {
 .welcome-banner {
   background: linear-gradient(to right, var(--primary-color), var(--primary-light));
   color: white;
-  border-radius: 10px;
-  padding: 25px 30px;
-  margin-bottom: 30px;
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-lg);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-medium);
 }
 
 .welcome-content h2 {
   font-size: 24px;
-  margin-bottom: 5px;
+  margin-bottom: var(--space-xs);
   font-weight: 500;
   color: white;
 }
@@ -351,7 +350,7 @@ ul, ol {
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: var(--space-md);
 }
 
@@ -366,8 +365,7 @@ ul, ol {
   color: var(--text-color);
 }
 
-.form-control, 
-.form-select {
+.form-control, .form-select {
   width: 100%;
   padding: var(--space-sm);
   border: 1px solid var(--border-color);
@@ -377,8 +375,7 @@ ul, ol {
   transition: border-color 0.2s;
 }
 
-.form-control:focus, 
-.form-select:focus {
+.form-control:focus, .form-select:focus {
   outline: none;
   border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(15, 76, 129, 0.1);
@@ -561,44 +558,6 @@ ul, ol {
   margin-bottom: var(--space-sm);
 }
 
-/* ======= Confirmation suppression ======= */
-.confirmation-box {
-  background-color: white;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-medium);
-  padding: var(--space-lg);
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.note-details {
-  background-color: var(--background-color);
-  border-radius: var(--radius-sm);
-  padding: var(--space-md);
-  margin: var(--space-md) 0;
-}
-
-.warning {
-  display: flex;
-  align-items: center;
-  padding: var(--space-md);
-  background-color: rgba(255, 59, 48, 0.1);
-  color: var(--error-color);
-  border-radius: var(--radius-sm);
-  margin: var(--space-md) 0;
-}
-
-.warning i {
-  font-size: 24px;
-  margin-right: var(--space-md);
-}
-
-.confirmation-actions {
-  display: flex;
-  justify-content: space-between;
-  margin-top: var(--space-lg);
-}
-
 /* ======= Utilitaires ======= */
 .mt-1 { margin-top: var(--space-xs); }
 .mt-2 { margin-top: var(--space-sm); }
@@ -620,19 +579,61 @@ ul, ol {
 }
 
 @media (max-width: 768px) {
-  .app-container {
-    flex-direction: column;
+  .sidebar {
+    position: fixed;
+    left: -100%;
+    transition: left 0.3s ease;
+    z-index: 1000;
   }
   
-  .sidebar {
-    width: 100%;
-    height: auto;
-    position: relative;
-    max-height: 300px;
+  .sidebar.mobile-visible {
+    left: 0;
   }
   
   .main-content {
     margin-left: 0;
+  }
+  
+  .mobile-menu-toggle {
+    display: block;
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 1001;
+    background: var(--primary-color);
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-circle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--shadow-medium);
+  }
+  
+  .page-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+  }
+  
+  .page-overlay.visible {
+    display: block;
+  }
+  
+  .welcome-banner {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .welcome-logo {
+    margin-top: var(--space-md);
   }
 }
 
@@ -640,6 +641,7 @@ ul, ol {
   .top-header {
     flex-direction: column;
     align-items: flex-start;
+    gap: var(--space-sm);
   }
   
   .header-actions {
