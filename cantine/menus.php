@@ -23,6 +23,10 @@ $nextWeek = (clone $lundi)->modify('+7 days')->format('Y-\WW');
 
 // Sauvegarde menu (admin)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isGestionnaire && isset($_POST['save_menu'])) {
+    if (!validateCSRFToken()) {
+        header('Location: menus.php?semaine=' . urlencode($semaine) . '&csrf=1');
+        exit;
+    }
     $cantineService->sauvegarderMenu([
         'date_menu'       => $_POST['date_menu'],
         'entree'          => $_POST['entree'] ?? '',
@@ -49,6 +53,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isGestionnaire && isset($_POST['sa
 
     <?php if (isset($_GET['saved'])): ?>
         <div class="alert alert-success">Menu enregistré avec succès.</div>
+    <?php endif; ?>
+    <?php if (isset($_GET['csrf'])): ?>
+        <div class="alert alert-danger">Erreur de sécurité : token CSRF invalide. Veuillez recharger la page.</div>
     <?php endif; ?>
 
     <div class="menus-grid">
@@ -99,6 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isGestionnaire && isset($_POST['sa
     <div class="modal-content">
         <div class="modal-header"><h3>Modifier le menu</h3><button onclick="closeModal()" class="btn-close">&times;</button></div>
         <form method="post">
+            <?= csrfField() ?>
             <input type="hidden" name="save_menu" value="1">
             <input type="hidden" name="date_menu" id="modal_date">
             <div class="form-group"><label>Entrée</label><input type="text" name="entree" id="modal_entree" class="form-control"></div>

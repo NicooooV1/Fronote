@@ -17,9 +17,9 @@ $weekStart = date('Y-m-d', strtotime('monday this week'));
 $weekEnd = date('Y-m-d');
 
 // Get parents who opted for weekly digest
-$parents = $pdo->query("SELECT p.id, p.email, p.nom, p.prenom FROM parents p
+$parents = $pdo->query("SELECT p.id, p.mail AS email, p.nom, p.prenom FROM parents p
     LEFT JOIN portail_parents_preferences pp ON pp.parent_id = p.id
-    WHERE p.email IS NOT NULL AND p.email != '' AND COALESCE(pp.notifications_resume_quotidien, 1) = 1")->fetchAll(PDO::FETCH_ASSOC);
+    WHERE p.mail IS NOT NULL AND p.mail != '' AND COALESCE(pp.notifications_resume_quotidien, 1) = 1")->fetchAll(PDO::FETCH_ASSOC);
 
 $log('Parents à notifier: ' . count($parents));
 

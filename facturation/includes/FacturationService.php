@@ -31,7 +31,7 @@ class FacturationService
 
     public function getFacture(int $id): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT f.*, CONCAT(p.prenom, ' ', p.nom) AS parent_nom, p.email AS parent_email FROM factures f JOIN parents p ON f.parent_id = p.id WHERE f.id = ?");
+        $stmt = $this->pdo->prepare("SELECT f.*, CONCAT(p.prenom, ' ', p.nom) AS parent_nom, p.mail AS parent_email FROM factures f JOIN parents p ON f.parent_id = p.id WHERE f.id = ?");
         $stmt->execute([$id]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }

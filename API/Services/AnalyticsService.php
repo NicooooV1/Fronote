@@ -45,15 +45,19 @@ class AnalyticsService
      */
     public function getAbsenceStats(?int $periodeId = null): array
     {
-        $where = $periodeId ? "AND a.date_absence BETWEEN p.date_debut AND p.date_fin" : "";
-        $join = $periodeId ? "CROSS JOIN periodes p WHERE p.id = {$periodeId}" : "";
-
-        // Taux global
         $totalStudents = $this->countTable('eleves', 'actif = 1');
-        $totalAbsences = $this->countTable('absences', $periodeId
-            ? "date_absence BETWEEN (SELECT date_debut FROM periodes WHERE id = {$periodeId}) AND (SELECT date_fin FROM periodes WHERE id = {$periodeId})"
-            : "date_absence >= DATE_FORMAT(NOW(), '%Y-%m-01')"
-        );
+
+        if ($periodeId) {
+            $stmt = $this->pdo->prepare(
+                "SELECT COUNT(*) FROM absences
+                 WHERE date_absence BETWEEN (SELECT date_debut FROM periodes WHERE id = :pid)
+                                        AND (SELECT date_fin   FROM periodes WHERE id = :pid)"
+            );
+            $stmt->execute([':pid' => $periodeId]);
+            $totalAbsences = (int) $stmt->fetchColumn();
+        } else {
+            $totalAbsences = $this->countTable('absences', "date_absence >= DATE_FORMAT(NOW(), '%Y-%m-01')");
+        }
 
         // Par classe
         $stmt = $this->pdo->query(

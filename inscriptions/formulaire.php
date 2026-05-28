@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                     </div>
                     <div class="form-group">
                         <label for="date_naissance">Date de naissance *</label>
-                        <input type="date" name="date_naissance" id="date_naissance" class="form-control" required value="<?= $_POST['date_naissance'] ?? '' ?>">
+                        <input type="date" name="date_naissance" id="date_naissance" class="form-control" required value="<?= htmlspecialchars($_POST['date_naissance'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                     </div>
                     <div class="form-group">
                         <label for="sexe">Sexe *</label>

@@ -5,9 +5,8 @@
  */
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../API/bootstrap.php';
-$bridge = new \Pronote\Legacy\Bridge();
-$bridge->requireAuth();
-$pdo = $bridge->getPDO();
+requireAuth();
+$pdo = getPDO();
 
 $id = (int) ($_GET['id'] ?? 0);
 if (!$id) { die('ID examen manquant.'); }

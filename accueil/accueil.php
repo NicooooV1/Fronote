@@ -45,24 +45,24 @@ include __DIR__ . '/../templates/shared_header.php';
 include __DIR__ . '/../templates/shared_topbar.php';
 ?>
 
-        <!-- Welcome Banner -->
-        <div class="welcome-banner">
-            <div class="welcome-content">
-                <h2><?= $greeting ?>, <?= htmlspecialchars($user_fullname) ?></h2>
-                <?php if (!empty($classe)): ?>
-                <p>Classe de <?= htmlspecialchars($classe) ?></p>
-                <?php endif; ?>
-                <p class="welcome-date"><?= $jour . ' ' . $aujourdhui ?> - <?= $trimestre ?></p>
-            </div>
-            <div class="welcome-actions">
-                <button type="button" class="btn-customize" id="btnPersonnaliser" title="Personnaliser le tableau de bord">
-                    <i class="fas fa-sliders-h"></i> Personnaliser
-                </button>
-            </div>
-        </div>
-
         <!-- Main Dashboard Content -->
         <div class="dashboard-content">
+
+            <!-- Welcome Banner -->
+            <div class="welcome-banner">
+                <div class="welcome-content">
+                    <h2><?= $greeting ?>, <?= htmlspecialchars($user_fullname) ?></h2>
+                    <?php if (!empty($classe)): ?>
+                    <p>Classe de <?= htmlspecialchars($classe) ?></p>
+                    <?php endif; ?>
+                    <p class="welcome-date"><?= $jour . ' ' . $aujourdhui ?> - <?= $trimestre ?></p>
+                </div>
+                <div class="welcome-actions">
+                    <button type="button" class="btn-customize" id="btnPersonnaliser" title="Personnaliser le tableau de bord">
+                        <i class="fas fa-sliders-h"></i> Personnaliser
+                    </button>
+                </div>
+            </div>
 
             <!-- iPhone-style widget grid -->
             <div class="widget-grid" id="widgetGrid">

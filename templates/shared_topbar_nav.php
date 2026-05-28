@@ -19,9 +19,21 @@ $isAdmin = $isAdmin ?? false;
 // Get modules grouped by topbar category
 $_topbar_modules = [];
 $_topbar_role = getUserRole() ?? 'eleve';
+$_topbar_favorites = [];
+$_topbar_fav_keys = [];
 try {
     $moduleService = app('modules');
     $_topbar_modules = $moduleService->getForTopbar($_topbar_role);
+    if (!empty($_SESSION['user_id'])) {
+        $_topbar_favorites = $moduleService->getFavorites(
+            (int) $_SESSION['user_id'],
+            $_SESSION['user_type'] ?? '',
+            $_topbar_role
+        );
+        foreach ($_topbar_favorites as $_fav) {
+            $_topbar_fav_keys[$_fav['module_key']] = true;
+        }
+    }
 } catch (\Throwable $e) {
     // Fallback: empty navigation
 }
@@ -95,6 +107,34 @@ if ($_topbar_is_parent && !empty($_SESSION['user_id'])) {
 
     <!-- Category dropdowns (desktop) -->
     <div class="topbar-categories" id="topbar-categories">
+        <!-- Favoris -->
+        <div class="topbar-dropdown topbar-dropdown--favorites" data-category="favorites">
+            <button class="topbar-dropdown__trigger" type="button" aria-expanded="false" title="<?= __('nav.favorites', ['default' => 'Favoris']) ?>">
+                <i class="fas fa-star"></i>
+                <span><?= __('nav.favorites', ['default' => 'Favoris']) ?></span>
+                <i class="fas fa-chevron-down topbar-dropdown__arrow"></i>
+            </button>
+            <div class="topbar-dropdown__menu" id="topbar-favorites-menu">
+                <?php if (empty($_topbar_favorites)): ?>
+                <div class="topbar-dropdown__empty"><?= __('nav.favorites_empty', ['default' => 'Aucun favori. Cliquez ★ sur un module.']) ?></div>
+                <?php else: foreach ($_topbar_favorites as $fav): ?>
+                <div class="topbar-dropdown__item-wrap">
+                    <a href="<?= $rootPrefix . htmlspecialchars($fav['route']) ?>"
+                       class="topbar-dropdown__item <?= ($activePage === $fav['module_key']) ? 'active' : '' ?>">
+                        <i class="<?= htmlspecialchars($fav['icon'] ?? 'fas fa-circle') ?>"></i>
+                        <span><?= htmlspecialchars($fav['label'] ?? $fav['module_key']) ?></span>
+                    </a>
+                    <button class="topbar-fav-toggle is-favorite" type="button"
+                            data-module-key="<?= htmlspecialchars($fav['module_key']) ?>"
+                            title="<?= __('nav.favorite_remove', ['default' => 'Retirer des favoris']) ?>"
+                            aria-pressed="true">
+                        <i class="fas fa-star"></i>
+                    </button>
+                </div>
+                <?php endforeach; endif; ?>
+            </div>
+        </div>
+
         <?php foreach ($_topbar_modules as $catKey => $category): ?>
         <div class="topbar-dropdown" data-category="<?= htmlspecialchars($catKey) ?>">
             <button class="topbar-dropdown__trigger" type="button" aria-expanded="false">
@@ -103,12 +143,23 @@ if ($_topbar_is_parent && !empty($_SESSION['user_id'])) {
                 <i class="fas fa-chevron-down topbar-dropdown__arrow"></i>
             </button>
             <div class="topbar-dropdown__menu">
-                <?php foreach ($category['modules'] as $mod): ?>
-                <a href="<?= $rootPrefix . htmlspecialchars($mod['route']) ?>"
-                   class="topbar-dropdown__item <?= ($activePage === ($mod['module_key'] ?? '')) ? 'active' : '' ?>">
-                    <i class="<?= htmlspecialchars($mod['icon'] ?? 'fas fa-circle') ?>"></i>
-                    <span><?= htmlspecialchars($mod['label'] ?? $mod['module_key']) ?></span>
-                </a>
+                <?php foreach ($category['modules'] as $mod):
+                    $_mk = $mod['module_key'] ?? '';
+                    $_isFav = isset($_topbar_fav_keys[$_mk]);
+                ?>
+                <div class="topbar-dropdown__item-wrap">
+                    <a href="<?= $rootPrefix . htmlspecialchars($mod['route']) ?>"
+                       class="topbar-dropdown__item <?= ($activePage === $_mk) ? 'active' : '' ?>">
+                        <i class="<?= htmlspecialchars($mod['icon'] ?? 'fas fa-circle') ?>"></i>
+                        <span><?= htmlspecialchars($mod['label'] ?? $_mk) ?></span>
+                    </a>
+                    <button class="topbar-fav-toggle <?= $_isFav ? 'is-favorite' : '' ?>" type="button"
+                            data-module-key="<?= htmlspecialchars($_mk) ?>"
+                            title="<?= __('nav.favorite_toggle', ['default' => 'Épingler/retirer des favoris']) ?>"
+                            aria-pressed="<?= $_isFav ? 'true' : 'false' ?>">
+                        <i class="<?= $_isFav ? 'fas' : 'far' ?> fa-star"></i>
+                    </button>
+                </div>
                 <?php endforeach; ?>
             </div>
         </div>

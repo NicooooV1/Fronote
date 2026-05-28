@@ -1,6 +1,6 @@
 {
-  "version": "1.7.2",
-  "build": "2026-04-09",
+  "version": "1.7.3",
+  "build": "2026-05-27",
   "channel": "stable",
   "codename": "Back",
   "min_php": "8.0",

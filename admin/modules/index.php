@@ -59,6 +59,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === ($
             $messageType = 'info';
         }
     }
+
+    // Synchronise les manifestes module.json (perms/widgets/settings/routes)
+    // et exécute les migrations SQL en attente déclarées par chaque module.
+    if ($action === 'sync_migrate') {
+        try {
+            $sdk = app('module_sdk');
+            $sync = $sdk->syncAll();
+            $migExecuted = 0;
+            $migErrors = [];
+            foreach (array_keys($sdk->discover()) as $mk) {
+                $r = $sdk->migrate($mk);
+                $migExecuted += count($r['executed']);
+                $migErrors = array_merge($migErrors, $r['errors']);
+            }
+            $allErrors = array_merge($sync['errors'] ?? [], $migErrors);
+            logAudit('module.sync_migrate', 'modules_config', null, null, [
+                'synced' => $sync['synced'] ?? 0, 'migrations' => $migExecuted, 'errors' => count($allErrors),
+            ]);
+            $moduleService->clearCache();
+            if (empty($allErrors)) {
+                $message = "Synchronisation terminée : {$sync['synced']} module(s) synchronisé(s), {$migExecuted} migration(s) appliquée(s).";
+                $messageType = 'success';
+            } else {
+                $message = "Sync terminée avec " . count($allErrors) . " erreur(s) : " . implode(' | ', array_slice($allErrors, 0, 4));
+                $messageType = 'error';
+            }
+        } catch (\Throwable $e) {
+            $message = 'Échec de la synchronisation : ' . $e->getMessage();
+            $messageType = 'error';
+        }
+    }
 }
 
 // ─── Données ─────────────────────────────────────────────────────────────────
@@ -138,6 +169,17 @@ include __DIR__ . '/../includes/header.php';
     <?= $messageType === 'success' ? '✅' : ($messageType === 'error' ? '❌' : 'ℹ️') ?> <?= $message ?>
 </div>
 <?php endif; ?>
+
+<!-- Barre d'actions globales -->
+<div style="display:flex;justify-content:flex-end;margin-bottom:18px">
+    <form method="post" onsubmit="return confirm('Resynchroniser tous les module.json et exécuter les migrations SQL en attente ?');">
+        <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+        <input type="hidden" name="action" value="sync_migrate">
+        <button type="submit" class="btn btn-secondary btn-sm" title="Relit chaque module.json (permissions, widgets, settings, routes) et applique les migrations SQL déclarées non encore exécutées">
+            <i class="fas fa-rotate"></i> Synchroniser &amp; migrer les modules
+        </button>
+    </form>
+</div>
 
 <!-- Modules par catégorie -->
 <?php foreach ($categories as $catKey => $modules): ?>

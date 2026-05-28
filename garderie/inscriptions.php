@@ -11,7 +11,9 @@ $creneauId = isset($_GET['creneau']) ? (int)$_GET['creneau'] : 0;
 $user = getCurrentUser();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['inscrire'])) {
+    if (!validateCSRFToken()) {
+        $message = 'Erreur de sécurité : token CSRF invalide.';
+    } elseif (isset($_POST['inscrire'])) {
         $jours = $_POST['jours'] ?? [];
         $count = 0;
         foreach ($jours as $j) {
@@ -49,6 +51,7 @@ if ($isGestionnaire) {
         <div class="card-header"><h3>Inscrire un élève</h3></div>
         <div class="card-body">
             <form method="post">
+                <?= csrfField() ?>
                 <input type="hidden" name="inscrire" value="1">
                 <div class="form-row">
                     <div class="form-group"><label>Créneau</label>
@@ -104,6 +107,7 @@ if ($isGestionnaire) {
                         <?php if ($isGestionnaire): ?>
                         <td>
                             <form method="post" style="display:inline">
+                                <?= csrfField() ?>
                                 <input type="hidden" name="desinscrire" value="1">
                                 <input type="hidden" name="inscription_id" value="<?= $ins['id'] ?>">
                                 <button class="btn btn-sm btn-danger" title="Désinscrire"><i class="fas fa-times"></i></button>

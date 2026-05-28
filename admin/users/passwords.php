@@ -181,9 +181,9 @@ include __DIR__ . '/../includes/header.php';
                 <tr>
                     <td><?= htmlspecialchars($u['prenom'] . ' ' . $u['nom']) ?></td>
                     <td><code><?= htmlspecialchars($u['identifiant']) ?></code></td>
-                    <td><span class="badge-profil <?= getProfilBadgeClass($u['profil']) ?>"><?= getProfilLabel($u['profil']) ?></span></td>
+                    <td><span class="badge-profil <?= getProfilBadgeClass($u['type']) ?>"><?= getProfilLabel($u['type']) ?></span></td>
                     <td>
-                        <form method="post" style="display:inline"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="manual_reset"><input type="hidden" name="user_id" value="<?= $u['id'] ?>"><input type="hidden" name="user_type" value="<?= $u['profil'] ?>"><button class="btn-xs success"><i class="fas fa-key"></i> Réinitialiser</button></form>
+                        <form method="post" style="display:inline"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="manual_reset"><input type="hidden" name="user_id" value="<?= $u['id'] ?>"><input type="hidden" name="user_type" value="<?= $u['type'] ?>"><button class="btn-xs success"><i class="fas fa-key"></i> Réinitialiser</button></form>
                     </td>
                 </tr>
                 <?php endforeach; ?>

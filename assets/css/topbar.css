@@ -102,8 +102,10 @@
 
 .topbar-dropdown__menu {
     display: none;
-    position: absolute;
-    top: 100%;
+    /* Fixed positioning évite le clipping par .topbar-categories { overflow-x: auto }.
+       Coordonnées top/left calculées par topbar.js via getBoundingClientRect. */
+    position: fixed;
+    top: 0;
     left: 0;
     min-width: 220px;
     max-height: 70vh;
@@ -114,16 +116,16 @@
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
     padding: 0.375rem;
     z-index: 1100;
-    margin-top: 4px;
 }
 
 .topbar-dropdown.open .topbar-dropdown__menu {
     display: block;
 }
 
+/* Variante alignée à droite (dropdown user) — calcul JS la place correctement,
+   garde-fou CSS si jamais JS ne tourne pas. */
 .topbar-dropdown__menu--right {
-    left: auto;
-    right: 0;
+    /* géré par JS */
 }
 
 .topbar-dropdown__item {
@@ -163,6 +165,50 @@
 .topbar-dropdown__item--danger:hover {
     background: #fff5f5;
     color: var(--danger, #e53e3e);
+}
+
+/* ── Favoris (étoile d'épinglage) ──────────────────────────── */
+.topbar-dropdown__item-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.topbar-dropdown__item-wrap .topbar-dropdown__item {
+    flex: 1;
+    padding-right: 2rem; /* place pour l'étoile */
+}
+
+.topbar-fav-toggle {
+    position: absolute;
+    right: 0.375rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem 0.375rem;
+    color: var(--text-tertiary, #a0aec0);
+    opacity: 0;
+    transition: opacity 0.12s, color 0.12s;
+    font-size: 0.8125rem;
+    line-height: 1;
+}
+
+.topbar-dropdown__item-wrap:hover .topbar-fav-toggle,
+.topbar-fav-toggle.is-favorite,
+.topbar-fav-toggle:focus-visible {
+    opacity: 1;
+}
+
+.topbar-fav-toggle:hover { color: #d69e2e; }
+.topbar-fav-toggle.is-favorite { color: #ecc94b; }
+
+.topbar-dropdown--favorites .topbar-dropdown__trigger > i:first-child { color: #ecc94b; }
+
+.topbar-dropdown__empty {
+    padding: 0.75rem;
+    color: var(--text-tertiary, #a0aec0);
+    font-size: 0.75rem;
+    text-align: center;
 }
 
 .topbar-dropdown__divider {

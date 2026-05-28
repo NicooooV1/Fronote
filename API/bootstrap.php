@@ -48,11 +48,38 @@ unset($_vendor);
 require_once API_PATH . '/Core/helpers.php';
 
 // Charger l'environnement via EnvLoader (met dans getenv/$_ENV/$_SERVER)
+$envLoader = new \API\Core\EnvLoader(BASE_PATH);
+$envLoadError = null;
 try {
-	$envLoader = new \API\Core\EnvLoader(BASE_PATH);
 	$envLoader->load();
 } catch (\Throwable $e) {
-	// Fallback minimal si .env manquant: continuer (certains écrans d'install le créent)
+	// Conserver la cause racine pour la surfacer au boot de ConfigServiceProvider.
+	// Sans cela, l'erreur "Variables manquantes" masque la vraie raison (.env absent / illisible).
+	$envLoadError = $e;
+	error_log('[bootstrap] EnvLoader failed: ' . $e->getMessage() . ' (file=' . BASE_PATH . '/.env)');
+
+	// Si .env est manquant et qu'on n'est PAS sur install.php, rediriger vers l'installateur.
+	$_scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+	$_isInstallCtx = (strpos($_scriptName, '/install.php') !== false)
+	              || defined('FRONOTE_WEBHOOK_ENDPOINT')
+	              || php_sapi_name() === 'cli';
+	if (!$_isInstallCtx && !file_exists(BASE_PATH . '/.env') && file_exists(BASE_PATH . '/install.php')) {
+		// Construire l'URL de install.php relative à la requête courante
+		$_dir = rtrim(dirname($_scriptName), '/\\');
+		$_installUrl = '/install.php';
+		if ($_dir && $_dir !== '/' && $_dir !== '\\') {
+			// remonter jusqu'à la racine du projet (au cas où on est dans un sous-dossier)
+			$_segments = explode('/', trim($_dir, '/'));
+			// heuristique : si le segment courant n'est pas la racine du projet,
+			// on construit une URL absolue à partir de BASE_URL si dispo plus tard.
+			$_installUrl = '/' . $_segments[0] . '/install.php';
+		}
+		if (!headers_sent()) {
+			header('Location: ' . $_installUrl);
+			exit;
+		}
+	}
+	unset($_scriptName, $_isInstallCtx, $_dir, $_installUrl, $_segments);
 }
 
 // Sécurité : forcer display_errors off en production
@@ -161,6 +188,7 @@ $app = new \API\Core\Application(BASE_PATH);
 
 // Exposer l'env loader dans le container
 $app->instance('env.loader', $envLoader ?? null);
+$app->instance('env.load_error', $envLoadError ?? null);
 
 // Enregistrer les providers
 $app->register(new \API\Providers\ConfigServiceProvider($app));

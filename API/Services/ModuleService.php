@@ -376,13 +376,14 @@ class ModuleService
 
         // Topbar category labels (display names for dropdown headers)
         $topbarLabels = [
-            'scolaire'      => 'Pedagogie',
+            'scolaire'      => 'Pédagogie',
             'vie_scolaire'  => 'Vie scol.',
             'communication' => 'Communication',
-            'sante'         => 'Sante',
-            'etablissement' => 'Etablissement',
+            'sante'         => 'Santé',
+            'etablissement' => 'Établissement',
             'logistique'    => 'Logistique',
             'systeme'       => 'Outils',
+            'general'       => 'Modules',
         ];
 
         $grouped = [];
@@ -437,5 +438,119 @@ class ModuleService
             $mod['route'] = $this->getRoute($key);
         }
         return $all;
+    }
+
+    // ─── Favoris utilisateur ─────────────────────────────────────────────
+
+    /**
+     * Clés des modules épinglés par l'utilisateur, dans l'ordre.
+     *
+     * @return string[]
+     */
+    public function getFavoriteKeys(int $userId, string $userType): array
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT module_key FROM user_favorites
+                 WHERE user_id = ? AND user_type = ?
+                 ORDER BY position, id"
+            );
+            $stmt->execute([$userId, $userType]);
+            return $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+        } catch (\PDOException $e) {
+            error_log("ModuleService::getFavoriteKeys error: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Modules épinglés, résolus (route/icon/label) et filtrés par état activé
+     * + visibilité de rôle. Conserve l'ordre des favoris.
+     */
+    public function getFavorites(int $userId, string $userType, string $role): array
+    {
+        $keys = $this->getFavoriteKeys($userId, $userType);
+        if (empty($keys)) return [];
+
+        $all = $this->getAll();
+        $favorites = [];
+        foreach ($keys as $key) {
+            if (!isset($all[$key])) continue;
+            $mod = $all[$key];
+            if (empty($mod['enabled'])) continue;
+            if (!$this->isVisibleForRole($key, $role)) continue;
+            $mod['route'] = $this->getRoute($key);
+            $mod['module_key'] = $key;
+            $favorites[] = $mod;
+        }
+        return $favorites;
+    }
+
+    public function isFavorite(int $userId, string $userType, string $key): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT 1 FROM user_favorites WHERE user_id = ? AND user_type = ? AND module_key = ? LIMIT 1"
+            );
+            $stmt->execute([$userId, $userType, $key]);
+            return (bool) $stmt->fetchColumn();
+        } catch (\PDOException $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Épingle/désépingle un module. Retourne le nouvel état (true = épinglé).
+     * Refuse les clés de module inconnues.
+     */
+    public function toggleFavorite(int $userId, string $userType, string $key): bool
+    {
+        if ($this->get($key) === null) {
+            return false;
+        }
+        try {
+            if ($this->isFavorite($userId, $userType, $key)) {
+                $stmt = $this->pdo->prepare(
+                    "DELETE FROM user_favorites WHERE user_id = ? AND user_type = ? AND module_key = ?"
+                );
+                $stmt->execute([$userId, $userType, $key]);
+                return false;
+            }
+            $posStmt = $this->pdo->prepare(
+                "SELECT COALESCE(MAX(position), -1) + 1 FROM user_favorites WHERE user_id = ? AND user_type = ?"
+            );
+            $posStmt->execute([$userId, $userType]);
+            $position = (int) $posStmt->fetchColumn();
+
+            $stmt = $this->pdo->prepare(
+                "INSERT INTO user_favorites (user_id, user_type, module_key, position)
+                 VALUES (?, ?, ?, ?)"
+            );
+            $stmt->execute([$userId, $userType, $key, $position]);
+            return true;
+        } catch (\PDOException $e) {
+            error_log("ModuleService::toggleFavorite error: " . $e->getMessage());
+            return $this->isFavorite($userId, $userType, $key);
+        }
+    }
+
+    /**
+     * Réordonne les favoris selon la liste de clés fournie.
+     */
+    public function reorderFavorites(int $userId, string $userType, array $orderedKeys): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                "UPDATE user_favorites SET position = ? WHERE user_id = ? AND user_type = ? AND module_key = ?"
+            );
+            $pos = 0;
+            foreach ($orderedKeys as $key) {
+                $stmt->execute([$pos++, $userId, $userType, (string) $key]);
+            }
+            return true;
+        } catch (\PDOException $e) {
+            error_log("ModuleService::reorderFavorites error: " . $e->getMessage());
+            return false;
+        }
     }
 }

@@ -64,6 +64,75 @@ class EdtService
         return (int)$this->pdo->lastInsertId();
     }
 
+    /**
+     * Effectif d'une classe (nombre d'élèves actifs).
+     */
+    public function getClasseEffectif(int $classeId): int
+    {
+        if ($classeId <= 0) return 0;
+        $stmt = $this->pdo->prepare(
+            "SELECT COUNT(*) FROM eleves e
+             JOIN classes c ON e.classe = c.nom
+             WHERE c.id = ? AND e.actif = 1"
+        );
+        $stmt->execute([$classeId]);
+        return (int)$stmt->fetchColumn();
+    }
+
+    /**
+     * Affectation intelligente de salle (CDC §4.3).
+     * Retourne les salles compatibles ET libres sur le créneau, triées :
+     *   1. type exact si demandé (labo/info/gymnase…)
+     *   2. best-fit : plus petite capacité suffisante (préserve les grandes salles)
+     *   3. nom
+     * Occupancy basée sur emploi_du_temps (source récurrente hebdo).
+     *
+     * @param array $data Requiert jour, creneau_id ; optionnel classe_id, salle_type, id_exclude.
+     * @return array Salles candidates ordonnées (meilleure en premier).
+     */
+    public function suggestSalle(array $data): array
+    {
+        if (empty($data['jour']) || empty($data['creneau_id'])) {
+            return [];
+        }
+
+        $exclude      = (int)($data['id_exclude'] ?? 0);
+        $requiredType = $data['salle_type'] ?? null;
+        $effectif     = $this->getClasseEffectif((int)($data['classe_id'] ?? 0));
+
+        $sql = "SELECT s.* FROM salles s
+                WHERE s.actif = 1
+                  AND s.id NOT IN (
+                      SELECT salle_id FROM emploi_du_temps
+                      WHERE jour = ? AND creneau_id = ? AND actif = 1
+                        AND salle_id IS NOT NULL AND id != ?
+                  )";
+        $params = [$data['jour'], $data['creneau_id'], $exclude];
+
+        if ($effectif > 0) {
+            $sql .= " AND (s.capacite IS NULL OR s.capacite >= ?)";
+            $params[] = $effectif;
+        }
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        $salles = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        usort($salles, function ($a, $b) use ($requiredType) {
+            if ($requiredType !== null) {
+                $ta = ($a['type'] === $requiredType) ? 0 : 1;
+                $tb = ($b['type'] === $requiredType) ? 0 : 1;
+                if ($ta !== $tb) return $ta <=> $tb;
+            }
+            $ca = $a['capacite'] ?? PHP_INT_MAX;
+            $cb = $b['capacite'] ?? PHP_INT_MAX;
+            if ($ca !== $cb) return $ca <=> $cb;
+            return strcmp($a['nom'], $b['nom']);
+        });
+
+        return $salles;
+    }
+
     // ─── Cours EDT ───────────────────────────────────────────────
 
     /**
@@ -275,6 +344,11 @@ class EdtService
             $conflits[] = "Professeur déjà affecté le {$data['jour']} sur ce créneau ({$row['classe_nom']})";
         }
 
+        // Contrainte dure : indisponibilité déclarée de l'enseignant (CDC §7.3)
+        if (!$this->isProfAvailable((int)$data['professeur_id'], $data['jour'], (int)$data['creneau_id'])) {
+            $conflits[] = "Professeur indisponible le {$data['jour']} sur ce créneau";
+        }
+
         // Conflit salle
         if (!empty($data['salle_id'])) {
             $sql = "SELECT e.id, cl.nom AS classe_nom
@@ -287,6 +361,25 @@ class EdtService
             foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
                 $conflits[] = "Salle déjà occupée le {$data['jour']} sur ce créneau ({$row['classe_nom']})";
             }
+        }
+
+        // Conflit classe : double réservation de la classe sur le même créneau.
+        // Toléré uniquement si les deux cours ciblent des groupes distincts et définis
+        // (ex. groupe A en TP pendant que groupe B est ailleurs).
+        $newGroupe = $data['groupe'] ?? null;
+        $sql = "SELECT e.id, e.groupe, m.nom AS matiere_nom
+                FROM emploi_du_temps e
+                JOIN matieres m ON e.matiere_id = m.id
+                WHERE e.classe_id = ? AND e.jour = ? AND e.creneau_id = ?
+                  AND e.actif = 1 AND e.id != ?";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$data['classe_id'], $data['jour'], $data['creneau_id'], $exclude]);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $existingGroupe = $row['groupe'] ?? null;
+            if ($newGroupe !== null && $existingGroupe !== null && $newGroupe !== $existingGroupe) {
+                continue; // groupes distincts → pas de conflit
+            }
+            $conflits[] = "Classe déjà en cours le {$data['jour']} sur ce créneau ({$row['matiere_nom']})";
         }
 
         return $conflits;
@@ -723,7 +816,7 @@ class EdtService
 
         // Récupérer les élèves de la classe concernée
         $stmt = $this->pdo->prepare(
-            "SELECT e.id, e.nom, e.prenom, e.email
+            "SELECT e.id, e.nom, e.prenom, e.mail AS email
              FROM eleves e
              JOIN classes cl ON e.classe = cl.nom
              WHERE cl.id = :classeId AND e.actif = 1"
@@ -737,7 +830,7 @@ class EdtService
             $eleveIds = array_column($eleves, 'id');
             $placeholders = implode(',', array_fill(0, count($eleveIds), '?'));
             $stmt = $this->pdo->prepare(
-                "SELECT DISTINCT pa.id, pa.nom, pa.prenom, pa.email
+                "SELECT DISTINCT pa.id, pa.nom, pa.prenom, pa.mail AS email
                  FROM parents pa
                  JOIN parent_eleve pe ON pa.id = pe.id_parent
                  WHERE pe.id_eleve IN ({$placeholders})"
@@ -775,5 +868,392 @@ class EdtService
                 'parents' => $parents,
             ],
         ];
+    }
+
+    // ─── Disponibilités enseignants (CDC §7.3) ───────────────────
+
+    /**
+     * Indisponibilités déclarées d'un enseignant (créneaux récurrents bloqués).
+     */
+    public function getDisponibilites(int $profId): array
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT d.*, c.label AS creneau_label, c.heure_debut, c.heure_fin
+                 FROM enseignant_disponibilites d
+                 JOIN creneaux_horaires c ON d.creneau_id = c.id
+                 WHERE d.professeur_id = ?
+                 ORDER BY FIELD(d.jour,'lundi','mardi','mercredi','jeudi','vendredi','samedi'), c.ordre"
+            );
+            $stmt->execute([$profId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\PDOException $e) {
+            return []; // table absente avant migration
+        }
+    }
+
+    /**
+     * Vrai si l'enseignant n'a PAS déclaré d'indisponibilité sur ce créneau.
+     * Tolérant : si la table n'existe pas encore (avant migration), renvoie true
+     * pour ne pas bloquer la détection de conflits sur les installs existants.
+     */
+    public function isProfAvailable(int $profId, string $jour, int $creneauId): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT 1 FROM enseignant_disponibilites
+                 WHERE professeur_id = ? AND jour = ? AND creneau_id = ? LIMIT 1"
+            );
+            $stmt->execute([$profId, $jour, $creneauId]);
+            return $stmt->fetchColumn() === false;
+        } catch (\PDOException $e) {
+            return true;
+        }
+    }
+
+    /**
+     * Déclare (ou met à jour) une indisponibilité.
+     */
+    public function setDisponibilite(int $profId, string $jour, int $creneauId, string $type = 'indisponible', ?string $motif = null): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                "INSERT INTO enseignant_disponibilites (professeur_id, jour, creneau_id, type, motif)
+                 VALUES (?, ?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE type = VALUES(type), motif = VALUES(motif)"
+            );
+            return $stmt->execute([$profId, $jour, $creneauId, $type, $motif]);
+        } catch (\PDOException $e) {
+            error_log("EdtService::setDisponibilite error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Lève une indisponibilité.
+     */
+    public function removeDisponibilite(int $profId, string $jour, int $creneauId): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                "DELETE FROM enseignant_disponibilites WHERE professeur_id = ? AND jour = ? AND creneau_id = ?"
+            );
+            return $stmt->execute([$profId, $jour, $creneauId]);
+        } catch (\PDOException $e) {
+            return false;
+        }
+    }
+
+    // ─── Préférences enseignants (CDC §7.1/7.2) ──────────────────
+
+    /**
+     * Préférences pédagogiques d'un enseignant (null si non définies).
+     */
+    public function getPreferences(int $profId): ?array
+    {
+        try {
+            $stmt = $this->pdo->prepare("SELECT * FROM enseignant_preferences WHERE professeur_id = ?");
+            $stmt->execute([$profId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row && isset($row['extra'])) {
+                $row['extra'] = $row['extra'] ? json_decode($row['extra'], true) : null;
+            }
+            return $row ?: null;
+        } catch (\PDOException $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Enregistre les préférences d'un enseignant (upsert).
+     */
+    public function savePreferences(int $profId, array $data): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                "INSERT INTO enseignant_preferences
+                    (professeur_id, max_heures_jour, max_heures_consecutives, pas_avant, pas_apres,
+                     eviter_mercredi_apresmidi, prefere_matin, prefere_journees_groupees, extra)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE
+                    max_heures_jour = VALUES(max_heures_jour),
+                    max_heures_consecutives = VALUES(max_heures_consecutives),
+                    pas_avant = VALUES(pas_avant),
+                    pas_apres = VALUES(pas_apres),
+                    eviter_mercredi_apresmidi = VALUES(eviter_mercredi_apresmidi),
+                    prefere_matin = VALUES(prefere_matin),
+                    prefere_journees_groupees = VALUES(prefere_journees_groupees),
+                    extra = VALUES(extra)"
+            );
+            return $stmt->execute([
+                $profId,
+                $data['max_heures_jour'] ?? null,
+                $data['max_heures_consecutives'] ?? null,
+                $data['pas_avant'] ?? null,
+                $data['pas_apres'] ?? null,
+                !empty($data['eviter_mercredi_apresmidi']) ? 1 : 0,
+                !empty($data['prefere_matin']) ? 1 : 0,
+                !empty($data['prefere_journees_groupees']) ? 1 : 0,
+                isset($data['extra']) ? json_encode($data['extra'], JSON_UNESCAPED_UNICODE) : null,
+            ]);
+        } catch (\PDOException $e) {
+            error_log("EdtService::savePreferences error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // ─── Maquette horaire (besoins, entrée du moteur) ────────────
+
+    /**
+     * Besoins de cours définis dans la maquette, prêts pour generateTimetable().
+     */
+    public function getMaquette(?int $classeId = null): array
+    {
+        try {
+            $sql = "SELECT id, classe_id, matiere_id, professeur_id, nb_creneaux, type_cours, groupe, salle_type
+                    FROM edt_maquette";
+            $params = [];
+            if ($classeId) {
+                $sql .= " WHERE classe_id = ?";
+                $params[] = $classeId;
+            }
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\PDOException $e) {
+            return [];
+        }
+    }
+
+    public function addMaquette(array $data): int
+    {
+        $stmt = $this->pdo->prepare(
+            "INSERT INTO edt_maquette (classe_id, matiere_id, professeur_id, nb_creneaux, type_cours, groupe, salle_type)
+             VALUES (?, ?, ?, ?, ?, ?, ?)"
+        );
+        $stmt->execute([
+            (int)$data['classe_id'], (int)$data['matiere_id'], (int)$data['professeur_id'],
+            (int)($data['nb_creneaux'] ?? 1), $data['type_cours'] ?? 'cours',
+            $data['groupe'] ?? null, $data['salle_type'] ?? null,
+        ]);
+        return (int)$this->pdo->lastInsertId();
+    }
+
+    public function deleteMaquette(int $id): bool
+    {
+        $stmt = $this->pdo->prepare("DELETE FROM edt_maquette WHERE id = ?");
+        return $stmt->execute([$id]);
+    }
+
+    /**
+     * Reconstruit une liste de besoins à partir de l'EDT actif existant
+     * (permet de re-générer/optimiser sans saisir de maquette).
+     */
+    public function buildRequirementsFromExisting(?int $classeId = null): array
+    {
+        $sql = "SELECT classe_id, matiere_id, professeur_id, groupe, type_cours,
+                       COUNT(*) AS nb_creneaux
+                FROM emploi_du_temps
+                WHERE actif = 1";
+        $params = [];
+        if ($classeId) {
+            $sql .= " AND classe_id = ?";
+            $params[] = $classeId;
+        }
+        $sql .= " GROUP BY classe_id, matiere_id, professeur_id, groupe, type_cours";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // ─── Génération automatique — moteur glouton (CDC §6) ────────
+
+    /**
+     * Génère un emploi du temps par placement glouton (dry-run : n'écrit rien).
+     * Respecte les contraintes DURES uniquement : prof libre + disponible,
+     * classe libre (group-aware), salle compatible libre. Optimisation des
+     * contraintes souples = phase 4 (non incluse).
+     *
+     * Chaque "besoin" : {classe_id, matiere_id, professeur_id, nb_creneaux,
+     *   groupe?, type_cours?, salle_type?, salle_required?}
+     *
+     * @param array $requirements Liste des besoins de cours à placer.
+     * @param array $opts ['jours' => string[]]
+     * @return array ['placed' => [...], 'unplaced' => [...], 'score' => [...]]
+     */
+    public function generateTimetable(array $requirements, array $opts = []): array
+    {
+        $jours = $opts['jours'] ?? ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'];
+        $creneaux = $this->getCreneauxCours();
+        $creneauIds = array_column($creneaux, 'id');
+
+        $key = static fn($j, $c) => $j . '|' . $c;
+
+        // Occupancy seedée depuis l'EDT actif existant (ne pas écraser l'existant)
+        $profBusy = $classeBusy = $salleBusy = [];
+        $existing = $this->pdo->query(
+            "SELECT classe_id, professeur_id, salle_id, jour, creneau_id, groupe
+             FROM emploi_du_temps WHERE actif = 1"
+        )->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($existing as $e) {
+            $k = $key($e['jour'], $e['creneau_id']);
+            $profBusy[$e['professeur_id']][$k] = true;
+            $classeBusy[$e['classe_id']][$k][] = $e['groupe'];
+            if (!empty($e['salle_id'])) $salleBusy[$e['salle_id']][$k] = true;
+        }
+
+        // Most-constrained-first : plus gros volume placé en premier
+        usort($requirements, static fn($a, $b) => ((int)($b['nb_creneaux'] ?? 1)) <=> ((int)($a['nb_creneaux'] ?? 1)));
+
+        $placed = [];
+        $unplaced = [];
+
+        foreach ($requirements as $req) {
+            $need     = (int)($req['nb_creneaux'] ?? 1);
+            $classeId = (int)($req['classe_id'] ?? 0);
+            $profId   = (int)($req['professeur_id'] ?? 0);
+            $groupe   = $req['groupe'] ?? null;
+            $matiereDayCount = []; // jour => nb de cette matière déjà posé pour la classe ce jour
+            $done = 0;
+
+            foreach ($jours as $j) {
+                if ($done >= $need) break;
+                // Éviter deux fois la même matière le même jour pour la classe
+                if (($matiereDayCount[$j] ?? 0) >= 1) continue;
+
+                foreach ($creneaux as $cr) {
+                    if ($done >= $need) break;
+                    $cid = (int)$cr['id'];
+                    $k = $key($j, $cid);
+
+                    if (!empty($profBusy[$profId][$k])) continue;
+                    if (!$this->isProfAvailable($profId, $j, $cid)) continue;
+                    if (!$this->classeSlotFree($classeBusy, $classeId, $k, $groupe)) continue;
+
+                    // Salle : première candidate libre (suggestSalle déjà triée best-fit)
+                    $salleId = null;
+                    foreach ($this->suggestSalle([
+                        'jour' => $j, 'creneau_id' => $cid, 'classe_id' => $classeId,
+                        'salle_type' => $req['salle_type'] ?? null,
+                    ]) as $cand) {
+                        if (empty($salleBusy[$cand['id']][$k])) { $salleId = (int)$cand['id']; break; }
+                    }
+                    if ($salleId === null && !empty($req['salle_required'])) continue;
+
+                    $placed[] = [
+                        'classe_id'     => $classeId,
+                        'matiere_id'    => (int)($req['matiere_id'] ?? 0),
+                        'professeur_id' => $profId,
+                        'salle_id'      => $salleId,
+                        'jour'          => $j,
+                        'creneau_id'    => $cid,
+                        'heure_debut'   => $cr['heure_debut'],
+                        'heure_fin'     => $cr['heure_fin'],
+                        'groupe'        => $groupe,
+                        'type_cours'    => $req['type_cours'] ?? 'cours',
+                    ];
+                    $profBusy[$profId][$k] = true;
+                    $classeBusy[$classeId][$k][] = $groupe;
+                    if ($salleId !== null) $salleBusy[$salleId][$k] = true;
+                    $matiereDayCount[$j] = ($matiereDayCount[$j] ?? 0) + 1;
+                    $done++;
+                    break; // un seul créneau de cette matière par jour → jour suivant
+                }
+            }
+
+            if ($done < $need) {
+                $unplaced[] = ['requirement' => $req, 'placed' => $done, 'missing' => $need - $done];
+            }
+        }
+
+        return [
+            'placed'   => $placed,
+            'unplaced' => $unplaced,
+            'score'    => $this->scorePlan($placed, $creneauIds),
+        ];
+    }
+
+    /**
+     * Vrai si le créneau de la classe est libre pour ce groupe.
+     * Deux cours simultanés tolérés seulement si groupes distincts et définis.
+     */
+    private function classeSlotFree(array $classeBusy, int $classeId, string $k, ?string $groupe): bool
+    {
+        $occ = $classeBusy[$classeId][$k] ?? null;
+        if (empty($occ)) return true;
+        if ($groupe === null) return false;
+        foreach ($occ as $g) {
+            if ($g === null || $g === $groupe) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Score qualité simple d'un plan (CDC §15.2) : nombre de "trous" élèves
+     * (créneaux vides entre deux cours d'une même classe le même jour). Plus bas = mieux.
+     */
+    private function scorePlan(array $placed, array $creneauIds): array
+    {
+        $ordre = array_flip(array_values($creneauIds)); // creneau_id => position
+        $byClasseDay = [];
+        foreach ($placed as $p) {
+            $byClasseDay[$p['classe_id']][$p['jour']][] = $ordre[$p['creneau_id']] ?? 0;
+        }
+        $trous = 0;
+        foreach ($byClasseDay as $days) {
+            foreach ($days as $positions) {
+                sort($positions);
+                $span = end($positions) - $positions[0];
+                $trous += max(0, $span - (count($positions) - 1));
+            }
+        }
+        return ['placed' => count($placed), 'trous_classes' => $trous];
+    }
+
+    /**
+     * Persiste un plan généré dans emploi_du_temps (transaction).
+     * Si $replaceClasses, désactive d'abord les cours actifs des classes concernées.
+     *
+     * @return int Nombre de cours insérés (0 = échec/rollback).
+     */
+    public function applyGeneratedPlan(array $placed, bool $replaceClasses = false): int
+    {
+        if (empty($placed)) return 0;
+
+        try {
+            $this->pdo->beginTransaction();
+
+            if ($replaceClasses) {
+                $classeIds = array_values(array_unique(array_map(static fn($p) => (int)$p['classe_id'], $placed)));
+                $in = implode(',', array_fill(0, count($classeIds), '?'));
+                $del = $this->pdo->prepare("UPDATE emploi_du_temps SET actif = 0 WHERE classe_id IN ({$in}) AND actif = 1");
+                $del->execute($classeIds);
+            }
+
+            $ins = $this->pdo->prepare(
+                "INSERT INTO emploi_du_temps
+                    (classe_id, matiere_id, professeur_id, salle_id, jour, creneau_id,
+                     heure_debut, heure_fin, groupe, type_cours, recurrence)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'hebdomadaire')"
+            );
+            $n = 0;
+            foreach ($placed as $p) {
+                $ins->execute([
+                    $p['classe_id'], $p['matiere_id'], $p['professeur_id'], $p['salle_id'] ?? null,
+                    $p['jour'], $p['creneau_id'], $p['heure_debut'], $p['heure_fin'],
+                    $p['groupe'] ?? null, $p['type_cours'] ?? 'cours',
+                ]);
+                $n++;
+            }
+
+            $this->pdo->commit();
+            return $n;
+        } catch (\PDOException $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            error_log("EdtService::applyGeneratedPlan error: " . $e->getMessage());
+            return 0;
+        }
     }
 }

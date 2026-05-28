@@ -6,33 +6,78 @@
     'use strict';
 
     // ── Dropdown toggle ─────────────────────────────────────────
+    // Le menu utilise position:fixed pour échapper au clipping de
+    // .topbar-categories { overflow-x: auto }. On positionne donc top/left
+    // dynamiquement à partir du bounding rect du trigger.
+    function positionMenu(dropdown) {
+        var trigger = dropdown.querySelector('.topbar-dropdown__trigger, .topbar-user-avatar');
+        var menu = dropdown.querySelector('.topbar-dropdown__menu');
+        if (!trigger || !menu) return;
+        var rect = trigger.getBoundingClientRect();
+        var alignRight = menu.classList.contains('topbar-dropdown__menu--right');
+        var menuWidth = menu.offsetWidth || 220;
+        var top = rect.bottom + 4;
+        var left;
+        if (alignRight) {
+            left = Math.max(8, rect.right - menuWidth);
+        } else {
+            left = rect.left;
+            // Si le menu déborderait à droite, le recoller
+            var vw = window.innerWidth || document.documentElement.clientWidth;
+            if (left + menuWidth + 8 > vw) {
+                left = Math.max(8, vw - menuWidth - 8);
+            }
+        }
+        menu.style.top = top + 'px';
+        menu.style.left = left + 'px';
+    }
+
+    function closeAllDropdowns() {
+        var dds = document.querySelectorAll('.topbar-dropdown.open');
+        for (var i = 0; i < dds.length; i++) {
+            dds[i].classList.remove('open');
+            var t = dds[i].querySelector('.topbar-dropdown__trigger, .topbar-user-avatar');
+            if (t) t.setAttribute('aria-expanded', 'false');
+        }
+    }
+
     document.addEventListener('click', function (e) {
         var trigger = e.target.closest('.topbar-dropdown__trigger, .topbar-user-avatar');
-        var allDropdowns = document.querySelectorAll('.topbar-dropdown');
 
         if (trigger) {
             var dropdown = trigger.closest('.topbar-dropdown');
+            if (!dropdown) return;
             var wasOpen = dropdown.classList.contains('open');
-
-            // Close all
-            for (var i = 0; i < allDropdowns.length; i++) {
-                allDropdowns[i].classList.remove('open');
-            }
-
-            // Toggle current
+            closeAllDropdowns();
             if (!wasOpen) {
                 dropdown.classList.add('open');
+                trigger.setAttribute('aria-expanded', 'true');
+                // Position après l'ajout de .open (le menu doit être display:block pour offsetWidth correct)
+                positionMenu(dropdown);
             }
             e.stopPropagation();
             return;
         }
 
-        // Click outside closes all dropdowns
+        // Click hors d'un menu ouvert ferme tout
         if (!e.target.closest('.topbar-dropdown__menu')) {
-            for (var j = 0; j < allDropdowns.length; j++) {
-                allDropdowns[j].classList.remove('open');
-            }
+            closeAllDropdowns();
         }
+    });
+
+    // Repositionner les dropdowns ouverts au scroll/resize
+    function repositionOpen() {
+        var open = document.querySelectorAll('.topbar-dropdown.open');
+        for (var i = 0; i < open.length; i++) {
+            positionMenu(open[i]);
+        }
+    }
+    window.addEventListener('resize', repositionOpen);
+    window.addEventListener('scroll', repositionOpen, true);
+
+    // Esc ferme tout
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeAllDropdowns();
     });
 
     // ── Search modal (Ctrl+K) ───────────────────────────────────
@@ -40,6 +85,14 @@
     var searchInput = document.getElementById('search-modal-input');
     var searchResults = document.getElementById('search-modal-results');
     var searchBtn = document.getElementById('topbar-search-btn');
+    var searchSelected = -1; // index du résultat surligné (navigation clavier)
+
+    // Normalise pour une recherche insensible aux accents/casse (élève -> eleve)
+    function normalize(s) {
+        s = (s || '').toLowerCase();
+        if (s.normalize) s = s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+        return s;
+    }
 
     function openSearch() {
         if (!searchModal) return;
@@ -79,11 +132,27 @@
         }
     }
 
-    // Search: filter modules from the topbar
+    // Met à jour le surlignage du résultat sélectionné au clavier
+    function updateSearchSelection() {
+        if (!searchResults) return;
+        var results = searchResults.querySelectorAll('.search-result-item');
+        for (var i = 0; i < results.length; i++) {
+            if (i === searchSelected) {
+                results[i].classList.add('highlighted');
+                results[i].scrollIntoView({ block: 'nearest' });
+            } else {
+                results[i].classList.remove('highlighted');
+            }
+        }
+    }
+
+    // Search: filter modules from the topbar (insensible aux accents)
     if (searchInput) {
         searchInput.addEventListener('input', function () {
-            var query = this.value.toLowerCase().trim();
+            var query = normalize(this.value.trim());
             if (!searchResults) return;
+
+            searchSelected = -1;
 
             if (!query) {
                 searchResults.innerHTML = '';
@@ -94,8 +163,7 @@
             var matches = [];
 
             for (var i = 0; i < items.length; i++) {
-                var text = items[i].textContent.trim().toLowerCase();
-                if (text.indexOf(query) !== -1) {
+                if (normalize(items[i].textContent.trim()).indexOf(query) !== -1) {
                     matches.push(items[i]);
                 }
             }
@@ -103,8 +171,7 @@
             // Also search mobile links
             var mobileLinks = document.querySelectorAll('.topbar-mobile-link');
             for (var m = 0; m < mobileLinks.length; m++) {
-                var mText = mobileLinks[m].textContent.trim().toLowerCase();
-                if (mText.indexOf(query) !== -1) {
+                if (normalize(mobileLinks[m].textContent.trim()).indexOf(query) !== -1) {
                     var isDup = false;
                     var href = mobileLinks[m].getAttribute('href');
                     for (var d = 0; d < matches.length; d++) {
@@ -127,6 +194,27 @@
             }
 
             searchResults.innerHTML = html || '<div style="padding:1rem;color:#a0aec0;text-align:center;">Aucun resultat</div>';
+        });
+
+        // Navigation clavier dans les résultats : flèches + Entrée
+        searchInput.addEventListener('keydown', function (e) {
+            if (!searchResults) return;
+            var results = searchResults.querySelectorAll('.search-result-item');
+            if (!results.length) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                searchSelected = (searchSelected + 1) % results.length;
+                updateSearchSelection();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                searchSelected = (searchSelected - 1 + results.length) % results.length;
+                updateSearchSelection();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                var target = searchSelected >= 0 ? results[searchSelected] : results[0];
+                if (target) window.location.href = target.getAttribute('href');
+            }
         });
     }
 
@@ -182,4 +270,81 @@
     // Watch for external theme changes (e.g., from sidebar toggle)
     var observer = new MutationObserver(updateThemeIcons);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+    // ── Favoris (épingler des modules) ──────────────────────────
+    function csrfToken() {
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute('content') : '';
+    }
+
+    function favEndpoint() {
+        var base = window.FRONOTE_BASE_URL || './';
+        return base + 'API/endpoints/favorites.php';
+    }
+
+    // Reflète l'état favori sur tous les boutons d'une même clé module
+    function syncFavButtons(moduleKey, isFav) {
+        var btns = document.querySelectorAll('.topbar-fav-toggle[data-module-key="' + moduleKey + '"]');
+        for (var i = 0; i < btns.length; i++) {
+            btns[i].classList.toggle('is-favorite', isFav);
+            btns[i].setAttribute('aria-pressed', isFav ? 'true' : 'false');
+            var icon = btns[i].querySelector('i');
+            if (icon) {
+                icon.classList.toggle('fas', isFav);
+                icon.classList.toggle('far', !isFav);
+            }
+        }
+    }
+
+    // Reconstruit le menu Favoris depuis la liste renvoyée par l'API
+    function rebuildFavoritesMenu(favorites) {
+        var menu = document.getElementById('topbar-favorites-menu');
+        if (!menu) return;
+        var base = window.FRONOTE_BASE_URL || './';
+
+        if (!favorites || !favorites.length) {
+            menu.innerHTML = '<div class="topbar-dropdown__empty">Aucun favori. Cliquez ★ sur un module.</div>';
+            return;
+        }
+
+        var html = '';
+        for (var i = 0; i < favorites.length; i++) {
+            var f = favorites[i];
+            html += '<div class="topbar-dropdown__item-wrap">'
+                  + '<a href="' + base + f.route + '" class="topbar-dropdown__item">'
+                  + '<i class="' + (f.icon || 'fas fa-circle') + '"></i>'
+                  + '<span>' + f.label + '</span></a>'
+                  + '<button class="topbar-fav-toggle is-favorite" type="button" data-module-key="' + f.module_key + '"'
+                  + ' title="Retirer des favoris" aria-pressed="true"><i class="fas fa-star"></i></button>'
+                  + '</div>';
+        }
+        menu.innerHTML = html;
+    }
+
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest('.topbar-fav-toggle');
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        var moduleKey = btn.getAttribute('data-module-key');
+        if (!moduleKey || btn.disabled) return;
+        btn.disabled = true;
+
+        fetch(favEndpoint(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ action: 'toggle', module_key: moduleKey, csrf_token: csrfToken() })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data && data.success) {
+                syncFavButtons(moduleKey, !!data.favorite);
+                rebuildFavoritesMenu(data.favorites);
+            }
+        })
+        .catch(function () { /* silencieux : favori non bloquant */ })
+        .then(function () { btn.disabled = false; });
+    });
 })();

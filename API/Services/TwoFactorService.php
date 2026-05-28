@@ -30,6 +30,9 @@ class TwoFactorService
     /** App name shown in authenticator apps */
     private const ISSUER = 'FRONOTE';
 
+    /** Number of single-use recovery codes generated per setup */
+    private const BACKUP_CODE_COUNT = 10;
+
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
@@ -65,8 +68,11 @@ class TwoFactorService
     }
 
     /**
-     * Get a QR code image URL using Google Charts API.
-     * For offline use, consider generating QR codes server-side.
+     * @deprecated L'API Google Charts (chart.googleapis.com) est fermée depuis 2019.
+     *             Ne plus utiliser : l'UI affiche désormais la clé en saisie manuelle
+     *             + lien otpauth://, et peut rendre un QR côté client si une librairie
+     *             QR locale est chargée (window.QRCode). Envoyer le secret TOTP à un
+     *             service tiers de QR constituerait une fuite de secret.
      */
     public function getQrCodeUrl(string $otpauthUri, int $size = 200): string
     {
@@ -191,7 +197,11 @@ class TwoFactorService
 
         try {
             $stmt = $this->pdo->prepare("UPDATE {$table} SET two_factor_enabled = 0, two_factor_secret = NULL WHERE id = ?");
-            return $stmt->execute([$userId]);
+            $ok = $stmt->execute([$userId]);
+            // Purge les codes de secours associés
+            $del = $this->pdo->prepare("DELETE FROM user_backup_codes WHERE user_id = ? AND user_type = ?");
+            $del->execute([$userId, $userType]);
+            return $ok;
         } catch (\PDOException $e) {
             error_log("TwoFactorService::disable error: " . $e->getMessage());
             return false;
@@ -207,6 +217,90 @@ class TwoFactorService
         if (!$secret) return false;
 
         return $this->verifyCode($secret, $code);
+    }
+
+    // ─── Codes de secours (recovery) ─────────────────────────────
+
+    /**
+     * Génère un nouveau jeu de codes de secours, remplaçant les anciens.
+     * Retourne les codes en clair (à afficher UNE seule fois) ; seuls les
+     * hachages SHA-256 sont stockés.
+     *
+     * @return string[] codes en clair, format "XXXXX-XXXXX"
+     */
+    public function generateBackupCodes(int $userId, string $userType, int $count = self::BACKUP_CODE_COUNT): array
+    {
+        $codes = [];
+        $hashes = [];
+        for ($i = 0; $i < $count; $i++) {
+            $raw = bin2hex(random_bytes(5)); // 10 caractères hex, haute entropie
+            $codes[] = strtoupper(substr($raw, 0, 5) . '-' . substr($raw, 5, 5));
+            $hashes[] = hash('sha256', $this->normalizeBackupCode($raw));
+        }
+
+        try {
+            $this->pdo->beginTransaction();
+            $del = $this->pdo->prepare("DELETE FROM user_backup_codes WHERE user_id = ? AND user_type = ?");
+            $del->execute([$userId, $userType]);
+            $ins = $this->pdo->prepare("INSERT INTO user_backup_codes (user_id, user_type, code_hash) VALUES (?, ?, ?)");
+            foreach ($hashes as $h) {
+                $ins->execute([$userId, $userType, $h]);
+            }
+            $this->pdo->commit();
+        } catch (\PDOException $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            error_log("TwoFactorService::generateBackupCodes error: " . $e->getMessage());
+            return [];
+        }
+
+        return $codes;
+    }
+
+    /**
+     * Vérifie et consomme un code de secours à usage unique.
+     */
+    public function verifyBackupCode(int $userId, string $userType, string $code): bool
+    {
+        $norm = $this->normalizeBackupCode($code);
+        if ($norm === '') return false;
+
+        $hash = hash('sha256', $norm);
+        try {
+            // Consommation atomique : le filtre used_at IS NULL dans l'UPDATE garantit
+            // l'usage unique même sous requêtes concurrentes (pas de race SELECT→UPDATE).
+            $stmt = $this->pdo->prepare(
+                "UPDATE user_backup_codes SET used_at = NOW()
+                 WHERE user_id = ? AND user_type = ? AND code_hash = ? AND used_at IS NULL"
+            );
+            $stmt->execute([$userId, $userType, $hash]);
+            return $stmt->rowCount() === 1;
+        } catch (\PDOException $e) {
+            error_log("TwoFactorService::verifyBackupCode error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Nombre de codes de secours encore utilisables.
+     */
+    public function countBackupCodes(int $userId, string $userType): int
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT COUNT(*) FROM user_backup_codes WHERE user_id = ? AND user_type = ? AND used_at IS NULL"
+            );
+            $stmt->execute([$userId, $userType]);
+            return (int) $stmt->fetchColumn();
+        } catch (\PDOException $e) {
+            return 0;
+        }
+    }
+
+    private function normalizeBackupCode(string $code): string
+    {
+        return strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $code) ?? '');
     }
 
     // ─── Base32 encoding/decoding ────────────────────────────────

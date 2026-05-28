@@ -99,7 +99,7 @@ $cmd    = $phpBin . ' ' . escapeshellarg($scriptPath);
 $log    = escapeshellarg($logFile);
 
 if (PHP_OS_FAMILY === 'Windows') {
-    pclose(popen('start /B ' . $cmd . ' >> ' . $logFile . ' 2>&1', 'r'));
+    pclose(popen('start /B ' . $cmd . ' >> ' . $log . ' 2>&1', 'r'));
 } else {
     exec('nohup ' . $cmd . ' >> ' . $log . ' 2>&1 &');
 }

@@ -196,7 +196,7 @@ class PersonnelService
      */
     public function getAnnuaire(?string $search = null): array
     {
-        $sql = "SELECT p.id, p.prenom, p.nom, p.email, p.telephone, p.matiere,
+        $sql = "SELECT p.id, p.prenom, p.nom, p.mail AS email, p.telephone, p.matiere,
                        (SELECT COUNT(*) FROM emploi_du_temps edt WHERE edt.professeur_id = p.id AND edt.actif = 1) AS nb_cours,
                        (SELECT GROUP_CONCAT(DISTINCT cl.nom) FROM emploi_du_temps edt2 JOIN classes cl ON edt2.classe_id = cl.id WHERE edt2.professeur_id = p.id AND edt2.actif = 1) AS classes
                 FROM professeurs p WHERE p.actif = 1";

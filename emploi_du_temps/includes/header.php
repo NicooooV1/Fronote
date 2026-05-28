@@ -30,6 +30,9 @@ if (!isset($headerExtraActions)) {
     if (isAdmin() && $currentPage !== 'gerer') {
         echo '<a href="gerer_cours.php" class="btn btn-primary"><i class="fas fa-plus"></i> Ajouter un cours</a>';
     }
+    if ((isAdmin() || isVieScolaire()) && $currentPage !== 'maquette') {
+        echo ' <a href="maquette.php" class="btn btn-secondary btn-sm"><i class="fas fa-list-check"></i> Maquette</a>';
+    }
     if ($ffIcalExport) {
         echo ' <a href="export_ical.php" class="btn btn-secondary btn-sm"><i class="fas fa-calendar-alt"></i> iCal</a>';
     }

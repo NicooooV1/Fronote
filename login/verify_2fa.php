@@ -43,13 +43,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         unset($_SESSION['pending_2fa']);
         redirect('login/index.php');
     } else {
-        $code = preg_replace('/\D/', '', $_POST['code'] ?? '');
+        $backupCode  = trim($_POST['backup_code'] ?? '');
+        $usingBackup = $backupCode !== '';
+        $valid       = false;
 
-        if (strlen($code) !== 6) {
-            $error = 'Le code doit contenir exactement 6 chiffres.';
-        } elseif (!$twoFactor->validateLogin($userId, $userType, $code)) {
-            $error = 'Code incorrect. Vérifiez votre application d\'authentification et réessayez.';
+        if ($usingBackup) {
+            $valid = $twoFactor->verifyBackupCode($userId, $userType, $backupCode);
+            if (!$valid) {
+                $error = 'Code de secours invalide ou déjà utilisé.';
+            }
         } else {
+            $code = preg_replace('/\D/', '', $_POST['code'] ?? '');
+            if (strlen($code) !== 6) {
+                $error = 'Le code doit contenir exactement 6 chiffres.';
+            } else {
+                $valid = $twoFactor->validateLogin($userId, $userType, $code);
+                if (!$valid) {
+                    $error = 'Code incorrect. Vérifiez votre application d\'authentification et réessayez.';
+                }
+            }
+        }
+
+        if ($valid) {
             // Code valide → créer la session
             unset($_SESSION['pending_2fa']);
 
@@ -138,10 +153,28 @@ $csrfToken = generateCSRFToken();
                 </small>
             </div>
 
+            <div class="form-group" id="backupGroup" style="display:none;">
+                <label for="backup_code">Code de secours</label>
+                <div class="input-group">
+                    <i class="input-group-icon fas fa-life-ring" aria-hidden="true"></i>
+                    <input type="text" id="backup_code" name="backup_code"
+                           class="form-control input-with-icon"
+                           placeholder="XXXXX-XXXXX" maxlength="11" autocomplete="off"
+                           style="letter-spacing: 0.1em; text-transform: uppercase;">
+                </div>
+                <small class="help-text" style="color: var(--text-muted, #6b7280); margin-top: .4rem; display:block;">
+                    Saisissez l'un de vos codes de secours à usage unique généré lors de l'activation.
+                </small>
+            </div>
+
             <div class="form-actions" style="gap: .75rem; display:flex; flex-direction:column;">
                 <button type="submit" class="btn btn-primary" id="verifyBtn">
                     <span class="btn-text"><i class="fas fa-check-circle" aria-hidden="true"></i> Vérifier</span>
                     <span class="btn-loading-text" style="display:none;"><i class="fas fa-spinner fa-spin"></i> Vérification…</span>
+                </button>
+                <button type="button" id="toggleBackup" class="btn btn-link"
+                        style="background:transparent; border:none; color: var(--text-muted,#6b7280); text-decoration:underline; cursor:pointer;">
+                    <i class="fas fa-life-ring" aria-hidden="true"></i> <span id="toggleBackupText">Utiliser un code de secours</span>
                 </button>
                 <button type="submit" name="cancel" value="1" class="btn btn-secondary"
                         formnovalidate style="background:transparent; color: var(--text-muted,#6b7280); border: 1px solid currentColor;">
@@ -157,14 +190,43 @@ $csrfToken = generateCSRFToken();
         var form      = document.getElementById('twoFaForm');
         var btn       = document.getElementById('verifyBtn');
 
+        var codeGroup   = codeInput ? codeInput.closest('.form-group') : null;
+        var backupGroup = document.getElementById('backupGroup');
+        var backupInput = document.getElementById('backup_code');
+        var toggleBtn   = document.getElementById('toggleBackup');
+        var toggleText  = document.getElementById('toggleBackupText');
+        var backupMode  = false;
+
         // Auto-format : ne garder que les chiffres, soumettre automatiquement quand 6 chiffres
+        // (désactivé en mode code de secours)
         if (codeInput) {
             codeInput.addEventListener('input', function() {
                 this.value = this.value.replace(/\D/g, '').slice(0, 6);
-                if (this.value.length === 6) {
+                if (!backupMode && this.value.length === 6) {
                     form.submit();
                 }
             });
+        }
+
+        // Bascule entre code TOTP et code de secours
+        if (toggleBtn && backupGroup) {
+            toggleBtn.addEventListener('click', function() {
+                backupMode = !backupMode;
+                backupGroup.style.display = backupMode ? '' : 'none';
+                if (codeGroup) codeGroup.style.display = backupMode ? 'none' : '';
+                if (codeInput) codeInput.disabled = backupMode; // exclut le champ caché de la soumission/validation
+                if (backupInput) {
+                    backupInput.disabled = !backupMode;
+                    if (backupMode) backupInput.focus();
+                }
+                if (toggleText) {
+                    toggleText.textContent = backupMode
+                        ? 'Utiliser le code de l\'application'
+                        : 'Utiliser un code de secours';
+                }
+            });
+            // Champ de secours désactivé tant qu'il est masqué
+            if (backupInput) backupInput.disabled = true;
         }
 
         // Loading state

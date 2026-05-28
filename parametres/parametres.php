@@ -74,11 +74,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $code   = $_POST['code'] ?? '';
         if ($twoFactor->enable($userId, $userType, $secret, $code)) {
             $twoFAEnabled = true;
+            // Génère les codes de secours à afficher une seule fois
+            $twoFA_newBackupCodes = $twoFactor->generateBackupCodes($userId, $userType);
             $success = 'Authentification à deux facteurs activée avec succès.';
         } else {
             $error = 'Code incorrect. Veuillez réessayer avec un code valide de votre application.';
             $section = 'securite';
         }
+    } elseif ($action === '2fa_backup_regenerate') {
+        // Régénère les codes de secours (exige un code TOTP valide)
+        $code = $_POST['code'] ?? '';
+        if ($twoFAEnabled && $twoFactor->validateLogin($userId, $userType, $code)) {
+            $twoFA_newBackupCodes = $twoFactor->generateBackupCodes($userId, $userType);
+            $success = 'Nouveaux codes de secours générés. Les anciens ne sont plus valides.';
+        } else {
+            $error = 'Code incorrect. Les codes de secours n\'ont pas été régénérés.';
+        }
+        $section = 'securite';
     } elseif ($action === '2fa_disable') {
         $code = $_POST['code'] ?? '';
         if ($twoFactor->validateLogin($userId, $userType, $code)) {
@@ -104,12 +116,17 @@ $profilLabels = ['administrateur'=>'Administrateur','professeur'=>'Professeur','
 
 // 2FA setup data (only needed if section is securite and 2FA not yet enabled)
 $twoFA_secret = null;
-$twoFA_qrUrl = null;
-if ($section === 'securite' && !$twoFAEnabled) {
-    $twoFA_secret = $twoFactor->generateSecret();
-    $accountName = ($profile['prenom'] ?? '') . ' ' . ($profile['nom'] ?? '') . ' (' . $userType . ')';
-    $otpUri = $twoFactor->getOtpauthUri($twoFA_secret, trim($accountName));
-    $twoFA_qrUrl = $twoFactor->getQrCodeUrl($otpUri);
+$twoFA_otpUri = null;
+$twoFA_newBackupCodes = $twoFA_newBackupCodes ?? null; // codes en clair affichés une seule fois
+$twoFA_backupRemaining = 0;
+if ($section === 'securite') {
+    if (!$twoFAEnabled) {
+        $twoFA_secret = $twoFactor->generateSecret();
+        $accountName = ($profile['prenom'] ?? '') . ' ' . ($profile['nom'] ?? '') . ' (' . $userType . ')';
+        $twoFA_otpUri = $twoFactor->getOtpauthUri($twoFA_secret, trim($accountName));
+    } else {
+        $twoFA_backupRemaining = $twoFactor->countBackupCodes($userId, $userType);
+    }
 }
 
 // Accueil widget list
@@ -333,7 +350,7 @@ $roleWidgets = match ($userType) {
                     <p class="form-text" style="margin-bottom:12px">Modules actuellement activés pour votre profil. Contactez l'administrateur pour modifier la visibilité.</p>
                     <?php
                     $sidebarMods = $moduleService->getForSidebar($userType);
-                    $catMeta = ModuleService::categoryMeta();
+                    $catMeta = \API\Services\ModuleService::categoryMeta();
                     ?>
                     <?php foreach ($sidebarMods as $catKey => $mods): ?>
                     <div style="margin-bottom:12px">
@@ -488,6 +505,43 @@ $roleWidgets = match ($userType) {
                         <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-times-circle"></i> Désactiver la 2FA</button>
                     </form>
 
+                    <!-- Codes de secours -->
+                    <div class="twofa-backup" style="margin-top:28px;border-top:1px solid var(--border-color,#e2e8f0);padding-top:20px">
+                        <h3 style="font-size:1em;margin-bottom:10px"><i class="fas fa-life-ring"></i> Codes de secours</h3>
+
+                        <?php if (!empty($twoFA_newBackupCodes)): ?>
+                        <div class="alert alert-warning" role="alert" style="margin-bottom:12px">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <div><strong>Conservez ces codes maintenant.</strong> Ils ne seront affichés qu'une seule fois. Chaque code n'est utilisable qu'une fois pour vous connecter si vous perdez votre téléphone.</div>
+                        </div>
+                        <div id="backupCodesList" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;max-width:360px">
+                            <?php foreach ($twoFA_newBackupCodes as $bc): ?>
+                            <code style="padding:8px 12px;background:var(--border-color,#f0f0f0);border-radius:6px;font-size:1em;letter-spacing:1px;text-align:center"><?= htmlspecialchars($bc) ?></code>
+                            <?php endforeach; ?>
+                        </div>
+                        <div style="display:flex;gap:8px;margin-top:10px">
+                            <button type="button" class="btn btn-secondary btn-sm" id="copyBackupCodes"><i class="fas fa-copy"></i> Copier</button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="window.print()"><i class="fas fa-print"></i> Imprimer</button>
+                        </div>
+                        <?php else: ?>
+                        <p class="form-text">Il vous reste <strong><?= (int) $twoFA_backupRemaining ?></strong> code(s) de secours utilisable(s).
+                        <?php if ($twoFA_backupRemaining === 0): ?>
+                            <span style="color:var(--color-danger,#ef4444)">Aucun code restant — régénérez-en pour sécuriser la récupération de votre compte.</span>
+                        <?php endif; ?></p>
+                        <?php endif; ?>
+
+                        <form method="post" style="margin-top:14px">
+                            <?= csrfField() ?>
+                            <input type="hidden" name="action" value="2fa_backup_regenerate">
+                            <p class="form-text">Régénérer de nouveaux codes (les anciens deviennent invalides). Saisissez un code de votre application :</p>
+                            <div class="form-group" style="max-width:280px">
+                                <input type="text" name="code" class="form-control" placeholder="000000" maxlength="6" pattern="[0-9]{6}" required
+                                       inputmode="numeric" autocomplete="one-time-code" style="font-size:1.2em;letter-spacing:6px;text-align:center;font-weight:700">
+                            </div>
+                            <button type="submit" class="btn btn-secondary btn-sm"><i class="fas fa-sync"></i> Régénérer les codes</button>
+                        </form>
+                    </div>
+
                     <?php else: ?>
                     <!-- 2FA is DISABLED — Setup flow -->
                     <div class="twofa-status twofa-disabled">
@@ -513,17 +567,18 @@ $roleWidgets = match ($userType) {
                             <div class="twofa-step">
                                 <div class="twofa-step-num">2</div>
                                 <div>
-                                    <strong>Scanner le QR code</strong>
-                                    <p>Scannez ce QR code avec votre application :</p>
-                                    <div class="twofa-qr">
-                                        <img src="<?= htmlspecialchars($twoFA_qrUrl) ?>" alt="QR Code 2FA" width="200" height="200">
+                                    <strong>Ajouter la clé à votre application</strong>
+                                    <p>Saisissez cette clé dans votre application d'authentification (type « saisie manuelle » / « entrer une clé de configuration ») :</p>
+                                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px">
+                                        <code id="twofaSecret" style="padding:10px 14px;background:var(--border-color,#f0f0f0);border-radius:6px;font-size:1.05em;letter-spacing:3px;word-break:break-all"><?= htmlspecialchars($twoFA_secret) ?></code>
+                                        <button type="button" class="btn btn-secondary btn-sm" id="copySecret"><i class="fas fa-copy"></i> Copier</button>
                                     </div>
-                                    <details style="margin-top:8px">
-                                        <summary style="cursor:pointer;font-size:.85em;color:var(--text-muted)">Saisie manuelle</summary>
-                                        <code style="display:block;margin-top:4px;padding:8px 12px;background:var(--border-color,#f0f0f0);border-radius:6px;font-size:.9em;word-break:break-all;letter-spacing:2px">
-                                            <?= htmlspecialchars($twoFA_secret) ?>
-                                        </code>
-                                    </details>
+                                    <p style="margin-top:8px;font-size:.9em">
+                                        Sur mobile, vous pouvez aussi
+                                        <a href="<?= htmlspecialchars($twoFA_otpUri) ?>">ouvrir directement votre application</a>.
+                                    </p>
+                                    <!-- Conteneur QR : rempli côté client si une librairie QR locale est disponible (window.QRCode). -->
+                                    <div class="twofa-qr" id="twofaQr" data-otpauth="<?= htmlspecialchars($twoFA_otpUri) ?>" style="display:none"></div>
                                 </div>
                             </div>
 
@@ -568,6 +623,61 @@ $roleWidgets = match ($userType) {
                     bar.style.width = pct + '%';
                     bar.style.background = pct < 40 ? '#ef4444' : pct < 70 ? '#f59e0b' : '#22c55e';
                 });
+            })();
+
+            (function() {
+                var copyBtn = document.getElementById('copyBackupCodes');
+                var list    = document.getElementById('backupCodesList');
+                if (!copyBtn || !list) return;
+                copyBtn.addEventListener('click', function() {
+                    var codes = [];
+                    list.querySelectorAll('code').forEach(function(c) { codes.push(c.textContent.trim()); });
+                    var text = codes.join('\n');
+                    var done = function() {
+                        var orig = copyBtn.innerHTML;
+                        copyBtn.innerHTML = '<i class="fas fa-check"></i> Copié';
+                        setTimeout(function() { copyBtn.innerHTML = orig; }, 1500);
+                    };
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(text).then(done).catch(function() {});
+                    } else {
+                        var ta = document.createElement('textarea');
+                        ta.value = text; document.body.appendChild(ta); ta.select();
+                        try { document.execCommand('copy'); done(); } catch (e) {}
+                        document.body.removeChild(ta);
+                    }
+                });
+            })();
+
+            (function() {
+                var secretEl = document.getElementById('twofaSecret');
+                var copyBtn  = document.getElementById('copySecret');
+                if (copyBtn && secretEl) {
+                    copyBtn.addEventListener('click', function() {
+                        var text = secretEl.textContent.trim();
+                        var done = function() {
+                            var orig = copyBtn.innerHTML;
+                            copyBtn.innerHTML = '<i class="fas fa-check"></i> Copié';
+                            setTimeout(function() { copyBtn.innerHTML = orig; }, 1500);
+                        };
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(text).then(done).catch(function() {});
+                        } else {
+                            var ta = document.createElement('textarea');
+                            ta.value = text; document.body.appendChild(ta); ta.select();
+                            try { document.execCommand('copy'); done(); } catch (e) {}
+                            document.body.removeChild(ta);
+                        }
+                    });
+                }
+                // Rendu QR optionnel : seulement si une librairie QR locale est chargée.
+                var qr = document.getElementById('twofaQr');
+                if (qr && typeof window.QRCode !== 'undefined') {
+                    try {
+                        new window.QRCode(qr, { text: qr.getAttribute('data-otpauth'), width: 200, height: 200 });
+                        qr.style.display = '';
+                    } catch (e) {}
+                }
             })();
             </script>
 

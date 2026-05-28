@@ -40,9 +40,9 @@ class SendAbsenceNotificationJob
 
         // Récupérer les emails des parents
         $stmt = $pdo->prepare(
-            'SELECT p.email FROM parents p
+            'SELECT p.mail FROM parents p
              JOIN parent_eleve pe ON pe.parent_id = p.id
-             WHERE pe.eleve_id = ? AND p.email IS NOT NULL AND p.email != \'\''
+             WHERE pe.eleve_id = ? AND p.mail IS NOT NULL AND p.mail != \'\''
         );
         $stmt->execute([$eleveId]);
         $parentEmails = $stmt->fetchAll(\PDO::FETCH_COLUMN);

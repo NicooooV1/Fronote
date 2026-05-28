@@ -628,26 +628,26 @@ class DashboardService
     {
         $trimestre = self::getTrimestreCourant();
 
+        // Three aggregates in a single round-trip via scalar subqueries.
         $rows = $this->safeQuery(
-            "SELECT ROUND(AVG(n.note / n.note_sur * 20), 1) AS moyenne
-             FROM notes n WHERE n.id_eleve = ? AND n.trimestre = ?",
-            [$eleveId, $trimestre]
+            "SELECT
+                (SELECT ROUND(AVG(n.note / n.note_sur * 20), 1)
+                   FROM notes n
+                  WHERE n.id_eleve = ? AND n.trimestre = ?) AS moyenne,
+                (SELECT COUNT(*)
+                   FROM devoirs d
+                   LEFT JOIN eleves e ON d.classe = e.classe
+                  WHERE e.id = ? AND d.date_rendu BETWEEN CURDATE()
+                                                      AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)) AS devoirs_semaine,
+                (SELECT COUNT(*)
+                   FROM absences
+                  WHERE id_eleve = ? AND trimestre = ?) AS absences",
+            [$eleveId, $trimestre, $eleveId, $eleveId, $trimestre]
         );
-        $moyenne = $rows[0]['moyenne'] ?? null;
-
-        $rows = $this->safeQuery(
-            "SELECT COUNT(*) AS cnt FROM devoirs d
-             LEFT JOIN eleves e ON d.classe = e.classe
-             WHERE e.id = ? AND d.date_rendu BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)",
-            [$eleveId]
-        );
-        $devoirsSemaine = $rows[0]['cnt'] ?? 0;
-
-        $rows = $this->safeQuery(
-            "SELECT COUNT(*) AS cnt FROM absences WHERE id_eleve = ? AND trimestre = ?",
-            [$eleveId, $trimestre]
-        );
-        $absences = $rows[0]['cnt'] ?? 0;
+        $r              = $rows[0] ?? [];
+        $moyenne        = $r['moyenne'] ?? null;
+        $devoirsSemaine = $r['devoirs_semaine'] ?? 0;
+        $absences       = $r['absences'] ?? 0;
 
         return [
             ['icon' => 'fas fa-chart-line',    'value' => ($moyenne !== null ? $moyenne . '/20' : '-'), 'label' => 'Moyenne generale', 'color' => 'primary'],
@@ -734,22 +734,23 @@ class DashboardService
         $trimestre = self::getTrimestreCourant();
 
         $rows = $this->safeQuery(
-            "SELECT COUNT(*) AS cnt FROM notes WHERE id_professeur = ? AND trimestre = ?",
-            [$profId, $trimestre]
+            "SELECT
+                (SELECT COUNT(*)
+                   FROM notes
+                  WHERE id_professeur = ? AND trimestre = ?) AS notes_saisies,
+                (SELECT COUNT(DISTINCT classe)
+                   FROM devoirs
+                  WHERE id_professeur = ?) AS nb_classes,
+                (SELECT COUNT(*)
+                   FROM devoirs
+                  WHERE id_professeur = ? AND date_rendu BETWEEN CURDATE()
+                                                              AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)) AS devoirs_a_venir",
+            [$profId, $trimestre, $profId, $profId]
         );
-        $notesSaisies = $rows[0]['cnt'] ?? 0;
-
-        $rows = $this->safeQuery(
-            "SELECT COUNT(DISTINCT classe) AS cnt FROM devoirs WHERE id_professeur = ?",
-            [$profId]
-        );
-        $nbClasses = $rows[0]['cnt'] ?? 0;
-
-        $rows = $this->safeQuery(
-            "SELECT COUNT(*) AS cnt FROM devoirs WHERE id_professeur = ? AND date_rendu BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)",
-            [$profId]
-        );
-        $devoirsAVenir = $rows[0]['cnt'] ?? 0;
+        $r             = $rows[0] ?? [];
+        $notesSaisies  = $r['notes_saisies'] ?? 0;
+        $nbClasses     = $r['nb_classes'] ?? 0;
+        $devoirsAVenir = $r['devoirs_a_venir'] ?? 0;
 
         return [
             ['icon' => 'fas fa-chart-bar',   'value' => $notesSaisies,   'label' => 'Notes saisies',           'color' => 'primary'],
@@ -785,19 +786,21 @@ class DashboardService
 
     private function getResumeAdmin(): array
     {
-        $total = 0;
-        foreach (['eleves', 'professeurs', 'vie_scolaire', 'administrateurs'] as $table) {
-            $rows = $this->safeQuery("SELECT COUNT(*) AS cnt FROM {$table} WHERE actif = 1");
-            $total += $rows[0]['cnt'] ?? 0;
-        }
-
+        // Single round-trip — six aggregates rolled into one SELECT.
         $rows = $this->safeQuery(
-            "SELECT COUNT(*) AS cnt FROM evenements WHERE date_debut >= CURDATE()"
+            "SELECT
+                (SELECT COUNT(*) FROM eleves           WHERE actif = 1) AS eleves,
+                (SELECT COUNT(*) FROM professeurs      WHERE actif = 1) AS professeurs,
+                (SELECT COUNT(*) FROM vie_scolaire     WHERE actif = 1) AS vie_scolaire,
+                (SELECT COUNT(*) FROM administrateurs  WHERE actif = 1) AS administrateurs,
+                (SELECT COUNT(*) FROM evenements       WHERE date_debut >= CURDATE()) AS evenements,
+                (SELECT COUNT(*) FROM notes)                              AS notes"
         );
-        $evenements = $rows[0]['cnt'] ?? 0;
-
-        $rows = $this->safeQuery("SELECT COUNT(*) AS cnt FROM notes");
-        $notes = $rows[0]['cnt'] ?? 0;
+        $r          = $rows[0] ?? [];
+        $total      = ($r['eleves'] ?? 0) + ($r['professeurs'] ?? 0)
+                    + ($r['vie_scolaire'] ?? 0) + ($r['administrateurs'] ?? 0);
+        $evenements = $r['evenements'] ?? 0;
+        $notes      = $r['notes'] ?? 0;
 
         return [
             ['icon' => 'fas fa-users',        'value' => $total,      'label' => 'Utilisateurs actifs', 'color' => 'primary'],

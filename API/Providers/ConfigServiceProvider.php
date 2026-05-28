@@ -56,11 +56,29 @@ class ConfigServiceProvider extends ServiceProvider
     {
         // Valider que toutes les variables requises sont définies
         $envLoader = $this->app->make('env.loader');
-        
+
         try {
             $envLoader->validate($this->requiredEnvVars);
         } catch (\RuntimeException $e) {
-            throw new \RuntimeException("Configuration incomplète : " . $e->getMessage());
+            // Si EnvLoader::load() avait déjà échoué (.env absent/illisible),
+            // surfacer la cause racine au lieu de l'erreur générique "vars manquantes".
+            $loadError = null;
+            try { $loadError = $this->app->make('env.load_error'); } catch (\Throwable $_) {}
+
+            if ($loadError instanceof \Throwable) {
+                throw new \RuntimeException(
+                    "Configuration incomplète : " . $loadError->getMessage()
+                    . " — Lancez install.php ou copiez .env.example vers .env et remplissez "
+                    . "DB_HOST, DB_NAME, DB_USER, DB_PASS, APP_BASE_PATH.",
+                    0,
+                    $loadError
+                );
+            }
+
+            throw new \RuntimeException(
+                "Configuration incomplète : " . $e->getMessage()
+                . " — Vérifiez que ces clés sont définies (et non vides) dans le .env."
+            );
         }
     }
 }

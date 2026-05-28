@@ -827,6 +827,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $log[] = ['warn', 'CSRF : ' . $e->getMessage()];
                     }
 
+                    // Synchronisation des modules + migrations SQL par module (non bloquant)
+                    try {
+                        $sdk     = $appInstance->make('module_sdk');
+                        $sync    = $sdk->syncAll();
+                        $migDone = 0;
+                        $migErrs = $sync['errors'] ?? [];
+                        foreach (array_keys($sdk->discover()) as $mk) {
+                            $r        = $sdk->migrate($mk);
+                            $migDone += count($r['executed']);
+                            $migErrs  = array_merge($migErrs, $r['errors']);
+                        }
+                        if (empty($migErrs)) {
+                            $log[] = ['ok', "Modules synchronisés ({$sync['synced']}), migrations exécutées ({$migDone})"];
+                        } else {
+                            $log[] = ['warn', 'Sync modules : ' . count($migErrs) . ' erreur(s) non bloquante(s)'];
+                        }
+                    } catch (Throwable $e) {
+                        $log[] = ['warn', 'Sync modules : ' . $e->getMessage()];
+                    }
+
                 } catch (Throwable $e) {
                     $log[] = ['warn', 'Bootstrap API : ' . $e->getMessage()];
                 }

@@ -943,6 +943,62 @@ CREATE TABLE `edt_modifications` (
   CONSTRAINT `fk_edtmod_edt` FOREIGN KEY (`edt_id`) REFERENCES `emploi_du_temps` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- NOTE migration modulaire : ces 3 tables (enseignant_disponibilites,
+-- enseignant_preferences, edt_maquette) sont aussi déclarées dans
+-- emploi_du_temps/Database/migrations/2.0.0.sql (IF NOT EXISTS). À retirer d'ici
+-- une fois qu'une install neuve a confirmé l'exécution de la migration module.
+-- Indisponibilités enseignants — contrainte DURE du moteur EDT (CDC §7.3).
+-- Une ligne = un créneau récurrent où le prof ne peut pas être planifié.
+CREATE TABLE `enseignant_disponibilites` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `professeur_id` int(11) NOT NULL,
+  `jour` enum('lundi','mardi','mercredi','jeudi','vendredi','samedi') NOT NULL,
+  `creneau_id` int(11) NOT NULL,
+  `type` enum('indisponible','reunion','temps_partiel','formation','autre') NOT NULL DEFAULT 'indisponible',
+  `motif` varchar(255) DEFAULT NULL,
+  `date_creation` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_dispo` (`professeur_id`, `jour`, `creneau_id`),
+  KEY `idx_dispo_prof` (`professeur_id`),
+  CONSTRAINT `fk_dispo_prof` FOREIGN KEY (`professeur_id`) REFERENCES `professeurs` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_dispo_creneau` FOREIGN KEY (`creneau_id`) REFERENCES `creneaux_horaires` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Préférences pédagogiques enseignants — contraintes SOUPLES (CDC §7.1/7.2).
+CREATE TABLE `enseignant_preferences` (
+  `professeur_id` int(11) NOT NULL,
+  `max_heures_jour` int(11) DEFAULT NULL COMMENT 'max créneaux de cours par jour',
+  `max_heures_consecutives` int(11) DEFAULT NULL,
+  `pas_avant` time DEFAULT NULL COMMENT 'pas de cours avant cette heure',
+  `pas_apres` time DEFAULT NULL COMMENT 'pas de cours après cette heure',
+  `eviter_mercredi_apresmidi` tinyint(1) NOT NULL DEFAULT 0,
+  `prefere_matin` tinyint(1) NOT NULL DEFAULT 0,
+  `prefere_journees_groupees` tinyint(1) NOT NULL DEFAULT 0,
+  `extra` JSON DEFAULT NULL COMMENT 'préférences additionnelles extensibles',
+  `date_modification` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`professeur_id`),
+  CONSTRAINT `fk_pref_prof` FOREIGN KEY (`professeur_id`) REFERENCES `professeurs` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Maquette horaire : besoins de cours à planifier — entrée du moteur de génération (CDC §6).
+-- Une ligne = "classe X a besoin de N créneaux de matière M avec prof P".
+CREATE TABLE `edt_maquette` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `classe_id` int(11) NOT NULL,
+  `matiere_id` int(11) NOT NULL,
+  `professeur_id` int(11) NOT NULL,
+  `nb_creneaux` int(11) NOT NULL DEFAULT 1,
+  `type_cours` enum('cours','td','tp','examen','autre') NOT NULL DEFAULT 'cours',
+  `groupe` varchar(50) DEFAULT NULL,
+  `salle_type` varchar(50) DEFAULT NULL COMMENT 'type de salle requis (info, labo…)',
+  `date_creation` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_maquette_classe` (`classe_id`),
+  CONSTRAINT `fk_maquette_classe` FOREIGN KEY (`classe_id`) REFERENCES `classes` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_maquette_matiere` FOREIGN KEY (`matiere_id`) REFERENCES `matieres` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_maquette_prof` FOREIGN KEY (`professeur_id`) REFERENCES `professeurs` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ============================================================
 -- 10. MODULE APPEL / PRÉSENCE (M04)
 -- ============================================================
@@ -1330,6 +1386,33 @@ CREATE TABLE `user_settings` (
   `date_modification` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `unique_user_settings` (`user_id`, `user_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Modules épinglés par utilisateur (accès rapide topbar)
+CREATE TABLE `user_favorites` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `user_type` varchar(20) NOT NULL,
+  `module_key` varchar(64) NOT NULL,
+  `position` int(11) NOT NULL DEFAULT 0,
+  `date_creation` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_user_favorite` (`user_id`, `user_type`, `module_key`),
+  KEY `idx_user_favorites_user` (`user_id`, `user_type`, `position`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Codes de secours 2FA (récupération si l'appareil d'authentification est perdu).
+-- code_hash = SHA-256 du code normalisé. Codes à usage unique (used_at).
+CREATE TABLE `user_backup_codes` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `user_type` varchar(20) NOT NULL,
+  `code_hash` char(64) NOT NULL,
+  `used_at` datetime DEFAULT NULL,
+  `date_creation` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_backup_codes_user` (`user_id`, `user_type`),
+  KEY `idx_backup_codes_lookup` (`user_id`, `user_type`, `code_hash`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================

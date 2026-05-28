@@ -100,6 +100,15 @@ try {
     }
     ulog('Bootstrap test: OK');
 
+    // 5b. Synchroniser les modules + exécuter les migrations SQL en attente.
+    //     Non bloquant : un échec de migration ne doit pas annuler un déploiement
+    //     de code valide (les erreurs sont loguées pour traitement manuel).
+    $migrateScript = $projectRoot . '/scripts/migrate.php';
+    if (file_exists($migrateScript)) {
+        $migOut = urun($phpBin . ' ' . escapeshellarg($migrateScript), $migCode);
+        ulog('Modules sync/migrate: ' . ($migOut ?: '(rien)') . ($migCode !== 0 ? ' [erreurs — voir ci-dessus]' : ''));
+    }
+
     // 6. Lire la nouvelle version
     $versionFile = $projectRoot . '/version.json';
     $newVersion  = 'unknown';

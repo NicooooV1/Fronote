@@ -12,12 +12,16 @@ $dateVue = $_GET['date'] ?? date('Y-m-d');
 $message = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pointer'])) {
-    $ids = $_POST['reservation_ids'] ?? [];
-    $count = 0;
-    foreach ($ids as $rid) {
-        if ($cantineService->pointer((int)$rid, $user['id'])) $count++;
+    if (!validateCSRFToken()) {
+        $message = 'Erreur de sécurité : token CSRF invalide.';
+    } else {
+        $ids = $_POST['reservation_ids'] ?? [];
+        $count = 0;
+        foreach ($ids as $rid) {
+            if ($cantineService->pointer((int)$rid, $user['id'])) $count++;
+        }
+        $message = "$count élève(s) pointé(s).";
     }
-    $message = "$count élève(s) pointé(s).";
 }
 
 $pointage = $cantineService->getPointageJour($dateVue);
@@ -46,6 +50,7 @@ $pointes = array_filter($pointage, fn($r) => $r['statut'] === 'consomme');
         <div class="card-header"><h3>Élèves à pointer</h3></div>
         <div class="card-body">
             <form method="post">
+                <?= csrfField() ?>
                 <input type="hidden" name="pointer" value="1">
                 <div class="pointage-actions">
                     <button type="button" onclick="toggleAll(true)" class="btn btn-sm btn-outline">Tout cocher</button>

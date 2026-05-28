@@ -20,11 +20,11 @@ class TrombinoscopeService {
      */
     public function getElevesClasse(int $classeId): array {
         $stmt = $this->pdo->prepare("
-            SELECT e.id, e.nom, e.prenom, e.date_naissance, e.email, e.genre,
+            SELECT e.id, e.nom, e.prenom, e.date_naissance, e.mail AS email, NULL AS genre,
                    c.nom AS classe_nom, c.niveau AS classe_niveau
             FROM eleves e
-            JOIN classes c ON e.classe_id = c.id
-            WHERE e.classe_id = ?
+            JOIN classes c ON e.classe = c.nom
+            WHERE c.id = ?
             ORDER BY e.nom, e.prenom
         ");
         $stmt->execute([$classeId]);
@@ -36,14 +36,14 @@ class TrombinoscopeService {
      */
     public function getProfesseurs(?int $matiereId = null): array {
         $sql = "
-            SELECT p.id, p.nom, p.prenom, p.email, p.specialite,
+            SELECT p.id, p.nom, p.prenom, p.mail AS email, p.matiere AS specialite,
                    m.nom AS matiere_nom
             FROM professeurs p
-            LEFT JOIN matieres m ON p.matiere_id = m.id
+            LEFT JOIN matieres m ON p.matiere = m.nom
         ";
         $params = [];
         if ($matiereId) {
-            $sql .= " WHERE p.matiere_id = ?";
+            $sql .= " WHERE m.id = ?";
             $params[] = $matiereId;
         }
         $sql .= " ORDER BY p.nom, p.prenom";
@@ -66,11 +66,11 @@ class TrombinoscopeService {
         $like = '%' . $q . '%';
         $stmt = $this->pdo->prepare("
             SELECT 'eleve' AS type, e.id, e.nom, e.prenom, c.nom AS detail
-            FROM eleves e LEFT JOIN classes c ON e.classe_id = c.id
+            FROM eleves e LEFT JOIN classes c ON e.classe = c.nom
             WHERE e.nom LIKE ? OR e.prenom LIKE ?
             UNION ALL
             SELECT 'professeur' AS type, p.id, p.nom, p.prenom, m.nom AS detail
-            FROM professeurs p LEFT JOIN matieres m ON p.matiere_id = m.id
+            FROM professeurs p LEFT JOIN matieres m ON p.matiere = m.nom
             WHERE p.nom LIKE ? OR p.prenom LIKE ?
             ORDER BY nom, prenom
             LIMIT 50
@@ -84,7 +84,7 @@ class TrombinoscopeService {
      */
     public function getVieScolaire(): array {
         return $this->pdo->query("
-            SELECT id, nom, prenom, email FROM vie_scolaire ORDER BY nom, prenom
+            SELECT id, nom, prenom, mail AS email FROM vie_scolaire ORDER BY nom, prenom
         ")->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -141,7 +141,7 @@ class TrombinoscopeService {
     {
         $stmt = $this->pdo->prepare("
             SELECT e.id, e.prenom, e.nom, COALESCE(e.photo_consent, 0) AS photo_consent
-            FROM eleves e WHERE e.classe_id = ?
+            FROM eleves e JOIN classes c ON e.classe = c.nom WHERE c.id = ?
             ORDER BY e.nom, e.prenom
         ");
         $stmt->execute([$classeId]);
@@ -156,8 +156,8 @@ class TrombinoscopeService {
         $stmt = $this->pdo->prepare("
             SELECT e.id, e.prenom, e.nom, e.date_naissance, c.nom AS classe_nom
             FROM eleves e
-            JOIN classes c ON e.classe_id = c.id
-            WHERE e.classe_id = ? AND e.photo_consent = 1
+            JOIN classes c ON e.classe = c.nom
+            WHERE c.id = ? AND e.photo_consent = 1
             ORDER BY e.nom, e.prenom
         ");
         $stmt->execute([$classeId]);
@@ -172,10 +172,10 @@ class TrombinoscopeService {
             $rows = $this->getElevesClasse($classeId);
         } else {
             $rows = $this->pdo->query("
-                SELECT e.id, e.nom, e.prenom, e.date_naissance, e.email, e.genre,
+                SELECT e.id, e.nom, e.prenom, e.date_naissance, e.mail AS email, NULL AS genre,
                        c.nom AS classe_nom, c.niveau AS classe_niveau
                 FROM eleves e
-                LEFT JOIN classes c ON e.classe_id = c.id
+                LEFT JOIN classes c ON e.classe = c.nom
                 ORDER BY c.nom, e.nom, e.prenom
             ")->fetchAll(PDO::FETCH_ASSOC);
         }

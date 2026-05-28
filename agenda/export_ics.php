@@ -6,9 +6,8 @@
  */
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../API/bootstrap.php';
-$bridge = new \Pronote\Legacy\Bridge();
-$bridge->requireAuth();
-$pdo = $bridge->getPDO();
+requireAuth();
+$pdo = getPDO();
 
 require_once __DIR__ . '/includes/EventRepository.php';
 $repo = new EventRepository($pdo);

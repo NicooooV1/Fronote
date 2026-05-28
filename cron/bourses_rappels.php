@@ -22,7 +22,7 @@ if (empty($types)) {
 $sent = 0;
 foreach ($types as $type) {
     // Find parents with enrolled children who haven't submitted
-    $stmt = $pdo->prepare("SELECT DISTINCT p.id, p.email, p.nom, p.prenom
+    $stmt = $pdo->prepare("SELECT DISTINCT p.id, p.mail AS email, p.nom, p.prenom
         FROM parents p
         JOIN parent_eleve pe ON p.id = pe.parent_id
         JOIN eleves e ON pe.eleve_id = e.id AND e.actif = 1

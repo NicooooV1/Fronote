@@ -115,7 +115,62 @@ include 'includes/header.php';
         </div>
         <?php endif; ?>
     </form>
+
+    <?php if (isAdmin() || isVieScolaire()): ?>
+    <div class="filter-group">
+        <button type="button" id="edt-generate-btn" class="btn btn-primary" data-classe="<?= (int)$classeId ?>">
+            <i class="fas fa-wand-magic-sparkles"></i> Générer (aperçu)
+        </button>
+    </div>
+    <?php endif; ?>
 </div>
+
+<?php if (isAdmin() || isVieScolaire()): ?>
+<script>
+(function () {
+    var btn = document.getElementById('edt-generate-btn');
+    if (!btn) return;
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    var csrf = meta ? meta.getAttribute('content') : '';
+
+    function post(action, replace) {
+        return fetch('ajax_generate.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                action: action,
+                source: 'maquette',
+                classe_id: parseInt(btn.dataset.classe || '0', 10) || null,
+                replace: !!replace,
+                csrf_token: csrf
+            })
+        }).then(function (r) { return r.json(); });
+    }
+
+    btn.addEventListener('click', function () {
+        btn.disabled = true;
+        post('preview').then(function (d) {
+            btn.disabled = false;
+            if (!d.success) { alert(d.message || 'Erreur'); return; }
+            var unplaced = d.unplaced ? d.unplaced.length : 0;
+            var trous = d.score ? d.score.trous_classes : '?';
+            var msg = 'Aperçu : ' + d.placed_count + ' cours plaçables, ' + unplaced
+                + ' besoin(s) non planifiés. Trous élèves : ' + trous
+                + '.\n\nAppliquer ? Ceci remplace l\'EDT existant des classes concernées.';
+            if (confirm(msg)) {
+                btn.disabled = true;
+                post('apply', true).then(function (a) {
+                    btn.disabled = false;
+                    if (a.success) { alert(a.applied + ' cours insérés.'); location.reload(); }
+                    else { alert(a.message || 'Échec de l\'application.'); }
+                });
+            }
+        }).catch(function () { btn.disabled = false; alert('Erreur réseau.'); });
+    });
+})();
+</script>
+<?php endif; ?>
 
 <!-- Grille EDT -->
 <?php if (!empty($cours)): ?>

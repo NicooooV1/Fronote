@@ -8,12 +8,16 @@ require_once __DIR__ . '/includes/header.php';
 
 $message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isGestionnaire && isset($_POST['creer'])) {
-    $garderieService->creerCreneau([
-        'nom' => $_POST['nom'], 'type' => $_POST['type'],
-        'heure_debut' => $_POST['heure_debut'], 'heure_fin' => $_POST['heure_fin'],
-        'places_max' => $_POST['places_max'] ?: null, 'tarif' => $_POST['tarif'] ?: null,
-    ]);
-    $message = 'Créneau créé.';
+    if (!validateCSRFToken()) {
+        $message = 'Erreur de sécurité : token CSRF invalide.';
+    } else {
+        $garderieService->creerCreneau([
+            'nom' => $_POST['nom'], 'type' => $_POST['type'],
+            'heure_debut' => $_POST['heure_debut'], 'heure_fin' => $_POST['heure_fin'],
+            'places_max' => $_POST['places_max'] ?: null, 'tarif' => $_POST['tarif'] ?: null,
+        ]);
+        $message = 'Créneau créé.';
+    }
 }
 
 $creneaux = $garderieService->getCreneaux();
@@ -43,6 +47,7 @@ $typeColors = ['matin' => '#f59e0b', 'soir' => '#6366f1', 'mercredi' => '#10b981
         <div class="card-header"><h3>Nouveau créneau</h3></div>
         <div class="card-body">
             <form method="post">
+                <?= csrfField() ?>
                 <input type="hidden" name="creer" value="1">
                 <div class="form-row">
                     <div class="form-group"><label>Nom</label><input type="text" name="nom" required class="form-control" placeholder="Ex: Garderie du matin"></div>

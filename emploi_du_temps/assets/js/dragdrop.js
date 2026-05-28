@@ -85,14 +85,20 @@
         // Optimistic move
         targetCell.appendChild(draggedEl);
 
-        // Persist
+        // CSRF token depuis la meta du header partagé
+        var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        var csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
+
+        // Persist (new_jour reste une chaîne enum : 'lundi'..'samedi')
         fetch('ajax_move_cours.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
             body: JSON.stringify({
                 cours_id: parseInt(coursId, 10),
-                new_jour: parseInt(newJour, 10),
-                new_creneau_id: parseInt(newCreneauId, 10)
+                new_jour: newJour,
+                new_creneau_id: parseInt(newCreneauId, 10),
+                csrf_token: csrfToken
             })
         })
         .then(function (r) { return r.json(); })

@@ -11,7 +11,9 @@ $message = '';
 
 // Réservation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    if ($_POST['action'] === 'reserver') {
+    if (!validateCSRFToken()) {
+        $message = 'Erreur de sécurité : token CSRF invalide. Veuillez recharger la page.';
+    } elseif ($_POST['action'] === 'reserver') {
         $eleveId = (int)($_POST['eleve_id'] ?? $user['id']);
         $dates = $_POST['dates'] ?? [];
         $regime = $_POST['regime'] ?? null;
@@ -64,6 +66,7 @@ if ($isGestionnaire) {
             <div class="card-header"><h3>Réserver mes repas</h3></div>
             <div class="card-body">
                 <form method="post">
+                    <?= csrfField() ?>
                     <input type="hidden" name="action" value="reserver">
                     <input type="hidden" name="eleve_id" value="<?= $user['id'] ?>">
                     <div class="form-group">
@@ -106,6 +109,7 @@ if ($isGestionnaire) {
             <div class="card-header"><h3>Réserver pour <?= htmlspecialchars($enfant['prenom'] . ' ' . $enfant['nom']) ?></h3></div>
             <div class="card-body">
                 <form method="post">
+                    <?= csrfField() ?>
                     <input type="hidden" name="action" value="reserver">
                     <input type="hidden" name="eleve_id" value="<?= $enfant['id'] ?>">
                     <div class="form-group">
@@ -155,6 +159,7 @@ if ($isGestionnaire) {
                             <td>
                                 <?php if ($r['statut'] === 'reserve'): ?>
                                 <form method="post" style="display:inline">
+                                    <?= csrfField() ?>
                                     <input type="hidden" name="action" value="annuler">
                                     <input type="hidden" name="reservation_id" value="<?= $r['id'] ?>">
                                     <button class="btn btn-sm btn-danger"><i class="fas fa-times"></i></button>

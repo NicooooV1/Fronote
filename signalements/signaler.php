@@ -87,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                     </div>
                     <div class="form-group">
                         <label for="date_faits">Date des faits</label>
-                        <input type="date" name="date_faits" id="date_faits" class="form-control" value="<?= $_POST['date_faits'] ?? date('Y-m-d') ?>">
+                        <input type="date" name="date_faits" id="date_faits" class="form-control" value="<?= htmlspecialchars($_POST['date_faits'] ?? date('Y-m-d'), ENT_QUOTES, 'UTF-8') ?>">
                     </div>
                 </div>
 

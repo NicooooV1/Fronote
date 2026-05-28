@@ -65,21 +65,26 @@ class EnvLoader
     }
 
     /**
-     * Vérifie si les variables requises sont définies
+     * Vérifie si les variables requises sont définies (et non vides).
+     * Cohérent avec load() qui écrit dans getenv/$_ENV/$_SERVER.
      */
     public function validate(array $required)
     {
         $missing = [];
 
         foreach ($required as $key) {
-            if (!getenv($key) && !isset($_ENV[$key])) {
+            $val = getenv($key);
+            if ($val === false || $val === '') {
+                $val = $_ENV[$key] ?? $_SERVER[$key] ?? '';
+            }
+            if ($val === '' || $val === null) {
                 $missing[] = $key;
             }
         }
 
         if (!empty($missing)) {
             throw new \RuntimeException(
-                "Impossible de charger la configuration environnement. Variables manquantes: " . 
+                "Impossible de charger la configuration environnement. Variables manquantes: " .
                 implode(', ', $missing)
             );
         }

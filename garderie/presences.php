@@ -13,16 +13,20 @@ $creneauId = isset($_GET['creneau']) ? (int)$_GET['creneau'] : 0;
 $message = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pointer'])) {
-    $presents = $_POST['present'] ?? [];
-    $remarques = $_POST['remarques'] ?? [];
-    foreach ($_POST['inscription_ids'] as $insId) {
-        $garderieService->pointerPresence(
-            (int)$insId, $dateVue,
-            in_array($insId, $presents),
-            $remarques[$insId] ?? null
-        );
+    if (!validateCSRFToken()) {
+        $message = 'Erreur de sécurité : token CSRF invalide.';
+    } else {
+        $presents = $_POST['present'] ?? [];
+        $remarques = $_POST['remarques'] ?? [];
+        foreach ($_POST['inscription_ids'] as $insId) {
+            $garderieService->pointerPresence(
+                (int)$insId, $dateVue,
+                in_array($insId, $presents),
+                $remarques[$insId] ?? null
+            );
+        }
+        $message = 'Présences enregistrées.';
     }
-    $message = 'Présences enregistrées.';
 }
 
 $creneaux = $garderieService->getCreneaux();
@@ -53,6 +57,7 @@ $presences = $garderieService->getPresencesJour($dateVue, $creneauId ?: null);
         <div class="card-header"><h3><?= count($presences) ?> élève(s) attendu(s)</h3></div>
         <div class="card-body">
             <form method="post">
+                <?= csrfField() ?>
                 <input type="hidden" name="pointer" value="1">
                 <table class="table">
                     <thead><tr><th>Présent</th><th>Élève</th><th>Classe</th><th>Créneau</th><th>Remarques</th></tr></thead>
