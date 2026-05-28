@@ -129,34 +129,36 @@ class MarketplaceService
             }
         }
 
-        // Extraire
-        $extracted = $this->extractZip($zipPath, $targetDir);
+        // ─── Extraction dans un répertoire de staging (jamais le dossier live) ───
+        $stagingDir = $this->tempDir . '/_staging_' . $key . '_' . bin2hex(random_bytes(4));
+        $extracted = $this->extractZip($zipPath, $stagingDir);
         @unlink($zipPath);
         if (!$extracted) {
+            $this->removeDirectory($stagingDir);
             return ['success' => false, 'error' => "Échec de l'extraction ZIP."];
         }
 
         // Valider le module.json
-        if (!file_exists($targetDir . '/module.json')) {
-            $this->removeDirectory($targetDir);
+        if (!file_exists($stagingDir . '/module.json')) {
+            $this->removeDirectory($stagingDir);
             return ['success' => false, 'error' => 'module.json absent du package.'];
         }
 
-        $manifest = json_decode(file_get_contents($targetDir . '/module.json'), true);
+        $manifest = json_decode(file_get_contents($stagingDir . '/module.json'), true);
         if (!$manifest || empty($manifest['key'])) {
-            $this->removeDirectory($targetDir);
+            $this->removeDirectory($stagingDir);
             return ['success' => false, 'error' => 'module.json invalide.'];
         }
 
         // ─── Security scan ─────────────────────────────────────────
         $modulePerms = $manifest['required_permissions'] ?? [];
         $scanner = new \API\Security\ModuleScanner($modulePerms);
-        $scanResult = $scanner->scanDirectory($targetDir);
+        $scanResult = $scanner->scanDirectory($stagingDir);
 
         if (!$scanResult['safe']) {
-            // Critical violations → quarantine
+            // Critical violations → quarantine (déplace le staging hors du runtime)
             $quarantine = new QuarantineService($this->basePath);
-            $quarantine->quarantine($key, $targetDir, $scanResult);
+            $quarantine->quarantine($key, $stagingDir, $scanResult);
             return [
                 'success' => false,
                 'error' => 'Module mis en quarantaine : code potentiellement dangereux detecte.',
@@ -165,12 +167,15 @@ class MarketplaceService
             ];
         }
 
-        // ─── Backup existing module before overwrite ────────────────
-        $backupDir = $this->basePath . '/storage/backups/modules';
-        if (!is_dir($backupDir)) @mkdir($backupDir, 0755, true);
-        if (is_dir($this->basePath . '/' . $key)) {
-            $backupPath = $backupDir . '/' . $key . '_' . date('Ymd_His');
-            @rename($this->basePath . '/' . $key, $backupPath);
+        // ─── Bascule atomique : sauvegarde du dossier live existant, puis move staging → live ───
+        if (is_dir($targetDir)) {
+            $backupDir = $this->basePath . '/storage/backups/modules';
+            if (!is_dir($backupDir)) @mkdir($backupDir, 0755, true);
+            @rename($targetDir, $backupDir . '/' . $key . '_' . date('Ymd_His'));
+        }
+        if (!@rename($stagingDir, $targetDir)) {
+            $this->removeDirectory($stagingDir);
+            return ['success' => false, 'error' => "Échec de l'installation : impossible de déplacer le module en place."];
         }
 
         // Sync avec la base de données

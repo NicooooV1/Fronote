@@ -103,13 +103,21 @@ require_once __DIR__ . '/../../templates/shared_header.php';
     foreach ($checks as $name => $check) {
         if ($name === 'healthy') continue;
         if (!is_array($check)) continue;
-        $status = !empty($check['ok']) ? ui_badge('OK', 'success') : ui_badge('ERREUR', 'danger');
+        $statusKey = $check['status'] ?? 'error';
+        $status = match ($statusKey) {
+            'ok'      => ui_badge('OK', 'success'),
+            'warning' => ui_badge('ATTENTION', 'warning'),
+            default   => ui_badge('ERREUR', 'danger'),
+        };
         $details = '';
         if (isset($check['latency_ms'])) $details .= 'Latence: ' . $check['latency_ms'] . 'ms ';
         if (isset($check['free_gb'])) $details .= 'Libre: ' . $check['free_gb'] . ' GB ';
-        if (isset($check['percent_used'])) $details .= '(' . $check['percent_used'] . '% utilise) ';
+        if (isset($check['used_percent'])) $details .= '(' . $check['used_percent'] . '% utilise) ';
         if (isset($check['version'])) $details .= 'v' . $check['version'] . ' ';
-        if (isset($check['error'])) $details .= '<span class="text-danger">' . e($check['error']) . '</span>';
+        if (isset($check['message'])) {
+            $cls = $statusKey === 'ok' ? '' : ' class="text-danger"';
+            $details .= '<span' . $cls . '>' . e($check['message']) . '</span>';
+        }
         $healthRows[] = ['<strong>' . e(ucfirst($name)) . '</strong>', $status, $details ?: '-'];
     }
     echo ui_card('Verifications de sante', ui_table(
