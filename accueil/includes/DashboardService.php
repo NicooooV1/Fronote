@@ -342,21 +342,21 @@ class DashboardService
     {
         $user = $this->getUserInfo($userId, $userType);
         $events = $this->getProchainEvenements($user, 5);
-        return ['type' => 'list', 'items' => $events, 'link' => '../agenda/agenda.php', 'link_label' => 'Voir tout'];
+        return ['type' => 'list', 'items' => $events, 'link' => '../modules/agenda/agenda.php', 'link_label' => 'Voir tout'];
     }
 
     private function renderDevoirsAFaire(int $userId, string $userType): array
     {
         $user = $this->getUserInfo($userId, $userType);
         $devoirs = $this->getDevoirsAFaire($user, 5);
-        return ['type' => 'list', 'items' => $devoirs, 'link' => '../cahierdetextes/cahierdetextes.php', 'link_label' => 'Voir tout'];
+        return ['type' => 'list', 'items' => $devoirs, 'link' => '../modules/cahierdetextes/cahierdetextes.php', 'link_label' => 'Voir tout'];
     }
 
     private function renderDernieresNotes(int $userId, string $userType): array
     {
         $user = $this->getUserInfo($userId, $userType);
         $notes = $this->getDernieresNotes($user, 5);
-        return ['type' => 'list', 'items' => $notes, 'link' => '../notes/notes.php', 'link_label' => 'Voir tout'];
+        return ['type' => 'list', 'items' => $notes, 'link' => '../modules/notes/notes.php', 'link_label' => 'Voir tout'];
     }
 
     private function renderMessagesNonLus(int $userId, string $userType): array
@@ -369,7 +369,7 @@ class DashboardService
             'icon'  => 'fas fa-envelope',
             'color' => $count > 0 ? 'warning' : 'success',
             'trend' => null,
-            'link'  => '../messagerie/index.php',
+            'link'  => '../modules/messagerie/index.php',
             'link_label' => 'Ouvrir la messagerie',
         ];
     }
@@ -385,7 +385,7 @@ class DashboardService
             'icon'  => 'fas fa-calendar-times',
             'color' => $count > 0 ? 'danger' : 'success',
             'trend' => null,
-            'link'  => '../absences/absences.php',
+            'link'  => '../modules/absences/absences.php',
             'link_label' => 'Voir les absences',
             'items' => $absences,
         ];
@@ -433,16 +433,18 @@ class DashboardService
         return [
             'type'  => 'calendar',
             'items' => $cours,
-            'link'  => '../emploi_du_temps/emploi_du_temps.php',
+            'link'  => '../modules/emploi_du_temps/emploi_du_temps.php',
             'link_label' => 'Emploi du temps complet',
         ];
     }
 
+    /** Nombre max de raccourcis affichés (en attendant des favoris choisis par l'utilisateur). */
+    private const MAX_SHORTCUTS = 8;
+
     private function renderRaccourcis(int $userId, string $userType): array
     {
         $modules = $this->getModulesForRole($userType);
-        // Limiter aux 6 premiers
-        $shortcuts = array_slice($modules, 0, 6);
+        $shortcuts = array_slice($modules, 0, self::MAX_SHORTCUTS);
         return ['type' => 'shortcut', 'items' => $shortcuts];
     }
 
@@ -459,7 +461,7 @@ class DashboardService
         return [
             'type'  => 'list',
             'items' => $annonces,
-            'link'  => '../annonces/annonces.php',
+            'link'  => '../modules/annonces/annonces.php',
             'link_label' => 'Toutes les annonces',
         ];
     }
@@ -477,7 +479,7 @@ class DashboardService
         return [
             'type'  => 'list',
             'items' => $reunions,
-            'link'  => '../agenda/agenda.php',
+            'link'  => '../modules/agenda/agenda.php',
             'link_label' => 'Voir l\'agenda',
         ];
     }
@@ -848,7 +850,7 @@ class DashboardService
     {
         $all = [
             'notes' => [
-                'icon' => 'fas fa-chart-bar', 'title' => 'Notes', 'href' => '../notes/notes.php',
+                'icon' => 'fas fa-chart-bar', 'title' => 'Notes', 'href' => '../modules/notes/notes.php',
                 'css' => 'notes-card',
                 'desc' => match ($role) {
                     'professeur'     => 'Saisissez et gerez les notes',
@@ -857,7 +859,7 @@ class DashboardService
                 },
             ],
             'agenda' => [
-                'icon' => 'fas fa-calendar', 'title' => 'Agenda', 'href' => '../agenda/agenda.php',
+                'icon' => 'fas fa-calendar', 'title' => 'Agenda', 'href' => '../modules/agenda/agenda.php',
                 'css' => 'agenda-card',
                 'desc' => match ($role) {
                     'professeur'     => 'Gerez votre planning et vos cours',
@@ -866,7 +868,7 @@ class DashboardService
                 },
             ],
             'cahier' => [
-                'icon' => 'fas fa-book', 'title' => 'Cahier de textes', 'href' => '../cahierdetextes/cahierdetextes.php',
+                'icon' => 'fas fa-book', 'title' => 'Cahier de textes', 'href' => '../modules/cahierdetextes/cahierdetextes.php',
                 'css' => 'devoirs-card',
                 'desc' => match ($role) {
                     'professeur'     => 'Publiez devoirs et contenus de cours',
@@ -875,7 +877,7 @@ class DashboardService
                 },
             ],
             'messagerie' => [
-                'icon' => 'fas fa-envelope', 'title' => 'Messagerie', 'href' => '../messagerie/index.php',
+                'icon' => 'fas fa-envelope', 'title' => 'Messagerie', 'href' => '../modules/messagerie/index.php',
                 'css' => 'messagerie-card',
                 'desc' => match ($role) {
                     'administrateur' => 'Gerez les communications',
@@ -883,7 +885,7 @@ class DashboardService
                 },
             ],
             'absences' => [
-                'icon' => 'fas fa-calendar-times', 'title' => 'Absences', 'href' => '../absences/absences.php',
+                'icon' => 'fas fa-calendar-times', 'title' => 'Absences', 'href' => '../modules/absences/absences.php',
                 'css' => 'absences-card',
                 'desc' => match ($role) {
                     'vie_scolaire'   => 'Gerez les absences et retards',
@@ -892,7 +894,7 @@ class DashboardService
                 },
             ],
             'emploi_du_temps' => [
-                'icon' => 'fas fa-table', 'title' => 'Emploi du temps', 'href' => '../emploi_du_temps/emploi_du_temps.php',
+                'icon' => 'fas fa-table', 'title' => 'Emploi du temps', 'href' => '../modules/emploi_du_temps/emploi_du_temps.php',
                 'css' => 'edt-card',
                 'desc' => match ($role) {
                     'administrateur' => 'Gerez les emplois du temps',
@@ -901,7 +903,7 @@ class DashboardService
                 },
             ],
             'annonces' => [
-                'icon' => 'fas fa-bullhorn', 'title' => 'Annonces', 'href' => '../annonces/annonces.php',
+                'icon' => 'fas fa-bullhorn', 'title' => 'Annonces', 'href' => '../modules/annonces/annonces.php',
                 'css' => 'annonces-card',
                 'desc' => match ($role) {
                     'administrateur' => 'Publiez et gerez les annonces',
@@ -910,7 +912,7 @@ class DashboardService
                 },
             ],
             'appel' => [
-                'icon' => 'fas fa-clipboard-check', 'title' => 'Appel', 'href' => '../appel/appel.php',
+                'icon' => 'fas fa-clipboard-check', 'title' => 'Appel', 'href' => '../modules/appel/appel.php',
                 'css' => 'appel-card',
                 'desc' => match ($role) {
                     'professeur' => 'Faites l\'appel de vos classes',
@@ -918,7 +920,7 @@ class DashboardService
                 },
             ],
             'discipline' => [
-                'icon' => 'fas fa-gavel', 'title' => 'Discipline', 'href' => '../discipline/incidents.php',
+                'icon' => 'fas fa-gavel', 'title' => 'Discipline', 'href' => '../modules/discipline/incidents.php',
                 'css' => 'discipline-card',
                 'desc' => match ($role) {
                     'professeur' => 'Signalez des incidents',
@@ -969,10 +971,13 @@ class DashboardService
         if (isset($_SESSION['etablissement_cache'])) {
             return $_SESSION['etablissement_cache'];
         }
-        $json_file = dirname(__DIR__, 2) . '/login/data/etablissement.json';
-        $data = (file_exists($json_file) && is_readable($json_file))
-            ? (json_decode(file_get_contents($json_file), true) ?: [])
-            : [];
+        // Source de vérité : table etablissements (scopée via EstablishmentContext).
+        $data = [];
+        try {
+            $data = app('etablissement')->getCurrent() ?: [];
+        } catch (\Throwable $e) {
+            $data = [];
+        }
         $_SESSION['etablissement_cache'] = $data;
         return $data;
     }

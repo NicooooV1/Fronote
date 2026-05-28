@@ -107,33 +107,72 @@ if ($_topbar_is_parent && !empty($_SESSION['user_id'])) {
 
     <!-- Category dropdowns (desktop) -->
     <div class="topbar-categories" id="topbar-categories">
-        <!-- Favoris -->
+        <!-- Épingler la page courante (pas sur l'accueil : rien à épingler) -->
+        <?php if (($activePage ?? '') !== 'accueil'): ?>
+        <button class="topbar-dropdown__trigger" type="button" id="topbar-pin-page"
+                title="<?= __('nav.favorite_add', ['default' => 'Épingler cette page']) ?>"
+                onclick="fronotePinCurrentPage()">
+            <i class="far fa-star"></i>
+        </button>
+        <?php endif; ?>
+
+        <!-- Favoris (masqué s'il n'y en a aucun) -->
+        <?php if (!empty($_topbar_favorites)): ?>
         <div class="topbar-dropdown topbar-dropdown--favorites" data-category="favorites">
-            <button class="topbar-dropdown__trigger" type="button" aria-expanded="false" title="<?= __('nav.favorites', ['default' => 'Favoris']) ?>">
+            <button class="topbar-dropdown__trigger" type="button" aria-expanded="false" title="<?= __('nav.favorites') ?>">
                 <i class="fas fa-star"></i>
-                <span><?= __('nav.favorites', ['default' => 'Favoris']) ?></span>
+                <span><?= __('nav.favorites') ?></span>
                 <i class="fas fa-chevron-down topbar-dropdown__arrow"></i>
             </button>
             <div class="topbar-dropdown__menu" id="topbar-favorites-menu">
-                <?php if (empty($_topbar_favorites)): ?>
-                <div class="topbar-dropdown__empty"><?= __('nav.favorites_empty', ['default' => 'Aucun favori. Cliquez ★ sur un module.']) ?></div>
-                <?php else: foreach ($_topbar_favorites as $fav): ?>
+                <?php foreach ($_topbar_favorites as $fav): ?>
+                <?php $_isPage = ($fav['type'] ?? 'module') === 'page'; ?>
                 <div class="topbar-dropdown__item-wrap">
-                    <a href="<?= $rootPrefix . htmlspecialchars($fav['route']) ?>"
+                    <a href="<?= $_isPage ? htmlspecialchars($fav['route']) : ($rootPrefix . htmlspecialchars($fav['route'])) ?>"
                        class="topbar-dropdown__item <?= ($activePage === $fav['module_key']) ? 'active' : '' ?>">
                         <i class="<?= htmlspecialchars($fav['icon'] ?? 'fas fa-circle') ?>"></i>
                         <span><?= htmlspecialchars($fav['label'] ?? $fav['module_key']) ?></span>
                     </a>
+                    <?php if ($_isPage): ?>
+                    <button class="topbar-fav-toggle is-favorite" type="button"
+                            title="<?= __('nav.favorite_remove') ?>"
+                            onclick="fronoteFavRemove('<?= htmlspecialchars($fav['module_key'], ENT_QUOTES) ?>')">
+                        <i class="fas fa-star"></i>
+                    </button>
+                    <?php else: ?>
                     <button class="topbar-fav-toggle is-favorite" type="button"
                             data-module-key="<?= htmlspecialchars($fav['module_key']) ?>"
-                            title="<?= __('nav.favorite_remove', ['default' => 'Retirer des favoris']) ?>"
+                            title="<?= __('nav.favorite_remove') ?>"
                             aria-pressed="true">
                         <i class="fas fa-star"></i>
                     </button>
+                    <?php endif; ?>
                 </div>
-                <?php endforeach; endif; ?>
+                <?php endforeach; ?>
             </div>
         </div>
+        <?php endif; ?>
+
+        <script>
+        (function () {
+            var EP = '<?= $rootPrefix ?>API/endpoints/favorites.php';
+            function csrf() { var m = document.querySelector('meta[name="csrf-token"]'); return m ? m.getAttribute('content') : ''; }
+            function post(body) {
+                return fetch(EP, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+                    body: JSON.stringify(Object.assign({ csrf_token: csrf() }, body))
+                }).then(function (r) { return r.json(); });
+            }
+            window.fronotePinCurrentPage = function () {
+                post({ action: 'add_page', url: window.location.pathname + window.location.search, label: (document.title || '').slice(0, 150) })
+                    .then(function () { window.location.reload(); })
+                    .catch(function () {});
+            };
+            window.fronoteFavRemove = function (key) {
+                post({ action: 'remove', key: key }).then(function () { window.location.reload(); }).catch(function () {});
+            };
+        })();
+        </script>
 
         <?php foreach ($_topbar_modules as $catKey => $category): ?>
         <div class="topbar-dropdown" data-category="<?= htmlspecialchars($catKey) ?>">

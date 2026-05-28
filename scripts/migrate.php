@@ -22,7 +22,7 @@ $skipped  = 0;
 $errors   = $sync['errors'] ?? [];
 
 foreach (array_keys($sdk->discover()) as $key) {
-    $r = $sdk->migrate($key);
+    $r = $sdk->migrate($key, 'cli');
     $executed += count($r['executed']);
     $skipped  += count($r['skipped']);
     $errors    = array_merge($errors, $r['errors']);

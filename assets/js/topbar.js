@@ -307,15 +307,22 @@
             return;
         }
 
+        var esc = function (s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; };
         var html = '';
         for (var i = 0; i < favorites.length; i++) {
             var f = favorites[i];
+            var isPage = f.type === 'page';
+            var href = isPage ? esc(f.route) : (base + esc(f.route));
+            var removeBtn = isPage
+                ? '<button class="topbar-fav-toggle is-favorite" type="button" title="Retirer des favoris"'
+                  + ' onclick="fronoteFavRemove(\'' + esc(f.module_key) + '\')"><i class="fas fa-star"></i></button>'
+                : '<button class="topbar-fav-toggle is-favorite" type="button" data-module-key="' + esc(f.module_key) + '"'
+                  + ' title="Retirer des favoris" aria-pressed="true"><i class="fas fa-star"></i></button>';
             html += '<div class="topbar-dropdown__item-wrap">'
-                  + '<a href="' + base + f.route + '" class="topbar-dropdown__item">'
-                  + '<i class="' + (f.icon || 'fas fa-circle') + '"></i>'
-                  + '<span>' + f.label + '</span></a>'
-                  + '<button class="topbar-fav-toggle is-favorite" type="button" data-module-key="' + f.module_key + '"'
-                  + ' title="Retirer des favoris" aria-pressed="true"><i class="fas fa-star"></i></button>'
+                  + '<a href="' + href + '" class="topbar-dropdown__item">'
+                  + '<i class="' + esc(f.icon || 'fas fa-circle') + '"></i>'
+                  + '<span>' + esc(f.label) + '</span></a>'
+                  + removeBtn
                   + '</div>';
         }
         menu.innerHTML = html;

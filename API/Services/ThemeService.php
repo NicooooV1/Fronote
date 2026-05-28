@@ -25,6 +25,18 @@ class ThemeService
     /** Taille max CSS : 500 Ko */
     private const MAX_CSS_SIZE = 512000;
 
+    /** Tokens éditables depuis le designer (nom => valeur par défaut light). */
+    public const EDITABLE_TOKENS = [
+        '--primary-color'    => '#0f4c81',
+        '--primary-light'    => '#2d7dd2',
+        '--primary-dark'     => '#0a3962',
+        '--background-color' => '#f5f6fa',
+        '--text-color'       => '#333333',
+        '--success-color'    => '#34c759',
+        '--warning-color'    => '#ff9500',
+        '--error-color'      => '#ff3b30',
+    ];
+
     public function __construct(PDO $pdo, string $basePath)
     {
         $this->pdo = $pdo;
@@ -242,10 +254,120 @@ class ThemeService
                 "INSERT INTO theme_token_overrides (theme_key, overrides) VALUES (?, ?)
                  ON DUPLICATE KEY UPDATE overrides = VALUES(overrides)"
             )->execute([$themeKey, json_encode($overrides)]);
+            // Invalider le cache du CSS d'override pour que la modif prenne effet.
+            try { app('client_cache')->forget('theme_overrides_' . $themeKey); } catch (\Throwable $e) { /* non bloquant */ }
             return true;
         } catch (\Throwable $e) {
             return false;
         }
+    }
+
+    /**
+     * Retourne les overrides de tokens enregistrés pour un thème (name => value).
+     */
+    public function getTokenOverrides(string $themeKey): array
+    {
+        try {
+            $stmt = $this->pdo->prepare("SELECT overrides FROM theme_token_overrides WHERE theme_key = ? LIMIT 1");
+            $stmt->execute([$themeKey]);
+            $json = $stmt->fetchColumn();
+            if (!$json) return [];
+            $data = json_decode((string) $json, true);
+            return is_array($data) ? $data : [];
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Chemin CSS relatif VALIDÉ d'un thème installé, ou null.
+     * Empêche toute inclusion de chemin arbitraire depuis la base.
+     */
+    public function cssFileFor(string $key): ?string
+    {
+        if ($key === 'classic') return 'assets/css/theme-classic.css';
+        if ($key === 'glass')   return 'assets/css/theme-glass.css';
+
+        $theme = $this->get($key);
+        $css = $theme['css_file'] ?? null;
+        if (!$css || !preg_match('#^assets/css/theme-[a-z0-9_-]+\.css$#', $css)) {
+            return null;
+        }
+        return is_file($this->basePath . '/' . $css) ? $css : null;
+    }
+
+    /**
+     * Construit le bloc CSS :root des overlays de tokens d'un thème (assaini).
+     * Retourne '' si aucun override valide.
+     */
+    public function renderOverrideCss(string $themeKey): string
+    {
+        $decls = [];
+        foreach ($this->getTokenOverrides($themeKey) as $name => $value) {
+            if (!is_string($name) || !preg_match('/^--[a-z0-9-]+$/i', $name)) continue;
+            $value = trim((string) $value);
+            if ($value === '' || preg_match('/[{}<>;]/', $value)) continue;
+            if ($this->containsDangerousCSS($value)) continue;
+            $decls[] = $name . ': ' . $value;
+        }
+        return empty($decls) ? '' : ':root{' . implode(';', $decls) . '}';
+    }
+
+    // ─── Accessibilité : contraste WCAG ─────────────────────────────
+
+    /**
+     * Ratio de contraste WCAG entre deux couleurs hex (#rrggbb), ou null si non calculable.
+     */
+    public function contrastRatio(string $hex1, string $hex2): ?float
+    {
+        $l1 = $this->relativeLuminance($hex1);
+        $l2 = $this->relativeLuminance($hex2);
+        if ($l1 === null || $l2 === null) return null;
+        [$hi, $lo] = $l1 >= $l2 ? [$l1, $l2] : [$l2, $l1];
+        return round(($hi + 0.05) / ($lo + 0.05), 2);
+    }
+
+    /**
+     * Rapport de contraste sur les paires clés à partir des tokens effectifs (name => hex).
+     * @return array Liste de ['label','ratio','min','pass'].
+     */
+    public function contrastReport(array $tokens): array
+    {
+        $get = fn(string $k) => $tokens[$k] ?? (self::EDITABLE_TOKENS[$k] ?? null);
+        $pairs = [
+            ['Texte sur fond',         $get('--text-color'),    $get('--background-color'), 4.5],
+            ['Texte blanc sur primaire', '#ffffff',             $get('--primary-color'),    4.5],
+            ['Alerte (erreur) sur fond', $get('--error-color'), $get('--background-color'), 3.0],
+        ];
+        $report = [];
+        foreach ($pairs as [$label, $fg, $bg, $min]) {
+            if (!$fg || !$bg) continue;
+            $ratio = $this->contrastRatio((string)$fg, (string)$bg);
+            if ($ratio === null) continue;
+            $report[] = ['label' => $label, 'ratio' => $ratio, 'min' => $min, 'pass' => $ratio >= $min];
+        }
+        return $report;
+    }
+
+    private function relativeLuminance(string $hex): ?float
+    {
+        $rgb = $this->hexToRgb($hex);
+        if ($rgb === null) return null;
+        $lin = array_map(static function ($c) {
+            $c /= 255;
+            return $c <= 0.03928 ? $c / 12.92 : (($c + 0.055) / 1.055) ** 2.4;
+        }, $rgb);
+        return 0.2126 * $lin[0] + 0.7152 * $lin[1] + 0.0722 * $lin[2];
+    }
+
+    private function hexToRgb(string $hex): ?array
+    {
+        $hex = ltrim(trim($hex), '#');
+        if (strlen($hex) === 3) {
+            $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+        }
+        if (!preg_match('/^[0-9a-fA-F]{6}$/', $hex)) return null;
+        return [hexdec(substr($hex, 0, 2)), hexdec(substr($hex, 2, 2)), hexdec(substr($hex, 4, 2))];
     }
 
     // ─── Helpers ────────────────────────────────────────────────────

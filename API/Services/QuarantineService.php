@@ -55,7 +55,7 @@ class QuarantineService
     public function approve(string $key): bool
     {
         $quarantineDir = $this->quarantinePath . '/' . $key;
-        $targetDir = $this->basePath . '/' . $key;
+        $targetDir = $this->basePath . '/modules/' . $key;
 
         if (!is_dir($quarantineDir)) {
             return false;

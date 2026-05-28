@@ -122,6 +122,21 @@ class ModuleService
             return false; // Modules core ne peuvent pas être désactivés
         }
 
+        // À l'ACTIVATION : injecter + vérifier le SQL du module avant d'activer.
+        // Si le provisioning échoue, on n'active pas (pas de module à moitié installé).
+        if ($enabled) {
+            try {
+                $prov = app('module_sdk')->provisionSql($key);
+                if (empty($prov['success'])) {
+                    error_log("ModuleService::setEnabled — provisioning SQL échoué pour '{$key}' : " . implode(' | ', $prov['errors'] ?? []));
+                    return false;
+                }
+            } catch (\Throwable $e) {
+                error_log("ModuleService::setEnabled — provisioning error '{$key}': " . $e->getMessage());
+                return false;
+            }
+        }
+
         try {
             $stmt = $this->pdo->prepare("UPDATE modules_config SET enabled = ? WHERE module_key = ? AND is_core = 0");
             $result = $stmt->execute([(int)$enabled, $key]);
@@ -295,7 +310,8 @@ class ModuleService
         if ($module !== null && !empty($module['route_path'])) {
             return $module['route_path'];
         }
-        return $moduleKey . '/' . $moduleKey . '.php';
+        // Fallback : nouvelle structure modulaire (modules/<key>/<key>.php).
+        return 'modules/' . $moduleKey . '/' . $moduleKey . '.php';
     }
 
     /**
@@ -469,21 +485,123 @@ class ModuleService
      */
     public function getFavorites(int $userId, string $userType, string $role): array
     {
-        $keys = $this->getFavoriteKeys($userId, $userType);
-        if (empty($keys)) return [];
+        $this->ensureFavoritesColumns();
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT module_key, target_type, target_url, label, icon
+                 FROM user_favorites WHERE user_id = ? AND user_type = ? ORDER BY position, id"
+            );
+            $stmt->execute([$userId, $userType]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (\PDOException $e) {
+            error_log("ModuleService::getFavorites error: " . $e->getMessage());
+            return [];
+        }
 
         $all = $this->getAll();
         $favorites = [];
-        foreach ($keys as $key) {
+        foreach ($rows as $row) {
+            if (($row['target_type'] ?? 'module') === 'page') {
+                // Favori de page : métadonnées stockées, URL interne déjà absolue.
+                $favorites[] = [
+                    'module_key' => $row['module_key'],
+                    'label'      => $row['label'] ?: 'Page',
+                    'icon'       => $row['icon'] ?: 'fas fa-bookmark',
+                    'route'      => $row['target_url'] ?? '#',
+                    'type'       => 'page',
+                ];
+                continue;
+            }
+            $key = $row['module_key'];
             if (!isset($all[$key])) continue;
             $mod = $all[$key];
             if (empty($mod['enabled'])) continue;
             if (!$this->isVisibleForRole($key, $role)) continue;
             $mod['route'] = $this->getRoute($key);
             $mod['module_key'] = $key;
+            $mod['type'] = 'module';
             $favorites[] = $mod;
         }
         return $favorites;
+    }
+
+    /**
+     * Garantit la présence des colonnes étendues de user_favorites
+     * (auto-réparation des bases antérieures à l'ajout des favoris de page).
+     */
+    private bool $favColsEnsured = false;
+    private function ensureFavoritesColumns(): void
+    {
+        if ($this->favColsEnsured) {
+            return;
+        }
+        $this->favColsEnsured = true;
+        $columns = [
+            "ADD COLUMN `target_type` ENUM('module','page') NOT NULL DEFAULT 'module'",
+            "ADD COLUMN `target_url` VARCHAR(255) NULL",
+            "ADD COLUMN `label` VARCHAR(150) NULL",
+            "ADD COLUMN `icon` VARCHAR(64) NULL",
+        ];
+        foreach ($columns as $clause) {
+            try {
+                $this->pdo->exec("ALTER TABLE `user_favorites` {$clause}");
+            } catch (\Throwable $e) {
+                // Colonne déjà présente → ignorer.
+            }
+        }
+    }
+
+    /**
+     * Épingle une page arbitraire (chemin app interne). Idempotent.
+     */
+    public function addPageFavorite(int $userId, string $userType, string $url, string $label, string $icon = 'fas fa-bookmark'): bool
+    {
+        $this->ensureFavoritesColumns();
+        $url = trim($url);
+        // N'accepter qu'un chemin interne absolu (pas d'URL externe ni de schéma).
+        if ($url === '' || !preg_match('#^/[A-Za-z0-9_\-./?=&%,]*$#', $url)) {
+            return false;
+        }
+        $key = 'page:' . sha1($url);
+        $label = mb_substr(trim($label) !== '' ? trim($label) : $url, 0, 150);
+        if (!preg_match('/^[a-z0-9 _-]{1,64}$/i', $icon)) {
+            $icon = 'fas fa-bookmark';
+        }
+        try {
+            $chk = $this->pdo->prepare("SELECT 1 FROM user_favorites WHERE user_id = ? AND user_type = ? AND module_key = ? LIMIT 1");
+            $chk->execute([$userId, $userType, $key]);
+            if ($chk->fetchColumn()) {
+                return true; // déjà épinglé
+            }
+            $posStmt = $this->pdo->prepare("SELECT COALESCE(MAX(position), -1) + 1 FROM user_favorites WHERE user_id = ? AND user_type = ?");
+            $posStmt->execute([$userId, $userType]);
+            $position = (int) $posStmt->fetchColumn();
+
+            $stmt = $this->pdo->prepare(
+                "INSERT INTO user_favorites (user_id, user_type, module_key, target_type, target_url, label, icon, position)
+                 VALUES (?, ?, ?, 'page', ?, ?, ?, ?)"
+            );
+            $stmt->execute([$userId, $userType, $key, $url, $label, $icon, $position]);
+            return true;
+        } catch (\PDOException $e) {
+            error_log("ModuleService::addPageFavorite error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Retire un favori (module ou page) par sa clé.
+     */
+    public function removeFavorite(int $userId, string $userType, string $key): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare("DELETE FROM user_favorites WHERE user_id = ? AND user_type = ? AND module_key = ?");
+            $stmt->execute([$userId, $userType, $key]);
+            return true;
+        } catch (\PDOException $e) {
+            error_log("ModuleService::removeFavorite error: " . $e->getMessage());
+            return false;
+        }
     }
 
     public function isFavorite(int $userId, string $userType, string $key): bool

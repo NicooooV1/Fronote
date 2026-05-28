@@ -36,6 +36,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === ($
             logAudit('marketplace.uninstall', 'marketplace_installs', null, null, ['module' => $key]);
         }
     }
+
+    if ($action === 'rollback' && $key) {
+        $result = $marketplace->rollback($key);
+        $message = $result['message'] ?? $result['error'] ?? '';
+        $messageType = $result['success'] ? 'success' : 'error';
+        if ($result['success']) {
+            logAudit('marketplace.rollback', 'marketplace_installs', null, null, ['module' => $key]);
+        }
+    }
 }
 
 // ─── Données ─────────────────────────────────────────────────────
@@ -146,12 +155,20 @@ include __DIR__ . '/../includes/header.php';
                 </div>
             </div>
             <?php if ($isInstalled): ?>
-            <form method="POST" style="display:inline" onsubmit="return confirm('Désinstaller ce module ?')">
-                <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
-                <input type="hidden" name="action" value="uninstall">
-                <input type="hidden" name="module_key" value="<?= htmlspecialchars($item['key'] ?? '') ?>">
-                <button class="mp-btn mp-btn-uninstall" type="submit"><i class="fas fa-trash"></i> Désinstaller</button>
-            </form>
+            <div style="display:flex;gap:6px">
+                <form method="POST" style="display:inline" onsubmit="return confirm('Restaurer la dernière sauvegarde de ce module ?')">
+                    <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                    <input type="hidden" name="action" value="rollback">
+                    <input type="hidden" name="module_key" value="<?= htmlspecialchars($item['key'] ?? '') ?>">
+                    <button class="mp-btn" style="background:#ed8936;color:#fff" type="submit" title="Restaurer la dernière sauvegarde"><i class="fas fa-undo"></i></button>
+                </form>
+                <form method="POST" style="display:inline" onsubmit="return confirm('Désinstaller ce module ?')">
+                    <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                    <input type="hidden" name="action" value="uninstall">
+                    <input type="hidden" name="module_key" value="<?= htmlspecialchars($item['key'] ?? '') ?>">
+                    <button class="mp-btn mp-btn-uninstall" type="submit"><i class="fas fa-trash"></i> Désinstaller</button>
+                </form>
+            </div>
             <?php else: ?>
             <form method="POST" style="display:inline">
                 <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">

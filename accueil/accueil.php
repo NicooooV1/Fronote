@@ -201,13 +201,35 @@ function renderStatWidget(array $data): void
 
 function renderChartWidget(array $data, string $widgetKey): void
 {
-    echo '<div class="widget-chart-placeholder" data-widget="' . htmlspecialchars($widgetKey) . '">';
-    echo '  <div class="chart-area" id="chart-' . htmlspecialchars($widgetKey) . '">';
-    echo '    <div class="chart-placeholder-content">';
-    echo '      <i class="fas fa-chart-area"></i>';
-    echo '      <p>Graphique disponible prochainement</p>';
-    echo '    </div>';
-    echo '  </div>';
+    $items = $data['items'] ?? [];
+
+    // Normaliser en paires {label, value} à partir de clés usuelles.
+    $rows = [];
+    foreach ($items as $it) {
+        if (!is_array($it)) continue;
+        $label = $it['label'] ?? $it['nom'] ?? $it['title'] ?? $it['name'] ?? '';
+        $value = $it['value'] ?? $it['count'] ?? $it['total'] ?? $it['nb'] ?? null;
+        if ($value === null || !is_numeric($value)) continue;
+        $rows[] = ['label' => (string) $label, 'value' => (float) $value];
+    }
+
+    if (empty($rows)) {
+        echo '<div class="empty-widget-message"><i class="fas fa-chart-area"></i><p>Aucune donnée à afficher</p></div>';
+        return;
+    }
+
+    $max = max(array_map(static fn($r) => $r['value'], $rows)) ?: 1;
+
+    echo '<div class="widget-chart-bars" data-widget="' . htmlspecialchars($widgetKey) . '">';
+    foreach ($rows as $r) {
+        $pct = max(2, (int) round($r['value'] / $max * 100));
+        $val = rtrim(rtrim(number_format($r['value'], 1, '.', ' '), '0'), '.');
+        echo '<div class="chart-bar-row">';
+        echo '  <span class="chart-bar-label">' . htmlspecialchars($r['label']) . '</span>';
+        echo '  <span class="chart-bar-track"><span class="chart-bar-fill" style="width:' . $pct . '%"></span></span>';
+        echo '  <span class="chart-bar-value">' . htmlspecialchars($val) . '</span>';
+        echo '</div>';
+    }
     echo '</div>';
 }
 

@@ -41,6 +41,7 @@ function favorites_payload($modules, int $userId, string $userType, string $role
             'label'      => $m['label'] ?? $m['module_key'],
             'icon'       => $m['icon'] ?? 'fas fa-circle',
             'route'      => $m['route'] ?? '',
+            'type'       => $m['type'] ?? 'module',
         ];
     }, $favs);
 }
@@ -61,6 +62,36 @@ switch ($action) {
         echo json_encode([
             'success'   => true,
             'favorite'  => $isFav,
+            'favorites' => favorites_payload($modules, $userId, $userType, $role),
+        ]);
+        break;
+
+    case 'add_page':
+        $url   = trim((string) ($input['url'] ?? ''));
+        $label = trim((string) ($input['label'] ?? ''));
+        $icon  = trim((string) ($input['icon'] ?? 'fas fa-bookmark'));
+        if ($url === '') {
+            http_response_code(400);
+            echo json_encode(['error' => 'Missing url']);
+            break;
+        }
+        $ok = $modules->addPageFavorite($userId, $userType, $url, $label, $icon);
+        echo json_encode([
+            'success'   => $ok,
+            'favorites' => favorites_payload($modules, $userId, $userType, $role),
+        ]);
+        break;
+
+    case 'remove':
+        $key = trim((string) ($input['key'] ?? $input['module_key'] ?? ''));
+        if ($key === '') {
+            http_response_code(400);
+            echo json_encode(['error' => 'Missing key']);
+            break;
+        }
+        $modules->removeFavorite($userId, $userType, $key);
+        echo json_encode([
+            'success'   => true,
             'favorites' => favorites_payload($modules, $userId, $userType, $role),
         ]);
         break;

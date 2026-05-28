@@ -1393,7 +1393,11 @@ CREATE TABLE `user_favorites` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `user_type` varchar(20) NOT NULL,
-  `module_key` varchar(64) NOT NULL,
+  `module_key` varchar(64) NOT NULL COMMENT 'clé module, ou page:<sha1(url)> pour un favori de page',
+  `target_type` enum('module','page') NOT NULL DEFAULT 'module',
+  `target_url` varchar(255) DEFAULT NULL COMMENT 'chemin app interne pour les favoris de page',
+  `label` varchar(150) DEFAULT NULL,
+  `icon` varchar(64) DEFAULT NULL,
   `position` int(11) NOT NULL DEFAULT 0,
   `date_creation` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -2321,7 +2325,7 @@ CREATE TABLE `modules_config` (
   `icon` varchar(50) NOT NULL DEFAULT 'fas fa-puzzle-piece',
   `route_path` varchar(100) DEFAULT NULL,
   `category` varchar(50) NOT NULL DEFAULT 'general',
-  `enabled` tinyint(1) NOT NULL DEFAULT 1,
+  `enabled` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Désactivé par défaut ; activé via l''admin (injecte+vérifie le SQL du module)',
   `establishment_types` JSON DEFAULT NULL COMMENT 'null = tous types d''établissement',
   `config_json` text DEFAULT NULL,
   `roles_autorises` json DEFAULT NULL COMMENT 'Rôles autorisés à voir ce module (null = tous)',
@@ -3281,8 +3285,15 @@ CREATE TABLE `module_migrations` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `module_key` VARCHAR(50) NOT NULL,
   `migration_file` VARCHAR(100) NOT NULL,
+  `migration_version` VARCHAR(50) NULL,
+  `checksum` VARCHAR(64) NULL,
+  `status` ENUM('success','failed','rolled_back') NOT NULL DEFAULT 'success',
+  `error_message` TEXT NULL,
+  `execution_time_ms` INT NULL,
+  `triggered_by` VARCHAR(100) NULL,
   `executed_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY `uk_module_migration` (`module_key`, `migration_file`)
+  UNIQUE KEY `uk_module_migration` (`module_key`, `migration_file`),
+  KEY `idx_mig_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================

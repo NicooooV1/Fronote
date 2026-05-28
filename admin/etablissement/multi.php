@@ -45,8 +45,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'toggle') {
         $id = (int) ($_POST['id'] ?? 0);
         $actif = (int) ($_POST['actif'] ?? 0);
-        $pdo->prepare("UPDATE etablissements SET actif = ? WHERE id = ?")->execute([$actif, $id]);
-        $message = 'success:' . __('admin.establishment_updated');
+        // Empêcher d'archiver le dernier établissement actif (sinon le scope n'a plus de défaut).
+        if ($actif === 0) {
+            $activeCount = (int) $pdo->query("SELECT COUNT(*) FROM etablissements WHERE actif = 1")->fetchColumn();
+            if ($activeCount <= 1) {
+                $message = "error:Impossible d'archiver le dernier établissement actif.";
+            }
+        }
+        if (strncmp($message, 'error:', 6) !== 0) {
+            $pdo->prepare("UPDATE etablissements SET actif = ? WHERE id = ?")->execute([$actif, $id]);
+            $message = 'success:' . __('admin.establishment_updated');
+        }
     }
 }
 
@@ -108,6 +117,15 @@ $pageTitle = __('admin.establishments');
                         <a href="switch.php?id=<?= $etab['id'] ?>" class="btn btn-sm btn-outline" title="<?= __('admin.switch_to') ?>">
                             <i class="fas fa-exchange-alt"></i>
                         </a>
+                        <form method="POST" style="display:inline" onsubmit="return confirm('<?= $etab['actif'] ? 'Archiver' : 'Activer' ?> cet établissement ?')">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="toggle">
+                            <input type="hidden" name="id" value="<?= $etab['id'] ?>">
+                            <input type="hidden" name="actif" value="<?= $etab['actif'] ? 0 : 1 ?>">
+                            <button type="submit" class="btn btn-sm btn-outline" title="<?= $etab['actif'] ? 'Archiver' : 'Activer' ?>">
+                                <i class="fas fa-<?= $etab['actif'] ? 'box-archive' : 'check' ?>"></i>
+                            </button>
+                        </form>
                     </td>
                 </tr>
                 <?php endforeach; ?>

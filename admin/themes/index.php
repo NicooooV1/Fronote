@@ -52,12 +52,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === ($
         $message = $result['message'] ?? $result['error'] ?? '';
         $messageType = $result['success'] ? 'success' : 'error';
     }
+
+    if ($action === 'save_tokens') {
+        $targetTheme = preg_match('/^[a-z0-9_-]{2,30}$/', $_POST['target_theme'] ?? '') ? $_POST['target_theme'] : 'classic';
+        $raw = $_POST['tok'] ?? [];
+        $overrides = [];
+        foreach (\API\Services\ThemeService::EDITABLE_TOKENS as $name => $default) {
+            $v = trim($raw[$name] ?? '');
+            if ($v !== '' && preg_match('/^#[0-9a-fA-F]{6}$/', $v)) {
+                $overrides[$name] = $v;
+            }
+        }
+        $themeService->saveTokenOverrides($targetTheme, $overrides);
+        logAudit('theme.tokens_saved', 'theme_token_overrides', null, null, ['theme' => $targetTheme]);
+
+        // Validation contraste (WCAG) sur les couleurs effectives.
+        $report = $themeService->contrastReport(array_merge(\API\Services\ThemeService::EDITABLE_TOKENS, $overrides));
+        $fails = array_filter($report, static fn($r) => !$r['pass']);
+        if (empty($fails)) {
+            $message = "Tokens enregistrés pour « {$targetTheme} ». Contraste WCAG : OK.";
+            $messageType = 'success';
+        } else {
+            $warns = array_map(static fn($r) => $r['label'] . ' (' . $r['ratio'] . ':1 < ' . $r['min'] . ')', $fails);
+            $message = "Tokens enregistrés pour « {$targetTheme} », mais contraste insuffisant : " . implode(' ; ', $warns) . '.';
+            $messageType = 'error';
+        }
+    }
 }
 
 // ─── Données ─────────────────────────────────────────────────────
 $themes = $themeService->getAll();
 $defaultTheme = $themeService->getDefault();
 $tokens = $themeService->getTokens();
+
+// Designer : thème en cours d'édition + overrides existants + rapport contraste.
+$editTheme = preg_match('/^[a-z0-9_-]{2,30}$/', $_GET['edit_theme'] ?? '') ? $_GET['edit_theme'] : 'classic';
+$editOverrides = $themeService->getTokenOverrides($editTheme);
+$editEffective = array_merge(\API\Services\ThemeService::EDITABLE_TOKENS, $editOverrides);
+$editContrast = $themeService->contrastReport($editEffective);
 $remoteCatalog = [];
 try {
     $remoteCatalog = app('marketplace')->getCatalog('theme');
@@ -207,6 +239,65 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 <?php endif; ?>
+
+<!-- Designer de tokens (couleurs) -->
+<div class="th-section">
+    <h3><i class="fas fa-palette"></i> Designer de couleurs</h3>
+    <p style="font-size:.85em;color:#718096;margin-bottom:12px">
+        Personnalisez les couleurs d'un thème sans toucher au CSS. Les valeurs sont appliquées par-dessus le thème (variables <code>:root</code>) et le contraste est vérifié (WCAG AA).
+    </p>
+
+    <form method="GET" style="margin-bottom:14px">
+        <label style="font-size:.85em;color:#4a5568;font-weight:600;margin-right:8px">Thème à personnaliser :</label>
+        <select name="edit_theme" onchange="this.form.submit()" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px">
+            <?php foreach ($themes as $t): ?>
+            <option value="<?= htmlspecialchars($t['key']) ?>" <?= $t['key'] === $editTheme ? 'selected' : '' ?>><?= htmlspecialchars($t['name'] ?? $t['key']) ?></option>
+            <?php endforeach; ?>
+        </select>
+    </form>
+
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+        <input type="hidden" name="action" value="save_tokens">
+        <input type="hidden" name="target_theme" value="<?= htmlspecialchars($editTheme) ?>">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:16px">
+            <?php
+            $tokenLabels = [
+                '--primary-color' => 'Couleur principale', '--primary-light' => 'Principale (claire)',
+                '--primary-dark' => 'Principale (foncée)', '--background-color' => 'Fond',
+                '--text-color' => 'Texte', '--success-color' => 'Succès',
+                '--warning-color' => 'Avertissement', '--error-color' => 'Erreur / danger',
+            ];
+            foreach (\API\Services\ThemeService::EDITABLE_TOKENS as $name => $default):
+                $val = $editOverrides[$name] ?? $default;
+                if (!preg_match('/^#[0-9a-fA-F]{6}$/', $val)) $val = $default;
+            ?>
+            <label style="display:flex;align-items:center;gap:10px;font-size:.85em;color:#4a5568">
+                <input type="color" name="tok[<?= htmlspecialchars($name) ?>]" value="<?= htmlspecialchars($val) ?>" style="width:38px;height:38px;border:1px solid #e2e8f0;border-radius:6px;padding:2px;cursor:pointer">
+                <span><?= htmlspecialchars($tokenLabels[$name] ?? $name) ?><br><code style="font-size:.85em;color:#a0aec0"><?= htmlspecialchars($name) ?></code></span>
+            </label>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- Rapport de contraste WCAG -->
+        <div style="background:#f7fafc;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:.85em">
+            <strong style="color:#4a5568">Contraste (WCAG AA)</strong>
+            <?php foreach ($editContrast as $c): ?>
+            <div style="display:flex;justify-content:space-between;padding:3px 0">
+                <span><?= htmlspecialchars($c['label']) ?></span>
+                <span style="font-weight:600;color:<?= $c['pass'] ? '#276749' : '#c53030' ?>">
+                    <?= $c['ratio'] ?>:1 <?= $c['pass'] ? '✓' : '✗ (min ' . $c['min'] . ')' ?>
+                </span>
+            </div>
+            <?php endforeach; ?>
+        </div>
+
+        <button class="th-btn th-btn-primary" type="submit"><i class="fas fa-save"></i> Enregistrer les couleurs</button>
+        <?php if (!empty($editOverrides)): ?>
+        <span style="font-size:.8em;color:#a0aec0;margin-left:10px"><?= count($editOverrides) ?> override(s) actif(s) sur ce thème</span>
+        <?php endif; ?>
+    </form>
+</div>
 
 <!-- Token editor preview -->
 <?php if (!empty($tokens)): ?>

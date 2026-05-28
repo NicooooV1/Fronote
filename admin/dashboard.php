@@ -261,6 +261,11 @@ include 'includes/header.php';
     <div class="admin-cards-section">
         <div class="admin-cards-section-title"><i class="fas fa-school"></i> Établissement</div>
         <div class="admin-cards-grid">
+            <a href="etablissement/multi.php" class="admin-card">
+                <div class="admin-card-icon"><i class="fas fa-building"></i></div>
+                <div class="admin-card-title">Établissements</div>
+                <div class="admin-card-stat">Créer, archiver, basculer</div>
+            </a>
             <a href="etablissement/info.php" class="admin-card">
                 <div class="admin-card-icon"><i class="fas fa-school"></i></div>
                 <div class="admin-card-title">Informations générales</div>
@@ -292,6 +297,11 @@ include 'includes/header.php';
                 <div class="admin-card-icon"><i class="fas fa-history"></i></div>
                 <div class="admin-card-title">Journal d'audit</div>
                 <div class="admin-card-stat">Traçabilité complète</div>
+            </a>
+            <a href="systeme/code_audit.php" class="admin-card">
+                <div class="admin-card-icon"><i class="fas fa-clipboard-check"></i></div>
+                <div class="admin-card-title">Audit code</div>
+                <div class="admin-card-stat">Qualité & coquilles vides</div>
             </a>
             <a href="systeme/stats.php" class="admin-card">
                 <div class="admin-card-icon"><i class="fas fa-chart-bar"></i></div>

@@ -420,7 +420,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $success = '✅ Connexion MySQL vérifiée avec succès';
         }
 
-        // ── Étape 3 : configuration application + établissement ────────────
+        // ── Étape 3 : configuration application + SMTP ─────────────────────
         elseif ($postStep === 3) {
             $appName           = trim($_POST['app_name'] ?? 'Fronote');
             $appEnv            = $_POST['app_env'] ?? 'production';
@@ -438,42 +438,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Environnement invalide.');
             }
 
-            // Établissement
-            $etabNom       = trim($_POST['etab_nom'] ?? '');
-            $etabAdresse   = trim($_POST['etab_adresse'] ?? '');
-            $etabCp        = trim($_POST['etab_cp'] ?? '');
-            $etabVille     = trim($_POST['etab_ville'] ?? '');
-            $etabTel       = trim($_POST['etab_tel'] ?? '');
-            $etabEmail     = trim($_POST['etab_email'] ?? '');
-            $etabAcademie  = trim($_POST['etab_academie'] ?? '');
-            $etabType      = $_POST['etab_type'] ?? 'college';
-
-            if ($etabNom === '') throw new RuntimeException("Le nom de l'établissement est requis.");
-
-            // Périodes
-            $periodeSystem = $_POST['periode_system'] ?? 'trimestre';
-            $periodes = [];
-            if ($periodeSystem === 'trimestre') {
-                $periodes = [
-                    ['nom' => '1er trimestre',  'debut' => $_POST['p1_debut'] ?? '', 'fin' => $_POST['p1_fin'] ?? ''],
-                    ['nom' => '2ème trimestre', 'debut' => $_POST['p2_debut'] ?? '', 'fin' => $_POST['p2_fin'] ?? ''],
-                    ['nom' => '3ème trimestre', 'debut' => $_POST['p3_debut'] ?? '', 'fin' => $_POST['p3_fin'] ?? ''],
-                ];
-            } else {
-                $periodes = [
-                    ['nom' => '1er semestre',  'debut' => $_POST['s1_debut'] ?? '', 'fin' => $_POST['s1_fin'] ?? ''],
-                    ['nom' => '2ème semestre', 'debut' => $_POST['s2_debut'] ?? '', 'fin' => $_POST['s2_fin'] ?? ''],
-                ];
-            }
-
             $inst['app'] = compact(
                 'appName', 'appEnv', 'appDebug', 'appUrl', 'baseUrlIn',
                 'csrfLifetime', 'sessionLifetime', 'sessionName',
                 'maxLoginAttempts', 'rateLimitAttempts', 'rateLimitDecay'
-            );
-            $inst['etab'] = compact(
-                'etabNom', 'etabAdresse', 'etabCp', 'etabVille', 'etabTel',
-                'etabEmail', 'etabAcademie', 'etabType', 'periodeSystem', 'periodes'
             );
 
             // SMTP (optionnel — peut être configuré après l'installation)
@@ -485,7 +453,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'username'     => trim($_POST['smtp_username'] ?? ''),
                 'password'     => $_POST['smtp_password'] ?? '',
                 'encryption'   => $_POST['smtp_encryption'] ?? 'tls',
-                'from_address' => trim($_POST['smtp_from_address'] ?? $etabEmail),
+                'from_address' => trim($_POST['smtp_from_address'] ?? ''),
                 'from_name'    => trim($_POST['smtp_from_name'] ?? $appName),
             ];
 
@@ -672,97 +640,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $adminId = $pdo->lastInsertId();
             $log[] = ['ok', "Administrateur créé (ID {$adminId}) — identifiant : <strong>admin</strong>"];
 
-            // 5f-bis — Établissement en BDD (table etablissement_info)
-            $etab = $inst['etab'] ?? [];
-            if (!empty($etab)) {
-                $type = $etab['etabType'] ?? 'college';
-
-                // Mettre à jour la ligne par défaut (id=1) créée par pronote.sql
-                try {
-                    $stmt = $pdo->prepare("
-                        UPDATE etablissements SET
-                            nom = ?, adresse = ?, code_postal = ?, ville = ?,
-                            telephone = ?, email = ?, academie = ?, type = ?
-                        WHERE id = 1
-                    ");
-                    $stmt->execute([
-                        $etab['etabNom'], $etab['etabAdresse'], $etab['etabCp'],
-                        $etab['etabVille'], $etab['etabTel'], $etab['etabEmail'],
-                        $etab['etabAcademie'], $type,
-                    ]);
-                    $log[] = ['ok', 'Établissement configuré en BDD — <strong>' . htmlspecialchars($etab['etabNom']) . '</strong>'];
-                } catch (PDOException $e) {
-                    $log[] = ['warn', 'Établissement BDD : ' . $e->getMessage()];
-                }
-
-                // Périodes scolaires
-                try {
-                    $periodeType = $etab['periodeSystem'] ?? 'trimestre';
-                    $periodesData = $etab['periodes'] ?? [];
-                    $stmtP = $pdo->prepare("INSERT INTO periodes (numero, nom, type, date_debut, date_fin) VALUES (?, ?, ?, ?, ?)");
-                    foreach ($periodesData as $idx => $p) {
-                        if (!empty($p['debut']) && !empty($p['fin'])) {
-                            $stmtP->execute([$idx + 1, $p['nom'], $periodeType, $p['debut'], $p['fin']]);
-                        }
-                    }
-                    $log[] = ['ok', 'Périodes scolaires configurées (' . count($periodesData) . ' ' . $periodeType . 's)'];
-                } catch (PDOException $e) {
-                    $log[] = ['warn', 'Périodes : ' . $e->getMessage()];
-                }
-
-                // Classes par défaut selon le type
-                $defaultClasses = [];
-                if (in_array($type, ['primaire', 'tout'])) {
-                    $defaultClasses += ['CP' => 'CPA,CPB', 'CE1' => 'CE1A,CE1B', 'CE2' => 'CE2A,CE2B', 'CM1' => 'CM1A,CM1B', 'CM2' => 'CM2A,CM2B'];
-                }
-                if (in_array($type, ['college', 'tout'])) {
-                    $defaultClasses += ['6eme' => '6A,6B,6C', '5eme' => '5A,5B,5C', '4eme' => '4A,4B,4C', '3eme' => '3A,3B,3C'];
-                }
-                if (in_array($type, ['lycee', 'tout'])) {
-                    $defaultClasses += ['2nde' => '2A,2B,2C', '1ere' => '1A,1B,1C', 'Tle' => 'TA,TB,TC'];
-                }
-                try {
-                    $stmtC = $pdo->prepare("INSERT INTO classes (niveau, nom) VALUES (?, ?)");
-                    $classCount = 0;
-                    foreach ($defaultClasses as $niveau => $noms) {
-                        foreach (explode(',', $noms) as $nom) {
-                            $stmtC->execute([$niveau, trim($nom)]);
-                            $classCount++;
-                        }
-                    }
-                    $log[] = ['ok', "{$classCount} classes créées par défaut"];
-                } catch (PDOException $e) {
-                    $log[] = ['warn', 'Classes : ' . $e->getMessage()];
-                }
-
-                // Matières par défaut
-                $defaultMatieres = [
-                    ['FRAN','Français'], ['MATH','Mathématiques'], ['HG','Histoire-Géographie'],
-                    ['ANG','Anglais'], ['ESP','Espagnol'], ['PC','Physique-Chimie'],
-                    ['SVT','SVT'], ['EPS','EPS'], ['ART','Arts plastiques'],
-                    ['MUS','Musique'], ['TECH','Technologie'],
-                ];
-                try {
-                    $stmtM = $pdo->prepare("INSERT INTO matieres (code, nom) VALUES (?, ?)");
-                    foreach ($defaultMatieres as [$code, $nom]) {
-                        $stmtM->execute([$code, $nom]);
-                    }
-                    $log[] = ['ok', count($defaultMatieres) . ' matières créées par défaut'];
-                } catch (PDOException $e) {
-                    $log[] = ['warn', 'Matières : ' . $e->getMessage()];
-                }
-
-                // Écrire aussi le JSON pour rétrocompatibilité
-                $etabJson = [
-                    'nom' => $etab['etabNom'], 'adresse' => $etab['etabAdresse'],
-                    'code_postal' => $etab['etabCp'], 'ville' => $etab['etabVille'],
-                    'telephone' => $etab['etabTel'], 'email' => $etab['etabEmail'],
-                    'academie' => $etab['etabAcademie'], 'type' => $type,
-                ];
-                $jsonDir = $installDir . '/login/data';
-                if (!is_dir($jsonDir)) @mkdir($jsonDir, 0755, true);
-                @file_put_contents($jsonDir . '/etablissement.json', json_encode($etabJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), LOCK_EX);
-            }
+            // La configuration de l'établissement (identité, périodes, classes,
+            // matières) est désormais réalisée au premier login admin via le
+            // wizard d'onboarding (/onboarding/index.php). L'installation ne
+            // configure que l'infrastructure.
 
             // 5f-ter — Configuration SMTP
             $smtp = $inst['smtp'] ?? [];
@@ -834,7 +715,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $migDone = 0;
                         $migErrs = $sync['errors'] ?? [];
                         foreach (array_keys($sdk->discover()) as $mk) {
-                            $r        = $sdk->migrate($mk);
+                            $r        = $sdk->migrate($mk, 'install');
                             $migDone += count($r['executed']);
                             $migErrs  = array_merge($migErrs, $r['errors']);
                         }
@@ -1267,107 +1148,12 @@ code{background:#edf2f7;padding:1px 6px;border-radius:3px;font-size:.88em;font-f
         </div>
     </div>
 
-    <h3 style="margin:24px 0 14px;font-size:1em;color:#4a5568">🏫 Établissement</h3>
-    <div class="grid">
-        <div class="form-group" style="grid-column:1/-1">
-            <label>Nom de l'établissement <span style="color:#e53e3e;">*</span></label>
-            <input type="text" name="etab_nom" value="<?= htmlspecialchars($inst['etab']['etabNom'] ?? '') ?>" required placeholder="Ex: Lycée Jean Monnet">
-        </div>
-        <div class="form-group" style="grid-column:1/-1">
-            <label>Adresse</label>
-            <input type="text" name="etab_adresse" value="<?= htmlspecialchars($inst['etab']['etabAdresse'] ?? '') ?>" placeholder="1 rue de l'Éducation">
-        </div>
-        <div class="form-group">
-            <label>Code postal</label>
-            <input type="text" name="etab_cp" value="<?= htmlspecialchars($inst['etab']['etabCp'] ?? '') ?>" placeholder="75001">
-        </div>
-        <div class="form-group">
-            <label>Ville</label>
-            <input type="text" name="etab_ville" value="<?= htmlspecialchars($inst['etab']['etabVille'] ?? '') ?>" placeholder="Paris">
-        </div>
-        <div class="form-group">
-            <label>Téléphone</label>
-            <input type="text" name="etab_tel" value="<?= htmlspecialchars($inst['etab']['etabTel'] ?? '') ?>" placeholder="01 23 45 67 89">
-        </div>
-        <div class="form-group">
-            <label>Email</label>
-            <input type="email" name="etab_email" value="<?= htmlspecialchars($inst['etab']['etabEmail'] ?? '') ?>" placeholder="contact@etablissement.fr">
-        </div>
-        <div class="form-group">
-            <label>Académie</label>
-            <input type="text" name="etab_academie" value="<?= htmlspecialchars($inst['etab']['etabAcademie'] ?? '') ?>" placeholder="Paris">
-        </div>
-        <div class="form-group">
-            <label>Type d'établissement</label>
-            <?php $etType = $inst['etab']['etabType'] ?? 'college'; ?>
-            <select name="etab_type">
-                <option value="primaire" <?= $etType === 'primaire' ? 'selected' : '' ?>>Primaire</option>
-                <option value="college" <?= $etType === 'college' ? 'selected' : '' ?>>Collège</option>
-                <option value="lycee" <?= $etType === 'lycee' ? 'selected' : '' ?>>Lycée</option>
-                <option value="tout" <?= $etType === 'tout' ? 'selected' : '' ?>>Tout (Primaire + Collège + Lycée)</option>
-            </select>
-        </div>
-    </div>
+    <p class="section-sub" style="margin:24px 0 14px;background:#f0f7ff;border:1px solid #cfe3ff;border-radius:8px;padding:12px;color:#2b6cb0">
+        🏫 L'établissement (identité, périodes, classes, matières) se configure
+        au premier login administrateur, via l'assistant de mise en route.
+    </p>
 
-    <h3 style="margin:24px 0 14px;font-size:1em;color:#4a5568">📅 Périodes scolaires</h3>
-    <?php $pSys = $inst['etab']['periodeSystem'] ?? 'trimestre'; ?>
-    <div class="form-group">
-        <label>Système de périodes</label>
-        <select name="periode_system" id="periodeSystem" onchange="togglePeriodes()">
-            <option value="trimestre" <?= $pSys === 'trimestre' ? 'selected' : '' ?>>Trimestres (3 périodes)</option>
-            <option value="semestre" <?= $pSys === 'semestre' ? 'selected' : '' ?>>Semestres (2 périodes)</option>
-        </select>
-    </div>
-    <?php
-    $curYear = date('Y');
-    $nextYear = $curYear + (date('n') >= 9 ? 1 : 0);
-    $baseYear = date('n') >= 9 ? $curYear : $curYear - 1;
-    $defaultTrimestres = [
-        ['debut' => "$baseYear-09-01", 'fin' => "$baseYear-12-15"],
-        ['debut' => "$nextYear-01-03", 'fin' => "$nextYear-03-15"],
-        ['debut' => "$nextYear-03-16", 'fin' => "$nextYear-06-30"],
-    ];
-    $defaultSemestres = [
-        ['debut' => "$baseYear-09-01", 'fin' => "$nextYear-01-31"],
-        ['debut' => "$nextYear-02-01", 'fin' => "$nextYear-06-30"],
-    ];
-    ?>
-    <div id="trimestre-fields" style="<?= $pSys === 'semestre' ? 'display:none' : '' ?>">
-        <div class="grid">
-            <?php for ($i = 0; $i < 3; $i++): 
-                $pData = $inst['etab']['periodes'][$i] ?? $defaultTrimestres[$i];
-            ?>
-            <div class="form-group" style="grid-column:1/-1;display:flex;gap:12px;align-items:center;">
-                <strong style="min-width:120px"><?= ($i+1) === 1 ? '1er' : ($i+1).'ème' ?> trimestre</strong>
-                <label style="font-size:12px;margin:0">Du</label>
-                <input type="date" name="p<?= $i+1 ?>_debut" value="<?= htmlspecialchars($pData['debut'] ?? '') ?>" style="flex:1">
-                <label style="font-size:12px;margin:0">Au</label>
-                <input type="date" name="p<?= $i+1 ?>_fin" value="<?= htmlspecialchars($pData['fin'] ?? '') ?>" style="flex:1">
-            </div>
-            <?php endfor; ?>
-        </div>
-    </div>
-    <div id="semestre-fields" style="<?= $pSys === 'trimestre' ? 'display:none' : '' ?>">
-        <div class="grid">
-            <?php for ($i = 0; $i < 2; $i++): 
-                $sData = ($pSys === 'semestre' && isset($inst['etab']['periodes'][$i])) ? $inst['etab']['periodes'][$i] : $defaultSemestres[$i];
-            ?>
-            <div class="form-group" style="grid-column:1/-1;display:flex;gap:12px;align-items:center;">
-                <strong style="min-width:120px"><?= ($i+1) === 1 ? '1er' : '2ème' ?> semestre</strong>
-                <label style="font-size:12px;margin:0">Du</label>
-                <input type="date" name="s<?= $i+1 ?>_debut" value="<?= htmlspecialchars($sData['debut'] ?? '') ?>" style="flex:1">
-                <label style="font-size:12px;margin:0">Au</label>
-                <input type="date" name="s<?= $i+1 ?>_fin" value="<?= htmlspecialchars($sData['fin'] ?? '') ?>" style="flex:1">
-            </div>
-            <?php endfor; ?>
-        </div>
-    </div>
     <script>
-    function togglePeriodes() {
-        var sys = document.getElementById('periodeSystem').value;
-        document.getElementById('trimestre-fields').style.display = sys === 'trimestre' ? '' : 'none';
-        document.getElementById('semestre-fields').style.display = sys === 'semestre' ? '' : 'none';
-    }
     function toggleSmtp() {
         var on = document.getElementById('smtpEnabled').checked;
         document.getElementById('smtp-fields').style.display = on ? '' : 'none';

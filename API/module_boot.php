@@ -50,6 +50,24 @@ $isAdmin       = ($user_role === 'administrateur');
 // Connexion base de données
 $pdo = getPDO();
 
+// Onboarding gate — au premier login admin, tant que l'établissement n'est pas
+// configuré (code 'default'), rediriger vers l'assistant de mise en route.
+// Le wizard lui-même définit FRONOTE_ONBOARDING pour éviter la boucle.
+if (!defined('FRONOTE_ONBOARDING') && $isAdmin) {
+    if (!isset($_SESSION['onboarding_done'])) {
+        try {
+            $etab = app('etablissement')->getCurrent();
+            $_SESSION['onboarding_done'] = $etab && (($etab['code'] ?? '') !== 'default');
+        } catch (\Throwable $e) {
+            $_SESSION['onboarding_done'] = true; // ne pas bloquer si la résolution échoue
+        }
+    }
+    if (!$_SESSION['onboarding_done']) {
+        header('Location: ' . (defined('BASE_URL') ? BASE_URL : '') . '/modules/onboarding/index.php');
+        exit;
+    }
+}
+
 // Calcul du rootPrefix (chemin relatif vers la racine du projet)
 // Utilise le nombre de niveaux de profondeur du fichier appelant
 if (!isset($rootPrefix)) {

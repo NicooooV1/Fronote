@@ -67,8 +67,9 @@ class ImportExportService
             $colsSQL = ($cols === ['*']) ? '*' : '`' . implode('`, `', $cols) . '`';
 
             try {
-                $stmt = $this->pdo->prepare("SELECT {$colsSQL} FROM `{$table}` ORDER BY nom, prenom");
-                $stmt->execute();
+                // Export limité à l'établissement courant (§9.9).
+                $stmt = $this->pdo->prepare("SELECT {$colsSQL} FROM `{$table}` WHERE etablissement_id = ? ORDER BY nom, prenom");
+                $stmt->execute([\API\Core\EstablishmentContext::id()]);
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 foreach ($rows as &$row) {
                     $row['_type'] = $t;
@@ -209,6 +210,7 @@ class ImportExportService
 
         $table = $this->tableMap[$type];
         $generatePasswords = $options['generate_passwords'] ?? true;
+        $etab = \API\Core\EstablishmentContext::id(); // import rattaché à l'établissement courant (§9)
 
         $fp = fopen($filePath, 'r');
         if (!$fp) {
@@ -263,8 +265,8 @@ class ImportExportService
 
             // Detection de doublon par email
             try {
-                $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM `{$table}` WHERE mail = ?");
-                $stmt->execute([$data['mail']]);
+                $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM `{$table}` WHERE mail = ? AND etablissement_id = ?");
+                $stmt->execute([$data['mail'], $etab]);
                 if ((int)$stmt->fetchColumn() > 0) {
                     $nbDoublons++;
                     $errors[] = "Ligne {$lineNum} : email '{$data['mail']}' deja existant (doublon ignore).";
@@ -282,8 +284,8 @@ class ImportExportService
 
             // Verifier unicite identifiant
             try {
-                $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM `{$table}` WHERE identifiant = ?");
-                $stmt->execute([$identifiant]);
+                $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM `{$table}` WHERE identifiant = ? AND etablissement_id = ?");
+                $stmt->execute([$identifiant, $etab]);
                 if ((int)$stmt->fetchColumn() > 0) {
                     $identifiant = $this->generateIdentifier($data['nom'], $data['prenom'], $table);
                 }
@@ -306,11 +308,12 @@ class ImportExportService
 
             // Construction de l'insertion
             $insertData = [
-                'identifiant'  => $identifiant,
-                'nom'          => $data['nom'],
-                'prenom'       => $data['prenom'],
-                'mail'         => $data['mail'],
-                'mot_de_passe' => $hashedPassword,
+                'identifiant'     => $identifiant,
+                'nom'             => $data['nom'],
+                'prenom'          => $data['prenom'],
+                'mail'            => $data['mail'],
+                'mot_de_passe'    => $hashedPassword,
+                'etablissement_id' => $etab,
             ];
 
             // Champs optionnels selon le type

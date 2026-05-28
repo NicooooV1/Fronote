@@ -88,6 +88,103 @@ class MarketplaceService
         return null;
     }
 
+    // ─── Pré-vérification (gouvernance) ─────────────────────────────
+
+    /**
+     * Pré-vérifie l'installabilité d'un module SANS rien télécharger.
+     * Vérifie : déjà installé, compatibilité version Fronote, version PHP,
+     * dépendances présentes. Retourne un rapport structuré.
+     *
+     * @return array ['ok'=>bool, 'checks'=>[['label','status','detail'],...], 'blockers'=>string[]]
+     */
+    public function preflight(string $key): array
+    {
+        $checks = [];
+        $blockers = [];
+        $add = function (string $label, bool $ok, string $detail) use (&$checks, &$blockers) {
+            $checks[] = ['label' => $label, 'status' => $ok ? 'ok' : 'error', 'detail' => $detail];
+            if (!$ok) $blockers[] = $detail;
+        };
+
+        $item = $this->getItem($key, 'module');
+        if (!$item) {
+            return ['ok' => false, 'checks' => [], 'blockers' => ["Module '{$key}' introuvable dans le catalogue."]];
+        }
+
+        // Déjà installé ?
+        $alreadyDir = is_dir($this->basePath . '/modules/' . $key) && file_exists($this->basePath . '/modules/' . $key . '/module.json');
+        $add('Non déjà installé', !$alreadyDir, $alreadyDir ? "Le module '{$key}' est déjà installé." : 'OK');
+
+        // Compatibilité version Fronote
+        $inRange = $this->versionInRange($item['fronote_min'] ?? null, $item['fronote_max'] ?? null);
+        $add('Compatibilité Fronote', $inRange,
+            $inRange ? 'OK' : "Incompatible avec Fronote " . $this->getVersion()
+                . " (requiert " . ($item['fronote_min'] ?? '*') . " – " . ($item['fronote_max'] ?? '*') . ").");
+
+        // Version PHP
+        $phpReq = $item['requires_php'] ?? null;
+        $phpOk = $phpReq === null || $this->phpConstraintOk((string) $phpReq);
+        $add('Version PHP', $phpOk, $phpOk ? 'OK' : "PHP " . PHP_VERSION . " ne satisfait pas '{$phpReq}'.");
+
+        // Dépendances présentes
+        $missing = [];
+        foreach (($item['dependencies'] ?? []) as $dep) {
+            if (!file_exists($this->basePath . '/modules/' . $dep . '/module.json')) {
+                $missing[] = $dep;
+            }
+        }
+        $add('Dépendances', empty($missing),
+            empty($missing) ? 'OK' : 'Dépendance(s) manquante(s) : ' . implode(', ', $missing) . '.');
+
+        return ['ok' => empty($blockers), 'checks' => $checks, 'blockers' => $blockers];
+    }
+
+    /**
+     * Vrai si PHP_VERSION satisfait une contrainte simple ('>=8.0', '>7.4', '8.1', …).
+     */
+    private function phpConstraintOk(string $constraint): bool
+    {
+        $constraint = trim($constraint);
+        if ($constraint === '') return true;
+        if (preg_match('/^(>=|<=|>|<|=)?\s*([0-9][0-9.]*)$/', $constraint, $m)) {
+            $op = $m[1] ?: '>=';
+            return version_compare(PHP_VERSION, $m[2], $op);
+        }
+        return true; // contrainte non reconnue → ne pas bloquer
+    }
+
+    /**
+     * Vrai si la version Fronote courante est dans l'intervalle [min, max] (bornes optionnelles).
+     */
+    private function versionInRange(?string $min, ?string $max): bool
+    {
+        $v = $this->getVersion();
+        if ($min !== null && $min !== '' && version_compare($v, $min, '<')) return false;
+        if ($max !== null && $max !== '' && version_compare($v, $max, '>')) return false;
+        return true;
+    }
+
+    /**
+     * Valide la compatibilité d'un manifeste module.json (source de vérité).
+     * @return string[] Liste des blockers (vide = OK).
+     */
+    private function validateManifestCompat(array $manifest): array
+    {
+        $blockers = [];
+        if (!empty($manifest['requires_php']) && !$this->phpConstraintOk((string) $manifest['requires_php'])) {
+            $blockers[] = "PHP " . PHP_VERSION . " ne satisfait pas '{$manifest['requires_php']}'.";
+        }
+        if (!$this->versionInRange($manifest['fronote_min'] ?? null, $manifest['fronote_max'] ?? null)) {
+            $blockers[] = "Incompatible avec Fronote " . $this->getVersion() . ".";
+        }
+        foreach (($manifest['dependencies'] ?? []) as $dep) {
+            if (!file_exists($this->basePath . '/modules/' . $dep . '/module.json')) {
+                $blockers[] = "Dépendance manquante : {$dep}.";
+            }
+        }
+        return $blockers;
+    }
+
     // ─── Installation ───────────────────────────────────────────────
 
     /**
@@ -101,11 +198,13 @@ class MarketplaceService
             return ['success' => false, 'error' => "Module '{$key}' introuvable dans le catalogue."];
         }
 
-        // Vérifier que le module n'est pas déjà installé
-        $targetDir = $this->basePath . '/' . $key;
-        if (is_dir($targetDir) && file_exists($targetDir . '/module.json')) {
-            return ['success' => false, 'error' => "Le module '{$key}' est déjà installé."];
+        // Pré-vérification gouvernance (déjà installé, compat Fronote, PHP, dépendances)
+        $pre = $this->preflight($key);
+        if (!$pre['ok']) {
+            return ['success' => false, 'error' => 'Pré-vérification échouée : ' . implode(' ; ', $pre['blockers']), 'preflight' => $pre];
         }
+
+        $targetDir = $this->basePath . '/modules/' . $key;
 
         // Télécharger
         $zipUrl = $item['download_url'] ?? '';
@@ -148,6 +247,13 @@ class MarketplaceService
         if (!$manifest || empty($manifest['key'])) {
             $this->removeDirectory($stagingDir);
             return ['success' => false, 'error' => 'module.json invalide.'];
+        }
+
+        // ─── Validation compat depuis le manifeste (source de vérité) ───
+        $manifestBlockers = $this->validateManifestCompat($manifest);
+        if (!empty($manifestBlockers)) {
+            $this->removeDirectory($stagingDir);
+            return ['success' => false, 'error' => 'Manifeste incompatible : ' . implode(' ; ', $manifestBlockers)];
         }
 
         // ─── Security scan ─────────────────────────────────────────
@@ -270,7 +376,7 @@ class MarketplaceService
      */
     public function uninstallModule(string $key): array
     {
-        $targetDir = $this->basePath . '/' . $key;
+        $targetDir = $this->basePath . '/modules/' . $key;
 
         // Vérifier que ce n'est pas un module core
         $moduleService = app('modules');
@@ -281,15 +387,75 @@ class MarketplaceService
         // Désactiver d'abord
         $moduleService->setEnabled($key, false);
 
-        // Supprimer les fichiers
+        // Conserver une sauvegarde restaurable (rollback) avant suppression.
         if (is_dir($targetDir)) {
-            $this->removeDirectory($targetDir);
+            $backupDir = $this->basePath . '/storage/backups/modules';
+            if (!is_dir($backupDir)) @mkdir($backupDir, 0755, true);
+            $backupPath = $backupDir . '/' . $key . '_' . date('Ymd_His');
+            if (!@rename($targetDir, $backupPath)) {
+                // Sauvegarde impossible → suppression directe (comportement legacy).
+                $this->removeDirectory($targetDir);
+            }
         }
 
         // Marquer comme désinstallé en base
         $this->pdo->prepare("DELETE FROM marketplace_installs WHERE item_key = ? AND item_type = 'module'")->execute([$key]);
 
         return ['success' => true, 'message' => "Module '{$key}' désinstallé."];
+    }
+
+    /**
+     * Restaure la sauvegarde la plus récente d'un module
+     * (storage/backups/modules/<key>_*) — rollback en un clic.
+     */
+    public function rollback(string $key): array
+    {
+        $backupDir = $this->basePath . '/storage/backups/modules';
+        // _[0-9]* : ne matcher que les sauvegardes horodatées (évite un module voisin <key>_autre).
+        $candidates = glob($backupDir . '/' . $key . '_[0-9]*', GLOB_ONLYDIR) ?: [];
+        if (empty($candidates)) {
+            return ['success' => false, 'error' => "Aucune sauvegarde disponible pour '{$key}'."];
+        }
+        rsort($candidates); // nom horodaté Ymd_His → plus récent en premier
+        $backupPath = $candidates[0];
+
+        if (!file_exists($backupPath . '/module.json')) {
+            return ['success' => false, 'error' => 'Sauvegarde corrompue (module.json absent).'];
+        }
+
+        $targetDir = $this->basePath . '/modules/' . $key;
+        $discard = null;
+
+        // Écarter la version live courante (réversible en cas d'échec).
+        if (is_dir($targetDir)) {
+            $discard = $this->tempDir . '/_rollback_discard_' . $key . '_' . bin2hex(random_bytes(4));
+            if (!@rename($targetDir, $discard)) {
+                return ['success' => false, 'error' => 'Impossible de déplacer la version courante.'];
+            }
+        }
+
+        // Restaurer la sauvegarde en place.
+        if (!@rename($backupPath, $targetDir)) {
+            if ($discard !== null) @rename($discard, $targetDir); // restaurer l'état initial
+            return ['success' => false, 'error' => 'Échec de la restauration de la sauvegarde.'];
+        }
+
+        if ($discard !== null) {
+            $this->removeDirectory($discard);
+        }
+
+        // Re-synchroniser le module restauré.
+        $manifest = json_decode((string) @file_get_contents($targetDir . '/module.json'), true) ?: [];
+        try {
+            app('module_sdk')->syncModule($manifest);
+        } catch (\Throwable $e) {
+            error_log('Marketplace rollback sync error: ' . $e->getMessage());
+        }
+        if (!empty($manifest['key'])) {
+            $this->recordInstall($key, 'module', $manifest['version'] ?? '1.0.0', $manifest);
+        }
+
+        return ['success' => true, 'message' => "Module '{$key}' restauré (version " . ($manifest['version'] ?? '?') . ")."];
     }
 
     /**

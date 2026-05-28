@@ -49,19 +49,28 @@ try {
             $_hdr_pdo = getPDO();
             $_hdr_stmt = $_hdr_pdo->prepare("SELECT theme FROM user_settings WHERE user_id = ? AND user_type = ? LIMIT 1");
             $_hdr_stmt->execute([$_SESSION['user_id'], $_SESSION['user_type']]);
-            $_hdr_raw_theme = $_hdr_stmt->fetchColumn() ?: 'classic';
+            $_hdr_raw_theme = $_hdr_stmt->fetchColumn();
+            if ($_hdr_raw_theme === false || $_hdr_raw_theme === '' || $_hdr_raw_theme === null) {
+                // Pas de préférence utilisateur → défaut de l'établissement.
+                try { $_hdr_raw_theme = app('themes')->getDefault() ?: 'classic'; }
+                catch (\Throwable $e) { $_hdr_raw_theme = 'classic'; }
+            }
             // Mettre en cache (TTL 1h — invalidé à la modification dans parametres)
             if ($cc) {
                 $cc->set('user_theme', $_hdr_raw_theme, 3600);
             }
         }
 
-        // Support both old (light/dark/auto) and new (classic/glass) theme values
+        // Support both old (light/dark/auto) and new (classic/glass/custom) theme values
         if (in_array($_hdr_raw_theme, ['classic', 'glass'], true)) {
             $_hdr_theme = $_hdr_raw_theme;
         } elseif ($_hdr_raw_theme === 'light' || $_hdr_raw_theme === 'dark' || $_hdr_raw_theme === 'auto') {
             $_hdr_theme = 'classic';
             $_hdr_dark_mode = $_hdr_raw_theme;
+        } elseif ($_hdr_raw_theme) {
+            // Thème custom installé : valider (chemin CSS sûr) avant de l'appliquer.
+            try { $_hdr_theme = app('themes')->cssFileFor($_hdr_raw_theme) ? $_hdr_raw_theme : 'classic'; }
+            catch (\Throwable $e) { $_hdr_theme = 'classic'; }
         }
     }
 } catch (Exception $e) { /* fallback to classic */ }
@@ -174,6 +183,26 @@ try {
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/theme-classic.css') ?>">
     <?php if ($_hdr_theme === 'glass' || $_hdr_theme === 'auto-glass'): ?>
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/theme-glass.css') ?>">
+    <?php elseif ($_hdr_theme !== 'classic'):
+        // Thème custom : superposer son CSS (chemin déjà validé par cssFileFor).
+        try { $_hdr_custom_css = app('themes')->cssFileFor($_hdr_theme); } catch (\Throwable $e) { $_hdr_custom_css = null; }
+        if ($_hdr_custom_css): ?>
+    <link rel="stylesheet" href="<?= $_assetVersion($_hdr_custom_css) ?>">
+    <?php endif; endif; ?>
+    <?php
+    // Overlays de tokens du thème actif (mis en cache pour éviter une requête par page).
+    $_hdr_override_css = '';
+    $_hdr_cc = $cc ?? null;
+    try {
+        $_ovKey = 'theme_overrides_' . $_hdr_theme;
+        $_hdr_override_css = $_hdr_cc ? $_hdr_cc->get($_ovKey) : null;
+        if ($_hdr_override_css === null) {
+            $_hdr_override_css = app('themes')->renderOverrideCss($_hdr_theme);
+            if ($_hdr_cc) $_hdr_cc->set($_ovKey, $_hdr_override_css, 3600);
+        }
+    } catch (\Throwable $e) { $_hdr_override_css = ''; }
+    if ($_hdr_override_css !== ''): ?>
+    <style id="theme-token-overrides"><?= $_hdr_override_css ?></style>
     <?php endif; ?>
     <?php if ($_hdr_dir === 'rtl'): ?>
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/rtl.css') ?>">

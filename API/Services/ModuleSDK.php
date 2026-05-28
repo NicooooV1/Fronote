@@ -19,6 +19,9 @@ class ModuleSDK
     /** @var array|null Cache des manifestes découverts */
     private ?array $manifests = null;
 
+    /** Vrai une fois les colonnes étendues de module_migrations garanties. */
+    private bool $migColsEnsured = false;
+
     /** Champs obligatoires dans module.json */
     private const REQUIRED_FIELDS = ['key', 'name', 'icon', 'category'];
 
@@ -46,11 +49,11 @@ class ModuleSDK
         }
 
         $this->manifests = [];
-        $dirs = glob($this->basePath . '/*/module.json');
-
-        if ($dirs === false) {
-            return $this->manifests;
-        }
+        // Modules dans /modules/<m>/ (nouvelle structure) + modules essentiels restés à la racine.
+        $dirs = array_merge(
+            glob($this->basePath . '/modules/*/module.json') ?: [],
+            glob($this->basePath . '/*/module.json') ?: []
+        );
 
         foreach ($dirs as $jsonPath) {
             $content = file_get_contents($jsonPath);
@@ -174,18 +177,27 @@ class ModuleSDK
                 : $manifest['description'];
         }
 
-        // Resolve route_path from module.json routes.main
+        // Resolve route_path from module.json routes.main, relative au dossier réel
+        // du module (modules/<key>/… ou <key>/… pour les essentiels restés à la racine).
         $routePath = null;
         if (!empty($manifest['routes']['main'])) {
-            $routePath = $key . '/' . $manifest['routes']['main'];
+            $relDir = $key;
+            if (!empty($manifest['_path'])) {
+                $relDir = trim(str_replace('\\', '/', substr($manifest['_path'], strlen($this->basePath))), '/');
+            }
+            $routePath = $relDir . '/' . $manifest['routes']['main'];
         }
 
         // Resolve sidebar_sort from module.json sidebar.sort_order
         $sidebarSort = $manifest['sidebar']['sort_order'] ?? 100;
 
-        // Upsert dans modules_config
-        $sql = "INSERT INTO modules_config (module_key, label, description, icon, category, is_core, establishment_types, route_path, sidebar_sort)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        $isCore = !empty($manifest['core']) ? 1 : 0;
+
+        // Upsert dans modules_config.
+        // enabled : à la 1re insertion, core = activé, autres = désactivés (activation manuelle
+        // via l'admin qui injecte+vérifie le SQL). ON DUPLICATE ne TOUCHE PAS enabled (préserve le choix admin).
+        $sql = "INSERT INTO modules_config (module_key, label, description, icon, category, is_core, enabled, establishment_types, route_path, sidebar_sort)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE
                     label = VALUES(label),
                     description = VALUES(description),
@@ -202,7 +214,8 @@ class ModuleSDK
             $description,
             $manifest['icon'] ?? 'fas fa-puzzle-piece',
             $manifest['category'] ?? 'custom',
-            !empty($manifest['core']) ? 1 : 0,
+            $isCore,
+            $isCore, // enabled = is_core à l'insertion
             isset($manifest['establishment_types']) ? json_encode($manifest['establishment_types']) : null,
             $routePath,
             (int) $sidebarSort,
@@ -429,13 +442,14 @@ class ModuleSDK
      * @param string $moduleKey Clé du module (ex: 'absences')
      * @return array ['executed' => string[], 'skipped' => string[], 'errors' => string[]]
      */
-    public function migrate(string $moduleKey): array
+    public function migrate(string $moduleKey, string $triggeredBy = 'system'): array
     {
         $manifest = $this->getManifest($moduleKey);
         if (!$manifest) {
             return ['executed' => [], 'skipped' => [], 'errors' => ["Module '{$moduleKey}' introuvable"]];
         }
 
+        $this->ensureMigrationsColumns();
         $migrations = $manifest['migrations'] ?? [];
         if (empty($migrations)) {
             return ['executed' => [], 'skipped' => [], 'errors' => []];
@@ -447,12 +461,13 @@ class ModuleSDK
         $errors     = [];
 
         foreach ($migrations as $migrationFile) {
-            $hash = md5($moduleKey . ':' . $migrationFile);
+            $version = preg_match('/(\d+\.\d+\.\d+)/', basename($migrationFile), $m)
+                ? $m[1] : ($manifest['version'] ?? null);
 
-            // Vérifier si déjà exécutée
+            // Vérifier si déjà exécutée AVEC SUCCÈS (une exécution échouée doit pouvoir être rejouée)
             try {
                 $stmt = $this->pdo->prepare(
-                    'SELECT COUNT(*) FROM module_migrations WHERE module_key = ? AND migration_file = ?'
+                    "SELECT COUNT(*) FROM module_migrations WHERE module_key = ? AND migration_file = ? AND status = 'success'"
                 );
                 $stmt->execute([$moduleKey, $migrationFile]);
                 if ((int) $stmt->fetchColumn() > 0) {
@@ -477,24 +492,153 @@ class ModuleSDK
                 continue;
             }
 
+            $checksum = hash('sha256', $sql);
+            $start = microtime(true);
+
             // Exécuter dans une transaction
             try {
                 $this->pdo->beginTransaction();
                 $this->pdo->exec($sql);
-
-                $this->pdo->prepare(
-                    'INSERT INTO module_migrations (module_key, migration_file) VALUES (?, ?)'
-                )->execute([$moduleKey, $migrationFile]);
-
                 $this->pdo->commit();
+
+                $ms = (int) round((microtime(true) - $start) * 1000);
+                $this->recordMigration($moduleKey, $migrationFile, $version, $checksum, 'success', null, $ms, $triggeredBy);
                 $executed[] = $migrationFile;
             } catch (\Throwable $e) {
-                $this->pdo->rollBack();
+                if ($this->pdo->inTransaction()) {
+                    $this->pdo->rollBack();
+                }
+                $ms = (int) round((microtime(true) - $start) * 1000);
+                // Tracer l'échec (hors transaction annulée) pour qu'il soit visible en admin.
+                $this->recordMigration($moduleKey, $migrationFile, $version, $checksum, 'failed', $e->getMessage(), $ms, $triggeredBy);
                 $errors[] = "Échec migration '{$migrationFile}' : " . $e->getMessage();
             }
         }
 
         return ['executed' => $executed, 'skipped' => $skipped, 'errors' => $errors];
+    }
+
+    /**
+     * Provisionne le SQL d'un module : exécute son install.sql (idempotent) puis
+     * ses migrations. Appelé À L'ACTIVATION du module. Le résultat indique si le
+     * SQL a été injecté et vérifié sans erreur.
+     *
+     * @return array ['success' => bool, 'errors' => string[]]
+     */
+    public function provisionSql(string $moduleKey): array
+    {
+        $manifest = $this->getManifest($moduleKey);
+        if (!$manifest) {
+            return ['success' => false, 'errors' => ["Module '{$moduleKey}' introuvable"]];
+        }
+
+        $errors = [];
+        $modulePath = $manifest['_path'] ?? '';
+
+        // 1) install.sql du module (déclaré dans module.json: database.install, sinon défaut).
+        $installRel = $manifest['database']['install'] ?? 'Database/install.sql';
+        $installPath = $modulePath . '/' . $installRel;
+        if ($modulePath && is_file($installPath)) {
+            $sql = (string) @file_get_contents($installPath);
+            if (trim($sql) !== '') {
+                try {
+                    $this->pdo->beginTransaction();
+                    $this->pdo->exec($sql);
+                    $this->pdo->commit();
+                } catch (\Throwable $e) {
+                    if ($this->pdo->inTransaction()) {
+                        $this->pdo->rollBack();
+                    }
+                    $errors[] = "install.sql : " . $e->getMessage();
+                }
+            }
+        }
+
+        // 2) migrations incrémentales (idempotentes, tracées dans module_migrations).
+        $mig = $this->migrate($moduleKey, 'activation');
+        $errors = array_merge($errors, $mig['errors']);
+
+        return ['success' => empty($errors), 'errors' => $errors];
+    }
+
+    /**
+     * Upsert d'une ligne de suivi de migration (succès ou échec).
+     */
+    private function recordMigration(
+        string $moduleKey, string $file, ?string $version, ?string $checksum,
+        string $status, ?string $error, int $ms, string $triggeredBy
+    ): void {
+        try {
+            $this->pdo->prepare(
+                "INSERT INTO module_migrations
+                    (module_key, migration_file, migration_version, checksum, status, error_message, execution_time_ms, triggered_by, executed_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                 ON DUPLICATE KEY UPDATE
+                    migration_version = VALUES(migration_version),
+                    checksum          = VALUES(checksum),
+                    status            = VALUES(status),
+                    error_message     = VALUES(error_message),
+                    execution_time_ms = VALUES(execution_time_ms),
+                    triggered_by      = VALUES(triggered_by),
+                    executed_at       = NOW()"
+            )->execute([$moduleKey, $file, $version, $checksum, $status, $error, $ms, $triggeredBy]);
+        } catch (\Throwable $e) {
+            error_log('ModuleSDK::recordMigration: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Garantit la présence des colonnes étendues de module_migrations
+     * (auto-réparation des bases installées avant l'enrichissement du schéma).
+     */
+    private function ensureMigrationsColumns(): void
+    {
+        if ($this->migColsEnsured) {
+            return;
+        }
+        $this->migColsEnsured = true;
+
+        $columns = [
+            "ADD COLUMN `migration_version` VARCHAR(50) NULL",
+            "ADD COLUMN `checksum` VARCHAR(64) NULL",
+            "ADD COLUMN `status` ENUM('success','failed','rolled_back') NOT NULL DEFAULT 'success'",
+            "ADD COLUMN `error_message` TEXT NULL",
+            "ADD COLUMN `execution_time_ms` INT NULL",
+            "ADD COLUMN `triggered_by` VARCHAR(100) NULL",
+        ];
+        foreach ($columns as $clause) {
+            try {
+                $this->pdo->exec("ALTER TABLE `module_migrations` {$clause}");
+            } catch (\Throwable $e) {
+                // Colonne déjà présente (installation récente) → ignorer.
+            }
+        }
+    }
+
+    /**
+     * Historique des migrations (toutes ou filtrées par module), plus récentes d'abord.
+     */
+    public function getMigrations(?string $moduleKey = null, int $limit = 100): array
+    {
+        try {
+            $this->ensureMigrationsColumns();
+            if ($moduleKey !== null) {
+                $stmt = $this->pdo->prepare(
+                    "SELECT * FROM module_migrations WHERE module_key = ? ORDER BY executed_at DESC, id DESC LIMIT ?"
+                );
+                $stmt->bindValue(1, $moduleKey);
+                $stmt->bindValue(2, $limit, \PDO::PARAM_INT);
+            } else {
+                $stmt = $this->pdo->prepare(
+                    "SELECT * FROM module_migrations ORDER BY executed_at DESC, id DESC LIMIT ?"
+                );
+                $stmt->bindValue(1, $limit, \PDO::PARAM_INT);
+            }
+            $stmt->execute();
+            return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 
     /**

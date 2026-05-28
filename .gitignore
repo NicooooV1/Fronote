@@ -17,3 +17,5 @@ storage/maintenance.json
 !storage/quarantine/.gitkeep
 .phpunit.cache/
 .claude/
+.gitignore
+API/
