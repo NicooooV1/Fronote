@@ -10,6 +10,7 @@ namespace API\Core;
 class EstablishmentContext
 {
     private static ?int $id = null;
+    private static ?int $resolvedDefault = null;
 
     public static function set(int $id): void
     {
@@ -18,7 +19,31 @@ class EstablishmentContext
 
     public static function id(): int
     {
-        return self::$id ?? 1;
+        if (self::$id !== null) {
+            return self::$id;
+        }
+        // No scope set: bind to the sole establishment if there is exactly one,
+        // otherwise refuse to guess (data-scope safety — no silent fallback to 1).
+        return self::$id = self::resolveDefault();
+    }
+
+    /**
+     * Resolve the default establishment when no scope is set.
+     * Returns the sole establishment's id, or throws if zero/multiple exist.
+     */
+    private static function resolveDefault(): int
+    {
+        if (self::$resolvedDefault !== null) {
+            return self::$resolvedDefault;
+        }
+        $ids = getPDO()->query('SELECT id FROM etablissements')->fetchAll(\PDO::FETCH_COLUMN);
+        if (count($ids) === 1) {
+            return self::$resolvedDefault = (int) $ids[0];
+        }
+        throw new \RuntimeException(
+            'EstablishmentContext is not set and ' . count($ids) . ' establishments exist; '
+            . 'refusing to default establishment scope (data-scope safety).'
+        );
     }
 
     public static function isSet(): bool
@@ -56,5 +81,6 @@ class EstablishmentContext
     public static function reset(): void
     {
         self::$id = null;
+        self::$resolvedDefault = null;
     }
 }

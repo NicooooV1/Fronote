@@ -30,9 +30,9 @@ class EstablishmentScope
             return;
         }
 
-        // Default: establishment 1
-        EstablishmentContext::set(1);
-        $_SESSION['etablissement_id'] = 1;
+        // No session scope: leave the context unset. EstablishmentContext::id()
+        // resolves the sole establishment, or throws when ambiguous — no silent
+        // fallback to establishment 1.
     }
 
     /**

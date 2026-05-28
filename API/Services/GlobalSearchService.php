@@ -36,26 +36,27 @@ class GlobalSearchService
         }
 
         $like = '%' . $query . '%';
+        $etab = \API\Core\EstablishmentContext::id();
         $results = [];
 
         // Students (accessible by admin, professeur, vie_scolaire)
         if (in_array($userType, ['administrateur', 'professeur', 'vie_scolaire'])) {
-            $results['eleves'] = $this->searchEleves($like, $limit);
+            $results['eleves'] = $this->searchEleves($like, $limit, $etab);
         }
 
         // Staff (admin only)
         if ($userType === 'administrateur') {
-            $results['personnel'] = $this->searchPersonnel($like, $limit);
+            $results['personnel'] = $this->searchPersonnel($like, $limit, $etab);
         }
 
         // Announcements (all roles)
-        $results['annonces'] = $this->searchAnnonces($like, $limit);
+        $results['annonces'] = $this->searchAnnonces($like, $limit, $etab);
 
         // Documents (all roles)
-        $results['documents'] = $this->searchDocuments($like, $limit);
+        $results['documents'] = $this->searchDocuments($like, $limit, $etab);
 
         // Events (all roles)
-        $results['evenements'] = $this->searchEvenements($like, $limit);
+        $results['evenements'] = $this->searchEvenements($like, $limit, $etab);
 
         // Modules (admin)
         if ($userType === 'administrateur') {
@@ -65,16 +66,17 @@ class GlobalSearchService
         return $results;
     }
 
-    private function searchEleves(string $like, int $limit): array
+    private function searchEleves(string $like, int $limit, int $etab): array
     {
         $stmt = $this->pdo->prepare("
             SELECT id, nom, prenom, classe, 'eleve' AS type,
                    CONCAT(prenom, ' ', nom) AS label
             FROM eleves
-            WHERE nom LIKE :q OR prenom LIKE :q2 OR classe LIKE :q3
+            WHERE etablissement_id = :etab AND (nom LIKE :q OR prenom LIKE :q2 OR classe LIKE :q3)
             ORDER BY nom, prenom
             LIMIT :lim
         ");
+        $stmt->bindValue(':etab', $etab, PDO::PARAM_INT);
         $stmt->bindValue(':q', $like);
         $stmt->bindValue(':q2', $like);
         $stmt->bindValue(':q3', $like);
@@ -83,7 +85,7 @@ class GlobalSearchService
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    private function searchPersonnel(string $like, int $limit): array
+    private function searchPersonnel(string $like, int $limit, int $etab): array
     {
         $results = [];
         foreach (['professeurs', 'administrateurs', 'vie_scolaire'] as $table) {
@@ -91,10 +93,11 @@ class GlobalSearchService
                 SELECT id, nom, prenom, '{$table}' AS type,
                        CONCAT(prenom, ' ', nom) AS label
                 FROM {$table}
-                WHERE nom LIKE :q OR prenom LIKE :q2
+                WHERE etablissement_id = :etab AND (nom LIKE :q OR prenom LIKE :q2)
                 ORDER BY nom, prenom
                 LIMIT :lim
             ");
+            $stmt->bindValue(':etab', $etab, PDO::PARAM_INT);
             $stmt->bindValue(':q', $like);
             $stmt->bindValue(':q2', $like);
             $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
@@ -104,15 +107,16 @@ class GlobalSearchService
         return array_slice($results, 0, $limit);
     }
 
-    private function searchAnnonces(string $like, int $limit): array
+    private function searchAnnonces(string $like, int $limit, int $etab): array
     {
         $stmt = $this->pdo->prepare("
             SELECT id, titre AS label, 'annonce' AS type, date_publication
             FROM annonces
-            WHERE titre LIKE :q OR contenu LIKE :q2
+            WHERE etablissement_id = :etab AND (titre LIKE :q OR contenu LIKE :q2)
             ORDER BY date_publication DESC
             LIMIT :lim
         ");
+        $stmt->bindValue(':etab', $etab, PDO::PARAM_INT);
         $stmt->bindValue(':q', $like);
         $stmt->bindValue(':q2', $like);
         $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
@@ -120,15 +124,16 @@ class GlobalSearchService
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    private function searchDocuments(string $like, int $limit): array
+    private function searchDocuments(string $like, int $limit, int $etab): array
     {
         $stmt = $this->pdo->prepare("
             SELECT id, titre AS label, 'document' AS type, categorie
             FROM documents
-            WHERE titre LIKE :q OR description LIKE :q2
+            WHERE etablissement_id = :etab AND (titre LIKE :q OR description LIKE :q2)
             ORDER BY created_at DESC
             LIMIT :lim
         ");
+        $stmt->bindValue(':etab', $etab, PDO::PARAM_INT);
         $stmt->bindValue(':q', $like);
         $stmt->bindValue(':q2', $like);
         $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
@@ -136,15 +141,16 @@ class GlobalSearchService
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    private function searchEvenements(string $like, int $limit): array
+    private function searchEvenements(string $like, int $limit, int $etab): array
     {
         $stmt = $this->pdo->prepare("
             SELECT id, titre AS label, 'evenement' AS type, date_debut
             FROM evenements
-            WHERE titre LIKE :q OR description LIKE :q2
+            WHERE etablissement_id = :etab AND (titre LIKE :q OR description LIKE :q2)
             ORDER BY date_debut DESC
             LIMIT :lim
         ");
+        $stmt->bindValue(':etab', $etab, PDO::PARAM_INT);
         $stmt->bindValue(':q', $like);
         $stmt->bindValue(':q2', $like);
         $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
