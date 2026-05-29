@@ -190,6 +190,36 @@ try {
     <link rel="stylesheet" href="<?= $_assetVersion($_hdr_custom_css) ?>">
     <?php endif; endif; ?>
     <?php
+    // Branding établissement (couleurs) — priorité BASSE : surchargé par le thème/utilisateur (CDC §13.5).
+    // Injecté avant les overrides de thème pour que ceux-ci gagnent dans la cascade.
+    $_bcc = $cc ?? null;
+    $_hdr_brand_css = '';
+    try {
+        $_etab = app('etablissement')->getCurrent();
+        if ($_etab) {
+            $_brandKey = 'etab_branding_' . ($_etab['id'] ?? 0);
+            $_hdr_brand_css = $_bcc ? $_bcc->get($_brandKey) : null;
+            if ($_hdr_brand_css === null) {
+                $_map = [
+                    'couleur_primaire'   => ['--primary-color', '--primary', '--ds-primary'],
+                    'couleur_secondaire' => ['--secondary-color', '--secondary'],
+                ];
+                $_decls = [];
+                foreach ($_map as $_col => $_vars) {
+                    $_v = (string) ($_etab[$_col] ?? '');
+                    if (preg_match('/^#[0-9a-fA-F]{6}$/', $_v)) {
+                        foreach ($_vars as $_vn) { $_decls[] = $_vn . ':' . $_v; }
+                    }
+                }
+                $_hdr_brand_css = $_decls ? ':root{' . implode(';', $_decls) . '}' : '';
+                if ($_bcc) { $_bcc->set($_brandKey, $_hdr_brand_css, 3600); }
+            }
+        }
+    } catch (\Throwable $e) { $_hdr_brand_css = ''; }
+    if ($_hdr_brand_css !== ''): ?>
+    <style id="establishment-branding"><?= $_hdr_brand_css ?></style>
+    <?php endif; ?>
+    <?php
     // Overlays de tokens du thème actif (mis en cache pour éviter une requête par page).
     $_hdr_override_css = '';
     $_hdr_cc = $cc ?? null;

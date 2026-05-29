@@ -616,7 +616,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             // 5e-bis — Validation du schéma (tables critiques)
-            $criticalTables = ['administrateurs','eleves','professeurs','parents','classes','matieres','periodes','notes','absences','evenements','modules_config'];
+            // Tables CORE uniquement (notes/absences/evenements… sont désormais des tables de module,
+            // créées à l'activation via ModuleSDK::provisionSql — pas à l'install système).
+            $criticalTables = ['administrateurs','eleves','professeurs','parents','classes','matieres','periodes','modules_config'];
             $missingTables = [];
             foreach ($criticalTables as $tbl) {
                 $chk = $pdo->query("SHOW TABLES LIKE " . $pdo->quote($tbl));

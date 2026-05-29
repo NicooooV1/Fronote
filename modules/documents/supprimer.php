@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../API/bootstrap.php';
 requireAuth();
 
 if (!isAdmin()) {
-    redirect('../accueil/accueil.php');
+    redirect('accueil/accueil.php');
 }
 
 require_once __DIR__ . '/includes/DocumentService.php';

@@ -29,7 +29,7 @@ if (!defined('BASE_URL')) {
 
 // Définir le chemin des logs
 if (!defined('LOGS_PATH')) {
-    define('LOGS_PATH', __DIR__ . '/../../logs');
+    define('LOGS_PATH', (defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 3)) . '/logs');
 }
 
 // Créer le dossier de logs s'il n'existe pas

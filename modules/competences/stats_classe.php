@@ -6,7 +6,7 @@ $pageTitle = 'Statistiques compétences par classe';
 require_once __DIR__ . '/includes/header.php';
 
 if (!isAdmin() && !isTeacher() && !isVieScolaire()) {
-    redirect('../accueil/accueil.php');
+    redirect('accueil/accueil.php');
 }
 
 $classes = $compService->getClasses();

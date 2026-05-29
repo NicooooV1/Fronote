@@ -16,5 +16,5 @@ if (!in_array($section, $allowed, true)) {
     $section = 'profil';
 }
 
-header('Location: ../parametres/parametres.php?section=' . urlencode($section));
+header('Location: ../../parametres/parametres.php?section=' . urlencode($section));
 exit;

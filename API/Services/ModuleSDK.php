@@ -28,7 +28,8 @@ class ModuleSDK
     /** Catégories valides */
     private const VALID_CATEGORIES = [
         'navigation', 'scolaire', 'vie_scolaire', 'communication',
-        'etablissement', 'logistique', 'systeme', 'sante', 'custom'
+        'etablissement', 'logistique', 'outils', 'administration',
+        'systeme', 'sante', 'custom'
     ];
 
     public function __construct(\PDO $pdo, string $basePath)
@@ -495,21 +496,16 @@ class ModuleSDK
             $checksum = hash('sha256', $sql);
             $start = microtime(true);
 
-            // Exécuter dans une transaction
+            // DDL : pas de transaction (les CREATE/ALTER provoquent un commit implicite,
+            // un commit() explicite lèverait « no active transaction »). FK checks off
+            // pour tolérer les références croisées entre modules et l'ordre d'activation.
             try {
-                $this->pdo->beginTransaction();
-                $this->pdo->exec($sql);
-                $this->pdo->commit();
-
+                $this->execSchemaSql($sql);
                 $ms = (int) round((microtime(true) - $start) * 1000);
                 $this->recordMigration($moduleKey, $migrationFile, $version, $checksum, 'success', null, $ms, $triggeredBy);
                 $executed[] = $migrationFile;
             } catch (\Throwable $e) {
-                if ($this->pdo->inTransaction()) {
-                    $this->pdo->rollBack();
-                }
                 $ms = (int) round((microtime(true) - $start) * 1000);
-                // Tracer l'échec (hors transaction annulée) pour qu'il soit visible en admin.
                 $this->recordMigration($moduleKey, $migrationFile, $version, $checksum, 'failed', $e->getMessage(), $ms, $triggeredBy);
                 $errors[] = "Échec migration '{$migrationFile}' : " . $e->getMessage();
             }
@@ -542,13 +538,8 @@ class ModuleSDK
             $sql = (string) @file_get_contents($installPath);
             if (trim($sql) !== '') {
                 try {
-                    $this->pdo->beginTransaction();
-                    $this->pdo->exec($sql);
-                    $this->pdo->commit();
+                    $this->execSchemaSql($sql);
                 } catch (\Throwable $e) {
-                    if ($this->pdo->inTransaction()) {
-                        $this->pdo->rollBack();
-                    }
                     $errors[] = "install.sql : " . $e->getMessage();
                 }
             }
@@ -559,6 +550,100 @@ class ModuleSDK
         $errors = array_merge($errors, $mig['errors']);
 
         return ['success' => empty($errors), 'errors' => $errors];
+    }
+
+    /**
+     * Exécute un script SQL de schéma (install.sql / migration) de façon robuste :
+     * désactive les contrôles de clés étrangères (références croisées inter-modules,
+     * ordre d'activation arbitraire), puis exécute chaque instruction séparément afin
+     * qu'un échec isolé n'interrompe pas les suivantes. Aucune transaction : le DDL
+     * provoque un commit implicite, rendant tout rollback illusoire.
+     *
+     * @throws \Throwable si au moins une instruction échoue (message agrégé).
+     */
+    private function execSchemaSql(string $sql): void
+    {
+        $errors = [];
+        try {
+            $this->pdo->exec('SET FOREIGN_KEY_CHECKS=0');
+        } catch (\Throwable $e) {
+            // non bloquant : on continue avec les contrôles actifs.
+        }
+        try {
+            foreach ($this->splitSqlStatements($sql) as $stmt) {
+                $stmt = trim($stmt);
+                if ($stmt === '' || str_starts_with($stmt, '--')) {
+                    continue;
+                }
+                try {
+                    $this->pdo->exec($stmt);
+                } catch (\Throwable $e) {
+                    $errors[] = $e->getMessage();
+                }
+            }
+        } finally {
+            try {
+                $this->pdo->exec('SET FOREIGN_KEY_CHECKS=1');
+            } catch (\Throwable $e) {
+                // ignore
+            }
+        }
+        if (!empty($errors)) {
+            throw new \RuntimeException(implode(' | ', $errors));
+        }
+    }
+
+    /**
+     * Découpe un script SQL en instructions individuelles. Gère les chaînes
+     * simples/doubles, les commentaires `--` et `/* *​/`, et ignore les `;`
+     * situés à l'intérieur des littéraux. Suffisant pour les install.sql/migrations
+     * (pas de routines stockées ni de DELIMITER).
+     *
+     * @return string[]
+     */
+    private function splitSqlStatements(string $sql): array
+    {
+        $statements = [];
+        $buffer = '';
+        $len = strlen($sql);
+        $inSingle = $inDouble = $inLineComment = $inBlockComment = false;
+
+        for ($i = 0; $i < $len; $i++) {
+            $c = $sql[$i];
+            $next = $i + 1 < $len ? $sql[$i + 1] : '';
+
+            if ($inLineComment) {
+                if ($c === "\n") { $inLineComment = false; $buffer .= $c; }
+                continue;
+            }
+            if ($inBlockComment) {
+                if ($c === '*' && $next === '/') { $inBlockComment = false; $i++; }
+                continue;
+            }
+            if (!$inSingle && !$inDouble) {
+                if ($c === '-' && $next === '-') { $inLineComment = true; $i++; continue; }
+                if ($c === '#') { $inLineComment = true; continue; }
+                if ($c === '/' && $next === '*') { $inBlockComment = true; $i++; continue; }
+            }
+
+            $prev = $i > 0 ? $sql[$i - 1] : '';
+            if ($c === "'" && !$inDouble && $prev !== '\\') {
+                $inSingle = !$inSingle;
+            } elseif ($c === '"' && !$inSingle && $prev !== '\\') {
+                $inDouble = !$inDouble;
+            }
+
+            if ($c === ';' && !$inSingle && !$inDouble) {
+                $statements[] = $buffer;
+                $buffer = '';
+                continue;
+            }
+            $buffer .= $c;
+        }
+        if (trim($buffer) !== '') {
+            $statements[] = $buffer;
+        }
+        return $statements;
     }
 
     /**

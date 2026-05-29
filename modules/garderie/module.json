@@ -28,7 +28,7 @@
         }
     },
     "routes": {
-        "main": "garderie.php"
+        "main": "inscriptions.php"
     },
     "widgets": [],
     "establishment_types": [

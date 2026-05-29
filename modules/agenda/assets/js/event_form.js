@@ -113,7 +113,7 @@
 
             personsList.innerHTML = '<div class="loading-indicator">Chargement…</div>';
 
-            fetch('../API/endpoints/agenda_persons.php?visibility=' + encodeURIComponent(visibility))
+            fetch('../../API/endpoints/agenda_persons.php?visibility=' + encodeURIComponent(visibility))
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.success && data.persons && data.persons.length > 0) {

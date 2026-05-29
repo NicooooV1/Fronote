@@ -1,0 +1,23 @@
+{
+    "key": "onboarding",
+    "version": "1.0.0",
+    "name": {
+        "fr": "Mise en route",
+        "en": "Onboarding"
+    },
+    "description": {
+        "fr": "Assistant de configuration du premier établissement (affiché au premier login administrateur).",
+        "en": "First-establishment setup wizard (shown on the first administrator login)."
+    },
+    "icon": "fas fa-rocket",
+    "category": "systeme",
+    "core": true,
+    "requires_php": ">=8.0",
+    "dependencies": [],
+    "permissions": {
+        "view": { "default_roles": ["administrateur"] },
+        "manage": { "default_roles": ["administrateur"] }
+    },
+    "author": "Fronote Team",
+    "license": "MIT"
+}

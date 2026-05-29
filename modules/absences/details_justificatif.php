@@ -53,7 +53,7 @@ if (!canManageAbsences()) {
     }
     if (!$allowed) {
         $_SESSION['error_message'] = "Accès non autorisé";
-        header('Location: ../index.php');
+        header('Location: ../../index.php');
         exit;
     }
 }

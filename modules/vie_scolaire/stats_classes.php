@@ -9,7 +9,7 @@ require_once __DIR__ . '/includes/header.php';
 requireAuth();
 
 if (!isAdmin() && !isVieScolaire()) {
-    header('Location: ../accueil/accueil.php');
+    header('Location: ../../accueil/accueil.php');
     exit;
 }
 

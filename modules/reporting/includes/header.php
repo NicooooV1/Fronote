@@ -7,7 +7,7 @@ require_once __DIR__ . '/../../../API/bootstrap.php';
 requireAuth();
 
 if (!isAdmin() && !isTeacher() && !isVieScolaire()) {
-    redirect('../accueil/accueil.php');
+    redirect('accueil/accueil.php');
 }
 
 require_once __DIR__ . '/ReportingService.php';

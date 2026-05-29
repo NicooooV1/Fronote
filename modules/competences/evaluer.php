@@ -6,7 +6,7 @@ $pageTitle = 'Évaluer les compétences';
 require_once __DIR__ . '/includes/header.php';
 
 if (!isAdmin() && !isTeacher()) {
-    redirect('../accueil/accueil.php');
+    redirect('accueil/accueil.php');
 }
 
 $classes = $compService->getClasses();

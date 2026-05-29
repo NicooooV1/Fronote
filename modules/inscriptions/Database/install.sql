@@ -1,0 +1,53 @@
+-- Module inscriptions — schema SQL (genere depuis pronote.sql, ordre FK preserve)
+-- Idempotent (IF NOT EXISTS). Injecte a l-activation (ModuleSDK::provisionSql).
+-- Encore present dans pronote.sql (filet) jusqu-a validation install neuve.
+
+CREATE TABLE IF NOT EXISTS `inscriptions` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `etablissement_id` int(11) NOT NULL DEFAULT 1,
+  `annee_scolaire` varchar(10) NOT NULL,
+  `type` enum('inscription','reinscription') NOT NULL DEFAULT 'inscription',
+  `nom_eleve` varchar(100) NOT NULL,
+  `prenom_eleve` varchar(100) NOT NULL,
+  `date_naissance` date NOT NULL,
+  `sexe` enum('M','F') NOT NULL,
+  `adresse` varchar(255) DEFAULT NULL,
+  `classe_demandee` varchar(50) DEFAULT NULL,
+  `niveau` varchar(20) DEFAULT NULL,
+  `nom_parent1` varchar(200) DEFAULT NULL,
+  `telephone_parent1` varchar(20) DEFAULT NULL,
+  `email_parent1` varchar(150) DEFAULT NULL,
+  `nom_parent2` varchar(200) DEFAULT NULL,
+  `telephone_parent2` varchar(20) DEFAULT NULL,
+  `email_parent2` varchar(150) DEFAULT NULL,
+  `etablissement_precedent` varchar(255) DEFAULT NULL,
+  `observations` text DEFAULT NULL,
+  `statut` enum('en_cours','complet','valide','refuse','archive') NOT NULL DEFAULT 'en_cours',
+  `commentaire_admin` text DEFAULT NULL,
+  `traite_par` int(11) DEFAULT NULL,
+  `date_traitement` datetime DEFAULT NULL,
+  `date_creation` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `date_modification` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_inscription_annee` (`annee_scolaire`),
+  KEY `idx_inscription_statut` (`statut`),
+  KEY `idx_inscription_nom` (`nom_eleve`, `prenom_eleve`),
+  KEY `idx_etab` (`etablissement_id`),
+  CONSTRAINT `fk_inscriptions_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `inscription_documents` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `inscription_id` int(11) NOT NULL,
+  `type_document` varchar(100) NOT NULL COMMENT 'livret_famille, certificat_medical, photo_identite, justif_domicile, bulletins_precedents',
+  `nom_fichier` varchar(255) NOT NULL,
+  `chemin_fichier` varchar(255) NOT NULL,
+  `type_mime` varchar(100) NOT NULL,
+  `taille` int(11) NOT NULL DEFAULT 0,
+  `valide` tinyint(1) DEFAULT NULL,
+  `commentaire` text DEFAULT NULL,
+  `date_upload` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_insdoc_inscription` (`inscription_id`),
+  CONSTRAINT `fk_insdoc_inscription` FOREIGN KEY (`inscription_id`) REFERENCES `inscriptions` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

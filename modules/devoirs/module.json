@@ -37,7 +37,7 @@
         }
     },
     "routes": {
-        "main": "devoirs.php"
+        "main": "mes_devoirs.php"
     },
     "widgets": [
         {
