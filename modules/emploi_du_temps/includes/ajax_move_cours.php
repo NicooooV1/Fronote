@@ -44,10 +44,11 @@ try {
 
     $pdo = getPDO();
     $edtService = new EdtService($pdo);
+    try { $etabId = \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { $etabId = 1; }
 
-    // Get current cours
-    $stmt = $pdo->prepare("SELECT * FROM emploi_du_temps WHERE id = ?");
-    $stmt->execute([$coursId]);
+    // Get current cours (scopé établissement courant)
+    $stmt = $pdo->prepare("SELECT * FROM emploi_du_temps WHERE id = ? AND etablissement_id = ?");
+    $stmt->execute([$coursId, $etabId]);
     $cours = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$cours) {
@@ -76,8 +77,8 @@ try {
     }
 
     // Move the cours
-    $stmt = $pdo->prepare("UPDATE emploi_du_temps SET jour = ?, creneau_id = ? WHERE id = ?");
-    $stmt->execute([$newJour, $newCreneauId, $coursId]);
+    $stmt = $pdo->prepare("UPDATE emploi_du_temps SET jour = ?, creneau_id = ? WHERE id = ? AND etablissement_id = ?");
+    $stmt->execute([$newJour, $newCreneauId, $coursId, $etabId]);
 
     echo json_encode([
         'success' => true,

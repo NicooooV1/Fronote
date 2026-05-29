@@ -131,6 +131,7 @@ function getAdminBreadcrumb($currentPage, $pageTitle = '') {
         'audit'            => ['label' => 'Journal d\'audit',        'parent' => 'Système'],
         'stats'            => ['label' => 'Statistiques',            'parent' => 'Système'],
         'modules'          => ['label' => 'Gestion des modules',     'parent' => 'Système'],
+        'modules_configure'=> ['label' => 'Configuration',           'parent' => 'Gestion des modules', 'parent_url' => 'admin/modules/index.php'],
         'import_export'    => ['label' => 'Import / Export',         'parent' => 'Système'],
     ];
     return $sections[$currentPage] ?? ['label' => $pageTitle, 'parent' => null];
@@ -151,7 +152,11 @@ function renderAdminBreadcrumb($currentPage, $pageTitle = '', $rootPrefix = '../
     if ($currentPage !== 'dashboard') {
         if (!empty($bc['parent'])) {
             $html .= '<span class="breadcrumb-sep"><i class="fas fa-chevron-right"></i></span>';
-            $html .= '<span>' . htmlspecialchars($bc['parent']) . '</span>';
+            if (!empty($bc['parent_url'])) {
+                $html .= '<a href="' . htmlspecialchars($rootPrefix . $bc['parent_url']) . '">' . htmlspecialchars($bc['parent']) . '</a>';
+            } else {
+                $html .= '<span>' . htmlspecialchars($bc['parent']) . '</span>';
+            }
         }
         $html .= '<span class="breadcrumb-sep"><i class="fas fa-chevron-right"></i></span>';
         $html .= '<span class="breadcrumb-current">' . htmlspecialchars($bc['label']) . '</span>';

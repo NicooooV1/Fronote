@@ -24,16 +24,26 @@ class MatiereService
     public function getAll(): array
     {
         $cache = app('cache');
-        return $cache->remember('matieres:all', 600, function () {
+        $etab  = $this->etabId();
+        return $cache->remember('matieres:all:' . $etab, 600, function () use ($etab) {
             $sql = <<<'SQL'
                 SELECT m.*,
-                       (SELECT COUNT(*) FROM notes WHERE id_matiere = m.id) AS note_count
+                       (SELECT COUNT(*) FROM notes WHERE id_matiere = m.id AND etablissement_id = m.etablissement_id) AS note_count
                 FROM matieres m
+                WHERE m.etablissement_id = ?
                 ORDER BY m.actif DESC, m.nom
             SQL;
 
-            return $this->pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([$etab]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
         });
+    }
+
+    /** Établissement courant (scope multi-établissement). */
+    private function etabId(): int
+    {
+        try { return \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { return 1; }
     }
 
     /**
@@ -74,7 +84,7 @@ class MatiereService
         ]);
 
         $id = (int) $this->pdo->lastInsertId();
-        app('cache')->forget('matieres:all');
+        app('cache')->forget('matieres:all:' . $this->etabId());
         app('cache')->forget('dashboard:counts');
         app('hooks')?->dispatch(new \API\Events\MatiereCreated($id, $data));
         return $id;
@@ -111,7 +121,7 @@ class MatiereService
 
         $updated = $stmt->rowCount() > 0;
         if ($updated) {
-            app('cache')->forget('matieres:all');
+            app('cache')->forget('matieres:all:' . $this->etabId());
             app('cache')->forget('dashboard:counts');
             app('hooks')?->dispatch(new \API\Events\MatiereUpdated($id, $data));
         }
@@ -142,7 +152,7 @@ class MatiereService
 
         $deleted = $stmt->rowCount() > 0;
         if ($deleted) {
-            app('cache')->forget('matieres:all');
+            app('cache')->forget('matieres:all:' . $this->etabId());
             app('cache')->forget('dashboard:counts');
             app('hooks')?->dispatch(new \API\Events\MatiereDeleted($id));
         }

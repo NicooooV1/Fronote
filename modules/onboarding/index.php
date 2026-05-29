@@ -22,6 +22,34 @@ $current     = $etabService->getCurrent() ?: [];
 
 $success = '';
 $error   = '';
+$justSaved = false;
+
+// Mode « créer un nouvel établissement » (étape multi-établissement).
+$createNew = !empty($_GET['nouveau']) || !empty($_POST['create_new']);
+
+// Établissements déjà configurés (code ≠ 'default').
+$configuredEtabs = [];
+try {
+    foreach ($etabService->getAll(false) as $e) {
+        if (($e['code'] ?? '') !== 'default') {
+            $configuredEtabs[] = $e;
+        }
+    }
+} catch (\Throwable $e) {}
+
+/**
+ * Insère une classe pour un établissement donné (id explicite, sans dépendre
+ * du contexte de session — nécessaire pour les établissements créés à la volée).
+ */
+$insertClasse = function (int $targetEtab, string $niveau, string $nom, string $annee) use ($pdo): void {
+    $niveau = trim($niveau);
+    $nom    = trim($nom);
+    if ($niveau === '' || $nom === '') return;
+    try {
+        $pdo->prepare("INSERT INTO classes (niveau, nom, annee_scolaire, etablissement_id) VALUES (?,?,?,?)")
+            ->execute([$niveau, $nom, $annee, $targetEtab]);
+    } catch (\PDOException $e) { /* doublon nom/année → ignoré */ }
+};
 
 // Classes par défaut selon le type (réutilisé de l'ancien install.php).
 $defaultClassesByType = [
@@ -56,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $slug = 'etab-' . bin2hex(random_bytes(3));
             }
 
-            $ok = $etabService->update($etabId, [
+            $identity = [
                 'nom'                => $nom,
                 'code'               => $slug,
                 'type'               => $type,
@@ -69,51 +97,99 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'annee_scolaire'     => $annee,
                 'couleur_primaire'   => trim($_POST['couleur_primaire'] ?? '') ?: '#003366',
                 'couleur_secondaire' => trim($_POST['couleur_secondaire'] ?? '') ?: '#0066cc',
-            ]);
+            ];
+
+            $targetId = $etabId;
+            $ok = true;
+            if (!empty($_POST['create_new'])) {
+                // Établissement supplémentaire : on en crée un nouveau.
+                try {
+                    $targetId = $etabService->create($identity);
+                    $ok = $targetId > 0;
+                } catch (\Throwable $ex) {
+                    $ok = false;
+                }
+            } else {
+                $ok = $etabService->update($etabId, $identity);
+            }
 
             if (!$ok) {
                 $error = "Échec de l'enregistrement de l'établissement (le code est peut-être déjà utilisé).";
             } else {
-                // Périodes.
-                $periodeSystem = ($_POST['periode_system'] ?? 'trimestre') === 'semestre' ? 'semestre' : 'trimestre';
-                $periodes = [];
-                if ($periodeSystem === 'trimestre') {
-                    $labels = ['1er trimestre', '2ème trimestre', '3ème trimestre'];
-                    for ($i = 1; $i <= 3; $i++) {
-                        $d = $_POST["p{$i}_debut"] ?? '';
-                        $f = $_POST["p{$i}_fin"] ?? '';
-                        if ($d && $f) $periodes[] = ['nom' => $labels[$i - 1], 'date_debut' => $d, 'date_fin' => $f];
+                // Périodes (établissement principal uniquement ; les suivants se
+                // paramètrent depuis l'administration). configurePeriodes opère sur
+                // l'établissement courant (= défaut au premier login).
+                if (empty($_POST['create_new'])) {
+                    $periodeSystem = ($_POST['periode_system'] ?? 'trimestre') === 'semestre' ? 'semestre' : 'trimestre';
+                    $periodes = [];
+                    if ($periodeSystem === 'trimestre') {
+                        $labels = ['1er trimestre', '2ème trimestre', '3ème trimestre'];
+                        for ($i = 1; $i <= 3; $i++) {
+                            $d = $_POST["p{$i}_debut"] ?? '';
+                            $f = $_POST["p{$i}_fin"] ?? '';
+                            if ($d && $f) $periodes[] = ['nom' => $labels[$i - 1], 'date_debut' => $d, 'date_fin' => $f];
+                        }
+                    } else {
+                        $labels = ['1er semestre', '2ème semestre'];
+                        for ($i = 1; $i <= 2; $i++) {
+                            $d = $_POST["s{$i}_debut"] ?? '';
+                            $f = $_POST["s{$i}_fin"] ?? '';
+                            if ($d && $f) $periodes[] = ['nom' => $labels[$i - 1], 'date_debut' => $d, 'date_fin' => $f];
+                        }
                     }
-                } else {
-                    $labels = ['1er semestre', '2ème semestre'];
-                    for ($i = 1; $i <= 2; $i++) {
-                        $d = $_POST["s{$i}_debut"] ?? '';
-                        $f = $_POST["s{$i}_fin"] ?? '';
-                        if ($d && $f) $periodes[] = ['nom' => $labels[$i - 1], 'date_debut' => $d, 'date_fin' => $f];
+                    if (!empty($periodes)) {
+                        $etabService->configurePeriodes($periodeSystem, $periodes);
                     }
-                }
-                if (!empty($periodes)) {
-                    $etabService->configurePeriodes($periodeSystem, $periodes);
                 }
 
-                // Classes + matières par défaut (optionnel).
+                // Classes par défaut selon le type (optionnel), insérées avec l'id
+                // d'établissement cible explicite.
                 if (!empty($_POST['gen_defaults'])) {
                     $scopes = $type === 'polyvalent' ? ['primaire', 'college', 'lycee'] : [$type];
                     foreach ($scopes as $scope) {
                         foreach ($defaultClassesByType[$scope] ?? [] as $niveau => $noms) {
                             foreach ($noms as $classeNom) {
-                                $etabService->addClasse($niveau, $classeNom);
+                                $insertClasse($targetId, $niveau, $classeNom, $annee);
                             }
                         }
                     }
-                    foreach ($defaultMatieres as [$code, $matNom]) {
-                        $etabService->addMatiere($code, $matNom);
+                    // Matières par défaut : uniquement pour l'établissement principal
+                    // (matieres.code est unique globalement).
+                    if (empty($_POST['create_new'])) {
+                        foreach ($defaultMatieres as [$code, $matNom]) {
+                            $etabService->addMatiere($code, $matNom);
+                        }
+                    }
+                }
+
+                // Classes personnalisées saisies à la main (niveau + nom répétables).
+                $cn = $_POST['classe_niveau'] ?? [];
+                $cm = $_POST['classe_nom'] ?? [];
+                if (is_array($cn) && is_array($cm)) {
+                    $n = min(count($cn), count($cm));
+                    for ($i = 0; $i < $n; $i++) {
+                        $insertClasse($targetId, (string) $cn[$i], (string) $cm[$i], $annee);
                     }
                 }
 
                 $_SESSION['onboarding_done'] = true;
-                header('Location: ' . (defined('BASE_URL') ? BASE_URL : '') . '/accueil/accueil.php');
-                exit;
+
+                if (!empty($_POST['add_another'])) {
+                    // Enchaîner sur la création d'un autre établissement.
+                    header('Location: index.php?nouveau=1&ok=1');
+                    exit;
+                }
+                if (!empty($_POST['finish'])) {
+                    header('Location: ' . (defined('BASE_URL') ? BASE_URL : '') . '/accueil/accueil.php');
+                    exit;
+                }
+                // Par défaut : afficher le panneau de succès avec les deux choix.
+                $justSaved = true;
+                $success = "« " . htmlspecialchars($nom) . " » enregistré.";
+                $configuredEtabs = [];
+                foreach ($etabService->getAll(false) as $e) {
+                    if (($e['code'] ?? '') !== 'default') $configuredEtabs[] = $e;
+                }
             }
         }
     }
@@ -138,10 +214,13 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 ?>
 
 <div class="onboarding-wrap" style="max-width:860px;margin:24px auto;padding:0 16px">
-    <h1 style="font-size:1.5em;margin-bottom:4px">Bienvenue 👋</h1>
+    <h1 style="font-size:1.5em;margin-bottom:4px">
+        <?= $createNew ? 'Nouvel établissement 🏫' : 'Bienvenue 👋' ?>
+    </h1>
     <p style="color:var(--text-muted,#6b7280);margin-bottom:24px">
-        Configurez votre établissement pour commencer à utiliser Fronote.
-        Vous pourrez tout modifier plus tard depuis l'administration.
+        <?= $createNew
+            ? "Renseignez un établissement supplémentaire. Vous pourrez en ajouter d'autres ensuite."
+            : "Configurez votre établissement pour commencer à utiliser Fronote. Vous pourrez tout modifier plus tard depuis l'administration." ?>
     </p>
 
     <?php if ($error): ?>
@@ -150,8 +229,37 @@ include __DIR__ . '/../../templates/shared_topbar.php';
         </div>
     <?php endif; ?>
 
+    <?php if (!empty($configuredEtabs)): ?>
+        <div style="background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:14px 16px;margin-bottom:18px">
+            <div style="font-size:.85em;color:var(--text-muted,#6b7280);margin-bottom:6px">Établissements configurés (<?= count($configuredEtabs) ?>)</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+                <?php foreach ($configuredEtabs as $ce): ?>
+                <span style="background:#eef2ff;color:#3730a3;border-radius:16px;padding:4px 12px;font-size:.85em">
+                    <i class="fas fa-school"></i> <?= htmlspecialchars($ce['nom'] ?? '') ?>
+                </span>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($justSaved): ?>
+        <div style="background:#d1fae5;color:#065f46;border:1px solid #a7f3d0;padding:16px 18px;border-radius:10px;margin-bottom:18px">
+            <strong><i class="fas fa-check-circle"></i> <?= $success ?></strong>
+            <p style="margin:8px 0 0;font-size:.9em">Souhaitez-vous ajouter un autre établissement ou commencer à utiliser Fronote ?</p>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <a href="index.php?nouveau=1" class="btn" style="background:var(--surface,#fff);border:1px solid var(--primary,#003366);color:var(--primary,#003366);padding:10px 22px;border-radius:8px;text-decoration:none;font-weight:600">
+                <i class="fas fa-plus"></i> Ajouter un autre établissement
+            </a>
+            <a href="<?= (defined('BASE_URL') ? BASE_URL : '') ?>/accueil/accueil.php" class="btn btn-primary" style="background:var(--primary,#003366);color:#fff;padding:10px 22px;border-radius:8px;text-decoration:none;font-weight:600">
+                Aller à l'accueil →
+            </a>
+        </div>
+    <?php else: ?>
+
     <form method="post" class="card" style="background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:12px;padding:24px">
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token) ?>">
+        <?php if ($createNew): ?><input type="hidden" name="create_new" value="1"><?php endif; ?>
 
         <h3 style="margin:0 0 14px;font-size:1.05em">🏫 Identité</h3>
         <div class="form-group" style="margin-bottom:14px">
@@ -187,6 +295,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
             <div class="form-group"><label>Académie</label><input type="text" name="academie" value="<?= htmlspecialchars($_POST['academie'] ?? '') ?>" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px"></div>
         </div>
 
+        <?php if (!$createNew): ?>
         <h3 style="margin:0 0 14px;font-size:1.05em">📅 Périodes scolaires</h3>
         <div class="form-group" style="margin-bottom:14px">
             <label>Système de périodes</label>
@@ -217,6 +326,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
             </div>
             <?php endfor; ?>
         </div>
+        <?php endif; ?>
 
         <h3 style="margin:20px 0 14px;font-size:1.05em">🎨 Couleurs (optionnel)</h3>
         <div style="display:flex;gap:24px;margin-bottom:20px">
@@ -228,24 +338,51 @@ include __DIR__ . '/../../templates/shared_topbar.php';
             </label>
         </div>
 
-        <label style="display:flex;align-items:center;gap:8px;margin-bottom:20px;cursor:pointer">
+        <label style="display:flex;align-items:center;gap:8px;margin-bottom:18px;cursor:pointer">
             <input type="checkbox" name="gen_defaults" value="1" checked>
-            Générer des classes et matières par défaut pour ce type d'établissement
+            Générer des classes par défaut pour ce type d'établissement<?= $createNew ? '' : ' (et les matières communes)' ?>
         </label>
 
-        <div style="display:flex;justify-content:flex-end">
-            <button type="submit" class="btn btn-primary" style="background:var(--primary,#003366);color:#fff;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-weight:600">
-                Terminer la configuration →
+        <h3 style="margin:6px 0 10px;font-size:1.05em">🏷️ Classes personnalisées (optionnel)</h3>
+        <p style="color:var(--text-muted,#6b7280);font-size:.85em;margin:0 0 10px">
+            Ajoutez vos propres classes. Elles s'ajoutent à celles générées par défaut.
+        </p>
+        <div id="classes-rows" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
+        <button type="button" onclick="addClasseRow()" style="background:var(--surface,#fff);border:1px dashed var(--border,#cbd5e0);color:var(--text,#333);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:.88em;margin-bottom:20px">
+            <i class="fas fa-plus"></i> Ajouter une classe
+        </button>
+
+        <div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap">
+            <button type="submit" name="add_another" value="1" class="btn" style="background:var(--surface,#fff);border:1px solid var(--primary,#003366);color:var(--primary,#003366);padding:10px 22px;border-radius:8px;cursor:pointer;font-weight:600">
+                Enregistrer &amp; ajouter un autre
+            </button>
+            <button type="submit" name="finish" value="1" class="btn btn-primary" style="background:var(--primary,#003366);color:#fff;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-weight:600">
+                Terminer &amp; aller à l'accueil →
             </button>
         </div>
     </form>
+    <?php endif; ?>
 </div>
 
 <script>
 function togglePeriodes() {
-    var sys = document.getElementById('periodeSystem').value;
+    var el = document.getElementById('periodeSystem');
+    if (!el) return;
+    var sys = el.value;
     document.getElementById('trimestre-fields').style.display = sys === 'trimestre' ? '' : 'none';
     document.getElementById('semestre-fields').style.display = sys === 'semestre' ? '' : 'none';
+}
+
+function addClasseRow(niveau, nom) {
+    var wrap = document.getElementById('classes-rows');
+    if (!wrap) return;
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:8px;align-items:center';
+    row.innerHTML =
+        '<input type="text" name="classe_niveau[]" placeholder="Niveau (ex: 6eme)" value="' + (niveau || '') + '" style="flex:1;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px">' +
+        '<input type="text" name="classe_nom[]" placeholder="Nom (ex: 6A)" value="' + (nom || '') + '" style="flex:1;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px">' +
+        '<button type="button" title="Retirer" style="background:none;border:none;color:#e53e3e;cursor:pointer;font-size:1.1em" onclick="this.parentNode.remove()"><i class="fas fa-times"></i></button>';
+    wrap.appendChild(row);
 }
 </script>
 

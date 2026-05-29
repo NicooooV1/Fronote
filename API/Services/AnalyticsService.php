@@ -210,11 +210,27 @@ class AnalyticsService
 
     private function countTable(string $table, string $where = '1=1'): int
     {
+        // Scope multi-établissement pour les tables portant etablissement_id.
+        $scoped = ['eleves','professeurs','parents','vie_scolaire','administrateurs','classes',
+                   'matieres','absences','retards','justificatifs','notes','evenements',
+                   'annonces','bulletins','devoirs','incidents'];
+        $params = [];
+        if (in_array($table, $scoped, true)) {
+            $where .= ' AND etablissement_id = ?';
+            $params[] = $this->etabId();
+        }
         try {
-            $stmt = $this->pdo->query("SELECT COUNT(*) FROM `{$table}` WHERE {$where}");
+            $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM `{$table}` WHERE {$where}");
+            $stmt->execute($params);
             return (int) $stmt->fetchColumn();
         } catch (\Throwable $e) {
             return 0;
         }
+    }
+
+    /** Établissement courant (scope multi-établissement). */
+    private function etabId(): int
+    {
+        try { return \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { return 1; }
     }
 }

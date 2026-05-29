@@ -88,12 +88,18 @@ try {
     $_hdr_csrf_token = \API\Core\Facades\CSRF::generate();
 } catch (\Throwable $_hdr_csrf_err) {
     // Fallback si le container n'est pas encore initialisé
-    if (!isset($_SESSION['csrf_token'])) {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-    }
-    $_hdr_csrf_token = $_SESSION['csrf_token'];
+    $_hdr_csrf_token = $_SESSION['csrf_token'] ?? bin2hex(random_bytes(32));
 }
-$_SESSION['csrf_token'] = $_hdr_csrf_token;
+// Token hérité STABLE pour les formulaires legacy qui valident par comparaison
+// directe avec $_SESSION['csrf_token']. Il ne doit PAS être réécrit à chaque
+// chargement : sinon le token intégré au formulaire (lu avant l'inclusion de ce
+// header) se désynchronise de la session et la validation POST échoue en silence
+// (permissions/modules non enregistrés, aucun log). Le token tournant exposé via
+// $_hdr_csrf_token (meta + formulaires récents validés par app('csrf')->validate)
+// reste indépendant.
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 
 // ─── Nonce CSP ───────────────────────────────────────────────────────────────
 $_hdr_nonce = base64_encode(random_bytes(16));

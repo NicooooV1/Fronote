@@ -149,7 +149,8 @@ class ClubService
 
     public function getProfesseurs(): array
     {
-        $stmt = $this->pdo->query("SELECT id, prenom, nom FROM professeurs ORDER BY nom");
+        $stmt = $this->pdo->prepare("SELECT id, prenom, nom FROM professeurs WHERE etablissement_id = ? ORDER BY nom");
+        $stmt->execute([\API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

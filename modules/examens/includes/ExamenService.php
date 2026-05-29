@@ -151,22 +151,30 @@ class ExamenService
 
     public function getMatieres(): array
     {
-        return $this->pdo->query("SELECT id, nom FROM matieres ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
+        $s = $this->pdo->prepare("SELECT id, nom FROM matieres WHERE etablissement_id = ? ORDER BY nom");
+        $s->execute([\API\Core\EstablishmentContext::id()]);
+        return $s->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getSalles(): array
     {
-        return $this->pdo->query("SELECT id, nom, capacite FROM salles ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
+        $s = $this->pdo->prepare("SELECT id, nom, capacite FROM salles WHERE etablissement_id = ? ORDER BY nom");
+        $s->execute([\API\Core\EstablishmentContext::id()]);
+        return $s->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getClasses(): array
     {
-        return $this->pdo->query("SELECT id, nom FROM classes ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
+        $s = $this->pdo->prepare("SELECT id, nom FROM classes WHERE etablissement_id = ? ORDER BY nom");
+        $s->execute([\API\Core\EstablishmentContext::id()]);
+        return $s->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getProfesseurs(): array
     {
-        return $this->pdo->query("SELECT id, prenom, nom FROM professeurs ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
+        $s = $this->pdo->prepare("SELECT id, prenom, nom FROM professeurs WHERE etablissement_id = ? ORDER BY nom");
+        $s->execute([\API\Core\EstablishmentContext::id()]);
+        return $s->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getConvocationsEleve(int $eleveId): array

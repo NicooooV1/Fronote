@@ -10,7 +10,9 @@ $message = '';
 $chambreId = isset($_GET['chambre']) ? (int)$_GET['chambre'] : 0;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isGestionnaire) {
-    if (isset($_POST['affecter'])) {
+    if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+        $message = 'Jeton de sécurité invalide. Veuillez recharger la page.';
+    } elseif (isset($_POST['affecter'])) {
         $internatService->affecterEleve((int)$_POST['chambre_id'], (int)$_POST['eleve_id'], $_POST['date_debut']);
         $message = 'Élève affecté.';
     } elseif (isset($_POST['liberer'])) {
@@ -39,6 +41,7 @@ if ($isGestionnaire) {
         <div class="card-header"><h3>Affecter un élève</h3></div>
         <div class="card-body">
             <form method="post">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
                 <input type="hidden" name="affecter" value="1">
                 <div class="form-row">
                     <div class="form-group"><label>Chambre</label>
@@ -84,6 +87,7 @@ if ($isGestionnaire) {
                         <td>
                             <?php if ($af['statut'] === 'actif'): ?>
                             <form method="post" style="display:inline">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
                                 <input type="hidden" name="liberer" value="1">
                                 <input type="hidden" name="affectation_id" value="<?= $af['id'] ?>">
                                 <button class="btn btn-sm btn-danger" title="Libérer"><i class="fas fa-sign-out-alt"></i></button>

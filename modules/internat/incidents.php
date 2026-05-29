@@ -10,7 +10,9 @@ if (!$isGestionnaire) { header('Location: affectations.php'); exit; }
 
 $message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['signaler'])) {
+    if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+        $message = 'Jeton de sécurité invalide. Veuillez recharger la page.';
+    } elseif (isset($_POST['signaler'])) {
         $internatService->signalerIncident([
             'chambre_id' => $_POST['chambre_id'] ?: null,
             'eleve_id' => $_POST['eleve_id'] ?: null,
@@ -40,6 +42,7 @@ $chambres = $internatService->getChambres();
         <div class="card-header"><h3>Signaler un incident</h3></div>
         <div class="card-body">
             <form method="post">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
                 <input type="hidden" name="signaler" value="1">
                 <div class="form-row">
                     <div class="form-group"><label>Chambre</label>
@@ -84,6 +87,7 @@ $chambres = $internatService->getChambres();
                         <td>
                             <?php if (!$inc['traite']): ?>
                             <form method="post" style="display:inline">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
                                 <input type="hidden" name="traiter" value="1">
                                 <input type="hidden" name="incident_id" value="<?= $inc['id'] ?>">
                                 <input type="text" name="suite_donnee" placeholder="Suite donnée…" class="form-control form-control-sm" style="display:inline-block;width:auto">

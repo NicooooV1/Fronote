@@ -153,8 +153,8 @@ class RenduService {
         // Nombre d'élèves attendus
         $devoir = $this->getDevoir($devoirId);
         if ($devoir) {
-            $stmt2 = $this->pdo->prepare("SELECT COUNT(*) FROM eleves WHERE classe = ? AND actif = 1");
-            $stmt2->execute([$devoir['classe']]);
+            $stmt2 = $this->pdo->prepare("SELECT COUNT(*) FROM eleves WHERE classe = ? AND actif = 1 AND etablissement_id = ?");
+            $stmt2->execute([$devoir['classe'], \API\Core\EstablishmentContext::id()]);
             $stats['total_eleves'] = (int)$stmt2->fetchColumn();
         }
 
@@ -230,11 +230,11 @@ class RenduService {
         $stmt = $this->pdo->prepare("
             SELECT e.id, e.nom, e.prenom
             FROM eleves e
-            WHERE e.classe = ? AND e.actif = 1
+            WHERE e.classe = ? AND e.actif = 1 AND e.etablissement_id = ?
               AND e.id NOT IN (SELECT eleve_id FROM devoirs_rendus WHERE devoir_id = ?)
             ORDER BY e.nom, e.prenom
         ");
-        $stmt->execute([$devoir['classe'], $devoirId]);
+        $stmt->execute([$devoir['classe'], \API\Core\EstablishmentContext::id(), $devoirId]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 

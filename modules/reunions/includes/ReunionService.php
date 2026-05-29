@@ -191,13 +191,15 @@ class ReunionService
 
     public function getClasses(): array
     {
-        $stmt = $this->pdo->query("SELECT id, nom, niveau FROM classes WHERE actif = 1 ORDER BY nom");
+        $stmt = $this->pdo->prepare("SELECT id, nom, niveau FROM classes WHERE actif = 1 AND etablissement_id = ? ORDER BY nom");
+        $stmt->execute([\API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getProfesseurs(): array
     {
-        $stmt = $this->pdo->query("SELECT id, nom, prenom, matiere FROM professeurs WHERE actif = 1 ORDER BY nom, prenom");
+        $stmt = $this->pdo->prepare("SELECT id, nom, prenom, matiere FROM professeurs WHERE actif = 1 AND etablissement_id = ? ORDER BY nom, prenom");
+        $stmt->execute([\API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

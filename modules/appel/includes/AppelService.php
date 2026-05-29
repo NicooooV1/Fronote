@@ -53,9 +53,9 @@ class AppelService
 
         $stmt = $this->pdo->prepare(
             "INSERT INTO appel_eleves (appel_id, eleve_id, statut)
-             SELECT ?, id, 'present' FROM eleves WHERE classe = ? AND actif = 1"
+             SELECT ?, id, 'present' FROM eleves WHERE classe = ? AND actif = 1 AND etablissement_id = ?"
         );
-        $stmt->execute([$appelId, $nomClasse]);
+        $stmt->execute([$appelId, $nomClasse, \API\Core\EstablishmentContext::id()]);
     }
 
     /**
@@ -357,12 +357,16 @@ class AppelService
 
     public function getClasses(): array
     {
-        return $this->pdo->query("SELECT * FROM classes WHERE actif = 1 ORDER BY niveau, nom")->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $this->pdo->prepare("SELECT * FROM classes WHERE actif = 1 AND etablissement_id = ? ORDER BY niveau, nom");
+        $stmt->execute([\API\Core\EstablishmentContext::id()]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getMatieres(): array
     {
-        return $this->pdo->query("SELECT * FROM matieres WHERE actif = 1 ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $this->pdo->prepare("SELECT * FROM matieres WHERE actif = 1 AND etablissement_id = ? ORDER BY nom");
+        $stmt->execute([\API\Core\EstablishmentContext::id()]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getElevesClasse(int $classeId): array
@@ -373,9 +377,9 @@ class AppelService
         if (!$nomClasse) return [];
 
         $stmt = $this->pdo->prepare(
-            "SELECT id, nom, prenom, classe FROM eleves WHERE classe = ? AND actif = 1 ORDER BY nom, prenom"
+            "SELECT id, nom, prenom, classe FROM eleves WHERE classe = ? AND actif = 1 AND etablissement_id = ? ORDER BY nom, prenom"
         );
-        $stmt->execute([$nomClasse]);
+        $stmt->execute([$nomClasse, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

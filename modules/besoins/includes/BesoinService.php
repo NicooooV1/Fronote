@@ -172,12 +172,16 @@ class BesoinService
 
     public function getEleves(): array
     {
-        return $this->pdo->query("SELECT e.id, e.prenom, e.nom, cl.nom AS classe_nom FROM eleves e LEFT JOIN classes cl ON e.classe_id = cl.id ORDER BY e.nom")->fetchAll(PDO::FETCH_ASSOC);
+        $s = $this->pdo->prepare("SELECT e.id, e.prenom, e.nom, cl.nom AS classe_nom FROM eleves e LEFT JOIN classes cl ON e.classe_id = cl.id WHERE e.etablissement_id = ? ORDER BY e.nom");
+        $s->execute([\API\Core\EstablishmentContext::id()]);
+        return $s->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getProfesseurs(): array
     {
-        return $this->pdo->query("SELECT id, prenom, nom FROM professeurs ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
+        $s = $this->pdo->prepare("SELECT id, prenom, nom FROM professeurs WHERE etablissement_id = ? ORDER BY nom");
+        $s->execute([\API\Core\EstablishmentContext::id()]);
+        return $s->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getStats(): array

@@ -11,7 +11,9 @@ $editId  = (int) ($_GET['id'] ?? 0);
 $asso    = $editId ? $vieAssoService->getAssociation($editId) : null;
 $erreur  = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !validateCSRFToken($_POST['csrf_token'] ?? '')) {
+    $erreur = 'Jeton de sécurité invalide. Veuillez recharger la page.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = [
         'nom'                 => trim($_POST['nom'] ?? ''),
         'type'                => $_POST['type'] ?? 'association',
@@ -34,6 +36,7 @@ $a = $asso ?? ['nom' => '', 'type' => 'association', 'description' => '', 'presi
     <h2><i class="fas fa-<?= $editId ? 'edit' : 'plus' ?> me-2"></i><?= $editId ? 'Modifier l\'association' : 'Nouvelle association' ?></h2>
     <?php if ($erreur): ?><div class="alert alert-danger"><?= htmlspecialchars($erreur) ?></div><?php endif; ?>
     <form method="post" class="card mt-3">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
         <div class="card-body row g-3">
             <div class="col-md-6"><label class="form-label">Nom *</label><input name="nom" class="form-control" value="<?= htmlspecialchars($a['nom']) ?>" required></div>
             <div class="col-md-3"><label class="form-label">Type</label><select name="type" class="form-select"><?php foreach ($types as $k => $v): ?><option value="<?= $k ?>" <?= ($a['type'] ?? '') === $k ? 'selected' : '' ?>><?= $v ?></option><?php endforeach; ?></select></div>

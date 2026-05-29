@@ -12,7 +12,9 @@ $erreur   = '';
 $editId   = (int) ($_GET['id'] ?? 0);
 $entry    = $editId ? $parcoursService->getEntry($editId) : null;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !validateCSRFToken($_POST['csrf_token'] ?? '')) {
+    $erreur = 'Jeton de sécurité invalide. Veuillez recharger la page.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = [
         'eleve_id'          => (int) $_POST['eleve_id'],
         'type_parcours'     => $_POST['type_parcours'],
@@ -43,6 +45,7 @@ $p = $entry ?? ['eleve_id' => '', 'type_parcours' => 'avenir', 'titre' => '', 'd
     <?php if ($erreur): ?><div class="alert alert-danger"><?= htmlspecialchars($erreur) ?></div><?php endif; ?>
 
     <form method="post" class="card mt-3">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
         <div class="card-body row g-3">
             <div class="col-md-4">
                 <label class="form-label">ID Élève *</label>

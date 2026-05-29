@@ -25,22 +25,24 @@ class DisciplineWidgetProvider implements WidgetDataProvider
                  FROM incidents i
                  JOIN eleves e ON e.id = i.eleve_id
                  LEFT JOIN classes c ON c.id = i.classe_id
-                 WHERE i.statut IN ('signale','en_traitement')
+                 WHERE i.statut IN ('signale','en_traitement') AND i.etablissement_id = ?
                  ORDER BY i.date_incident DESC
                  LIMIT ?"
             );
-            $stmt->execute([$limit]);
+            try { $etab = \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { $etab = 1; }
+            $stmt->execute([$etab, $limit]);
             $incidents = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
             // Stats rapides
-            $stmtStats = $pdo->query(
+            $stmtStats = $pdo->prepare(
                 "SELECT
                     COUNT(*) AS total_mois,
                     SUM(statut IN ('signale','en_traitement')) AS en_attente,
                     SUM(gravite IN ('grave','tres_grave')) AS graves
                  FROM incidents
-                 WHERE date_incident >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)"
+                 WHERE date_incident >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND etablissement_id = ?"
             );
+            $stmtStats->execute([$etab]);
             $stats = $stmtStats->fetch(\PDO::FETCH_ASSOC);
 
             return ['incidents' => $incidents, 'stats' => $stats];

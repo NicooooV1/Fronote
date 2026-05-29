@@ -183,7 +183,8 @@ class InscriptionService
 
     public function getClasses(): array
     {
-        $stmt = $this->pdo->query('SELECT id, nom FROM classes ORDER BY nom');
+        $stmt = $this->pdo->prepare('SELECT id, nom FROM classes WHERE etablissement_id = ? ORDER BY nom');
+        $stmt->execute([\API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -414,12 +415,12 @@ class InscriptionService
 
         $stmt2 = $this->pdo->prepare("
             SELECT c.id, c.nom, c.capacite_max,
-                   (SELECT COUNT(*) FROM eleves e WHERE e.classe_id = c.id) AS effectif
-            FROM classes c WHERE c.niveau = ?
+                   (SELECT COUNT(*) FROM eleves e WHERE e.classe_id = c.id AND e.etablissement_id = c.etablissement_id) AS effectif
+            FROM classes c WHERE c.niveau = ? AND c.etablissement_id = ?
             HAVING effectif < COALESCE(c.capacite_max, 35)
             ORDER BY effectif ASC LIMIT 1
         ");
-        $stmt2->execute([$niveau]);
+        $stmt2->execute([$niveau, \API\Core\EstablishmentContext::id()]);
         $classe = $stmt2->fetch(\PDO::FETCH_ASSOC);
         return $classe ? $classe['id'] : null;
     }
@@ -453,14 +454,15 @@ class InscriptionService
 
     public function lancerCampagneReinscription(string $anneeCible): int
     {
-        $stmt = $this->pdo->query("
+        $stmt = $this->pdo->prepare("
             SELECT e.id, e.nom, e.prenom, e.date_naissance, c.nom AS classe_nom, c.id AS classe_id,
                    pe.parent_id
             FROM eleves e
             LEFT JOIN classes c ON e.classe_id = c.id
             LEFT JOIN parent_eleve pe ON pe.eleve_id = e.id
-            WHERE e.actif = 1
+            WHERE e.actif = 1 AND e.etablissement_id = ?
         ");
+        $stmt->execute([\API\Core\EstablishmentContext::id()]);
         $eleves = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         $count = 0;

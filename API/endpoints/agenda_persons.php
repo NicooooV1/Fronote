@@ -21,13 +21,14 @@ if (!isAdmin() && !isTeacher() && !isVieScolaire()) {
 
 $visibility = filter_input(INPUT_GET, 'visibility', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? '';
 $pdo = getPDO();
+try { $etabId = \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { $etabId = 1; }
 $persons = [];
 
 try {
     switch ($visibility) {
         case 'eleves':
-            $stmt = $pdo->prepare("SELECT id, nom, prenom, classe FROM eleves ORDER BY nom, prenom");
-            $stmt->execute();
+            $stmt = $pdo->prepare("SELECT id, nom, prenom, classe FROM eleves WHERE etablissement_id = ? ORDER BY nom, prenom");
+            $stmt->execute([$etabId]);
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $persons[] = [
                     'id'   => $row['id'],
@@ -39,8 +40,8 @@ try {
             break;
 
         case 'professeurs':
-            $stmt = $pdo->prepare("SELECT id, nom, prenom, matiere FROM professeurs ORDER BY nom, prenom");
-            $stmt->execute();
+            $stmt = $pdo->prepare("SELECT id, nom, prenom, matiere FROM professeurs WHERE etablissement_id = ? ORDER BY nom, prenom");
+            $stmt->execute([$etabId]);
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $persons[] = [
                     'id'   => $row['id'],
@@ -58,10 +59,11 @@ try {
                  FROM parents p
                  LEFT JOIN parents_eleves pe ON p.id = pe.id_parent
                  LEFT JOIN eleves e ON pe.id_eleve = e.id
+                 WHERE p.etablissement_id = ?
                  GROUP BY p.id
                  ORDER BY p.nom, p.prenom"
             );
-            $stmt->execute();
+            $stmt->execute([$etabId]);
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $persons[] = [
                     'id'   => $row['id'],
@@ -110,8 +112,8 @@ try {
             // Classes spécifiques (format "classes:NomClasse")
             if (strpos($visibility, 'classes:') === 0) {
                 $classe = substr($visibility, 8);
-                $stmt = $pdo->prepare("SELECT id, nom, prenom FROM eleves WHERE classe = ? ORDER BY nom, prenom");
-                $stmt->execute([$classe]);
+                $stmt = $pdo->prepare("SELECT id, nom, prenom FROM eleves WHERE classe = ? AND etablissement_id = ? ORDER BY nom, prenom");
+                $stmt->execute([$classe, $etabId]);
                 while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                     $persons[] = [
                         'id'   => $row['id'],

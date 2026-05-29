@@ -859,7 +859,8 @@ class EventRepository
     public function getMatieres(): array
     {
         try {
-            $stmt = $this->pdo->query('SELECT DISTINCT nom FROM matieres ORDER BY nom');
+            $stmt = $this->pdo->prepare('SELECT DISTINCT nom FROM matieres WHERE etablissement_id = ? ORDER BY nom');
+            $stmt->execute([\API\Core\EstablishmentContext::id()]);
             $result = $stmt->fetchAll(PDO::FETCH_COLUMN);
             if (!empty($result)) return $result;
         } catch (\PDOException $e) {

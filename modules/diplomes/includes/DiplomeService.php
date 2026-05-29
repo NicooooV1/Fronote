@@ -83,7 +83,9 @@ class DiplomeService
 
     public function getEleves(): array
     {
-        return $this->pdo->query("SELECT e.id, e.prenom, e.nom, c.nom AS classe_nom FROM eleves e LEFT JOIN classes c ON e.classe_id = c.id ORDER BY e.nom")->fetchAll(PDO::FETCH_ASSOC);
+        $s = $this->pdo->prepare("SELECT e.id, e.prenom, e.nom, c.nom AS classe_nom FROM eleves e LEFT JOIN classes c ON e.classe_id = c.id WHERE e.etablissement_id = ? ORDER BY e.nom");
+        $s->execute([\API\Core\EstablishmentContext::id()]);
+        return $s->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getStats(): array
@@ -202,11 +204,11 @@ class DiplomeService
         $stmt = $this->pdo->prepare("
             SELECT e.id FROM eleves e
             JOIN classes c ON e.classe_id = c.id
-            WHERE c.nom = :c AND e.id NOT IN (
+            WHERE c.nom = :c AND e.etablissement_id = :etab AND e.id NOT IN (
                 SELECT eleve_id FROM diplomes WHERE type = :t AND YEAR(date_obtention) = YEAR(CURDATE())
             )
         ");
-        $stmt->execute([':c' => $classe, ':t' => $type]);
+        $stmt->execute([':c' => $classe, ':t' => $type, ':etab' => \API\Core\EstablishmentContext::id()]);
         $eleves = $stmt->fetchAll(\PDO::FETCH_COLUMN);
 
         $maxNum = (int)$this->pdo->query("SELECT COALESCE(MAX(numero_registre), 0) FROM diplomes WHERE YEAR(date_obtention) = YEAR(CURDATE())")->fetchColumn();

@@ -66,6 +66,7 @@ $diskPct = $diskTotal > 0 ? round(($diskTotal - $diskFree) / $diskTotal * 100) :
 $csrfToken = app('csrf')->generate();
 $pageTitle = 'Monitoring';
 $activePage = 'systeme';
+$rootPrefix = '../../';
 
 require_once __DIR__ . '/../../templates/shared_header.php';
 ?>

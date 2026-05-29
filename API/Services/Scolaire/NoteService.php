@@ -15,6 +15,12 @@ class NoteService
         $this->pdo = $pdo;
     }
 
+    /** Établissement courant (scope multi-établissement). */
+    private function etabId(): int
+    {
+        try { return \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { return 1; }
+    }
+
     /**
      * Retrieve paginated and filtered notes with joined eleve, matiere and professeur data.
      *
@@ -25,8 +31,8 @@ class NoteService
      */
     public function getFiltered(array $filters, int $page = 1, int $perPage = 50): array
     {
-        $where  = [];
-        $params = [];
+        $where  = ['n.etablissement_id = :etab'];
+        $params = [':etab' => $this->etabId()];
 
         if (!empty($filters['classe'])) {
             $where[]          = 'e.classe = :classe';
@@ -249,11 +255,12 @@ class NoteService
             JOIN matieres m ON n.id_matiere = m.id
             WHERE e.classe = ?
               AND n.trimestre = ?
+              AND n.etablissement_id = ?
             GROUP BY m.id, m.nom
         SQL;
 
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$classe, $trimestre]);
+        $stmt->execute([$classe, $trimestre, $this->etabId()]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -296,10 +303,11 @@ class NoteService
             SELECT AVG(note * 20 / note_sur) AS moyenne
             FROM notes
             WHERE trimestre = ?
+              AND etablissement_id = ?
         SQL;
 
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$trimestre]);
+        $stmt->execute([$trimestre, $this->etabId()]);
 
         $result = $stmt->fetchColumn();
 
@@ -318,11 +326,12 @@ class NoteService
             SELECT DISTINCT e.id, e.nom, e.prenom
             FROM eleves e
             WHERE e.classe = ?
+              AND e.etablissement_id = ?
             ORDER BY e.nom, e.prenom
         SQL;
 
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$classe]);
+        $stmt->execute([$classe, $this->etabId()]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

@@ -213,7 +213,7 @@ if ($_topbar_is_parent && !empty($_SESSION['user_id'])) {
         </button>
 
         <!-- Notifications -->
-        <a href="<?= $rootPrefix ?>notifications/notifications.php" class="topbar-action-btn topbar-notif-btn"
+        <a href="<?= $rootPrefix ?>modules/notifications/notifications.php" class="topbar-action-btn topbar-notif-btn"
            title="<?= __('nav.notifications') ?>">
             <i class="fas fa-bell"></i>
             <?php if ($_topbar_notif_count > 0): ?>
@@ -260,7 +260,7 @@ if ($_topbar_is_parent && !empty($_SESSION['user_id'])) {
                 <?= htmlspecialchars($user_initials) ?>
             </button>
             <div class="topbar-dropdown__menu topbar-dropdown__menu--right">
-                <a href="<?= $rootPrefix ?>profil/index.php" class="topbar-dropdown__item">
+                <a href="<?= $rootPrefix ?>modules/profil/index.php" class="topbar-dropdown__item">
                     <i class="fas fa-user"></i> <span><?= __('nav.profile') ?></span>
                 </a>
                 <a href="<?= $rootPrefix ?>parametres/parametres.php" class="topbar-dropdown__item">

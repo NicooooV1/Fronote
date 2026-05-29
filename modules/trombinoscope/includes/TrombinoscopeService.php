@@ -12,7 +12,9 @@ class TrombinoscopeService {
      * Récupère la liste des classes
      */
     public function getClasses(): array {
-        return $this->pdo->query("SELECT * FROM classes ORDER BY niveau, nom")->fetchAll(PDO::FETCH_ASSOC);
+        $s = $this->pdo->prepare("SELECT * FROM classes WHERE etablissement_id = ? ORDER BY niveau, nom");
+        $s->execute([\API\Core\EstablishmentContext::id()]);
+        return $s->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
@@ -56,7 +58,9 @@ class TrombinoscopeService {
      * Récupère les matières
      */
     public function getMatieres(): array {
-        return $this->pdo->query("SELECT * FROM matieres ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
+        $s = $this->pdo->prepare("SELECT * FROM matieres WHERE etablissement_id = ? ORDER BY nom");
+        $s->execute([\API\Core\EstablishmentContext::id()]);
+        return $s->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
@@ -64,18 +68,19 @@ class TrombinoscopeService {
      */
     public function rechercher(string $q): array {
         $like = '%' . $q . '%';
+        $etab = \API\Core\EstablishmentContext::id();
         $stmt = $this->pdo->prepare("
             SELECT 'eleve' AS type, e.id, e.nom, e.prenom, c.nom AS detail
             FROM eleves e LEFT JOIN classes c ON e.classe = c.nom
-            WHERE e.nom LIKE ? OR e.prenom LIKE ?
+            WHERE (e.nom LIKE ? OR e.prenom LIKE ?) AND e.etablissement_id = ?
             UNION ALL
             SELECT 'professeur' AS type, p.id, p.nom, p.prenom, m.nom AS detail
             FROM professeurs p LEFT JOIN matieres m ON p.matiere = m.nom
-            WHERE p.nom LIKE ? OR p.prenom LIKE ?
+            WHERE (p.nom LIKE ? OR p.prenom LIKE ?) AND p.etablissement_id = ?
             ORDER BY nom, prenom
             LIMIT 50
         ");
-        $stmt->execute([$like, $like, $like, $like]);
+        $stmt->execute([$like, $like, $etab, $like, $like, $etab]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -83,18 +88,24 @@ class TrombinoscopeService {
      * Récupère le personnel vie scolaire
      */
     public function getVieScolaire(): array {
-        return $this->pdo->query("
-            SELECT id, nom, prenom, mail AS email FROM vie_scolaire ORDER BY nom, prenom
-        ")->fetchAll(PDO::FETCH_ASSOC);
+        $s = $this->pdo->prepare("SELECT id, nom, prenom, mail AS email FROM vie_scolaire WHERE etablissement_id = ? ORDER BY nom, prenom");
+        $s->execute([\API\Core\EstablishmentContext::id()]);
+        return $s->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
      * Statistiques globales
      */
     public function getStats(): array {
-        $eleves = (int)$this->pdo->query("SELECT COUNT(*) FROM eleves")->fetchColumn();
-        $profs = (int)$this->pdo->query("SELECT COUNT(*) FROM professeurs")->fetchColumn();
-        $classes = (int)$this->pdo->query("SELECT COUNT(*) FROM classes")->fetchColumn();
+        $etab = \API\Core\EstablishmentContext::id();
+        $q = function (string $sql) use ($etab) {
+            $st = $this->pdo->prepare($sql);
+            $st->execute([$etab]);
+            return (int) $st->fetchColumn();
+        };
+        $eleves = $q("SELECT COUNT(*) FROM eleves WHERE etablissement_id = ?");
+        $profs = $q("SELECT COUNT(*) FROM professeurs WHERE etablissement_id = ?");
+        $classes = $q("SELECT COUNT(*) FROM classes WHERE etablissement_id = ?");
         return compact('eleves', 'profs', 'classes');
     }
 

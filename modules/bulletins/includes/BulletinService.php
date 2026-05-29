@@ -84,8 +84,8 @@ class BulletinService {
         if (!$periode) throw new Exception("Période introuvable");
 
         // Récupérer les élèves
-        $stmt = $this->pdo->prepare("SELECT id FROM eleves WHERE classe = (SELECT nom FROM classes WHERE id = ?) AND actif = 1");
-        $stmt->execute([$classeId]);
+        $stmt = $this->pdo->prepare("SELECT id FROM eleves WHERE classe = (SELECT nom FROM classes WHERE id = ?) AND actif = 1 AND etablissement_id = ?");
+        $stmt->execute([$classeId, \API\Core\EstablishmentContext::id()]);
         $eleves = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
         $count = 0;
@@ -333,12 +333,14 @@ class BulletinService {
     }
 
     public function getClasses(): array {
-        return $this->pdo->query("SELECT * FROM classes WHERE actif = 1 ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $this->pdo->prepare("SELECT * FROM classes WHERE actif = 1 AND etablissement_id = ? ORDER BY nom");
+        $stmt->execute([\API\Core\EstablishmentContext::id()]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getClasseId(string $nomClasse): ?int {
-        $stmt = $this->pdo->prepare("SELECT id FROM classes WHERE nom = ? LIMIT 1");
-        $stmt->execute([$nomClasse]);
+        $stmt = $this->pdo->prepare("SELECT id FROM classes WHERE nom = ? AND etablissement_id = ? LIMIT 1");
+        $stmt->execute([$nomClasse, \API\Core\EstablishmentContext::id()]);
         $id = $stmt->fetchColumn();
         return $id !== false ? (int)$id : null;
     }

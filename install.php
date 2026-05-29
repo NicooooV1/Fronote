@@ -574,7 +574,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $inst['db_table_count'] = (int)$tableCount;
                     $inst['step'] = 5; // Rester sur l'étape 5
                     throw new RuntimeException(
-                        "⚠️ La base de données <strong>{$dbNameSafe}</strong> existe déjà et contient <strong>{$tableCount} table(s)</strong>.\n\n"
+                        "⚠️ La base de données « {$dbNameSafe} » existe déjà et contient {$tableCount} table(s).\n\n"
                         . "Cochez la case de confirmation ci-dessous pour écraser les données existantes, ou changez le nom de la base à l'étape 2."
                     );
                 }

@@ -17,7 +17,9 @@ $types    = ParcoursEducatifService::typesLabels();
 
 /* POST valider */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($role, ['admin', 'professeur'])) {
-    $parcoursService->valider((int)$_POST['entry_id'], true);
+    if (validateCSRFToken($_POST['csrf_token'] ?? '')) {
+        $parcoursService->valider((int)$_POST['entry_id'], true);
+    }
     header('Location: ' . $_SERVER['REQUEST_URI']); exit;
 }
 ?>
@@ -100,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($role, ['admin', 'professe
                     <?php if (in_array($role, ['admin', 'professeur'])): ?>
                     <td>
                         <?php if (!$p['validation']): ?>
-                            <form method="post" class="d-inline"><input type="hidden" name="entry_id" value="<?= $p['id'] ?>"><button class="btn btn-sm btn-outline-success">Valider</button></form>
+                            <form method="post" class="d-inline"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>"><input type="hidden" name="entry_id" value="<?= $p['id'] ?>"><button class="btn btn-sm btn-outline-success">Valider</button></form>
                         <?php endif; ?>
                     </td>
                     <?php endif; ?>

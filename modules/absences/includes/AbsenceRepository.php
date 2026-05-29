@@ -92,6 +92,8 @@ class AbsenceRepository
             $params[] = $classe;
         }
         $sql .= $this->buildJustifieFilter($justifie, $params);
+        $sql .= " AND a.etablissement_id = ?";
+        $params[] = $this->etabId();
         $sql .= " ORDER BY a.date_debut DESC";
 
         return $this->executeQuery($sql, $params);
@@ -165,6 +167,8 @@ class AbsenceRepository
             $params[] = $classe;
         }
         $sql .= $this->buildJustifieFilter($justifie, $params, 'r');
+        $sql .= " AND e.etablissement_id = ?";
+        $params[] = $this->etabId();
         $sql .= " ORDER BY r.date_retard DESC";
 
         return $this->executeQuery($sql, $params);
@@ -382,6 +386,8 @@ class AbsenceRepository
             $sql .= " AND j.traite = ?";
             $params[] = ($traite === 'oui') ? 1 : 0;
         }
+        $sql .= " AND e.etablissement_id = ?";
+        $params[] = $this->etabId();
         $sql .= " ORDER BY j.date_soumission DESC";
 
         return $this->executeQuery($sql, $params);
@@ -512,7 +518,7 @@ class AbsenceRepository
         $dateFin   = $filters['date_fin']   ?? date('Y-m-d');
         $classe    = $filters['classe']     ?? '';
 
-        $baseWhere = $this->buildDateFilter('a', $dateDebut, $dateFin);
+        $baseWhere = $this->buildDateFilter('a', $dateDebut, $dateFin) . " AND a.etablissement_id = ?";
         $baseParams = $this->buildDateParams($dateDebut, $dateFin);
 
         // Contrainte de classe
@@ -575,7 +581,8 @@ class AbsenceRepository
             $classeParams = [$classe];
         }
 
-        $params = array_merge($dateParams, $roleParams, $classeParams);
+        // Ordre des paramètres = ordre des conditions SQL : dateFilter, etablissement_id, role, classe.
+        $params = array_merge($dateParams, [$this->etabId()], $roleParams, $classeParams);
 
         // Stats globales
         $sql = "SELECT 
@@ -696,6 +703,8 @@ class AbsenceRepository
             $sql .= " AND e.classe = ?";
             $params[] = $classe;
         }
+        $sql .= " AND e.etablissement_id = ?";
+        $params[] = $this->etabId();
         $sql .= " ORDER BY a.date_debut DESC";
         return $this->executeQuery($sql, $params);
     }
@@ -705,12 +714,13 @@ class AbsenceRepository
      */
     public function countByStatus(): array
     {
-        $sql = "SELECT 
-                    COALESCE(statut, 'signalee') AS statut, 
-                    COUNT(*) AS nb 
-                FROM absences 
+        $sql = "SELECT
+                    COALESCE(statut, 'signalee') AS statut,
+                    COUNT(*) AS nb
+                FROM absences
+                WHERE etablissement_id = ?
                 GROUP BY COALESCE(statut, 'signalee')";
-        $rows = $this->executeQuery($sql);
+        $rows = $this->executeQuery($sql, [$this->etabId()]);
         $result = ['signalee' => 0, 'en_attente' => 0, 'validee' => 0, 'refusee' => 0];
         foreach ($rows as $row) {
             $result[$row['statut']] = (int) $row['nb'];
@@ -787,7 +797,10 @@ class AbsenceRepository
 
     public function getAllEleves(): array
     {
-        return $this->executeQuery("SELECT id, nom, prenom, classe FROM eleves ORDER BY classe, nom, prenom");
+        return $this->executeQuery(
+            "SELECT id, nom, prenom, classe FROM eleves WHERE etablissement_id = ? ORDER BY classe, nom, prenom",
+            [$this->etabId()]
+        );
     }
 
     /**
@@ -936,18 +949,19 @@ class AbsenceRepository
      */
     public function getAbsenteeismByClasse(string $dateDebut, string $dateFin): array
     {
+        $etab = $this->etabId();
         $sql = "
             SELECT e.classe,
                    COUNT(DISTINCT a.id) AS nb_absences,
                    COUNT(DISTINCT a.id_eleve) AS nb_eleves_absents,
-                   (SELECT COUNT(*) FROM eleves e2 WHERE e2.classe = e.classe AND e2.actif = 1) AS total_eleves
+                   (SELECT COUNT(*) FROM eleves e2 WHERE e2.classe = e.classe AND e2.actif = 1 AND e2.etablissement_id = ?) AS total_eleves
             FROM absences a
             JOIN eleves e ON a.id_eleve = e.id
-            WHERE a.date_debut BETWEEN ? AND ?
+            WHERE a.date_debut BETWEEN ? AND ? AND e.etablissement_id = ?
             GROUP BY e.classe
             ORDER BY nb_absences DESC
         ";
-        return $this->executeQuery($sql, [$dateDebut, $dateFin]);
+        return $this->executeQuery($sql, [$etab, $dateDebut, $dateFin, $etab]);
     }
 
     /* ---------- Helpers SQL ---------- */
@@ -983,6 +997,12 @@ class AbsenceRepository
         return '';
     }
 
+    /** Établissement courant — scope multi-établissement des requêtes globales. */
+    private function etabId(): int
+    {
+        return \API\Core\EstablishmentContext::id();
+    }
+
     private function executeQuery(string $sql, array $params = []): array
     {
         try {
@@ -1009,37 +1029,4 @@ class AbsenceRepository
         ];
     }
 
-    // ─── DETECTION PATTERNS ───
-
-    public function detectPatterns(int $eleveId): array
-    {
-        $parJour = $this->pdo->prepare("SELECT DAYNAME(date_absence) AS jour, COUNT(*) AS nb FROM absences WHERE id_eleve = :eid GROUP BY jour ORDER BY nb DESC");
-        $parJour->execute([':eid' => $eleveId]);
-
-        $parMatiere = $this->pdo->prepare("SELECT m.nom AS matiere, COUNT(*) AS nb FROM absences a JOIN emploi_du_temps edt ON a.date_absence = DATE(edt.date_debut) JOIN matieres m ON edt.id_matiere = m.id WHERE a.id_eleve = :eid GROUP BY m.id HAVING nb >= 2 ORDER BY nb DESC");
-        $parMatiere->execute([':eid' => $eleveId]);
-
-        return ['par_jour' => $parJour->fetchAll(\PDO::FETCH_ASSOC), 'par_matiere' => $parMatiere->fetchAll(\PDO::FETCH_ASSOC)];
-    }
-
-    public function getCumulatifHeures(int $eleveId, int $periodeId): float
-    {
-        $stmt = $this->pdo->prepare("SELECT COALESCE(SUM(duree_heures),0) FROM absences WHERE id_eleve = :eid AND periode_id = :pid");
-        $stmt->execute([':eid' => $eleveId, ':pid' => $periodeId]);
-        return (float)$stmt->fetchColumn();
-    }
-
-    public function getHeatmapData(string $classe, string $from, string $to): array
-    {
-        $stmt = $this->pdo->prepare("SELECT a.date_absence AS date, COUNT(*) AS nb FROM absences a JOIN eleves e ON a.id_eleve = e.id WHERE e.classe = :c AND a.date_absence BETWEEN :f AND :t GROUP BY a.date_absence ORDER BY a.date_absence");
-        $stmt->execute([':c' => $classe, ':f' => $from, ':t' => $to]);
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-    }
-
-    public function comparerClasses(string $from, string $to): array
-    {
-        $stmt = $this->pdo->prepare("SELECT e.classe, COUNT(*) AS nb_absences, COUNT(DISTINCT a.id_eleve) AS nb_eleves_absents, SUM(CASE WHEN a.justifiee = 0 THEN 1 ELSE 0 END) AS non_justifiees FROM absences a JOIN eleves e ON a.id_eleve = e.id WHERE a.date_absence BETWEEN :f AND :t GROUP BY e.classe ORDER BY nb_absences DESC");
-        $stmt->execute([':f' => $from, ':t' => $to]);
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-    }
 }

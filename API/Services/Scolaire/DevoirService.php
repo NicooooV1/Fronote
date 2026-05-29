@@ -15,6 +15,12 @@ class DevoirService
         $this->pdo = $pdo;
     }
 
+    /** Établissement courant (scope multi-établissement). */
+    private function etabId(): int
+    {
+        try { return \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { return 1; }
+    }
+
     /**
      * Retrieve paginated and filtered devoirs.
      *
@@ -25,8 +31,8 @@ class DevoirService
      */
     public function getFiltered(array $filters, int $page = 1, int $perPage = 30): array
     {
-        $where  = [];
-        $params = [];
+        $where  = ['d.etablissement_id = :etab'];
+        $params = [':etab' => $this->etabId()];
 
         if (!empty($filters['classe'])) {
             $where[]          = 'd.classe = :classe';
@@ -199,7 +205,8 @@ class DevoirService
      */
     public function getUpcomingCount(): int
     {
-        $stmt = $this->pdo->query('SELECT COUNT(*) FROM devoirs WHERE date_rendu >= CURDATE()');
+        $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM devoirs WHERE date_rendu >= CURDATE() AND etablissement_id = ?');
+        $stmt->execute([$this->etabId()]);
 
         return (int) $stmt->fetchColumn();
     }
@@ -211,7 +218,8 @@ class DevoirService
      */
     public function getOverdueCount(): int
     {
-        $stmt = $this->pdo->query('SELECT COUNT(*) FROM devoirs WHERE date_rendu < CURDATE()');
+        $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM devoirs WHERE date_rendu < CURDATE() AND etablissement_id = ?');
+        $stmt->execute([$this->etabId()]);
 
         return (int) $stmt->fetchColumn();
     }

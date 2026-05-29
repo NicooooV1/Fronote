@@ -20,6 +20,12 @@ class CrossModuleAnalyticsService
         $this->pdo = $pdo;
     }
 
+    /** Établissement courant (scope multi-établissement). */
+    private function etabId(): int
+    {
+        try { return \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { return 1; }
+    }
+
     /**
      * Correlation between absence rate and grade average per student in a class.
      *
@@ -31,14 +37,14 @@ class CrossModuleAnalyticsService
             SELECT e.id AS eleve_id, CONCAT(e.prenom, ' ', e.nom) AS eleve,
                    COALESCE(AVG(n.note), 0) AS moyenne,
                    (SELECT COUNT(*) FROM absences a WHERE a.id_eleve = e.id
-                    AND a.justifiee = 0 AND QUARTER(a.date_debut) = :trim) AS nb_absences_nj
+                    AND a.justifie = 0 AND QUARTER(a.date_debut) = :trim) AS nb_absences_nj
             FROM eleves e
             LEFT JOIN notes n ON n.id_eleve = e.id AND n.trimestre = :trim2
-            WHERE e.classe = :classe
+            WHERE e.classe = :classe AND e.etablissement_id = :etab
             GROUP BY e.id, e.prenom, e.nom
             ORDER BY nb_absences_nj DESC
         ");
-        $stmt->execute([':classe' => $classe, ':trim' => $trimestre, ':trim2' => $trimestre]);
+        $stmt->execute([':classe' => $classe, ':trim' => $trimestre, ':trim2' => $trimestre, ':etab' => $this->etabId()]);
         $eleves = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Calculate Pearson correlation
@@ -63,11 +69,11 @@ class CrossModuleAnalyticsService
                    COUNT(DISTINCT n.id_eleve) AS nb_eleves
             FROM notes n
             JOIN eleves e ON n.id_eleve = e.id
-            WHERE e.classe = :classe
+            WHERE e.classe = :classe AND e.etablissement_id = :etab
             GROUP BY n.trimestre
             ORDER BY n.trimestre
         ");
-        $stmt->execute([':classe' => $classe]);
+        $stmt->execute([':classe' => $classe, ':etab' => $this->etabId()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -76,21 +82,23 @@ class CrossModuleAnalyticsService
      */
     public function comparerClasses(): array
     {
-        $stmt = $this->pdo->query("
+        $stmt = $this->pdo->prepare("
             SELECT e.classe,
                    COUNT(DISTINCT e.id) AS nb_eleves,
                    COALESCE(AVG(n.note), 0) AS moyenne_notes,
                    (SELECT COUNT(*) FROM absences a
                     JOIN eleves e2 ON a.id_eleve = e2.id
-                    WHERE e2.classe = e.classe AND a.justifiee = 0) AS absences_nj,
+                    WHERE e2.classe = e.classe AND e2.etablissement_id = e.etablissement_id AND a.justifie = 0) AS absences_nj,
                    (SELECT COUNT(*) FROM incidents i
                     JOIN eleves e3 ON i.eleve_id = e3.id
-                    WHERE e3.classe = e.classe) AS nb_incidents
+                    WHERE e3.classe = e.classe AND e3.etablissement_id = e.etablissement_id) AS nb_incidents
             FROM eleves e
             LEFT JOIN notes n ON n.id_eleve = e.id
+            WHERE e.etablissement_id = ?
             GROUP BY e.classe
             ORDER BY moyenne_notes DESC
         ");
+        $stmt->execute([$this->etabId()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -106,13 +114,13 @@ class CrossModuleAnalyticsService
                    AVG(CASE WHEN n.trimestre = 3 THEN n.note END) AS moy_t3
             FROM eleves e
             JOIN notes n ON n.id_eleve = e.id
-            WHERE e.classe = :classe
+            WHERE e.classe = :classe AND e.etablissement_id = :etab
             GROUP BY e.id, e.prenom, e.nom
             HAVING (moy_t1 IS NOT NULL AND moy_t2 IS NOT NULL AND moy_t1 - moy_t2 > :seuil)
                 OR (moy_t2 IS NOT NULL AND moy_t3 IS NOT NULL AND moy_t2 - moy_t3 > :seuil2)
             ORDER BY eleve
         ");
-        $stmt->execute([':classe' => $classe, ':seuil' => $seuilBaisse, ':seuil2' => $seuilBaisse]);
+        $stmt->execute([':classe' => $classe, ':seuil' => $seuilBaisse, ':seuil2' => $seuilBaisse, ':etab' => $this->etabId()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -121,7 +129,7 @@ class CrossModuleAnalyticsService
      */
     public function impactDisciplineSurNotes(): array
     {
-        $stmt = $this->pdo->query("
+        $stmt = $this->pdo->prepare("
             SELECT
                 CASE
                     WHEN inc_count = 0 THEN '0 incidents'
@@ -137,11 +145,13 @@ class CrossModuleAnalyticsService
                        (SELECT COUNT(*) FROM incidents i WHERE i.eleve_id = e.id) AS inc_count
                 FROM eleves e
                 LEFT JOIN notes n ON n.id_eleve = e.id
+                WHERE e.etablissement_id = ?
                 GROUP BY e.id
             ) sub
             GROUP BY tranche_incidents
             ORDER BY AVG(inc_count)
         ");
+        $stmt->execute([$this->etabId()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

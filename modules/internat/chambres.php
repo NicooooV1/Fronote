@@ -10,6 +10,9 @@ if (!$isGestionnaire) { header('Location: affectations.php'); exit; }
 
 $message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+        $message = 'Jeton de sécurité invalide. Veuillez recharger la page.';
+    } else {
     if ($_POST['action'] === 'creer') {
         $internatService->creerChambre([
             'numero' => $_POST['numero'], 'batiment' => $_POST['batiment'],
@@ -24,6 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             'type' => $_POST['type'], 'equipements' => $_POST['equipements'],
         ]);
         $message = 'Chambre modifiée.';
+    }
     }
 }
 
@@ -50,6 +54,7 @@ $stats = $internatService->getStats();
         <div class="card-header"><h3>Ajouter une chambre</h3></div>
         <div class="card-body">
             <form method="post">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
                 <input type="hidden" name="action" value="creer">
                 <div class="form-row">
                     <div class="form-group"><label>Numéro</label><input type="text" name="numero" required class="form-control"></div>

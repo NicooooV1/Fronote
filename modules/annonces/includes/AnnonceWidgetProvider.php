@@ -18,15 +18,17 @@ class AnnonceWidgetProvider implements WidgetDataProvider
         $limit = (int) ($config['limit'] ?? 5);
         $limit = min(20, max(1, $limit));
 
+        try { $etab = \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { $etab = 1; }
         $stmt = $pdo->prepare(
             'SELECT id, titre, type, epingle, date_publication
              FROM annonces
              WHERE publie = 1
                AND (date_expiration IS NULL OR date_expiration > NOW())
+               AND etablissement_id = ?
              ORDER BY epingle DESC, date_publication DESC
              LIMIT ?'
         );
-        $stmt->execute([$limit]);
+        $stmt->execute([$etab, $limit]);
 
         return ['annonces' => $stmt->fetchAll(\PDO::FETCH_ASSOC)];
     }

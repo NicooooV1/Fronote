@@ -111,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === ($
 $currentConfig = $module['config'] ?? [];
 
 $pageTitle = 'Configuration : ' . $module['label'];
-$currentPage = 'modules';
+$currentPage = 'modules_configure';
 $extraCss = ['../../assets/css/admin.css'];
 
 if (!isset($_SESSION['csrf_token'])) {

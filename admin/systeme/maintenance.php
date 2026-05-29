@@ -42,6 +42,7 @@ $csrfToken = app('csrf')->generate();
 
 $pageTitle = 'Mode Maintenance';
 $activePage = 'systeme';
+$rootPrefix = '../../';
 
 require_once __DIR__ . '/../../templates/shared_header.php';
 ?>

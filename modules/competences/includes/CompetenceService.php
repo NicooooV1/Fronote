@@ -220,15 +220,17 @@ class CompetenceService {
      * Récupère les classes
      */
     public function getClasses(): array {
-        return $this->pdo->query("SELECT * FROM classes ORDER BY niveau, nom")->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $this->pdo->prepare("SELECT * FROM classes WHERE etablissement_id = ? ORDER BY niveau, nom");
+        $stmt->execute([\API\Core\EstablishmentContext::id()]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
      * Récupère les élèves d'une classe
      */
     public function getElevesClasse(int $classeId): array {
-        $stmt = $this->pdo->prepare("SELECT * FROM eleves WHERE classe_id = ? ORDER BY nom, prenom");
-        $stmt->execute([$classeId]);
+        $stmt = $this->pdo->prepare("SELECT * FROM eleves WHERE classe_id = ? AND etablissement_id = ? ORDER BY nom, prenom");
+        $stmt->execute([$classeId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

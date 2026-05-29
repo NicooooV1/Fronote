@@ -14,17 +14,26 @@ class AdminDashboardService
         $this->pdo = $pdo;
     }
 
+    /** Établissement courant (scope multi-établissement). */
+    private function etabId(): int
+    {
+        try { return \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { return 1; }
+    }
+
     /**
      * Compteurs par profil utilisateur.
      */
     public function getUserCounts(): array
     {
-        return app('cache')->remember('dashboard:user_counts', 120, function () {
+        $etab = $this->etabId();
+        return app('cache')->remember('dashboard:user_counts:' . $etab, 120, function () use ($etab) {
             $counts = [];
             $tables = ['eleves', 'professeurs', 'parents', 'vie_scolaire', 'administrateurs'];
             foreach ($tables as $table) {
                 try {
-                    $counts[$table] = (int) $this->pdo->query("SELECT COUNT(*) FROM {$table} WHERE actif = 1")->fetchColumn();
+                    $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM {$table} WHERE actif = 1 AND etablissement_id = ?");
+                    $stmt->execute([$etab]);
+                    $counts[$table] = (int) $stmt->fetchColumn();
                 } catch (\Throwable $e) {
                     $counts[$table] = 0;
                 }
@@ -40,15 +49,17 @@ class AdminDashboardService
     {
         $alerts = [];
 
-        // Comptes verrouillés
+        // Comptes verrouillés (scopé établissement courant)
         try {
-            $stmt = $this->pdo->query("
-                SELECT identifiant, locked_until, 'eleve' as type FROM eleves WHERE locked_until > NOW()
-                UNION ALL SELECT identifiant, locked_until, 'professeur' FROM professeurs WHERE locked_until > NOW()
-                UNION ALL SELECT identifiant, locked_until, 'parent' FROM parents WHERE locked_until > NOW()
-                UNION ALL SELECT identifiant, locked_until, 'vie_scolaire' FROM vie_scolaire WHERE locked_until > NOW()
-                UNION ALL SELECT identifiant, locked_until, 'administrateur' FROM administrateurs WHERE locked_until > NOW()
+            $etab = $this->etabId();
+            $stmt = $this->pdo->prepare("
+                SELECT identifiant, locked_until, 'eleve' as type FROM eleves WHERE locked_until > NOW() AND etablissement_id = :e
+                UNION ALL SELECT identifiant, locked_until, 'professeur' FROM professeurs WHERE locked_until > NOW() AND etablissement_id = :e
+                UNION ALL SELECT identifiant, locked_until, 'parent' FROM parents WHERE locked_until > NOW() AND etablissement_id = :e
+                UNION ALL SELECT identifiant, locked_until, 'vie_scolaire' FROM vie_scolaire WHERE locked_until > NOW() AND etablissement_id = :e
+                UNION ALL SELECT identifiant, locked_until, 'administrateur' FROM administrateurs WHERE locked_until > NOW() AND etablissement_id = :e
             ");
+            $stmt->execute([':e' => $etab]);
             $alerts['locked_accounts'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (\Throwable $e) {
             $alerts['locked_accounts'] = [];
@@ -63,7 +74,9 @@ class AdminDashboardService
 
         // Justificatifs en attente
         try {
-            $alerts['justificatifs_pending'] = (int) $this->pdo->query("SELECT COUNT(*) FROM justificatifs WHERE traite = 0")->fetchColumn();
+            $stmtJ = $this->pdo->prepare("SELECT COUNT(*) FROM justificatifs WHERE traite = 0 AND etablissement_id = ?");
+            $stmtJ->execute([$this->etabId()]);
+            $alerts['justificatifs_pending'] = (int) $stmtJ->fetchColumn();
         } catch (\Throwable $e) {
             $alerts['justificatifs_pending'] = 0;
         }
@@ -76,7 +89,7 @@ class AdminDashboardService
      */
     public function getKPIs(): array
     {
-        return app('cache')->remember('dashboard:kpis', 30, function () {
+        return app('cache')->remember('dashboard:kpis:' . $this->etabId(), 30, function () {
             return $this->computeKPIs();
         });
     }
@@ -91,27 +104,35 @@ class AdminDashboardService
             'sessions_actives' => 0,
         ];
 
+        $etab = $this->etabId();
+
         // Taux d'absentéisme (30 derniers jours)
         try {
-            $totalEleves = max((int) $this->pdo->query("SELECT COUNT(*) FROM eleves WHERE actif = 1")->fetchColumn(), 1);
-            $absences30j = (int) $this->pdo->query("SELECT COUNT(DISTINCT id_eleve) FROM absences WHERE date_debut >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)")->fetchColumn();
+            $s = $this->pdo->prepare("SELECT COUNT(*) FROM eleves WHERE actif = 1 AND etablissement_id = ?");
+            $s->execute([$etab]);
+            $totalEleves = max((int) $s->fetchColumn(), 1);
+            $s = $this->pdo->prepare("SELECT COUNT(DISTINCT id_eleve) FROM absences WHERE date_debut >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND etablissement_id = ?");
+            $s->execute([$etab]);
+            $absences30j = (int) $s->fetchColumn();
             $kpi['taux_absenteisme'] = round(($absences30j / $totalEleves) * 100, 1);
         } catch (\Throwable $e) {}
 
         // Moyenne générale (trimestre courant)
         $trimestre = $this->getCurrentTrimestre();
         try {
-            $stmt = $this->pdo->prepare("SELECT ROUND(AVG(note / note_sur * 20), 2) FROM notes WHERE trimestre = ?");
-            $stmt->execute([$trimestre]);
+            $stmt = $this->pdo->prepare("SELECT ROUND(AVG(note / note_sur * 20), 2) FROM notes WHERE trimestre = ? AND etablissement_id = ?");
+            $stmt->execute([$trimestre, $etab]);
             $kpi['moyenne_generale'] = $stmt->fetchColumn() ?: null;
         } catch (\Throwable $e) {}
 
         // Taux de remplissage notes
         try {
-            $stmtProfs = $this->pdo->prepare("SELECT COUNT(DISTINCT id_professeur) FROM notes WHERE trimestre = ?");
-            $stmtProfs->execute([$trimestre]);
+            $stmtProfs = $this->pdo->prepare("SELECT COUNT(DISTINCT id_professeur) FROM notes WHERE trimestre = ? AND etablissement_id = ?");
+            $stmtProfs->execute([$trimestre, $etab]);
             $profsAvecNotes = (int) $stmtProfs->fetchColumn();
-            $profsTotal = max((int) $this->pdo->query("SELECT COUNT(*) FROM professeurs WHERE actif = 1")->fetchColumn(), 1);
+            $sp = $this->pdo->prepare("SELECT COUNT(*) FROM professeurs WHERE actif = 1 AND etablissement_id = ?");
+            $sp->execute([$etab]);
+            $profsTotal = max((int) $sp->fetchColumn(), 1);
             $kpi['taux_remplissage_notes'] = round(($profsAvecNotes / $profsTotal) * 100, 1);
         } catch (\Throwable $e) {}
 
@@ -146,15 +167,16 @@ class AdminDashboardService
     {
         try {
             $stmt = $this->pdo->prepare("
-                (SELECT identifiant, last_login, 'eleve' as type FROM eleves WHERE last_login IS NOT NULL ORDER BY last_login DESC LIMIT :lim)
+                (SELECT identifiant, last_login, 'eleve' as type FROM eleves WHERE last_login IS NOT NULL AND etablissement_id = :e ORDER BY last_login DESC LIMIT :lim)
                 UNION ALL
-                (SELECT identifiant, last_login, 'professeur' FROM professeurs WHERE last_login IS NOT NULL ORDER BY last_login DESC LIMIT :lim)
+                (SELECT identifiant, last_login, 'professeur' FROM professeurs WHERE last_login IS NOT NULL AND etablissement_id = :e ORDER BY last_login DESC LIMIT :lim)
                 UNION ALL
-                (SELECT identifiant, last_login, 'parent' FROM parents WHERE last_login IS NOT NULL ORDER BY last_login DESC LIMIT :lim)
+                (SELECT identifiant, last_login, 'parent' FROM parents WHERE last_login IS NOT NULL AND etablissement_id = :e ORDER BY last_login DESC LIMIT :lim)
                 UNION ALL
-                (SELECT identifiant, last_login, 'vie_scolaire' FROM vie_scolaire WHERE last_login IS NOT NULL ORDER BY last_login DESC LIMIT :lim)
+                (SELECT identifiant, last_login, 'vie_scolaire' FROM vie_scolaire WHERE last_login IS NOT NULL AND etablissement_id = :e ORDER BY last_login DESC LIMIT :lim)
                 ORDER BY last_login DESC LIMIT :total
             ");
+            $stmt->bindValue(':e', $this->etabId(), PDO::PARAM_INT);
             $stmt->bindValue(':lim', (int) ceil($limit / 2), PDO::PARAM_INT);
             $stmt->bindValue(':total', $limit, PDO::PARAM_INT);
             $stmt->execute();
@@ -206,8 +228,17 @@ class AdminDashboardService
     public function getExtraCounts(): array
     {
         $extra = [];
-        try { $extra['classes'] = (int) $this->pdo->query("SELECT COUNT(*) FROM classes")->fetchColumn(); } catch (\Throwable $e) { $extra['classes'] = 0; }
-        try { $extra['absences_today'] = (int) $this->pdo->query("SELECT COUNT(*) FROM absences WHERE DATE(date_debut) = CURDATE()")->fetchColumn(); } catch (\Throwable $e) { $extra['absences_today'] = 0; }
+        $etab = $this->etabId();
+        try {
+            $s = $this->pdo->prepare("SELECT COUNT(*) FROM classes WHERE etablissement_id = ?");
+            $s->execute([$etab]);
+            $extra['classes'] = (int) $s->fetchColumn();
+        } catch (\Throwable $e) { $extra['classes'] = 0; }
+        try {
+            $s = $this->pdo->prepare("SELECT COUNT(*) FROM absences WHERE DATE(date_debut) = CURDATE() AND etablissement_id = ?");
+            $s->execute([$etab]);
+            $extra['absences_today'] = (int) $s->fetchColumn();
+        } catch (\Throwable $e) { $extra['absences_today'] = 0; }
         try { $extra['messages_24h'] = (int) $this->pdo->query("SELECT COUNT(*) FROM messages WHERE is_deleted = 0 AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)")->fetchColumn(); } catch (\Throwable $e) { $extra['messages_24h'] = 0; }
         return $extra;
     }

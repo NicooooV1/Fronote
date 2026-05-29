@@ -16,6 +16,12 @@ class ClasseService
         $this->pdo = $pdo;
     }
 
+    /** Établissement courant (scope multi-établissement). */
+    private function etabId(): int
+    {
+        try { return \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { return 1; }
+    }
+
     /**
      * Retrieve all classes with student count and principal teacher name.
      *
@@ -25,14 +31,16 @@ class ClasseService
     {
         $sql = <<<'SQL'
             SELECT c.*,
-                   (SELECT COUNT(*) FROM eleves WHERE classe = c.nom AND actif = 1) AS effectif,
+                   (SELECT COUNT(*) FROM eleves WHERE classe = c.nom AND actif = 1 AND etablissement_id = c.etablissement_id) AS effectif,
                    CONCAT(p.prenom, ' ', p.nom) AS pp_nom
             FROM classes c
             LEFT JOIN professeurs p ON c.professeur_principal_id = p.id
+            WHERE c.etablissement_id = ?
             ORDER BY c.nom
         SQL;
 
-        $stmt = $this->pdo->query($sql);
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$this->etabId()]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -188,9 +196,11 @@ class ClasseService
                    CONCAT(p.prenom, ' ', p.nom) AS prof_nom
             FROM professeur_classes pc
             JOIN professeurs p ON pc.professeur_id = p.id
+            WHERE p.etablissement_id = ?
         SQL;
 
-        $stmt = $this->pdo->query($sql);
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$this->etabId()]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $matrix = [];

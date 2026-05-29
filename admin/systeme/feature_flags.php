@@ -84,6 +84,7 @@ $csrfToken = $csrf->generate();
 
 $pageTitle = 'Feature Flags';
 $activePage = 'systeme';
+$rootPrefix = '../../';
 
 require_once __DIR__ . '/../../templates/shared_header.php';
 ?>

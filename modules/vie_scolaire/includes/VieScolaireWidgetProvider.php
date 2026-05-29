@@ -20,39 +20,42 @@ class VieScolaireWidgetProvider implements WidgetDataProvider
         }
 
         $today = date('Y-m-d');
+        try { $etab = \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { $etab = 1; }
 
         // Absences du jour
         $stmtAbs = $pdo->prepare(
             "SELECT COUNT(*) FROM absences
-             WHERE DATE(date_debut) <= ? AND DATE(date_fin) >= ?"
+             WHERE DATE(date_debut) <= ? AND DATE(date_fin) >= ? AND etablissement_id = ?"
         );
-        $stmtAbs->execute([$today, $today]);
+        $stmtAbs->execute([$today, $today, $etab]);
         $absencesToday = (int) $stmtAbs->fetchColumn();
 
         // Retards du jour
         $stmtRet = $pdo->prepare(
-            "SELECT COUNT(*) FROM retards WHERE DATE(date_retard) = ?"
+            "SELECT COUNT(*) FROM retards WHERE DATE(date_retard) = ? AND etablissement_id = ?"
         );
-        $stmtRet->execute([$today]);
+        $stmtRet->execute([$today, $etab]);
         $retardsToday = (int) $stmtRet->fetchColumn();
 
         // Incidents ouverts
-        $stmtInc = $pdo->query(
-            "SELECT COUNT(*) FROM incidents WHERE statut IN ('signale','en_traitement')"
+        $stmtInc = $pdo->prepare(
+            "SELECT COUNT(*) FROM incidents WHERE statut IN ('signale','en_traitement') AND etablissement_id = ?"
         );
+        $stmtInc->execute([$etab]);
         $incidentsOuverts = (int) $stmtInc->fetchColumn();
 
         // Justificatifs en attente
-        $stmtJust = $pdo->query(
-            "SELECT COUNT(*) FROM justificatifs WHERE traite = 0"
+        $stmtJust = $pdo->prepare(
+            "SELECT COUNT(*) FROM justificatifs WHERE traite = 0 AND etablissement_id = ?"
         );
+        $stmtJust->execute([$etab]);
         $justifAttente = (int) $stmtJust->fetchColumn();
 
         // Appels non validés aujourd'hui
         $stmtAppels = $pdo->prepare(
-            "SELECT COUNT(*) FROM appels WHERE date_appel = ? AND statut = 'en_cours'"
+            "SELECT COUNT(*) FROM appels WHERE date_appel = ? AND statut = 'en_cours' AND etablissement_id = ?"
         );
-        $stmtAppels->execute([$today]);
+        $stmtAppels->execute([$today, $etab]);
         $appelsEnCours = (int) $stmtAppels->fetchColumn();
 
         return [

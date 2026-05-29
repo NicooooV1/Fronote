@@ -134,14 +134,15 @@ class OrientationService
 
     public function getClasses(): array
     {
-        $stmt = $this->pdo->query('SELECT id, nom FROM classes ORDER BY nom');
+        $stmt = $this->pdo->prepare('SELECT id, nom FROM classes WHERE etablissement_id = ? ORDER BY nom');
+        $stmt->execute([\API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getElevesClasse(int $classeId): array
     {
-        $stmt = $this->pdo->prepare('SELECT id, prenom, nom FROM eleves WHERE classe_id = ? ORDER BY nom, prenom');
-        $stmt->execute([$classeId]);
+        $stmt = $this->pdo->prepare('SELECT id, prenom, nom FROM eleves WHERE classe_id = ? AND etablissement_id = ? ORDER BY nom, prenom');
+        $stmt->execute([$classeId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

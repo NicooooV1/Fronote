@@ -473,8 +473,9 @@ class DevoirService
 
     public function getProfesseurs(): array
     {
-        return $this->pdo->query('SELECT id, nom, prenom, matiere FROM professeurs ORDER BY nom, prenom')
-                         ->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $this->pdo->prepare('SELECT id, nom, prenom, matiere FROM professeurs WHERE etablissement_id = ? ORDER BY nom, prenom');
+        $stmt->execute([\API\Core\EstablishmentContext::id()]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getProfesseurInfo(int $profId): ?array
@@ -668,8 +669,8 @@ class DevoirService
         $classe = $devoir[0]['classe'] ?? '';
         $total = 0;
         if ($classe) {
-            $t = $this->pdo->prepare("SELECT COUNT(*) FROM eleves WHERE classe = :c AND actif = 1");
-            $t->execute([':c' => $classe]);
+            $t = $this->pdo->prepare("SELECT COUNT(*) FROM eleves WHERE classe = :c AND actif = 1 AND etablissement_id = :etab");
+            $t->execute([':c' => $classe, ':etab' => \API\Core\EstablishmentContext::id()]);
             $total = (int)$t->fetchColumn();
         }
 

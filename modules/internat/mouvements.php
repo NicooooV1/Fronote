@@ -12,11 +12,15 @@ $dateVue = $_GET['date'] ?? date('Y-m-d');
 $message = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enregistrer'])) {
+    if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+        $message = 'Jeton de sécurité invalide. Veuillez recharger la page.';
+    } else {
     $internatService->enregistrerMouvement(
         (int)$_POST['eleve_id'], (int)$_POST['chambre_id'],
         $_POST['type'], $_POST['motif'] ?? null, $user['id']
     );
     $message = 'Mouvement enregistré.';
+    }
 }
 
 $mouvements = $internatService->getMouvementsJour($dateVue);
@@ -35,6 +39,7 @@ $affectations = $internatService->getAffectations();
         <div class="card-header"><h3>Enregistrer un mouvement</h3></div>
         <div class="card-body">
             <form method="post">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
                 <input type="hidden" name="enregistrer" value="1">
                 <div class="form-row">
                     <div class="form-group"><label>Interne</label>

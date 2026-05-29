@@ -15,6 +15,12 @@ class AbsenceService
         $this->pdo = $pdo;
     }
 
+    /** Établissement courant (scope multi-établissement). */
+    private function etabId(): int
+    {
+        try { return \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { return 1; }
+    }
+
     /**
      * Retrieve paginated absences with student info.
      *
@@ -25,8 +31,8 @@ class AbsenceService
      */
     public function getAbsences(array $filters, int $page = 1, int $perPage = 30): array
     {
-        $where  = [];
-        $params = [];
+        $where  = ['a.etablissement_id = :etab'];
+        $params = [':etab' => $this->etabId()];
 
         if (!empty($filters['classe'])) {
             $where[]          = 'e.classe = :classe';
@@ -94,8 +100,8 @@ class AbsenceService
      */
     public function getRetards(array $filters, int $page = 1, int $perPage = 30): array
     {
-        $where  = [];
-        $params = [];
+        $where  = ['r.etablissement_id = :etab'];
+        $params = [':etab' => $this->etabId()];
 
         if (!empty($filters['classe'])) {
             $where[]          = 'e.classe = :classe';
@@ -287,14 +293,17 @@ class AbsenceService
      */
     public function getStatsToday(): array
     {
-        $stmt = $this->pdo->query(
-            'SELECT COUNT(*) FROM absences WHERE CURDATE() BETWEEN DATE(date_debut) AND DATE(date_fin)'
+        $etab = $this->etabId();
+        $stmt = $this->pdo->prepare(
+            'SELECT COUNT(*) FROM absences WHERE CURDATE() BETWEEN DATE(date_debut) AND DATE(date_fin) AND etablissement_id = ?'
         );
+        $stmt->execute([$etab]);
         $absences = (int) $stmt->fetchColumn();
 
-        $stmt = $this->pdo->query(
-            'SELECT COUNT(*) FROM retards WHERE DATE(date_retard) = CURDATE()'
+        $stmt = $this->pdo->prepare(
+            'SELECT COUNT(*) FROM retards WHERE DATE(date_retard) = CURDATE() AND etablissement_id = ?'
         );
+        $stmt->execute([$etab]);
         $retards = (int) $stmt->fetchColumn();
 
         return [
@@ -310,7 +319,8 @@ class AbsenceService
      */
     public function getUnjustifiedCount(): int
     {
-        $stmt = $this->pdo->query('SELECT COUNT(*) FROM absences WHERE justifie = 0');
+        $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM absences WHERE justifie = 0 AND etablissement_id = ?');
+        $stmt->execute([$this->etabId()]);
 
         return (int) $stmt->fetchColumn();
     }
@@ -428,12 +438,15 @@ class AbsenceService
                 $whereClause = 'WHERE j.traite = 0';
                 break;
         }
+        $whereClause .= ' AND j.etablissement_id = :etab';
+        $etab = $this->etabId();
 
         $countSql = "SELECT COUNT(*) FROM justificatifs j
                      JOIN eleves e ON j.id_eleve = e.id
                      {$whereClause}";
 
-        $stmt  = $this->pdo->query($countSql);
+        $stmt  = $this->pdo->prepare($countSql);
+        $stmt->execute([':etab' => $etab]);
         $total = (int) $stmt->fetchColumn();
 
         $pages  = (int) ceil($total / $perPage);
@@ -447,6 +460,7 @@ class AbsenceService
                 LIMIT :limit OFFSET :offset";
 
         $stmt = $this->pdo->prepare($sql);
+        $stmt->bindValue(':etab', $etab, PDO::PARAM_INT);
         $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();

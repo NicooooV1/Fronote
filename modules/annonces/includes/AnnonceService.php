@@ -450,7 +450,9 @@ class AnnonceService
 
     public function getClasses(): array
     {
-        return $this->pdo->query("SELECT * FROM classes WHERE actif = 1 ORDER BY niveau, nom")->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $this->pdo->prepare("SELECT * FROM classes WHERE actif = 1 AND etablissement_id = ? ORDER BY niveau, nom");
+        $stmt->execute([\API\Core\EstablishmentContext::id()]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public static function getTypes(): array
@@ -540,18 +542,19 @@ class AnnonceService
             $table = $roleTableMap[$role];
 
             try {
-                $query = "SELECT id FROM `{$table}` WHERE actif = 1";
-                $params = [];
+                $etabId = \API\Core\EstablishmentContext::id();
+                $query = "SELECT id FROM `{$table}` WHERE actif = 1 AND etablissement_id = ?";
+                $params = [$etabId];
 
                 // Filtrer par classe si ciblage
                 if (!empty($cibleClasses) && in_array($role, ['eleve', 'parent'])) {
                     // Pour les élèves : filtrer par classe_id
                     if ($role === 'eleve') {
                         $placeholders = implode(',', array_fill(0, count($cibleClasses), '?'));
-                        $query = "SELECT id FROM eleves WHERE actif = 1 AND classe IN (
+                        $query = "SELECT id FROM eleves WHERE actif = 1 AND etablissement_id = ? AND classe IN (
                             SELECT nom FROM classes WHERE id IN ({$placeholders})
                         )";
-                        $params = $cibleClasses;
+                        $params = array_merge([$etabId], $cibleClasses);
                     }
                 }
 

@@ -91,7 +91,9 @@ class RessourceService
 
     public function getMatieres(): array
     {
-        return $this->pdo->query("SELECT id, nom FROM matieres ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
+        $s = $this->pdo->prepare("SELECT id, nom FROM matieres WHERE etablissement_id = ? ORDER BY nom");
+        $s->execute([\API\Core\EstablishmentContext::id()]);
+        return $s->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getStats(): array

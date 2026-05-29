@@ -15,6 +15,12 @@ class EvenementService
         $this->pdo = $pdo;
     }
 
+    /** Établissement courant (scope multi-établissement). */
+    private function etabId(): int
+    {
+        try { return \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { return 1; }
+    }
+
     /**
      * Retrieve evenements with optional filters and pagination.
      *
@@ -29,8 +35,8 @@ class EvenementService
      */
     public function getFiltered(array $filters, int $page = 1, int $perPage = 30): array
     {
-        $where  = [];
-        $params = [];
+        $where  = ['etablissement_id = :etab'];
+        $params = [':etab' => $this->etabId()];
 
         if (!empty($filters['type'])) {
             $where[]          = 'type_evenement = :type';
@@ -102,17 +108,18 @@ class EvenementService
             INSERT INTO evenements
                 (titre, description, date_debut, date_fin, type_evenement,
                  type_personnalise, statut, createur, visibilite,
-                 personnes_concernees, lieu, classes, matieres,
+                 personnes_concernees, lieu, classes, matieres, etablissement_id,
                  date_creation, date_modification)
             VALUES
                 (:titre, :description, :date_debut, :date_fin, :type_evenement,
                  :type_personnalise, :statut, :createur, :visibilite,
-                 :personnes_concernees, :lieu, :classes, :matieres,
+                 :personnes_concernees, :lieu, :classes, :matieres, :etab,
                  NOW(), NOW())
         SQL;
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
+            ':etab'                 => $this->etabId(),
             ':titre'                => $data['titre'],
             ':description'          => $data['description'] ?? null,
             ':date_debut'           => $data['date_debut'],
@@ -218,8 +225,9 @@ class EvenementService
      */
     public function getDistinctTypes(): array
     {
-        $sql = 'SELECT DISTINCT type_evenement FROM evenements ORDER BY type_evenement';
-        $stmt = $this->pdo->query($sql);
+        $sql = 'SELECT DISTINCT type_evenement FROM evenements WHERE etablissement_id = ? ORDER BY type_evenement';
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$this->etabId()]);
 
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }

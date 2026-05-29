@@ -17,6 +17,9 @@ $isRef     = ($role === 'professeur' && (int)($user['id'] ?? 0) === (int)$asso['
 
 /* POST actions */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($isAdmin || $isRef)) {
+    if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+        header("Location: detail.php?id=$id"); exit;
+    }
     $act = $_POST['action'] ?? '';
     if ($act === 'inscrire') {
         $vieAssoService->inscrireMembre($id, (int)$_POST['eleve_id'], $_POST['role_membre'] ?? 'membre');
@@ -63,7 +66,7 @@ $types = VieAssociativeService::typesLabels();
                                 <?php if ($m['classe']): ?><span class="text-muted">(<?= htmlspecialchars($m['classe']) ?>)</span><?php endif; ?>
                             </span>
                             <?php if (($isAdmin || $isRef) && $m['statut'] === 'actif'): ?>
-                                <form method="post" class="d-inline"><input type="hidden" name="action" value="retirer"><input type="hidden" name="membre_id" value="<?= $m['id'] ?>"><button class="btn btn-sm btn-link text-danger p-0" title="Retirer"><i class="fas fa-times"></i></button></form>
+                                <form method="post" class="d-inline"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>"><input type="hidden" name="action" value="retirer"><input type="hidden" name="membre_id" value="<?= $m['id'] ?>"><button class="btn btn-sm btn-link text-danger p-0" title="Retirer"><i class="fas fa-times"></i></button></form>
                             <?php endif; ?>
                         </li>
                     <?php endforeach; ?>
@@ -72,6 +75,7 @@ $types = VieAssociativeService::typesLabels();
                 <?php if ($isAdmin || $isRef): ?>
                 <div class="card-body border-top">
                     <form method="post" class="row g-1">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
                         <input type="hidden" name="action" value="inscrire">
                         <div class="col-5"><input name="eleve_id" type="number" class="form-control form-control-sm" placeholder="ID élève" required></div>
                         <div class="col-4"><select name="role_membre" class="form-select form-select-sm"><option value="membre">Membre</option><option value="bureau">Bureau</option><option value="president">Président</option></select></div>
@@ -102,6 +106,7 @@ $types = VieAssociativeService::typesLabels();
                 <?php if ($isAdmin || $isRef): ?>
                 <div class="card-body border-top">
                     <form method="post" class="row g-1">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
                         <input type="hidden" name="action" value="activite">
                         <div class="col-md-5"><input name="act_titre" class="form-control form-control-sm" placeholder="Titre" required></div>
                         <div class="col-md-3"><input name="act_date" type="date" class="form-control form-control-sm" required></div>
@@ -146,6 +151,7 @@ $types = VieAssociativeService::typesLabels();
             <?php if ($isAdmin || $isRef): ?>
             <hr>
             <form method="post" class="row g-2 align-items-end">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
                 <input type="hidden" name="action" value="operation">
                 <div class="col-md-2"><select name="op_type" class="form-select form-select-sm"><option value="recette">Recette</option><option value="depense">Dépense</option></select></div>
                 <div class="col-md-2"><input name="op_montant" type="number" step="0.01" class="form-control form-control-sm" placeholder="Montant" required></div>

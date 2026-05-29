@@ -18,15 +18,17 @@ class AgendaWidgetProvider implements WidgetDataProvider
         $limit = (int) ($config['limit'] ?? 5);
         $limit = min(20, max(1, $limit));
 
+        try { $etab = \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { $etab = 1; }
         $stmt = $pdo->prepare(
             'SELECT id, titre, date_debut, date_fin, type_evenement, lieu
              FROM evenements
              WHERE statut = \'actif\'
                AND date_debut >= NOW()
+               AND etablissement_id = ?
              ORDER BY date_debut ASC
              LIMIT ?'
         );
-        $stmt->execute([$limit]);
+        $stmt->execute([$etab, $limit]);
 
         return ['events' => $stmt->fetchAll(\PDO::FETCH_ASSOC)];
     }

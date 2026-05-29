@@ -15,6 +15,9 @@ $isResponsable = ($role === 'admin' || (int)($user['id'] ?? 0) === (int)$projet[
 
 /* Actions POST */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isResponsable) {
+    if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+        header("Location: detail.php?id=$id"); exit;
+    }
     $action = $_POST['action'] ?? '';
     if ($action === 'statut') {
         $projetService->changerStatut($id, $_POST['statut']);
@@ -89,6 +92,7 @@ $etapesActualisees = $projetService->getEtapes($id);
                                         </div>
                                         <?php if ($isResponsable): ?>
                                             <form method="post" class="ms-2">
+                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
                                                 <input type="hidden" name="action" value="statut_etape">
                                                 <input type="hidden" name="etape_id" value="<?= $et['id'] ?>">
                                                 <select name="etape_statut" class="form-select form-select-sm" onchange="this.form.submit()" style="width:auto">
@@ -107,6 +111,7 @@ $etapesActualisees = $projetService->getEtapes($id);
                     <?php if ($isResponsable): ?>
                         <hr>
                         <form method="post" class="row g-2 align-items-end">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
                             <input type="hidden" name="action" value="ajouter_etape">
                             <div class="col-md-4"><input name="titre_etape" class="form-control form-control-sm" placeholder="Titre de l'étape" required></div>
                             <div class="col-md-3"><input name="desc_etape" class="form-control form-control-sm" placeholder="Description"></div>
@@ -127,6 +132,7 @@ $etapesActualisees = $projetService->getEtapes($id);
                     <?php endif; ?>
                     <?php if ($isResponsable): ?>
                         <form method="post">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
                             <input type="hidden" name="action" value="bilan">
                             <textarea name="bilan" class="form-control mb-2" rows="4"><?= htmlspecialchars($projet['bilan'] ?? '') ?></textarea>
                             <button class="btn btn-sm btn-success">Enregistrer le bilan</button>
@@ -144,6 +150,7 @@ $etapesActualisees = $projetService->getEtapes($id);
                 <div class="card-header"><h6 class="mb-0">Actions</h6></div>
                 <div class="card-body">
                     <form method="post" class="mb-2">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
                         <input type="hidden" name="action" value="statut">
                         <label class="form-label small">Changer le statut</label>
                         <div class="input-group input-group-sm">
@@ -172,7 +179,7 @@ $etapesActualisees = $projetService->getEtapes($id);
                                 <span class="badge bg-light text-dark"><?= htmlspecialchars($part['role_projet']) ?></span>
                             </span>
                             <?php if ($isResponsable): ?>
-                                <form method="post" class="d-inline"><input type="hidden" name="action" value="retirer_participant"><input type="hidden" name="participant_id" value="<?= $part['id'] ?>"><button class="btn btn-sm btn-link text-danger p-0"><i class="fas fa-times"></i></button></form>
+                                <form method="post" class="d-inline"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>"><input type="hidden" name="action" value="retirer_participant"><input type="hidden" name="participant_id" value="<?= $part['id'] ?>"><button class="btn btn-sm btn-link text-danger p-0"><i class="fas fa-times"></i></button></form>
                             <?php endif; ?>
                         </li>
                     <?php endforeach; ?>
@@ -181,6 +188,7 @@ $etapesActualisees = $projetService->getEtapes($id);
                 <?php if ($isResponsable): ?>
                 <div class="card-body border-top">
                     <form method="post" class="row g-1">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
                         <input type="hidden" name="action" value="ajouter_participant">
                         <div class="col-5"><input name="p_user_id" type="number" class="form-control form-control-sm" placeholder="ID" required></div>
                         <div class="col-4">

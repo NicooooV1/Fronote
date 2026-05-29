@@ -316,8 +316,12 @@ class DashboardService
                 }
             }
         } catch (\Throwable $e) {
-            // Fallback silencieux vers le match hardcodé
-            error_log("DashboardService: SDK widget resolution failed for '{$widgetKey}': " . $e->getMessage());
+            // Fallback silencieux vers le match hardcodé. 1146 = table absente (module
+            // fournisseur non activé) → attendu, on ne pollue pas les logs.
+            $code = $e instanceof \PDOException ? (int) ($e->errorInfo[1] ?? 0) : 0;
+            if ($code !== 1146) {
+                error_log("DashboardService: SDK widget resolution failed for '{$widgetKey}': " . $e->getMessage());
+            }
         }
 
         // 2) Fallback : renderers internes (rétro-compatibilité)
@@ -454,8 +458,10 @@ class DashboardService
             "SELECT id, titre, contenu, date_publication, auteur, priorite
              FROM annonces
              WHERE actif = 1 AND (date_expiration IS NULL OR date_expiration >= CURDATE())
+               AND etablissement_id = ?
              ORDER BY priorite DESC, date_publication DESC
-             LIMIT 5"
+             LIMIT 5",
+            [$this->etabId()]
         );
 
         return [
@@ -472,8 +478,10 @@ class DashboardService
             "SELECT id, titre, type_evenement, date_debut, date_fin, description
              FROM evenements
              WHERE type_evenement = 'reunion' AND date_debut >= CURDATE()
+               AND etablissement_id = ?
              ORDER BY date_debut ASC
-             LIMIT 5"
+             LIMIT 5",
+            [$this->etabId()]
         );
 
         return [
@@ -599,8 +607,9 @@ class DashboardService
                 FROM absences a
                 LEFT JOIN eleves e ON a.id_eleve = e.id
                 WHERE DATE(a.date_debut) <= CURDATE() AND DATE(a.date_fin) >= CURDATE()
+                  AND a.etablissement_id = ?
                 ORDER BY a.date_debut DESC LIMIT 5";
-        return $this->safeQuery($sql);
+        return $this->safeQuery($sql, [$this->etabId()]);
     }
 
     // --- Resume par role (summary cards) ---
@@ -763,19 +772,24 @@ class DashboardService
 
     private function getResumeVieScolaire(): array
     {
+        $etab = $this->etabId();
         $rows = $this->safeQuery(
             "SELECT COUNT(*) AS cnt FROM absences
-             WHERE DATE(date_debut) <= CURDATE() AND DATE(date_fin) >= CURDATE()"
+             WHERE DATE(date_debut) <= CURDATE() AND DATE(date_fin) >= CURDATE()
+               AND etablissement_id = ?",
+            [$etab]
         );
         $absencesJour = $rows[0]['cnt'] ?? 0;
 
         $rows = $this->safeQuery(
-            "SELECT COUNT(*) AS cnt FROM absences WHERE statut = 'non_justifiee'"
+            "SELECT COUNT(*) AS cnt FROM absences WHERE statut = 'non_justifiee' AND etablissement_id = ?",
+            [$etab]
         );
         $nonJustifiees = $rows[0]['cnt'] ?? 0;
 
         $rows = $this->safeQuery(
-            "SELECT COUNT(*) AS cnt FROM evenements WHERE date_debut >= CURDATE() AND date_debut < DATE_ADD(CURDATE(), INTERVAL 7 DAY)"
+            "SELECT COUNT(*) AS cnt FROM evenements WHERE date_debut >= CURDATE() AND date_debut < DATE_ADD(CURDATE(), INTERVAL 7 DAY) AND etablissement_id = ?",
+            [$etab]
         );
         $evenements = $rows[0]['cnt'] ?? 0;
 
@@ -789,14 +803,16 @@ class DashboardService
     private function getResumeAdmin(): array
     {
         // Single round-trip — six aggregates rolled into one SELECT.
+        $etabS = $this->etabId();
         $rows = $this->safeQuery(
             "SELECT
-                (SELECT COUNT(*) FROM eleves           WHERE actif = 1) AS eleves,
-                (SELECT COUNT(*) FROM professeurs      WHERE actif = 1) AS professeurs,
-                (SELECT COUNT(*) FROM vie_scolaire     WHERE actif = 1) AS vie_scolaire,
-                (SELECT COUNT(*) FROM administrateurs  WHERE actif = 1) AS administrateurs,
-                (SELECT COUNT(*) FROM evenements       WHERE date_debut >= CURDATE()) AS evenements,
-                (SELECT COUNT(*) FROM notes)                              AS notes"
+                (SELECT COUNT(*) FROM eleves           WHERE actif = 1 AND etablissement_id = ?) AS eleves,
+                (SELECT COUNT(*) FROM professeurs      WHERE actif = 1 AND etablissement_id = ?) AS professeurs,
+                (SELECT COUNT(*) FROM vie_scolaire     WHERE actif = 1 AND etablissement_id = ?) AS vie_scolaire,
+                (SELECT COUNT(*) FROM administrateurs  WHERE actif = 1 AND etablissement_id = ?) AS administrateurs,
+                (SELECT COUNT(*) FROM evenements       WHERE date_debut >= CURDATE() AND etablissement_id = ?) AS evenements,
+                (SELECT COUNT(*) FROM notes            WHERE etablissement_id = ?) AS notes",
+            [$etabS, $etabS, $etabS, $etabS, $etabS, $etabS]
         );
         $r          = $rows[0] ?? [];
         $total      = ($r['eleves'] ?? 0) + ($r['professeurs'] ?? 0)
@@ -984,6 +1000,16 @@ class DashboardService
 
     // --- Helpers ---
 
+    /** Établissement courant pour le scope multi-établissement des requêtes globales. */
+    private function etabId(): int
+    {
+        try {
+            return \API\Core\EstablishmentContext::id();
+        } catch (\Throwable $e) {
+            return 1;
+        }
+    }
+
     private function safeQuery(string $sql, array $params = []): array
     {
         try {
@@ -991,7 +1017,11 @@ class DashboardService
             $stmt->execute($params);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            error_log("DashboardService query error: " . $e->getMessage());
+            // 1146 = table absente : attendu lorsque le module fournisseur n'est pas activé
+            // (son SQL n'est provisionné qu'à l'activation) → silencieux, pas de bruit de log.
+            if ((int) ($e->errorInfo[1] ?? 0) !== 1146) {
+                error_log("DashboardService query error: " . $e->getMessage());
+            }
             return [];
         }
     }
