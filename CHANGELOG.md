@@ -6,6 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.1.0] "Modular" — 2026-05-29
+
+### Changed — Architecture
+- **Modules métier déplacés sous `modules/<clé>/`** ; composants essentiels (`accueil/`, `admin/`, `login/`, `parametres/`, `API/`, `templates/`) restés à la racine.
+- **Schéma SQL modularisé** : `pronote.sql` ne crée plus que le socle ; chaque module porte `modules/<m>/Database/install.sql` (idempotent). Provisionnement via `ModuleSDK::provisionSql()` à l'installation et à l'activation. Migrations incrémentales tracées dans `module_migrations`.
+- **Installation** : l'assistant provisionne désormais le schéma de **tous** les modules découverts (et non plus seulement les migrations). FK désactivées pendant l'import du socle.
+- **`$rootPrefix`** calculé automatiquement par `shared_header.php` depuis `SCRIPT_FILENAME` (profondeur réelle) — corrige CSS/JS/liens des modules imbriqués.
+- **Permissions** : `ModuleSDK` sème `module_permissions` (role-based) depuis les `default_roles` des manifestes (INSERT IGNORE). La matrice admin sérialise la grille en un champ JSON unique (contourne `max_input_vars`).
+
+### Changed — Modules
+- **Fusion `devoirs` → `cahierdetextes`** : la soumission/correction des devoirs (mes_devoirs, rendre, corriger, voir_rendu) vit désormais dans `cahierdetextes` (onglets « Cahier de textes » / « Devoirs & rendus »). Module `devoirs` retiré.
+- **Multi-établissement** : périodes par établissement (trimestre/semestre/annuel, scopées `etablissement_id`) ; gate de reconfiguration en fin d'année scolaire ; onboarding au premier login admin.
+
+### Fixed
+- Déconnexion : redirection vers la page de connexion (plus de page blanche).
+- Nombreuses erreurs « table doesn't exist » (modules non provisionnés à l'installation).
+- Fatals « Cannot redeclare » : `VieScolaireService::getFicheEleve`, `DocumentService::getVersions`.
+- Sync permissions : colonne `action_key` inexistante (mauvais schéma) → conversion role-based.
+- `reporting` : requêtes alignées sur le schéma réel (`eleves.classe`, `notes.id_eleve`/`trimestre`).
+- Route `onboarding` (404) ; CSS non fonctionnel sur plusieurs modules ; liens accueil pointant vers `/modules`.
+
+---
+
 ## [2.0.0] "Nova" — 2026-04-09
 
 ### Added — 13 New Modules

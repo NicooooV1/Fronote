@@ -43,7 +43,7 @@ if (isset($user)) {
 // Variables pour les templates partagés
 $activePage = 'messagerie';
 $isAdmin = isset($user) && ($user['type'] ?? '') === 'administrateur';
-$rootPrefix = '../';
+$rootPrefix = '../../';
 
 // CSS supplémentaires spécifiques à la messagerie (unified styles.css)
 $extraCss = [

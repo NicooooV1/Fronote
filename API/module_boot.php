@@ -68,6 +68,36 @@ if (!defined('FRONOTE_ONBOARDING') && $isAdmin) {
     }
 }
 
+// Gate « année scolaire terminée » — si l'établissement courant possède des périodes
+// mais qu'aucune ne couvre aujourd'hui (on est sorti de l'année définie), on force
+// l'admin à redéfinir les plages de trimestres/semestres avant d'utiliser l'app.
+// Chaque établissement a ses propres périodes (et son propre type), donc le contrôle
+// est scopé à l'établissement actif.
+if (!defined('FRONOTE_ONBOARDING') && $isAdmin && !empty($_SESSION['onboarding_done'])) {
+    try {
+        $eid = \API\Core\EstablishmentContext::id();
+        $cntStmt = $pdo->prepare("SELECT COUNT(*) FROM periodes WHERE etablissement_id = ?");
+        $cntStmt->execute([$eid]);
+        $nbPeriodes = (int) $cntStmt->fetchColumn();
+
+        if ($nbPeriodes > 0) {
+            $curStmt = $pdo->prepare(
+                "SELECT COUNT(*) FROM periodes WHERE etablissement_id = ? AND CURDATE() BETWEEN date_debut AND date_fin"
+            );
+            $curStmt->execute([$eid]);
+            if ((int) $curStmt->fetchColumn() === 0) {
+                if (function_exists('setFlashMessage')) {
+                    setFlashMessage('warning', "L'année scolaire définie est terminée. Veuillez redéfinir les plages de trimestres/semestres pour continuer.");
+                }
+                header('Location: ' . (defined('BASE_URL') ? BASE_URL : '') . '/admin/etablissement/periodes.php?reconfigure=1');
+                exit;
+            }
+        }
+    } catch (\Throwable $e) {
+        // ne pas bloquer l'accès si la résolution échoue
+    }
+}
+
 // Calcul du rootPrefix (chemin relatif vers la racine du projet)
 // Utilise le nombre de niveaux de profondeur du fichier appelant
 if (!isset($rootPrefix)) {

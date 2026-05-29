@@ -327,40 +327,56 @@ class ReportingService {
         $stmt->execute([$classeId]);
         $classe = $stmt->fetch(PDO::FETCH_ASSOC);
 
+        // Les élèves référencent leur classe par NOM (eleves.classe varchar), pas par FK.
+        $classeNom = $classe['nom'] ?? '';
+
+        // Les notes sont rattachées à un trimestre (int), pas à une periode_id.
+        // On traduit la période sélectionnée en numéro de trimestre.
+        $trimestre = null;
+        if ($periodeId) {
+            $pst = $pdo->prepare("SELECT numero FROM periodes WHERE id = ?");
+            $pst->execute([$periodeId]);
+            $num = $pst->fetchColumn();
+            if ($num !== false) { $trimestre = (int)$num; }
+        }
+
         // Effectif
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM eleves WHERE classe_id = ? AND actif = 1");
-        $stmt->execute([$classeId]);
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM eleves WHERE classe = ? AND actif = 1");
+        $stmt->execute([$classeNom]);
         $effectif = (int)$stmt->fetchColumn();
 
         // Moyenne générale
         $sql = "
             SELECT ROUND(AVG(sub.moy), 2) as moyenne_classe FROM (
                 SELECT e.id, ROUND(SUM(n.note * n.coefficient) / NULLIF(SUM(n.coefficient), 0), 2) AS moy
-                FROM notes n JOIN eleves e ON n.eleve_id = e.id
-                WHERE e.classe_id = ?
+                FROM notes n JOIN eleves e ON n.id_eleve = e.id
+                WHERE e.classe = ?
         ";
-        $params = [$classeId];
-        if ($periodeId) { $sql .= " AND n.periode_id = ?"; $params[] = $periodeId; }
+        $params = [$classeNom];
+        if ($trimestre !== null) { $sql .= " AND n.trimestre = ?"; $params[] = $trimestre; }
         $sql .= " GROUP BY e.id) sub";
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         $moyenneClasse = $stmt->fetchColumn() ?: 0;
 
         // Absences
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM absences a JOIN eleves e ON a.eleve_id = e.id WHERE e.classe_id = ?");
-        $stmt->execute([$classeId]);
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM absences a JOIN eleves e ON a.id_eleve = e.id WHERE e.classe = ?");
+        $stmt->execute([$classeNom]);
         $totalAbsences = (int)$stmt->fetchColumn();
 
         // Retards
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM retards r JOIN eleves e ON r.eleve_id = e.id WHERE e.classe_id = ?");
-        $stmt->execute([$classeId]);
-        $totalRetards = (int)$stmt->fetchColumn();
+        $totalRetards = 0;
+        try {
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM retards r JOIN eleves e ON r.id_eleve = e.id WHERE e.classe = ?");
+            $stmt->execute([$classeNom]);
+            $totalRetards = (int)$stmt->fetchColumn();
+        } catch (\Exception $e) {}
 
-        // Incidents
+        // Incidents (incidents.eleve_id)
         $nbIncidents = 0;
         try {
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM incidents i JOIN eleves e ON i.eleve_id = e.id WHERE e.classe_id = ?");
-            $stmt->execute([$classeId]);
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM incidents i JOIN eleves e ON i.eleve_id = e.id WHERE e.classe = ?");
+            $stmt->execute([$classeNom]);
             $nbIncidents = (int)$stmt->fetchColumn();
         } catch (\Exception $e) {}
 
@@ -372,12 +388,12 @@ class ReportingService {
                    MAX(n.note / n.note_sur * 20) AS max_note,
                    COUNT(DISTINCT n.id) AS nb_notes
             FROM notes n
-            JOIN eleves e ON n.eleve_id = e.id
-            JOIN matieres m ON n.matiere_id = m.id
-            WHERE e.classe_id = ?
+            JOIN eleves e ON n.id_eleve = e.id
+            JOIN matieres m ON n.id_matiere = m.id
+            WHERE e.classe = ?
         ";
-        $paramsMat = [$classeId];
-        if ($periodeId) { $sqlMat .= " AND n.periode_id = ?"; $paramsMat[] = $periodeId; }
+        $paramsMat = [$classeNom];
+        if ($trimestre !== null) { $sqlMat .= " AND n.trimestre = ?"; $paramsMat[] = $trimestre; }
         $sqlMat .= " GROUP BY m.id, m.nom ORDER BY m.nom";
         $stmt = $pdo->prepare($sqlMat);
         $stmt->execute($paramsMat);
@@ -387,11 +403,11 @@ class ReportingService {
         $sqlEleves = "
             SELECT e.id, e.nom, e.prenom,
                    ROUND(SUM(n.note * n.coefficient) / NULLIF(SUM(n.coefficient), 0), 2) AS moyenne
-            FROM notes n JOIN eleves e ON n.eleve_id = e.id
-            WHERE e.classe_id = ? AND e.actif = 1
+            FROM notes n JOIN eleves e ON n.id_eleve = e.id
+            WHERE e.classe = ? AND e.actif = 1
         ";
-        $paramsEleves = [$classeId];
-        if ($periodeId) { $sqlEleves .= " AND n.periode_id = ?"; $paramsEleves[] = $periodeId; }
+        $paramsEleves = [$classeNom];
+        if ($trimestre !== null) { $sqlEleves .= " AND n.trimestre = ?"; $paramsEleves[] = $trimestre; }
         $sqlEleves .= " GROUP BY e.id, e.nom, e.prenom ORDER BY moyenne DESC";
         $stmt = $pdo->prepare($sqlEleves);
         $stmt->execute($paramsEleves);

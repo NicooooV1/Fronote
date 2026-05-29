@@ -2,7 +2,7 @@
 /**
  * M14 – Réunions — Header
  */
-$rootPrefix = '../';
+$rootPrefix = '../../';
 require_once __DIR__ . '/../../../API/bootstrap.php';
 requireAuth();
 

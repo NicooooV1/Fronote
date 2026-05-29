@@ -2,18 +2,19 @@
 
 ## Introduction
 
-Fronote utilise une architecture modulaire. Chaque module est un dossier autonome à la racine du projet, déclaré via un fichier `module.json`. Ce guide explique comment créer, configurer et publier un module.
+Fronote utilise une architecture modulaire. Chaque module métier est un dossier autonome **sous `modules/<clé>/`**, déclaré via un fichier `module.json`. (Quelques composants essentiels — `accueil/`, `admin/`, `parametres/`… — restent à la racine.) Ce guide explique comment créer, configurer et publier un module.
 
 ## Structure d'un module
 
 ```
-mon_module/
+modules/mon_module/
 ├── module.json              # Manifeste obligatoire
-├── mon_module.php           # Page principale
+├── mon_module.php           # Page principale (routes.main)
 ├── api.php                  # Endpoints API du module (optionnel)
+├── Database/
+│   └── install.sql          # Schéma du module (idempotent, provisionné par le SDK)
 ├── includes/
-│   ├── MonWidgetProvider.php # Fournisseur de données widget
-│   └── install.php          # Script d'installation (optionnel)
+│   └── MonWidgetProvider.php # Fournisseur de données widget
 ├── widgets/
 │   └── mon_widget.php       # Template de rendu du widget
 ├── assets/
@@ -57,6 +58,8 @@ Chaque module **doit** contenir un fichier `module.json` à sa racine :
     "main": "mon_module.php",
     "api": "api.php"
   },
+  "database": { "install": "Database/install.sql" },
+  "migrations": [],
   "widgets": [],
   "hooks": {},
   "establishment_types": null,
@@ -74,10 +77,12 @@ Chaque module **doit** contenir un fichier `module.json` à sa racine :
 | `name` | object | Oui | Nom traduit (`{ "fr": "...", "en": "..." }`) |
 | `description` | object | Oui | Description traduite |
 | `icon` | string | Oui | Classe Font Awesome pour l'icône sidebar |
-| `category` | string | Oui | Catégorie sidebar : `navigation`, `scolaire`, `communication`, `administration`, `outils` |
-| `core` | bool | Non | `true` si le module ne peut pas être désactivé |
-| `permissions` | object | Oui | Map permission_key → `{ default_roles: [...] }` |
-| `routes.main` | string | Oui | Fichier PHP principal (point d'entrée) |
+| `category` | string | Oui | Catégorie (voir liste ci-dessous) — doit appartenir à `ModuleSDK::VALID_CATEGORIES`, sinon le module est rejeté à la synchro |
+| `core` | bool | Non | `true` ⇒ activé d'office (`enabled = 1`) et non désactivable ; sinon installé mais désactivé jusqu'à activation admin |
+| `permissions` | object | Oui | Map permission_key → `{ default_roles: [...] }`. Convertie en lignes role-based dans `module_permissions` (INSERT IGNORE) |
+| `database.install` | string | Non | Chemin du `install.sql` du module (défaut `Database/install.sql`), provisionné par le SDK |
+| `migrations` | array | Non | Fichiers `.sql` incrémentaux, exécutés une fois et tracés dans `module_migrations` |
+| `routes.main` | string | Oui | Fichier PHP principal (point d'entrée). La route effective est `modules/<clé>/<fichier>` |
 | `widgets` | array | Non | Widgets fournis par le module (voir section Widgets) |
 | `hooks` | object | Non | Hooks de lifecycle : `on_install`, `on_uninstall`, `on_user_delete` |
 | `establishment_types` | array\|null | Non | `null` = tous types. Sinon : `["college", "lycee", "superieur"]` |
@@ -86,13 +91,21 @@ Chaque module **doit** contenir un fichier `module.json` à sa racine :
 
 ### Catégories disponibles
 
-| Clé | Label | Icône |
-|---|---|---|
-| `navigation` | Navigation | `fas fa-compass` |
-| `scolaire` | Scolarité | `fas fa-graduation-cap` |
-| `communication` | Communication | `fas fa-comments` |
-| `administration` | Administration | `fas fa-building` |
-| `outils` | Outils | `fas fa-tools` |
+Valeurs acceptées (`ModuleSDK::VALID_CATEGORIES`) : `navigation`, `scolaire`, `vie_scolaire`, `communication`, `etablissement`, `logistique`, `outils`, `administration`, `systeme`, `sante`, `custom`.
+
+| Clé | Label |
+|---|---|
+| `navigation` | Navigation |
+| `scolaire` | Scolarité |
+| `vie_scolaire` | Vie scolaire |
+| `communication` | Communication |
+| `etablissement` | Établissement |
+| `logistique` | Logistique & Services |
+| `outils` | Outils |
+| `administration` | Administration |
+| `systeme` | Système |
+| `sante` | Santé |
+| `custom` | Personnalisé |
 
 ## Boot d'un module
 
@@ -100,7 +113,7 @@ Chaque page PHP d'un module commence par :
 
 ```php
 <?php
-require_once __DIR__ . '/../API/module_boot.php';
+require_once __DIR__ . '/../../API/module_boot.php';
 
 // Variables disponibles automatiquement :
 // $user          — données utilisateur courant
@@ -109,20 +122,40 @@ require_once __DIR__ . '/../API/module_boot.php';
 // $user_initials — initiales
 // $isAdmin       — bool
 // $pdo           — connexion PDO
-// $rootPrefix    — chemin relatif vers la racine (ex: '../')
+// $rootPrefix    — chemin relatif vers la racine (calculé automatiquement)
+// + gates appliqués : onboarding (1er login admin), fin d'année scolaire
 
 $activePage = 'mon_module';
 $pageTitle  = __('mon_module.title');
-include __DIR__ . '/../templates/shared_header.php';
-include __DIR__ . '/../templates/shared_sidebar.php';
+include __DIR__ . '/../../templates/shared_header.php';
+include __DIR__ . '/../../templates/shared_topbar.php';
+include __DIR__ . '/../../templates/shared_topbar_nav.php';
 ?>
 
 <div class="main-content">
     <!-- Contenu du module -->
 </div>
 
-<?php include __DIR__ . '/../templates/shared_footer.php'; ?>
+<?php include __DIR__ . '/../../templates/shared_footer.php'; ?>
 ```
+
+## Cycle de vie & provisionnement SQL
+
+```
+discover → validate → sync (modules_config + widgets + permissions) → provisionSql (install.sql + migrations) → enable → boot
+```
+
+| Méthode (`app('module_sdk')`) | Rôle |
+|---|---|
+| `discover()` | Scanne `modules/*/module.json` **et** `*/module.json` (essentiels racine) |
+| `validate($manifest)` | Vérifie champs requis + catégorie |
+| `syncAll()` / `syncModule()` | Upsert `modules_config`, `dashboard_widgets`, `module_settings_schema`, `module_permissions` |
+| `provisionSql($key)` | Exécute `Database/install.sql` (FK off, instruction par instruction) puis `migrate()` |
+| `migrate($key)` | Joue les `migrations[]` non encore appliquées, tracées dans `module_migrations` |
+
+- **À l'installation** : l'assistant exécute `syncAll()` puis `provisionSql()` pour **tous** les modules → toutes les tables existent, même pour les modules désactivés.
+- **À l'activation** (`ModuleService::setEnabled($key, true)`) : `provisionSql()` est rejoué **avant** de passer `enabled = 1`. Si le SQL échoue, le module n'est pas activé (jamais de module à moitié installé).
+- `enabled` vaut `is_core` à la première insertion ; `ON DUPLICATE KEY` ne touche pas `enabled` (préserve le choix admin).
 
 ## Permissions (RBAC)
 

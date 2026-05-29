@@ -295,9 +295,25 @@ When a client attempts to join a room (e.g., `class:42`), the server makes an HT
 
 All WebSocket connections are logged with: user ID, IP address, user agent, connection/disconnection timestamps.
 
+## Isolation multi-établissement (scoping)
+
+Une même installation héberge plusieurs établissements. L'isolation des données est une exigence de sécurité, pas seulement fonctionnelle.
+
+- L'établissement courant est résolu par `\API\Core\EstablishmentContext::id()`.
+- Toute table métier porte `etablissement_id` ; **toute requête de liste/recherche/agrégat doit la filtrer**.
+- Les identifiants venant de l'URL (ex. `?eleve=`, `?id=`) doivent être **revalidés** contre le périmètre autorisé de l'utilisateur (établissement et, pour un parent, ses enfants) avant toute lecture — ne jamais faire confiance à un ID fourni par le client (risque IDOR).
+
+```php
+$eid = \API\Core\EstablishmentContext::id();
+$stmt = $pdo->prepare("SELECT * FROM ma_table WHERE etablissement_id = ?");
+$stmt->execute([$eid]);
+```
+
 ## Checklist securite pour les modules
 
 - [ ] Requetes SQL preparees (jamais d'interpolation)
+- [ ] Requetes scopees par `etablissement_id` (isolation multi-etablissement)
+- [ ] IDs fournis par le client revalides contre le perimetre autorise (anti-IDOR)
 - [ ] CSRF verifie sur toutes les mutations
 - [ ] Permissions RBAC verifiees
 - [ ] Inputs valides et echappes (`htmlspecialchars()`, `intval()`)

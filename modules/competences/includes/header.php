@@ -2,7 +2,7 @@
 /**
  * M38 – Compétences — Header (topbar layout)
  */
-$rootPrefix = '../';
+$rootPrefix = '../../';
 require_once __DIR__ . '/../../../API/bootstrap.php';
 requireAuth();
 

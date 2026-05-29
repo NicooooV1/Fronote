@@ -5,7 +5,7 @@
 require_once __DIR__ . '/includes/RenduService.php';
 $currentPage = 'rendre';
 $pageTitle = 'Rendre un devoir';
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/includes/header_rendus.php';
 requireAuth();
 
 if (!isStudent()) {
@@ -20,7 +20,7 @@ $devoir = $service->getDevoir($devoirId);
 
 if (!$devoir) {
     echo '<div class="alert alert-error">Devoir introuvable.</div>';
-    require_once __DIR__ . '/includes/footer.php';
+    require_once __DIR__ . '/includes/footer_rendus.php';
     exit;
 }
 
@@ -114,4 +114,4 @@ $isPast = strtotime($devoir['date_rendu']) < time();
     </div>
 </div>
 
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+<?php require_once __DIR__ . '/includes/footer_rendus.php'; ?>

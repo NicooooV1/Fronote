@@ -2,7 +2,7 @@
 /**
  * M16 – Documents — Header
  */
-$rootPrefix = '../';
+$rootPrefix = '../../';
 require_once __DIR__ . '/../../../API/bootstrap.php';
 requireAuth();
 

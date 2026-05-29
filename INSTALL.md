@@ -91,15 +91,17 @@ L'assistant vous guide en **5 étapes** :
 | **2. Base de données** | Saisir l'hôte, le nom, l'utilisateur et le mot de passe MySQL |
 | **3. Application** | Nom de l'établissement, URL du site, paramètres de session |
 | **4. Administrateur** | Créer le premier compte administrateur |
-| **5. Finalisation** | Création de la base de données, génération du fichier de configuration, tests |
+| **5. Finalisation** | Création de la base, import du socle, **provisionnement du schéma de tous les modules**, configuration, tests |
 
-> **Protection contre l'écrasement** : si la base de données existe déjà et contient des tables, l'assistant affiche un avertissement avec le nombre de tables détectées. Vous devrez cocher explicitement une case de confirmation avant de procéder, ou revenir en arrière pour choisir un autre nom de base.
+> **Étape 5 en détail.** L'assistant crée la base, importe le socle `pronote.sql`, puis exécute `ModuleSDK::syncAll()` (enregistre chaque module dans `modules_config`, ses widgets et permissions) et `provisionSql()` pour **tous** les modules découverts — leurs tables (`Database/install.sql`) sont créées même si le module reste désactivé. Les contrôles de clés étrangères sont désactivés pendant l'import (références croisées). Seuls les modules `core` sont activés ; les autres restent à activer dans l'admin.
+
+> **Protection contre l'écrasement** : si la base existe déjà et contient des tables, l'assistant affiche un avertissement avec le nombre de tables détectées. Vous devrez cocher explicitement une case de confirmation avant de procéder, ou revenir en arrière pour choisir un autre nom de base.
 
 À la fin de l'assistant, un fichier `install.lock` est créé automatiquement — il **bloque** toute réinstallation accidentelle.
 
 ---
 
-## Étape 4 — Première connexion
+## Étape 4 — Première connexion & mise en route
 
 Rendez-vous sur la page de connexion :
 
@@ -108,6 +110,10 @@ http://votre-serveur/fronote/login/index.php
 ```
 
 Connectez-vous avec le compte **administrateur** créé à l'étape 3.
+
+> **Assistant de mise en route (onboarding).** Au premier login admin, tant que l'établissement n'est pas configuré, Fronote redirige vers `modules/onboarding/index.php`. Vous y définissez l'identité de l'établissement, les classes, les matières et les **périodes** (trimestres *ou* semestres, avec leurs dates). Chaque établissement a ses propres périodes et son propre découpage — un collège peut être en trimestres et un lycée en semestres. Les établissements supplémentaires et la reconfiguration se gèrent ensuite dans **Administration → Établissement**.
+
+> **Fin d'année scolaire.** Lorsque la date du jour sort des plages de périodes définies, l'admin est automatiquement invité à redéfinir les trimestres/semestres avant de pouvoir continuer.
 
 ---
 
@@ -311,6 +317,12 @@ crontab -e
 
 → Le WebSocket n'est pas démarré. Les notifications fonctionnent toujours mais avec un délai.
 → Vérifiez l'état : `pm2 status` puis `pm2 logs fronote-ws`.
+
+### Un module affiche « table … doesn't exist » ou n'apparaît pas
+
+→ Le schéma du module n'a pas été provisionné, ou le module n'est pas synchronisé/activé.
+→ **Administration → Modules → Synchroniser** : recrée les entrées et provisionne les `Database/install.sql` manquants.
+→ Vérifiez ensuite que le module est **activé** (installé ≠ activé : les modules non essentiels sont désactivés par défaut).
 
 ### Une mise à jour a échoué
 

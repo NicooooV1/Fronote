@@ -287,13 +287,6 @@ class DocumentService {
         return (int)$this->pdo->lastInsertId();
     }
 
-    public function getVersions(int $documentId): array
-    {
-        $stmt = $this->pdo->prepare("SELECT * FROM document_versions WHERE document_id = :did ORDER BY version DESC");
-        $stmt->execute([':did' => $documentId]);
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-    }
-
     // ─── DOSSIERS HIÉRARCHIQUES ───
 
     public function creerDossier(int $etabId, string $nom, ?int $parentId = null, int $ordre = 0): int

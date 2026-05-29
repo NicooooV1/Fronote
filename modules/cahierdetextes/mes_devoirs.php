@@ -5,7 +5,7 @@
 require_once __DIR__ . '/includes/RenduService.php';
 $currentPage = 'mes_devoirs';
 $pageTitle = 'Mes devoirs';
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/includes/header_rendus.php';
 requireAuth();
 
 $pdo = getPDO();
@@ -94,4 +94,4 @@ $now = time();
 </div>
 <?php endif; ?>
 
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+<?php require_once __DIR__ . '/includes/footer_rendus.php'; ?>

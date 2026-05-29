@@ -280,30 +280,65 @@ class ModuleSDK
     }
 
     /**
-     * Synchronise les permissions d'un module avec module_permissions
+     * Synchronise les permissions d'un module avec module_permissions.
+     *
+     * module_permissions est orienté rôle (une ligne par module_key × role avec des
+     * colonnes can_view / can_create / …), c'est la table lue par RBAC. Les manifestes
+     * déclarent au contraire des actions (`view`, `manage`, `edit`, …) avec leurs
+     * `default_roles`. On convertit donc les actions en colonnes can_* et on sème une
+     * ligne par rôle. INSERT IGNORE : on ne crée que les paires (module, rôle) absentes,
+     * sans écraser les ajustements faits par l'admin dans la matrice.
      */
     private function syncPermissions(string $moduleKey, array $permissions): void
     {
+        $allRoles = ['administrateur', 'professeur', 'vie_scolaire', 'eleve', 'parent'];
+
+        // Quelles actions alimentent quelle colonne can_*.
+        $actionToColumns = [
+            'view'    => ['can_view'],
+            'manage'  => ['can_view', 'can_create', 'can_edit', 'can_delete'],
+            'create'  => ['can_create'],
+            'edit'    => ['can_edit'],
+            'delete'  => ['can_delete'],
+            'export'  => ['can_export'],
+            'import'  => ['can_import'],
+        ];
+
+        // grid[role][can_*] = 1
+        $grid = [];
+        foreach ($allRoles as $r) {
+            $grid[$r] = [
+                'can_view' => 0, 'can_create' => 0, 'can_edit' => 0,
+                'can_delete' => 0, 'can_export' => 0, 'can_import' => 0,
+            ];
+        }
+
         foreach ($permissions as $action => $config) {
-            $defaultRoles = $config['default_roles'] ?? [];
-
-            // Vérifier si la table module_permissions existe
-            try {
-                $sql = "INSERT INTO module_permissions (module_key, action_key, default_roles)
-                        VALUES (?, ?, ?)
-                        ON DUPLICATE KEY UPDATE
-                            default_roles = VALUES(default_roles)";
-
-                $stmt = $this->pdo->prepare($sql);
-                $stmt->execute([
-                    $moduleKey,
-                    $action,
-                    json_encode($defaultRoles),
-                ]);
-            } catch (\Throwable $e) {
-                // Table peut ne pas exister encore — silencieux
-                error_log("ModuleSDK: Cannot sync permission {$moduleKey}.{$action}: " . $e->getMessage());
+            $roles = $config['default_roles'] ?? [];
+            $cols  = $actionToColumns[$action] ?? ['can_view']; // action inconnue ⇒ au moins voir
+            // '*' = tous les rôles.
+            $targetRoles = in_array('*', $roles, true) ? $allRoles : array_intersect($roles, $allRoles);
+            foreach ($targetRoles as $r) {
+                foreach ($cols as $c) {
+                    $grid[$r][$c] = 1;
+                }
             }
+        }
+
+        try {
+            $sql = "INSERT IGNORE INTO module_permissions
+                        (module_key, role, can_view, can_create, can_edit, can_delete, can_export, can_import)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            $stmt = $this->pdo->prepare($sql);
+            foreach ($grid as $role => $cols) {
+                $stmt->execute([
+                    $moduleKey, $role,
+                    $cols['can_view'], $cols['can_create'], $cols['can_edit'],
+                    $cols['can_delete'], $cols['can_export'], $cols['can_import'],
+                ]);
+            }
+        } catch (\Throwable $e) {
+            error_log("ModuleSDK: Cannot sync permissions for {$moduleKey}: " . $e->getMessage());
         }
     }
 

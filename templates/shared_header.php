@@ -24,7 +24,25 @@ $headerExtraActions = $headerExtraActions ?? '';
 $user_fullname = $user_fullname ?? '';
 $activePage = $activePage ?? '';
 $isAdmin = $isAdmin ?? false;
-$rootPrefix = $rootPrefix ?? '../';
+
+// rootPrefix : chemin relatif de la page courante vers la racine du projet.
+// Si la page ne l'a pas défini, on le calcule depuis le script réellement
+// demandé (SCRIPT_FILENAME) plutôt que d'utiliser un '../' fixe qui cassait
+// les liens CSS/JS des modules désormais imbriqués sous modules/<m>/.
+if (!isset($rootPrefix)) {
+    $rootPrefix = '../';
+    $projectRoot = realpath(__DIR__ . '/..');
+    $scriptPath  = realpath($_SERVER['SCRIPT_FILENAME'] ?? '');
+    if ($projectRoot && $scriptPath) {
+        $rootN = str_replace('\\', '/', $projectRoot);
+        $scrN  = str_replace('\\', '/', $scriptPath);
+        if (str_starts_with($scrN, $rootN . '/')) {
+            $rel   = substr($scrN, strlen($rootN) + 1);
+            $depth = substr_count($rel, '/');
+            $rootPrefix = $depth > 0 ? str_repeat('../', $depth) : './';
+        }
+    }
+}
 
 // NOTE : $activePage doit être défini dans chaque page/module pour la coloration de la navigation
 // Exemples : 'accueil', 'notes', 'agenda', 'cahierdetextes', 'messagerie', 'absences', 'admin'

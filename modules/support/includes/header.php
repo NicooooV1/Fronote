@@ -2,7 +2,7 @@
 /**
  * M34 – Support & Aide — Header
  */
-$rootPrefix = '../';
+$rootPrefix = '../../';
 require_once __DIR__ . '/../../../API/bootstrap.php';
 requireAuth();
 

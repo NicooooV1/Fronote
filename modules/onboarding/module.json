@@ -14,6 +14,12 @@
     "core": true,
     "requires_php": ">=8.0",
     "dependencies": [],
+    "routes": {
+        "main": "index.php"
+    },
+    "sidebar": {
+        "hidden": true
+    },
     "permissions": {
         "view": { "default_roles": ["administrateur"] },
         "manage": { "default_roles": ["administrateur"] }

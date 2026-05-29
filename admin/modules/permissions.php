@@ -104,22 +104,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
             $allModules = $moduleService->getAll();
             $roleKeys = array_keys($GLOBALS['roles'] ?? $roles);
 
+            // La matrice complète (≈ modules × rôles × permissions) dépasse facilement
+            // php.ini max_input_vars (1000 par défaut), ce qui tronquait silencieusement
+            // le POST et ne sauvegardait que les premières catégories. Le formulaire
+            // sérialise donc tout dans un seul champ JSON `perm_data`.
+            $matrix = [];
+            if (isset($_POST['perm_data'])) {
+                $decoded = json_decode((string) $_POST['perm_data'], true);
+                if (is_array($decoded)) {
+                    $matrix = $decoded;
+                }
+            }
+
             foreach ($allModules as $moduleKey => $mod) {
                 foreach ($roleKeys as $role) {
-                    $prefix = "perm_{$moduleKey}_{$role}_";
-                    $canView   = !empty($_POST[$prefix . 'can_view'])   ? 1 : 0;
-                    $canCreate = !empty($_POST[$prefix . 'can_create']) ? 1 : 0;
-                    $canEdit   = !empty($_POST[$prefix . 'can_edit'])   ? 1 : 0;
-                    $canDelete = !empty($_POST[$prefix . 'can_delete']) ? 1 : 0;
-                    $canExport = !empty($_POST[$prefix . 'can_export']) ? 1 : 0;
-                    $canImport = !empty($_POST[$prefix . 'can_import']) ? 1 : 0;
+                    $cell = $matrix[$moduleKey][$role] ?? [];
+                    $canView   = !empty($cell['can_view'])   ? 1 : 0;
+                    $canCreate = !empty($cell['can_create']) ? 1 : 0;
+                    $canEdit   = !empty($cell['can_edit'])   ? 1 : 0;
+                    $canDelete = !empty($cell['can_delete']) ? 1 : 0;
+                    $canExport = !empty($cell['can_export']) ? 1 : 0;
+                    $canImport = !empty($cell['can_import']) ? 1 : 0;
 
                     // Custom permissions
                     $customPerms = null;
                     if (isset($customPermsByModule[$moduleKey])) {
                         $cp = [];
                         foreach ($customPermsByModule[$moduleKey] as $cpKey => $cpMeta) {
-                            $cp[$cpKey] = !empty($_POST[$prefix . $cpKey]);
+                            $cp[$cpKey] = !empty($cell[$cpKey]);
                         }
                         $customPerms = json_encode($cp);
                     }
@@ -335,6 +347,7 @@ include __DIR__ . '/../includes/header.php';
 <form method="post" id="permissionsForm">
     <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
     <input type="hidden" name="action" value="save_permissions">
+    <input type="hidden" name="perm_data" id="permData" value="">
 
     <?php foreach ($categories as $catKey => $modules): ?>
     <div class="perm-category">
@@ -383,8 +396,10 @@ include __DIR__ . '/../includes/header.php';
                             <div class="perm-checks">
                                 <?php foreach ($standardPerms as $permKey => $permMeta): ?>
                                 <label class="perm-check">
-                                    <input type="checkbox"
-                                           name="<?= $prefix . $permKey ?>"
+                                    <input type="checkbox" class="perm-cb"
+                                           data-module="<?= htmlspecialchars($mk) ?>"
+                                           data-role="<?= htmlspecialchars($roleKey) ?>"
+                                           data-perm="<?= $permKey ?>"
                                            value="1"
                                            <?= permChecked($permissions, $mk, $roleKey, $permKey) ? 'checked' : '' ?>>
                                     <i class="<?= $permMeta['icon'] ?>"></i>
@@ -396,8 +411,10 @@ include __DIR__ . '/../includes/header.php';
                                 <div class="perm-divider"></div>
                                 <?php foreach ($customPermsByModule[$mk] as $cpKey => $cpMeta): ?>
                                 <label class="perm-check custom-perm">
-                                    <input type="checkbox"
-                                           name="<?= $prefix . $cpKey ?>"
+                                    <input type="checkbox" class="perm-cb"
+                                           data-module="<?= htmlspecialchars($mk) ?>"
+                                           data-role="<?= htmlspecialchars($roleKey) ?>"
+                                           data-perm="<?= $cpKey ?>"
                                            value="1"
                                            <?= permChecked($permissions, $mk, $roleKey, $cpKey) ? 'checked' : '' ?>>
                                     <i class="<?= $cpMeta['icon'] ?>"></i>
@@ -461,18 +478,31 @@ include __DIR__ . '/../includes/header.php';
 
 <script>
 function toggleAllPerms(checked) {
-    document.querySelectorAll('#permissionsForm input[type="checkbox"]').forEach(function(cb) {
+    document.querySelectorAll('#permissionsForm .perm-cb').forEach(function(cb) {
         cb.checked = checked;
     });
 }
 
 function toggleColumnPerms(permName, checked) {
-    document.querySelectorAll('#permissionsForm input[type="checkbox"]').forEach(function(cb) {
-        if (cb.name.endsWith('_' + permName)) {
+    document.querySelectorAll('#permissionsForm .perm-cb').forEach(function(cb) {
+        if (cb.dataset.perm === permName) {
             cb.checked = checked;
         }
     });
 }
+
+// Sérialise toute la matrice dans un seul champ JSON pour contourner
+// php.ini max_input_vars (qui tronquait le POST et ne sauvait que les premières catégories).
+document.getElementById('permissionsForm').addEventListener('submit', function() {
+    var matrix = {};
+    document.querySelectorAll('#permissionsForm .perm-cb').forEach(function(cb) {
+        var m = cb.dataset.module, r = cb.dataset.role, p = cb.dataset.perm;
+        if (!matrix[m]) matrix[m] = {};
+        if (!matrix[m][r]) matrix[m][r] = {};
+        matrix[m][r][p] = cb.checked ? 1 : 0;
+    });
+    document.getElementById('permData').value = JSON.stringify(matrix);
+});
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

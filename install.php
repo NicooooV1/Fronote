@@ -595,6 +595,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $tableCount = 0;
             $errors = [];
+            // Désactive les contrôles de clés étrangères pendant l'import : les CREATE TABLE
+            // de pronote.sql contiennent des FK croisées dont l'ordre n'est pas garanti, ce
+            // qui provoquait des erreurs errno 150 « non bloquantes » mais trompeuses.
+            try { $pdo->exec('SET FOREIGN_KEY_CHECKS=0'); } catch (PDOException $e) {}
             foreach (splitSqlStatements($sql) as $q) {
                 $q = trim($q);
                 if ($q === '') continue;
@@ -607,6 +611,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $errors[] = $e->getMessage();
                 }
             }
+            try { $pdo->exec('SET FOREIGN_KEY_CHECKS=1'); } catch (PDOException $e) {}
             if ($tableCount === 0 && !empty($errors)) {
                 throw new RuntimeException("Aucune table créée. Première erreur SQL : " . $errors[0]);
             }
@@ -714,15 +719,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     try {
                         $sdk     = $appInstance->make('module_sdk');
                         $sync    = $sdk->syncAll();
-                        $migDone = 0;
+                        $provDone = 0;
                         $migErrs = $sync['errors'] ?? [];
+                        // Provisionne le schéma de TOUS les modules (install.sql + migrations),
+                        // indépendamment de leur état d'activation : les tables doivent exister
+                        // même si le module reste désactivé (activation = visibilité, pas schéma).
                         foreach (array_keys($sdk->discover()) as $mk) {
-                            $r        = $sdk->migrate($mk, 'install');
-                            $migDone += count($r['executed']);
-                            $migErrs  = array_merge($migErrs, $r['errors']);
+                            $r = $sdk->provisionSql($mk);
+                            if ($r['success']) {
+                                $provDone++;
+                            }
+                            $migErrs = array_merge($migErrs, $r['errors']);
                         }
                         if (empty($migErrs)) {
-                            $log[] = ['ok', "Modules synchronisés ({$sync['synced']}), migrations exécutées ({$migDone})"];
+                            $log[] = ['ok', "Modules synchronisés ({$sync['synced']}), schémas provisionnés ({$provDone})"];
                         } else {
                             $log[] = ['warn', 'Sync modules : ' . count($migErrs) . ' erreur(s) non bloquante(s)'];
                         }

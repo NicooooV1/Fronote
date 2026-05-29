@@ -61,8 +61,10 @@ $stmt = $pdo->query("SELECT * FROM notes WHERE eleve_id = $eleveId");
 
 | Table | Description |
 |---|---|
-| `modules_config` | Configuration des modules (activé/désactivé, établissements) |
-| `module_permissions` | Permissions RBAC par module et rôle |
+| `modules_config` | Configuration des modules (`enabled`, catégorie, `route_path`, `roles_autorises`, `is_core`, types d'établissement) |
+| `module_permissions` | Permissions RBAC par module et rôle (lignes `module_key` × `role`, colonnes `can_*`) |
+| `module_migrations` | Suivi des migrations SQL par module (statut, checksum, durée, déclencheur) |
+| `module_settings_schema` | Schéma des réglages déclarés par les modules |
 | `dashboard_widgets` | Définitions de widgets |
 | `user_dashboard_config` | Layout de widgets par utilisateur |
 
@@ -82,15 +84,22 @@ $stmt = $pdo->query("SELECT * FROM notes WHERE eleve_id = $eleveId");
 | `etablissement_info` | Informations de l'établissement (nom, type, locale) |
 | `feature_flags` | Feature flags par type d'établissement |
 
-## Schéma de migration
+## Schéma modulaire
 
-Fronote n'utilise pas de système de migration séparé. Toutes les modifications de schéma sont dans `pronote.sql`.
+Le schéma est en deux couches :
 
-Pour ajouter une table dans un module :
+- **Socle** : `pronote.sql` (tables core — utilisateurs, classes, matières, périodes, `etablissements`, `modules_config`, sécurité…). À modifier directement pour le core.
+- **Par module** : `modules/<m>/Database/install.sql` (idempotent, `CREATE TABLE IF NOT EXISTS`), exécuté par `ModuleSDK::provisionSql()` à l'installation **et** à chaque activation. FK désactivées pendant l'exécution (références croisées inter-modules).
 
-1. Ajoutez le `CREATE TABLE IF NOT EXISTS` dans `pronote.sql`
-2. Créez un script `includes/install.php` dans votre module qui exécute le même SQL
-3. Le `ModuleSDK` exécutera ce script lors de l'installation
+Pour ajouter une table à un module :
+
+1. Ajoutez le `CREATE TABLE IF NOT EXISTS` dans `modules/<m>/Database/install.sql` (chemin déclarable via `module.json` → `database.install`, défaut `Database/install.sql`).
+2. Incluez la colonne `etablissement_id` + un index/FK si la table porte des données scopées par établissement.
+3. Re-synchronisez (Admin → Modules) ou réinstallez : le SDK provisionne le SQL.
+4. Pour une évolution incrémentale d'une base déjà en service, ajoutez plutôt un fichier de **migration** déclaré dans `module.json` → `migrations[]` (exécuté une fois, tracé dans `module_migrations`).
+5. Bumpez `version.json` à tout changement de schéma.
+
+> Multi-établissement : les services filtrent leurs requêtes par `\API\Core\EstablishmentContext::id()`. Toute nouvelle table métier doit porter `etablissement_id` et les requêtes globales/listes doivent le filtrer.
 
 ## Bonnes pratiques
 

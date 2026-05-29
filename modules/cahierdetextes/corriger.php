@@ -5,7 +5,7 @@
 require_once __DIR__ . '/includes/RenduService.php';
 $currentPage = 'corriger';
 $pageTitle = 'Corriger les rendus';
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/includes/header_rendus.php';
 requireAuth();
 
 if (!isTeacher() && !isAdmin() && !isVieScolaire()) {
@@ -148,4 +148,4 @@ if ($devoirId) {
     </div>
 <?php endif; ?>
 
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+<?php require_once __DIR__ . '/includes/footer_rendus.php'; ?>

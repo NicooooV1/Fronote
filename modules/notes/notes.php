@@ -38,13 +38,17 @@ if ($user_role === 'parent') {
     } catch (PDOException $e) {}
 
     $selectedEnfantId = (int) ($_GET['enfant'] ?? ($_SESSION['selected_enfant_id'] ?? 0));
-    if (!$selectedEnfantId && !empty($enfants)) {
-        $selectedEnfantId = $enfants[0]['id'];
+
+    // Sécurité (IDOR) : l'enfant demandé DOIT appartenir au parent connecté.
+    // Sinon un parent peut lire les notes de n'importe quel élève via ?enfant=<id>.
+    $enfantsIds = array_map(static fn($e) => (int) $e['id'], $enfants);
+    if (!in_array($selectedEnfantId, $enfantsIds, true)) {
+        $selectedEnfantId = !empty($enfants) ? (int) $enfants[0]['id'] : 0;
     }
     $_SESSION['selected_enfant_id'] = $selectedEnfantId;
 
     foreach ($enfants as $e) {
-        if ($e['id'] == $selectedEnfantId) {
+        if ((int) $e['id'] === $selectedEnfantId) {
             $selectedEnfantNom = trim($e['prenom'] . ' ' . $e['nom']);
             break;
         }

@@ -20,16 +20,30 @@ class QueueService
 {
     private PDO $pdo;
 
+    /**
+     * Liste blanche des handlers autorisés. Le `handler` est stocké en base ;
+     * l'exécuter dynamiquement (`new $handler` / `call_user_func`) sans contrôle
+     * permettrait l'instanciation/appel de classe arbitraire si une ligne de
+     * job_queue était falsifiée. Seuls ces jobs (implémentant handle(array)) sont permis.
+     */
+    private const ALLOWED_HANDLERS = [
+        \API\Jobs\SendAbsenceNotificationJob::class,
+        \API\Jobs\SendEmailJob::class,
+    ];
+
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
     }
 
     /**
-     * Ajouter un job dans la file.
+     * Ajouter un job dans la file. Le handler doit figurer dans la liste blanche.
      */
     public function dispatch(string $handler, array $payload, ?\DateTime $availableAt = null): int
     {
+        if (!in_array($handler, self::ALLOWED_HANDLERS, true)) {
+            throw new \InvalidArgumentException("Handler de job non autorisé : {$handler}");
+        }
         $sql = <<<'SQL'
             INSERT INTO job_queue (handler, payload, available_at)
             VALUES (:handler, :payload, :available_at)
@@ -85,14 +99,13 @@ class QueueService
                 $handler = $job['handler'];
                 $payload = json_decode($job['payload'], true) ?: [];
 
-                if (class_exists($handler)) {
-                    $instance = new $handler();
-                    $instance->handle($payload);
-                } elseif (is_callable($handler)) {
-                    call_user_func($handler, $payload);
-                } else {
-                    throw new \RuntimeException("Job handler not found: {$handler}");
+                // Sécurité : n'exécuter QUE des handlers de la liste blanche
+                // (jamais un nom de classe / callable arbitraire venant de la base).
+                if (!in_array($handler, self::ALLOWED_HANDLERS, true) || !class_exists($handler)) {
+                    throw new \RuntimeException("Job handler non autorisé ou introuvable: {$handler}");
                 }
+                $instance = new $handler();
+                $instance->handle($payload);
 
                 // Succès
                 $this->pdo->prepare(

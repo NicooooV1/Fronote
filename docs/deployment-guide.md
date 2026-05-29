@@ -20,11 +20,14 @@ php -m | grep -E "pdo_mysql|mbstring|json|openssl|intl|gd|curl|fileinfo|zip"
 
 ## Installation
 
-### Option A: Web Installer
+### Option A: Web Installer (recommended)
 
 1. Upload the project files to your web server
 2. Navigate to `http://your-domain/install.php`
-3. Follow the wizard (database creation, admin account, `.env` configuration)
+3. Follow the wizard: database creation, **core schema import + provisioning of every module's `Database/install.sql`** (`ModuleSDK::syncAll()` + `provisionSql()`), admin account, `.env`
+4. First admin login launches the onboarding wizard (establishment identity, classes, subjects, periods)
+
+This is the recommended path: it creates the core **and** all module tables in one pass.
 
 ### Option B: Manual
 
@@ -32,8 +35,8 @@ php -m | grep -E "pdo_mysql|mbstring|json|openssl|intl|gd|curl|fileinfo|zip"
 # 1. Clone or extract the project
 git clone https://github.com/your-org/fronote.git /var/www/fronote
 
-# 2. Import the database
-mysql -u root -p < pronote.sql
+# 2. Import the CORE schema only
+mysql -u root -p fronote < pronote.sql
 
 # 3. Configure environment
 cp .env.example .env
@@ -43,8 +46,11 @@ cp .env.example .env
 chmod -R 755 /var/www/fronote
 chmod -R 775 storage/ uploads/ logs/
 chown -R www-data:www-data storage/ uploads/ logs/
+```
 
-# 5. Create the install lock
+> ⚠️ `pronote.sql` only creates the **core** tables. Each business module ships its own `modules/<m>/Database/install.sql`, provisioned by the SDK — not by the raw `pronote.sql` import. After a manual import, either run the web installer once, or log in as admin and use **Administration → Modules → Synchronize** to provision all module schemas. Only then create `install.lock`:
+
+```bash
 echo $(date +%Y-%m-%d) > install.lock
 ```
 

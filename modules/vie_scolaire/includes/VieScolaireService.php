@@ -354,31 +354,6 @@ class VieScolaireService {
         ];
     }
 
-    // ─── FICHE ÉLÈVE RAPIDE ───
-
-    public function getFicheEleve(int $eleveId): array
-    {
-        $eleve = $this->pdo->prepare("SELECT * FROM eleves WHERE id = :id");
-        $eleve->execute([':id' => $eleveId]);
-        $e = $eleve->fetch(\PDO::FETCH_ASSOC);
-
-        $absences = $this->pdo->prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN justifiee=0 THEN 1 ELSE 0 END) AS nj FROM absences WHERE id_eleve = :eid");
-        $absences->execute([':eid' => $eleveId]);
-
-        $incidents = $this->pdo->prepare("SELECT COUNT(*) FROM incidents WHERE eleve_id = :eid");
-        $incidents->execute([':eid' => $eleveId]);
-
-        $moyenne = $this->pdo->prepare("SELECT ROUND(AVG(note/note_sur*20),2) FROM notes WHERE id_eleve = :eid");
-        $moyenne->execute([':eid' => $eleveId]);
-
-        return [
-            'eleve' => $e,
-            'absences' => $absences->fetch(\PDO::FETCH_ASSOC),
-            'nb_incidents' => (int)$incidents->fetchColumn(),
-            'moyenne_generale' => $moyenne->fetchColumn()
-        ];
-    }
-
     // ─── TIMELINE ÉLÈVE ───
 
     public function getTimelineEleve(int $eleveId, int $limit = 50): array

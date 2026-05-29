@@ -36,7 +36,9 @@ class SignatureService
             return ['success' => false, 'error' => 'Document déjà signé.'];
         }
 
-        $hash = hash('sha256', $signatureData . ':' . $documentType . ':' . $documentId . ':' . time());
+        // Hash d'intégrité recalculable : uniquement des champs persistés (pas de time()
+        // non stocké, sinon verify() ne pourrait jamais recalculer le hash).
+        $hash = $this->computeHash($signatureData, $documentType, $documentId, $signerId, $signerType);
         $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 
         try {
@@ -91,13 +93,30 @@ class SignatureService
      */
     public function verify(int $signatureId): bool
     {
-        $stmt = $this->pdo->prepare("SELECT signature_hash, signature_data, document_type, document_id FROM signatures WHERE id = ?");
+        $stmt = $this->pdo->prepare("SELECT signature_hash, signature_data, document_type, document_id, signer_id, signer_type FROM signatures WHERE id = ?");
         $stmt->execute([$signatureId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$row) return false;
+        if (!$row || empty($row['signature_hash'])) {
+            return false;
+        }
 
-        // Le hash inclut les données + contexte — on vérifie que les données n'ont pas été modifiées
-        return !empty($row['signature_hash']) && !empty($row['signature_data']);
+        // Recalcule le hash depuis les données persistées et compare en temps constant.
+        $expected = $this->computeHash(
+            (string) $row['signature_data'],
+            (string) $row['document_type'],
+            (int) $row['document_id'],
+            (int) $row['signer_id'],
+            (string) $row['signer_type']
+        );
+        return hash_equals($expected, (string) $row['signature_hash']);
+    }
+
+    /**
+     * Hash d'intégrité déterministe sur les champs persistés d'une signature.
+     */
+    private function computeHash(string $signatureData, string $documentType, int $documentId, int $signerId, string $signerType): string
+    {
+        return hash('sha256', $signatureData . ':' . $documentType . ':' . $documentId . ':' . $signerId . ':' . $signerType);
     }
 }

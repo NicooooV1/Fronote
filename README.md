@@ -80,12 +80,16 @@ Fronote est un système de gestion scolaire en **PHP vanilla** (sans framework) 
 └────────────────────────┬────────────────────────────────┘
                          │ PDO (ERRMODE_EXCEPTION, utf8mb4)
                          ▼
-                ┌──────────────────┐
-                │   MySQL/MariaDB  │
-                │  (pronote.sql)   │
-                │   240+ tables    │
-                └──────────────────┘
+                ┌──────────────────────────────┐
+                │        MySQL/MariaDB         │
+                │  core: pronote.sql           │
+                │  + modules/<m>/Database/      │
+                │    install.sql (par module)  │
+                │   240+ tables                │
+                └──────────────────────────────┘
 ```
+
+> **Schéma modulaire.** `pronote.sql` crée le socle (utilisateurs, classes, périodes, `modules_config`…). Chaque module métier porte son propre `modules/<m>/Database/install.sql` (idempotent, `CREATE TABLE IF NOT EXISTS`), exécuté à l'installation **et** à l'activation du module via `ModuleSDK::provisionSql()`. Voir [Base de données](#base-de-données).
 
 ### Principes
 
@@ -104,22 +108,30 @@ Fronote est un système de gestion scolaire en **PHP vanilla** (sans framework) 
 
 ```
 Requête HTTP
-  → Module PHP (ex: notes/notes.php)
+  → Module PHP (ex: modules/notes/notes.php)
     → require API/core.php          (charge bootstrap + helpers)
       → API/bootstrap.php           (autoloader + container IoC + session sécurisée)
     → requireAuth()                 (vérifie session, redirige si non connecté)
     → requireRole('professeur')     (optionnel — contrôle du rôle)
     → [logique métier via services PDO]
-    → include templates/shared_header.php   (génère nonce CSP, token CSRF, thème DB)
-    → include templates/shared_sidebar.php  (modules actifs filtrés par rôle)
-    → include templates/shared_topbar.php   (avatar, notifications)
+    → include templates/shared_header.php      (nonce CSP, token CSRF, thème DB, $rootPrefix auto)
+    → include templates/shared_topbar.php      (avatar, notifications)
+    → include templates/shared_topbar_nav.php  (navigation : modules activés filtrés par rôle)
     → [HTML spécifique au module]
-    → include templates/shared_footer.php   (scripts JS globaux, fermeture HTML)
+    → include templates/shared_footer.php      (scripts JS globaux, fermeture HTML)
 ```
+
+> Beaucoup de modules utilisent le raccourci `require_once __DIR__ . '/../API/module_boot.php'` qui regroupe core + `requireAuth()` + variables utilisateur (`$user`, `$user_role`, `$pdo`, `$isAdmin`) + calcul de `$rootPrefix` + gates (onboarding, année scolaire écoulée).
+>
+> **Emplacement des modules.** Les modules métier vivent sous `modules/<clé>/` (ex : `modules/notes/notes.php`). Les composants essentiels restent à la racine : `accueil/`, `admin/`, `login/`, `parametres/`, `API/`, `templates/`, `assets/`.
+>
+> **`$rootPrefix`.** `shared_header.php` le calcule depuis la profondeur réelle du script demandé (`$_SERVER['SCRIPT_FILENAME']`) si la page ne l'a pas défini — inutile de le coder en dur ; les chemins CSS/JS/liens racine sont corrects à n'importe quelle profondeur.
 
 ---
 
 ## Fonctionnalités — Modules
+
+> **Installé ≠ activé.** Tous les modules découverts sont *installés* (ligne dans `modules_config`, schéma provisionné) à l'installation. Seuls les modules `core` sont *activés* par défaut (`enabled = 1`) ; les autres sont à `enabled = 0` et invisibles en navigation jusqu'à activation par l'administrateur (`admin/modules/`). L'activation appelle `ModuleSDK::provisionSql()` puis bascule `enabled = 1` — un module ne s'active jamais à moitié. La navigation masque automatiquement les catégories sans module activé.
 
 ### Navigation (core — non désactivables)
 
@@ -141,11 +153,10 @@ Requête HTTP
 |-----|-------|-------------|
 | `notes` | Notes | Saisie/consultation, moyennes, export |
 | `agenda` | Agenda | Calendrier, événements récurrents (rrule) |
-| `cahierdetextes` | Cahier de textes | Devoirs, pièces jointes, suivi statuts |
+| `cahierdetextes` | Cahier de textes | Cahier de textes + devoirs : le prof crée le devoir, l'élève rend, le prof corrige. Deux onglets (« Cahier de textes » / « Devoirs & rendus »). Pièces jointes, suivi statuts. **Fusionne l'ancien module `devoirs`.** |
 | `emploi_du_temps` | Emploi du temps | Grille hebdomadaire, créneaux configurables |
 | `bulletins` | Bulletins | Bulletins scolaires, export PDF |
 | `competences` | Compétences | Évaluation par compétences (socle commun) |
-| `devoirs` | Devoirs en ligne | Remise de rendus, date limite, suivi |
 | `examens` | Examens | Organisation des épreuves |
 
 ### Vie scolaire
@@ -203,6 +214,7 @@ Requête HTTP
 | `archivage` | Archivage | Archivage annuel |
 | `rgpd` | RGPD & Audit | Conformité et journal d'audit |
 | `support` | Aide & Support | FAQ et tickets |
+| `onboarding` | Mise en route | Assistant de configuration au premier login admin (core, masqué de la sidebar) |
 
 ---
 
@@ -427,72 +439,85 @@ Le header génère automatiquement : nonce CSP, token CSRF (via facade), thème 
 
 ## Guide — Créer un module
 
+> Un module = un dossier `modules/<clé>/` + un manifeste `module.json`. La découverte, l'enregistrement en base (`modules_config`, widgets, permissions) et le provisionnement SQL sont automatiques via le **ModuleSDK** — plus de `pronote.sql` ni de `$routeMap` à éditer à la main. Doc complète : [docs/module-sdk.md](docs/module-sdk.md).
+
 ### Structure type
 
 ```
-mon_module/
-├── mon_module.php      ← Page principale
+modules/mon_module/
+├── module.json          ← Manifeste (clé, nom, icône, catégorie, routes, permissions, widgets…)
+├── mon_module.php       ← Page principale (routes.main)
+├── Database/
+│   └── install.sql      ← Schéma du module (idempotent, CREATE TABLE IF NOT EXISTS)
 ├── assets/
 │   ├── css/mon_module.css
 │   └── js/mon_module.js
 ├── includes/
-│   └── functions.php   ← Logique métier locale
-└── api/                ← (optionnel) endpoints AJAX propres au module
-    └── actions.php
+│   └── MonModuleService.php   ← Logique métier locale
+└── lang/
+    └── fr.json          ← (optionnel) traductions du module
 ```
+
+### Manifeste `module.json`
+
+```json
+{
+    "key": "mon_module",
+    "version": "1.0.0",
+    "name": { "fr": "Mon Module", "en": "My Module" },
+    "description": { "fr": "Description courte" },
+    "icon": "fas fa-star",
+    "category": "scolaire",
+    "core": false,
+    "routes": { "main": "mon_module.php" },
+    "database": { "install": "Database/install.sql" },
+    "permissions": {
+        "view":   { "default_roles": ["*"] },
+        "manage": { "default_roles": ["administrateur", "professeur"] }
+    }
+}
+```
+
+> `category` doit appartenir à la liste `ModuleSDK::VALID_CATEGORIES` (navigation, scolaire, vie_scolaire, communication, etablissement, logistique, outils, administration, systeme, sante, custom). `core: true` ⇒ activé d'office ; sinon le module est installé mais désactivé jusqu'à activation admin.
 
 ### Page principale minimale
 
 ```php
 <?php
-// mon_module/mon_module.php
-require_once __DIR__ . '/../API/core.php';
-
-requireAuth();
-// requireRole('professeur'); // décommenter si accès restreint
-
-$pdo = getPDO();
-
-// ─── Variables du template ────────────────────────────────
+// modules/mon_module/mon_module.php
 $pageTitle  = 'Mon Module';
 $activePage = 'mon_module';
-$rootPrefix = '../';
-$extraCss   = ['assets/css/mon_module.css'];
+require_once __DIR__ . '/../../API/module_boot.php'; // core + requireAuth + $pdo/$user + $rootPrefix
+// requireRole('professeur'); // décommenter si accès restreint
 
-include __DIR__ . '/../templates/shared_header.php';
-include __DIR__ . '/../templates/shared_sidebar.php';
-include __DIR__ . '/../templates/shared_topbar.php';
+$extraCss = ['assets/css/mon_module.css'];
+include __DIR__ . '/../../templates/shared_header.php';
+include __DIR__ . '/../../templates/shared_topbar.php';
+include __DIR__ . '/../../templates/shared_topbar_nav.php';
 ?>
 <div class="main-content">
     <h1><?= htmlspecialchars($pageTitle) ?></h1>
     <!-- Contenu du module -->
 </div>
-<?php include __DIR__ . '/../templates/shared_footer.php'; ?>
+<?php include __DIR__ . '/../../templates/shared_footer.php'; ?>
 ```
 
-### Enregistrer le module
+> Ne **pas** coder `$rootPrefix` en dur : `module_boot.php` / `shared_header.php` le déduisent de la profondeur. `$extraCss` est relatif à la page (chargé depuis `modules/mon_module/`).
 
-**1. Dans `pronote.sql`** (ou via une requête SQL directe sur la base existante) :
+### Enregistrer & activer le module
 
-```sql
-INSERT INTO `modules_config`
-  (`module_key`, `label`, `description`, `icon`, `category`, `enabled`, `sort_order`, `is_core`)
-VALUES
-  ('mon_module', 'Mon Module', 'Description courte', 'fas fa-star', 'scolaire', 1, 99, 0);
-```
+1. Déposer le dossier sous `modules/mon_module/` avec son `module.json`.
+2. Admin → **Modules → Synchroniser** (ou réinstallation) : `ModuleSDK::syncAll()` insère/maj `modules_config`, widgets, permissions ; `provisionSql()` crée les tables de `Database/install.sql`.
+3. Admin → **Modules** : activer le module (`enabled = 1`). Il apparaît alors en navigation pour les rôles autorisés.
 
-**2. Dans `API/Services/ModuleService.php`**, ajouter dans `$routeMap` :
-
-```php
-'mon_module' => 'mon_module/mon_module.php',
-```
+Aucune édition manuelle de `pronote.sql` ni de `ModuleService::$routeMap` : la route vient de `module.json` `routes.main` (résolue en `modules/<clé>/<fichier>`).
 
 ### Endpoint AJAX interne
 
 ```php
 <?php
-// mon_module/api/actions.php
-require_once __DIR__ . '/../../API/core.php';
+// modules/mon_module/api/actions.php
+require_once __DIR__ . '/../../../API/core.php';
 requireAuth();
 
 header('Content-Type: application/json');
@@ -559,6 +584,14 @@ function handleListe(): void {
 | `pied_de_page` | text | null | Mentions légales du footer |
 
 Ces valeurs sont lues par `shared_header.php` via `EtablissementService`.
+
+### Multi-établissement (scoping)
+
+Fronote gère plusieurs établissements sur une même installation. L'établissement courant est résolu par `\API\Core\EstablishmentContext::id()` (smart-default, repli sur 1). Les tables métier portent une colonne `etablissement_id` et les services filtrent leurs requêtes globales/listes dessus — un établissement ne voit jamais les données d'un autre.
+
+- L'**onboarding** (`modules/onboarding/index.php`, premier login admin) configure l'identité, les classes, les matières et les périodes du premier établissement. Les suivants se gèrent dans `admin/etablissement/`.
+- **Périodes par établissement.** Chaque établissement a ses propres `periodes` (scopées `etablissement_id`), chacune typée `trimestre` / `semestre` / `annuel` — un collège en trimestres et un lycée en semestres cohabitent. Gestion : `admin/etablissement/periodes.php`.
+- **Gate année écoulée.** Si aucune période ne couvre la date du jour (année scolaire terminée), `module_boot.php` redirige l'admin vers la reconfiguration des périodes avant tout accès.
 
 ### Visibilité des modules par rôle
 
@@ -627,9 +660,17 @@ Permissions-Policy: camera=(), microphone=(), geolocation=()
 
 ## Base de données
 
-Schéma complet dans `pronote.sql`. Toujours modifier ce fichier directement (pas de système de migration séparé).
+Schéma **modulaire** :
 
-### Tables par groupe (140+ tables)
+- **Socle** : `pronote.sql` crée les tables core (utilisateurs, classes, matières, périodes, `etablissements`, `modules_config`, sécurité, file de tâches…).
+- **Par module** : chaque module métier porte `modules/<m>/Database/install.sql` — idempotent (`CREATE TABLE IF NOT EXISTS`), colonne `etablissement_id` incluse, ordre FK préservé.
+- **Provisionnement** : `ModuleSDK::provisionSql(<clé>)` exécute le `install.sql` du module **puis** ses migrations. Appelé pour tous les modules à l'installation et à chaque activation. Les contrôles FK sont désactivés pendant l'exécution (références croisées inter-modules, ordre d'activation arbitraire).
+- **Migrations incrémentales** : fichiers `.sql` déclarés sous `module.json` `migrations[]`, exécutés une seule fois et tracés dans la table `module_migrations` (statut success/failed, checksum, durée). Une migration échouée est rejouable.
+- **Versionnage** : bumper `version.json` à tout changement de schéma. Pas de framework de migration global type Alembic.
+
+> Modifier le schéma d'un module = éditer son `Database/install.sql` (ou ajouter une migration) ; modifier le socle = éditer `pronote.sql`.
+
+### Tables par groupe (240+ tables)
 
 | Groupe | Exemples |
 |--------|---------|
@@ -638,7 +679,8 @@ Schéma complet dans `pronote.sql`. Toujours modifier ce fichier directement (pa
 | **Configuration** | `etablissement_info`, `modules_config`, `user_settings`, `feature_flags` |
 | **Notes & Bulletins** | `notes`, `bulletins`, `bulletin_matieres`, `competences` |
 | **Absences** | `absences`, `retards`, `justificatifs`, `justificatif_fichiers` |
-| **Cahier de textes** | `devoirs`, `devoirs_fichiers`, `devoirs_statuts_eleve`, `devoirs_rendus` |
+| **Cahier de textes & devoirs** | `devoirs`, `devoirs_fichiers`, `devoirs_statuts_eleve`, `devoirs_rendus` (module `cahierdetextes`) |
+| **Modules / lifecycle** | `modules_config`, `module_permissions`, `module_migrations`, `module_settings_schema`, `dashboard_widgets` |
 | **Agenda** | `evenements`, `evenement_exceptions` |
 | **Messagerie** | `conversations`, `conversation_participants`, `messages`, `message_attachments`, `message_reactions` |
 | **Notifications** | `notifications_globales`, `notification_preferences` |
@@ -961,7 +1003,7 @@ tar -czf /backups/uploads_$(date +%Y%m%d).tar.gz /var/www/fronote/uploads/
 |------|-------------|-----------------|
 | **Administrateur** | `administrateur` | Tout — admin panel, modules, utilisateurs, audit |
 | **Professeur** | `professeur` | Notes (saisie), cahier de textes, agenda, messagerie, absences, appel |
-| **Élève** | `eleve` | Notes (consultation), devoirs, agenda, messagerie, ressources |
+| **Élève** | `eleve` | Notes (consultation), cahier de textes & rendus, agenda, messagerie, ressources |
 | **Parent** | `parent` | Notes enfant(s), absences, messagerie, justificatifs, réunions |
 | **Personnel** | `personnel` | Modules configurés via `roles_autorises` |
 | **Vie scolaire** | `vie_scolaire` | Absences, discipline, reporting, infirmerie, internat |
@@ -973,7 +1015,9 @@ La visibilité par rôle est configurable sans code via `admin/modules/configure
 
 ## Permissions par module
 
-Le système RBAC supporte des permissions granulaires par module et par rôle, stockées dans `module_permissions`.
+Le système RBAC supporte des permissions granulaires par module et par rôle, stockées dans `module_permissions` (une ligne par `module_key` × `role`, colonnes `can_*`). À la synchronisation, `ModuleSDK` convertit les `default_roles` déclarés dans chaque `module.json` en lignes role-based (`INSERT IGNORE` — n'écrase jamais les réglages admin existants), si bien que tout module synchronisé apparaît dans la matrice avec des défauts cohérents.
+
+> **Matrice admin (`admin/modules/permissions.php`).** La grille complète (modules × rôles × actions) dépasse `max_input_vars` de PHP ; le formulaire sérialise donc tout dans un **unique champ JSON** côté client avant l'envoi. Ne pas revenir à des `<input>` nommés par cellule (POST tronqué → seules les premières catégories enregistrées).
 
 ### Actions standard
 
@@ -1090,12 +1134,17 @@ composer dump-autoload --optimize
 3. Consulter les livraisons du webhook dans GitHub (`Settings → Webhooks → Recent deliveries`)
 4. Vérifier `temp/update.log`
 
-### Module n'apparaît pas en sidebar
+### Module n'apparaît pas en navigation
 
-1. `enabled = 1` dans `modules_config`
-2. Clé présente dans `ModuleService::$routeMap`
-3. Rôle autorisé (`roles_autorises` dans DB ou `$roleVisibility` dans le code)
-4. Clé pas dans la liste d'exclusion de `getForSidebar()` (`accueil`, `parametres`)
+1. Le module est-il **synchronisé** ? (présent dans `modules_config` — sinon Admin → Modules → Synchroniser, ou réinstaller). La route vient de `module.json` `routes.main`, plus de `$routeMap`.
+2. Le module est-il **activé** ? `enabled = 1` (installé ≠ activé ; les non-core sont désactivés par défaut). L'activation provisionne aussi le SQL.
+3. Rôle autorisé : `roles_autorises` (JSON) dans `modules_config`, ou défauts du manifeste.
+4. `module.json` valide : `category` dans `ModuleSDK::VALID_CATEGORIES`, sinon le module est ignoré à la synchro (vérifier `error_log`).
+5. La catégorie est masquée si elle n'a aucun module activé.
+
+### CSS / liens cassés dans un module
+
+`$rootPrefix` est calculé automatiquement par `shared_header.php` depuis `$_SERVER['SCRIPT_FILENAME']`. Ne pas le coder en dur dans un header de module (un `'../'` figé casse les assets pour les pages sous `modules/<m>/`).
 
 
 ---

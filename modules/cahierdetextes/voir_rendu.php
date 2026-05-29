@@ -5,7 +5,7 @@
 require_once __DIR__ . '/includes/RenduService.php';
 $currentPage = 'voir_rendu';
 $pageTitle = 'Mon rendu';
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/includes/header_rendus.php';
 requireAuth();
 
 $pdo = getPDO();
@@ -16,7 +16,7 @@ $devoir = $service->getDevoir($devoirId);
 
 if (!$rendu || !$devoir) {
     echo '<div class="alert alert-error">Rendu introuvable.</div>';
-    require_once __DIR__ . '/includes/footer.php';
+    require_once __DIR__ . '/includes/footer_rendus.php';
     exit;
 }
 ?>
@@ -74,4 +74,4 @@ if (!$rendu || !$devoir) {
 </div>
 <?php endif; ?>
 
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+<?php require_once __DIR__ . '/includes/footer_rendus.php'; ?>
