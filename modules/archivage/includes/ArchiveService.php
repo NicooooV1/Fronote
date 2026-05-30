@@ -11,13 +11,22 @@ class ArchiveService
         $this->pdo = $pdo;
     }
 
+    /** Établissement courant ou null si pas de contexte (refuse listing global). */
+    private function etabId(): ?int
+    {
+        try { return \API\Core\EstablishmentContext::id(); }
+        catch (\Throwable $e) { return null; }
+    }
+
     /**
-     * Liste des archives
+     * Liste des archives — scopée à l'établissement courant pour éviter toute fuite.
      */
     public function getArchives(string $annee = null, string $type = null): array
     {
-        $sql = 'SELECT * FROM archives_annuelles WHERE 1=1';
-        $params = [];
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
+        $sql = 'SELECT * FROM archives_annuelles WHERE etablissement_id = ?';
+        $params = [$etabId];
         if ($annee) { $sql .= ' AND annee_scolaire = ?'; $params[] = $annee; }
         if ($type) { $sql .= ' AND type = ?'; $params[] = $type; }
         $sql .= ' ORDER BY date_archive DESC';

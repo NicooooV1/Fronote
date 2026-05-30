@@ -635,6 +635,12 @@ class ImportExportService
         $totalRows = 0;
 
         foreach ($tables as $table) {
+            // Reject names that would escape backtick quoting
+            if (!preg_match('/^[a-zA-Z0-9_]+$/', $table)) {
+                fwrite($fp, "-- Table '{$table}' rejected (invalid characters).\n\n");
+                continue;
+            }
+
             // Verifier que la table existe
             try {
                 $check = $this->pdo->prepare("SHOW TABLES LIKE ?");
@@ -866,7 +872,12 @@ class ImportExportService
             $password .= $all[random_int(0, strlen($all) - 1)];
         }
 
-        return str_shuffle($password);
+        $chars = str_split($password);
+        for ($i = count($chars) - 1; $i > 0; $i--) {
+            $j = random_int(0, $i);
+            [$chars[$i], $chars[$j]] = [$chars[$j], $chars[$i]];
+        }
+        return implode('', $chars);
     }
 
     /**

@@ -8,12 +8,25 @@ class GarderieService
 
     public function __construct(PDO $pdo) { $this->pdo = $pdo; }
 
+    /** Établissement courant ou null. */
+    private function etabId(): ?int
+    {
+        try { return \API\Core\EstablishmentContext::id(); }
+        catch (\Throwable $e) { return null; }
+    }
+
     /* ==================== CRÉNEAUX ==================== */
 
     public function getCreneaux(bool $actifsOnly = true): array
     {
-        $sql = "SELECT * FROM garderie_creneaux" . ($actifsOnly ? " WHERE actif = 1" : "") . " ORDER BY type, heure_debut";
-        return $this->pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
+        $sql = "SELECT * FROM garderie_creneaux WHERE etablissement_id = ?"
+             . ($actifsOnly ? " AND actif = 1" : "")
+             . " ORDER BY type, heure_debut";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$etabId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getCreneau(int $id): ?array

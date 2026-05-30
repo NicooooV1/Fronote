@@ -50,28 +50,37 @@ class BackupService
 			$sql .= "DROP TABLE IF EXISTS `{$table}`;\n";
 			$sql .= ($row['Create Table'] ?? '') . ";\n\n";
 
-			// Data
+			// Data — cursor-based to avoid loading full tables into RAM
 			$stmt = $this->pdo->query("SELECT * FROM `{$table}`");
-			$rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+			$stmt->setFetchMode(\PDO::FETCH_ASSOC);
+			$batch = [];
+			$colList = null;
 
-			if (!empty($rows)) {
-				$columns = array_keys($rows[0]);
-				$colList = '`' . implode('`, `', $columns) . '`';
-
-				// Batch inserts (500 rows per INSERT)
-				$batches = array_chunk($rows, 500);
-				foreach ($batches as $batch) {
-					$values = [];
-					foreach ($batch as $row) {
-						$escaped = array_map(function ($v) {
-							if ($v === null) return 'NULL';
-							return $this->pdo->quote((string) $v);
-						}, array_values($row));
-						$values[] = '(' . implode(', ', $escaped) . ')';
-					}
-					$sql .= "INSERT INTO `{$table}` ({$colList}) VALUES\n";
-					$sql .= implode(",\n", $values) . ";\n\n";
+			$flushBatch = function (array $rows) use (&$sql, $table, &$colList): void {
+				$values = [];
+				foreach ($rows as $row) {
+					$escaped = array_map(function ($v) {
+						if ($v === null) return 'NULL';
+						return $this->pdo->quote((string) $v);
+					}, array_values($row));
+					$values[] = '(' . implode(', ', $escaped) . ')';
 				}
+				$sql .= "INSERT INTO `{$table}` ({$colList}) VALUES\n";
+				$sql .= implode(",\n", $values) . ";\n\n";
+			};
+
+			while ($row = $stmt->fetch()) {
+				if ($colList === null) {
+					$colList = '`' . implode('`, `', array_keys($row)) . '`';
+				}
+				$batch[] = $row;
+				if (count($batch) >= 500) {
+					$flushBatch($batch);
+					$batch = [];
+				}
+			}
+			if (!empty($batch)) {
+				$flushBatch($batch);
 			}
 		}
 
@@ -158,13 +167,8 @@ class BackupService
 		try {
 			$this->pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
 
-			// Split by statement (basic — handles standard mysqldump output)
-			$statements = array_filter(
-				array_map('trim', explode(";\n", $sql)),
-				fn($s) => $s !== '' && !str_starts_with($s, '--')
-			);
-
-			foreach ($statements as $stmt) {
+			foreach (\API\Core\SqlSplitter::split($sql) as $stmt) {
+				if (str_starts_with($stmt, '--')) continue;
 				$this->pdo->exec($stmt);
 			}
 

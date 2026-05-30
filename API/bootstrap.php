@@ -27,6 +27,16 @@ if ($_instDocRoot && strpos($_instProjectRoot, $_instDocRoot) === 0) {
 define('INSTANCE_COOKIE_PATH', $_instWebPath);
 unset($_instWebPath, $_instProjectRoot, $_instDocRoot);
 
+// Extension sanity check — log only, never crash.
+// The marketplace + JWT code paths depend on these; failing early is friendlier
+// than a confusing class-load failure deep into a request.
+foreach (['sodium' => 'marketplace .fmod signing/verification', 'zip' => 'marketplace package handling'] as $_ext => $_use) {
+    if (!extension_loaded($_ext)) {
+        error_log("[bootstrap] PHP extension '{$_ext}' is missing — {$_use} will fail at first use.");
+    }
+}
+unset($_ext, $_use);
+
 // Priorité 1 : autoloader Composer (si vendor/ disponible)
 $_vendor = dirname(__DIR__) . '/vendor/autoload.php';
 if (file_exists($_vendor)) {
@@ -223,9 +233,8 @@ $app->singleton('log', function($app) {
 	return new \API\Core\Logger($logDir, 'app', 30);
 });
 
-// Bind audit service (uses existing Pronote\Services\AuditService)
 $app->singleton('audit', function($app) {
-	return new \Pronote\Services\AuditService($app->make('db')->getConnection());
+	return new \API\Services\AuditService($app->make('db')->getConnection());
 });
 
 // Cache Manager (file / redis) — préfixe scopé par instance

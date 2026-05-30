@@ -20,11 +20,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $input = json_decode(file_get_contents('php://input'), true) ?: [];
 
 $token = $input['csrf_token'] ?? '';
-if (!\API\Core\Facades\CSRF::check($token)) {
+if (!app('csrf')->validate($token)) {
     http_response_code(403);
     echo json_encode(['error' => 'Invalid CSRF token']);
     exit;
 }
+// Emit a replacement token so the client can rotate its copy for the next request
+app('csrf')->emitNextToken();
 
 $modules  = app('modules');
 $userId   = (int) ($_SESSION['user_id'] ?? 0);

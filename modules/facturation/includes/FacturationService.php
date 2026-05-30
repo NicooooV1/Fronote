@@ -11,16 +11,25 @@ class FacturationService
         $this->pdo = $pdo;
     }
 
+    /** Établissement courant ou null. */
+    private function etabId(): ?int
+    {
+        try { return \API\Core\EstablishmentContext::id(); }
+        catch (\Throwable $e) { return null; }
+    }
+
     /* ───── FACTURES ───── */
 
     public function getFactures(array $filters = []): array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $sql = "SELECT f.*, CONCAT(p.prenom, ' ', p.nom) AS parent_nom,
                        (SELECT COALESCE(SUM(pa.montant), 0) FROM paiements pa WHERE pa.facture_id = f.id) AS montant_paye
                 FROM factures f
                 JOIN parents p ON f.parent_id = p.id
-                WHERE 1=1";
-        $params = [];
+                WHERE f.etablissement_id = ?";
+        $params = [$etabId];
         if (!empty($filters['statut'])) { $sql .= ' AND f.statut = ?'; $params[] = $filters['statut']; }
         if (!empty($filters['parent_id'])) { $sql .= ' AND f.parent_id = ?'; $params[] = $filters['parent_id']; }
         $sql .= ' ORDER BY f.created_at DESC';

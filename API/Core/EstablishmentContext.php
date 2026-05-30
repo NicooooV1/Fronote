@@ -62,7 +62,7 @@ class EstablishmentContext
 
     /**
      * Returns SQL fragment: "AND etablissement_id = ?"
-     * For use in existing WHERE clauses.
+     * Prefer placeholderAnd() + scopeValue() for new code to keep the parameterized-query pattern consistent.
      */
     public static function sqlAnd(): string
     {
@@ -71,11 +71,29 @@ class EstablishmentContext
 
     /**
      * Returns SQL fragment: "WHERE etablissement_id = ?"
-     * For use as the primary WHERE clause.
+     * Prefer placeholderWhere() + scopeValue() for new code to keep the parameterized-query pattern consistent.
      */
     public static function sqlWhere(): string
     {
         return ' WHERE etablissement_id = ' . self::id();
+    }
+
+    /**
+     * Returns placeholder SQL fragment: " AND etablissement_id = ?"
+     * Bind with scopeValue(). Preferred over sqlAnd() for new parameterized queries.
+     */
+    public static function placeholderAnd(): string
+    {
+        return ' AND etablissement_id = ?';
+    }
+
+    /**
+     * Returns placeholder SQL fragment: " WHERE etablissement_id = ?"
+     * Bind with scopeValue(). Preferred over sqlWhere() for new parameterized queries.
+     */
+    public static function placeholderWhere(): string
+    {
+        return ' WHERE etablissement_id = ?';
     }
 
     public static function reset(): void

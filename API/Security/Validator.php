@@ -135,7 +135,13 @@ class Validator
     /**
      * Retourne les erreurs de validation
      */
-    public function errors()
+    public function errors(): array
+    {
+        return $this->errors;
+    }
+
+    /** Alias for errors() — used by FormRequest */
+    public function getErrors(): array
     {
         return $this->errors;
     }

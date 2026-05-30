@@ -43,7 +43,7 @@ ErrorDocument 503 /templates/errors/503.php
     RewriteEngine On
 
     # Bloquer l'accès aux répertoires sensibles
-    RewriteRule ^(temp|logs|vendor)(/|$) - [F,L]
+    RewriteRule ^(temp|[Ll]ogs|vendor|storage|API/(Auth|Core|Database|Services|Events|Jobs|Providers|Legacy|Security|Middleware|Admin|Contracts|UI))(/|$) - [F,L]
 
     # Les endpoints API sont appelés directement (ex: API/endpoints/messagerie.php)
 

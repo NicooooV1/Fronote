@@ -19,8 +19,15 @@ if (!$bulletin) {
     exit;
 }
 
-// Vérifier accès : élève = son propre bulletin publié, parent = enfant publié, admin/prof = tout
-if ($user_role === 'eleve' && ($bulletin['eleve_id'] != $user['id'] || !in_array($bulletin['statut'], ['publie','valide']))) {
+// Vérifier accès : élève = son propre bulletin publié, parent = enfant publié, admin/prof = tout.
+// Anti-IDOR via helper assertUserCanReadEleve() (cf. API/Legacy/Bridge.php).
+$denied = !assertUserCanReadEleve((int) $bulletin['eleve_id']);
+// Pour élève/parent : bulletin doit aussi être publié ou validé (les autres statuts
+// sont des brouillons internes).
+if (!$denied && in_array($user_role, ['eleve', 'parent'], true)) {
+    $denied = !in_array($bulletin['statut'], ['publie', 'valide'], true);
+}
+if ($denied) {
     echo '<div class="alert alert-error">Accès refusé.</div>';
     require_once __DIR__ . '/includes/footer.php';
     exit;

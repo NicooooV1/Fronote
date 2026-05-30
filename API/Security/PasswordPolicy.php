@@ -55,6 +55,11 @@ class PasswordPolicy
             $errors[] = "Le mot de passe ne peut pas dépasser {$this->maxLength} caractères.";
         }
 
+        // bcrypt tronque silencieusement à 72 octets — avertir si dépassé
+        if (strlen($password) > 72) {
+            $errors[] = "Le mot de passe dépasse 72 octets (limite bcrypt). Réduisez sa longueur ou limitez les caractères accentués.";
+        }
+
         // Majuscule
         if ($this->requireUpper && !preg_match('/[A-Z]/', $password)) {
             $errors[] = "Le mot de passe doit contenir au moins une lettre majuscule.";

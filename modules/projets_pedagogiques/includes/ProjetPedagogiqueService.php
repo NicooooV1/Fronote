@@ -10,13 +10,22 @@ class ProjetPedagogiqueService
 
     /* ==================== PROJETS ==================== */
 
+    /** Établissement courant ou null. */
+    private function etabId(): ?int
+    {
+        try { return \API\Core\EstablishmentContext::id(); }
+        catch (\Throwable $e) { return null; }
+    }
+
     public function getProjets(array $filters = []): array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $sql = "SELECT pp.*, CONCAT(p.prenom, ' ', p.nom) AS responsable_nom
                 FROM projets_pedagogiques pp
                 LEFT JOIN professeurs p ON pp.responsable_id = p.id
-                WHERE 1=1";
-        $params = [];
+                WHERE pp.etablissement_id = ?";
+        $params = [$etabId];
         if (!empty($filters['statut'])) { $sql .= " AND pp.statut = ?"; $params[] = $filters['statut']; }
         if (!empty($filters['type'])) { $sql .= " AND pp.type = ?"; $params[] = $filters['type']; }
         if (!empty($filters['responsable_id'])) { $sql .= " AND pp.responsable_id = ?"; $params[] = $filters['responsable_id']; }

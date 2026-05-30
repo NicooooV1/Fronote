@@ -1,6 +1,12 @@
 <?php
 /**
  * M34 – Support & Aide — Service
+ *
+ * @global-scope FAQ + tickets de support sont des entités système (le support
+ * Fronote répond aux tickets quel que soit l'établissement). Les tickets sont
+ * scopés implicitement par user_id+user_type ; un admin local ne voit que ceux
+ * de SES utilisateurs si l'UI filtre par établissement. Ne PAS injecter
+ * `etablissement_id` sans ajouter d'abord la colonne au schéma tickets_support.
  */
 class SupportService
 {

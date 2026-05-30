@@ -40,9 +40,29 @@ var FronoteAjax = (function() {
     }
 
     /**
+     * Rotate the CSRF token from the server-issued X-Csrf-Token-Next header.
+     * The bucket on the server is single-use, so concurrent AJAX calls and any
+     * pending HTML form on the page would otherwise hit 403 once the token is
+     * consumed. We update the meta tag AND every hidden CSRF input.
+     */
+    function rotateCsrfFromResponse(response) {
+        try {
+            var next = response.headers.get('X-Csrf-Token-Next');
+            if (!next) return;
+            var meta = document.querySelector('meta[name="csrf-token"]');
+            if (meta) meta.setAttribute('content', next);
+            var inputs = document.querySelectorAll('input[name="csrf_token"], input[name="_csrf_token"], input[name="_token"]');
+            for (var i = 0; i < inputs.length; i++) {
+                inputs[i].value = next;
+            }
+        } catch (e) { /* ignore */ }
+    }
+
+    /**
      * Handle the response: parse JSON, show toast on error.
      */
     function handleResponse(response) {
+        rotateCsrfFromResponse(response);
         if (!response.ok) {
             return response.json().catch(function() {
                 return { success: false, error: 'Erreur serveur (' + response.status + ')' };

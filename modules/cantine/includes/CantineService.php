@@ -11,22 +11,33 @@ class CantineService
         $this->pdo = $pdo;
     }
 
+    /** Établissement courant ou null. EstablishmentContext::id() */
+    private function etabId(): ?int
+    {
+        try { return \API\Core\EstablishmentContext::id(); }
+        catch (\Throwable $e) { return null; }
+    }
+
     /* ==================== MENUS ==================== */
 
     public function getMenus(string $dateDebut, string $dateFin): array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $stmt = $this->pdo->prepare(
-            "SELECT * FROM menus_cantine WHERE date_menu BETWEEN ? AND ? ORDER BY date_menu, regime_special"
+            "SELECT * FROM menus_cantine WHERE etablissement_id = ? AND date_menu BETWEEN ? AND ? ORDER BY date_menu, regime_special"
         );
-        $stmt->execute([$dateDebut, $dateFin]);
+        $stmt->execute([$etabId, $dateDebut, $dateFin]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getMenuDuJour(?string $date = null): array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $date = $date ?: date('Y-m-d');
-        $stmt = $this->pdo->prepare("SELECT * FROM menus_cantine WHERE date_menu = ?");
-        $stmt->execute([$date]);
+        $stmt = $this->pdo->prepare("SELECT * FROM menus_cantine WHERE etablissement_id = ? AND date_menu = ?");
+        $stmt->execute([$etabId, $date]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

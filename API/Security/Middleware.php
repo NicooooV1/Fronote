@@ -138,7 +138,8 @@ class Middleware
 
         // ── rate : limitation de requêtes ──
         self::register('rate', function (string $key = 'global', string $max = '60', string $decay = '1') {
-            $limiter = app('rate_limiter');
+            // Create a fresh instance per call to avoid mutating the shared singleton
+            $limiter = new \API\Security\RateLimiter(app('db')->getConnection());
             $limiter->setMaxAttempts((int)$max);
             $limiter->setDecayMinutes((int)$decay);
             if ($limiter->tooManyAttempts($key)) {

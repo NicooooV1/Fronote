@@ -61,11 +61,13 @@ echo $(date +%Y-%m-%d) > install.lock
 ```env
 DB_HOST=localhost
 DB_PORT=3306
-DB_DATABASE=fronote
-DB_USERNAME=fronote_user
-DB_PASSWORD=secure_password
+DB_NAME=fronote
+DB_USER=fronote_user
+DB_PASS=secure_password
 DB_CHARSET=utf8mb4
 ```
+
+> Variable names match `.env.example` and `API/Providers/ConfigServiceProvider.php` (`DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`). Do **not** use `DB_DATABASE` / `DB_USERNAME` / `DB_PASSWORD` — those keys are unread.
 
 ### Application
 
@@ -79,22 +81,25 @@ APP_TIMEZONE=Europe/Paris
 ### Security
 
 ```env
-SESSION_LIFETIME=1800       # 30 minutes
+SESSION_LIFETIME=7200       # 2h — matches .env.example and ConfigServiceProvider default
 CSRF_LIFETIME=3600          # 1 hour
-RATE_LIMIT_LOGIN=5          # Max login attempts before lockout
-AUDIT_RETENTION_DAYS=90     # How long to keep audit logs
+CSRF_MAX_TOKENS=10
+MAX_LOGIN_ATTEMPTS=5        # Max login attempts before lockout
+LOGIN_LOCKOUT_TIME=900
+RATE_LIMIT_ATTEMPTS=5
+RATE_LIMIT_DECAY=1
+AUDIT_RETENTION_DAYS=180    # default retention used by cron/daily_maintenance.php
 ```
 
 ### WebSocket
 
 ```env
-WS_ENABLED=true
-WS_HOST=0.0.0.0
-WS_PORT=3000
-WS_JWT_SECRET=your-secret-key-here
-WSS_CERT_PATH=/etc/ssl/certs/fronote.pem    # For WSS (production)
-WSS_KEY_PATH=/etc/ssl/private/fronote.key
+JWT_SECRET=your-secret-key-here   # signed by PHP, verified by websocket-server/server.js
+API_SECRET=shared-secret-for-php-to-ws-bridge
+WS_URL=https://fronote.example.com:3000
 ```
+
+> The Node server reads `JWT_SECRET` and `API_SECRET` (see `websocket-server/server.js`). Do not invent `WS_JWT_SECRET` / `WSS_*` keys — they are unread.
 
 ### Backups
 
@@ -119,12 +124,18 @@ BACKUP_PATH=storage/backups
         Require all granted
     </Directory>
 
-    # Block direct access to sensitive directories
-    <DirectoryMatch "^/var/www/fronote/(API|storage|logs|migrations|cron)">
+    # Block sensitive directories — but keep API/endpoints/ reachable
+    # (webhook, AJAX endpoints, health check live there).
+    <DirectoryMatch "^/var/www/fronote/(storage|logs|migrations|cron|temp|vendor)">
+        Require all denied
+    </DirectoryMatch>
+    <DirectoryMatch "^/var/www/fronote/API/(?!endpoints/)">
         Require all denied
     </DirectoryMatch>
 </VirtualHost>
 ```
+
+> ⚠️ Do **not** blanket-deny `/API/` — the GitHub auto-update webhook (`/API/endpoints/webhook_update.php`), AJAX endpoints, and the health check (`/API/endpoints/health.php`) live under `API/endpoints/` and must be publicly reachable. The exclusion above whitelists that subfolder.
 
 Ensure `mod_rewrite` is enabled:
 ```bash

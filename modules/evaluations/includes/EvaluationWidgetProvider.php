@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace Evaluations\Widgets;
 
-use API\Contracts\WidgetDataProvider;
+use API\Contracts\AbstractWidgetProvider;
 
 /**
  * Widget : évaluations en ligne à venir (élève/parent par classe, prof par auteur).
  */
-class EvaluationWidgetProvider implements WidgetDataProvider
+/**
+ * @global-scope Widget scopé implicitement par user_id (le user appartient à un
+ * seul établissement, donc ses entités le sont aussi).
+ */
+class EvaluationWidgetProvider extends AbstractWidgetProvider
 {
     public function getData(int $userId, string $userType, ?array $config = null): array
     {

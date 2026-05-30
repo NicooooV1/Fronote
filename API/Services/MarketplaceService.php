@@ -303,6 +303,183 @@ class MarketplaceService
     }
 
     /**
+     * Sideload : installer un paquet .fmod local (signature Ed25519 vérifiée contre
+     * les Root CA embarquées sous config/marketplace/roots/). Aucun appel réseau.
+     *
+     * Pipeline :
+     *   1. FmodService::verifyPackage (chaîne de signature + manifeste + intégrité par fichier
+     *      + compatibilité cœur + non-révoqué + non-yanké)
+     *   2. Extraction en staging
+     *   3. ModuleScanner (statique) + QuarantineService si violations critiques
+     *   4. Bascule atomique (backup du live précédent) + syncModule + provisionSql
+     *   5. Enregistrement dans marketplace_installed avec hash paquet + fingerprint cert
+     */
+    public function installFromFmod(string $fmodPath): array
+    {
+        if (!is_file($fmodPath)) {
+            return ['success' => false, 'error' => "Paquet introuvable : {$fmodPath}"];
+        }
+
+        $roots = $this->loadRootKeys();
+        if (empty($roots)) {
+            return ['success' => false, 'error' => 'Aucune clé racine configurée (config/marketplace/roots/*.pub vide).'];
+        }
+
+        // Verrou global — interdit deux installations marketplace concurrentes (race sur
+        // staging/rename + provisionSql concurrent → schéma corrompu).
+        $lockPath = $this->basePath . '/storage/tmp/marketplace.install.lock';
+        $lockFh   = @fopen($lockPath, 'c');
+        if (!$lockFh || !flock($lockFh, LOCK_EX | LOCK_NB)) {
+            if ($lockFh) fclose($lockFh);
+            return ['success' => false, 'error' => 'Une autre installation est déjà en cours. Réessayez dans quelques secondes.'];
+        }
+        // Use try/finally so the lock is always released.
+        try {
+
+        $fmod = new FmodService($roots);
+        $coreVersion = $this->getVersion();
+
+        // Hooks de révocation et de yank — branchés sur les tables marketplace_revocations
+        // et marketplace_advisories_seen quand le module marketplace côté instance est synchronisé.
+        $isRevoked = function (string $fp): bool {
+            try {
+                $st = $this->pdo->prepare("SELECT 1 FROM marketplace_revocations WHERE cert_fingerprint = ? LIMIT 1");
+                $st->execute([$fp]);
+                return (bool) $st->fetchColumn();
+            } catch (\Throwable $e) { return false; }
+        };
+        $isYanked = function (string $key, string $version): bool {
+            try {
+                $st = $this->pdo->prepare(
+                    "SELECT 1 FROM marketplace_advisories_seen
+                     WHERE module_key = ? AND affected_range = ? AND severity IN ('high','critical') LIMIT 1"
+                );
+                $st->execute([$key, $version]);
+                return (bool) $st->fetchColumn();
+            } catch (\Throwable $e) { return false; }
+        };
+
+        // verifyAndExtract = ouverture unique du ZIP : signature + hash par fichier + écriture
+        // atomique sur disque (commit après vérif du digest, fichier .part renommé seulement
+        // si OK). Élimine la fenêtre TOCTOU qui existait quand on faisait verify puis extract.
+        $stagingDir = $this->tempDir . '/_staging_' . bin2hex(random_bytes(8));
+        $verif = $fmod->verifyAndExtract($fmodPath, $stagingDir, $coreVersion, $isRevoked, $isYanked);
+        if (!$verif['ok']) {
+            // verifyAndExtract nettoie déjà le staging en cas d'échec, mais on enlève par
+            // précaution si le retour signale ok=false sans cleanup.
+            if (is_dir($stagingDir)) $this->removeDirectory($stagingDir);
+            return ['success' => false, 'error' => 'Signature/intégrité refusée : ' . implode(' ; ', $verif['errors'])];
+        }
+
+        $manifest = $verif['manifest'];
+        $key = (string) ($manifest['key'] ?? '');
+        if ($key === '') {
+            $this->removeDirectory($stagingDir);
+            return ['success' => false, 'error' => 'module.json sans clé.'];
+        }
+
+        // Scan statique (défense en profondeur — signature garantit origine, pas innocuité).
+        $modulePerms = $manifest['publish']['required_permissions'] ?? ($manifest['required_permissions'] ?? []);
+        $scanner = new \API\Security\ModuleScanner($modulePerms);
+        $scanResult = $scanner->scanDirectory($stagingDir);
+        if (!$scanResult['safe']) {
+            $quarantine = new QuarantineService($this->basePath);
+            $quarantine->quarantine($key, $stagingDir, $scanResult);
+            return [
+                'success' => false,
+                'error' => 'Module mis en quarantaine : violations détectées malgré une signature valide.',
+                'violations' => $scanResult['violations'],
+                'quarantined' => true,
+            ];
+        }
+
+        // Bascule atomique.
+        $targetDir = $this->basePath . '/modules/' . $key;
+        if (is_dir($targetDir)) {
+            $backupDir = $this->basePath . '/storage/backups/modules';
+            if (!is_dir($backupDir)) @mkdir($backupDir, 0755, true);
+            @rename($targetDir, $backupDir . '/' . $key . '_' . date('Ymd_His'));
+        }
+        if (!@rename($stagingDir, $targetDir)) {
+            $this->removeDirectory($stagingDir);
+            return ['success' => false, 'error' => "Échec install : impossible de déplacer le module."];
+        }
+
+        // Sync DB + provision SQL.
+        try {
+            $sdk = app('module_sdk');
+            $sdk->clearCache();
+            $sdk->syncModule($manifest);
+            $prov = $sdk->provisionSql($key);
+            if (!$prov['success']) {
+                error_log('Marketplace .fmod provisionSql errors: ' . implode(' | ', $prov['errors']));
+            }
+        } catch (\Throwable $e) {
+            error_log('Marketplace .fmod sync error: ' . $e->getMessage());
+        }
+
+        // Trace l'installation signée (hash paquet + fingerprint cert éditeur).
+        try {
+            $pkgSha = hash_file('sha256', $fmodPath);
+            $manSha = (string) ($verif['signature']['manifest_sha256'] ?? '');
+            $editorCertB64 = $verif['signature']['certificate_chain'][0] ?? '';
+            $certFp = bin2hex(hash('sha256', base64_decode($editorCertB64, true) ?: $editorCertB64, true));
+
+            $st = $this->pdo->prepare(
+                "INSERT INTO marketplace_installed
+                   (module_key, version, publisher_id, source_id, channel,
+                    package_sha256, manifest_sha256, cert_fingerprint, signature_verified_at)
+                 VALUES (?, ?, ?, NULL, 'sideload', ?, ?, ?, NOW())
+                 ON DUPLICATE KEY UPDATE
+                    publisher_id = VALUES(publisher_id),
+                    package_sha256 = VALUES(package_sha256),
+                    manifest_sha256 = VALUES(manifest_sha256),
+                    cert_fingerprint = VALUES(cert_fingerprint),
+                    signature_verified_at = NOW()"
+            );
+            $st->execute([
+                $key,
+                (string) ($manifest['version'] ?? '0.0.0'),
+                (string) ($verif['signature']['publisher_id'] ?? ''),
+                $pkgSha, $manSha, $certFp,
+            ]);
+        } catch (\Throwable $e) {
+            error_log('Marketplace .fmod record error: ' . $e->getMessage());
+        }
+
+        return [
+            'success' => true,
+            'message' => "Module '{$key}' installé depuis paquet signé.",
+            'module'  => $manifest,
+            'publisher' => $verif['signature']['publisher_id'] ?? null,
+        ];
+
+        } finally {
+            flock($lockFh, LOCK_UN);
+            fclose($lockFh);
+        }
+    }
+
+    /**
+     * Charge les clés publiques Root CA depuis config/marketplace/roots/*.pub.
+     * Retourne [fingerprint_hex => base64_public_key].
+     */
+    private function loadRootKeys(): array
+    {
+        $roots = [];
+        $files = glob($this->basePath . '/config/marketplace/roots/*.pub') ?: [];
+        foreach ($files as $f) {
+            $pkB64 = trim((string) @file_get_contents($f));
+            if ($pkB64 === '') continue;
+            try {
+                $fp = FmodService::fingerprint($pkB64);
+                $roots[$fp] = $pkB64;
+            } catch (\Throwable $e) { /* ignore malformed */ }
+        }
+        return $roots;
+    }
+
+    /**
      * Installe un thème depuis le catalogue distant.
      */
     public function installTheme(string $key): array
@@ -535,7 +712,7 @@ class MarketplaceService
                 'timeout' => 10,
                 'user_agent' => 'Fronote/' . ($this->getVersion()),
             ],
-            'ssl' => ['verify_peer' => true],
+            'ssl' => ['verify_peer' => true, 'verify_peer_name' => true],
         ]);
 
         $json = @file_get_contents($this->registryUrl, false, $ctx);
@@ -551,7 +728,7 @@ class MarketplaceService
     {
         $ctx = stream_context_create([
             'http' => ['timeout' => 60, 'user_agent' => 'Fronote/' . $this->getVersion()],
-            'ssl' => ['verify_peer' => true],
+            'ssl' => ['verify_peer' => true, 'verify_peer_name' => true],
         ]);
 
         $content = @file_get_contents($url, false, $ctx);

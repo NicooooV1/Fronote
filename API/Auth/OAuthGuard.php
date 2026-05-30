@@ -157,6 +157,9 @@ class OAuthGuard
 		}
 
 		$data = json_decode($response, true);
+		if (!is_array($data)) {
+			throw new \RuntimeException('Invalid JSON response from OAuth token endpoint');
+		}
 		if (isset($data['error'])) {
 			throw new \RuntimeException('OAuth token error: ' . ($data['error_description'] ?? $data['error']));
 		}
@@ -198,23 +201,25 @@ class OAuthGuard
 	{
 		if ($this->provider === 'microsoft') {
 			return [
-				'email'      => $data['mail'] ?? $data['userPrincipalName'] ?? '',
-				'given_name' => $data['givenName'] ?? '',
-				'family_name' =>$data['surname'] ?? '',
-				'name'       => $data['displayName'] ?? '',
-				'sub'        => $data['id'] ?? '',
-				'picture'    => null,
+				'email'          => $data['mail'] ?? $data['userPrincipalName'] ?? '',
+				'email_verified' => true, // Microsoft Graph only returns verified corporate emails
+				'given_name'     => $data['givenName'] ?? '',
+				'family_name'    => $data['surname'] ?? '',
+				'name'           => $data['displayName'] ?? '',
+				'sub'            => $data['id'] ?? '',
+				'picture'        => null,
 			];
 		}
 
 		// Google et format standard OpenID Connect
 		return [
-			'email'      => $data['email'] ?? '',
-			'given_name' => $data['given_name'] ?? '',
-			'family_name' =>$data['family_name'] ?? '',
-			'name'       => $data['name'] ?? '',
-			'sub'        => $data['sub'] ?? $data['id'] ?? '',
-			'picture'    => $data['picture'] ?? null,
+			'email'          => $data['email'] ?? '',
+			'email_verified' => $data['email_verified'] ?? false,
+			'given_name'     => $data['given_name'] ?? '',
+			'family_name'    => $data['family_name'] ?? '',
+			'name'           => $data['name'] ?? '',
+			'sub'            => $data['sub'] ?? $data['id'] ?? '',
+			'picture'        => $data['picture'] ?? null,
 		];
 	}
 
@@ -229,6 +234,11 @@ class OAuthGuard
 		$email = $oauthUser['email'] ?? '';
 		if (empty($email)) {
 			throw new \RuntimeException('OAuth provider did not return an email address');
+		}
+
+		// Reject unverified emails to prevent account hijacking via custom providers
+		if (!($oauthUser['email_verified'] ?? false)) {
+			throw new \RuntimeException('OAuth provider email address is not verified');
 		}
 
 		$tables = [

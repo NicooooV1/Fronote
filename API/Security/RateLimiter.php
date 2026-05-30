@@ -55,31 +55,13 @@ class RateLimiter
 
         try {
             $pdo = $this->getPDO();
-            
-            // Vérifier si l'entrée existe
+            // Atomic upsert eliminates the SELECT→INSERT race condition
             $stmt = $pdo->prepare("
-                SELECT id, attempts FROM {$this->tableName} 
-                WHERE identifier = ? AND expires_at > NOW()
+                INSERT INTO {$this->tableName} (identifier, attempts, expires_at)
+                VALUES (?, 1, ?)
+                ON DUPLICATE KEY UPDATE attempts = attempts + 1, expires_at = VALUES(expires_at)
             ");
-            $stmt->execute([$identifier]);
-            $existing = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($existing) {
-                // Incrémenter
-                $stmt = $pdo->prepare("
-                    UPDATE {$this->tableName} 
-                    SET attempts = attempts + 1, expires_at = ? 
-                    WHERE id = ?
-                ");
-                $stmt->execute([$expiresAt, $existing['id']]);
-            } else {
-                // Créer nouvelle entrée
-                $stmt = $pdo->prepare("
-                    INSERT INTO {$this->tableName} (identifier, attempts, expires_at) 
-                    VALUES (?, 1, ?)
-                ");
-                $stmt->execute([$identifier, $expiresAt]);
-            }
+            $stmt->execute([$identifier, $expiresAt]);
         } catch (\PDOException $e) {
             error_log("RateLimiter::hit error: " . $e->getMessage());
         }

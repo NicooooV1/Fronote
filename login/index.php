@@ -53,8 +53,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
         $username   = trim($_POST['username'] ?? '');
         $password   = $_POST['password'] ?? '';
         $rememberMe = !empty($_POST['remember_me']);
-        // Type imposé si l'utilisateur choisit parmi plusieurs comptes ambigus
-        $forcedType = $_POST['forced_type'] ?? null;
+        // Type + établissement imposés si l'utilisateur choisit parmi plusieurs comptes ambigus.
+        // Format reçu : "<type>|<etablissement_id>" (forced_choice). Le legacy "forced_type"
+        // reste accepté pour compat ascendante (mono-établissement).
+        $forcedType  = $_POST['forced_type'] ?? null;
+        $forcedEtab  = null;
+        if (!empty($_POST['forced_choice'])) {
+            $parts = explode('|', (string) $_POST['forced_choice'], 2);
+            $forcedType = $parts[0] !== '' ? $parts[0] : $forcedType;
+            if (isset($parts[1]) && ctype_digit($parts[1])) {
+                $forcedEtab = (int) $parts[1];
+            }
+        }
         $ip         = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
         if (empty($username) || empty($password)) {
@@ -72,6 +82,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
                 ];
                 if ($forcedType) {
                     $credentials['type'] = $forcedType;
+                }
+                if ($forcedEtab !== null) {
+                    $credentials['etablissement_id'] = $forcedEtab;
                 }
 
                 $result = $auth->attemptAndGetUser($credentials);
@@ -225,7 +238,23 @@ $_loginDir = $translator->isRtl() ? 'rtl' : 'ltr';
         <?php endif; ?>
 
         <?php if (!empty($ambiguous)): ?>
-            <!-- Plusieurs comptes pour le même identifiant → choix du profil -->
+            <!-- Plusieurs comptes pour le même identifiant → choix du profil (type + établissement) -->
+            <?php
+            // Quand plusieurs candidats existent dans des établissements distincts, on doit
+            // exposer le nom de l'établissement pour que l'utilisateur puisse trancher.
+            $etabIdsInAmbig = array_unique(array_map(static fn ($c) => (int) ($c['etablissement_id'] ?? 0), $ambiguous));
+            $etabNames = [];
+            if (count($etabIdsInAmbig) > 1) {
+                try {
+                    $in = implode(',', array_fill(0, count($etabIdsInAmbig), '?'));
+                    $st = getPDO()->prepare("SELECT id, nom FROM etablissements WHERE id IN ({$in})");
+                    $st->execute(array_values($etabIdsInAmbig));
+                    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                        $etabNames[(int) $row['id']] = $row['nom'];
+                    }
+                } catch (\Throwable $e) { /* table absente sur très anciennes installs : ignore */ }
+            }
+            ?>
             <div class="alert alert-info" role="alert">
                 <i class="fas fa-info-circle" aria-hidden="true"></i>
                 <div><?= htmlspecialchars(__('login.multiple_profiles')) ?></div>
@@ -236,13 +265,21 @@ $_loginDir = $translator->isRtl() ? 'rtl' : 'ltr';
                 <input type="hidden" name="username" value="<?= htmlspecialchars($lastUsername) ?>">
                 <input type="hidden" name="password" value="">
                 <div class="profile-selector" role="radiogroup" aria-label="Choisir votre profil">
-                    <?php foreach ($ambiguous as $candidate): ?>
-                        <?php $lbl = $profilLabels[$candidate['type']] ?? ['label' => ucfirst($candidate['type']), 'icon' => 'fa-user']; ?>
-                        <input type="radio" id="type_<?= htmlspecialchars($candidate['type']) ?>"
-                               name="forced_type" value="<?= htmlspecialchars($candidate['type']) ?>" required>
-                        <label for="type_<?= htmlspecialchars($candidate['type']) ?>" class="profile-option">
+                    <?php foreach ($ambiguous as $idx => $candidate): ?>
+                        <?php
+                        $lbl = $profilLabels[$candidate['type']] ?? ['label' => ucfirst($candidate['type']), 'icon' => 'fa-user'];
+                        $etabId = (int) ($candidate['etablissement_id'] ?? 0);
+                        $etabLabel = (count($etabIdsInAmbig) > 1 && isset($etabNames[$etabId]))
+                            ? ' — ' . $etabNames[$etabId]
+                            : '';
+                        $radioId = 'cand_' . $idx;
+                        $value = $candidate['type'] . '|' . $etabId;
+                        ?>
+                        <input type="radio" id="<?= htmlspecialchars($radioId) ?>"
+                               name="forced_choice" value="<?= htmlspecialchars($value) ?>" required>
+                        <label for="<?= htmlspecialchars($radioId) ?>" class="profile-option">
                             <div class="profile-icon"><i class="fas <?= $lbl['icon'] ?>" aria-hidden="true"></i></div>
-                            <div class="profile-label"><?= htmlspecialchars($lbl['label']) ?></div>
+                            <div class="profile-label"><?= htmlspecialchars($lbl['label'] . $etabLabel) ?></div>
                         </label>
                     <?php endforeach; ?>
                 </div>

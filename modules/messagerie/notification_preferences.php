@@ -22,6 +22,17 @@ $success = '';
 
 // Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Garde CSRF — sans ça un attaquant pouvait modifier silencieusement les préférences
+    // de notification d'un utilisateur ciblé (cross-site request).
+    if (!\API\Core\Facades\CSRF::validate($_POST['csrf_token'] ?? '')) {
+        http_response_code(403);
+        $error = 'Erreur de sécurité : jeton CSRF invalide. Rafraîchissez la page.';
+        $preferences = getUserNotificationPreferences($user['id'], $user['type']);
+        include 'templates/header.php';
+        echo '<div class="alert alert-error">' . htmlspecialchars($error) . '</div>';
+        include 'templates/footer.php';
+        exit;
+    }
     // Récupérer les valeurs du formulaire
     $preferences = [
         'email_notifications' => isset($_POST['email_notifications']),
@@ -67,6 +78,7 @@ include 'templates/header.php';
         
         <div class="form-container">
             <form method="post" action="">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(\API\Core\Facades\CSRF::generate()) ?>">
                 <div class="form-group">
                     <h3>Types de notifications</h3>
                     <p class="text-muted">Choisissez les types de notifications que vous souhaitez recevoir.</p>

@@ -39,11 +39,13 @@ class ActivityFeedService
                    END AS category
             FROM audit_log
             WHERE user_id = :uid AND user_type = :utype
+              AND etablissement_id = :etab
             ORDER BY created_at DESC
             LIMIT :lim OFFSET :off
         ");
         $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
         $stmt->bindValue(':utype', $userType);
+        $stmt->bindValue(':etab', \API\Core\EstablishmentContext::id(), PDO::PARAM_INT);
         $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
         $stmt->bindValue(':off', $offset, PDO::PARAM_INT);
         $stmt->execute();
@@ -60,9 +62,11 @@ class ActivityFeedService
                    a.user_id, a.user_type, a.created_at
             FROM audit_log a
             WHERE a.severity IN ('INFO', 'WARNING', 'CRITICAL')
+              AND a.etablissement_id = :etab
             ORDER BY a.created_at DESC
             LIMIT :lim OFFSET :off
         ");
+        $stmt->bindValue(':etab', \API\Core\EstablishmentContext::id(), PDO::PARAM_INT);
         $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
         $stmt->bindValue(':off', $offset, PDO::PARAM_INT);
         $stmt->execute();

@@ -1,0 +1,35 @@
+{
+    "key": "marketplace",
+    "version": "1.0.0",
+    "name": { "fr": "Marketplace", "en": "Marketplace" },
+    "description": {
+        "fr": "Découverte, vérification et installation signée de modules Fronote (.fmod).",
+        "en": "Discovery, signature verification and signed install of Fronote modules (.fmod)."
+    },
+    "icon": "fas fa-store",
+    "category": "administration",
+    "core": true,
+    "requires_php": ">=8.0",
+    "dependencies": [],
+    "routes": { "main": "marketplace.php" },
+    "database": { "install": "Database/install.sql" },
+    "permissions": {
+        "browse":    { "default_roles": ["administrateur"] },
+        "install":   { "default_roles": ["administrateur"] },
+        "update":    { "default_roles": ["administrateur"] },
+        "configure": { "default_roles": ["administrateur"] }
+    },
+    "publish": {
+        "publisher_id": "fronote-team",
+        "min_core": ">=2.1.0",
+        "max_core": "<4.0.0",
+        "channel": "stable",
+        "license": "MIT",
+        "required_permissions": ["db_read", "db_write", "filesystem"],
+        "optional_permissions": ["network"]
+    },
+    "sidebar": { "hidden": false, "sort_order": 95 },
+    "establishment_types": null,
+    "author": "Fronote Team",
+    "license": "MIT"
+}

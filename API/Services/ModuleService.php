@@ -353,6 +353,7 @@ class ModuleService
 
         foreach ($all as $key => $mod) {
             if (empty($mod['enabled'])) continue;
+            if (!empty($mod['sidebar_hidden'])) continue; // manifest sidebar.hidden = true
             if (!$this->isVisibleForRole($key, $role)) continue;
             if (in_array($key, ['accueil', 'parametres'])) continue;
 

@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Devoirs\Widgets;
 
-use API\Contracts\WidgetDataProvider;
+use API\Contracts\AbstractWidgetProvider;
 
-class DevoirWidgetProvider implements WidgetDataProvider
+/**
+ * @global-scope Widget scopé implicitement par user_id (le user appartient à un
+ * seul établissement, donc ses entités le sont aussi).
+ */
+class DevoirWidgetProvider extends AbstractWidgetProvider
 {
     public function getData(int $userId, string $userType, ?array $config = null): array
     {

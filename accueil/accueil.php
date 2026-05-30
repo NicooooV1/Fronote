@@ -48,6 +48,19 @@ include __DIR__ . '/../templates/shared_topbar.php';
         <!-- Main Dashboard Content -->
         <div class="dashboard-content">
 
+            <?php
+            // Flash error_message (posé par requireRole/redirect()/etc.) — affichage UI
+            // pour qu'une redirection silencieuse ne reste pas inexplicable.
+            if (!empty($_SESSION['error_message'])):
+                $_flashMsg = $_SESSION['error_message'];
+                unset($_SESSION['error_message']);
+            ?>
+            <div class="alert alert-warning" style="margin:16px 0;padding:12px 16px;border-radius:8px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d">
+                <i class="fas fa-exclamation-triangle"></i>
+                <?= htmlspecialchars($_flashMsg) ?>
+            </div>
+            <?php endif; ?>
+
             <!-- Welcome Banner -->
             <div class="welcome-banner">
                 <div class="welcome-content">

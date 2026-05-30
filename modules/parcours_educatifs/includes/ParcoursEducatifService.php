@@ -10,13 +10,22 @@ class ParcoursEducatifService
 
     /* ==================== PARCOURS ==================== */
 
+    /** Établissement courant ou null. */
+    private function etabId(): ?int
+    {
+        try { return \API\Core\EstablishmentContext::id(); }
+        catch (\Throwable $e) { return null; }
+    }
+
     public function getParcours(array $filters = []): array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $sql = "SELECT pe.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom
                 FROM parcours_educatifs pe
                 LEFT JOIN eleves e ON pe.eleve_id = e.id
-                WHERE 1=1";
-        $params = [];
+                WHERE e.etablissement_id = ?";
+        $params = [$etabId];
         if (!empty($filters['eleve_id']))       { $sql .= " AND pe.eleve_id = ?";       $params[] = $filters['eleve_id']; }
         if (!empty($filters['type_parcours']))   { $sql .= " AND pe.type_parcours = ?";  $params[] = $filters['type_parcours']; }
         if (!empty($filters['annee_scolaire']))  { $sql .= " AND pe.annee_scolaire = ?"; $params[] = $filters['annee_scolaire']; }

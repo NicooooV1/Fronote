@@ -63,7 +63,9 @@ class VideoConferenceService
      */
     public function createReunionRoom(int $reunionId, string $professeurName, string $parentName = ''): array
     {
-        $roomName = 'fronote-reunion-' . $reunionId;
+        // Prefix with etab ID to isolate rooms between establishments sharing the same Jitsi server
+        $etabId = \API\Core\EstablishmentContext::isSet() ? \API\Core\EstablishmentContext::id() : 0;
+        $roomName = 'fronote-etab' . $etabId . '-reunion-' . $reunionId;
         return $this->createRoom($roomName, [
             'moderator_name' => $professeurName,
             'participant_name' => $parentName,

@@ -47,7 +47,7 @@ final class Auth extends Facade
     {
         $auth = app('auth');
         if (is_array($userIdOrArray)) {
-            $auth->guard->login($userIdOrArray);
+            $auth->loginUser($userIdOrArray);
             return;
         }
         $auth->login($userIdOrArray, $type);

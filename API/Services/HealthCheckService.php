@@ -115,10 +115,10 @@ class HealthCheckService
 
         if ($fp) {
             fclose($fp);
-            return ['status' => 'ok', 'latency_ms' => $latency, 'host' => $host];
+            return ['status' => 'ok', 'latency_ms' => $latency];
         }
 
-        return ['status' => 'error', 'message' => "SMTP unreachable: {$errstr}", 'host' => $host];
+        return ['status' => 'error', 'message' => 'SMTP unreachable'];
     }
 
     public function checkWebSocket(): array

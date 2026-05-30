@@ -160,9 +160,9 @@ abstract class FormRequest
             $data = array_merge($data, $_POST);
         }
 
-        // JSON body (for REST endpoints)
+        // JSON body (for REST endpoints — skip on GET to avoid injecting body into params)
         $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
-        if (str_contains($contentType, 'application/json')) {
+        if ($method !== 'GET' && str_contains($contentType, 'application/json')) {
             $raw = file_get_contents('php://input');
             if ($raw) {
                 $json = json_decode($raw, true);

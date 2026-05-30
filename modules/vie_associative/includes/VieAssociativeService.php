@@ -8,18 +8,27 @@ class VieAssociativeService
 
     public function __construct(PDO $pdo) { $this->pdo = $pdo; }
 
+    /** Établissement courant ou null. */
+    private function etabId(): ?int
+    {
+        try { return \API\Core\EstablishmentContext::id(); }
+        catch (\Throwable $e) { return null; }
+    }
+
     /* ==================== ASSOCIATIONS ==================== */
 
     public function getAssociations(?string $type = null): array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $sql = "SELECT a.*, CONCAT(e.prenom, ' ', e.nom) AS president_nom,
                        CONCAT(p.prenom, ' ', p.nom) AS referent_nom,
                        (SELECT COUNT(*) FROM association_membres am WHERE am.association_id = a.id AND am.statut = 'actif') AS nb_membres
                 FROM associations a
                 LEFT JOIN eleves e ON a.president_eleve_id = e.id
                 LEFT JOIN professeurs p ON a.referent_adulte_id = p.id
-                WHERE 1=1";
-        $params = [];
+                WHERE a.etablissement_id = ?";
+        $params = [$etabId];
         if ($type) { $sql .= " AND a.type = ?"; $params[] = $type; }
         $sql .= " ORDER BY a.nom";
         $stmt = $this->pdo->prepare($sql);

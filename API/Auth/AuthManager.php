@@ -32,6 +32,15 @@ class AuthManager
     }
 
     /**
+     * Connects an already-resolved user array directly via the guard.
+     * Public entry-point so facades don't access the protected $guard property.
+     */
+    public function loginUser(array $user): void
+    {
+        $this->guard->login($user);
+    }
+
+    /**
      * Authentifie un utilisateur
      */
     public function login($userId, $userType)

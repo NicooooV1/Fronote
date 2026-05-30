@@ -14,7 +14,7 @@ Thank you for your interest in contributing to Fronote! This guide will help you
 
 ### Requirements
 
-- PHP 8.1+ with extensions: pdo_mysql, mbstring, json, openssl, intl, gd, curl, zip
+- PHP 8.0+ (matches `composer.json` and `version.json`) with extensions: pdo_mysql, mbstring, json, openssl, intl, gd, curl, zip
 - MySQL 5.7+ or MariaDB 10.3+
 - Node.js 18+ (for WebSocket server)
 - Apache or Nginx with mod_rewrite
@@ -30,7 +30,7 @@ cp .env.example .env
 # Edit .env with your database credentials
 
 # Start WebSocket server (optional)
-cd websocket && npm install && node server.js
+cd websocket-server && npm install express socket.io jsonwebtoken && node server.js
 ```
 
 ## Code Style
@@ -56,16 +56,21 @@ cd websocket && npm install && node server.js
 ### Directory Structure
 
 ```
-API/              # Backend: services, core, security, endpoints
-admin/            # Admin panel pages
+API/              # Backend: services, core, security, endpoints, providers
+accueil/          # Dashboard (essential, root)
+admin/            # Admin panel pages (essential, root)
+login/            # Login flow (essential, root)
+parametres/       # User settings (essential, root)
+modules/<m>/      # Business modules (notes, agenda, cahierdetextes, …) — since 2.1.0
 assets/           # CSS, JS, images
 lang/             # Translation files (8 locales)
-modules/          # Not used — each module is a top-level directory
-templates/        # Shared PHP templates (header, sidebar, footer)
-websocket/        # Socket.IO server
+templates/        # Shared PHP templates (header, topbar, topbar_nav, footer)
+websocket-server/ # Socket.IO server (Node.js)
 cron/             # Scheduled maintenance tasks
-migrations/       # SQL migration files
+scripts/          # CLI scripts (worker, update, check_update)
 ```
+
+Per-module schema lives in `modules/<m>/Database/install.sql`, provisioned by `ModuleSDK::provisionSql()`. No separate `migrations/` directory at root.
 
 ### Key Patterns
 
@@ -78,12 +83,13 @@ migrations/       # SQL migration files
 ## Creating a Module
 
 Each module has:
-- A top-level directory (e.g., `notes/`)
-- A `module.json` with metadata, credits, and settings schema
-- Translation files in `lang/{locale}/modules/{module}.json`
-- Feature flags in the `feature_flags` table
+- A directory under `modules/<clé>/` (e.g., `modules/notes/`)
+- A `module.json` manifest (key, name, icon, category, routes, permissions, widgets, `database.install`, migrations)
+- A `Database/install.sql` (idempotent) provisioned by the SDK
+- Translation files in `lang/{locale}/modules/{module}.json` (or `lang/` under the module)
+- Optional feature flags in the `feature_flags` table
 
-See `docs/module-development.md` for the full guide.
+See [docs/module-sdk.md](docs/module-sdk.md) for the full guide.
 
 ## Pull Request Process
 

@@ -109,10 +109,19 @@ class SignalementService
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
+    /** Établissement courant ou null. */
+    private function etabId(): ?int
+    {
+        try { return \API\Core\EstablishmentContext::id(); }
+        catch (\Throwable $e) { return null; }
+    }
+
     public function getTousSignalements(array $filters = []): array
     {
-        $sql = 'SELECT * FROM signalements WHERE 1=1';
-        $params = [];
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
+        $sql = 'SELECT * FROM signalements WHERE etablissement_id = ?';
+        $params = [$etabId];
         if (!empty($filters['statut'])) { $sql .= ' AND statut = ?'; $params[] = $filters['statut']; }
         if (!empty($filters['type'])) { $sql .= ' AND type = ?'; $params[] = $filters['type']; }
         if (!empty($filters['urgence'])) { $sql .= ' AND urgence = ?'; $params[] = $filters['urgence']; }

@@ -8,16 +8,28 @@ class InternatService
 
     public function __construct(PDO $pdo) { $this->pdo = $pdo; }
 
+    /** Établissement courant ou null. */
+    private function etabId(): ?int
+    {
+        try { return \API\Core\EstablishmentContext::id(); }
+        catch (\Throwable $e) { return null; }
+    }
+
     /* ==================== CHAMBRES ==================== */
 
     public function getChambres(): array
     {
-        return $this->pdo->query(
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
+        $stmt = $this->pdo->prepare(
             "SELECT ch.*, COUNT(af.id) AS nb_occupants
              FROM internat_chambres ch
              LEFT JOIN internat_affectations af ON ch.id = af.chambre_id AND af.statut = 'actif'
+             WHERE ch.etablissement_id = ?
              GROUP BY ch.id ORDER BY ch.batiment, ch.etage, ch.numero"
-        )->fetchAll(PDO::FETCH_ASSOC);
+        );
+        $stmt->execute([$etabId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getChambre(int $id): ?array

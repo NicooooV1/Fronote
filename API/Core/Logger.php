@@ -17,7 +17,8 @@ class Logger
     public function __construct(string $logDir = '', string $channel = 'app', int $maxFiles = 30)
     {
         $this->logDir = $logDir ?: (defined('BASE_PATH') ? BASE_PATH . '/logs' : sys_get_temp_dir());
-        $this->channel = $channel;
+        // Sanitize channel to prevent path traversal via log filenames
+        $this->channel = preg_replace('/[^a-zA-Z0-9_-]/', '_', $channel);
         $this->maxFiles = $maxFiles;
 
         if (!is_dir($this->logDir)) {

@@ -146,10 +146,16 @@ class AnnonceService
      */
     public function getAllAnnonces(array $filters = []): array
     {
+        // Scope obligatoire : sans ça les annonces fuient cross-établissement.
+        try {
+            $etabId = \API\Core\EstablishmentContext::id();
+        } catch (\Throwable $e) {
+            return [];
+        }
         $sql = "SELECT a.*,
                        (SELECT COUNT(*) FROM annonces_lues al WHERE al.annonce_id = a.id) AS nb_lues
-                FROM annonces a WHERE 1=1";
-        $params = [];
+                FROM annonces a WHERE a.etablissement_id = ?";
+        $params = [$etabId];
 
         if (!empty($filters['type'])) {
             $sql .= " AND a.type = ?";

@@ -1,5 +1,5 @@
 # Block access to internal API directories — only endpoints/ is web-accessible
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteRule ^(Core|Services|Events|Jobs|Providers|Legacy|Security|Middleware|Admin|logs)(/|$) - [F,L]
+    RewriteRule ^(Auth|Core|Database|Services|Events|Jobs|Providers|Legacy|Security|Middleware|Admin|Contracts|UI|[Ll]ogs)(/|$) - [F,L]
 </IfModule>

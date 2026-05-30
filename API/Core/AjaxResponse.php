@@ -102,6 +102,7 @@ class AjaxResponse
                 self::error('Token CSRF invalide', [], 403);
             }
         } catch (\Throwable $e) {
+            error_log('AjaxResponse::requireCsrf exception: ' . $e->getMessage());
             self::error('Token CSRF invalide', [], 403);
         }
     }

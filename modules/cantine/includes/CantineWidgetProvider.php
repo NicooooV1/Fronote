@@ -4,26 +4,27 @@ declare(strict_types=1);
 
 namespace Cantine\Widgets;
 
-use API\Contracts\WidgetDataProvider;
+use API\Contracts\AbstractWidgetProvider;
 
-class CantineWidgetProvider implements WidgetDataProvider
+class CantineWidgetProvider extends AbstractWidgetProvider
 {
     public function getData(int $userId, string $userType, ?array $config = null): array
     {
-        $pdo = app('db')?->getConnection();
-        if (!$pdo) {
-            return ['menu' => null, 'date' => null];
-        }
+        $pdo = $this->pdo();
+        if (!$pdo) return ['menu' => null, 'date' => null];
 
-        // Menu du jour ou du prochain jour ouvré
+        $etabId = $this->etabId();
+        if ($etabId === null) return ['menu' => null, 'date' => null];
+
+        // Menu du jour ou prochain jour ouvré — scopé à l'établissement courant.
         $stmt = $pdo->prepare(
             "SELECT date_menu, entree, plat_principal, accompagnement, dessert, remarques
              FROM menus_cantine
-             WHERE date_menu >= CURDATE()
+             WHERE etablissement_id = ? AND date_menu >= CURDATE()
              ORDER BY date_menu ASC
              LIMIT 1"
         );
-        $stmt->execute();
+        $stmt->execute([$etabId]);
         $menu = $stmt->fetch(\PDO::FETCH_ASSOC);
 
         return [

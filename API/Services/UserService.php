@@ -225,7 +225,13 @@ class UserService
             $password .= $all[random_int(0, strlen($all) - 1)];
         }
 
-        return str_shuffle($password);
+        // Fisher-Yates with CSPRNG — str_shuffle uses libc rand(), which is predictable
+        $chars = str_split($password);
+        for ($i = count($chars) - 1; $i > 0; $i--) {
+            $j = random_int(0, $i);
+            [$chars[$i], $chars[$j]] = [$chars[$j], $chars[$i]];
+        }
+        return implode('', $chars);
     }
 
     /* ================================================================
@@ -332,22 +338,32 @@ class UserService
     {
         try {
             $tokenHash = hash('sha256', $token);
+
+            $this->pdo->beginTransaction();
             $stmt = $this->pdo->prepare(
-                "SELECT user_id, user_type FROM remember_tokens WHERE token_hash = ? AND expires_at > NOW() LIMIT 1"
+                "SELECT user_id, user_type FROM remember_tokens WHERE token_hash = ? AND expires_at > NOW() LIMIT 1 FOR UPDATE"
             );
             $stmt->execute([$tokenHash]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if (!$row) return null;
+            if (!$row) {
+                $this->pdo->rollBack();
+                return null;
+            }
+
+            // Consume the token atomically before releasing the lock
+            $this->pdo->prepare("DELETE FROM remember_tokens WHERE token_hash = ?")->execute([$tokenHash]);
+            $this->pdo->commit();
 
             $user = $this->findById((int) $row['user_id'], $row['user_type'] ?? null);
             if ($user) {
-                // Rotation du token
-                $this->pdo->prepare("DELETE FROM remember_tokens WHERE token_hash = ?")->execute([$tokenHash]);
                 $this->createRememberToken($user['id'], $user['type'] ?? $row['user_type'] ?? null);
             }
             return $user;
         } catch (\Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
             error_log('validateRememberToken: ' . $e->getMessage());
             return null;
         }

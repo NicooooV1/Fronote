@@ -181,7 +181,7 @@ class EmailService
         }
 
         $recipients = is_array($to) ? $to : [$to];
-        $boundary = '----=_Part_' . md5(uniqid((string)mt_rand(), true));
+        $boundary = '----=_Part_' . bin2hex(random_bytes(16));
         $fromAddr = $cfg['from_address'] ?: 'noreply@fronote.local';
         $fromName = $cfg['from_name'] ?: 'Fronote';
 

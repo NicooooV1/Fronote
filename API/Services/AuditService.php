@@ -4,7 +4,7 @@
  * Enregistre toutes les actions critiques dans la base de données
  */
 
-namespace Pronote\Services;
+namespace API\Services;
 
 class AuditService {
     protected $db;
@@ -543,6 +543,9 @@ class AuditService {
         $this->sensitiveFields = array_map('strtolower', $fields);
     }
 }
+
+// Backward compatibility aliases for code referencing the old namespace
+class_alias(\API\Services\AuditService::class, 'Pronote\Services\AuditService');
 
 /**
  * Facade Audit

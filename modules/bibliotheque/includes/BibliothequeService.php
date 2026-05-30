@@ -11,12 +11,22 @@ class BibliothequeService
         $this->pdo = $pdo;
     }
 
+    /** Établissement courant ou null. \API\Core\EstablishmentContext::id() */
+    private function etabId(): ?int
+    {
+        try { return \API\Core\EstablishmentContext::id(); }
+        catch (\Throwable $e) { return null; }
+    }
+
     /* ───────── LIVRES ───────── */
 
     public function getLivres(array $filters = []): array
     {
-        $sql = 'SELECT l.*, (l.exemplaires_total - COALESCE((SELECT COUNT(*) FROM emprunts WHERE livre_id = l.id AND statut = "emprunte"), 0)) AS exemplaires_disponibles FROM livres l WHERE 1=1';
-        $params = [];
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
+        $sql = 'SELECT l.*, (l.exemplaires_total - COALESCE((SELECT COUNT(*) FROM emprunts WHERE livre_id = l.id AND statut = "emprunte"), 0)) AS exemplaires_disponibles
+                FROM livres l WHERE l.etablissement_id = ?';
+        $params = [$etabId];
         if (!empty($filters['recherche'])) {
             $sql .= ' AND (l.titre LIKE ? OR l.auteur LIKE ? OR l.isbn LIKE ?)';
             $r = '%' . $filters['recherche'] . '%';

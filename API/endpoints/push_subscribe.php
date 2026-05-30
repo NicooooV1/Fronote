@@ -18,11 +18,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $input = json_decode(file_get_contents('php://input'), true) ?: [];
 
 $token = $input['csrf_token'] ?? '';
-if ($token !== ($_SESSION['csrf_token'] ?? '')) {
+if (!app('csrf')->validate($token)) {
     http_response_code(403);
     echo json_encode(['error' => 'Invalid CSRF token']);
     exit;
 }
+app('csrf')->emitNextToken();
 
 $pushService = new \API\Services\WebPushService(getPDO());
 $action = $input['action'] ?? '';

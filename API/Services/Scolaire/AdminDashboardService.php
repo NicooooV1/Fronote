@@ -53,13 +53,13 @@ class AdminDashboardService
         try {
             $etab = $this->etabId();
             $stmt = $this->pdo->prepare("
-                SELECT identifiant, locked_until, 'eleve' as type FROM eleves WHERE locked_until > NOW() AND etablissement_id = :e
-                UNION ALL SELECT identifiant, locked_until, 'professeur' FROM professeurs WHERE locked_until > NOW() AND etablissement_id = :e
-                UNION ALL SELECT identifiant, locked_until, 'parent' FROM parents WHERE locked_until > NOW() AND etablissement_id = :e
-                UNION ALL SELECT identifiant, locked_until, 'vie_scolaire' FROM vie_scolaire WHERE locked_until > NOW() AND etablissement_id = :e
-                UNION ALL SELECT identifiant, locked_until, 'administrateur' FROM administrateurs WHERE locked_until > NOW() AND etablissement_id = :e
+                SELECT identifiant, locked_until, 'eleve' as type FROM eleves WHERE locked_until > NOW() AND etablissement_id = :e1
+                UNION ALL SELECT identifiant, locked_until, 'professeur' FROM professeurs WHERE locked_until > NOW() AND etablissement_id = :e2
+                UNION ALL SELECT identifiant, locked_until, 'parent' FROM parents WHERE locked_until > NOW() AND etablissement_id = :e3
+                UNION ALL SELECT identifiant, locked_until, 'vie_scolaire' FROM vie_scolaire WHERE locked_until > NOW() AND etablissement_id = :e4
+                UNION ALL SELECT identifiant, locked_until, 'administrateur' FROM administrateurs WHERE locked_until > NOW() AND etablissement_id = :e5
             ");
-            $stmt->execute([':e' => $etab]);
+            $stmt->execute([':e1' => $etab, ':e2' => $etab, ':e3' => $etab, ':e4' => $etab, ':e5' => $etab]);
             $alerts['locked_accounts'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (\Throwable $e) {
             $alerts['locked_accounts'] = [];

@@ -26,21 +26,48 @@ $activePage = $activePage ?? '';
 $isAdmin = $isAdmin ?? false;
 
 // rootPrefix : chemin relatif de la page courante vers la racine du projet.
-// Si la page ne l'a pas défini, on le calcule depuis le script réellement
-// demandé (SCRIPT_FILENAME) plutôt que d'utiliser un '../' fixe qui cassait
-// les liens CSS/JS des modules désormais imbriqués sous modules/<m>/.
+// On calcule la profondeur depuis le SCRIPT_NAME (URI) en priorité — l'URI est
+// stable, alors que SCRIPT_FILENAME peut pointer hors du projet sous mod_rewrite
+// ou via un lien symbolique résolu ailleurs. On rebascule sur SCRIPT_FILENAME +
+// realpath uniquement si l'URI n'est pas exploitable.
 if (!isset($rootPrefix)) {
     $rootPrefix = '../';
-    $projectRoot = realpath(__DIR__ . '/..');
-    $scriptPath  = realpath($_SERVER['SCRIPT_FILENAME'] ?? '');
-    if ($projectRoot && $scriptPath) {
-        $rootN = str_replace('\\', '/', $projectRoot);
-        $scrN  = str_replace('\\', '/', $scriptPath);
-        if (str_starts_with($scrN, $rootN . '/')) {
-            $rel   = substr($scrN, strlen($rootN) + 1);
-            $depth = substr_count($rel, '/');
-            $rootPrefix = $depth > 0 ? str_repeat('../', $depth) : './';
+    $depth = -1;
+
+    // 1) Tentative via l'URI demandée.
+    $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+    if ($scriptName !== '' && str_ends_with($scriptName, '.php')) {
+        // On a besoin de la base URL (chemin de l'installation côté Apache).
+        $baseUrl = defined('BASE_URL') ? (string) BASE_URL : '';
+        if ($baseUrl === '') {
+            $baseUrl = rtrim((string) getenv('BASE_URL'), '/');
         }
+        $relUri = $scriptName;
+        if ($baseUrl !== '' && str_starts_with($scriptName, $baseUrl . '/')) {
+            $relUri = substr($scriptName, strlen($baseUrl) + 1);
+        } else {
+            $relUri = ltrim($scriptName, '/');
+        }
+        if ($relUri !== '' && !str_contains($relUri, '..')) {
+            $depth = substr_count($relUri, '/');
+        }
+    }
+
+    // 2) Fallback filesystem (SCRIPT_FILENAME vs realpath BASE_PATH).
+    if ($depth < 0) {
+        $projectRoot = realpath(__DIR__ . '/..');
+        $scriptPath  = realpath($_SERVER['SCRIPT_FILENAME'] ?? '');
+        if ($projectRoot && $scriptPath) {
+            $rootN = str_replace('\\', '/', $projectRoot);
+            $scrN  = str_replace('\\', '/', $scriptPath);
+            if (str_starts_with($scrN, $rootN . '/')) {
+                $depth = substr_count(substr($scrN, strlen($rootN) + 1), '/');
+            }
+        }
+    }
+
+    if ($depth >= 0) {
+        $rootPrefix = $depth > 0 ? str_repeat('../', $depth) : './';
     }
 }
 

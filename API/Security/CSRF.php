@@ -41,8 +41,8 @@ class CSRF {
         $token = bin2hex(random_bytes(32));
         $_SESSION[self::SESSION_KEY][$token] = time();
         
-        // Limiter le nombre de tokens
-        if (count($_SESSION[self::SESSION_KEY]) > $this->maxTokens) {
+        // Limiter le nombre de tokens (>= pour ne pas dépasser maxTokens)
+        if (count($_SESSION[self::SESSION_KEY]) >= $this->maxTokens) {
             array_shift($_SESSION[self::SESSION_KEY]);
         }
         
@@ -153,6 +153,19 @@ class CSRF {
     }
 
     /**
+     * Émet l'entête X-Csrf-Token-Next avec un nouveau token frais.
+     * Tokens single-use : pour les AJAX qui partagent le token meta-tag (ou pour les
+     * formulaires HTML qui resteraient sur l'écran après un POST AJAX réussi), le
+     * client peut alors faire tourner sa copie. Aucun effet de bord caché dans
+     * validateFromRequest() — l'appelant choisit explicitement quand émettre.
+     */
+    public function emitNextToken(): void
+    {
+        if (headers_sent()) return;
+        try { header('X-Csrf-Token-Next: ' . $this->generate()); } catch (\Throwable $e) { /* ignore */ }
+    }
+
+    /**
      * Valide le token CSRF et arrête l'exécution si invalide.
      * À appeler en début de traitement POST/PUT/DELETE.
      */
@@ -169,6 +182,11 @@ class CSRF {
             }
             exit;
         }
+        // Le bucket est single-use → on émet immédiatement un token de remplacement
+        // pour que le client (fronote-ajax.js) puisse rafraîchir meta + formulaires
+        // ouverts. Émis ici (et non dans validateFromRequest) pour ne pas polluer
+        // les autres usages de validate() avec un side-effect implicite.
+        $this->emitNextToken();
     }
 
     /**

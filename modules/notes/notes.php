@@ -164,7 +164,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                 <div class="admin-toolbar">
                     <span class="admin-toolbar-badge"><i class="fas fa-shield-alt"></i> Administration</span>
                     <span style="font-size:13px;color:#4a5568">Vue complète — <?= $totalNotes ?> note(s) au total</span>
-                    <a href="ajouter_note.php" class="btn-sm" style="background:#059669;color:white;text-decoration:none;margin-left:auto"><i class="fas fa-plus"></i> Ajouter une note</a>
+                    <a href="form_note.php" class="btn-sm" style="background:#059669;color:white;text-decoration:none;margin-left:auto"><i class="fas fa-plus"></i> Ajouter une note</a>
                     <a href="../../admin/scolaire/notes.php" class="btn-sm" style="background:#0f4c81;color:white;text-decoration:none"><i class="fas fa-cog"></i> Panneau admin</a>
                 </div>
                 <?php endif; ?>

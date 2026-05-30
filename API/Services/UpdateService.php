@@ -54,6 +54,7 @@ class UpdateService
             return null;
         }
 
+        $sha256 = $this->parseChecksumFromBody($latest['body'] ?? '');
         $result = [
             'available' => true,
             'current_version' => $this->currentVersion,
@@ -62,6 +63,7 @@ class UpdateService
             'changelog' => $latest['body'] ?? '',
             'download_url' => $latest['zipball_url'] ?? '',
             'published_at' => $latest['published_at'] ?? '',
+            'sha256' => $sha256,
         ];
 
         $cache->put('update_check', $result, 3600);
@@ -72,7 +74,7 @@ class UpdateService
      * Télécharge et applique une mise à jour.
      * ATTENTION : Crée un backup automatique avant l'application.
      */
-    public function applyUpdate(string $downloadUrl): array
+    public function applyUpdate(string $downloadUrl, ?string $expectedSha256 = null): array
     {
         // 1) Backup
         try {
@@ -92,12 +94,22 @@ class UpdateService
         $zipPath = $tmpDir . '/update.zip';
         $ctx = stream_context_create([
             'http' => ['timeout' => 120, 'user_agent' => 'Fronote/' . $this->currentVersion],
+            'ssl'  => ['verify_peer' => true, 'verify_peer_name' => true],
         ]);
         $content = @file_get_contents($downloadUrl, false, $ctx);
         if ($content === false) {
             return ['success' => false, 'error' => 'Échec du téléchargement.'];
         }
         file_put_contents($zipPath, $content);
+
+        // 2b) Vérification d'intégrité
+        if ($expectedSha256 !== null) {
+            $actualSha256 = hash_file('sha256', $zipPath);
+            if (!hash_equals($expectedSha256, $actualSha256)) {
+                @unlink($zipPath);
+                return ['success' => false, 'error' => 'Checksum SHA-256 invalide — archive corrompue ou altérée.'];
+            }
+        }
 
         // 3) Extraire dans un dossier temporaire
         $extractDir = $tmpDir . '/update_extract';
@@ -127,7 +139,7 @@ class UpdateService
         }
 
         // 5) Copier les fichiers (sans écraser .env, storage/, uploads/)
-        $protected = ['.env', 'storage', 'uploads', 'install.lock', 'logs'];
+        $protected = ['.env', 'storage', 'uploads', 'install.lock', 'logs', 'vendor', 'node_modules', '.git'];
         $this->copyDirectory($sourceDir, $this->basePath, $protected);
 
         // 6) Nettoyage
@@ -159,6 +171,17 @@ class UpdateService
     }
 
     // ─── Helpers privés ─────────────────────────────────────────────
+
+    /**
+     * Parses "SHA256: <hex>" from the release body (Fronote release convention).
+     */
+    private function parseChecksumFromBody(string $body): ?string
+    {
+        if (preg_match('/SHA256:\s*([a-f0-9]{64})/i', $body, $m)) {
+            return strtolower($m[1]);
+        }
+        return null;
+    }
 
     private function fetchReleases(): array
     {
@@ -193,6 +216,9 @@ class UpdateService
         );
 
         foreach ($items as $item) {
+            // Skip symlinks to prevent escaping outside the project root
+            if ($item->isLink()) continue;
+
             $relative = substr($item->getPathname(), strlen($src) + 1);
             $relative = str_replace('\\', '/', $relative);
 

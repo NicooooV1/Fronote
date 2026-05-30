@@ -20,3 +20,9 @@ storage/maintenance.json
 .gitignore
 API/
 modules/*/uploads
+
+# Marketplace : clés privées ne doivent JAMAIS être committées.
+# Les .pub des Root CA restent dans le repo (clés publiques).
+config/marketplace/keys/
+*.sk
+dist/*.fmod

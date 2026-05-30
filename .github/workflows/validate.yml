@@ -1,0 +1,67 @@
+name: validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: PHP syntax + JSON manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP 8.0
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0'
+          extensions: sodium, zip, json, pdo_mysql, pdo_sqlite, mbstring, openssl
+          coverage: none
+          tools: composer:v2
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress --no-dev
+
+      - name: Provision a minimal .env for bootstrap
+        run: cp .env.ci.example .env
+
+      - name: PHP -l on all PHP files
+        run: |
+          set -e
+          find . -path ./vendor -prune -o -name '*.php' -print | while read -r f; do
+            php -l "$f" >/dev/null
+          done
+
+      - name: Validate every module.json
+        run: php tests/validate_manifests.php
+
+      - name: FmodService end-to-end self-test (keygen → cert → build → verify)
+        run: php tests/fmod_selftest.php
+
+      - name: FmodService unit tests (pure, no DB)
+        run: php tests/fmod_unit.php
+
+      - name: Multi-establishment scoping lint
+        run: php tests/scoping_lint.php
+
+  module-sdk:
+    name: ModuleSDK smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0'
+          extensions: sodium, zip, json, pdo_mysql, pdo_sqlite, mbstring
+          tools: composer:v2
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress --no-dev
+      - name: Provision a minimal .env for bootstrap
+        run: cp .env.ci.example .env
+      - name: Module discovery + manifest validation
+        run: php tests/module_sdk_smoke.php

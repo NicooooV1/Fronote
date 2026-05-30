@@ -18,7 +18,14 @@ define('FRONOTE_WEBHOOK_ENDPOINT', true);
 
 header('Content-Type: application/json');
 
-$rawPayload = (string) file_get_contents('php://input');
+// Reject oversized payloads before reading to prevent memory exhaustion
+$contentLength = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+if ($contentLength > 1_048_576) { // 1 MB max
+    http_response_code(413);
+    echo json_encode(['error' => 'Payload too large']);
+    exit;
+}
+$rawPayload = (string) file_get_contents('php://input', false, null, 0, 1_048_576);
 $signature  = $_SERVER['HTTP_X_HUB_SIGNATURE_256'] ?? '';
 $event      = $_SERVER['HTTP_X_GITHUB_EVENT']      ?? '';
 

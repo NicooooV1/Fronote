@@ -82,7 +82,7 @@ class TranslationService
         // 2. Préférence utilisateur en base
         if (!empty($_SESSION['user']['id']) && !empty($_SESSION['user']['type'])) {
             try {
-                $pdo = \getPDO();
+                $pdo = app('db')->getConnection();
                 $stmt = $pdo->prepare("SELECT langue FROM user_settings WHERE user_id = ? AND user_type = ? LIMIT 1");
                 $stmt->execute([$_SESSION['user']['id'], $_SESSION['user']['type']]);
                 $dbLocale = $stmt->fetchColumn();
@@ -103,7 +103,7 @@ class TranslationService
 
         // 4. Défaut établissement
         try {
-            $pdo = \getPDO();
+            $pdo = app('db')->getConnection();
             $stmt = $pdo->query("SELECT default_locale FROM etablissements LIMIT 1");
             $etabLocale = $stmt->fetchColumn();
             if ($etabLocale && in_array($etabLocale, $this->supportedLocales, true)) {

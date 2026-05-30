@@ -33,14 +33,15 @@ class WebSocket {
             return ['success' => false, 'message' => 'API_SECRET missing'];
         }
         
-        $data['secret'] = self::$apiSecret;
-        
         $ch = curl_init(self::$wsUrl . $endpoint);
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode($data),
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . self::$apiSecret,
+            ],
             CURLOPT_TIMEOUT => 2, // Timeout court pour ne pas bloquer
             CURLOPT_CONNECTTIMEOUT => 1
         ]);

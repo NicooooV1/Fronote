@@ -160,7 +160,15 @@ if (!function_exists('hasPermission')) {
 
 /**
  * Fonctions legacy de vérification de permissions par module.
- * @deprecated Utiliser hasPermission('module.action') ou canModule('module', 'action') à la place.
+ * @deprecated DEPUIS 3.0 — utiliser :
+ *   - `app('rbac')->can($userId, $userType, 'module', 'action')` pour une vérif fine,
+ *   - ou `hasPermission('module.action')` côté code applicatif.
+ *
+ * Conservées pour compatibilité ascendante : elles doublent la matrice RBAC dynamique
+ * (table `module_permissions`). Risque connu : un admin qui décoche `can_edit` dans la
+ * matrice peut être contredit par une de ces fonctions si la logique du module n'utilise
+ * que `canManageX()` au lieu de la matrice. Toute nouvelle écriture DOIT passer par
+ * `app('rbac')->can()` avec module + action explicites.
  *
  * Définies inline (pas d'eval, pas de cache fichier) pour éviter les problèmes de
  * permissions sur storage/cache/ entre l'utilisateur d'install et www-data.
@@ -206,6 +214,62 @@ if (!function_exists('isPersonnelVS')) {
     function isPersonnelVS() { return getUserRole() === 'vie_scolaire'; }
 }
 
+if (!function_exists('parentOwnsEleve')) {
+    /**
+     * Helper anti-IDOR : vérifie que l'élève passé en argument fait partie des enfants
+     * rattachés au parent (table `parent_eleve` OU `eleve_parents` selon le schéma).
+     *
+     * À appeler dans toute page de détail (`?id=`/`?eleve=`) où le rôle "parent" peut
+     * arriver, avant d'afficher des données rattachées à un élève. Empêche l'IDOR du
+     * type "parent qui change l'ID dans l'URL pour voir un autre enfant".
+     *
+     * @return bool true si le parent est bien rattaché à cet élève ; false sinon
+     *              ou si l'utilisateur n'est pas un parent.
+     */
+    function parentOwnsEleve(int $parentId, int $eleveId): bool
+    {
+        try {
+            $pdo = getPDO();
+            // Schéma observé sur la base : `parent_eleve` (parent_id, eleve_id) OU
+            // `eleve_parents` (parent_id, eleve_id). On teste les deux.
+            foreach (['parent_eleve', 'eleve_parents'] as $table) {
+                try {
+                    $stmt = $pdo->prepare("SELECT 1 FROM `{$table}` WHERE parent_id = ? AND eleve_id = ? LIMIT 1");
+                    $stmt->execute([$parentId, $eleveId]);
+                    if ($stmt->fetchColumn()) return true;
+                } catch (\Throwable $e) { /* table absente : on essaie l'autre */ }
+            }
+            return false;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+}
+
+if (!function_exists('assertUserCanReadEleve')) {
+    /**
+     * Helper consolidé : retourne true si l'utilisateur courant peut consulter
+     * les données rattachées à $eleveId.
+     *
+     *  - admin / vie_scolaire / professeur : OK (RBAC peut affiner ensuite).
+     *  - eleve : OK si c'est lui-même.
+     *  - parent : OK si l'élève est l'un de ses enfants (cf. parentOwnsEleve).
+     *
+     * À utiliser systématiquement avant de servir notes / bulletins / absences /
+     * cahier de textes / etc. d'un élève précis identifié par l'URL.
+     */
+    function assertUserCanReadEleve(int $eleveId): bool
+    {
+        $user = getCurrentUser();
+        if (!$user) return false;
+        $role = getUserRole();
+        if (in_array($role, ['administrateur', 'vie_scolaire', 'professeur'], true)) return true;
+        if ($role === 'eleve')  return (int) $user['id'] === $eleveId;
+        if ($role === 'parent') return parentOwnsEleve((int) $user['id'], $eleveId);
+        return false;
+    }
+}
+
 // ==================== RBAC ====================
 
 if (!function_exists('requireRole')) {
@@ -216,7 +280,13 @@ if (!function_exists('requireRole')) {
 	function requireRole(string ...$roles) {
 		$userRole = getUserRole();
 		if (!in_array($userRole, $roles, true)) {
-			$_SESSION['error_message'] = 'Vous n\'avez pas les droits nécessaires.';
+			// Message explicite avec rôle requis + rôle actuel — sinon l'admin se
+			// retrouve avec une redirection muette et aucune trace utile.
+			$wanted  = implode(', ', $roles);
+			$current = $userRole ?: '(non authentifié)';
+			$script  = $_SERVER['SCRIPT_NAME'] ?? '?';
+			$_SESSION['error_message'] = "Accès refusé sur {$script} : rôle requis = [{$wanted}], rôle actuel = {$current}.";
+			error_log("[requireRole] denied script={$script} role={$current} expected=[{$wanted}]");
 			$base = defined('BASE_URL') ? BASE_URL : '';
 			header('Location: ' . $base . '/accueil/accueil.php');
 			exit;

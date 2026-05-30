@@ -11,10 +11,19 @@ class SallesMaterielService
         $this->pdo = $pdo;
     }
 
+    /** Établissement courant ou null. */
+    private function etabId(): ?int
+    {
+        try { return \API\Core\EstablishmentContext::id(); }
+        catch (\Throwable $e) { return null; }
+    }
+
     /* ───── RÉSERVATIONS SALLES ───── */
 
     public function getReservations(array $filters = []): array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $sql = "SELECT rs.*, s.nom AS salle_nom, s.capacite,
                        COALESCE(
                            (SELECT CONCAT(prenom, ' ', nom) FROM professeurs WHERE id = rs.reserveur_id),
@@ -23,8 +32,8 @@ class SallesMaterielService
                        ) AS reserveur_nom
                 FROM reservations_salles rs
                 JOIN salles s ON rs.salle_id = s.id
-                WHERE 1=1";
-        $params = [];
+                WHERE s.etablissement_id = ?";
+        $params = [$etabId];
         if (!empty($filters['date'])) { $sql .= ' AND rs.date_reservation = ?'; $params[] = $filters['date']; }
         if (!empty($filters['salle_id'])) { $sql .= ' AND rs.salle_id = ?'; $params[] = $filters['salle_id']; }
         if (!empty($filters['statut'])) { $sql .= ' AND rs.statut = ?'; $params[] = $filters['statut']; }

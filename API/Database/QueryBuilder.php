@@ -91,6 +91,8 @@ class QueryBuilder
     {
         $this->assertValidIdentifier($column);
         if (empty($values)) {
+            // Empty IN() can never match any row — add a permanent false condition
+            $this->wheres[] = ['type' => 'raw', 'sql' => '1=0', 'boolean' => 'and'];
             return $this;
         }
 
@@ -229,6 +231,9 @@ class QueryBuilder
                 case 'not_null':
                     $conditions[] = $where['column'] . ' IS NOT NULL';
                     break;
+                case 'raw':
+                    $conditions[] = $where['sql'];
+                    break;
             }
         }
 
@@ -322,12 +327,14 @@ class QueryBuilder
      */
     public function delete()
     {
-        $sql = 'DELETE FROM `' . $this->table . '`';
-
-        if (!empty($this->wheres)) {
-            $sql .= ' WHERE ' . $this->buildWhereClause();
+        if (empty($this->wheres)) {
+            throw new \RuntimeException(
+                'QueryBuilder::delete() called without a WHERE condition — would delete the entire table. '
+                . 'Add at least one where() clause or use whereRaw("1") to explicitly confirm.'
+            );
         }
 
+        $sql = 'DELETE FROM `' . $this->table . '` WHERE ' . $this->buildWhereClause();
         $stmt = $this->pdo->prepare($sql);
         return $stmt->execute($this->bindings);
     }

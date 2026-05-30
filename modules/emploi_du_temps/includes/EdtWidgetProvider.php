@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace EmploiDuTemps\Widgets;
 
-use API\Contracts\WidgetDataProvider;
+use API\Contracts\AbstractWidgetProvider;
 
-class EdtWidgetProvider implements WidgetDataProvider
+/**
+ * @global-scope Widget scopé implicitement par user_id (le user appartient à un
+ * seul établissement, donc ses entités le sont aussi).
+ */
+class EdtWidgetProvider extends AbstractWidgetProvider
 {
     private const JOURS = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
 

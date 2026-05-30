@@ -20,7 +20,7 @@
 > - **[docs/widget-api.md](docs/widget-api.md)** — API widgets dashboard
 > - **[docs/feature-specs.md](docs/feature-specs.md)** — Cahier des charges modules
 
-Fronote est un système de gestion scolaire en **PHP vanilla** (sans framework) : 60 modules, 200+ tables SQL, architecture IoC/PSR-4, API centralisée, WebSocket temps réel, design system tokens + thèmes (classic/glass).
+Fronote est un système de gestion scolaire en **PHP vanilla** (sans framework) : ~59 modules, ~240 tables SQL, architecture IoC/PSR-4, API centralisée, WebSocket temps réel, design system tokens + thèmes (classic/glass).
 
 ---
 
@@ -695,15 +695,19 @@ Schéma **modulaire** :
 ### Vue unifiée v_users
 
 ```sql
-CREATE VIEW v_users AS
-  SELECT id, nom, prenom, identifiant, mot_de_passe, mail, 'administrateur' AS type, actif FROM administrateurs
-  UNION ALL SELECT id, nom, prenom, identifiant, mot_de_passe, mail, 'professeur', actif FROM professeurs
-  UNION ALL SELECT id, nom, prenom, identifiant, mot_de_passe, mail, 'eleve', actif FROM eleves
-  UNION ALL SELECT id, nom, prenom, identifiant, mot_de_passe, mail, 'parent', actif FROM parents
-  UNION ALL SELECT id, nom, prenom, identifiant, mot_de_passe, mail, 'personnel', actif FROM personnel;
+CREATE OR REPLACE VIEW `v_users` AS
+  SELECT id, prenom, nom, CONCAT(prenom,' ',nom) AS nom_complet, 'eleve'         AS user_type FROM eleves
+  UNION ALL
+  SELECT id, prenom, nom, CONCAT(prenom,' ',nom), 'parent'         FROM parents
+  UNION ALL
+  SELECT id, prenom, nom, CONCAT(prenom,' ',nom), 'professeur'     FROM professeurs
+  UNION ALL
+  SELECT id, prenom, nom, CONCAT(prenom,' ',nom), 'vie_scolaire'   FROM vie_scolaire
+  UNION ALL
+  SELECT id, prenom, nom, CONCAT(prenom,' ',nom), 'administrateur' FROM administrateurs;
 ```
 
-Utilisée par `AuthManager` pour résoudre les logins sans connaître le type d'utilisateur.
+Vue de résumé pour l'affichage et les jointures cross-type. **L'authentification** elle-même n'utilise pas cette vue : `UserProvider` interroge directement les tables typées (qui portent `identifiant`, `mot_de_passe`, `etablissement_id`).
 
 ---
 
@@ -1167,4 +1171,4 @@ Fronote is licensed under the MIT License.
 
 ---
 
-*Fronote v2.0.0 "Nova" — PHP vanilla · PSR-4 · IoC · 60 modules · 200+ tables · 8 locales · WebSocket · Design system tokens*
+*Fronote v2.1.0 "Modular" — PHP vanilla · PSR-4 · IoC · ~59 modules · ~240 tables · 8 locales · WebSocket · Design system tokens*

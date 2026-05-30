@@ -18,12 +18,20 @@ set_time_limit(300);
 // ─── Protection : déjà installé ? ───────────────────────────────────────────
 $installDir = __DIR__;
 $lockFile   = $installDir . '/install.lock';
-if (file_exists($lockFile)) {
+$envFilePath = $installDir . '/.env';
+$envIsUsable = is_file($envFilePath) && is_readable($envFilePath) && filesize($envFilePath) > 10;
+$recoveryWarning = '';
+
+if (file_exists($lockFile) && $envIsUsable) {
     http_response_code(403);
     die('<div style="font-family:Arial;max-width:600px;margin:80px auto;background:#f8d7da;color:#721c24;padding:30px;border-radius:8px;text-align:center;">
         <h2>🔒 Installation déjà effectuée</h2>
         <p>Supprimez <code>install.lock</code> pour relancer l\'installateur.</p>
     </div>');
+}
+
+if (file_exists($lockFile) && !$envIsUsable) {
+    $recoveryWarning = 'Le fichier install.lock existe, mais .env est introuvable ou illisible. L\'installateur reste accessible pour reparer la configuration.';
 }
 
 // ─── Vérification version PHP ────────────────────────────────────────────────
@@ -60,7 +68,6 @@ function isLocalIP(string $ip): bool {
 }
 
 $allowedIPs = ['127.0.0.1', '::1'];
-$envFilePath = $installDir . '/.env';
 if (file_exists($envFilePath) && is_readable($envFilePath)) {
     $envRaw = file_get_contents($envFilePath);
     if (preg_match('/ALLOWED_INSTALL_IP\s*=\s*(.+)/', $envRaw, $m)) {
@@ -331,7 +338,41 @@ function writeEnvFile(string $dir, array $c): bool {
         "# Sauvegardes",
         "BACKUP_RETENTION=30",
     ];
-    return @file_put_contents($dir . '/.env', implode("\n", $lines), LOCK_EX) !== false;
+    $path    = $dir . '/.env';
+    $tmpPath = $path . '.' . bin2hex(random_bytes(4)) . '.tmp';
+    $content = implode("\n", $lines);
+
+    // Écriture atomique : on écrit dans un fichier tmp à côté, on fsync, puis rename.
+    // file_put_contents ne fsync pas — un crash entre l'écriture et la persistance
+    // sur disque pouvait laisser .env vide ou inexistant.
+    $fh = fopen($tmpPath, 'wb');
+    if (!is_resource($fh)) {
+        $err = error_get_last();
+        $detail = is_array($err) && !empty($err['message']) ? $err['message'] : 'cause inconnue';
+        throw new RuntimeException("Impossible d'ouvrir {$tmpPath} en écriture : {$detail}. Vérifiez que le répertoire est accessible en écriture par l'utilisateur du serveur web.");
+    }
+    $written = fwrite($fh, $content);
+    if ($written === false) {
+        fclose($fh);
+        @unlink($tmpPath);
+        throw new RuntimeException("Échec d'écriture sur {$tmpPath}.");
+    }
+    if ($written < 10) {
+        fclose($fh);
+        @unlink($tmpPath);
+        throw new RuntimeException("Le fichier .env est tronqué après écriture ({$written} octets).");
+    }
+    @fflush($fh);
+    if (function_exists('fdatasync')) { @fdatasync($fh); } else { @fsync($fh); }
+    fclose($fh);
+
+    if (!@rename($tmpPath, $path)) {
+        $err = error_get_last();
+        $detail = is_array($err) && !empty($err['message']) ? $err['message'] : 'cause inconnue';
+        @unlink($tmpPath);
+        throw new RuntimeException("Impossible de renommer {$tmpPath} en {$path} : {$detail}.");
+    }
+    return true;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -518,7 +559,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // 5b — Fichiers de protection
             $protections = [
                 '.htaccess' => implode("\n", [
-                    '<FilesMatch "^(\\.env|install\\.php|install\\.lock)$">',
+                    '<FilesMatch "^(\\.env|install\\.lock)$">',
                     '  Order allow,deny', '  Deny from all', '</FilesMatch>',
                     '<FilesMatch "\\.(ini|conf|bak|sql|db)$">',
                     '  Order allow,deny', '  Deny from all', '</FilesMatch>',
@@ -765,16 +806,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $log[] = ['warn', 'Audit : ' . $e->getMessage()];
             }
 
-            // 5i — Fichier install.lock
-            file_put_contents($lockFile, json_encode([
+            // 5i — Sécuriser puis vérifier .env avant de verrouiller l'installation.
+            // 0640 plutôt que 0400 : si le user qui a lancé install diffère du user PHP-FPM/Apache
+            // (cas fréquent : install via navigateur en www-data, puis runtime en php-fpm),
+            // le mode owner-only rend .env illisible. 0640 garde la confidentialité (le fichier
+            // est déjà protégé en HTTP par le .htaccess) tout en laissant le groupe lire.
+            @chmod($envFilePath, $ap['appEnv'] === 'production' ? 0640 : 0660);
+            clearstatcache(true, $envFilePath);
+            if (!is_file($envFilePath) || !is_readable($envFilePath) || filesize($envFilePath) <= 10) {
+                $size = is_file($envFilePath) ? filesize($envFilePath) : 0;
+                $owner = function_exists('posix_getpwuid') && file_exists($envFilePath)
+                    ? (posix_getpwuid(fileowner($envFilePath))['name'] ?? '?') : '?';
+                throw new RuntimeException(
+                    "Le fichier .env est introuvable ou illisible après écriture (taille={$size}, owner={$owner}). " .
+                    "Cause habituelle : l'utilisateur du serveur web n'a pas les droits sur {$installDir}. " .
+                    "Vérifiez les permissions du dossier (775) et son propriétaire."
+                );
+            }
+            $log[] = ['ok', 'Fichier .env verifie'];
+
+            // 5j — Fichier install.lock (écriture atomique : tmp + fsync + rename).
+            // Garantit que install.lock n'existe sur disque que si .env a été flushé,
+            // évitant l'état orphelin "lock présent / .env manquant" en cas de crash.
+            $tmpLock = $lockFile . '.' . bin2hex(random_bytes(4)) . '.tmp';
+            $lockPayload = json_encode([
                 'installed_at' => date('c'),
                 'version'      => '1.0.0',
                 'php'          => PHP_VERSION,
-            ], JSON_PRETTY_PRINT), LOCK_EX);
+            ], JSON_PRETTY_PRINT);
+            $lh = fopen($tmpLock, 'wb');
+            if (!is_resource($lh)) {
+                throw new RuntimeException("Impossible de créer {$tmpLock}");
+            }
+            if (fwrite($lh, $lockPayload) === false) {
+                fclose($lh);
+                @unlink($tmpLock);
+                throw new RuntimeException("Échec d'écriture sur {$tmpLock}");
+            }
+            // Force le flush kernel→disque avant le rename.
+            @fflush($lh);
+            if (function_exists('fdatasync')) {
+                @fdatasync($lh);
+            } else {
+                @fsync($lh);
+            }
+            fclose($lh);
+            // Petit garde-fou : .env doit toujours exister à ce stade — si supprimé entre
+            // l'étape 5i et maintenant, on refuse de créer install.lock pour éviter
+            // l'état orphelin que le recovery devra ensuite démêler.
+            clearstatcache(true, $envFilePath);
+            if (!is_file($envFilePath) || filesize($envFilePath) <= 10) {
+                @unlink($tmpLock);
+                throw new RuntimeException(".env disparu entre la vérification et la création de install.lock — refus de verrouiller.");
+            }
+            if (!@rename($tmpLock, $lockFile)) {
+                @unlink($tmpLock);
+                throw new RuntimeException("Impossible de renommer {$tmpLock} en {$lockFile}");
+            }
             $log[] = ['ok', 'Fichier install.lock créé'];
-
-            // 5j — Sécuriser .env
-            @chmod($installDir . '/.env', $ap['appEnv'] === 'production' ? 0400 : 0600);
 
             $inst['log']       = $log;
             $inst['installed'] = true;
@@ -926,6 +1015,10 @@ code{background:#edf2f7;padding:1px 6px;border-radius:3px;font-size:.88em;font-f
 
 <?php if ($success): ?>
 <div class="msg msg-success"><?= htmlspecialchars($success) ?></div>
+<?php endif; ?>
+
+<?php if ($recoveryWarning): ?>
+<div class="msg msg-warn"><?= htmlspecialchars($recoveryWarning) ?></div>
 <?php endif; ?>
 
 

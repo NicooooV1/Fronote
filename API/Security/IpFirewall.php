@@ -146,8 +146,8 @@ class IpFirewall
      */
     public function isWhitelisted(string $ip): bool
     {
-        // IPs locales toujours whitelistées
-        $local = ['127.0.0.1', '::1', 'localhost'];
+        // IPs locales toujours whitelistées (REMOTE_ADDR est toujours une IP, jamais un hostname)
+        $local = ['127.0.0.1', '::1'];
         if (in_array($ip, $local, true)) return true;
 
         // Whitelist configurable via .env
@@ -181,11 +181,11 @@ class IpFirewall
     {
         $count = 0;
         try {
-            $stmt = $this->pdo->prepare("DELETE FROM ip_blocklist WHERE expires_at IS NOT NULL AND expires_at < NOW()");
+            $stmt = $this->pdo->prepare("DELETE FROM ip_blocklist WHERE expires_at IS NOT NULL AND expires_at < NOW() LIMIT 1000");
             $stmt->execute();
             $count += $stmt->rowCount();
 
-            $stmt = $this->pdo->prepare("DELETE FROM api_rate_limits WHERE endpoint = 'auth_failure' AND created_at < DATE_SUB(NOW(), INTERVAL 1 DAY)");
+            $stmt = $this->pdo->prepare("DELETE FROM api_rate_limits WHERE endpoint = 'auth_failure' AND created_at < DATE_SUB(NOW(), INTERVAL 1 DAY) LIMIT 1000");
             $stmt->execute();
             $count += $stmt->rowCount();
         } catch (\Throwable $e) { /* silent */ }

@@ -58,15 +58,39 @@ class UserProvider
             return null;
         }
 
-        // Lookup by email OR identifiant, scoped to current establishment
-        $etabId = \API\Core\EstablishmentContext::id();
-        $stmt = $this->pdo->prepare("
-            SELECT id, nom, prenom, mail AS email, mot_de_passe, etablissement_id
-            FROM `{$table}`
-            WHERE (mail = ? OR identifiant = ?) AND etablissement_id = ?
-            LIMIT 1
-        ");
-        $stmt->execute([$login, $login, $etabId]);
+        // Lookup by email OR identifiant. Au moment du login l'établissement
+        // courant n'est pas encore résolu (chicken-and-egg) → si EstablishmentContext::id()
+        // refuse de défaut (multi-établissement, pas de session), on cherche cross-établissement
+        // puis le contexte sera fixé après login depuis user.etablissement_id.
+        //
+        // Si l'appelant fournit explicitement un `etablissement_id` (résolution d'ambiguïté
+        // par le sélecteur de profil), il prime sur le contexte ambiant.
+        $etabId = null;
+        if (isset($credentials['etablissement_id'])) {
+            $etabId = (int) $credentials['etablissement_id'];
+            if ($etabId <= 0) $etabId = null;
+        }
+        if ($etabId === null) {
+            try { $etabId = \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { $etabId = null; }
+        }
+
+        if ($etabId !== null) {
+            $stmt = $this->pdo->prepare(
+                "SELECT id, nom, prenom, mail AS email, mot_de_passe, etablissement_id
+                 FROM `{$table}`
+                 WHERE (mail = ? OR identifiant = ?) AND etablissement_id = ?
+                 LIMIT 1"
+            );
+            $stmt->execute([$login, $login, $etabId]);
+        } else {
+            $stmt = $this->pdo->prepare(
+                "SELECT id, nom, prenom, mail AS email, mot_de_passe, etablissement_id
+                 FROM `{$table}`
+                 WHERE (mail = ? OR identifiant = ?)
+                 LIMIT 1"
+            );
+            $stmt->execute([$login, $login]);
+        }
 
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($user) {
@@ -104,17 +128,33 @@ class UserProvider
             'parent'         => 'parents',
         ];
 
-        $etabId = \API\Core\EstablishmentContext::id();
+        // Au login le contexte d'établissement n'est pas encore fixé : si
+        // EstablishmentContext::id() refuse de défaut (multi-établissement, pas de
+        // session), on cherche cross-établissement — AuthManager fixera le contexte
+        // ensuite à partir de user.etablissement_id.
+        $etabId = null;
+        try { $etabId = \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { $etabId = null; }
+
         $found = [];
         foreach ($types as $type => $table) {
             try {
-                $stmt = $this->pdo->prepare("
-                    SELECT id, nom, prenom, mail AS email, mot_de_passe, identifiant, etablissement_id
-                    FROM `{$table}`
-                    WHERE (mail = ? OR identifiant = ?) AND etablissement_id = ?
-                    LIMIT 1
-                ");
-                $stmt->execute([$login, $login, $etabId]);
+                if ($etabId !== null) {
+                    $stmt = $this->pdo->prepare(
+                        "SELECT id, nom, prenom, mail AS email, mot_de_passe, identifiant, etablissement_id
+                         FROM `{$table}`
+                         WHERE (mail = ? OR identifiant = ?) AND etablissement_id = ?
+                         LIMIT 1"
+                    );
+                    $stmt->execute([$login, $login, $etabId]);
+                } else {
+                    $stmt = $this->pdo->prepare(
+                        "SELECT id, nom, prenom, mail AS email, mot_de_passe, identifiant, etablissement_id
+                         FROM `{$table}`
+                         WHERE (mail = ? OR identifiant = ?)
+                         LIMIT 1"
+                    );
+                    $stmt->execute([$login, $login]);
+                }
                 $user = $stmt->fetch(PDO::FETCH_ASSOC);
                 if ($user) {
                     $user['type'] = $type;

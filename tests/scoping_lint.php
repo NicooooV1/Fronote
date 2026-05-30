@@ -1,0 +1,58 @@
+<?php
+/**
+ * Linter CI : tout Service / Repository / WidgetProvider de module métier doit
+ * scoper ses requêtes par etablissement_id (ou explicitement opter pour un état
+ * global via la marque @global-scope dans son docblock).
+ *
+ * Le linter est volontairement simple : il scanne `modules/<m>/includes/*Service.php`,
+ * `*Repository.php`, `*Provider.php` et vérifie la présence d'un des marqueurs.
+ * Faux positifs : whitelist explicite ci-dessous pour les services qui sont par
+ * conception cross-établissement (marketplace, notifications globales).
+ *
+ * Exit 0 si tout est OK, 1 sinon. À ajouter à .github/workflows/validate.yml.
+ */
+
+declare(strict_types=1);
+
+$root = dirname(__DIR__);
+
+/** Services dont l'absence de scope est volontaire (registre global, etc.). */
+$whitelist = [
+    'modules/marketplace/includes',          // marketplace côté instance = global
+    'modules/onboarding',                    // assistant de mise en route
+];
+
+$markers = ['etablissement_id', 'EstablishmentContext', '@global-scope'];
+
+$paths = [];
+foreach (['*Service.php', '*Repository.php', '*Provider.php'] as $suffix) {
+    foreach (glob("{$root}/modules/*/includes/{$suffix}") ?: [] as $p) {
+        $paths[] = $p;
+    }
+}
+
+$problems = [];
+foreach ($paths as $abs) {
+    $rel = str_replace('\\', '/', substr($abs, strlen($root) + 1));
+    foreach ($whitelist as $allowed) {
+        if (str_starts_with($rel, $allowed)) continue 2;
+    }
+    $content = (string) @file_get_contents($abs);
+    $matched = false;
+    foreach ($markers as $m) {
+        if (strpos($content, $m) !== false) { $matched = true; break; }
+    }
+    if (!$matched) {
+        $problems[] = $rel;
+    }
+}
+
+if (!empty($problems)) {
+    echo "Services/Repositories/Providers de module qui n'évoquent jamais l'établissement courant :\n";
+    foreach ($problems as $p) echo "  - {$p}\n";
+    echo "\nAjoutez \\API\\Core\\EstablishmentContext::id() là où ça filtre, ou marquez\n";
+    echo "le fichier @global-scope dans son docblock si l'absence est volontaire.\n";
+    exit(1);
+}
+
+echo count($paths) . " service(s)/repository/provider(s) — scope OK.\n";

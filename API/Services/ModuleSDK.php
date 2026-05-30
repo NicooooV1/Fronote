@@ -190,15 +190,19 @@ class ModuleSDK
         }
 
         // Resolve sidebar_sort from module.json sidebar.sort_order
-        $sidebarSort = $manifest['sidebar']['sort_order'] ?? 100;
+        $sidebarSort   = $manifest['sidebar']['sort_order'] ?? 100;
+        $sidebarHidden = !empty($manifest['sidebar']['hidden']) ? 1 : 0;
 
         $isCore = !empty($manifest['core']) ? 1 : 0;
+
+        // Auto-heal : ajoute la colonne sidebar_hidden sur les bases qui datent d'avant son introduction.
+        $this->ensureModulesConfigColumns();
 
         // Upsert dans modules_config.
         // enabled : à la 1re insertion, core = activé, autres = désactivés (activation manuelle
         // via l'admin qui injecte+vérifie le SQL). ON DUPLICATE ne TOUCHE PAS enabled (préserve le choix admin).
-        $sql = "INSERT INTO modules_config (module_key, label, description, icon, category, is_core, enabled, establishment_types, route_path, sidebar_sort)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        $sql = "INSERT INTO modules_config (module_key, label, description, icon, category, is_core, enabled, establishment_types, route_path, sidebar_sort, sidebar_hidden)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE
                     label = VALUES(label),
                     description = VALUES(description),
@@ -206,7 +210,8 @@ class ModuleSDK
                     category = VALUES(category),
                     establishment_types = VALUES(establishment_types),
                     route_path = COALESCE(VALUES(route_path), route_path),
-                    sidebar_sort = VALUES(sidebar_sort)";
+                    sidebar_sort = VALUES(sidebar_sort),
+                    sidebar_hidden = VALUES(sidebar_hidden)";
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
@@ -220,6 +225,7 @@ class ModuleSDK
             isset($manifest['establishment_types']) ? json_encode($manifest['establishment_types']) : null,
             $routePath,
             (int) $sidebarSort,
+            $sidebarHidden,
         ]);
 
         // Synchroniser les widgets
@@ -613,7 +619,11 @@ class ModuleSDK
                 try {
                     $this->pdo->exec($stmt);
                 } catch (\Throwable $e) {
-                    $errors[] = $e->getMessage();
+                    $code = $e instanceof \PDOException ? (int) ($e->errorInfo[1] ?? 0) : 0;
+                    // 1050 = table already exists, 1060 = duplicate column — safe to ignore on re-activation
+                    if ($code !== 1050 && $code !== 1060) {
+                        $errors[] = $e->getMessage();
+                    }
                 }
             }
         } finally {
@@ -637,6 +647,12 @@ class ModuleSDK
      * @return string[]
      */
     private function splitSqlStatements(string $sql): array
+    {
+        return \API\Core\SqlSplitter::split($sql);
+    }
+
+    /** @deprecated kept for reference only — logic now in API\Core\SqlSplitter */
+    private function splitSqlStatementsLegacy(string $sql): array
     {
         $statements = [];
         $buffer = '';
@@ -761,11 +777,97 @@ class ModuleSDK
         }
     }
 
+    /** Vrai une fois l'ENUM field_type élargi sur la base déjà installée. */
+    private bool $settingsTypeEnumEnsured = false;
+
+    /** Vrai une fois sidebar_hidden ajoutée à modules_config. */
+    private bool $modulesConfigColsEnsured = false;
+
+    /**
+     * Auto-heal : ajoute les colonnes optionnelles de modules_config qui ont été
+     * introduites après la version initiale du schéma. Idempotent ; bool de process
+     * + `IF NOT EXISTS` MySQL 8 garantissent l'absence de retry inutile.
+     */
+    private function ensureModulesConfigColumns(): void
+    {
+        if ($this->modulesConfigColsEnsured) return;
+        $this->modulesConfigColsEnsured = true;
+        try {
+            $this->pdo->exec(
+                "ALTER TABLE `modules_config`
+                 ADD COLUMN IF NOT EXISTS `sidebar_hidden` TINYINT(1) NOT NULL DEFAULT 0
+                 COMMENT 'Module installé mais masqué de la navigation'"
+            );
+        } catch (\Throwable $e) {
+            // MariaDB < 10.0 ou MySQL < 8 : pas de IF NOT EXISTS → fallback test+add.
+            try {
+                $exists = (int) $this->pdo->query(
+                    "SELECT COUNT(*) FROM information_schema.COLUMNS
+                     WHERE TABLE_SCHEMA = DATABASE()
+                       AND TABLE_NAME = 'modules_config'
+                       AND COLUMN_NAME = 'sidebar_hidden'"
+                )->fetchColumn();
+                if ($exists === 0) {
+                    $this->pdo->exec(
+                        "ALTER TABLE `modules_config`
+                         ADD COLUMN `sidebar_hidden` TINYINT(1) NOT NULL DEFAULT 0"
+                    );
+                }
+            } catch (\Throwable $e2) { /* table absente : ignore */ }
+        }
+    }
+
+    /**
+     * Auto-heal : élargit l'ENUM module_settings_schema.field_type sur les bases
+     * créées avec l'ancien schéma restreint ('text','number','checkbox','select','textarea','color').
+     * Persisté via une table schema_meta (clé/valeur) pour ne pas relancer l'ALTER à chaque
+     * requête une fois appliqué — le bool de process empêchait seulement les répétitions
+     * intra-request.
+     */
+    private function ensureSettingsTypeEnum(): void
+    {
+        if ($this->settingsTypeEnumEnsured) return;
+        $this->settingsTypeEnumEnsured = true;
+
+        // Garde-fou persistant : schema_meta. Création idempotente.
+        try {
+            $this->pdo->exec(
+                "CREATE TABLE IF NOT EXISTS `schema_meta` (
+                    `meta_key` VARCHAR(100) NOT NULL PRIMARY KEY,
+                    `meta_value` VARCHAR(255) NOT NULL,
+                    `applied_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+            );
+        } catch (\Throwable $e) { /* host without CREATE rights — fall back to repeating ALTER */ }
+
+        try {
+            $st = $this->pdo->prepare("SELECT 1 FROM `schema_meta` WHERE meta_key = ? LIMIT 1");
+            $st->execute(['settings_type_enum_v1']);
+            if ($st->fetchColumn()) return; // déjà appliqué
+        } catch (\Throwable $e) { /* table absent on legacy → continue with ALTER */ }
+
+        try {
+            $this->pdo->exec(
+                "ALTER TABLE `module_settings_schema`
+                 MODIFY COLUMN `field_type`
+                 ENUM('text','number','integer','checkbox','boolean','select','textarea','color','json','email','url','date','time','datetime') NOT NULL"
+            );
+            try {
+                $this->pdo->prepare("INSERT IGNORE INTO `schema_meta` (meta_key, meta_value) VALUES (?, ?)")
+                          ->execute(['settings_type_enum_v1', date('c')]);
+            } catch (\Throwable $e) { /* meta table unreachable — non-fatal */ }
+        } catch (\Throwable $e) {
+            // table absente, ENUM déjà étendu, ou permission denied → on tolère et on essaiera
+            // à nouveau au prochain boot. La requête INSERT du field qui suit reflètera l'état réel.
+        }
+    }
+
     /**
      * Synchronise les settings_schema d'un module depuis module.json vers la table module_settings_schema.
      */
     private function syncSettingsSchema(string $moduleKey, array $schema): void
     {
+        $this->ensureSettingsTypeEnum();
         $sortOrder = 0;
         foreach ($schema as $fieldKey => $fieldDef) {
             try {
@@ -779,14 +881,51 @@ class ModuleSDK
                             hint = VALUES(hint),
                             sort_order = VALUES(sort_order)";
 
+                // Les colonnes default_value / label / hint sont textuelles, mais les
+                // manifestes peuvent y mettre un bool, un tableau (label i18n
+                // {"fr":"…","en":"…"}) ou un scalaire — on normalise tout côté PHP
+                // pour éviter le bind PDO d'un array (« Array to string conversion »).
+                $toText = static function ($v): ?string {
+                    if ($v === null) return null;
+                    if (is_bool($v)) return $v ? '1' : '0';
+                    if (is_string($v) || is_numeric($v)) return (string) $v;
+                    if (is_array($v)) {
+                        // Convention i18n : on prend 'fr', sinon 'en', sinon JSON brut.
+                        if (isset($v['fr']) && is_string($v['fr'])) return $v['fr'];
+                        if (isset($v['en']) && is_string($v['en'])) return $v['en'];
+                        return json_encode($v, JSON_UNESCAPED_UNICODE);
+                    }
+                    return (string) $v;
+                };
+
+                $defaultVal = $toText($fieldDef['default'] ?? null);
+                $labelVal   = $toText($fieldDef['label']   ?? $fieldKey) ?? $fieldKey;
+                $hintVal    = $toText($fieldDef['hint']    ?? null);
+                $typeVal    = strtolower($toText($fieldDef['type'] ?? 'text') ?? 'text');
+                // Aliases conservés pour rester tolérant aux manifestes anciens, même
+                // après élargissement de l'ENUM côté base.
+                $typeVal    = [
+                    'int'    => 'integer',
+                    'bool'   => 'boolean',
+                    'string' => 'text',
+                    'long'   => 'textarea',
+                ][$typeVal] ?? $typeVal;
+                // Whitelist = ENUM côté base (cf. ensureSettingsTypeEnum).
+                if (!in_array($typeVal, [
+                    'text','number','integer','checkbox','boolean','select',
+                    'textarea','color','json','email','url','date','time','datetime'
+                ], true)) {
+                    $typeVal = 'text';
+                }
+
                 $this->pdo->prepare($sql)->execute([
                     $moduleKey,
                     $fieldKey,
-                    $fieldDef['type'] ?? 'text',
-                    $fieldDef['label'] ?? $fieldKey,
-                    $fieldDef['default'] ?? null,
+                    $typeVal,
+                    $labelVal,
+                    $defaultVal,
                     isset($fieldDef['options']) ? json_encode($fieldDef['options']) : null,
-                    $fieldDef['hint'] ?? null,
+                    $hintVal,
                     $sortOrder++,
                 ]);
             } catch (\Throwable $e) {

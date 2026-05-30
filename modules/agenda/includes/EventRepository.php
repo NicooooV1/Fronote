@@ -72,6 +72,16 @@ class EventRepository
         $params = [];
         $where  = [];
 
+        // ── Isolation établissement ──
+        // Tout listing d'événements DOIT être scopé sinon fuite cross-tenant.
+        try {
+            $where[]  = "etablissement_id = ?";
+            $params[] = \API\Core\EstablishmentContext::id();
+        } catch (\Throwable $e) {
+            // Pas de contexte établissement → on refuse de servir des événements globaux.
+            return [];
+        }
+
         // ── Période ──
         if (!empty($options['date_start']) && !empty($options['date_end'])) {
             $where[]  = "DATE(date_debut) BETWEEN ? AND ?";
@@ -525,8 +535,13 @@ class EventRepository
 
     public function findById(int $id): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM evenements WHERE id = ?");
-        $stmt->execute([$id]);
+        // Lookup scopé : un id appartenant à un autre établissement = introuvable.
+        try {
+            $stmt = $this->pdo->prepare("SELECT * FROM evenements WHERE id = ? AND etablissement_id = ?");
+            $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
+        } catch (\Throwable $e) {
+            return null;
+        }
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
@@ -606,8 +621,12 @@ class EventRepository
 
     public function delete(int $id): bool
     {
-        $stmt = $this->pdo->prepare("DELETE FROM evenements WHERE id = ?");
-        return $stmt->execute([$id]);
+        try {
+            $stmt = $this->pdo->prepare("DELETE FROM evenements WHERE id = ? AND etablissement_id = ?");
+            return $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     /* ================================================================
@@ -635,6 +654,14 @@ class EventRepository
     {
         $where  = ["statut = 'actif'"];
         $params = [];
+
+        // Isolation établissement — la détection de conflit n'a de sens que dans le périmètre.
+        try {
+            $where[]  = "etablissement_id = ?";
+            $params[] = \API\Core\EstablishmentContext::id();
+        } catch (\Throwable $e) {
+            return [];
+        }
 
         // Chevauchement temporel
         $where[]  = "(date_debut < ? AND date_fin > ?)";
@@ -1016,6 +1043,11 @@ class EventRepository
 
     // ─── RAPPELS ÉVÉNEMENTS ───
 
+    /**
+     * @global-scope Volontairement non scopé : le worker cron envoie les rappels
+     * pour TOUS les établissements en un seul passage. Les destinataires sont
+     * ensuite filtrés par participants/visibilité, pas ici.
+     */
     public function getEvenementsAvecRappel(int $minutesAvant = 30): array
     {
         $targetTime = date('Y-m-d H:i:s', strtotime("+{$minutesAvant} minutes"));
@@ -1039,23 +1071,32 @@ class EventRepository
 
     public function getStatsAgenda(string $dateDebut, string $dateFin): array
     {
+        try {
+            $eid = \API\Core\EstablishmentContext::id();
+        } catch (\Throwable $e) { return []; }
+
         $stmt = $this->pdo->prepare("
             SELECT type_evenement, COUNT(*) AS nb, COUNT(DISTINCT DATE(date_debut)) AS nb_jours
             FROM evenements
-            WHERE date_debut BETWEEN :d AND :f AND statut = 'actif'
+            WHERE etablissement_id = :eid
+              AND date_debut BETWEEN :d AND :f
+              AND statut = 'actif'
             GROUP BY type_evenement ORDER BY nb DESC
         ");
-        $stmt->execute([':d' => $dateDebut, ':f' => $dateFin . ' 23:59:59']);
+        $stmt->execute([':eid' => $eid, ':d' => $dateDebut, ':f' => $dateFin . ' 23:59:59']);
         $parType = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
-        $totalEvents = array_sum(array_column($parType, 'nb'));
-        $joursOccupes = $this->pdo->prepare("SELECT COUNT(DISTINCT DATE(date_debut)) FROM evenements WHERE date_debut BETWEEN ? AND ? AND statut = 'actif'");
-        $joursOccupes->execute([$dateDebut, $dateFin . ' 23:59:59']);
+        $totalEvents  = array_sum(array_column($parType, 'nb'));
+        $joursOccupes = $this->pdo->prepare(
+            "SELECT COUNT(DISTINCT DATE(date_debut)) FROM evenements
+             WHERE etablissement_id = ? AND date_debut BETWEEN ? AND ? AND statut = 'actif'"
+        );
+        $joursOccupes->execute([$eid, $dateDebut, $dateFin . ' 23:59:59']);
 
         return [
-            'par_type' => $parType,
+            'par_type'         => $parType,
             'total_evenements' => $totalEvents,
-            'jours_occupes' => (int)$joursOccupes->fetchColumn(),
+            'jours_occupes'    => (int) $joursOccupes->fetchColumn(),
         ];
     }
 

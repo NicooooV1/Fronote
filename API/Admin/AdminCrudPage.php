@@ -59,10 +59,7 @@ class AdminCrudPage
         $this->config = array_merge($defaults, $config);
         $this->perPage = $this->config['perPage'];
 
-        if (!isset($_SESSION['csrf_token'])) {
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-        }
-        $this->csrfToken = $_SESSION['csrf_token'];
+        $this->csrfToken = app('csrf')->generate();
 
         // Parse request params
         $this->currentPage = max(1, (int) ($_GET['page'] ?? 1));
@@ -84,7 +81,7 @@ class AdminCrudPage
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             return;
         }
-        if (($_POST['csrf_token'] ?? '') !== $this->csrfToken) {
+        if (!app('csrf')->validate($_POST['csrf_token'] ?? '')) {
             $this->error = 'Jeton CSRF invalide.';
             return;
         }
@@ -340,7 +337,9 @@ class AdminCrudPage
         echo '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px">';
         foreach ($stats as $stat) {
             $icon  = $stat['icon'] ?? 'fas fa-chart-bar';
-            $color = $stat['color'] ?? '#0f4c81';
+            $rawColor = $stat['color'] ?? '#0f4c81';
+            // Whitelist CSS color values to prevent injection via ; : ( ) characters
+            $color = preg_match('/^(#[0-9a-fA-F]{3,8}|rgb\(\d+,\s*\d+,\s*\d+\)|[a-zA-Z]{2,30})$/', $rawColor) ? $rawColor : '#0f4c81';
             $value = htmlspecialchars((string) ($stat['value'] ?? '0'), ENT_QUOTES, 'UTF-8');
             $label = htmlspecialchars((string) ($stat['label'] ?? ''), ENT_QUOTES, 'UTF-8');
             echo '<div style="display:inline-flex;align-items:center;gap:6px;background:white;border-radius:8px;padding:8px 14px;box-shadow:0 1px 4px rgba(0,0,0,0.06);font-size:14px">'
@@ -471,7 +470,7 @@ class AdminCrudPage
     private function renderRowActions(array $row, string $csrf, string $idField, array $actions): void
     {
         $id = $row[$idField] ?? 0;
-        $jsonData = htmlspecialchars(json_encode($row, JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8');
+        $jsonData = htmlspecialchars(json_encode($row, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_TAG), ENT_QUOTES, 'UTF-8');
 
         if (in_array('edit', $actions, true)) {
             echo "<button class=\"btn-xs primary\" onclick='crudOpenEdit({$jsonData})'><i class=\"fas fa-pen\"></i></button> ";
@@ -558,8 +557,10 @@ class AdminCrudPage
         $id       = "crud_{$prefix}_{$key}";
         $default  = $field['default'] ?? '';
 
+        $labelSafe = htmlspecialchars($label, ENT_QUOTES, 'UTF-8');
+
         if ($type === 'checkbox') {
-            echo "<div class=\"form-group\"><label><input type=\"checkbox\" name=\"{$key}\" id=\"{$id}\"> {$label}</label></div>";
+            echo "<div class=\"form-group\"><label><input type=\"checkbox\" name=\"{$key}\" id=\"{$id}\"> {$labelSafe}</label></div>";
             return;
         }
 
@@ -572,9 +573,9 @@ class AdminCrudPage
         if (isset($field['rows']))        $attrs .= " rows=\"{$field['rows']}\"";
 
         if ($type === 'textarea') {
-            echo "<div class=\"form-group\"><label>{$label}</label><textarea name=\"{$key}\" id=\"{$id}\" {$required}{$attrs}>{$default}</textarea></div>";
+            echo "<div class=\"form-group\"><label>{$labelSafe}</label><textarea name=\"{$key}\" id=\"{$id}\" {$required}{$attrs}>{$default}</textarea></div>";
         } elseif ($type === 'select' && isset($field['options'])) {
-            echo "<div class=\"form-group\"><label>{$label}</label><select name=\"{$key}\" id=\"{$id}\" {$required}>";
+            echo "<div class=\"form-group\"><label>{$labelSafe}</label><select name=\"{$key}\" id=\"{$id}\" {$required}>";
             foreach ($field['options'] as $val => $text) {
                 $sel = ($val == $default) ? ' selected' : '';
                 echo "<option value=\"" . htmlspecialchars((string) $val) . "\"{$sel}>" . htmlspecialchars($text) . "</option>";
@@ -582,7 +583,7 @@ class AdminCrudPage
             echo "</select></div>";
         } else {
             $val = ($prefix === 'c' && $default !== '') ? " value=\"" . htmlspecialchars((string) $default) . "\"" : '';
-            echo "<div class=\"form-group\"><label>{$label}</label><input type=\"{$type}\" name=\"{$key}\" id=\"{$id}\"{$val} {$required}{$attrs}></div>";
+            echo "<div class=\"form-group\"><label>{$labelSafe}</label><input type=\"{$type}\" name=\"{$key}\" id=\"{$id}\"{$val} {$required}{$attrs}></div>";
         }
     }
 

@@ -13,6 +13,18 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 header('Content-Type: application/json');
 header('Cache-Control: no-store');
 
+// Require a bearer token in production to prevent infrastructure profiling
+$healthToken = getenv('HEALTH_TOKEN');
+if ($healthToken !== false && $healthToken !== '') {
+    $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    $providedToken = str_starts_with($authHeader, 'Bearer ') ? substr($authHeader, 7) : '';
+    if (!hash_equals($healthToken, $providedToken)) {
+        http_response_code(401);
+        echo json_encode(['healthy' => false, 'error' => 'Unauthorized']);
+        exit;
+    }
+}
+
 try {
     $pdo = app('db')->getConnection();
     $health = new \API\Services\HealthCheckService($pdo, BASE_PATH);

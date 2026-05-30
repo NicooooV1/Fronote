@@ -21,15 +21,22 @@ class SessionManagementService
     {
         $stmt = $this->pdo->query("
             SELECT s.*,
-                CASE
-                    WHEN s.user_type = 'eleve' THEN (SELECT CONCAT(prenom,' ',nom) FROM eleves WHERE id = s.user_id)
-                    WHEN s.user_type = 'professeur' THEN (SELECT CONCAT(prenom,' ',nom) FROM professeurs WHERE id = s.user_id)
-                    WHEN s.user_type = 'parent' THEN (SELECT CONCAT(prenom,' ',nom) FROM parents WHERE id = s.user_id)
-                    WHEN s.user_type = 'vie_scolaire' THEN (SELECT CONCAT(prenom,' ',nom) FROM vie_scolaire WHERE id = s.user_id)
-                    WHEN s.user_type = 'administrateur' THEN (SELECT CONCAT(prenom,' ',nom) FROM administrateurs WHERE id = s.user_id)
-                    ELSE 'Inconnu'
-                END AS nom_complet
+                COALESCE(
+                    CASE s.user_type
+                        WHEN 'eleve'         THEN CONCAT(el.prenom, ' ', el.nom)
+                        WHEN 'professeur'    THEN CONCAT(pr.prenom, ' ', pr.nom)
+                        WHEN 'parent'        THEN CONCAT(pa.prenom, ' ', pa.nom)
+                        WHEN 'vie_scolaire'  THEN CONCAT(vs.prenom, ' ', vs.nom)
+                        WHEN 'administrateur'THEN CONCAT(ad.prenom, ' ', ad.nom)
+                    END,
+                    'Inconnu'
+                ) AS nom_complet
             FROM session_security s
+            LEFT JOIN eleves          el ON el.id = s.user_id AND s.user_type = 'eleve'
+            LEFT JOIN professeurs     pr ON pr.id = s.user_id AND s.user_type = 'professeur'
+            LEFT JOIN parents         pa ON pa.id = s.user_id AND s.user_type = 'parent'
+            LEFT JOIN vie_scolaire    vs ON vs.id = s.user_id AND s.user_type = 'vie_scolaire'
+            LEFT JOIN administrateurs ad ON ad.id = s.user_id AND s.user_type = 'administrateur'
             WHERE s.is_active = 1 AND s.expires_at > NOW()
             ORDER BY s.last_activity DESC
         ");

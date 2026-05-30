@@ -211,7 +211,7 @@ class CacheManager
 		}
 
 		$data = @unserialize($content, ['allowed_classes' => false]);
-		if ($data === false || !is_array($data) || !array_key_exists('value', $data)) {
+		if (($data === false && $content !== serialize(false)) || !is_array($data) || !array_key_exists('value', $data)) {
 			return null;
 		}
 

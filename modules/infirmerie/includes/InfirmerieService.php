@@ -11,12 +11,26 @@ class InfirmerieService
         $this->pdo = $pdo;
     }
 
+    /** Établissement courant ou null. */
+    private function etabId(): ?int
+    {
+        try { return \API\Core\EstablishmentContext::id(); }
+        catch (\Throwable $e) { return null; }
+    }
+
     /* ───────── FICHES SANTÉ ───────── */
 
     public function getFiche(int $eleveId): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM fiches_sante WHERE eleve_id = ?");
-        $stmt->execute([$eleveId]);
+        $etabId = $this->etabId();
+        if ($etabId === null) return null;
+        // Fiche scopée via JOIN sur eleves : un élève d'un autre établissement = introuvable.
+        $stmt = $this->pdo->prepare(
+            "SELECT fs.* FROM fiches_sante fs
+             JOIN eleves e ON fs.eleve_id = e.id
+             WHERE fs.eleve_id = ? AND e.etablissement_id = ?"
+        );
+        $stmt->execute([$eleveId, $etabId]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
@@ -47,16 +61,19 @@ class InfirmerieService
 
     public function getFiches(string $recherche = null): array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $sql = "
             SELECT fs.*, e.prenom, e.nom AS eleve_nom, cl.nom AS classe_nom
             FROM fiches_sante fs
             JOIN eleves e ON fs.eleve_id = e.id
             LEFT JOIN classes cl ON e.classe_id = cl.id
+            WHERE e.etablissement_id = ?
         ";
-        $params = [];
+        $params = [$etabId];
         if ($recherche) {
-            $sql .= " WHERE e.nom LIKE ? OR e.prenom LIKE ?";
-            $params = ["%$recherche%", "%$recherche%"];
+            $sql .= " AND (e.nom LIKE ? OR e.prenom LIKE ?)";
+            $params[] = "%$recherche%"; $params[] = "%$recherche%";
         }
         $sql .= ' ORDER BY e.nom, e.prenom';
         $stmt = $this->pdo->prepare($sql);

@@ -369,8 +369,8 @@ if (app('features')->isEnabled('stages.enabled')) {
 
 ```php
 <?php
-// mon_module/api.php
-require_once __DIR__ . '/../API/module_boot.php';
+// modules/mon_module/api.php
+require_once __DIR__ . '/../../API/module_boot.php';
 
 use API\Middleware\RateLimitMiddleware;
 

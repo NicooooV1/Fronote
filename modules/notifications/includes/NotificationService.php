@@ -1,6 +1,10 @@
 <?php
 /**
  * M12 – Notifications — Service
+ *
+ * @global-scope Scoping implicite via user_id + user_type : chaque notification est
+ * attachée à un utilisateur précis, lui-même rattaché à un établissement. Pas de
+ * listing global cross-tenant : tout `creer()`/`marquerLue()` est par-utilisateur.
  */
 class NotificationService
 {

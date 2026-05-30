@@ -4,8 +4,9 @@
 
 | Version | Supported          |
 |---------|--------------------|
-| 1.4.x   | :white_check_mark: |
-| < 1.4   | :x:                |
+| 2.1.x   | :white_check_mark: |
+| 2.0.x   | :white_check_mark: |
+| < 2.0   | :x:                |
 
 ## Reporting a Vulnerability
 
@@ -25,7 +26,8 @@ We will acknowledge your report within 48 hours and provide a timeline for a fix
 Fronote implements the following security measures:
 
 ### Authentication & Authorization
-- RBAC (Role-Based Access Control) with 6 user types
+- RBAC (Role-Based Access Control) with 7 user types: `administrateur`, `professeur`, `eleve`, `parent`, `personnel`, `vie_scolaire`, `technicien`
+- Multi-establishment isolation enforced via `API\Core\EstablishmentContext::id()` on every business query
 - Progressive rate limiting on login (exponential backoff)
 - Optional 2FA (TOTP-based)
 - Remember-me tokens with secure storage
@@ -33,9 +35,11 @@ Fronote implements the following security measures:
 - Force password change on first login
 
 ### CSRF Protection
-- Token bucket with rotation via `API\Core\CSRF`
+- Rotating single-use token bucket implemented in `API\Security\CSRF` (max 10 tokens, 1h TTL)
+- Facade: `\API\Core\Facades\CSRF::generate()` / `validate()` / `check()`
 - All POST forms include CSRF tokens
-- AJAX requests include `X-CSRF-TOKEN` header
+- AJAX requests send `X-CSRF-TOKEN` header
+- For concurrent AJAX sharing the meta-tag token, endpoints use the **non-destructive** `check()` instead of `validate()` to avoid 403 on parallel requests
 
 ### Content Security Policy
 - Strict CSP with nonce-based script/style loading
@@ -72,4 +76,5 @@ Fronote implements the following security measures:
 
 - Font Awesome (CDN with SRI)
 - Socket.IO client (CDN with SRI)
-- No server-side Composer dependencies (zero supply chain risk)
+- **Server-side**: Composer is used to autoload classes; production dependencies are kept intentionally minimal (`composer install --no-dev --optimize-autoloader`). See `composer.json` for the exact list and run `composer audit` regularly.
+- **Marketplace scanner caveat**: `API/Security/ModuleScanner.php` performs static `token_get_all()` checks that block a denylist of dangerous calls. It is a **layered defense, not a sandbox** — dynamic invocation (variable functions, `assert($code)`, reflection, string concat to bypass denylist) can defeat it. Trust marketplace modules only from sources you control.

@@ -6,6 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.0.0-alpha.1] "Hub" — 2026-05-29
+
+### Added — Marketplace foundations (phase 1, client-side)
+- **`.fmod` package format** : ZIP shipping the module + `MANIFEST.sha256` (per-file integrity) + `SIGNATURE.json` (detached Ed25519 over the manifest hash + editor certificate chain).
+- **`API\Services\FmodService`** : keygen (Ed25519 via `ext-sodium`), manifest building, package build/sign, full verification (chain → Root CA, revocation, signature, per-file integrity, publisher binding, core compatibility, yank).
+- **CLI tools** under `scripts/` :
+  - `fmod_keygen.php` — generates an Ed25519 keypair
+  - `fmod_cert.php` — issues a Fronote cert (subject signed by an issuer)
+  - `fmod_build.php` — packages and signs a module directory into a `.fmod`
+  - `fmod_verify.php` — offline verification against `config/marketplace/roots/*.pub`
+- **`MarketplaceService::installFromFmod()`** : sideload pipeline (verify → static scan → quarantine on violations → atomic swap → `syncModule` + `provisionSql` → recorded in `marketplace_installed` with package hash + cert fingerprint).
+- **`modules/marketplace/`** core module : `module.json`, `Database/install.sql` (tables `marketplace_sources`, `marketplace_installed`, `marketplace_cache`, `marketplace_consents`, `marketplace_advisories_seen`, `marketplace_revocations`), sideload UI page (CSRF-protected, admin only).
+- **CI** : `.github/workflows/validate.yml` runs PHP lint, `composer validate`, manifest validation (`tests/validate_manifests.php`), end-to-end fmod self-test (`tests/fmod_selftest.php`), and ModuleSDK smoke test (`tests/module_sdk_smoke.php`).
+- **Documentation** : [docs/marketplace.md](docs/marketplace.md) describes the implemented spec, key ceremony, and CLI usage.
+
+### Changed
+- `composer.json` requires `ext-sodium`, `ext-zip`, `ext-json`, `ext-pdo` explicitly.
+- `.gitignore` blocks `config/marketplace/keys/`, every `*.sk`, and `dist/*.fmod`.
+
+### Security
+- Zero network trust : signature verification is offline, against Root CAs embedded under `config/marketplace/roots/*.pub`. TLS is necessary, never sufficient.
+- ZIP extraction refuses entries with `..` or absolute paths.
+- Signed module ≠ innocuous module : `ModuleScanner` still runs after signature verification, and `QuarantineService` is wired on violations.
+
+### Not yet shipped (phase 2+)
+- Central registry HTTP API (`/v1/modules`, CRL publishing).
+- Publisher portal and moderation console.
+- Sandbox execution during moderation.
+- Paid modules.
+
+---
+
 ## [2.1.0] "Modular" — 2026-05-29
 
 ### Changed — Architecture
