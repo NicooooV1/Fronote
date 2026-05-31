@@ -207,14 +207,12 @@ $app->register(new \API\Providers\AuthServiceProvider($app));
 $app->register(new \API\Providers\SecurityServiceProvider($app));
 $app->register(new \API\Providers\EtablissementServiceProvider($app));
 $app->register(new \API\Providers\TranslationServiceProvider($app));
-$app->register(new \API\Providers\ScolaireServiceProvider($app));
-
 // Hook Manager (système d'événements pour les modules)
 $app->singleton('hooks', function($app) {
 	return new \API\Core\HookManager();
 });
 
-// Event listeners (audit, WebSocket, notifications parents)
+// Core event listeners (UserCreated, UserPasswordChanged — events core uniquement)
 $app->register(new \API\Providers\EventServiceProvider($app));
 
 // Module SDK (découverte et gestion des modules via module.json)
@@ -222,9 +220,14 @@ $app->singleton('module_sdk', function($app) {
 	return new \API\Services\ModuleSDK($app->make('db')->getConnection(), BASE_PATH);
 });
 
-// Feature Flags (fonctionnalités par type d'établissement)
+// Feature Flags (fonctionnalités par type d'établissement — core transversal)
 $app->singleton('features', function($app) {
 	return new \API\Services\FeatureFlagService($app->make('db')->getConnection());
+});
+
+// Generic job queue (core — not module-specific)
+$app->singleton('queue', function($app) {
+	return new \API\Services\QueueService($app->make('db')->getConnection());
 });
 
 // Logger structuré avec rotation de fichiers
@@ -247,22 +250,22 @@ $app->singleton('client_cache', function($app) {
 	return new \API\Core\ClientCache();
 });
 
-// Marketplace Service
+// Marketplace Service (core — gestion des modules)
 $app->singleton('marketplace', function($app) {
 	return new \API\Services\MarketplaceService($app->make('db')->getConnection(), BASE_PATH);
 });
 
-// Theme Service
+// Theme Service (core — theming applicatif)
 $app->singleton('themes', function($app) {
 	return new \API\Services\ThemeService($app->make('db')->getConnection(), BASE_PATH);
 });
 
-// IP Firewall (brute-force protection)
+// IP Firewall (core — sécurité transversale)
 $app->singleton('firewall', function($app) {
 	return new \API\Security\IpFirewall($app->make('db')->getConnection());
 });
 
-// Encryption Service (AES-256-GCM)
+// Encryption Service (core — AES-256-GCM)
 $app->singleton('encryption', function($app) {
 	try {
 		return new \API\Core\Encryption();
@@ -271,111 +274,44 @@ $app->singleton('encryption', function($app) {
 	}
 });
 
-// SMS Service
-$app->singleton('sms', function($app) {
-	return new \API\Services\SmsService($app->make('db')->getConnection());
-});
-
-// Email Queue Service
-$app->singleton('email_queue', function($app) {
-	return new \API\Services\EmailQueueService($app->make('db')->getConnection());
-});
-
-// WebPush Service
-$app->singleton('webpush', function($app) {
-	return new \API\Services\WebPushService($app->make('db')->getConnection());
-});
-
-// Video Conference Service
-$app->singleton('visio', function($app) {
-	return new \API\Services\VideoConferenceService();
-});
-
-// Metrics Service (J2)
-$app->singleton('metrics', function($app) {
-	return new \API\Services\MetricsService($app->make('db')->getConnection());
-});
-
-// Analytics Service
-$app->singleton('analytics', function($app) {
-	return new \API\Services\AnalyticsService($app->make('db')->getConnection());
-});
-
-// Bulletin PDF Service
-$app->singleton('bulletin_pdf', function($app) {
-	return new \API\Services\BulletinPdfService($app->make('db')->getConnection(), BASE_PATH);
-});
-
-// Queue Service (G4)
-$app->singleton('queue', function($app) {
-	return new \API\Services\QueueService($app->make('db')->getConnection());
-});
-
-// Payment Service
-$app->singleton('payment', function($app) {
-	return new \API\Services\PaymentService($app->make('db')->getConnection());
-});
-
-// Signature Service
-$app->singleton('signature', function($app) {
-	return new \API\Services\SignatureService($app->make('db')->getConnection());
-});
-
-// QR Presence Service
-$app->singleton('qr_presence', function($app) {
-	return new \API\Services\QrPresenceService($app->make('db')->getConnection());
-});
-
-// Backup Service
+// Backup Service (core)
 $app->singleton('backup', function($app) {
 	return new \API\Services\BackupService($app->make('db')->getConnection(), BASE_PATH);
 });
 
-// Update Service (auto-update from GitHub)
+// Update Service (core — auto-update)
 $app->singleton('updates', function($app) {
 	return new \API\Services\UpdateService(BASE_PATH);
 });
 
-// Environment detection
-$app->singleton('environment', function($app) {
-	return new \API\Core\Environment();
-});
-
-// Maintenance Service (file-based, no DB)
+// Maintenance Service (core — file-based)
 $app->singleton('maintenance', function($app) {
 	return new \API\Services\MaintenanceService(BASE_PATH);
 });
 
-// Health Check Service
+// Health Check Service (core)
 $app->singleton('health', function($app) {
 	return new \API\Services\HealthCheckService($app->make('db')->getConnection(), BASE_PATH);
 });
 
-// Quarantine Service (marketplace security)
+// Quarantine Service (core — marketplace security)
 $app->singleton('quarantine', function($app) {
 	return new \API\Services\QuarantineService(BASE_PATH);
-});
-
-// Global Search Service (cross-module search)
-$app->singleton('global_search', function($app) {
-	return new \API\Services\GlobalSearchService($app->make('db')->getConnection());
-});
-
-// Activity Feed Service (cross-module activity timeline)
-$app->singleton('activity_feed', function($app) {
-	return new \API\Services\ActivityFeedService($app->make('db')->getConnection());
-});
-
-// Cross-Module Analytics Service (correlations, trends)
-$app->singleton('cross_analytics', function($app) {
-	return new \API\Services\CrossModuleAnalyticsService($app->make('db')->getConnection());
 });
 
 // Lier l'application aux Facades
 \API\Core\Facade::setApplication($app);
 
-// Démarrer les services
+// Démarrer les services core
 $app->boot();
+
+// Charger les ServiceProviders des modules actifs (services module chargés à la demande)
+// Remplace ScolaireServiceProvider + les 15 singletons module retirés ci-dessus.
+try {
+	$app->make('module_sdk')->bootActiveModuleProviders($app);
+} catch (\Throwable $e) {
+	error_log('[bootstrap] bootActiveModuleProviders failed: ' . $e->getMessage());
+}
 
 // Establishment context (multi-establishment scoping)
 \API\Middleware\EstablishmentScope::handle();

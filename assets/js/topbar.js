@@ -344,7 +344,11 @@
             credentials: 'same-origin',
             body: JSON.stringify({ action: 'toggle', module_key: moduleKey, csrf_token: csrfToken() })
         })
-        .then(function (r) { return r.json(); })
+        .then(function (r) {
+            var next = r.headers.get('X-Csrf-Token-Next');
+            if (next) { var m = document.querySelector('meta[name="csrf-token"]'); if (m) m.setAttribute('content', next); }
+            return r.json();
+        })
         .then(function (data) {
             if (data && data.success) {
                 syncFavButtons(moduleKey, !!data.favorite);

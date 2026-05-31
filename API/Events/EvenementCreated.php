@@ -1,13 +1,2 @@
 <?php
-
-declare(strict_types=1);
-
-namespace API\Events;
-
-class EvenementCreated
-{
-    public function __construct(
-        public readonly int $evenementId,
-        public readonly array $data,
-    ) {}
-}
+class_alias(\Modules\Agenda\Events\EvenementCreated::class, 'API\Events\EvenementCreated');

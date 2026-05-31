@@ -1,0 +1,18 @@
+{
+    "key": "tableau_de_bord",
+    "version": "1.0.0",
+    "name": { "fr": "Tableau de bord", "en": "Dashboard" },
+    "description": { "fr": "Dashboard administrateur et fil d'activité.", "en": "Admin dashboard and activity feed." },
+    "icon": "fas fa-tachometer-alt",
+    "category": "administration",
+    "core": false,
+    "routes": { "main": "dashboard.php" },
+    "database": { "install": "" },
+    "permissions": {
+        "view": { "default_roles": ["administrateur"] }
+    },
+    "sidebar": { "hidden": true, "sort_order": 1 },
+    "establishment_types": null,
+    "author": "Fronote Team",
+    "license": "MIT"
+}

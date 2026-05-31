@@ -1,8 +1,119 @@
-# Module SDK — Guide du Développeur
+# Module SDK — Guide du Développeur (v3.2.4)
 
 ## Introduction
 
 Fronote utilise une architecture modulaire. Chaque module métier est un dossier autonome **sous `modules/<clé>/`**, déclaré via un fichier `module.json`. (Quelques composants essentiels — `accueil/`, `admin/`, `parametres/`… — restent à la racine.) Ce guide explique comment créer, configurer et publier un module.
+
+---
+
+## ServiceProviders de modules (v3.2.4)
+
+Depuis v3.2.4, chaque module peut exposer un **ServiceProvider** chargé automatiquement après le boot du core. C'est le mécanisme recommandé pour enregistrer les services, bindings et listeners d'événements d'un module.
+
+### Structure
+
+```
+modules/mon_module/
+├── Providers/
+│   └── MonModuleServiceProvider.php   ← naming : PascalCase(key) + "ServiceProvider"
+├── Services/
+│   └── MonModuleService.php
+└── Events/
+    └── MonEvenement.php
+```
+
+### Créer un ServiceProvider
+
+```php
+<?php
+// modules/mon_module/Providers/MonModuleServiceProvider.php
+declare(strict_types=1);
+
+namespace Modules\MonModule\Providers;
+
+use API\Core\ServiceProvider;
+
+class MonModuleServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        // Enregistrer les services dans le container (lazy — pas instanciés ici)
+        $this->app->singleton('mon_module', function ($app) {
+            return new \Modules\MonModule\Services\MonModuleService(
+                $app->make('db')->getConnection()
+            );
+        });
+    }
+
+    public function boot(): void
+    {
+        // Enregistrer les listeners d'événements via HookManager
+        $hooks = $this->app->make('hooks');
+        $audit = new \API\Events\Listeners\AuditListener();
+
+        $hooks->register(\Modules\MonModule\Events\MonEvenement::class, [$audit, 'handle']);
+    }
+}
+```
+
+### Convention de nommage
+
+| Clé du module | Nom de classe | Fichier |
+|---------------|--------------|---------|
+| `notes` | `NotesServiceProvider` | `modules/notes/Providers/NotesServiceProvider.php` |
+| `admin_sessions` | `AdminSessionsServiceProvider` | `modules/admin_sessions/Providers/AdminSessionsServiceProvider.php` |
+| `emploi_du_temps` | `EmploiDuTempsServiceProvider` | `modules/emploi_du_temps/Providers/EmploiDuTempsServiceProvider.php` |
+| `mon_module` | `MonModuleServiceProvider` | `modules/mon_module/Providers/MonModuleServiceProvider.php` |
+
+Règle : `implode('', array_map('ucfirst', explode('_', $key))) . 'ServiceProvider'`
+
+### Chargement automatique
+
+`ModuleSDK::bootActiveModuleProviders()` est appelé dans `bootstrap.php` après `$app->boot()`. Il charge le ServiceProvider de chaque module **actif** dans la base.
+
+Un module dont le ServiceProvider n'existe pas est ignoré silencieusement.
+
+### Namespace `Modules\\`
+
+Le namespace `Modules\\` est enregistré dans `composer.json` (PSR-4 → `modules/`) :
+
+```php
+// Fonctionne automatiquement via autoloader
+use Modules\Notes\Services\NoteService;
+use Modules\Absences\Events\AbsenceCreated;
+```
+
+---
+
+## Events de modules (v3.2.4)
+
+Les événements domaine sont définis dans le namespace du module :
+
+```php
+<?php
+// modules/mon_module/Events/MonEvenement.php
+declare(strict_types=1);
+
+namespace Modules\MonModule\Events;
+
+class MonEvenement
+{
+    public function __construct(
+        public readonly int $id,
+        public readonly array $data,
+    ) {}
+}
+```
+
+**Dispatcher depuis un service** :
+
+```php
+app('hooks')?->dispatch(new \Modules\MonModule\Events\MonEvenement($id, $data));
+```
+
+**Rétrocompatibilité** : les anciens namespaces `API\Events\NoteCreated` etc. sont des `class_alias` pointant vers leurs équivalents `Modules\*`. L'ancien code continue de fonctionner.
+
+---
 
 ## Structure d'un module
 

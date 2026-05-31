@@ -200,7 +200,7 @@ class CacheManager
 			'value' => $value,
 		]);
 
-		return file_put_contents($file, $payload, LOCK_EX) !== false;
+		return @file_put_contents($file, $payload, LOCK_EX) !== false;
 	}
 
 	protected function readCacheFile(string $file): mixed

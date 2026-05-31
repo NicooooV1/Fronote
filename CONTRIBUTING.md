@@ -1,6 +1,27 @@
-# Contributing to Fronote
+# Contributing to Fronote (v3.2.4)
 
 Thank you for your interest in contributing to Fronote! This guide will help you get started.
+
+> Architecturally, modules live under `modules/{key}/` with their own `Services/`, `Events/`, `Providers/`, `Jobs/` — **do not** add module code to `API/`. See [docs/module-sdk.md](docs/module-sdk.md) and [docs/marketplace.md](docs/marketplace.md).
+
+## Architecture Rules (v3.2.4)
+
+**A module CAN:**
+- Define its services under `modules/{key}/Services/`
+- Define its events under `modules/{key}/Events/`
+- Define a `ServiceProvider` in `modules/{key}/Providers/`
+- Call `app('hooks')->dispatch()` to emit cross-module events
+- Read `app('cache')`, `app('log')`, `app('db')`
+- Declare its permissions in `module.json`
+
+**A module CANNOT:**
+- Modify any file in `API/` (open a core PR with review)
+- Add a singleton in `bootstrap.php`
+- Modify `RBAC::PERMISSIONS` directly
+- Add a domain method to `WebSocket.php`
+- Query another module's table without going through its public service
+
+**Golden rule:** if you need to edit an `API/` file to add a module feature, the architecture is violated. The only exception is adding an interface in `API/Contracts/`.
 
 ## Getting Started
 

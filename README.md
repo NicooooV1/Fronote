@@ -1,6 +1,6 @@
 # Fronote — Documentation Développeur
 
-![PHP 8+](https://img.shields.io/badge/PHP-8%2B-blue) ![MySQL 8+](https://img.shields.io/badge/MySQL-8%2B-orange) ![Version](https://img.shields.io/badge/version-2.0.0_Nova-green) ![Licence](https://img.shields.io/badge/licence-MIT-lightgrey) ![i18n](https://img.shields.io/badge/i18n-8%20locales-blueviolet) ![Modules](https://img.shields.io/badge/modules-60-brightgreen)
+![PHP 8+](https://img.shields.io/badge/PHP-8%2B-blue) ![MySQL 8+](https://img.shields.io/badge/MySQL-8%2B-orange) ![Version](https://img.shields.io/badge/version-3.2.4_Marketplace-green) ![Licence](https://img.shields.io/badge/licence-MIT-lightgrey) ![i18n](https://img.shields.io/badge/i18n-8%20locales-blueviolet) ![Modules](https://img.shields.io/badge/modules-62-brightgreen)
 
 > **Documentation complète :**
 > - **[README.md](README.md)** (ce fichier) — Documentation technique développeur
@@ -11,6 +11,8 @@
 > - **[CHANGELOG.md](CHANGELOG.md)** — Historique des versions
 > - **[docs/api-reference.md](docs/api-reference.md)** — Référence API REST
 > - **[docs/module-sdk.md](docs/module-sdk.md)** — Guide création de modules
+> - **[docs/marketplace.md](docs/marketplace.md)** — Guide Marketplace & format .fmod
+> - **[fmod-format.md](fmod-format.md)** — Spécification publique format .fmod v1
 > - **[docs/database.md](docs/database.md)** — Schéma et conventions BDD
 > - **[docs/security.md](docs/security.md)** — Guide sécurité développeur
 > - **[docs/translation-guide.md](docs/translation-guide.md)** — Guide traduction (8 langues)
@@ -20,7 +22,7 @@
 > - **[docs/widget-api.md](docs/widget-api.md)** — API widgets dashboard
 > - **[docs/feature-specs.md](docs/feature-specs.md)** — Cahier des charges modules
 
-Fronote est un système de gestion scolaire en **PHP vanilla** (sans framework) : ~59 modules, ~240 tables SQL, architecture IoC/PSR-4, API centralisée, WebSocket temps réel, design system tokens + thèmes (classic/glass).
+Fronote est un système de gestion scolaire en **PHP vanilla** (sans framework) : ~62 modules, ~250 tables SQL, architecture IoC/PSR-4, API centralisée, WebSocket temps réel, design system tokens + thèmes (classic/glass), Marketplace signé Ed25519.
 
 ---
 

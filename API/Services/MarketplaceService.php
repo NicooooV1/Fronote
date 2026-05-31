@@ -314,6 +314,29 @@ class MarketplaceService
      *   4. Bascule atomique (backup du live précédent) + syncModule + provisionSql
      *   5. Enregistrement dans marketplace_installed avec hash paquet + fingerprint cert
      */
+    public function isTestModulesAllowed(): bool
+    {
+        $val = getenv('ALLOW_TEST_MODULES');
+        return $val === 'true' || $val === '1';
+    }
+
+    /**
+     * Finalise l'installation après consentement explicite de l'admin.
+     * Appelé depuis marketplace.php sur action=confirm_install.
+     *
+     * @param string $stagingDir  Staging dir conservé depuis installFromFmod
+     * @param array  $manifest    module.json parsé (stocké en session)
+     * @param string $fmodPath    Chemin original du .fmod (pour hash final)
+     * @param array  $sigData     Données de signature (stockées en session)
+     */
+    public function confirmInstall(string $stagingDir, array $manifest, string $fmodPath, array $sigData): array
+    {
+        if (!is_dir($stagingDir)) {
+            return ['success' => false, 'error' => 'Session d\'installation expirée. Recommencez le téléversement.'];
+        }
+        return $this->deployFromStaging($stagingDir, $manifest, $fmodPath, $sigData);
+    }
+
     public function installFromFmod(string $fmodPath): array
     {
         if (!is_file($fmodPath)) {
@@ -378,6 +401,12 @@ class MarketplaceService
             return ['success' => false, 'error' => 'module.json sans clé.'];
         }
 
+        // Étape 4 : test_only — refusé sur instance production.
+        if (!empty($manifest['test_only']) && !$this->isTestModulesAllowed()) {
+            $this->removeDirectory($stagingDir);
+            return ['success' => false, 'error' => 'Ce module est marqué test_only et ne peut être installé qu\'avec ALLOW_TEST_MODULES=true dans le .env (instance de développement ou staging).'];
+        }
+
         // Scan statique (défense en profondeur — signature garantit origine, pas innocuité).
         $modulePerms = $manifest['publish']['required_permissions'] ?? ($manifest['required_permissions'] ?? []);
         $scanner = new \API\Security\ModuleScanner($modulePerms);
@@ -393,7 +422,38 @@ class MarketplaceService
             ];
         }
 
-        // Bascule atomique.
+        // Étape 11 : consentement permissions — suspend l'installation si permissions requises.
+        $permsRequested = $manifest['permissions_requested']
+                       ?? $manifest['publish']['required_permissions']
+                       ?? [];
+        if (!empty($permsRequested)) {
+            // Keep staging dir alive for confirmInstall(); caller stores path in session.
+            return [
+                'success'         => false,
+                'pending_consent' => true,
+                'staging'         => $stagingDir,
+                'manifest'        => $manifest,
+                'permissions'     => $permsRequested,
+                'sig_data'        => $verif['signature'],
+                'fmod_path'       => $fmodPath,
+            ];
+        }
+
+        return $this->deployFromStaging($stagingDir, $manifest, $fmodPath, $verif['signature']);
+
+        } finally {
+            flock($lockFh, LOCK_UN);
+            fclose($lockFh);
+        }
+    }
+
+    /**
+     * Bascule atomique + provisionSQL + audit. Partagé par installFromFmod et confirmInstall.
+     */
+    private function deployFromStaging(string $stagingDir, array $manifest, string $fmodPath, array $sigData): array
+    {
+        $key = (string) ($manifest['key'] ?? '');
+
         $targetDir = $this->basePath . '/modules/' . $key;
         if (is_dir($targetDir)) {
             $backupDir = $this->basePath . '/storage/backups/modules';
@@ -405,7 +465,6 @@ class MarketplaceService
             return ['success' => false, 'error' => "Échec install : impossible de déplacer le module."];
         }
 
-        // Sync DB + provision SQL.
         try {
             $sdk = app('module_sdk');
             $sdk->clearCache();
@@ -418,14 +477,13 @@ class MarketplaceService
             error_log('Marketplace .fmod sync error: ' . $e->getMessage());
         }
 
-        // Trace l'installation signée (hash paquet + fingerprint cert éditeur).
         try {
-            $pkgSha = hash_file('sha256', $fmodPath);
-            $manSha = (string) ($verif['signature']['manifest_sha256'] ?? '');
-            $editorCertB64 = $verif['signature']['certificate_chain'][0] ?? '';
-            $certFp = bin2hex(hash('sha256', base64_decode($editorCertB64, true) ?: $editorCertB64, true));
+            $pkgSha        = is_file($fmodPath) ? hash_file('sha256', $fmodPath) : ($sigData['package_sha256'] ?? '');
+            $manSha        = (string) ($sigData['manifest_sha256'] ?? '');
+            $editorCertB64 = $sigData['certificate_chain'][0] ?? '';
+            $certFp        = bin2hex(hash('sha256', base64_decode($editorCertB64, true) ?: $editorCertB64, true));
 
-            $st = $this->pdo->prepare(
+            $this->pdo->prepare(
                 "INSERT INTO marketplace_installed
                    (module_key, version, publisher_id, source_id, channel,
                     package_sha256, manifest_sha256, cert_fingerprint, signature_verified_at)
@@ -436,11 +494,10 @@ class MarketplaceService
                     manifest_sha256 = VALUES(manifest_sha256),
                     cert_fingerprint = VALUES(cert_fingerprint),
                     signature_verified_at = NOW()"
-            );
-            $st->execute([
+            )->execute([
                 $key,
                 (string) ($manifest['version'] ?? '0.0.0'),
-                (string) ($verif['signature']['publisher_id'] ?? ''),
+                (string) ($sigData['publisher_id'] ?? ''),
                 $pkgSha, $manSha, $certFp,
             ]);
         } catch (\Throwable $e) {
@@ -448,16 +505,11 @@ class MarketplaceService
         }
 
         return [
-            'success' => true,
-            'message' => "Module '{$key}' installé depuis paquet signé.",
-            'module'  => $manifest,
-            'publisher' => $verif['signature']['publisher_id'] ?? null,
+            'success'   => true,
+            'message'   => "Module '{$key}' installé depuis paquet signé.",
+            'module'    => $manifest,
+            'publisher' => $sigData['publisher_id'] ?? null,
         ];
-
-        } finally {
-            flock($lockFh, LOCK_UN);
-            fclose($lockFh);
-        }
     }
 
     /**
@@ -696,7 +748,7 @@ class MarketplaceService
     public function getInstalled(): array
     {
         try {
-            $stmt = $this->pdo->query("SELECT * FROM marketplace_installs ORDER BY installed_at DESC");
+            $stmt = $this->pdo->query("SELECT * FROM marketplace_installed ORDER BY installed_at DESC");
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (\Throwable $e) {
             return [];

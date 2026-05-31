@@ -38,3 +38,14 @@ php scripts/fmod_cert.php config/marketplace/keys/registry-intermediate.pub \
 
 ⚠️ Until at least one `.pub` is present here, `MarketplaceService::installFromFmod()`
 refuses every sideload — by design.
+
+## Test PKI (development/staging)
+
+Generate a test Root CA for dev instances:
+```bash
+bash scripts/pki/generate-test-ca.sh
+# → places fronote-test-root.pub here automatically
+```
+
+Test modules require `ALLOW_TEST_MODULES=true` in `.env` in addition to the test Root CA.
+The test Root CA is NOT distributed with production instances.

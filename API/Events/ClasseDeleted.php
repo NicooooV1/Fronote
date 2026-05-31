@@ -1,12 +1,2 @@
 <?php
-
-declare(strict_types=1);
-
-namespace API\Events;
-
-class ClasseDeleted
-{
-    public function __construct(
-        public readonly int $classeId,
-    ) {}
-}
+class_alias(\Modules\TableauDeBord\Events\ClasseDeleted::class, 'API\Events\ClasseDeleted');

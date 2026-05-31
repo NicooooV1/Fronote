@@ -161,7 +161,11 @@ if ($_topbar_is_parent && !empty($_SESSION['user_id'])) {
                 return fetch(EP, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
                     body: JSON.stringify(Object.assign({ csrf_token: csrf() }, body))
-                }).then(function (r) { return r.json(); });
+                }).then(function (r) {
+                    var next = r.headers.get('X-Csrf-Token-Next');
+                    if (next) { var m = document.querySelector('meta[name="csrf-token"]'); if (m) m.setAttribute('content', next); }
+                    return r.json();
+                });
             }
             window.fronotePinCurrentPage = function () {
                 post({ action: 'add_page', url: window.location.pathname + window.location.search, label: (document.title || '').slice(0, 150) })

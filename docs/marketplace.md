@@ -1,66 +1,78 @@
-# Marketplace — Guide implémenté (phase 1 « Hub »)
+# Marketplace — Guide (v3.2.4)
 
-> **Statut.** Cette page décrit *ce qui est livré*, pas l'intégralité du CDC v3.0. La
-> phase 1 fournit la **chaîne de confiance côté client** (signature Ed25519 + paquet
-> `.fmod` + sideload vérifié). Le registre HTTP central, le portail éditeur, la console
-> de modération et le bac à sable d'exécution sont des phases ultérieures.
+Module `marketplace` v1.5.2 — pipeline d'installation signé Ed25519, format `.fmod` v1, modules de test, consentement des permissions.
+
+---
+
+## Table des matières
+
+- [Modèle de confiance](#modèle-de-confiance)
+- [Format `.fmod`](#format-fmod)
+- [Manifeste `publish`](#manifeste-publish)
+- [Modules de test (test_only)](#modules-de-test-test_only)
+- [Pipeline d'installation](#pipeline-dinstallation)
+- [Consentement des permissions](#consentement-des-permissions)
+- [Infrastructure PKI](#infrastructure-pki)
+- [CLI et scripts](#cli-et-scripts)
+- [Module de référence hello_world](#module-de-référence-hello_world)
+- [Tables de base de données](#tables-de-base-de-données)
+- [Sécurité](#sécurité)
+- [Phases suivantes](#phases-suivantes)
+
+---
 
 ## Modèle de confiance
 
 ```
-Root CA  ──(signe)──▶  Cert intermédiaire (registre)  ──(signe)──▶  Cert éditeur  ──(signe)──▶  MANIFEST.sha256
-   ▲                                                                                                   │
-   │ clé publique embarquée                                                                            │
-   │ dans config/marketplace/roots/*.pub                                                               │
-   └────────────── le client vérifie la chaîne et chaque fichier ─────────────────────────────────────┘
+Root CA  ──(signe)──▶  Cert intermédiaire  ──(signe)──▶  Cert éditeur  ──(signe)──▶  MANIFEST.sha256
+   ▲                                                                                          │
+   │ clé publique (32 bytes Ed25519)                                                          │
+   │ config/marketplace/roots/*.pub                                                           │
+   └────────────── client vérifie la chaîne + chaque fichier ────────────────────────────────┘
 ```
 
-- Algorithme de signature : **Ed25519** (`ext-sodium`, pas de dépendance Composer).
-- Algorithme d'intégrité : **SHA-256** par fichier (déclaré dans `MANIFEST.sha256`),
-  vérifié en flux pendant l'extraction (pas de TOCTOU entre verify et extract).
-- Canonicalisation des certificats : payload signé = lignes `key=value` triées
-  lexicographiquement et jointes par `\n`. Format stable cross-runtime, défini par
-  `FmodService::canonicalCertBytes()`. **Ne pas** signer du JSON (escapes UTF-8 et
-  ordre des clés non garantis cross-implémentations).
-- Aucune confiance dans le réseau : TLS est requis mais jamais suffisant. La signature
-  est validée hors-ligne contre la Root CA embarquée.
+- **Signature** : Ed25519 via `ext-sodium` (pas de dépendance Composer).
+- **Intégrité** : SHA-256 par fichier, vérifié en flux pendant extraction (pas de TOCTOU entre verify et extract).
+- **Aucune confiance réseau** : TLS requis, jamais suffisant. Vérification offline contre Root CA embarquée.
+- Root CA **production** hors-ligne (air-gapped). Root CA **test** distincte, distribuée avec instances dev.
+
+---
 
 ## Format `.fmod`
 
-Une archive ZIP qui contient :
+Spec publique complète : [`fmod-format.md`](../fmod-format.md).
 
-| Fichier | Rôle |
-|---|---|
-| `module.json` + arborescence | Code et manifeste du module (mêmes conventions que [module-sdk.md](module-sdk.md)). |
-| `MANIFEST.sha256` | Liste de tous les fichiers du paquet : `<sha256_hex>  <chemin>` (un par ligne, triés par chemin). |
-| `SIGNATURE.json` | Signature détachée Ed25519 du `MANIFEST.sha256` + chaîne de certificats de l'éditeur. |
+```
+{module_key}-{version}.fmod   (ZIP)
+├── MANIFEST.sha256      ← SHA-256 par fichier (trié par chemin, signé)
+├── SIGNATURE.json       ← Signature Ed25519 détachée + chaîne de certificats
+├── module.json          ← Métadonnées du module
+└── <arborescence source>
+```
 
-Exemple `SIGNATURE.json` :
+**`SIGNATURE.json`** :
 
 ```json
 {
   "alg": "Ed25519",
   "publisher_id": "fronote-team",
-  "manifest_sha256": "9f2c…",
-  "signature": "base64(Ed25519(sha256(MANIFEST.sha256)))",
-  "certificate_chain": [
-    "base64(cert éditeur)",
-    "base64(cert intermédiaire)"
-  ],
-  "signed_at": "2026-05-29T10:00:00Z"
+  "manifest_sha256": "<sha256-hex-de-MANIFEST.sha256>",
+  "signature": "<base64-Ed25519-64-bytes>",
+  "certificate_chain": ["<base64-cert-éditeur>", "<base64-cert-intermédiaire>"],
+  "signed_at": "2026-05-31T10:00:00Z"
 }
 ```
 
-La Root CA **n'est pas** dans la chaîne ; elle est lue côté client depuis
-`config/marketplace/roots/*.pub`.
+La signature couvre `sha256(MANIFEST.sha256)` — le hash du fichier de hashes. La Root CA n'est pas dans la chaîne ; elle est lue depuis `config/marketplace/roots/*.pub`.
 
-## Manifeste — bloc `publish`
+---
 
-```jsonc
+## Manifeste `publish`
+
+```json
 {
   "key": "cantine",
   "version": "2.3.1",
-  "category": "logistique",
   "publish": {
     "publisher_id": "fronote-team",
     "min_core": ">=2.1.0",
@@ -75,101 +87,265 @@ La Root CA **n'est pas** dans la chaîne ; elle est lue côté client depuis
 
 Le client refuse l'installation si :
 
-- la chaîne de certificats ne remonte pas à une Root CA reconnue
-- un certificat de la chaîne est révoqué (`marketplace_revocations`)
-- la signature Ed25519 ne valide pas `sha256(MANIFEST)`
-- un fichier extrait ne correspond pas à son SHA-256 dans le manifeste
-- `publish.publisher_id` ≠ identité du certificat éditeur (anti-usurpation)
-- la version du cœur ne satisfait pas `min_core` / `max_core`
-- la version est yankée (`marketplace_advisories_seen` haute/critique)
+- La chaîne de certificats ne remonte pas à une Root CA reconnue
+- Un certificat de la chaîne est révoqué (`marketplace_revocations`)
+- La signature Ed25519 ne valide pas `sha256(MANIFEST.sha256)`
+- Un fichier extrait ne correspond pas à son SHA-256 dans le manifeste
+- `publisher_id` incohérent entre manifeste, signature et certificat
+- La version du cœur ne satisfait pas `min_core`/`max_core`
+- La version est yankée (`marketplace_advisories_seen` haute/critique)
 
-## CLI (scripts/)
+---
 
-| Script | Rôle |
-|---|---|
-| `fmod_keygen.php <nom> [dir]` | Génère une paire Ed25519 (clé privée à garder offline). |
-| `fmod_cert.php <subject.pub> <issuer.sk> <publisher_id> <jours> [out]` | Émet un certificat éditeur signé par un émetteur (Root ou intermédiaire). |
-| `fmod_build.php <src> <out.fmod> <editor.sk> <publisher_id> <cert…>` | Construit le `.fmod` (calcule `MANIFEST.sha256`, signe, embarque la chaîne). |
-| `fmod_verify.php <pkg.fmod> [root.pub…]` | Vérifie un paquet hors-ligne (utile en CI et avant publication). |
+## Modules de test (test_only)
 
-Exemple complet (cérémonie de clés — `*.sk` jamais committés) :
+Les modules test valident le pipeline `.fmod` sans logique métier.
 
-```bash
-# 1. Root CA (sur poste air-gappé)
-php scripts/fmod_keygen.php fronote-root /secure/offline/
+**Activation sur une instance dev/staging** :
 
-# 2. Copier la .pub dans le repo
-cp /secure/offline/fronote-root.pub config/marketplace/roots/
-
-# 3. Clé intermédiaire (online, dans config/marketplace/keys/, ignorée par git)
-php scripts/fmod_keygen.php registry-intermediate
-
-# 4. Cert intermédiaire signé par la Root
-php scripts/fmod_cert.php \
-    config/marketplace/keys/registry-intermediate.pub \
-    /secure/offline/fronote-root.sk \
-    fronote-intermediate 730 \
-    config/marketplace/certs/registry-intermediate.cert
-
-# 5. Clé éditeur + cert signé par l'intermédiaire
-php scripts/fmod_keygen.php fronote-team
-php scripts/fmod_cert.php \
-    config/marketplace/keys/fronote-team.pub \
-    config/marketplace/keys/registry-intermediate.sk \
-    fronote-team 365 \
-    config/marketplace/certs/fronote-team.cert
-
-# 6. Build d'un .fmod
-php scripts/fmod_build.php modules/cantine dist/cantine-2.3.1.fmod \
-    config/marketplace/keys/fronote-team.sk fronote-team \
-    config/marketplace/certs/fronote-team.cert \
-    config/marketplace/certs/registry-intermediate.cert
-
-# 7. Vérification hors-ligne
-php scripts/fmod_verify.php dist/cantine-2.3.1.fmod
+```env
+# .env
+ALLOW_TEST_MODULES=true
 ```
 
-## Installation côté instance
+**`module.json` d'un module test** :
 
-- **UI** : Administration → Marketplace (`modules/marketplace/marketplace.php`). Le sideload
-  est un formulaire d'upload protégé par CSRF + `requireRole('administrateur')`.
-- **API** : `app('marketplace')->installFromFmod($path)` —
-  - `FmodService::verifyPackage()` (chaîne + signature + intégrité + compat cœur + yank/CRL)
-  - extraction en staging (refus des entrées avec `..` ou chemin absolu)
-  - `ModuleScanner` statique → `QuarantineService` en cas de violation
-  - bascule atomique (backup du dossier live) → `ModuleSDK::syncModule` + `provisionSql`
-  - trace dans `marketplace_installed` : hash paquet + hash manifest + fingerprint cert + horodatage de vérification
+```json
+{
+  "channel": "test",
+  "test_only": true,
+  "publish": {
+    "required_permissions": ["db_read", "db_write"]
+  }
+}
+```
 
-## Tables ajoutées (`modules/marketplace/Database/install.sql`)
+> **Règle** : `test_only=true` + `network` dans `required_permissions` → refusé dès l'étape 3 (validation du manifeste), avant tout traitement cryptographique.
 
-| Table | Rôle |
-|---|---|
-| `marketplace_sources` | Registres configurés (URL + clé racine attendue). Vide = sideload seulement. |
-| `marketplace_installed` | Provenance vérifiée de chaque module installé. |
-| `marketplace_cache` | Cache JSON des catalogues (TTL via `expires_at`). |
-| `marketplace_consents` | Permissions consenties par version. |
-| `marketplace_advisories_seen` | Avis de sécurité reçus (alimentent le hook `isYanked`). |
-| `marketplace_revocations` | CRL locale (alimente le hook `isRevoked`). |
+**Catalogue test** : `GET /API/endpoints/test_catalog.php` (requiert auth + `ALLOW_TEST_MODULES=true`). Registry configurable via `MARKETPLACE_TEST_REGISTRY_URL` dans `.env`.
 
-Aucune de ces tables n'est scopée par `etablissement_id` — la marketplace est globale à
-l'installation Fronote, pas à un établissement.
+---
+
+## Pipeline d'installation
+
+`MarketplaceService::installFromFmod(string $fmodPath): array`
+
+| # | Étape | Erreur → |
+|---|-------|---------|
+| 1 | ZIP valide, ≤ 50 Mo (configurable `FMOD_MAX_SIZE`) | rejet |
+| 2 | `MANIFEST.sha256` + `SIGNATURE.json` présents | rejet |
+| 3 | JSON valide, champs requis, channel reconnu, `test_only` + `network` interdit | rejet |
+| 4 | `test_only` vs `ALLOW_TEST_MODULES` | rejet |
+| 5 | Chaîne de certificats → Root CA dans `config/marketplace/roots/` | quarantaine |
+| 6 | Fingerprint cert éditeur absent de `marketplace_revocations` | quarantaine |
+| 7 | Signature Ed25519 valide sur `sha256(MANIFEST)` | quarantaine |
+| 8 | SHA-256 de chaque fichier extrait = MANIFEST | quarantaine |
+| 9 | `publisher_id` cohérent (manifeste ∩ signature ∩ certificat) | quarantaine |
+| 10 | `ModuleScanner` statique sur code extrait | quarantaine si violations |
+| 11 | Consentement admin des `permissions_requested` | suspend → `pending_consent` |
+| 12 | Bascule atomique : backup live → `rename(staging, modules/{key}/)` | rollback |
+| 13 | `ModuleSDK::syncModule` + `provisionSql` | module désactivé |
+| 14 | Insertion dans `marketplace_installed` (hash + fingerprint + horodatage) | toujours |
+
+---
+
+## Consentement des permissions
+
+Si `permissions_requested` est non vide, `installFromFmod()` retourne `pending_consent: true` avec le staging dir. L'interface suspend l'installation et affiche un écran de consentement : l'admin coche chaque permission explicitement.
+
+```php
+// Retour pending_consent
+[
+  'success'         => false,
+  'pending_consent' => true,
+  'staging'         => '/storage/tmp/_staging_abc123',
+  'manifest'        => [...],
+  'permissions'     => ['db_read', 'db_write'],
+  'sig_data'        => [...],
+  'fmod_path'       => '/storage/tmp/sideload_xyz.fmod',
+]
+
+// Finalisation après consentement
+$marketplace->confirmInstall($staging, $manifest, $fmodPath, $sigData);
+```
+
+Le consentement est enregistré dans `marketplace_consents` avec `granted_by` (ID admin) et `granted_by_name` (nom dénormalisé — conservé après suppression de l'admin, traçabilité RGPD).
+
+**Permissions reconnues** :
+
+| Permission | Description |
+|-----------|-------------|
+| `db_read` | Lecture base de données |
+| `db_write` | Écriture base de données |
+| `filesystem` | Accès système de fichiers |
+| `network` | Appels réseau sortants |
+| `email` | Envoi d'emails |
+
+---
+
+## Infrastructure PKI
+
+### Hiérarchie
+
+| Niveau | Rôle | Durée |
+|--------|------|-------|
+| Root CA production | Offline, air-gapped. `config/marketplace/roots/fronote-root.pub` | 10 ans |
+| Root CA test | Distincte prod. Distribuée avec instances dev. | 2 ans |
+| Intermediate CA | Signe certificats éditeurs. Révocable via CRL. | 18 mois |
+| Certificat éditeur | Clé de l'éditeur, dans `SIGNATURE.json`. | 12 mois |
+
+### Format certificat Fronote
+
+Un certificat est un **JSON base64-encodé** :
+
+```json
+{
+  "publisher_id": "fronote-team",
+  "public_key_b64": "<base64-Ed25519-32-bytes>",
+  "issuer_fp": "<sha256-hex-clé-émetteur>",
+  "issued_at": "2026-01-01T00:00:00Z",
+  "expires_at": "2027-01-01T00:00:00Z",
+  "signature_b64": "<base64-signature-émetteur>"
+}
+```
+
+Payload signé : lignes `key=value` triées alphabétiquement, jointes par `\n`, sans `signature_b64`. Défini par `FmodService::canonicalCertBytes()`.
+
+### Clé publique Root CA (`.pub`)
+
+```
+# config/marketplace/roots/fronote-root.pub
+<base64-32-bytes-Ed25519-pubkey>
+```
+
+Une ligne base64, 32 bytes une fois décodés.
+
+---
+
+## CLI et scripts
+
+### Générer l'infrastructure PKI de test
+
+```bash
+bash scripts/pki/generate-test-ca.sh [output_dir]
+# Génère Root CA test, Intermediate CA, cert éditeur fronote-team, keypair libsodium.
+# Copie fronote-test-root.pub dans config/marketplace/roots/ automatiquement.
+```
+
+### Installer un module en CLI
+
+```bash
+php scripts/install-module.php ./module-1.0.0.fmod [--allow-test] [--dry-run]
+# --allow-test  → autorise modules test_only
+# --dry-run     → vérifie signature + scan sans installer
+```
+
+### Construire un `.fmod` (PHP)
+
+```php
+$fmod = new \API\Services\FmodService([]);
+$fmod->buildPackage(
+    './modules/mon_module',
+    './dist/mon_module-1.0.0.fmod',
+    trim(file_get_contents('pki-test/fmod-secret.key')),
+    'fronote-team',
+    [base64_encode(file_get_contents('pki-test/test-intermediate.crt'))]
+);
+```
+
+### Vérifier un `.fmod` (PHP)
+
+```php
+$pubKeyB64 = trim(file_get_contents('config/marketplace/roots/fronote-test-root.pub'));
+$roots     = [FmodService::fingerprint($pubKeyB64) => $pubKeyB64];
+$fmod      = new \API\Services\FmodService($roots);
+$result    = $fmod->verifyPackage('./module.fmod', '3.2.4');
+// $result['ok'], $result['errors'], $result['manifest'], $result['signature']
+```
+
+### Scripts historiques
+
+| Script | Rôle |
+|--------|------|
+| `scripts/fmod_keygen.php <nom> [dir]` | Génère paire Ed25519 |
+| `scripts/fmod_cert.php <subject.pub> <issuer.sk> <publisher_id> <jours> [out]` | Émet un certificat |
+| `scripts/fmod_build.php <src> <out.fmod> <editor.sk> <publisher_id> <cert…>` | Build + signature |
+| `scripts/fmod_verify.php <pkg.fmod> [root.pub…]` | Vérification offline |
+
+---
+
+## Module de référence hello_world
+
+Module test officiel (v1.0.0), distribué pré-signé par l'Intermediate CA de test.
+
+**Objectif** : valider l'intégralité du pipeline .fmod sans logique métier.
+
+```
+modules/hello_world/
+├── module.json                              ← test_only: true, channel: test
+├── hello_world.php                          ← Page admin : log auto + bouton vider
+├── Services/HelloWorldService.php           ← log(), getRecentLogs(), clearLogs(), getStats()
+├── Providers/HelloWorldServiceProvider.php  ← Enregistre 'hello_world' dans le container
+├── Database/install.sql                     ← CREATE TABLE hello_world_log
+└── lang/{fr,en}.json
+```
+
+**Activation** :
+
+```bash
+# .env
+ALLOW_TEST_MODULES=true
+
+php scripts/install-module.php ./hello_world-1.0.0.fmod --allow-test
+```
+
+**API** :
+
+```php
+$hw = app('hello_world');
+$hw->log('page_view', ['user_id' => 42]);
+$logs  = $hw->getRecentLogs(20);
+$stats = $hw->getStats(); // ['total' => N, 'by_event' => [...]]
+$hw->clearLogs();
+```
+
+---
+
+## Tables de base de données
+
+Définies dans `modules/marketplace/Database/install.sql`. Non scopées `etablissement_id` : la marketplace est globale à l'installation.
+
+| Table | Rôle | Nouveautés v1.5.2 |
+|-------|------|------------------|
+| `marketplace_sources` | Registres configurés (URL + Root CA attendue) | `root_public_key BINARY(32)`, `updated_at ON UPDATE` |
+| `marketplace_installed` | Provenance vérifiée (hash paquet + cert + horodatage) | `COLLATE ascii_bin` sur colonnes SHA-256 |
+| `marketplace_installs` | Installations catalog (`installModule`/`installTheme`) | Table ajoutée |
+| `marketplace_cache` | Cache JSON des catalogues (TTL via `expires_at`) | — |
+| `marketplace_consents` | Permissions consenties par version | `granted_by_name VARCHAR(200)` |
+| `marketplace_advisories_seen` | Avis de sécurité reçus (hook `isYanked`) | `acknowledged_by INT + FK` |
+| `marketplace_revocations` | CRL locale (hook `isRevoked`) | `cert_fingerprint COLLATE ascii_bin`, `KEY idx_fingerprint` |
+
+---
 
 ## Sécurité
 
-- **Single source of trust** : les `*.pub` de `config/marketplace/roots/`. Aucun fallback
-  réseau, aucun TOFU.
-- **Privates jamais committées** : `config/marketplace/keys/` est dans `.gitignore`, ainsi
-  que `*.sk` et `dist/*.fmod`.
-- **`ext-sodium` obligatoire** : requirement explicite dans `composer.json`.
-- **Extraction** : refus de toute entrée ZIP contenant `..` ou démarrant par `/` ou `\`.
-- **Signature ≠ innocuité** : `ModuleScanner` reste exécuté après vérification de signature ;
-  un module signé peut être quarantainé s'il déclenche le scanner.
-- **CI** : `.github/workflows/validate.yml` lance `tests/fmod_selftest.php` qui couvre
-  happy-path, tamper-detection, et rejet d'une Root CA non reconnue.
+| Propriété | Garantie |
+|-----------|---------|
+| Intégrité | SHA-256 par fichier, vérifié en flux (pas de TOCTOU) |
+| Authenticité | Chaîne Ed25519 → Root CA embarquée |
+| Non-répudiation | Ed25519 est déterministe |
+| Révocation | CRL via `marketplace_revocations` |
+| Extraction sûre | Refus `..` et chemins absolus ; commit atomique `.part` |
+| Post-signature | `ModuleScanner` tourne après signature valide |
 
-## Phases suivantes (hors session)
+**Ce que la signature ne garantit pas** : qualité du code, logique malveillante subtile, conformité RGPD. `ModuleScanner` + consentement des permissions sont des couches complémentaires.
 
-- Registre HTTP : API `/v1/modules`, stockage objet, CRL signée publiée, télémétrie anonyme.
+---
+
+## Phases suivantes
+
+- Registre HTTP : `/v1/modules`, `/v1/test-catalog`, CRL publiée en ligne.
+- Binaire `fmod-pack` (Go) pour signing + verification sans PHP.
 - Portail éditeur et console de modération.
-- Bac à sable d'exécution (conteneur isolé) en amont de la modération.
-- Modules payants (phase 4, voir CDC §16).
+- Bac à sable d'exécution lors de la modération.
+- Modules payants.

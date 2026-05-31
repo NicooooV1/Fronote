@@ -19,9 +19,13 @@ class RBAC
     private array $cachedPermissions = [];
 
     // ───────────────────── MATRICE STATIQUE ─────────────────────
-    // Chaque action → liste des rôles autorisés
+    // Permissions système uniquement — non associées à un module spécifique.
+    // Les permissions module (notes.*, absences.*, devoirs.*…) sont stockées en base
+    // (table rbac_permissions) et injectées par ModuleSDK::syncPermissions() à
+    // l'activation de chaque module. can() tombe en fallback DB pour toute permission
+    // absente de ce tableau.
     private const PERMISSIONS = [
-        // ─── Back-office administration ───
+        // ─── Back-office administration (core) ───
         'admin.access'           => ['administrateur'],
         'admin.users'            => ['administrateur'],
         'admin.users.create'     => ['administrateur'],
@@ -34,195 +38,20 @@ class RBAC
         'admin.messagerie'       => ['administrateur'],
         'admin.classes'          => ['administrateur'],
 
-        // ─── Notes ───
-        'notes.view'             => ['administrateur', 'professeur', 'vie_scolaire', 'eleve', 'parent'],
-        'notes.manage'           => ['administrateur', 'professeur', 'vie_scolaire'],
-        'notes.edit'             => ['administrateur', 'professeur'],
-        'notes.delete'           => ['administrateur'],
-        'notes.lock'             => ['administrateur'],
-
-        // ─── Absences ───
-        'absences.view'          => ['administrateur', 'professeur', 'vie_scolaire', 'eleve', 'parent'],
-        'absences.manage'        => ['administrateur', 'professeur', 'vie_scolaire'],
-        'absences.validate'      => ['administrateur', 'vie_scolaire'],
-        'absences.justify'       => ['eleve', 'parent'],
-        'absences.stats'         => ['administrateur', 'vie_scolaire'],
-        'absences.export'        => ['administrateur', 'vie_scolaire'],
-
-        // ─── Appel ───
-        'appel.view'             => ['administrateur', 'professeur', 'vie_scolaire'],
-        'appel.manage'           => ['administrateur', 'professeur', 'vie_scolaire'],
-        'appel.correction'       => ['administrateur', 'professeur'],
-
-        // ─── Devoirs / Rendus ───
-        'devoirs.view'           => ['administrateur', 'professeur', 'eleve', 'parent'],
-        'devoirs.manage'         => ['administrateur', 'professeur'],
-        'devoirs.submit'         => ['eleve'],
-        'devoirs.correct'        => ['administrateur', 'professeur'],
-
-        // ─── Emploi du temps ───
-        'edt.view'               => ['administrateur', 'professeur', 'vie_scolaire', 'eleve', 'parent'],
-        'edt.manage'             => ['administrateur', 'vie_scolaire'],
-
-        // ─── Discipline ───
-        'discipline.view'        => ['administrateur', 'vie_scolaire', 'professeur'],
-        'discipline.manage'      => ['administrateur', 'vie_scolaire'],
-        'discipline.signal'      => ['administrateur', 'professeur', 'vie_scolaire'],
-
-        // ─── Bulletins ───
-        'bulletins.view'         => ['administrateur', 'professeur', 'vie_scolaire', 'eleve', 'parent'],
-        'bulletins.manage'       => ['administrateur', 'professeur', 'vie_scolaire'],
-        'bulletins.generate'     => ['administrateur', 'vie_scolaire'],
-
-        // ─── Compétences ───
-        'competences.view'       => ['administrateur', 'professeur', 'vie_scolaire', 'eleve', 'parent'],
-        'competences.manage'     => ['administrateur', 'professeur'],
-
-        // ─── Annonces / Sondages ───
-        'annonces.view'          => ['administrateur', 'professeur', 'vie_scolaire', 'eleve', 'parent'],
-        'annonces.manage'        => ['administrateur', 'professeur', 'vie_scolaire'],
-
-        // ─── Agenda / Événements ───
-        'agenda.view'            => ['administrateur', 'professeur', 'vie_scolaire', 'eleve', 'parent'],
-        'agenda.manage'          => ['administrateur', 'professeur', 'vie_scolaire'],
-
-        // ─── Messagerie ───
-        'messagerie.view'        => ['administrateur', 'professeur', 'vie_scolaire', 'eleve', 'parent'],
-        'messagerie.send'        => ['administrateur', 'professeur', 'vie_scolaire', 'eleve', 'parent'],
-
-        // ─── Documents ───
-        'documents.view'         => ['administrateur', 'professeur', 'vie_scolaire', 'eleve', 'parent'],
-        'documents.manage'       => ['administrateur', 'professeur', 'vie_scolaire'],
-
-        // ─── Cahier de textes ───
-        'cahierdetextes.view'    => ['administrateur', 'professeur', 'vie_scolaire', 'eleve', 'parent'],
-        'cahierdetextes.manage'  => ['administrateur', 'professeur'],
-
-        // ─── Réunions ───
-        'reunions.view'          => ['administrateur', 'professeur', 'vie_scolaire', 'parent'],
-        'reunions.manage'        => ['administrateur', 'vie_scolaire', 'professeur'],
-        'reunions.reserve'       => ['parent'],
-
-        // ─── Inscriptions ───
-        'inscriptions.view'      => ['administrateur', 'vie_scolaire'],
-        'inscriptions.manage'    => ['administrateur', 'vie_scolaire'],
-
-        // ─── Orientation ───
-        'orientation.view'       => ['administrateur', 'professeur', 'vie_scolaire', 'eleve', 'parent'],
-        'orientation.manage'     => ['administrateur', 'professeur', 'vie_scolaire'],
-
-        // ─── Signalements ───
-        'signalements.view'      => ['administrateur', 'vie_scolaire'],
-        'signalements.manage'    => ['administrateur', 'vie_scolaire'],
-        'signalements.create'    => ['administrateur', 'professeur', 'vie_scolaire', 'eleve'],
-
-        // ─── Bibliothèque ───
-        'bibliotheque.view'      => ['administrateur', 'professeur', 'vie_scolaire', 'eleve', 'parent'],
-        'bibliotheque.manage'    => ['administrateur', 'vie_scolaire'],
-        'bibliotheque.borrow'    => ['eleve', 'professeur'],
-
-        // ─── Clubs ───
-        'clubs.view'             => ['administrateur', 'professeur', 'vie_scolaire', 'eleve'],
-        'clubs.manage'           => ['administrateur', 'vie_scolaire', 'professeur'],
-        'clubs.join'             => ['eleve'],
-
-        // ─── Infirmerie ───
-        'infirmerie.view'        => ['administrateur', 'vie_scolaire'],
-        'infirmerie.manage'      => ['administrateur', 'vie_scolaire'],
-
-        // ─── Support ───
-        'support.view'           => ['administrateur', 'professeur', 'vie_scolaire', 'eleve', 'parent'],
-        'support.manage'         => ['administrateur', 'vie_scolaire'],
-        'support.create'         => ['administrateur', 'professeur', 'vie_scolaire', 'eleve', 'parent'],
-
-        // ─── Examens ───
-        'examens.view'           => ['administrateur', 'vie_scolaire', 'professeur', 'eleve'],
-        'examens.manage'         => ['administrateur', 'vie_scolaire'],
-
-        // ─── Ressources ───
-        'ressources.view'        => ['administrateur', 'professeur', 'vie_scolaire', 'eleve'],
-        'ressources.manage'      => ['administrateur', 'professeur'],
-
-        // ─── Stages ───
-        'stages.view'            => ['administrateur', 'professeur', 'vie_scolaire', 'eleve', 'parent'],
-        'stages.manage'          => ['administrateur', 'vie_scolaire', 'professeur'],
-
-        // ─── Facturation ───
-        'facturation.view'       => ['administrateur', 'vie_scolaire', 'parent'],
-        'facturation.manage'     => ['administrateur', 'vie_scolaire'],
-
-        // ─── Cantine ───
-        'cantine.view'           => ['administrateur', 'vie_scolaire', 'eleve', 'parent'],
-        'cantine.manage'         => ['administrateur', 'vie_scolaire'],
-        'cantine.reserve'        => ['parent', 'eleve'],
-
-        // ─── Salles / Matériels ───
-        'salles.view'            => ['administrateur', 'vie_scolaire', 'professeur'],
-        'salles.manage'          => ['administrateur', 'vie_scolaire'],
-        'salles.reserve'         => ['administrateur', 'vie_scolaire', 'professeur'],
-
-        // ─── Périscolaire / Garderie ───
-        'periscolaire.view'      => ['administrateur', 'vie_scolaire', 'parent'],
-        'periscolaire.manage'    => ['administrateur', 'vie_scolaire'],
-
-        // ─── Personnel ───
-        'personnel.view'         => ['administrateur', 'vie_scolaire'],
-        'personnel.manage'       => ['administrateur', 'vie_scolaire'],
-
-        // ─── Transports ───
-        'transports.view'        => ['administrateur', 'vie_scolaire', 'parent'],
-        'transports.manage'      => ['administrateur', 'vie_scolaire'],
-
-        // ─── Diplômes ───
-        'diplomes.view'          => ['administrateur', 'vie_scolaire', 'eleve', 'parent'],
-        'diplomes.manage'        => ['administrateur', 'vie_scolaire'],
-
-        // ─── Archivage ───
-        'archivage.view'         => ['administrateur'],
-        'archivage.manage'       => ['administrateur'],
-
-        // ─── Trombinoscope ───
-        'trombinoscope.view'     => ['administrateur', 'professeur', 'vie_scolaire'],
-
-        // ─── Reporting ───
-        'reporting.view'         => ['administrateur', 'professeur', 'vie_scolaire'],
-        'reporting.export'       => ['administrateur', 'vie_scolaire'],
-
-        // ─── RGPD ───
+        // ─── RGPD (droit des personnes — transversal, non modulaire) ───
         'rgpd.view'              => ['administrateur'],
         'rgpd.manage'            => ['administrateur'],
         'rgpd.my_data'           => ['administrateur', 'professeur', 'vie_scolaire', 'eleve', 'parent'],
 
-        // ─── Vie scolaire (dashboard) ───
-        'vie_scolaire.view'      => ['administrateur', 'vie_scolaire'],
-        'vie_scolaire.manage'    => ['administrateur', 'vie_scolaire'],
-
-        // ─── Notifications ───
+        // ─── Notifications système (transversal) ───
         'notifications.view'     => ['administrateur', 'professeur', 'vie_scolaire', 'eleve', 'parent'],
 
-        // ─── Paramètres ───
+        // ─── Paramètres utilisateur (transversal) ───
         'parametres.view'        => ['administrateur', 'professeur', 'vie_scolaire', 'eleve', 'parent'],
-
-        // ─── Projets pédagogiques ───
-        'projets.view'           => ['administrateur', 'professeur', 'vie_scolaire'],
-        'projets.manage'         => ['administrateur', 'professeur'],
-
-        // ─── Parcours éducatifs ───
-        'parcours.view'          => ['administrateur', 'professeur', 'vie_scolaire', 'eleve', 'parent'],
-        'parcours.manage'        => ['administrateur', 'professeur'],
-
-        // ─── Besoins éducatifs ───
-        'besoins.view'           => ['administrateur', 'professeur', 'vie_scolaire', 'parent'],
-        'besoins.manage'         => ['administrateur', 'vie_scolaire', 'professeur'],
-
-        // ─── Internat ───
-        'internat.view'          => ['administrateur', 'vie_scolaire'],
-        'internat.manage'        => ['administrateur', 'vie_scolaire'],
-
-        // ─── Vie associative ───
-        'vie_associative.view'   => ['administrateur', 'vie_scolaire', 'eleve'],
-        'vie_associative.manage' => ['administrateur', 'vie_scolaire'],
     ];
+    // Toutes les autres permissions (notes.*, absences.*, bulletins.*, etc.) sont
+    // déclarées dans module.json et injectées en base par ModuleSDK::syncPermissions()
+    // à l'activation du module. RBAC::can() tombe en fallback DB pour ces permissions.
 
     // ─── Hiérarchie des rôles (un rôle hérite des permissions inférieures) ───
     private const ROLE_HIERARCHY = [

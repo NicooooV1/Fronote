@@ -6,6 +6,51 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.2.4] "Marketplace" — 2026-05-31
+
+### Added — Marketplace v1.5.2 (CDC n°2 — format .fmod + infrastructure test)
+
+- **Format `.fmod` v1** : structure ZIP normalisée (`MANIFEST.sha256`, `SIGNATURE.json`, `module.json`, arborescence source). Spec publique dans [`fmod-format.md`](fmod-format.md).
+- **`test_only` channel** : modules marqués `test_only: true` bloqués sur instances production ; activables via `ALLOW_TEST_MODULES=true` dans `.env`.
+- **Consentement des permissions** : si un `.fmod` déclare `permissions_requested`, l'installation est suspendue. L'admin coche chaque permission explicitement. Consentement horodaté dans `marketplace_consents` (`granted_by_name` dénormalisé pour traçabilité RGPD post-suppression admin).
+- **`MarketplaceService::isTestModulesAllowed()`** : lit `ALLOW_TEST_MODULES` env.
+- **`MarketplaceService::confirmInstall()`** : finalise l'installation après consentement ; partage `deployFromStaging()` avec `installFromFmod()` (factorisation).
+- **Module de référence `hello_world` v1.0.0** : module test officiel validant l'intégralité du pipeline .fmod (table `hello_world_log`, service, provider, page admin avec log/clear, langues fr/en).
+- **Infrastructure PKI de test** : `scripts/pki/generate-test-ca.sh` génère Root CA test, Intermediate CA, certificat éditeur `fronote-team`, keypair libsodium. Copie automatique de `fronote-test-root.pub` dans `config/marketplace/roots/`.
+- **CLI `scripts/install-module.php`** : install interactive depuis CLI avec consent et `--dry-run`.
+- **`API/endpoints/test_catalog.php`** : catalogue JSON des modules de test (local + registry configurable via `MARKETPLACE_TEST_REGISTRY_URL`).
+- **`marketplace.php` refactorisé** : écran consentement, badge `test_only` warning prod, pagination 20/page, Root CA listées, `BASE_PATH` remplace les `dirname(__DIR__, 2)` relatifs.
+- **`install.sql` v1.5.2** : `root_public_key BINARY(32)` (était `VARBINARY(64)`), `COLLATE ascii_bin` sur colonnes SHA-256/fingerprint, `updated_at ON UPDATE` sur `marketplace_sources`, `granted_by_name` dans `marketplace_consents`, `acknowledged_by` + FK dans `marketplace_advisories_seen`, `KEY idx_fingerprint` dans `marketplace_revocations`, table `marketplace_installs` créée (utilisée par `installModule`/`installTheme`).
+
+### Added — Architecture modules (CDC n°1 — refactoring)
+
+- **`composer.json`** : namespace `Modules\\` → `modules/` (PSR-4). Chaque module peut définir ses propres classes sans modifier l'autoloader core.
+- **`ModuleSDK::bootActiveModuleProviders(Application $app)`** : charge le `{Pascal}ServiceProvider.php` de chaque module actif après `$app->boot()`. Point d'entrée pour les services module lazy.
+- **`WebSocket::dispatch(string $channel, array $payload)`** : méthode générique remplaçant les cinq méthodes domaine-spécifiques (`notifyNewGrade`, `notifyNewAbsence`, etc.) conservées comme `@deprecated`.
+- **`RBAC::PERMISSIONS`** réduit aux permissions système (admin.*, rgpd.*, notifications.view, parametres.view). Toutes les permissions module viennent de `rbac_permissions` en base (alimentée par `syncPermissions()` à l'activation).
+- **ServiceProviders de 16 modules** créés sous `modules/{key}/Providers/` : notes, absences, agenda, bulletins, reporting, notifications, reunions, messagerie, emploi_du_temps, devoirs, facturation, documents, appel, tableau_de_bord, recherche, admin_sessions.
+- **Déplacement physique des services** (9 services Scolaire → `modules/{key}/Services/`) et des events (25 classes → `modules/{key}/Events/`). Anciens emplacements `API/Services/Scolaire/*` et `API/Events/*` réduits à des `class_alias` de compat.
+- **`EventServiceProvider`** réduit aux seuls events core (`UserCreated`, `UserPasswordChanged`). Listeners domaine enregistrés dans le boot de chaque module ServiceProvider.
+- **`bootstrap.php`** : 20 singletons module retirés (sms, email_queue, webpush, visio, analytics, bulletin_pdf, payment, signature, qr_presence, global_search, activity_feed, cross_analytics, metrics, queue pour modules) ; `ScolaireServiceProvider` remplacé par `bootActiveModuleProviders`. Core réduit à ~14 singletons.
+- **Nouveaux modules créés** : `devoirs`, `tableau_de_bord`, `recherche`, `admin_sessions` (module.json + ServiceProvider).
+- **`SendAbsenceNotificationJob`** déplacé vers `modules/absences/Jobs/`.
+- **Endpoints** `messagerie.php` et `agenda_persons.php` proxiés depuis `modules/{key}/endpoints/`.
+
+### Fixed
+
+- `getInstalled()` dans `MarketplaceService` : table `marketplace_installs` → `marketplace_installed` (mismatch schéma).
+- `marketplace.php` : double inclusion de `shared_topbar_nav.php` supprimée, `<div class="main-content">` orphelin retiré.
+- `logAudit()` inexistante → `app('audit')->log()`.
+- `substr(htmlspecialchars(...), 0, 16)` → `htmlspecialchars(substr(..., 0, 16))` (coupure en milieu d'entité HTML).
+- `$_SESSION['csrf_token']` dans `accueil.php` → conservé (géré par `shared_header.php`, ne pas remplacer par `app('csrf')->generate()`).
+
+### Security
+
+- `marketplace_installed` : `package_sha256` / `manifest_sha256` / `cert_fingerprint` déclarés `COLLATE ascii_bin` — comparaisons SHA-256 hex case-sensitive, élimine faux positifs CRL.
+- `BINARY(32)` pour `root_public_key` — rejet implicite de toute clé Ed25519 d'une longueur incorrecte.
+
+---
+
 ## [3.0.0-alpha.1] "Hub" — 2026-05-29
 
 ### Added — Marketplace foundations (phase 1, client-side)

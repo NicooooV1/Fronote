@@ -1,0 +1,21 @@
+{
+    "key": "devoirs",
+    "version": "1.0.0",
+    "name": { "fr": "Devoirs", "en": "Homework" },
+    "description": { "fr": "Cahier de textes et gestion des devoirs.", "en": "Homework and lesson planning." },
+    "icon": "fas fa-book-open",
+    "category": "scolaire",
+    "core": false,
+    "routes": { "main": "devoirs.php" },
+    "database": { "install": "" },
+    "permissions": {
+        "view":   { "default_roles": ["administrateur", "professeur", "eleve", "parent"] },
+        "manage": { "default_roles": ["administrateur", "professeur"] },
+        "submit": { "default_roles": ["eleve"] },
+        "correct":{ "default_roles": ["administrateur", "professeur"] }
+    },
+    "sidebar": { "hidden": false, "sort_order": 30 },
+    "establishment_types": null,
+    "author": "Fronote Team",
+    "license": "MIT"
+}

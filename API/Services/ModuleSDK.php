@@ -941,4 +941,49 @@ class ModuleSDK
     {
         $this->manifests = null;
     }
+
+    /**
+     * Charge et enregistre les ServiceProviders des modules actifs.
+     *
+     * Chaque module actif peut exposer un ServiceProvider dans
+     * modules/{key}/Providers/{PascalKey}ServiceProvider.php avec le namespace
+     * Modules\{PascalKey}\Providers\{PascalKey}ServiceProvider.
+     *
+     * Cette méthode doit être appelée après $app->boot() dans bootstrap.php,
+     * une fois le container et les services core initialisés.
+     */
+    public function bootActiveModuleProviders(\API\Core\Application $app): void
+    {
+        try {
+            $activeModules = $app->make('modules')->getAll();
+        } catch (\Throwable $e) {
+            error_log('ModuleSDK::bootActiveModuleProviders: cannot load modules — ' . $e->getMessage());
+            return;
+        }
+
+        foreach ($activeModules as $key => $module) {
+            if (empty($module['enabled'])) {
+                continue;
+            }
+
+            $modulePath = $module['_path'] ?? ($this->basePath . '/modules/' . $key);
+            // Convert snake_case key to PascalCase: admin_sessions → AdminSessions
+            $pascal = implode('', array_map('ucfirst', explode('_', (string) $key)));
+            $providerFile  = $modulePath . '/Providers/' . $pascal . 'ServiceProvider.php';
+            $providerClass = 'Modules\\' . $pascal . '\\Providers\\' . $pascal . 'ServiceProvider';
+
+            if (!file_exists($providerFile)) {
+                continue;
+            }
+
+            try {
+                require_once $providerFile;
+                if (class_exists($providerClass, false)) {
+                    $app->register(new $providerClass($app));
+                }
+            } catch (\Throwable $e) {
+                error_log("ModuleSDK: failed to boot provider for module '{$key}': " . $e->getMessage());
+            }
+        }
+    }
 }

@@ -20,6 +20,7 @@ storage/maintenance.json
 .gitignore
 API/
 modules/*/uploads
+modules/hello_world
 
 # Marketplace : clés privées ne doivent JAMAIS être committées.
 # Les .pub des Root CA restent dans le repo (clés publiques).

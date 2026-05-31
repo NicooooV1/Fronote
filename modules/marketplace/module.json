@@ -1,14 +1,14 @@
 {
     "key": "marketplace",
-    "version": "1.0.0",
+    "version": "1.5.2",
     "name": { "fr": "Marketplace", "en": "Marketplace" },
     "description": {
-        "fr": "Découverte, vérification et installation signée de modules Fronote (.fmod).",
-        "en": "Discovery, signature verification and signed install of Fronote modules (.fmod)."
+        "fr": "Découverte, vérification et installation signée de modules Fronote (.fmod). Pipeline Ed25519 complet, modules de test, consentement des permissions.",
+        "en": "Discovery, signature verification and signed install of Fronote modules (.fmod). Full Ed25519 pipeline, test modules, permission consent."
     },
     "icon": "fas fa-store",
     "category": "administration",
-    "core": true,
+    "core": false,
     "requires_php": ">=8.0",
     "dependencies": [],
     "routes": { "main": "marketplace.php" },
@@ -28,7 +28,7 @@
         "required_permissions": ["db_read", "db_write", "filesystem"],
         "optional_permissions": ["network"]
     },
-    "sidebar": { "hidden": false, "sort_order": 95 },
+    "sidebar": { "hidden": true, "sort_order": 95 },
     "establishment_types": null,
     "author": "Fronote Team",
     "license": "MIT"

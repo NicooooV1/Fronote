@@ -1,12 +1,2 @@
 <?php
-
-declare(strict_types=1);
-
-namespace API\Events;
-
-class DevoirDeleted
-{
-    public function __construct(
-        public readonly int $devoirId,
-    ) {}
-}
+class_alias(\Modules\Devoirs\Events\DevoirDeleted::class, 'API\Events\DevoirDeleted');

@@ -65,54 +65,40 @@ class WebSocket {
     }
     
     /**
-     * Notifier un nouveau message dans une conversation
+     * Generic domain-agnostic dispatcher.
+     * Each module builds its own channel name and payload in its own listener.
+     *
+     * @param string $channel  WS endpoint path, e.g. '/notify/grade'
+     * @param array  $payload  Arbitrary JSON-encodable payload
      */
+    public static function dispatch(string $channel, array $payload): array
+    {
+        return self::sendNotification($channel, $payload);
+    }
+
+    /** @deprecated Use dispatch('/notify/message', [...]) from the messagerie module listener */
     public static function notifyNewMessage($convId, $messageData) {
-        return self::sendNotification('/notify/message', [
-            'convId' => $convId,
-            'message' => $messageData
-        ]);
+        return self::dispatch('/notify/message', ['convId' => $convId, 'message' => $messageData]);
     }
-    
-    /**
-     * Notifier un utilisateur (notification personnelle)
-     */
+
+    /** @deprecated Use dispatch('/notify/notification', [...]) from the notifications module listener */
     public static function notifyUser($userId, $data) {
-        return self::sendNotification('/notify/notification', [
-            'userId' => $userId,
-            'data' => $data
-        ]);
+        return self::dispatch('/notify/notification', ['userId' => $userId, 'data' => $data]);
     }
-    
-    /**
-     * Notifier une nouvelle note
-     */
+
+    /** @deprecated Use dispatch('/notify/grade', [...]) from the notes module listener */
     public static function notifyNewGrade($eleveId, $gradeData) {
-        return self::sendNotification('/notify/grade', [
-            'eleveId' => $eleveId,
-            'gradeData' => $gradeData
-        ]);
+        return self::dispatch('/notify/grade', ['eleveId' => $eleveId, 'gradeData' => $gradeData]);
     }
-    
-    /**
-     * Notifier une nouvelle absence
-     */
+
+    /** @deprecated Use dispatch('/notify/absence', [...]) from the absences module listener */
     public static function notifyNewAbsence($eleveId, $absenceData) {
-        return self::sendNotification('/notify/absence', [
-            'eleveId' => $eleveId,
-            'absenceData' => $absenceData
-        ]);
+        return self::dispatch('/notify/absence', ['eleveId' => $eleveId, 'absenceData' => $absenceData]);
     }
-    
-    /**
-     * Notifier un événement d'agenda
-     */
+
+    /** @deprecated Use dispatch('/notify/event', [...]) from the agenda module listener */
     public static function notifyNewEvent($targetType, $targetId, $eventData) {
-        return self::sendNotification('/notify/event', [
-            'targetType' => $targetType,
-            'targetId' => $targetId,
-            'eventData' => $eventData
-        ]);
+        return self::dispatch('/notify/event', ['targetType' => $targetType, 'targetId' => $targetId, 'eventData' => $eventData]);
     }
     
     /**
