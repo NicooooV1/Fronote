@@ -161,6 +161,8 @@ const CahierTextes = {
     /* ── Popover calendrier (UX-4) ── */
     initCalendarPopover() {
         let popover = null;
+        // Échappe toute valeur utilisateur avant injection HTML (anti XSS stocké).
+        const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         document.querySelectorAll('.calendar-event').forEach(ev => {
             ev.addEventListener('click', function (e) {
                 e.stopPropagation();
@@ -169,13 +171,13 @@ const CahierTextes = {
                 popover = document.createElement('div');
                 popover.className = 'calendar-popover';
                 popover.innerHTML = `
-                    <div class="popover-header">${this.dataset.titre || ''}</div>
+                    <div class="popover-header">${esc(this.dataset.titre)}</div>
                     <div class="popover-body">
-                        <div><strong>Matière :</strong> ${this.dataset.matiere || ''}</div>
-                        <div><strong>Professeur :</strong> ${this.dataset.prof || ''}</div>
-                        ${this.dataset.desc ? '<div class="popover-desc">' + this.dataset.desc + '</div>' : ''}
+                        <div><strong>Matière :</strong> ${esc(this.dataset.matiere)}</div>
+                        <div><strong>Professeur :</strong> ${esc(this.dataset.prof)}</div>
+                        ${this.dataset.desc ? '<div class="popover-desc">' + esc(this.dataset.desc) + '</div>' : ''}
                     </div>
-                    <div class="popover-footer"><a href="form_devoir.php?id=${this.dataset.id}" class="btn btn-sm btn-primary">Voir / Modifier</a></div>
+                    <div class="popover-footer"><a href="form_devoir.php?id=${encodeURIComponent(this.dataset.id || '')}" class="btn btn-sm btn-primary">Voir / Modifier</a></div>
                 `;
                 popover.style.position = 'fixed';
                 popover.style.top  = (rect.bottom + 5) + 'px';

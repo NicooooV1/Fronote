@@ -91,11 +91,18 @@ class AuthManager
             if ($user && $this->userProvider->validateCredentials($user, $credentials)) {
                 return $user;
             }
+            if (!$user) {
+                $this->dummyVerify(); // identifiant inconnu : équilibrer le timing
+            }
             return null;
         }
 
         // Multi-type : chercher dans toutes les tables
         $candidates = $this->userProvider->findByLoginAllTypes($login);
+        if (empty($candidates)) {
+            $this->dummyVerify(); // identifiant inconnu : équilibrer le timing
+            return null;
+        }
         $valid = [];
         foreach ($candidates as $user) {
             if ($this->userProvider->validateCredentials($user, $credentials)) {
@@ -112,6 +119,18 @@ class AuthManager
         }
 
         return null;
+    }
+
+    /**
+     * Vérification de mot de passe factice (bcrypt cost 12) exécutée lorsqu'aucun
+     * compte ne correspond, afin que le temps de réponse soit comparable à celui
+     * d'un mot de passe erroné sur un compte existant. Empêche l'énumération de
+     * comptes par canal temporel (AUTH-03).
+     */
+    private function dummyVerify(): void
+    {
+        // Hash bcrypt valide (cost 12) → password_verify exécute réellement le KDF.
+        password_verify('dummy_password', '$2y$12$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy');
     }
 
     /**

@@ -43,6 +43,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         unset($_SESSION['pending_2fa']);
         redirect('login/index.php');
     } else {
+        // Anti-brute-force du 2e facteur. Le compteur vit dans la session qui porte
+        // pending_2fa : impossible à contourner sans repasser par l'étape mot de passe.
+        if ((int) ($_SESSION['twofa_fails'] ?? 0) >= 5) {
+            unset($_SESSION['pending_2fa'], $_SESSION['twofa_fails']);
+            $_SESSION['login_error'] = 'Trop de tentatives. Veuillez vous reconnecter.';
+            redirect('login/index.php');
+        }
         $backupCode  = trim($_POST['backup_code'] ?? '');
         $usingBackup = $backupCode !== '';
         $valid       = false;
@@ -64,15 +71,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        if (!$valid && empty($error)) {
+            $error = 'Code incorrect.';
+        }
+        if (!$valid) {
+            // Compteur anti-brute-force (plafond vérifié en tête du bloc POST).
+            $_SESSION['twofa_fails'] = ((int) ($_SESSION['twofa_fails'] ?? 0)) + 1;
+        }
+
         if ($valid) {
             // Code valide → créer la session
-            unset($_SESSION['pending_2fa']);
+            unset($_SESSION['pending_2fa'], $_SESSION['twofa_fails']);
 
             $user = $userService->findById($userId, $userType);
             if (!$user) {
                 $error = 'Utilisateur introuvable.';
             } else {
                 $auth->loginUser($user);
+                try { app('audit')->logAuth('login', $userType . ':' . $userId, true, ['2fa' => true]); } catch (\Throwable $e) {}
 
                 if ($rememberMe) {
                     $userService->createRememberToken($userId, $userType);
@@ -82,6 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($user['password_changed_at'])) {
                     $_SESSION['force_password_change'] = true;
                     $_SESSION['reset_user_id']         = $userId;
+                    $_SESSION['reset_user_type']       = $userType;
                     $_SESSION['reset_code']            = 'force_change';
                     $_SESSION['reset_username']        = $user['identifiant'] ?? '';
                     redirect('login/change_password.php');

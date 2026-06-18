@@ -4,7 +4,7 @@ require_once __DIR__ . '/includes/header.php';
 
 $user = $_SESSION['user'];
 $role  = $user['type'] ?? 'eleve';
-if ($role !== 'admin') { header('Location: associations.php'); exit; }
+if (!isAdmin()) { header('Location: associations.php'); exit; }
 
 $types   = VieAssociativeService::typesLabels();
 $editId  = (int) ($_GET['id'] ?? 0);

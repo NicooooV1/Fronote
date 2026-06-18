@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Administration des notes — filtres, vue par élève/classe/matière, CRUD, stats
  */
@@ -25,7 +25,9 @@ $matieres    = app('matieres')->getAll();
 $professeurs = [];
 try {
     $professeurs = $pdo->query("SELECT id, nom, prenom FROM professeurs WHERE actif = 1 ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
-} catch (\Throwable $e) {}
+} catch (\Throwable $e) {
+    error_log('[' . basename(__FILE__) . '] ' . $e->getMessage());
+}
 $periodes    = app('periodes')->getAll();
 
 // POST Actions
@@ -114,14 +116,20 @@ if (!empty($filterClasse) && $filterTrimestre !== '') {
         $stats['moyenne'] = $classeStats['moyenne'] ?? null;
         $stats['min_note'] = $classeStats['min'] ?? null;
         $stats['max_note'] = $classeStats['max'] ?? null;
-    } catch (\Throwable $e) {}
+    } catch (\Throwable $e) {
+        error_log('[' . basename(__FILE__) . '] ' . $e->getMessage());
+    }
 }
 
-// Charger élèves pour le modal d'ajout
+// Charger élèves pour le modal d'ajout (scopé établissement + borné)
 $eleves = [];
 try {
-    $eleves = $pdo->query("SELECT id, nom, prenom, classe FROM eleves WHERE actif = 1 ORDER BY nom, prenom")->fetchAll(PDO::FETCH_ASSOC);
-} catch (\Throwable $e) {}
+    $stmtEleves = $pdo->prepare("SELECT id, nom, prenom, classe FROM eleves WHERE actif = 1 AND etablissement_id = ? ORDER BY nom, prenom LIMIT 1000");
+    $stmtEleves->execute([\API\Core\EstablishmentContext::id()]);
+    $eleves = $stmtEleves->fetchAll(PDO::FETCH_ASSOC);
+} catch (\Throwable $e) {
+    error_log('[' . basename(__FILE__) . '] ' . $e->getMessage());
+}
 
 $pageTitle = 'Gestion des notes';
 $currentPage = 'notes';
@@ -214,10 +222,10 @@ include __DIR__ . '/../includes/header.php';
                 <td><?= $n['coefficient'] ?></td>
                 <td style="font-size:12px"><?= htmlspecialchars($n['type_evaluation']) ?></td>
                 <td style="font-size:12px"><?= date('d/m/Y', strtotime($n['date_note'])) ?></td>
-                <td style="font-size:12px"><?= htmlspecialchars($n['prof_prenom'][0] . '. ' . $n['prof_nom']) ?></td>
+                <td style="font-size:12px"><?= htmlspecialchars((($n['prof_prenom'] ?? '') !== '' ? $n['prof_prenom'][0] . '. ' : '') . ($n['prof_nom'] ?? '')) ?></td>
                 <td>T<?= $n['trimestre'] ?></td>
                 <td>
-                    <button class="btn-xs primary" onclick='openEdit(<?= json_encode($n) ?>)'><i class="fas fa-pen"></i></button>
+                    <button class="btn-xs primary" onclick='openEdit(<?= json_encode($n, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)'><i class="fas fa-pen"></i></button>
                     <form method="post" style="display:inline" onsubmit="return confirm('Supprimer cette note ?')"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="delete_note"><input type="hidden" name="note_id" value="<?= $n['id'] ?>"><button class="btn-xs danger"><i class="fas fa-trash"></i></button></form>
                 </td>
             </tr>

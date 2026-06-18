@@ -54,6 +54,28 @@ if (file_exists($_vendor)) {
 }
 unset($_vendor);
 
+// Autoloader Modules\\ — convertit PascalCase namespace → snake_case répertoire.
+// Nécessaire sur Linux (case-sensitive) : Modules\Notes\* → modules/notes/
+// Fonctionne avec ou sans Composer ; enregistré après l'autoloader Composer pour
+// servir de fallback si le mapping PSR-4 standard échoue à cause de la casse.
+spl_autoload_register(function (string $class) {
+	if (strncmp('Modules\\', $class, 8) !== 0) {
+		return;
+	}
+	$rest  = substr($class, 8); // ex: "Notes\Events\NoteCreated" ou "EmploiDuTemps\Services\Foo"
+	$parts = explode('\\', $rest);
+	if (count($parts) < 2) {
+		return;
+	}
+	// PascalCase "EmploiDuTemps" → snake_case "emploi_du_temps"
+	$moduleDir = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $parts[0]));
+	$subPath   = implode('/', array_slice($parts, 1));
+	$file      = BASE_PATH . '/modules/' . $moduleDir . '/' . $subPath . '.php';
+	if (file_exists($file)) {
+		require $file;
+	}
+});
+
 // Helpers (app(), env(), ...)
 require_once API_PATH . '/Core/helpers.php';
 
@@ -108,6 +130,10 @@ if ($_appEnv === 'production') {
 $_errorHandler = new \API\Core\ErrorHandler(BASE_PATH, $_isDebug);
 $_errorHandler->register();
 unset($_appEnv, $_isDebug, $_errorHandler);
+
+// Fuseau horaire applicatif. Sans cela, toutes les dates/heures (absences, retards,
+// devoirs rendus « à temps », audit) utilisent le fuseau de php.ini (souvent UTC).
+date_default_timezone_set(getenv('APP_TIMEZONE') ?: 'Europe/Paris');
 
 // Définir BASE_URL si pas défini
 if (!defined('BASE_URL')) {
@@ -179,18 +205,72 @@ if (!headers_sent()) {
 	header('X-Request-Id: ' . $requestId);
 }
 
+// Détection HTTPS robuste, y compris derrière un reverse-proxy de confiance qui
+// termine TLS (honore X-Forwarded-Proto / X-Forwarded-SSL UNIQUEMENT si
+// TRUST_PROXY_HEADERS est activé — sinon ces en-têtes sont spoofables).
+if (!function_exists('request_is_https')) {
+	function request_is_https(): bool {
+		if (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off') {
+			return true;
+		}
+		$trust = in_array(strtolower((string) getenv('TRUST_PROXY_HEADERS')), ['1', 'true', 'yes', 'on'], true);
+		if ($trust) {
+			$xfp = (string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '');
+			if (strtolower(trim(explode(',', $xfp)[0])) === 'https') {
+				return true;
+			}
+			if (strtolower((string) ($_SERVER['HTTP_X_FORWARDED_SSL'] ?? '')) === 'on') {
+				return true;
+			}
+		}
+		return false;
+	}
+}
+
+// En-têtes de sécurité de base émis sur TOUS les points d'entrée (et pas seulement les
+// pages HTML incluant shared_header). La CSP dynamique à nonce reste gérée par shared_header.
+if (!headers_sent()) {
+	header('X-Frame-Options: DENY');
+	header('X-Content-Type-Options: nosniff');
+	header('Referrer-Policy: strict-origin-when-cross-origin');
+	header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+	if (request_is_https()) {
+		header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+	}
+}
+
 // Démarrer la session si pas déjà démarrée
 // Nom et path scopés par instance pour éviter les conflits multi-installation
 if (session_status() !== PHP_SESSION_ACTIVE) {
 	$_sessName = getenv('SESSION_NAME') ?: ('fronote_' . INSTANCE_ID);
 	session_start([
 		'cookie_httponly' => true,
-		'cookie_secure'   => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+		'cookie_secure'   => request_is_https(),
 		'cookie_samesite' => 'Lax',
 		'cookie_path'     => INSTANCE_COOKIE_PATH,
 		'name'            => $_sessName,
 	]);
 	unset($_sessName);
+}
+
+// Expiration de session : inactivité (SESSION_LIFETIME) + plafond absolu. Sinon la durée
+// réelle ne dépend que de gc_maxlifetime de php.ini. On purge l'identité sans rediriger
+// (les guards requireAuth()/endpoints renvoient ensuite une redirection HTML ou un 401 JSON).
+if (php_sapi_name() !== 'cli' && !empty($_SESSION['user_id'])) {
+	$_sessTtl = (int) (getenv('SESSION_LIFETIME') ?: 7200);
+	$_now     = time();
+	$_idle    = $_now - (int) ($_SESSION['last_activity'] ?? $_now);
+	$_age     = $_now - (int) ($_SESSION['session_started'] ?? $_now);
+	if ($_idle > $_sessTtl || $_age > ($_sessTtl * 12)) {
+		unset($_SESSION['user_id'], $_SESSION['user_type'], $_SESSION['user'], $_SESSION['logged_in']);
+		$_SESSION['session_expired'] = true;
+	} else {
+		$_SESSION['last_activity'] = $_now;
+		if (empty($_SESSION['session_started'])) {
+			$_SESSION['session_started'] = $_now;
+		}
+	}
+	unset($_sessTtl, $_now, $_idle, $_age);
 }
 
 // Créer l'application et enregistrer les providers
@@ -205,6 +285,14 @@ $app->register(new \API\Providers\ConfigServiceProvider($app));
 $app->register(new \API\Providers\DatabaseServiceProvider($app));
 $app->register(new \API\Providers\AuthServiceProvider($app));
 $app->register(new \API\Providers\SecurityServiceProvider($app));
+
+// Moteur d'autorisation RBAC/ABAC (rôle → permission → périmètre). Résolution paresseuse
+// de l'utilisateur courant pour ne pas forcer la session avant son démarrage.
+$app->singleton('authz', function($app) {
+	$u = null;
+	try { $u = $app->make('auth')->user(); } catch (\Throwable $e) {}
+	return new \API\Security\Authorization($app->make('db')->getConnection(), $u);
+});
 $app->register(new \API\Providers\EtablissementServiceProvider($app));
 $app->register(new \API\Providers\TranslationServiceProvider($app));
 // Hook Manager (système d'événements pour les modules)
@@ -218,6 +306,13 @@ $app->register(new \API\Providers\EventServiceProvider($app));
 // Module SDK (découverte et gestion des modules via module.json)
 $app->singleton('module_sdk', function($app) {
 	return new \API\Services\ModuleSDK($app->make('db')->getConnection(), BASE_PATH);
+});
+
+// Environnement applicatif (dev/staging/prod) — requis par dev_toolbar.php (footer,
+// chargé sur chaque page) et admin/systeme/monitoring.php. Sans ce binding,
+// app('environment') lève "Target class [environment] does not exist" partout.
+$app->singleton('environment', function($app) {
+	return new \API\Core\Environment();
 });
 
 // Feature Flags (fonctionnalités par type d'établissement — core transversal)
@@ -253,6 +348,15 @@ $app->singleton('client_cache', function($app) {
 // Marketplace Service (core — gestion des modules)
 $app->singleton('marketplace', function($app) {
 	return new \API\Services\MarketplaceService($app->make('db')->getConnection(), BASE_PATH);
+});
+
+// Scolaire services encore sans module.json — enregistrés directement le temps
+// que leurs modules soient configurés (tableau_de_bord, etc.)
+$app->singleton('admin_dashboard', function($app) {
+	return new \API\Services\Scolaire\AdminDashboardService($app->make('db')->getConnection());
+});
+$app->singleton('classes', function($app) {
+	return new \API\Services\Scolaire\ClasseService($app->make('db')->getConnection());
 });
 
 // Theme Service (core — theming applicatif)
@@ -318,5 +422,10 @@ try {
 
 // Legacy bridge (compat helpers)
 require_once API_PATH . '/Legacy/Bridge.php';
+
+// Contrôle d'accès centralisé (front controller de sécurité) : impose authentification
+// + rôle minimal selon le chemin du point d'entrée appelé, en fail-closed. Complète
+// (sans les remplacer) les gardes requireAuth()/requireRole() par page.
+\API\Core\AccessControl::enforce(BASE_PATH);
 
 return $app;

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * AJAX — Récupère le profil complet d'un utilisateur pour la modale
  */
@@ -13,6 +13,10 @@ $userObj = app('user');
 
 $id = intval($_GET['id'] ?? 0);
 $type = $_GET['type'] ?? '';
+
+// Whitelist stricte du type d'utilisateur (évite toute valeur arbitraire réinjectée).
+$allowedTypes = ['eleve', 'parent', 'professeur', 'vie_scolaire', 'administrateur'];
+if (!in_array($type, $allowedTypes, true)) { echo '<p class="alert alert-danger">Type invalide.</p>'; exit; }
 
 if ($id <= 0 || empty($type)) { echo '<p class="alert alert-danger">Paramètres invalides.</p>'; exit; }
 
@@ -71,7 +75,7 @@ $csrf_token = $_SESSION['csrf_token'] ?? '';
         <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
         <input type="hidden" name="action" value="edit_user">
         <input type="hidden" name="user_id" value="<?= $id ?>">
-        <input type="hidden" name="user_type" value="<?= $type ?>">
+        <input type="hidden" name="user_type" value="<?= htmlspecialchars($type, ENT_QUOTES) ?>">
         <div class="form-row">
             <div class="form-group"><label>Nom</label><input type="text" name="nom" value="<?= htmlspecialchars($u['nom']) ?>" required></div>
             <div class="form-group"><label>Prénom</label><input type="text" name="prenom" value="<?= htmlspecialchars($u['prenom']) ?>" required></div>
@@ -180,9 +184,9 @@ $csrf_token = $_SESSION['csrf_token'] ?? '';
 
 <!-- Actions rapides -->
 <div class="modal-actions">
-    <form method="post" action="index.php" style="display:inline"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="reset_password"><input type="hidden" name="user_id" value="<?= $id ?>"><input type="hidden" name="user_type" value="<?= $type ?>"><button class="btn-xs warning"><i class="fas fa-key"></i> Réinit. MDP</button></form>
-    <form method="post" action="index.php" style="display:inline"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="toggle_active"><input type="hidden" name="user_id" value="<?= $id ?>"><input type="hidden" name="user_type" value="<?= $type ?>"><input type="hidden" name="new_active" value="<?= ($u['actif'] ?? 1) ? 0 : 1 ?>"><button class="btn-xs <?= ($u['actif'] ?? 1) ? 'warning' : 'success' ?>"><i class="fas fa-<?= ($u['actif'] ?? 1) ? 'ban' : 'check' ?>"></i> <?= ($u['actif'] ?? 1) ? 'Désactiver' : 'Activer' ?></button></form>
-    <form method="post" action="index.php" style="display:inline" onsubmit="return confirm('Supprimer définitivement cet utilisateur ?')"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="user_id" value="<?= $id ?>"><input type="hidden" name="user_type" value="<?= $type ?>"><button class="btn-xs danger"><i class="fas fa-trash"></i> Supprimer</button></form>
+    <form method="post" action="index.php" style="display:inline"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="reset_password"><input type="hidden" name="user_id" value="<?= $id ?>"><input type="hidden" name="user_type" value="<?= htmlspecialchars($type, ENT_QUOTES) ?>"><button class="btn-xs warning"><i class="fas fa-key"></i> Réinit. MDP</button></form>
+    <form method="post" action="index.php" style="display:inline"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="toggle_active"><input type="hidden" name="user_id" value="<?= $id ?>"><input type="hidden" name="user_type" value="<?= htmlspecialchars($type, ENT_QUOTES) ?>"><input type="hidden" name="new_active" value="<?= ($u['actif'] ?? 1) ? 0 : 1 ?>"><button class="btn-xs <?= ($u['actif'] ?? 1) ? 'warning' : 'success' ?>"><i class="fas fa-<?= ($u['actif'] ?? 1) ? 'ban' : 'check' ?>"></i> <?= ($u['actif'] ?? 1) ? 'Désactiver' : 'Activer' ?></button></form>
+    <form method="post" action="index.php" style="display:inline" onsubmit="return confirm('Supprimer définitivement cet utilisateur ?')"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="user_id" value="<?= $id ?>"><input type="hidden" name="user_type" value="<?= htmlspecialchars($type, ENT_QUOTES) ?>"><button class="btn-xs danger"><i class="fas fa-trash"></i> Supprimer</button></form>
 </div>
 
 <script>

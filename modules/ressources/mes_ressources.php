@@ -6,7 +6,7 @@ $pageTitle = 'Mes ressources';
 $activePage = 'mes_ressources';
 require_once __DIR__ . '/includes/header.php';
 
-if (!isAdmin() && !isProfesseur()) { redirect('/ressources/ressources.php'); }
+if (!isAdmin() && !isProfesseur()) { redirect('/modules/ressources/ressources.php'); }
 
 $ressources = $resService->getRessources(['auteur_id' => getUserId()]);
 $types = RessourceService::types();

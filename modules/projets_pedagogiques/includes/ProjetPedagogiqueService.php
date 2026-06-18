@@ -37,23 +37,28 @@ class ProjetPedagogiqueService
 
     public function getProjet(int $id): ?array
     {
+        // Scoping établissement : empêche la lecture cross-tenant par devinette d'ID.
+        $etabId = $this->etabId();
+        if ($etabId === null) return null;
         $stmt = $this->pdo->prepare(
             "SELECT pp.*, CONCAT(p.prenom, ' ', p.nom) AS responsable_nom
              FROM projets_pedagogiques pp
              LEFT JOIN professeurs p ON pp.responsable_id = p.id
-             WHERE pp.id = ?"
+             WHERE pp.id = ? AND pp.etablissement_id = ?"
         );
-        $stmt->execute([$id]);
+        $stmt->execute([$id, $etabId]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function creerProjet(array $data): int
     {
+        $etabId = $this->etabId() ?? 1;
         $stmt = $this->pdo->prepare(
-            "INSERT INTO projets_pedagogiques (titre, description, objectifs, type, responsable_id, classes, matieres, date_debut, date_fin, budget, statut)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO projets_pedagogiques (etablissement_id, titre, description, objectifs, type, responsable_id, classes, matieres, date_debut, date_fin, budget, statut)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
         $stmt->execute([
+            $etabId,
             $data['titre'], $data['description'] ?? null, $data['objectifs'] ?? null,
             $data['type'] ?? 'projet_classe', $data['responsable_id'],
             $data['classes'] ?? null, $data['matieres'] ?? null,
@@ -240,35 +245,6 @@ class ProjetPedagogiqueService
         $map = ['brouillon' => 'secondary', 'soumis' => 'info', 'valide' => 'primary', 'en_cours' => 'warning', 'termine' => 'success', 'annule' => 'danger'];
         $label = self::statutLabels()[$statut] ?? $statut;
         return '<span class="badge badge-' . ($map[$statut] ?? 'secondary') . '">' . $label . '</span>';
-    }
-
-    // ─── REÇUS DÉPENSES ───
-
-    public function ajouterDepense(int $projetId, float $montant, string $description, string $categorie = 'materiel', string $justificatifPath = ''): int
-    {
-        $stmt = $this->pdo->prepare("INSERT INTO projets_depenses (projet_id, montant, description, categorie, justificatif_path, date_depense) VALUES (:pid, :m, :d, :c, :jp, NOW())");
-        $stmt->execute([':pid' => $projetId, ':m' => $montant, ':d' => $description, ':c' => $categorie, ':jp' => $justificatifPath]);
-        return (int)$this->pdo->lastInsertId();
-    }
-
-    public function getDepenses(int $projetId): array
-    {
-        $stmt = $this->pdo->prepare("SELECT * FROM projets_depenses WHERE projet_id = :pid ORDER BY date_depense DESC");
-        $stmt->execute([':pid' => $projetId]);
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-    }
-
-    public function getBudgetResume(int $projetId): array
-    {
-        $projet = $this->pdo->prepare("SELECT budget FROM projets_pedagogiques WHERE id = :pid");
-        $projet->execute([':pid' => $projetId]);
-        $budget = (float)$projet->fetchColumn();
-
-        $depense = $this->pdo->prepare("SELECT COALESCE(SUM(montant),0) FROM projets_depenses WHERE projet_id = :pid");
-        $depense->execute([':pid' => $projetId]);
-        $totalDepenses = (float)$depense->fetchColumn();
-
-        return ['budget' => $budget, 'depenses' => $totalDepenses, 'restant' => $budget - $totalDepenses];
     }
 
     // ─── GANTT CHART DATA ───

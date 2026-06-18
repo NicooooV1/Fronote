@@ -7,7 +7,7 @@
  */
 class AppelService
 {
-    protected $pdo;
+    protected \PDO $pdo;
 
     public function __construct(PDO $pdo)
     {
@@ -176,29 +176,31 @@ class AppelService
 
         $eleves = $this->getAppelEleves($appelId);
 
+        $etabId = $appel['etablissement_id'];
+
         foreach ($eleves as $ae) {
             if ($ae['statut'] === 'absent') {
                 // Créer une absence
                 $stmt = $this->pdo->prepare(
-                    "INSERT INTO absences (id_eleve, date_debut, date_fin, type_absence, motif, justifie, signale_par)
-                     VALUES (?, ?, ?, 'absence', ?, 0, ?)"
+                    "INSERT INTO absences (etablissement_id, id_eleve, date_debut, date_fin, type_absence, motif, justifie, signale_par)
+                     VALUES (?, ?, ?, ?, 'absence', ?, 0, ?)"
                 );
                 $dateDebut = $appel['date_appel'] . ' ' . $appel['heure_debut'];
                 $dateFin   = $appel['date_appel'] . ' ' . $appel['heure_fin'];
                 $stmt->execute([
-                    $ae['eleve_id'], $dateDebut, $dateFin,
+                    $etabId, $ae['eleve_id'], $dateDebut, $dateFin,
                     $ae['motif'] ?? null,
                     $appel['professeur_nom'] ?? 'Système'
                 ]);
             } elseif ($ae['statut'] === 'retard') {
                 // Créer un retard
                 $stmt = $this->pdo->prepare(
-                    "INSERT INTO retards (id_eleve, date_retard, duree_minutes, motif, justifie, signale_par)
-                     VALUES (?, ?, ?, ?, 0, ?)"
+                    "INSERT INTO retards (etablissement_id, id_eleve, date_retard, duree_minutes, motif, justifie, signale_par)
+                     VALUES (?, ?, ?, ?, ?, 0, ?)"
                 );
                 $dateRetard = $appel['date_appel'] . ' ' . ($ae['heure_arrivee'] ?? $appel['heure_debut']);
                 $stmt->execute([
-                    $ae['eleve_id'], $dateRetard,
+                    $etabId, $ae['eleve_id'], $dateRetard,
                     $ae['duree_retard'] ?? 0,
                     $ae['motif'] ?? null,
                     $appel['professeur_nom'] ?? 'Système'
@@ -231,6 +233,12 @@ class AppelService
      */
     public function getAppelsJour(?string $date = null, ?int $classeId = null): array
     {
+        try {
+            $etabId = \API\Core\EstablishmentContext::id();
+        } catch (\Throwable $e) {
+            return [];
+        }
+
         $date = $date ?: date('Y-m-d');
         $sql = "SELECT a.*, cl.nom AS classe_nom,
                        CONCAT(p.prenom, ' ', p.nom) AS professeur_nom,
@@ -242,8 +250,8 @@ class AppelService
                 JOIN classes cl ON a.classe_id = cl.id
                 JOIN professeurs p ON a.professeur_id = p.id
                 LEFT JOIN matieres m ON a.matiere_id = m.id
-                WHERE a.date_appel = ?";
-        $params = [$date];
+                WHERE a.date_appel = ? AND a.etablissement_id = ?";
+        $params = [$date, $etabId];
 
         if ($classeId) {
             $sql .= " AND a.classe_id = ?";
@@ -311,6 +319,17 @@ class AppelService
      */
     public function getStatsClasse(int $classeId, ?string $dateDebut = null, ?string $dateFin = null): array
     {
+        try {
+            $etabId = \API\Core\EstablishmentContext::id();
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        // Vérifier que la classe appartient bien à l'établissement courant
+        $stmtCheck = $this->pdo->prepare("SELECT 1 FROM classes WHERE id = ? AND etablissement_id = ?");
+        $stmtCheck->execute([$classeId, $etabId]);
+        if (!$stmtCheck->fetchColumn()) return [];
+
         $dateDebut = $dateDebut ?: date('Y-m-01');
         $dateFin   = $dateFin ?: date('Y-m-t');
 
@@ -323,11 +342,11 @@ class AppelService
                 FROM appel_eleves ae
                 JOIN appels a ON ae.appel_id = a.id
                 JOIN eleves e ON ae.eleve_id = e.id
-                WHERE a.classe_id = ? AND a.date_appel BETWEEN ? AND ?
+                WHERE a.classe_id = ? AND a.etablissement_id = ? AND a.date_appel BETWEEN ? AND ?
                 GROUP BY ae.eleve_id, e.nom, e.prenom
                 ORDER BY e.nom, e.prenom";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$classeId, $dateDebut, $dateFin]);
+        $stmt->execute([$classeId, $etabId, $dateDebut, $dateFin]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -336,6 +355,12 @@ class AppelService
      */
     public function getTauxPresence(?string $dateDebut = null, ?string $dateFin = null): float
     {
+        try {
+            $etabId = \API\Core\EstablishmentContext::id();
+        } catch (\Throwable $e) {
+            return 100.0;
+        }
+
         $dateDebut = $dateDebut ?: date('Y-m-01');
         $dateFin   = $dateFin ?: date('Y-m-t');
 
@@ -344,9 +369,9 @@ class AppelService
                     COUNT(*) AS total
                 FROM appel_eleves ae
                 JOIN appels a ON ae.appel_id = a.id
-                WHERE a.date_appel BETWEEN ? AND ?";
+                WHERE a.etablissement_id = ? AND a.date_appel BETWEEN ? AND ?";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$dateDebut, $dateFin]);
+        $stmt->execute([$etabId, $dateDebut, $dateFin]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$row || $row['total'] == 0) return 100.0;
@@ -392,14 +417,23 @@ class AppelService
 
     public function enregistrerRetardPrecis(int $appelId, int $eleveId, string $heureArrivee): void
     {
-        $this->pdo->prepare("UPDATE appel_details SET statut = 'retard', heure_arrivee = :h WHERE appel_id = :aid AND eleve_id = :eid")
+        $this->pdo->prepare("UPDATE appel_eleves SET statut = 'retard', heure_arrivee = :h WHERE appel_id = :aid AND eleve_id = :eid")
             ->execute([':h' => $heureArrivee, ':aid' => $appelId, ':eid' => $eleveId]);
     }
 
-    public function exportPresencesPeriode(int $classeId, int $periodeId): array
+    public function exportPresencesPeriode(int $classeId, ?string $dateDebut = null, ?string $dateFin = null): array
     {
-        $stmt = $this->pdo->prepare("SELECT CONCAT(e.prenom,' ',e.nom) AS eleve, ad.statut, a.date_appel FROM appel_details ad JOIN appels a ON ad.appel_id = a.id JOIN eleves e ON ad.eleve_id = e.id WHERE a.classe_id = :c AND a.periode_id = :p ORDER BY e.nom, a.date_appel");
-        $stmt->execute([':c' => $classeId, ':p' => $periodeId]);
+        try {
+            $etabId = \API\Core\EstablishmentContext::id();
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        $dateDebut = $dateDebut ?: date('Y-m-01');
+        $dateFin   = $dateFin ?: date('Y-m-t');
+
+        $stmt = $this->pdo->prepare("SELECT CONCAT(e.prenom,' ',e.nom) AS eleve, ad.statut, a.date_appel FROM appel_eleves ad JOIN appels a ON ad.appel_id = a.id JOIN eleves e ON ad.eleve_id = e.id WHERE a.classe_id = :c AND a.etablissement_id = :etab AND a.date_appel BETWEEN :dd AND :df ORDER BY e.nom, a.date_appel");
+        $stmt->execute([':c' => $classeId, ':etab' => $etabId, ':dd' => $dateDebut, ':df' => $dateFin]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 }

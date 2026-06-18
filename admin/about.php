@@ -44,16 +44,11 @@ if (empty($modules) || !isset($modules[0]['author'])) {
     usort($modules, fn($a, $b) => strcasecmp($a['label'], $b['label']));
 }
 
-$pageTitle = 'A propos';
+$pageTitle = 'A propos de Fronote';
 $activePage = 'systeme';
-require_once __DIR__ . '/../templates/shared_header.php';
+$currentPage = 'about';
+include __DIR__ . '/includes/header.php';
 ?>
-
-<div class="topbar">
-    <div class="topbar-left">
-        <h1 class="page-title"><i class="fas fa-info-circle"></i> A propos de Fronote</h1>
-    </div>
-</div>
 
 <div class="content-body p-lg">
 
@@ -99,4 +94,4 @@ require_once __DIR__ . '/../templates/shared_header.php';
 
 </div>
 
-<?php require_once __DIR__ . '/../templates/shared_footer.php'; ?>
+<?php include __DIR__ . '/includes/footer.php'; ?>

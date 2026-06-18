@@ -101,8 +101,8 @@ class ClubService
             SELECT ci.*, e.prenom, e.nom AS eleve_nom, c.nom AS classe_nom
             FROM club_inscriptions ci
             JOIN eleves e ON ci.eleve_id = e.id
-            LEFT JOIN classes cl ON e.classe_id = cl.id
-            LEFT JOIN classes c ON e.classe_id = c.id
+            LEFT JOIN classes cl ON e.classe = cl.nom
+            LEFT JOIN classes c ON e.classe = c.nom
             WHERE ci.club_id = ? AND ci.statut = 'accepte'
             ORDER BY e.nom
         ");
@@ -280,7 +280,7 @@ class ClubService
             SELECT csp.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, cl.nom AS classe_nom
             FROM club_seances_presences csp
             JOIN eleves e ON csp.eleve_id = e.id
-            LEFT JOIN classes cl ON e.classe_id = cl.id
+            LEFT JOIN classes cl ON e.classe = cl.nom
             WHERE csp.seance_id = :s ORDER BY e.nom
         ");
         $stmt->execute([':s' => $seanceId]);

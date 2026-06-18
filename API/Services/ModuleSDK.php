@@ -19,9 +19,6 @@ class ModuleSDK
     /** @var array|null Cache des manifestes découverts */
     private ?array $manifests = null;
 
-    /** Vrai une fois les colonnes étendues de module_migrations garanties. */
-    private bool $migColsEnsured = false;
-
     /** Champs obligatoires dans module.json */
     private const REQUIRED_FIELDS = ['key', 'name', 'icon', 'category'];
 
@@ -477,88 +474,9 @@ class ModuleSDK
     }
 
     /**
-     * Exécute les migrations SQL déclarées dans module.json sous la clé "migrations".
-     * Chaque migration est un fichier .sql relatif au répertoire du module.
-     * Suivi dans la table module_migrations pour n'exécuter chaque fichier qu'une fois.
-     *
-     * @param string $moduleKey Clé du module (ex: 'absences')
-     * @return array ['executed' => string[], 'skipped' => string[], 'errors' => string[]]
-     */
-    public function migrate(string $moduleKey, string $triggeredBy = 'system'): array
-    {
-        $manifest = $this->getManifest($moduleKey);
-        if (!$manifest) {
-            return ['executed' => [], 'skipped' => [], 'errors' => ["Module '{$moduleKey}' introuvable"]];
-        }
-
-        $this->ensureMigrationsColumns();
-        $migrations = $manifest['migrations'] ?? [];
-        if (empty($migrations)) {
-            return ['executed' => [], 'skipped' => [], 'errors' => []];
-        }
-
-        $modulePath = $manifest['_path'] ?? '';
-        $executed   = [];
-        $skipped    = [];
-        $errors     = [];
-
-        foreach ($migrations as $migrationFile) {
-            $version = preg_match('/(\d+\.\d+\.\d+)/', basename($migrationFile), $m)
-                ? $m[1] : ($manifest['version'] ?? null);
-
-            // Vérifier si déjà exécutée AVEC SUCCÈS (une exécution échouée doit pouvoir être rejouée)
-            try {
-                $stmt = $this->pdo->prepare(
-                    "SELECT COUNT(*) FROM module_migrations WHERE module_key = ? AND migration_file = ? AND status = 'success'"
-                );
-                $stmt->execute([$moduleKey, $migrationFile]);
-                if ((int) $stmt->fetchColumn() > 0) {
-                    $skipped[] = $migrationFile;
-                    continue;
-                }
-            } catch (\Throwable $e) {
-                $errors[] = "Impossible de vérifier module_migrations : " . $e->getMessage();
-                continue;
-            }
-
-            // Lire le fichier SQL
-            $sqlPath = $modulePath . '/' . $migrationFile;
-            if (!file_exists($sqlPath)) {
-                $errors[] = "Fichier introuvable : {$sqlPath}";
-                continue;
-            }
-
-            $sql = file_get_contents($sqlPath);
-            if ($sql === false || trim($sql) === '') {
-                $errors[] = "Fichier vide ou illisible : {$migrationFile}";
-                continue;
-            }
-
-            $checksum = hash('sha256', $sql);
-            $start = microtime(true);
-
-            // DDL : pas de transaction (les CREATE/ALTER provoquent un commit implicite,
-            // un commit() explicite lèverait « no active transaction »). FK checks off
-            // pour tolérer les références croisées entre modules et l'ordre d'activation.
-            try {
-                $this->execSchemaSql($sql);
-                $ms = (int) round((microtime(true) - $start) * 1000);
-                $this->recordMigration($moduleKey, $migrationFile, $version, $checksum, 'success', null, $ms, $triggeredBy);
-                $executed[] = $migrationFile;
-            } catch (\Throwable $e) {
-                $ms = (int) round((microtime(true) - $start) * 1000);
-                $this->recordMigration($moduleKey, $migrationFile, $version, $checksum, 'failed', $e->getMessage(), $ms, $triggeredBy);
-                $errors[] = "Échec migration '{$migrationFile}' : " . $e->getMessage();
-            }
-        }
-
-        return ['executed' => $executed, 'skipped' => $skipped, 'errors' => $errors];
-    }
-
-    /**
-     * Provisionne le SQL d'un module : exécute son install.sql (idempotent) puis
-     * ses migrations. Appelé À L'ACTIVATION du module. Le résultat indique si le
-     * SQL a été injecté et vérifié sans erreur.
+     * Provisionne le SQL d'un module : exécute son install.sql (idempotent).
+     * Appelé À L'ACTIVATION du module. Le résultat indique si le SQL a été
+     * injecté et vérifié sans erreur.
      *
      * @return array ['success' => bool, 'errors' => string[]]
      */
@@ -585,10 +503,6 @@ class ModuleSDK
                 }
             }
         }
-
-        // 2) migrations incrémentales (idempotentes, tracées dans module_migrations).
-        $mig = $this->migrate($moduleKey, 'activation');
-        $errors = array_merge($errors, $mig['errors']);
 
         return ['success' => empty($errors), 'errors' => $errors];
     }
@@ -695,86 +609,6 @@ class ModuleSDK
             $statements[] = $buffer;
         }
         return $statements;
-    }
-
-    /**
-     * Upsert d'une ligne de suivi de migration (succès ou échec).
-     */
-    private function recordMigration(
-        string $moduleKey, string $file, ?string $version, ?string $checksum,
-        string $status, ?string $error, int $ms, string $triggeredBy
-    ): void {
-        try {
-            $this->pdo->prepare(
-                "INSERT INTO module_migrations
-                    (module_key, migration_file, migration_version, checksum, status, error_message, execution_time_ms, triggered_by, executed_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
-                 ON DUPLICATE KEY UPDATE
-                    migration_version = VALUES(migration_version),
-                    checksum          = VALUES(checksum),
-                    status            = VALUES(status),
-                    error_message     = VALUES(error_message),
-                    execution_time_ms = VALUES(execution_time_ms),
-                    triggered_by      = VALUES(triggered_by),
-                    executed_at       = NOW()"
-            )->execute([$moduleKey, $file, $version, $checksum, $status, $error, $ms, $triggeredBy]);
-        } catch (\Throwable $e) {
-            error_log('ModuleSDK::recordMigration: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Garantit la présence des colonnes étendues de module_migrations
-     * (auto-réparation des bases installées avant l'enrichissement du schéma).
-     */
-    private function ensureMigrationsColumns(): void
-    {
-        if ($this->migColsEnsured) {
-            return;
-        }
-        $this->migColsEnsured = true;
-
-        $columns = [
-            "ADD COLUMN `migration_version` VARCHAR(50) NULL",
-            "ADD COLUMN `checksum` VARCHAR(64) NULL",
-            "ADD COLUMN `status` ENUM('success','failed','rolled_back') NOT NULL DEFAULT 'success'",
-            "ADD COLUMN `error_message` TEXT NULL",
-            "ADD COLUMN `execution_time_ms` INT NULL",
-            "ADD COLUMN `triggered_by` VARCHAR(100) NULL",
-        ];
-        foreach ($columns as $clause) {
-            try {
-                $this->pdo->exec("ALTER TABLE `module_migrations` {$clause}");
-            } catch (\Throwable $e) {
-                // Colonne déjà présente (installation récente) → ignorer.
-            }
-        }
-    }
-
-    /**
-     * Historique des migrations (toutes ou filtrées par module), plus récentes d'abord.
-     */
-    public function getMigrations(?string $moduleKey = null, int $limit = 100): array
-    {
-        try {
-            $this->ensureMigrationsColumns();
-            if ($moduleKey !== null) {
-                $stmt = $this->pdo->prepare(
-                    "SELECT * FROM module_migrations WHERE module_key = ? ORDER BY executed_at DESC, id DESC LIMIT ?"
-                );
-                $stmt->bindValue(1, $moduleKey);
-                $stmt->bindValue(2, $limit, \PDO::PARAM_INT);
-            } else {
-                $stmt = $this->pdo->prepare(
-                    "SELECT * FROM module_migrations ORDER BY executed_at DESC, id DESC LIMIT ?"
-                );
-                $stmt->bindValue(1, $limit, \PDO::PARAM_INT);
-            }
-            $stmt->execute();
-            return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-        } catch (\Throwable $e) {
-            return [];
-        }
     }
 
     /** Vrai une fois l'ENUM field_type élargi sur la base déjà installée. */

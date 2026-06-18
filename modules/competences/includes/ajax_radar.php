@@ -19,6 +19,43 @@ try {
     $classeId  = (int) ($_GET['classe_id'] ?? 0);
     $periodeId = (int) ($_GET['periode_id'] ?? 0);
 
+    // Sécurité (anti-IDOR) : un élève ne consulte que ses propres données ;
+    // un parent uniquement celles de ses enfants. Le staff garde l'accès complet.
+    if (!isAdmin() && !isTeacher() && !isVieScolaire()) {
+        // Détermine les eleve_id autorisés pour l'utilisateur courant
+        $allowedEleveIds = [];
+        if (isEleve()) {
+            $allowedEleveIds = [getUserId()];
+        } elseif (isParent()) {
+            $stmtPe = $pdo->prepare("SELECT id_eleve FROM parent_eleve WHERE id_parent = ?");
+            $stmtPe->execute([getUserId()]);
+            $allowedEleveIds = array_map('intval', $stmtPe->fetchAll(PDO::FETCH_COLUMN));
+        }
+
+        if ($type === 'eleve') {
+            if (!in_array($eleveId, $allowedEleveIds, true)) {
+                http_response_code(403);
+                echo json_encode(['error' => 'Accès refusé']);
+                return;
+            }
+        } elseif ($type === 'classe') {
+            // Autorisé seulement si la classe est celle d'un élève autorisé.
+            // NB : eleves.classe est un varchar (nom de classe), à rapprocher de classes.nom.
+            $classeAutorisee = false;
+            if (!empty($allowedEleveIds) && $classeId > 0) {
+                $ph = implode(',', array_fill(0, count($allowedEleveIds), '?'));
+                $stmtCl = $pdo->prepare("SELECT 1 FROM eleves WHERE id IN ($ph) AND classe = (SELECT nom FROM classes WHERE id = ?) LIMIT 1");
+                $stmtCl->execute(array_merge($allowedEleveIds, [$classeId]));
+                $classeAutorisee = (bool) $stmtCl->fetchColumn();
+            }
+            if (!$classeAutorisee) {
+                http_response_code(403);
+                echo json_encode(['error' => 'Accès refusé']);
+                return;
+            }
+        }
+    }
+
     if ($type === 'eleve' && $eleveId > 0) {
         echo json_encode($compService->getRadarData($eleveId, $periodeId ?: null));
     } elseif ($type === 'classe' && $classeId > 0) {

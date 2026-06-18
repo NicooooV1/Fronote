@@ -16,14 +16,16 @@ class SignalementService
         // Generate a unique tracking token for anonymous follow-up
         $trackingToken = bin2hex(random_bytes(32));
 
+        $etab = $this->etabId() ?? 1;
         $stmt = $this->pdo->prepare("
             INSERT INTO signalements (
-                auteur_id, auteur_type, type, description, lieu, date_faits,
+                etablissement_id, auteur_id, auteur_type, type, description, lieu, date_faits,
                 personnes_impliquees, temoins, anonyme, urgence, confidentiel,
-                statut, date_signalement, tracking_token
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'nouveau', NOW(), ?)
+                statut, tracking_token
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'nouveau', ?)
         ");
         $stmt->execute([
+            $etab,
             $data['anonyme'] ? null : $data['auteur_id'],
             $data['anonyme'] ? null : $data['auteur_type'],
             $data['type'],
@@ -33,7 +35,7 @@ class SignalementService
             $data['personnes_impliquees'] ?? null,
             $data['temoins'] ?? null,
             $data['anonyme'] ? 1 : 0,
-            $data['urgence'] ?? 'normale',
+            $data['urgence'] ?? 'moyenne',
             $trackingToken,
         ]);
 
@@ -64,7 +66,7 @@ class SignalementService
     {
         $stmt = $this->pdo->prepare("
             UPDATE signalements
-            SET statut = 'traite', resolved_at = NOW(), resolution_note = ?, traite_par = ?
+            SET statut = 'traite', date_traitement = NOW(), actions_prises = ?, traite_par = ?
             WHERE id = ?
         ");
         $stmt->execute([$resolutionNote, $resolvedBy, $id]);
@@ -98,14 +100,20 @@ class SignalementService
                 $notifService->creer((int) $cpeId, 'vie_scolaire', 'signalement_urgent', $titre, $message, $lien, 'haute');
             }
         } catch (\Exception $e) {
-            // Notification failure must not block signalement creation
+            // La notification ne doit pas bloquer la création du signalement,
+            // mais l'échec doit être tracé pour le suivi opérationnel.
+            error_log('[signalements] notifyDirection a échoué : ' . $e->getMessage());
         }
     }
 
     public function getSignalement(int $id): ?array
     {
-        $stmt = $this->pdo->prepare('SELECT * FROM signalements WHERE id = ?');
-        $stmt->execute([$id]);
+        // Scoping établissement : empêche l'accès cross-tenant à des données
+        // très sensibles (harcèlement, violence, mineurs).
+        $etab = $this->etabId();
+        if ($etab === null) return null;
+        $stmt = $this->pdo->prepare('SELECT *, date_creation AS date_signalement, suivi AS notes_traitement FROM signalements WHERE id = ? AND etablissement_id = ?');
+        $stmt->execute([$id, $etab]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
@@ -120,12 +128,12 @@ class SignalementService
     {
         $etabId = $this->etabId();
         if ($etabId === null) return [];
-        $sql = 'SELECT * FROM signalements WHERE etablissement_id = ?';
+        $sql = 'SELECT *, date_creation AS date_signalement FROM signalements WHERE etablissement_id = ?';
         $params = [$etabId];
         if (!empty($filters['statut'])) { $sql .= ' AND statut = ?'; $params[] = $filters['statut']; }
         if (!empty($filters['type'])) { $sql .= ' AND type = ?'; $params[] = $filters['type']; }
         if (!empty($filters['urgence'])) { $sql .= ' AND urgence = ?'; $params[] = $filters['urgence']; }
-        $sql .= ' ORDER BY FIELD(urgence, "critique", "haute", "normale", "basse"), date_signalement DESC';
+        $sql .= ' ORDER BY FIELD(urgence, "critique", "haute", "moyenne", "basse"), date_creation DESC';
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -133,7 +141,7 @@ class SignalementService
 
     public function getMesSignalements(int $userId, string $userType): array
     {
-        $stmt = $this->pdo->prepare('SELECT * FROM signalements WHERE auteur_id = ? AND auteur_type = ? ORDER BY date_signalement DESC');
+        $stmt = $this->pdo->prepare('SELECT *, date_creation AS date_signalement FROM signalements WHERE auteur_id = ? AND auteur_type = ? ORDER BY date_creation DESC');
         $stmt->execute([$userId, $userType]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -154,7 +162,7 @@ class SignalementService
 
     public function ajouterNote(int $id, string $notes): void
     {
-        $stmt = $this->pdo->prepare('UPDATE signalements SET notes_traitement = CONCAT(COALESCE(notes_traitement, ""), ?) WHERE id = ?');
+        $stmt = $this->pdo->prepare('UPDATE signalements SET suivi = CONCAT(COALESCE(suivi, ""), ?) WHERE id = ?');
         $stmt->execute(["\n[" . date('d/m/Y H:i') . "] " . $notes, $id]);
     }
 
@@ -191,7 +199,7 @@ class SignalementService
             'nouveau' => '<span class="badge badge-danger">Nouveau</span>',
             'en_cours' => '<span class="badge badge-warning">En cours</span>',
             'traite' => '<span class="badge badge-success">Traité</span>',
-            'classe' => '<span class="badge badge-secondary">Classé</span>',
+            'clos' => '<span class="badge badge-secondary">Classé</span>',
         ];
         return $map[$statut] ?? '<span class="badge">' . $statut . '</span>';
     }
@@ -200,7 +208,7 @@ class SignalementService
     {
         $map = [
             'basse' => '<span class="badge badge-secondary">Basse</span>',
-            'normale' => '<span class="badge badge-info">Normale</span>',
+            'moyenne' => '<span class="badge badge-info">Moyenne</span>',
             'haute' => '<span class="badge badge-warning">Haute</span>',
             'critique' => '<span class="badge badge-danger">Critique</span>',
         ];

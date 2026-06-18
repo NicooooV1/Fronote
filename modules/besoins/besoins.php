@@ -56,9 +56,9 @@ $stats = ($isGestionnaire || isAdmin()) ? $besoinService->getStats() : null;
     <?php else: ?>
     <div class="plans-list">
         <?php foreach ($plans as $p): ?>
-        <div class="plan-card type-<?= strtolower($p['type']) ?>">
+        <div class="plan-card type-<?= strtolower($p['type_plan']) ?>">
             <div class="plan-header">
-                <?= BesoinService::badgeType($p['type']) ?>
+                <?= BesoinService::badgeType($p['type_plan']) ?>
                 <span class="badge badge-<?= $p['statut'] === 'actif' ? 'success' : ($p['statut'] === 'suspendu' ? 'warning' : 'secondary') ?>"><?= ucfirst($p['statut']) ?></span>
             </div>
             <h3><a href="detail.php?id=<?= $p['id'] ?>"><?= htmlspecialchars($p['eleve_nom']) ?></a></h3>

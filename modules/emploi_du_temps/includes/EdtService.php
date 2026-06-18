@@ -7,7 +7,7 @@
  */
 class EdtService
 {
-    protected $pdo;
+    protected \PDO $pdo;
 
     public function __construct(PDO $pdo)
     {

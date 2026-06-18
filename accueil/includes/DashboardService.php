@@ -14,6 +14,13 @@ class DashboardService
 {
     private PDO $pdo;
 
+    /**
+     * PERF : mémoïsation de getUserInfo() — chaque renderer de widget l'appelait,
+     * provoquant une requête SQL répétée par widget. Indexé par "type:id".
+     * @var array<string,array>
+     */
+    private array $userInfoCache = [];
+
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
@@ -312,7 +319,18 @@ class DashboardService
                 $sdk = app('module_sdk');
                 $provider = $sdk->resolveWidgetProvider($widgetKey);
                 if ($provider !== null) {
-                    return $provider->getData($userId, $userType);
+                    $data = $provider->getData($userId, $userType);
+                    // Normalisation : les providers SDK renvoient des clés métier
+                    // (devoirs/notes/reunions…), mais les renderers de l'accueil lisent
+                    // $data['items']. On ajoute un alias 'items' s'il manque, sans
+                    // retirer les clés d'origine (les widgets stat lisent encore leur clé).
+                    if (is_array($data) && !isset($data['items'])) {
+                        foreach (['devoirs', 'notes', 'reunions', 'tickets', 'evenements', 'annonces',
+                                  'absences', 'menus', 'incidents', 'competences', 'bulletins', 'cours', 'messages'] as $_k) {
+                            if (isset($data[$_k]) && is_array($data[$_k])) { $data['items'] = $data[$_k]; break; }
+                        }
+                    }
+                    return $data;
                 }
             }
         } catch (\Throwable $e) {
@@ -344,21 +362,21 @@ class DashboardService
 
     private function renderProchainEvenements(int $userId, string $userType): array
     {
-        $user = $this->getUserInfo($userId, $userType);
+        $user = $this->getUserInfoCached($userId, $userType);
         $events = $this->getProchainEvenements($user, 5);
         return ['type' => 'list', 'items' => $events, 'link' => '../modules/agenda/agenda.php', 'link_label' => 'Voir tout'];
     }
 
     private function renderDevoirsAFaire(int $userId, string $userType): array
     {
-        $user = $this->getUserInfo($userId, $userType);
+        $user = $this->getUserInfoCached($userId, $userType);
         $devoirs = $this->getDevoirsAFaire($user, 5);
         return ['type' => 'list', 'items' => $devoirs, 'link' => '../modules/cahierdetextes/cahierdetextes.php', 'link_label' => 'Voir tout'];
     }
 
     private function renderDernieresNotes(int $userId, string $userType): array
     {
-        $user = $this->getUserInfo($userId, $userType);
+        $user = $this->getUserInfoCached($userId, $userType);
         $notes = $this->getDernieresNotes($user, 5);
         return ['type' => 'list', 'items' => $notes, 'link' => '../modules/notes/notes.php', 'link_label' => 'Voir tout'];
     }
@@ -397,7 +415,7 @@ class DashboardService
 
     private function renderStatsRapides(int $userId, string $userType): array
     {
-        $user = $this->getUserInfo($userId, $userType);
+        $user = $this->getUserInfoCached($userId, $userType);
         $resume = $this->getResume($user);
         return ['type' => 'stats_grid', 'items' => $resume];
     }
@@ -415,7 +433,7 @@ class DashboardService
                  LEFT JOIN matieres m ON c.matiere_id = m.id
                  LEFT JOIN salles s ON c.salle_id = s.id
                  LEFT JOIN professeurs p ON c.professeur_id = p.id
-                 LEFT JOIN eleves e ON c.classe_id = e.classe_id
+                 LEFT JOIN eleves e ON e.classe = (SELECT nom FROM classes WHERE id = c.classe_id)
                  WHERE e.id = ? AND c.jour = ?
                  ORDER BY c.heure_debut ASC",
                 [$userId, $jourSemaine]
@@ -490,6 +508,20 @@ class DashboardService
             'link'  => '../modules/agenda/agenda.php',
             'link_label' => 'Voir l\'agenda',
         ];
+    }
+
+    /**
+     * PERF : version mémoïsée de getUserInfo(). Chaque renderer de widget passe
+     * par ce getter, évitant de ré-exécuter la requête SQL pour chaque widget
+     * d'une même page accueil. Indexé par "type:id".
+     */
+    private function getUserInfoCached(int $userId, string $userType): array
+    {
+        $key = $userType . ':' . $userId;
+        if (!array_key_exists($key, $this->userInfoCache)) {
+            $this->userInfoCache[$key] = $this->getUserInfo($userId, $userType);
+        }
+        return $this->userInfoCache[$key];
     }
 
     /**
@@ -606,7 +638,7 @@ class DashboardService
                        CONCAT(e.prenom, ' ', e.nom) AS nom_eleve, e.classe
                 FROM absences a
                 LEFT JOIN eleves e ON a.id_eleve = e.id
-                WHERE DATE(a.date_debut) <= CURDATE() AND DATE(a.date_fin) >= CURDATE()
+                WHERE a.date_debut < CURDATE() + INTERVAL 1 DAY AND a.date_fin >= CURDATE()
                   AND a.etablissement_id = ?
                 ORDER BY a.date_debut DESC LIMIT 5";
         return $this->safeQuery($sql, [$this->etabId()]);
@@ -775,7 +807,7 @@ class DashboardService
         $etab = $this->etabId();
         $rows = $this->safeQuery(
             "SELECT COUNT(*) AS cnt FROM absences
-             WHERE DATE(date_debut) <= CURDATE() AND DATE(date_fin) >= CURDATE()
+             WHERE date_debut < CURDATE() + INTERVAL 1 DAY AND date_fin >= CURDATE()
                AND etablissement_id = ?",
             [$etab]
         );

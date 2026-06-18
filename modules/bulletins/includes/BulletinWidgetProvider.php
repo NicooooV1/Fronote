@@ -23,12 +23,12 @@ class BulletinWidgetProvider extends AbstractWidgetProvider
 
         if ($userType === 'eleve') {
             $stmt = $pdo->prepare(
-                "SELECT b.id, b.periode, p.nom AS periode_nom,
+                "SELECT b.id, b.periode_id, p.nom AS periode_nom,
                         b.moyenne_generale, b.appreciation_generale, b.statut
                  FROM bulletins b
                  LEFT JOIN periodes p ON p.id = b.periode_id
                  WHERE b.eleve_id = ?
-                 ORDER BY b.created_at DESC
+                 ORDER BY b.date_creation DESC
                  LIMIT ?"
             );
             $stmt->execute([$userId, $limit]);
@@ -38,12 +38,12 @@ class BulletinWidgetProvider extends AbstractWidgetProvider
                 return ['bulletins' => []];
             }
             $stmt = $pdo->prepare(
-                "SELECT b.id, b.periode, p.nom AS periode_nom,
+                "SELECT b.id, b.periode_id, p.nom AS periode_nom,
                         b.moyenne_generale, b.appreciation_generale, b.statut
                  FROM bulletins b
                  LEFT JOIN periodes p ON p.id = b.periode_id
                  WHERE b.eleve_id = ?
-                 ORDER BY b.created_at DESC
+                 ORDER BY b.date_creation DESC
                  LIMIT ?"
             );
             $stmt->execute([$childId, $limit]);

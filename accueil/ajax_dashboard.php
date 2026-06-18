@@ -4,6 +4,7 @@
  * Handles: save_layout, toggle_widget, get_widgets, get_widget_data
  */
 header('Content-Type: application/json; charset=utf-8');
+header('X-Content-Type-Options: nosniff');
 
 require_once dirname(__DIR__) . '/API/core.php';
 require_once __DIR__ . '/includes/DashboardService.php';

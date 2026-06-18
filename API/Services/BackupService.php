@@ -86,13 +86,26 @@ class BackupService
 
 		$sql .= "SET FOREIGN_KEY_CHECKS = 1;\n";
 
-		// Compress with gzip if available
+		// Compression gzip si disponible.
+		$payload = $sql;
 		if (function_exists('gzencode')) {
+			$payload = gzencode($sql, 9);
 			$filepath .= '.gz';
-			file_put_contents($filepath, gzencode($sql, 9));
-		} else {
-			file_put_contents($filepath, $sql);
 		}
+
+		// Chiffrement at-rest (RGPD) : les dumps contiennent des données personnelles
+		// de mineurs + hash de mots de passe. Chiffrés si une clé applicative existe,
+		// sauf désactivation explicite via BACKUP_ENCRYPT=false.
+		$encrypt = \API\Core\Encryption::available()
+			&& !in_array(strtolower((string) getenv('BACKUP_ENCRYPT')), ['0', 'false', 'no', 'off'], true);
+		if ($encrypt) {
+			$payload = (new \API\Core\Encryption())->encrypt($payload);
+			$filepath .= '.enc';
+		} else {
+			error_log('BackupService: sauvegarde NON chiffrée (aucune clé applicative ou BACKUP_ENCRYPT désactivé) — données personnelles en clair.');
+		}
+
+		file_put_contents($filepath, $payload);
 
 		return $filepath;
 	}
@@ -153,11 +166,27 @@ class BackupService
 			throw new \RuntimeException("Backup file not found: {$filepath}");
 		}
 
-		// Read (decompress if gzipped)
-		if (str_ends_with($filepath, '.gz')) {
-			$sql = gzdecode(file_get_contents($filepath));
+		$raw = file_get_contents($filepath);
+		if ($raw === false) {
+			throw new \RuntimeException("Failed to read backup file");
+		}
+
+		$name = $filepath;
+
+		// Déchiffrement si nécessaire (.enc).
+		if (str_ends_with($name, '.enc')) {
+			if (!\API\Core\Encryption::available()) {
+				throw new \RuntimeException("Backup chiffré mais aucune clé applicative (APP_KEY/JWT_SECRET) disponible pour le déchiffrer.");
+			}
+			$raw = (new \API\Core\Encryption())->decrypt($raw);
+			$name = substr($name, 0, -4); // retire .enc
+		}
+
+		// Décompression si gzip.
+		if (str_ends_with($name, '.gz')) {
+			$sql = gzdecode($raw);
 		} else {
-			$sql = file_get_contents($filepath);
+			$sql = $raw;
 		}
 
 		if ($sql === false) {

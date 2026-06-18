@@ -11,12 +11,17 @@ class ReunionService
         $this->pdo = $pdo;
     }
 
+    private function etabId(): ?int
+    {
+        try { return \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { return null; }
+    }
+
     // ── Réunions ──
 
     public function getReunions(array $filters = []): array
     {
-        $sql = "SELECT r.*, c.nom AS classe_nom FROM reunions r LEFT JOIN classes c ON r.classe_id = c.id WHERE 1=1";
-        $params = [];
+        $sql = "SELECT r.*, c.nom AS classe_nom FROM reunions r LEFT JOIN classes c ON r.classe_id = c.id WHERE r.etablissement_id <=> ?";
+        $params = [$this->etabId()];
         if (!empty($filters['type'])) { $sql .= " AND r.type = ?"; $params[] = $filters['type']; }
         if (!empty($filters['statut'])) { $sql .= " AND r.statut = ?"; $params[] = $filters['statut']; }
         if (!empty($filters['classe_id'])) { $sql .= " AND r.classe_id = ?"; $params[] = $filters['classe_id']; }
@@ -29,18 +34,19 @@ class ReunionService
 
     public function getReunion(int $id): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT r.*, c.nom AS classe_nom FROM reunions r LEFT JOIN classes c ON r.classe_id = c.id WHERE r.id = ?");
-        $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare("SELECT r.*, c.nom AS classe_nom FROM reunions r LEFT JOIN classes c ON r.classe_id = c.id WHERE r.id = ? AND r.etablissement_id <=> ?");
+        $stmt->execute([$id, $this->etabId()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function creerReunion(array $data): int
     {
         $stmt = $this->pdo->prepare("
-            INSERT INTO reunions (titre, description, type, date_debut, date_fin, lieu, classe_id, organisateur_id, organisateur_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO reunions (etablissement_id, titre, description, type, date_debut, date_fin, lieu, classe_id, organisateur_id, organisateur_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
+            $this->etabId() ?? 1,
             $data['titre'], $data['description'] ?? null, $data['type'],
             $data['date_debut'], $data['date_fin'], $data['lieu'] ?? null,
             $data['classe_id'] ?: null, $data['organisateur_id'], $data['organisateur_type']
@@ -262,7 +268,7 @@ class ReunionService
                     $notifService = new \NotificationService($this->pdo);
                     $titre = "Rappel : " . $r['titre'];
                     $message = "Votre réunion est prévue le " . date('d/m/Y à H:i', strtotime($r['date_debut']));
-                    $lien = '/reunions/detail_reunion.php?id=' . $r['id'];
+                    $lien = '/reunions/detail.php?id=' . $r['id'];
 
                     foreach (array_keys($parentIds) as $pid) {
                         $notifService->creer((int)$pid, 'parent', 'reunion', $titre, $message, $lien, 'haute');
@@ -420,7 +426,7 @@ class ReunionService
         $reunion = $r->fetch(\PDO::FETCH_ASSOC);
         if (!$reunion) return '';
 
-        $dtStart = date('Ymd\THis', strtotime($reunion['date_reunion']));
+        $dtStart = date('Ymd\THis', strtotime($reunion['date_debut']));
         $uid = md5('reunion' . $reunionId . 'fronote');
         $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Fronote//Reunions//FR\r\n";
         $ics .= "BEGIN:VEVENT\r\nUID:{$uid}@fronote\r\nDTSTART:{$dtStart}\r\nSUMMARY:{$reunion['titre']}\r\nLOCATION:{$reunion['lieu']}\r\nDESCRIPTION:{$reunion['description']}\r\nEND:VEVENT\r\n";

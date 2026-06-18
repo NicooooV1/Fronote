@@ -6,7 +6,7 @@
     "icon": "fas fa-tachometer-alt",
     "category": "administration",
     "core": false,
-    "routes": { "main": "dashboard.php" },
+    "routes": { "main": "../../admin/dashboard.php" },
     "database": { "install": "" },
     "permissions": {
         "view": { "default_roles": ["administrateur"] }

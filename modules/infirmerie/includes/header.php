@@ -1,36 +1,29 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) session_start();
+// Charger l'API (Bridge -> bootstrap.php) AVANT tout démarrage de session :
+// le bloc gardé de bootstrap.php démarre la session durcie (HttpOnly + Secure(https)
+// + SameSite=Lax + nom/path par instance). Ne PAS faire de session_start() nu ici.
 require_once __DIR__ . '/../../../API/Legacy/Bridge.php';
 requireAuth();
+
+// Infirmerie = données médicales SENSIBLES. Accès réservé au personnel médical
+// (rôles infirmerie / infirmier_scolaire / medecin_scolaire) ou au super-admin.
+// La CPE, la vie scolaire générale, les élèves/parents/profs NE doivent PAS entrer.
+if (!isSuperAdmin() && !can('medical.view')) {
+    redirect('/accueil/accueil.php');
+}
 
 $pdo = getPDO();
 require_once __DIR__ . '/InfirmerieService.php';
 $infirmerieService = new InfirmerieService($pdo);
 
 $activePage = $activePage ?? 'infirmerie';
-$extraCss = ['infirmerie/assets/css/infirmerie.css'];
+$extraCss = ['assets/css/infirmerie.css'];
 
 $isGestionnaire = isAdmin() || isPersonnelVS();
+$isAdmin = isAdmin();
 
-$sidebarLinks = '<li class="sidebar-item">
-    <a href="/infirmerie/infirmerie.php" class="sidebar-link ' . ($activePage === 'infirmerie' ? 'active' : '') . '">
-        <i class="fas fa-heartbeat"></i><span>Infirmerie</span>
-    </a>
-</li>';
-if ($isGestionnaire) {
-    $sidebarLinks .= '<li class="sidebar-item">
-        <a href="/infirmerie/passage.php" class="sidebar-link ' . ($activePage === 'passage' ? 'active' : '') . '">
-            <i class="fas fa-plus-circle"></i><span>Nouveau passage</span>
-        </a>
-    </li>
-    <li class="sidebar-item">
-        <a href="/infirmerie/fiches.php" class="sidebar-link ' . ($activePage === 'fiches' ? 'active' : '') . '">
-            <i class="fas fa-folder-open"></i><span>Fiches santé</span>
-        </a>
-    </li>';
-}
-
-$sidebarExtraContent = $sidebarLinks;
 $pageTitle = $pageTitle ?? 'Infirmerie';
 require_once __DIR__ . '/../../../templates/shared_header.php';
+require_once __DIR__ . '/../../../templates/shared_topbar.php';
 ?>
+            <div class="content-container">

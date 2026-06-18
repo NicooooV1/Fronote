@@ -84,7 +84,7 @@ $canPin = isset($isModerator) && $isModerator && !$deletedAt;
                     </button>
                     <?php endif; ?>
                     <?php if (!$isSelf): ?>
-                    <button onclick="replyToMessage(<?= $messageId ?>, '<?= h($senderName) ?>')">
+                    <button class="js-reply" data-message-id="<?= (int)$messageId ?>" data-sender="<?= h($senderName) ?>">
                         <i class="fas fa-reply"></i> Répondre
                     </button>
                     <?php endif; ?>
@@ -119,9 +119,9 @@ $canPin = isset($isModerator) && $isModerator && !$deletedAt;
     <?php if (!$deletedAt && !empty($reactions)): ?>
     <div class="message-reactions">
         <?php foreach ($reactions as $r): ?>
-        <button class="reaction-badge <?= $r['user_reacted'] ? 'active' : '' ?>" 
-                onclick="toggleReaction(<?= $messageId ?>, '<?= h($r['emoji']) ?>')">
-            <?= $r['emoji'] ?> <span class="reaction-count"><?= (int)$r['count'] ?></span>
+        <button class="reaction-badge js-reaction <?= $r['user_reacted'] ? 'active' : '' ?>"
+                data-message-id="<?= (int)$messageId ?>" data-emoji="<?= h($r['emoji']) ?>">
+            <?= h($r['emoji']) ?> <span class="reaction-count"><?= (int)$r['count'] ?></span>
         </button>
         <?php endforeach; ?>
     </div>
@@ -152,7 +152,7 @@ $canPin = isset($isModerator) && $isModerator && !$deletedAt;
         </div>
         <?php else: ?>
         <div class="message-actions">
-            <button class="btn-icon" onclick="replyToMessage(<?= $messageId ?>, '<?= h($senderName) ?>')">
+            <button class="btn-icon js-reply" data-message-id="<?= (int)$messageId ?>" data-sender="<?= h($senderName) ?>">
                 <i class="fas fa-reply"></i> Répondre
             </button>
         </div>

@@ -6,10 +6,17 @@ namespace API\Services;
 use PDO;
 
 /**
- * SignatureService — Signature électronique de documents.
+ * SignatureService — TAMPON D'INTÉGRITÉ de documents (PAS une signature qualifiée).
  *
- * Permet la signature de bulletins, conventions de stage, etc.
- * Stocke les données de signature (canvas base64) avec hash SHA-256 et horodatage.
+ * Permet de recueillir un tracé manuscrit (canvas base64) pour bulletins, conventions
+ * de stage, autorisations, etc., et d'y associer un hash SHA-256 + horodatage.
+ *
+ * ⚠️ PORTÉE JURIDIQUE : il s'agit d'un simple TAMPON D'INTÉGRITÉ. Le hash est un
+ * SHA-256 non chiffré de données publiques/recalculables — il prouve qu'une ligne
+ * n'a pas été modifiée après coup, mais N'APPORTE NI authenticité, NI non-répudiation,
+ * NI valeur probante eIDAS (aucune clé de signataire, aucune PKI). Quiconque a accès
+ * en écriture à la base peut forger un tracé et recalculer un hash valide.
+ * Pour une valeur légale, intégrer une vraie signature électronique qualifiée (PKI).
  */
 class SignatureService
 {

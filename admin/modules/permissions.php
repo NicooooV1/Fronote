@@ -253,6 +253,7 @@ function permChecked(array $permissions, string $moduleKey, string $role, string
 // ─── Page ────────────────────────────────────────────────────────────────────
 $pageTitle = 'Permissions des modules';
 $currentPage = 'modules';
+$pageBack = 'admin/modules/index.php';
 $extraCss = ['../../assets/css/admin.css'];
 
 include __DIR__ . '/../includes/header.php';

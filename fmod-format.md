@@ -1,168 +1,308 @@
-# Fronote Module Format — `.fmod` Specification v1
+# Format de paquet module Fronote — Spécification `.fmod` v1
 
-> Plateforme **3.2.4** · Module marketplace **1.5.2** · Format **.fmod v1** · 2026-05-31
+> Plateforme **3.2.4** (build 2026-05-31) · Format **.fmod v1** · Signature **Ed25519** (ext-sodium)
 
-## Overview
+## Vue d'ensemble
 
-A `.fmod` file is a ZIP archive with a deterministic structure and a detached Ed25519 signature.
-The `.fmod` extension is opaque: any ZIP tool can inspect the contents.
+Un fichier `.fmod` est une **archive ZIP** au contenu déterministe, accompagnée d'une **signature Ed25519 détachée** et d'un **manifeste de hachage par fichier**. L'extension `.fmod` est opaque : n'importe quel outil ZIP peut en inspecter le contenu.
 
-## Archive Structure
+Le format sert au **sideload** : on téléverse un paquet `.fmod` signé dans l'admin (ou via CLI), Fronote vérifie la chaîne de signature **contre une Root CA embarquée** (`config/marketplace/roots/*.pub`), puis installe le module. Modèle de confiance « zero network trust » : la signature est vérifiée quel que soit l'URL source ; TLS est nécessaire mais jamais suffisant.
 
-```
-{module_key}-{version}.fmod   (ZIP)
-├── MANIFEST.sha256            ← Per-file SHA-256 manifest (signed)
-├── SIGNATURE.json             ← Detached Ed25519 signature + certificate chain
-├── module.json                ← Module metadata
-├── <module source files>      ← PHP, SQL, assets, etc.
-└── ...
-```
+> ⚠️ **Pas de migrations.** Le schéma d'un module = `Database/install.sql` (un seul fichier, `CREATE TABLE IF NOT EXISTS`, schéma final complet). Il **n'existe plus** de dossier `migrations`, ni de clé `migrations` dans `module.json`, ni de table `module_migrations`. À l'installation, `ModuleSDK::provisionSql($key)` exécute **uniquement** `install.sql` (idempotent).
 
-## MANIFEST.sha256
+Code de référence :
+- `API/Services/FmodService.php` — build, signature, vérification, extraction.
+- `API/Services/MarketplaceService.php` — pipeline d'installation (`installFromFmod`, `confirmInstall`, `deployFromStaging`).
+- `API/Services/ModuleSDK.php` — `discover()`, `syncModule()`, `provisionSql()`.
 
-Line-per-file format, sorted by path:
+## Structure de l'archive
+
+À la **racine** du ZIP (pas de dossier parent imposé — `MarketplaceService::extractZip` du flux catalogue remonte d'ailleurs un éventuel dossier racine unique) :
 
 ```
-<sha256_hex>  <relative_path>
+{module_key}-{version}.fmod        (ZIP)
+├── MANIFEST.sha256                ← hachage SHA-256 par fichier (signé)
+├── SIGNATURE.json                 ← signature Ed25519 détachée + chaîne de certificats
+├── module.json                    ← métadonnées du module (obligatoire)
+├── Database/
+│   └── install.sql                ← schéma final (CREATE TABLE IF NOT EXISTS)
+├── <route principale>.php         ← ex. notes.php, déclaré dans routes.main
+├── includes/                      ← header.php, footer.php, providers, services
+├── assets/                        ← css/, js/, img/ propres au module
+├── widgets/                       ← templates de widgets dashboard (si déclarés)
+├── api/                           ← endpoints AJAX (si routes.api)
+└── lang/<locale>/<domaine>.json   ← traductions (optionnel)
 ```
 
-Example:
-```
-a1b2c3...  Database/install.sql
-d4e5f6...  Services/MyService.php
-7g8h9i...  module.json
-```
+Fichiers **toujours exclus** du paquet ET du manifeste (`FmodService::EXCLUDE_NAMES`) :
+`.git`, `.gitignore`, `.DS_Store`, `node_modules`, `.idea`, `.vscode`.
+`MANIFEST.sha256` et `SIGNATURE.json` sont eux-mêmes exclus du manifeste (ce sont des méta-fichiers).
 
-MANIFEST.sha256 and SIGNATURE.json are excluded from the manifest (they are meta-files).
+## `module.json` (manifeste)
 
-## SIGNATURE.json
+Source de vérité du module. Lu par `ModuleSDK::discover()` (scan de `modules/*/module.json` **et** `*/module.json` à la racine) et validé par `ModuleSDK::validate()`.
+
+### Champs obligatoires
+
+`ModuleSDK::REQUIRED_FIELDS = ['key', 'name', 'icon', 'category']`.
+
+| Champ | Type | Règle |
+|-------|------|-------|
+| `key` | string | minuscules, `^[a-z][a-z0-9_]*$`. Doit être unique et égal au nom du dossier. |
+| `name` | objet | au moins la clé `fr` (ex. `{"fr":"Notes","en":"Grades"}`). |
+| `icon` | string | classe Font Awesome (ex. `fas fa-chart-bar`). |
+| `category` | string | une des valeurs valides ci-dessous. |
+
+Catégories valides (`ModuleSDK::VALID_CATEGORIES`) :
+`navigation`, `scolaire`, `vie_scolaire`, `communication`, `etablissement`, `logistique`, `outils`, `administration`, `systeme`, `sante`, `custom`.
+
+### Champs courants (optionnels mais usuels)
+
+| Champ | Rôle |
+|-------|------|
+| `version` | SemVer du module (ex. `1.0.0`). Utilisé pour les enregistrements d'install et le yank. |
+| `description` | objet `{fr, en}`. |
+| `core` | `true` pour un module système non désinstallable (`MarketplaceService::uninstallModule` refuse via `ModuleService::isCore`). |
+| `requires_php` | contrainte PHP simple (`>=8.0`, `8.1`, …), vérifiée au sideload. |
+| `fronote_min` / `fronote_max` | intervalle de compatibilité cœur (flux catalogue / preflight). |
+| `dependencies` | tableau de `key` de modules requis (présence vérifiée). |
+| `routes` | `{ "main": "notes.php", "api": "api/actions.php" }`. |
+| `database` | `{ "install": "Database/install.sql" }` — chemin relatif du SQL d'install. **Défaut** `Database/install.sql` si absent. |
+| `permissions` | par action : `{ "view": { "default_roles": ["*"] }, "edit": {...} }`. |
+| `widgets` | tableau de widgets dashboard (`key`, `name`, `data_provider`, `template`, `roles`, …). |
+| `settings_schema` | schéma des réglages éditables (type, default, label i18n). |
+| `establishment_types` | `null` (tous) ou tableau de types d'établissement. |
+| `sidebar` / `topbar` | `{ "category": "...", "sort_order": N }` pour l'ordre dans la barre. |
+| `author`, `author_url`, `contributors`, `license` | métadonnées éditeur. |
+
+> Il n'y a **PAS** de clé `migrations`. Le schéma est entièrement porté par `database.install`.
+
+### Bloc `publish` (signature / marketplace)
+
+Le bloc `publish` n'est pas requis pour qu'un module fonctionne localement, mais il est **indispensable pour un paquet `.fmod` signé** : `FmodService::verifyInternal()` exige que `publish.publisher_id` soit présent et **identique** dans `module.json`, `SIGNATURE.json` et le certificat éditeur.
 
 ```json
-{
-  "alg": "Ed25519",
+"publish": {
   "publisher_id": "fronote-team",
-  "manifest_sha256": "<sha256-hex-of-MANIFEST.sha256>",
-  "signature": "<base64-encoded-64-byte-Ed25519-signature>",
-  "certificate_chain": ["<base64-cert-editor>", "<base64-cert-intermediate>"],
-  "signed_at": "2026-01-15T10:00:00Z"
+  "required_permissions": ["db_read", "db_write"],
+  "optional_permissions": [],
+  "min_core": "3.0.0",
+  "max_core": "4.0.0"
 }
 ```
 
-The signature covers `sha256(MANIFEST.sha256_content)` — the hash of the hash file.
+- `publisher_id` — identifiant éditeur, doit matcher les trois couches (manifeste/signature/cert).
+- `required_permissions` — permissions demandées au module ; passées à `ModuleScanner` et utilisées pour le **consentement** (l'install est suspendue tant que l'admin n'a pas accepté).
+- `min_core` / `max_core` — contraintes de version cœur vérifiées par `FmodService::semverSatisfies()` (supporte `>=X`, `<X`, `^X.Y.Z`, `~X.Y`, `X.Y.*`, et conjonctions séparées par espace).
 
-## module.json (mandatory fields)
+### `test_only`
+
+`"test_only": true` → le module ne peut être installé que si `ALLOW_TEST_MODULES=true` dans `.env` (`MarketplaceService::isTestModulesAllowed()`). Sinon le sideload est refusé. Sert aux modules de test (ex. `hello_world`, `channel: "test"`).
+
+### Exemple réel — `modules/hello_world/module.json`
 
 ```json
 {
-  "key": "my_module",
+  "key": "hello_world",
   "version": "1.0.0",
-  "name": { "fr": "...", "en": "..." },
-  "icon": "fas fa-...",
-  "category": "scolaire",
+  "name": { "fr": "Hello World (Test)", "en": "Hello World (Test)" },
+  "icon": "fas fa-flask",
+  "category": "systeme",
   "core": false,
-  "channel": "stable",
-  "test_only": false,
+  "requires_php": ">=8.0",
+  "fronote_min": "2.1.0",
+  "fronote_max": "4.0.0",
+  "channel": "test",
+  "test_only": true,
+  "routes": { "main": "hello_world.php" },
+  "database": { "install": "Database/install.sql" },
+  "permissions": { "view": { "default_roles": ["administrateur"] } },
   "publish": {
-    "publisher_id": "my-publisher",
-    "required_permissions": ["db_read"],
+    "publisher_id": "fronote-team",
+    "required_permissions": ["db_read", "db_write"],
     "optional_permissions": []
   }
 }
 ```
 
-`test_only: true` → module can only be installed when `ALLOW_TEST_MODULES=true` in `.env`.
+## `Database/install.sql`
 
-## Certificate Format
+Schéma **final et complet** du module, idempotent. Conventions :
 
-Each certificate in `certificate_chain` is a **base64-encoded JSON document**:
+- `CREATE TABLE IF NOT EXISTS` (jamais de `DROP`).
+- Tables des modules métier préfixées par la clé (`hello_world_log`, …).
+- Données scopées par établissement : prévoir `etablissement_id` sur les tables concernées (cf. `\API\Core\EstablishmentContext::id()`).
+- Exécuté par `ModuleSDK::provisionSql($key)` → `execSchemaSql()` : désactive les FK le temps du script, exécute chaque instruction séparément (un échec isolé n'interrompt pas les suivants), pas de transaction (le DDL provoque un commit implicite).
+
+Exemple (`modules/hello_world/Database/install.sql`) :
+```sql
+CREATE TABLE IF NOT EXISTS `hello_world_log` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `event` VARCHAR(64) NOT NULL,
+  `payload` JSON DEFAULT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_event` (`event`),
+  KEY `idx_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+> Lors d'une **mise à jour** de l'app (bouton unique `admin/systeme/update.php`), c'est `SchemaSyncService::sync()` qui réconcilie le schéma de façon déclarative (CREATE des tables manquantes + ADD COLUMN des colonnes manquantes, lues depuis les `install.sql`/`pronote.sql`). Toujours pas de migration, jamais de `DROP`.
+
+## `MANIFEST.sha256`
+
+Une ligne par fichier, **triée par chemin** (`ksort`, `SORT_STRING`). Format :
+
+```
+<sha256_hex>  <chemin_relatif>
+```
+
+(double espace entre le hash et le chemin ; chemins en `/`, jamais `\`). Exemple :
+```
+a1b2c3...  Database/install.sql
+d4e5f6...  module.json
+7a8b9c...  notes.php
+```
+
+Construit par `FmodService::buildManifest()`, relu par `parseManifest()` (regex `^([0-9a-f]{64})\s{2,}(.+)$`).
+
+## `SIGNATURE.json`
+
+Signature Ed25519 **détachée** produite par `FmodService::signManifest()`. La signature porte sur **`sha256(contenu de MANIFEST.sha256)`** — le hash du fichier de hash, pas le ZIP entier.
+
+```json
+{
+  "alg": "Ed25519",
+  "publisher_id": "fronote-team",
+  "manifest_sha256": "<sha256-hex-de-MANIFEST.sha256>",
+  "signature": "<base64-de-la-signature-Ed25519-64-octets>",
+  "certificate_chain": ["<base64-cert-editeur>", "<base64-cert-intermediaire>"],
+  "signed_at": "2026-05-31T10:00:00Z"
+}
+```
+
+- `alg` doit valoir exactement `Ed25519` (`FmodService::SIG_ALG`).
+- `certificate_chain` : **index 0 = certificat éditeur** (le plus interne), puis intermédiaires. La Root CA **n'est pas** dans la chaîne (elle est embarquée côté client).
+
+## Format de certificat
+
+Chaque entrée de `certificate_chain` est un **JSON encodé en base64**. Document signé par l'émetteur :
 
 ```json
 {
   "publisher_id": "fronote-team",
-  "public_key_b64": "<base64-Ed25519-public-key-32-bytes>",
-  "issuer_fp": "<sha256-hex-of-issuer-public-key>",
+  "public_key_b64": "<clé-publique-Ed25519-32-octets-base64>",
+  "issuer_fp": "<sha256-hex-de-la-clé-publique-émettrice>",
   "issued_at": "2026-01-01T00:00:00Z",
   "expires_at": "2027-01-01T00:00:00Z",
-  "signature_b64": "<base64-Ed25519-signature-by-issuer>"
+  "signature_b64": "<signature-Ed25519-base64-par-l-émetteur>"
 }
 ```
 
-The signature covers the canonical form of all fields except `signature_b64`,
-sorted alphabetically as `key=value` lines joined by `\n`.
+La signature (`signature_b64`) porte sur la **forme canonique** de tous les autres champs : lignes `clé=valeur` triées alphabétiquement et jointes par `\n`, sans `signature_b64` (`FmodService::canonicalCertBytes()`). Ce format évite les variations de `json_encode` entre runtimes.
 
-## Trust Chain
+## Chaîne de confiance
 
 ```
-Root CA (config/marketplace/roots/*.pub)
-  └── Intermediate CA cert (in certificate_chain[1])
-        └── Publisher cert (in certificate_chain[0])
-              └── Signs MANIFEST.sha256
+Root CA (config/marketplace/roots/*.pub)      ← clé publique embarquée, 32 octets Ed25519, base64
+  └── cert intermédiaire (certificate_chain[1])
+        └── cert éditeur (certificate_chain[0])
+              └── signe MANIFEST.sha256
 ```
 
-Root CA public keys are 32-byte Ed25519 keys stored in base64, one per `.pub` file.
+`FmodService::verifyCertChain()` parcourt la chaîne : chaque cert doit être signé par le suivant (`issuer_fp` = `sha256(clé publique du suivant)`), non expiré, et **le dernier doit être signé par une Root CA configurée** (`issuer_fp` ∈ fingerprints de `roots/*.pub`). Tant qu'aucun `.pub` n'est présent, `installFromFmod()` refuse **tout** sideload.
 
-## Verification Pipeline (install)
+## Pipeline d'installation (sideload `.fmod`)
 
-1. Verify ZIP is valid and ≤ 50 MB
-2. Check MANIFEST.sha256 and SIGNATURE.json are present
-3. Parse SIGNATURE.json; verify `alg = Ed25519`
-4. Verify certificate chain terminates at a configured Root CA
-5. Check certificate not revoked (CRL lookup)
-6. Verify Ed25519 signature: `sign_verify(sig, sha256(MANIFEST), editor_pk)`
-7. Verify per-file SHA-256 against MANIFEST for every file
-8. Verify `publisher_id` matches across manifest, signature, and certificate
-9. Check `test_only` vs `ALLOW_TEST_MODULES` env
-10. Run ModuleScanner on extracted code
-11. Request consent for `permissions_requested` (if any)
-12. Atomic deploy: `rename(staging, modules/{key}/)`
-13. Run `install.sql` via ModuleSDK
-14. Record in `marketplace_installed`
+`MarketplaceService::installFromFmod($fmodPath)` puis `deployFromStaging()` :
 
-## Creating a .fmod
+1. Le paquet existe ; au moins une Root CA chargée depuis `config/marketplace/roots/*.pub` (sinon refus).
+2. **Verrou global** (`storage/tmp/marketplace.install.lock`, `flock`) — interdit deux installs concurrentes.
+3. `FmodService::verifyAndExtract()` — **une seule ouverture du ZIP** (élimine le TOCTOU verify→extract) :
+   - `alg = Ed25519` ; chaîne de certificats valide → Root CA ; cert éditeur non révoqué (hook `marketplace_revocations`) ;
+   - signature Ed25519 vérifiée sur `sha256(MANIFEST)` ;
+   - SHA-256 **par fichier** comparé au manifeste, en streaming ; écriture atomique (`.part` renommé seulement si le digest correspond) sous le dossier de staging ; noms d'entrée vérifiés (anti-path-traversal) ;
+   - `publisher_id` identique entre manifeste / signature / cert ; `min_core`/`max_core` satisfaits ; version non yankée (hook `marketplace_advisories_seen`).
+4. `test_only` refusé sauf `ALLOW_TEST_MODULES=true`.
+5. **Scan statique** `ModuleScanner` (défense en profondeur — la signature garantit l'origine, pas l'innocuité). Violations critiques → `QuarantineService::quarantine()` (le staging est sorti du runtime), installation refusée.
+6. **Consentement** : si des permissions sont demandées (`publish.required_permissions` / `permissions_requested`), l'install est suspendue (`pending_consent`), le staging est conservé ; l'admin confirme via `confirmInstall()`.
+7. **Bascule atomique** (`deployFromStaging`) : sauvegarde de l'éventuel dossier live existant dans `storage/backups/modules/<key>_<horodatage>`, puis `rename(staging → modules/<key>/)`.
+8. `ModuleSDK::clearCache()` + `syncModule($manifest)` (peuple `modules_config`, `dashboard_widgets`, `module_permissions`) + **`provisionSql($key)` → exécute `install.sql` uniquement**.
+9. Enregistrement dans `marketplace_installed` (`package_sha256`, `manifest_sha256`, `cert_fingerprint`, `publisher_id`, `channel='sideload'`, `signature_verified_at`).
 
-Use `FmodService::buildPackage()` (PHP) or the `fmod-pack` CLI tool:
+Limite de taille : **50 Mo** (vérifiée à l'upload côté UI, `modules/marketplace/marketplace.php`). Le téléversement n'accepte que `*.fmod`.
+
+> Le flux **catalogue distant** (`installModule()`) est distinct : il télécharge un ZIP non signé Ed25519, vérifie un SHA-256 optionnel du registre, scanne, déploie, et enregistre dans `marketplace_installs`. En **production** il est **désactivé** sauf `MARKETPLACE_ALLOW_UNSIGNED=true` : on exige un `.fmod` signé.
+
+## Créer un `.fmod`
+
+### En PHP (API `FmodService`)
+
+```php
+require 'API/bootstrap.php';
+use API\Services\FmodService;
+
+$svc = new FmodService();           // pas de Root CA nécessaire pour BUILD (seulement pour verify)
+$svc->buildPackage(
+    './modules/cantine',            // dossier source (doit contenir module.json)
+    './dist/cantine-2.3.1.fmod',    // sortie .fmod
+    $editorSecretKeyB64,            // clé secrète éditeur Ed25519 (base64)
+    'fronote-team',                 // publisher_id (doit matcher module.json publish.publisher_id)
+    [$editorCertB64, $intermediateCertB64] // chaîne : cert éditeur d'abord
+);
+```
+
+### En ligne de commande
+
+Les outils CLI vivent sous `scripts/` (PHP, pas de binaire `fmod-pack`) :
+
+| Script | Rôle |
+|--------|------|
+| `scripts/fmod_keygen.php <nom> [out_dir]` | génère un keypair Ed25519 (`.sk`, `.pub`, `.fp`). |
+| `scripts/fmod_cert.php <subject_pub> <issuer_sk> <publisher_id> <days> [out]` | émet un certificat signé par un émetteur. |
+| `scripts/fmod_build.php <src_dir> <out.fmod> <editor_sk> <publisher_id> <cert1> [cert2 …]` | construit et signe le `.fmod`. |
+| `scripts/fmod_verify.php <pkg.fmod> [root_pub …]` | vérifie signature + intégrité (charge `roots/*.pub` par défaut). |
+| `scripts/install-module.php <pkg.fmod> [--allow-test] [--dry-run]` | installe (ou vérifie seul) via `MarketplaceService`. |
+
+Exemple de build :
+```bash
+php scripts/fmod_build.php modules/cantine dist/cantine-2.3.1.fmod \
+    config/marketplace/keys/fronote-team.sk fronote-team \
+    config/marketplace/certs/fronote-team.cert \
+    config/marketplace/certs/registry-intermediate.cert
+# → affiche le sha256 du paquet
+```
+
+## Workflow de dev / test
 
 ```bash
-# PHP
-$fmod = new \API\Services\FmodService([]);
-$fmod->buildPackage('./my-module', './my-module-1.0.0.fmod', $secretKeyB64, 'my-publisher', [$certB64]);
-
-# CLI (when available)
-fmod-pack sign --module-dir ./my-module --publisher-key publisher.key \
-  --publisher-cert publisher.crt --channel stable --output my-module-1.0.0.fmod
-```
-
-## Dev/Test Workflow
-
-```bash
-# 1. Generate test PKI
+# 1. Générer une PKI de test (Root CA → roots/, intermédiaire, cert éditeur, keypair libsodium)
 bash scripts/pki/generate-test-ca.sh
+#    place fronote-test-root.pub dans config/marketplace/roots/ et écrit pki-test/
 
-# 2. Build test .fmod (PHP)
-php -r "
-  require 'API/bootstrap.php';
-  \$f = new \API\Services\FmodService([]);
-  \$f->buildPackage('./modules/hello_world', '/tmp/hello_world-1.0.0.fmod',
-    trim(file_get_contents('pki-test/fmod-secret.key')), 'fronote-team',
-    [base64_encode(file_get_contents('pki-test/test-intermediate.crt'))]);
-  echo 'Built OK\n';
-"
+# 2. Construire un .fmod de test
+php scripts/fmod_build.php modules/hello_world /tmp/hello_world-1.0.0.fmod \
+    pki-test/fmod-secret.key fronote-team \
+    pki-test/publisher.crt pki-test/test-intermediate.crt
 
-# 3. Install
+# 3. Vérifier (optionnel)
+php scripts/fmod_verify.php /tmp/hello_world-1.0.0.fmod
+
+# 4. Installer (hello_world est test_only → --allow-test)
 php scripts/install-module.php /tmp/hello_world-1.0.0.fmod --allow-test
 ```
 
-## Security Properties
+⚠️ Ne **jamais** committer de fichier `*.key` / `*.sk`. La clé privée Root CA reste hors-ligne (HSM ou stockage air-gapped) ; cf. `config/marketplace/roots/README.md`.
 
-| Property | Guaranteed |
-|----------|-----------|
-| Integrity (no tampering) | ✓ Per-file SHA-256 + manifest signature |
-| Authenticity (origin) | ✓ Certificate chain → Root CA |
-| Non-repudiation | ✓ Ed25519 is deterministic |
-| Freshness | Partial (signed_at field; no expiry on packages) |
-| Revocation | ✓ CRL via marketplace_revocations DB table |
-| Safe extraction | ✓ Path traversal blocked; atomic commit per file |
+## Propriétés de sécurité
 
-Ed25519 guarantees: integrity, authenticity, non-repudiation.
-It does NOT guarantee: code quality, absence of malicious logic, RGPD compliance.
-`ModuleScanner` provides a complementary static analysis layer.
+| Propriété | Garantie |
+|-----------|----------|
+| Intégrité (anti-altération) | ✓ SHA-256 par fichier + signature du manifeste |
+| Authenticité (origine) | ✓ chaîne de certificats → Root CA embarquée |
+| Non-répudiation | ✓ Ed25519 déterministe |
+| Anti-rejeu / révocation | ✓ révocation cert (`marketplace_revocations`) + yank de version (`marketplace_advisories_seen`) |
+| Extraction sûre | ✓ noms vérifiés, traversée bloquée, commit atomique par fichier |
+| Concurrence | ✓ verrou `flock` global pendant l'install |
+
+Ed25519 garantit intégrité, authenticité et non-répudiation. Il **ne** garantit **pas** la qualité du code ni l'absence de logique malveillante ou de non-conformité RGPD : `ModuleScanner` fournit la couche d'analyse statique complémentaire, et le consentement explicite des permissions reste requis.

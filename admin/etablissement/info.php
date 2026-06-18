@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Fiche établissement — modifier les informations générales
  */
@@ -17,11 +17,28 @@ if (!isset($_SESSION['csrf_token'])) {
 }
 $csrf_token = $_SESSION['csrf_token'];
 
+// Établissement actif (scope multi-établissement) — plus de « id = 1 » codé en dur.
+try {
+    $etabId = \API\Core\EstablishmentContext::isSet()
+        ? \API\Core\EstablishmentContext::id()
+        : (int) ($_SESSION['etablissement_id'] ?? 0);
+} catch (\Throwable $e) {
+    $etabId = 0;
+}
+if ($etabId < 1) {
+    // Mono-établissement : retomber sur l'unique fiche existante.
+    $etabId = (int) ($pdo->query("SELECT id FROM etablissements ORDER BY id LIMIT 1")->fetchColumn() ?: 1);
+}
+
 // Charger les infos
-$etab = $pdo->query("SELECT * FROM etablissements WHERE id = 1")->fetch(PDO::FETCH_ASSOC);
+$stmt = $pdo->prepare("SELECT * FROM etablissements WHERE id = ?");
+$stmt->execute([$etabId]);
+$etab = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$etab) {
-    $pdo->exec("INSERT INTO etablissements (id, nom) VALUES (1, 'Établissement Scolaire')");
-    $etab = $pdo->query("SELECT * FROM etablissements WHERE id = 1")->fetch(PDO::FETCH_ASSOC);
+    $pdo->prepare("INSERT INTO etablissements (id, nom) VALUES (?, 'Établissement Scolaire')")->execute([$etabId]);
+    $stmt = $pdo->prepare("SELECT * FROM etablissements WHERE id = ?");
+    $stmt->execute([$etabId]);
+    $etab = $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
 // POST : mise à jour
@@ -44,12 +61,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
         $sets[] = "$f = ?";
         $params[] = trim($_POST[$f] ?? ($etab[$f] ?? ''));
     }
-    $params[] = 1;
+    $params[] = $etabId;
 
     $pdo->prepare("UPDATE etablissements SET " . implode(', ', $sets) . " WHERE id = ?")->execute($params);
-    logAudit('etablissement_updated', 'etablissements', 1);
+    logAudit('etablissement_updated', 'etablissements', $etabId);
     $message = "Informations mises à jour.";
-    $etab = $pdo->query("SELECT * FROM etablissements WHERE id = 1")->fetch(PDO::FETCH_ASSOC);
+    $stmt = $pdo->prepare("SELECT * FROM etablissements WHERE id = ?");
+    $stmt->execute([$etabId]);
+    $etab = $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
 $pageTitle = 'Fiche établissement';

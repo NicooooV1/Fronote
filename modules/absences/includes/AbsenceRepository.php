@@ -109,13 +109,15 @@ class AbsenceRepository
         }
 
         $placeholders = implode(',', array_fill(0, count($profClasses), '?'));
-        $sql = "SELECT a.*, e.nom, e.prenom, e.classe 
-                FROM absences a 
-                JOIN eleves e ON a.id_eleve = e.id 
+        $sql = "SELECT a.*, e.nom, e.prenom, e.classe
+                FROM absences a
+                JOIN eleves e ON a.id_eleve = e.id
                 WHERE e.classe IN ($placeholders)
                 AND " . $this->buildDateFilter('a', $dateDebut, $dateFin);
         $params = array_merge($profClasses, $this->buildDateParams($dateDebut, $dateFin));
         $sql .= $this->buildJustifieFilter($justifie, $params);
+        $sql .= " AND e.etablissement_id = ?";
+        $params[] = $this->etabId();
         $sql .= " ORDER BY e.classe, e.nom, e.prenom, a.date_debut DESC";
 
         return $this->executeQuery($sql, $params);
@@ -184,13 +186,15 @@ class AbsenceRepository
         }
 
         $placeholders = implode(',', array_fill(0, count($profClasses), '?'));
-        $sql = "SELECT r.*, e.nom, e.prenom, e.classe 
-                FROM retards r 
-                JOIN eleves e ON r.id_eleve = e.id 
+        $sql = "SELECT r.*, e.nom, e.prenom, e.classe
+                FROM retards r
+                JOIN eleves e ON r.id_eleve = e.id
                 WHERE e.classe IN ($placeholders)
                 AND " . $this->buildRetardDateFilter($dateDebut, $dateFin);
         $params = array_merge($profClasses, [$dateDebut, $dateFin, $dateDebut, $dateFin]);
         $sql .= $this->buildJustifieFilter($justifie, $params, 'r');
+        $sql .= " AND e.etablissement_id = ?";
+        $params[] = $this->etabId();
         $sql .= " ORDER BY e.classe, e.nom, e.prenom, r.date_retard DESC";
 
         return $this->executeQuery($sql, $params);
@@ -292,7 +296,7 @@ class AbsenceRepository
             $notifService->creer($eleveId, 'eleve', 'absence', $titre, $contenu, $lien, 'importante', 'absence', $absenceId);
 
             // Notifier le(s) parent(s)
-            $parents = $this->pdo->prepare("SELECT id_parent FROM eleve_parent WHERE id_eleve = ?");
+            $parents = $this->pdo->prepare("SELECT id_parent FROM parent_eleve WHERE id_eleve = ?");
             $parents->execute([$eleveId]);
             while ($pid = $parents->fetchColumn()) {
                 $notifService->creer((int)$pid, 'parent', 'absence', $titre, $contenu, $lien, 'importante', 'absence', $absenceId);
@@ -341,18 +345,18 @@ class AbsenceRepository
 
     public function createRetard(array $data): int|false
     {
-        $required = ['id_eleve', 'date_retard', 'duree', 'signale_par'];
+        $required = ['id_eleve', 'date_retard', 'duree_minutes', 'signale_par'];
         foreach ($required as $field) {
             if (empty($data[$field])) return false;
         }
 
-        $sql = "INSERT INTO retards (id_eleve, date_retard, duree, motif, justifie, commentaire, signale_par)
+        $sql = "INSERT INTO retards (id_eleve, date_retard, duree_minutes, motif, justifie, commentaire, signale_par)
                 VALUES (?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->pdo->prepare($sql);
         $success = $stmt->execute([
             $data['id_eleve'],
             $data['date_retard'],
-            $data['duree'],
+            $data['duree_minutes'],
             $data['motif'] ?? null,
             !empty($data['justifie']) ? 1 : 0,
             $data['commentaire'] ?? null,
@@ -790,7 +794,7 @@ class AbsenceRepository
 
     public function getChildrenForParent(int $userId): array
     {
-        $stmt = $this->pdo->prepare("SELECT id_eleve FROM parents_eleves WHERE id_parent = ?");
+        $stmt = $this->pdo->prepare("SELECT id_eleve FROM parent_eleve WHERE id_parent = ?");
         $stmt->execute([$userId]);
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
@@ -841,18 +845,27 @@ class AbsenceRepository
      */
     public function bulkCreateAbsences(array $eleveIds, array $common, int $createdBy): int
     {
+        // type_absence et signale_par sont NOT NULL sans défaut (install.sql) :
+        // les fournir sinon l'INSERT échoue en mode strict (erreur 1364).
+        $etabId      = $this->etabId();
+        $typeAbsence = $common['type_absence'] ?? $common['type'] ?? 'absence';
+        $signalePar  = $common['signale_par'] ?? (string) $createdBy;
+
         $stmt = $this->pdo->prepare("
-            INSERT INTO absences (id_eleve, date_debut, date_fin, motif, justifie, cours_id, type, statut, created_by)
-            VALUES (?, ?, ?, ?, 0, ?, ?, 'signalee', ?)
+            INSERT INTO absences (etablissement_id, id_eleve, date_debut, date_fin, type_absence, motif, justifie, signale_par, cours_id, type, statut, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, 'signalee', ?)
         ");
 
         $count = 0;
         foreach ($eleveIds as $eleveId) {
             $stmt->execute([
+                $etabId,
                 (int) $eleveId,
                 $common['date_debut'],
                 $common['date_fin'] ?? $common['date_debut'],
+                $typeAbsence,
                 $common['motif'] ?? '',
+                $signalePar,
                 $common['cours_id'] ?? null,
                 $common['type'] ?? 'absence',
                 $createdBy,

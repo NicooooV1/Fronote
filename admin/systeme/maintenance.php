@@ -41,17 +41,11 @@ $isActive = $maintenance->isActive();
 $csrfToken = app('csrf')->generate();
 
 $pageTitle = 'Mode Maintenance';
+$currentPage = 'maintenance';
 $activePage = 'systeme';
-$rootPrefix = '../../';
 
-require_once __DIR__ . '/../../templates/shared_header.php';
+include __DIR__ . '/../includes/header.php';
 ?>
-
-<div class="topbar">
-    <div class="topbar-left">
-        <h1 class="page-title"><i class="fas fa-tools"></i> Mode Maintenance</h1>
-    </div>
-</div>
 
 <div class="content-body" style="padding: 24px;">
 
@@ -126,4 +120,4 @@ require_once __DIR__ . '/../../templates/shared_header.php';
     </div>
 </div>
 
-<?php require_once __DIR__ . '/../../templates/shared_footer.php'; ?>
+<?php include __DIR__ . '/../includes/footer.php'; ?>

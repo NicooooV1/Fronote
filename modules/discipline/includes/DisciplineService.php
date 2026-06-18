@@ -6,7 +6,7 @@
  */
 class DisciplineService
 {
-    protected $pdo;
+    protected \PDO $pdo;
 
     public function __construct(PDO $pdo)
     {
@@ -156,12 +156,14 @@ class DisciplineService
 
             $notif->creer($incident['eleve_id'], 'eleve', 'discipline', $titre, $contenu, $lien, 'importante', 'incident', $incident['id']);
 
-            $parents = $this->pdo->prepare("SELECT id_parent FROM eleve_parent WHERE id_eleve = ?");
+            $parents = $this->pdo->prepare("SELECT id_parent FROM parent_eleve WHERE id_eleve = ?");
             $parents->execute([$incident['eleve_id']]);
             while ($pid = $parents->fetchColumn()) {
                 $notif->creer((int)$pid, 'parent', 'discipline', $titre, $contenu, $lien, 'importante', 'incident', $incident['id']);
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+            error_log('DisciplineService::notifyIncidentTraite failed: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -171,11 +173,13 @@ class DisciplineService
     {
         try {
             $stmt = $this->pdo->prepare(
-                "INSERT INTO audit_log (action, user_type, user_id, details, ip_address, created_at)
+                "INSERT INTO audit_log (action, user_type, user_id, new_values, ip_address, created_at)
                  VALUES (?, 'vie_scolaire', ?, ?, ?, NOW())"
             );
             $stmt->execute([$action, $userId, json_encode(['target_id' => $targetId, 'comment' => $comment]), $_SERVER['REMOTE_ADDR'] ?? '']);
-        } catch (\PDOException $e) {}
+        } catch (\PDOException $e) {
+            error_log('DisciplineService::logAction audit_log insert failed: ' . $e->getMessage());
+        }
     }
 
     // ─── Export ──────────────────────────────────────────────────

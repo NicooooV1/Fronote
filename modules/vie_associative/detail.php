@@ -12,8 +12,8 @@ $membres   = $vieAssoService->getMembres($id);
 $activites = $vieAssoService->getActivites($id);
 $tresorerie = $vieAssoService->getTresorerie($id);
 $solde     = $vieAssoService->getSolde($id);
-$isAdmin   = ($role === 'admin');
-$isRef     = ($role === 'professeur' && (int)($user['id'] ?? 0) === (int)$asso['referent_adulte_id']);
+$isAdmin   = isAdmin();
+$isRef     = (isProfesseur() && (int)($user['id'] ?? 0) === (int)$asso['referent_adulte_id']);
 
 /* POST actions */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($isAdmin || $isRef)) {
@@ -59,13 +59,13 @@ $types = VieAssociativeService::typesLabels();
                 <div class="card-header"><h5 class="mb-0"><i class="fas fa-users me-2"></i>Membres (<?= count($membres) ?>)</h5></div>
                 <ul class="list-group list-group-flush">
                     <?php foreach ($membres as $m): ?>
-                        <li class="list-group-item d-flex justify-content-between align-items-center small <?= $m['statut'] !== 'actif' ? 'text-muted' : '' ?>">
+                        <li class="list-group-item d-flex justify-content-between align-items-center small">
                             <span>
                                 <?= htmlspecialchars($m['nom_complet'] ?? '#'.$m['eleve_id']) ?>
-                                <span class="badge bg-light text-dark"><?= htmlspecialchars($m['role']) ?></span>
+                                <span class="badge bg-light text-dark"><?= htmlspecialchars($m['role_membre'] ?? 'membre') ?></span>
                                 <?php if ($m['classe']): ?><span class="text-muted">(<?= htmlspecialchars($m['classe']) ?>)</span><?php endif; ?>
                             </span>
-                            <?php if (($isAdmin || $isRef) && $m['statut'] === 'actif'): ?>
+                            <?php if ($isAdmin || $isRef): ?>
                                 <form method="post" class="d-inline"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>"><input type="hidden" name="action" value="retirer"><input type="hidden" name="membre_id" value="<?= $m['id'] ?>"><button class="btn btn-sm btn-link text-danger p-0" title="Retirer"><i class="fas fa-times"></i></button></form>
                             <?php endif; ?>
                         </li>
@@ -136,10 +136,10 @@ $types = VieAssociativeService::typesLabels();
                         <?php foreach ($tresorerie as $op): ?>
                             <tr>
                                 <td class="small"><?= date('d/m/Y', strtotime($op['date_operation'])) ?></td>
-                                <td><span class="badge bg-<?= $op['type_operation'] === 'recette' ? 'success' : 'danger' ?>"><?= ucfirst($op['type_operation']) ?></span></td>
-                                <td class="small"><?= htmlspecialchars($op['description'] ?? '') ?></td>
-                                <td class="text-end fw-bold <?= $op['type_operation'] === 'recette' ? 'text-success' : 'text-danger' ?>">
-                                    <?= $op['type_operation'] === 'recette' ? '+' : '-' ?><?= number_format((float)$op['montant'], 2, ',', ' ') ?> €
+                                <td><span class="badge bg-<?= $op['type'] === 'recette' ? 'success' : 'danger' ?>"><?= ucfirst($op['type']) ?></span></td>
+                                <td class="small"><?= htmlspecialchars($op['libelle'] ?? '') ?></td>
+                                <td class="text-end fw-bold <?= $op['type'] === 'recette' ? 'text-success' : 'text-danger' ?>">
+                                    <?= $op['type'] === 'recette' ? '+' : '-' ?><?= number_format((float)$op['montant'], 2, ',', ' ') ?> €
                                 </td>
                             </tr>
                         <?php endforeach; ?>

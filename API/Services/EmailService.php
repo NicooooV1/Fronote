@@ -344,7 +344,9 @@ class EmailService
             $stmt = $this->pdo->query("SELECT nom FROM etablissements LIMIT 1");
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($row) $etabNom = $row['nom'];
-        } catch (\PDOException $e) {}
+        } catch (\PDOException $e) {
+            error_log('[' . basename(__FILE__) . '] ' . $e->getMessage());
+        }
 
         return <<<HTML
 <!DOCTYPE html>

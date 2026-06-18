@@ -9,6 +9,13 @@ $id = (int)($_GET['id'] ?? 0);
 $fiche = $orientationService->getFiche($id);
 if (!$fiche) { header('Location: orientation.php'); exit; }
 
+// Contrôle d'accès en LECTURE (anti-IDOR) : un élève ne consulte que sa propre
+// fiche, un parent que celles de ses enfants ; profs/VS/admin autorisés (RBAC).
+// Cf. assertUserCanReadEleve() dans API/Legacy/Bridge.php.
+if (!assertUserCanReadEleve((int)$fiche['eleve_id'])) {
+    header('Location: orientation.php'); exit;
+}
+
 $voeux = $orientationService->getVoeux($id);
 $canEdit = isAdmin() || isProfesseur() || isPersonnelVS();
 

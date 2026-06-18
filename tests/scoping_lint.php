@@ -14,22 +14,38 @@
 
 declare(strict_types=1);
 
+if (PHP_SAPI !== 'cli') { http_response_code(403); exit('CLI only'); }
+
 $root = dirname(__DIR__);
 
 /** Services dont l'absence de scope est volontaire (registre global, etc.). */
 $whitelist = [
     'modules/marketplace/includes',          // marketplace côté instance = global
     'modules/onboarding',                    // assistant de mise en route
+    'modules/hello_world',                   // module de démonstration (non déployé)
+    // Sous-classes vides déléguant à un parent DÉJÀ scopé (API\Services\Scolaire\*) :
+    'modules/tableau_de_bord/Services/AdminDashboardService.php',
+    'modules/tableau_de_bord/Services/ClasseService.php',
+    // Gestion des sessions admin = infrastructure transverse (table session_security globale) :
+    'modules/admin_sessions/Services/SessionManagementService.php',
 ];
 
 $markers = ['etablissement_id', 'EstablishmentContext', '@global-scope'];
 
 $paths = [];
+// Couvre les deux conventions : legacy includes/ ET services namespacés Services/.
+$globRoots = [
+    "{$root}/modules/*/includes",
+    "{$root}/modules/*/Services",
+];
 foreach (['*Service.php', '*Repository.php', '*Provider.php'] as $suffix) {
-    foreach (glob("{$root}/modules/*/includes/{$suffix}") ?: [] as $p) {
-        $paths[] = $p;
+    foreach ($globRoots as $gr) {
+        foreach (glob("{$gr}/{$suffix}") ?: [] as $p) {
+            $paths[] = $p;
+        }
     }
 }
+$paths = array_values(array_unique($paths));
 
 $problems = [];
 foreach ($paths as $abs) {

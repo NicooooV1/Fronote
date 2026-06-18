@@ -34,8 +34,10 @@ class InternatService
 
     public function getChambre(int $id): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM internat_chambres WHERE id = ?");
-        $stmt->execute([$id]);
+        $etabId = $this->etabId();
+        if ($etabId === null) return null;
+        $stmt = $this->pdo->prepare("SELECT * FROM internat_chambres WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$id, $etabId]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 

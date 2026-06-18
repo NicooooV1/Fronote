@@ -46,8 +46,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     <div class="card demande-card">
         <div class="card-header">
             <div>
-                <strong><?= htmlspecialchars($d['demandeur_nom'] ?? 'Utilisateur #' . $d['user_id']) ?></strong>
-                <span class="text-muted">(<?= $d['user_type'] ?>)</span>
+                <strong><?= htmlspecialchars($d['demandeur_nom'] ?? ($d['demandeur_identifiant'] ?? ('Utilisateur #' . $d['user_id']))) ?></strong>
+                <?php if (!empty($d['demandeur_identifiant'])): ?><code class="text-muted"><?= htmlspecialchars($d['demandeur_identifiant']) ?></code><?php endif; ?>
+                <span class="text-muted">(<?= htmlspecialchars($d['user_type']) ?>)</span>
                 — <?= $typesDemande[$d['type_demande']] ?? $d['type_demande'] ?>
             </div>
             <div>

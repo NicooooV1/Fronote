@@ -14,7 +14,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
     $tiService->creerLigne([
         'nom' => trim($_POST['nom']), 'type' => $_POST['type'],
         'itineraire' => trim($_POST['itineraire'] ?? ''),
-        'horaires' => trim($_POST['horaires'] ?? ''),
+        'horaire_depart' => $_POST['horaire_depart'] ?: null,
+        'horaire_arrivee' => $_POST['horaire_arrivee'] ?: null,
         'capacite' => $_POST['capacite'] ?: null,
     ]);
     header('Location: lignes.php'); exit;
@@ -41,7 +42,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
                     <div class="form-group"><label>Nom *</label><input type="text" name="nom" class="form-control" required></div>
                     <div class="form-group"><label>Type</label><select name="type" class="form-control"><?php foreach ($types as $k => $v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?></select></div>
                     <div class="form-group"><label>Capacité</label><input type="number" name="capacite" class="form-control" min="1"></div>
-                    <div class="form-group"><label>Horaires</label><input type="text" name="horaires" class="form-control" placeholder="7h15 / 17h30"></div>
+                    <div class="form-group"><label>Heure de départ</label><input type="time" name="horaire_depart" class="form-control"></div>
+                    <div class="form-group"><label>Heure d'arrivée</label><input type="time" name="horaire_arrivee" class="form-control"></div>
                     <div class="form-group full-width"><label>Itinéraire</label><textarea name="itineraire" class="form-control" rows="2"></textarea></div>
                 </div>
                 <button type="submit" class="btn btn-primary" style="margin-top:.5rem;"><i class="fas fa-plus"></i> Créer</button>
@@ -62,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
                 <div class="ligne-meta">
                     <span class="badge badge-secondary"><?= $types[$l['type']] ?? $l['type'] ?></span>
                     <span><i class="fas fa-users"></i> <?= $l['nb_inscrits'] ?><?= $l['capacite'] ? '/' . $l['capacite'] : '' ?></span>
-                    <?php if ($l['horaires']): ?><span><i class="fas fa-clock"></i> <?= htmlspecialchars($l['horaires']) ?></span><?php endif; ?>
+                    <?php if (!empty($l['horaire_depart'])): ?><span><i class="fas fa-clock"></i> <?= htmlspecialchars(substr((string)$l['horaire_depart'], 0, 5)) ?><?php if (!empty($l['horaire_arrivee'])): ?> → <?= htmlspecialchars(substr((string)$l['horaire_arrivee'], 0, 5)) ?><?php endif; ?></span><?php endif; ?>
                 </div>
             </div>
         </div>

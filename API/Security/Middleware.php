@@ -100,18 +100,21 @@ class Middleware
             $rbac->setUser(app('auth')->user());
         });
 
-        // ── admin : accès back-office ──
+        // ── admin : accès back-office (technicien temporaire toléré, cf. requireAdmin) ──
         self::register('admin', function () {
+            if (function_exists('requireAdmin')) { requireAdmin(); return; }
             app('rbac')->requireAdmin();
         });
 
-        // ── rbac : vérifie une permission fine ──
+        // ── rbac : vérifie une permission fine via le moteur unifié (catalogue + repli) ──
         self::register('rbac', function (string $permission) {
+            if (function_exists('authorize')) { authorize($permission); return; }
             app('rbac')->authorize($permission);
         });
 
-        // ── role : vérifie un rôle exact ──
+        // ── role : vérifie un rôle effectif (base + attribués) ──
         self::register('role', function (string ...$roles) {
+            if (function_exists('requireRole')) { requireRole(...$roles); return; }
             app('rbac')->requireRole(...$roles);
         });
 

@@ -1,7 +1,7 @@
 <?php
 /**
  * Switch active establishment (super-admin or multi-etab admin).
- * GET /admin/etablissement/switch.php?id=2
+ * POST /admin/etablissement/switch.php  (champs: id, CSRF token)
  */
 require_once __DIR__ . '/../../API/bootstrap.php';
 require_once __DIR__ . '/../../API/Legacy/Bridge.php';
@@ -9,11 +9,21 @@ require_once __DIR__ . '/../../API/Legacy/Bridge.php';
 use API\Middleware\EstablishmentScope;
 use API\Services\SuperAdminService;
 
-if (!SuperAdminService::isSuperAdmin() && getUserRole() !== 'administrateur') {
+// Bascule d'établissement = opération cross-tenant → réservée au super-administrateur.
+// Un administrateur classique est rattaché à UN seul établissement et ne doit jamais
+// pouvoir scoper sa session sur un autre (escalade horizontale inter-établissements).
+if (!SuperAdminService::isSuperAdmin()) {
+    $_SESSION['error_message'] = "Accès réservé au super-administrateur.";
     redirect('accueil/accueil.php');
 }
 
-$id = (int) ($_GET['id'] ?? 0);
+// Changement d'état (scope établissement) → POST + CSRF obligatoire (anti-CSRF).
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    redirect('admin/etablissement/multi.php');
+}
+csrf_verify();
+
+$id = (int) ($_POST['id'] ?? 0);
 if ($id < 1) {
     redirect('admin/etablissement/multi.php');
 }

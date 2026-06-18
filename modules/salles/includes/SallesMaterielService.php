@@ -45,8 +45,8 @@ class SallesMaterielService
 
     public function creerReservation(array $d): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO reservations_salles (salle_id, reserveur_id, objet, date_reservation, heure_debut, heure_fin, statut, recurrence) VALUES (?,?,?,?,?,?,?,?)");
-        $stmt->execute([$d['salle_id'], $d['reserveur_id'], $d['objet'], $d['date_reservation'], $d['heure_debut'], $d['heure_fin'], $d['statut'] ?? 'confirmee', $d['recurrence'] ?? null]);
+        $stmt = $this->pdo->prepare("INSERT INTO reservations_salles (etablissement_id, salle_id, reserveur_id, objet, date_reservation, heure_debut, heure_fin, statut, recurrence) VALUES (?,?,?,?,?,?,?,?,?)");
+        $stmt->execute([$this->etabId() ?? 1, $d['salle_id'], $d['reserveur_id'], $d['objet'], $d['date_reservation'], $d['heure_debut'], $d['heure_fin'], $d['statut'] ?? 'confirmee', $d['recurrence'] ?? 'aucune']);
         return $this->pdo->lastInsertId();
     }
 
@@ -57,7 +57,20 @@ class SallesMaterielService
 
     public function getSalles(): array
     {
-        return $this->pdo->query("SELECT id, nom, capacite, batiment, etage FROM salles ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
+        $stmt = $this->pdo->prepare("SELECT id, nom, capacite, batiment FROM salles WHERE etablissement_id = ? ORDER BY nom");
+        $stmt->execute([$etabId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getSalle(int $id): ?array
+    {
+        $etabId = $this->etabId();
+        if ($etabId === null) return null;
+        $stmt = $this->pdo->prepare("SELECT * FROM salles WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$id, $etabId]);
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function verifierDisponibilite(int $salleId, string $date, string $heureDebut, string $heureFin): bool
@@ -95,7 +108,7 @@ class SallesMaterielService
      */
     public function chercherSallesParEquipement(string $equipement): array
     {
-        $stmt = $this->pdo->prepare("SELECT id, nom, capacite, batiment, etage, equipements FROM salles WHERE equipements LIKE ? ORDER BY nom");
+        $stmt = $this->pdo->prepare("SELECT id, nom, capacite, batiment, equipements FROM salles WHERE equipements LIKE ? ORDER BY nom");
         $stmt->execute(['%' . $equipement . '%']);
         $salles = $stmt->fetchAll(PDO::FETCH_ASSOC);
         foreach ($salles as &$s) {
@@ -118,8 +131,10 @@ class SallesMaterielService
 
     public function getMateriels(array $filters = []): array
     {
-        $sql = "SELECT m.*, s.nom AS salle_nom FROM materiels m LEFT JOIN salles s ON m.salle_id = s.id WHERE 1=1";
-        $params = [];
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
+        $sql = "SELECT m.*, s.nom AS salle_nom FROM materiels m LEFT JOIN salles s ON m.salle_id = s.id WHERE m.etablissement_id = ?";
+        $params = [$etabId];
         if (!empty($filters['categorie'])) { $sql .= ' AND m.categorie = ?'; $params[] = $filters['categorie']; }
         if (!empty($filters['etat'])) { $sql .= ' AND m.etat = ?'; $params[] = $filters['etat']; }
         $sql .= ' ORDER BY m.nom';
@@ -130,15 +145,17 @@ class SallesMaterielService
 
     public function getMateriel(int $id): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT m.*, s.nom AS salle_nom FROM materiels m LEFT JOIN salles s ON m.salle_id = s.id WHERE m.id = ?");
-        $stmt->execute([$id]);
+        $etabId = $this->etabId();
+        if ($etabId === null) return null;
+        $stmt = $this->pdo->prepare("SELECT m.*, s.nom AS salle_nom FROM materiels m LEFT JOIN salles s ON m.salle_id = s.id WHERE m.id = ? AND m.etablissement_id = ?");
+        $stmt->execute([$id, $etabId]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function creerMateriel(array $d): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO materiels (nom, categorie, reference, etat, salle_id, quantite, valeur) VALUES (?,?,?,?,?,?,?)");
-        $stmt->execute([$d['nom'], $d['categorie'], $d['reference'] ?? null, $d['etat'] ?? 'bon', $d['salle_id'] ?: null, $d['quantite'] ?? 1, $d['valeur'] ?? null]);
+        $stmt = $this->pdo->prepare("INSERT INTO materiels (etablissement_id, nom, categorie, reference, etat, salle_id, quantite, valeur) VALUES (?,?,?,?,?,?,?,?)");
+        $stmt->execute([$this->etabId() ?? 1, $d['nom'], $d['categorie'], $d['reference'] ?? null, $d['etat'] ?? 'bon', $d['salle_id'] ?: null, $d['quantite'] ?? 1, $d['valeur'] ?? null]);
         return $this->pdo->lastInsertId();
     }
 
@@ -187,23 +204,23 @@ class SallesMaterielService
     {
         $total = $this->pdo->query("SELECT COUNT(*) FROM materiels")->fetchColumn();
         $prets_en_cours = $this->pdo->query("SELECT COUNT(*) FROM prets_materiels WHERE statut = 'en_cours'")->fetchColumn();
-        $hs = $this->pdo->query("SELECT COUNT(*) FROM materiels WHERE etat = 'hors_service'")->fetchColumn();
+        $hs = $this->pdo->query("SELECT COUNT(*) FROM materiels WHERE etat = 'en_panne'")->fetchColumn();
         return ['total' => $total, 'prets_en_cours' => $prets_en_cours, 'hors_service' => $hs];
     }
 
     public static function categoriesMateriels(): array
     {
-        return ['informatique' => 'Informatique', 'audiovisuel' => 'Audiovisuel', 'sportif' => 'Sportif', 'scientifique' => 'Scientifique', 'mobilier' => 'Mobilier', 'autre' => 'Autre'];
+        return ['informatique' => 'Informatique', 'audiovisuel' => 'Audiovisuel', 'sport' => 'Sportif', 'science' => 'Scientifique', 'mobilier' => 'Mobilier', 'autre' => 'Autre'];
     }
 
     public static function etatsMateriels(): array
     {
-        return ['neuf' => 'Neuf', 'bon' => 'Bon état', 'usage' => 'Usagé', 'hors_service' => 'Hors service'];
+        return ['neuf' => 'Neuf', 'bon' => 'Bon état', 'usage' => 'Usagé', 'en_panne' => 'En panne', 'reforme' => 'Réformé'];
     }
 
     public static function badgeEtat(string $e): string
     {
-        $m = ['neuf' => 'success', 'bon' => 'info', 'usage' => 'warning', 'hors_service' => 'danger'];
+        $m = ['neuf' => 'success', 'bon' => 'info', 'usage' => 'warning', 'en_panne' => 'danger', 'reforme' => 'secondary'];
         return '<span class="badge badge-' . ($m[$e] ?? 'secondary') . '">' . ucfirst(str_replace('_', ' ', $e)) . '</span>';
     }
 
@@ -219,8 +236,8 @@ class SallesMaterielService
                 $r['date_reservation'] ?? '',
                 $r['heure_debut'] ?? '',
                 $r['heure_fin'] ?? '',
-                $r['motif'] ?? '',
-                $r['demandeur_nom'] ?? '',
+                $r['objet'] ?? '',
+                $r['reserveur_nom'] ?? '',
                 $r['statut'] ?? '',
             ];
         }
@@ -240,7 +257,7 @@ class SallesMaterielService
                 $cats[$m['categorie'] ?? ''] ?? $m['categorie'] ?? '',
                 $etats[$m['etat'] ?? ''] ?? $m['etat'] ?? '',
                 $m['quantite'] ?? 0,
-                $m['localisation'] ?? '',
+                $m['salle_nom'] ?? '',
             ];
         }
         return $rows;
@@ -294,8 +311,7 @@ class SallesMaterielService
                 FROM salles s WHERE 1=1";
         $params = [];
         if ($batiment !== null) { $sql .= " AND s.batiment = :b"; $params[':b'] = $batiment; }
-        if ($etage !== null) { $sql .= " AND s.etage = :e"; $params[':e'] = $etage; }
-        $sql .= " ORDER BY s.batiment, s.etage, s.nom";
+        $sql .= " ORDER BY s.batiment, s.nom";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
         $salles = $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -311,10 +327,15 @@ class SallesMaterielService
     public function getDisponibilites(int $salleId, string $date): array
     {
         $stmt = $this->pdo->prepare("
-            SELECT heure_debut, heure_fin, motif, demandeur_nom, statut
-            FROM reservations_salles
-            WHERE salle_id = :s AND date_reservation = :d AND statut != 'annulee'
-            ORDER BY heure_debut
+            SELECT rs.heure_debut, rs.heure_fin, rs.objet, rs.statut,
+                   COALESCE(
+                       (SELECT CONCAT(prenom, ' ', nom) FROM professeurs WHERE id = rs.reserveur_id),
+                       (SELECT CONCAT(prenom, ' ', nom) FROM administrateurs WHERE id = rs.reserveur_id),
+                       CONCAT('User #', rs.reserveur_id)
+                   ) AS reserveur_nom
+            FROM reservations_salles rs
+            WHERE rs.salle_id = :s AND rs.date_reservation = :d AND rs.statut != 'annulee'
+            ORDER BY rs.heure_debut
         ");
         $stmt->execute([':s' => $salleId, ':d' => $date]);
         $reservees = $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -325,7 +346,7 @@ class SallesMaterielService
             if ($heureDebut < $r['heure_debut']) {
                 $creneaux[] = ['debut' => $heureDebut, 'fin' => $r['heure_debut'], 'libre' => true];
             }
-            $creneaux[] = ['debut' => $r['heure_debut'], 'fin' => $r['heure_fin'], 'libre' => false, 'motif' => $r['motif'], 'par' => $r['demandeur_nom']];
+            $creneaux[] = ['debut' => $r['heure_debut'], 'fin' => $r['heure_fin'], 'libre' => false, 'motif' => $r['objet'], 'par' => $r['reserveur_nom']];
             $heureDebut = $r['heure_fin'];
         }
         if ($heureDebut < '18:00') {
@@ -375,7 +396,6 @@ class SallesMaterielService
             'id' => $salleId,
             'nom' => $salle['nom'] ?? '',
             'batiment' => $salle['batiment'] ?? '',
-            'etage' => $salle['etage'] ?? '',
             'url' => "/salles/detail.php?id={$salleId}",
         ];
     }
@@ -397,9 +417,9 @@ class SallesMaterielService
                 $exists->execute([':s' => $salleId, ':d' => $dateStr, ':hf' => $heureFin, ':hd' => $heureDebut]);
                 if (!$exists->fetch()) {
                     $this->pdo->prepare("
-                        INSERT INTO reservations_salles (salle_id, date_reservation, heure_debut, heure_fin, motif, demandeur_id, statut, recurrence_group)
-                        VALUES (:s, :d, :hd, :hf, :m, :di, 'confirmee', :rg)
-                    ")->execute([':s' => $salleId, ':d' => $dateStr, ':hd' => $heureDebut, ':hf' => $heureFin, ':m' => $motif, ':di' => $demandeurId, ':rg' => "rec_{$salleId}_{$dateDebut}"]);
+                        INSERT INTO reservations_salles (etablissement_id, salle_id, date_reservation, heure_debut, heure_fin, objet, reserveur_id, statut, recurrence)
+                        VALUES (:e, :s, :d, :hd, :hf, :m, :di, 'confirmee', 'hebdomadaire')
+                    ")->execute([':e' => $this->etabId() ?? 1, ':s' => $salleId, ':d' => $dateStr, ':hd' => $heureDebut, ':hf' => $heureFin, ':m' => $motif, ':di' => $demandeurId]);
                     $count++;
                 }
             }

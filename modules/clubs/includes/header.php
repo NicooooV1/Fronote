@@ -1,5 +1,7 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) session_start();
+// Charger l'API (Bridge -> bootstrap.php) AVANT tout démarrage de session :
+// le bloc gardé de bootstrap.php démarre la session durcie (HttpOnly + Secure(https)
+// + SameSite=Lax + nom/path par instance). Ne PAS faire de session_start() nu ici.
 require_once __DIR__ . '/../../../API/Legacy/Bridge.php';
 requireAuth();
 
@@ -8,30 +10,11 @@ require_once __DIR__ . '/ClubService.php';
 $clubService = new ClubService($pdo);
 
 $activePage = $activePage ?? 'clubs';
-$extraCss = ['clubs/assets/css/clubs.css'];
+$extraCss = ['assets/css/clubs.css'];
 
 $isGestionnaire = isAdmin() || isPersonnelVS() || isProfesseur();
-$sidebarLinks = '<li class="sidebar-item">
-    <a href="/clubs/clubs.php" class="sidebar-link ' . ($activePage === 'clubs' ? 'active' : '') . '">
-        <i class="fas fa-users"></i><span>Clubs</span>
-    </a>
-</li>';
-if (isEleve()) {
-    $sidebarLinks .= '<li class="sidebar-item">
-        <a href="/clubs/mes_clubs.php" class="sidebar-link ' . ($activePage === 'mes_clubs' ? 'active' : '') . '">
-            <i class="fas fa-id-card"></i><span>Mes clubs</span>
-        </a>
-    </li>';
-}
-if ($isGestionnaire) {
-    $sidebarLinks .= '<li class="sidebar-item">
-        <a href="/clubs/creer.php" class="sidebar-link ' . ($activePage === 'creer' ? 'active' : '') . '">
-            <i class="fas fa-plus-circle"></i><span>Créer un club</span>
-        </a>
-    </li>';
-}
-
-$sidebarExtraContent = $sidebarLinks;
 $pageTitle = $pageTitle ?? 'Clubs';
 require_once __DIR__ . '/../../../templates/shared_header.php';
+require_once __DIR__ . '/../../../templates/shared_topbar.php';
 ?>
+                <div class="content-container">

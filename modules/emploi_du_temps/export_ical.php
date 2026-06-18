@@ -17,15 +17,61 @@ $role = getUserRole();
 // Determine filters based on role
 $classeId = (int) ($_GET['classe_id'] ?? 0);
 $profId   = (int) ($_GET['prof_id'] ?? 0);
+// Vrai pour élève/parent : l'export DOIT rester scopé à leur propre classe.
+// Si cette classe ne se résout pas, on renvoie un calendrier vide plutôt
+// qu'une requête non filtrée (anti-fuite) — et SANS 403 (anti-lockout).
+$restrictToOwnScope = false;
 
-if ($role === 'professeur' && !$profId) {
-    $profId = $user['id'];
-} elseif ($role === 'eleve' && !$classeId) {
-    // Get student's class
-    $stmt = $pdo->prepare("SELECT classe_id FROM eleves WHERE id = ?");
-    $stmt->execute([$user['id']]);
-    $classeId = (int) $stmt->fetchColumn();
+// Résout l'id de la classe d'un élève (eleves.classe = varchar -> classes.nom).
+$resolveClasseIdForEleve = static function (int $eleveId) use ($pdo): int {
+    $stmt = $pdo->prepare("SELECT classe FROM eleves WHERE id = ?");
+    $stmt->execute([$eleveId]);
+    $nom = $stmt->fetchColumn();
+    if (!$nom) return 0;
+    $stmt = $pdo->prepare("SELECT id FROM classes WHERE nom = ? AND actif = 1 LIMIT 1");
+    $stmt->execute([$nom]);
+    return (int) $stmt->fetchColumn();
+};
+
+if ($role === 'professeur') {
+    // Un professeur n'exporte que son propre emploi du temps : on ignore tout
+    // classe_id/prof_id fourni en paramètre (anti-IDOR).
+    $profId   = (int) $user['id'];
+    $classeId = 0;
+} elseif ($role === 'eleve') {
+    // Un élève n'exporte que l'EDT de SA classe : tout paramètre est ignoré.
+    // ANTI-LOCKOUT : si la classe ne se résout pas (nom non apparié / classe
+    // archivée), on n'interdit PAS l'accès à SES propres données — on laisse
+    // $classeId=0 produire un calendrier vide (même comportement que
+    // EdtService::getEdtEleve qui retourne []).
+    $profId   = 0;
+    $restrictToOwnScope = true;
+    $classeId = $resolveClasseIdForEleve((int) $user['id']);
+} elseif ($role === 'parent') {
+    // Un parent n'exporte que l'EDT d'un de SES enfants (vérif parent_eleve).
+    $profId = 0;
+    $restrictToOwnScope = true;
+    $requested = (int) ($_GET['eleve_id'] ?? 0);
+    if ($requested > 0) {
+        $chk = $pdo->prepare("SELECT COUNT(*) FROM parent_eleve WHERE id_parent = ? AND id_eleve = ?");
+        $chk->execute([(int) $user['id'], $requested]);
+        if (!$chk->fetchColumn()) { http_response_code(403); exit('Accès refusé'); }
+        $childId = $requested;
+    } else {
+        $stmt = $pdo->prepare("SELECT id_eleve FROM parent_eleve WHERE id_parent = ? LIMIT 1");
+        $stmt->execute([(int) $user['id']]);
+        $childId = (int) $stmt->fetchColumn();
+    }
+    if (!$childId) { http_response_code(403); exit('Accès refusé'); }
+    // ANTI-LOCKOUT : la classe non résolue ne bloque pas l'accès au calendrier
+    // de l'enfant légitime ; $classeId=0 -> calendrier vide (cf. garde plus bas).
+    $classeId = $resolveClasseIdForEleve($childId);
+} elseif (!isAdmin() && !isVieScolaire()) {
+    // Tout autre rôle non-staff : pas d'accès au filtrage libre.
+    http_response_code(403);
+    exit('Accès refusé');
 }
+// Admin / vie scolaire : conservent le filtrage libre par classe_id / prof_id.
 
 // Fetch cours for the current week (or specified week)
 $semaineParam = $_GET['semaine'] ?? date('Y-W');
@@ -65,9 +111,16 @@ if ($profId) {
 }
 $sql .= " ORDER BY edt.jour, ch.heure_debut";
 
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$cours = $stmt->fetchAll(PDO::FETCH_ASSOC);
+if ($restrictToOwnScope && !$classeId) {
+    // Élève/parent dont la classe n'a pas pu être résolue : on NE lance PAS la
+    // requête (sinon elle serait non filtrée -> fuite de tout l'établissement).
+    // Calendrier vide = pas de lockout, pas de fuite.
+    $cours = [];
+} else {
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $cours = $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
 
 // Generate iCal
 header('Content-Type: text/calendar; charset=utf-8');

@@ -133,7 +133,7 @@ class CompetenceService {
             SELECT ce.*, e.nom AS eleve_nom, e.prenom AS eleve_prenom
             FROM competence_evaluations ce
             JOIN eleves e ON ce.eleve_id = e.id
-            WHERE e.classe_id = ? AND ce.competence_id = ?
+            WHERE e.classe = (SELECT nom FROM classes WHERE id = ?) AND ce.competence_id = ?
         ";
         $params = [$classeId, $competenceId];
         if ($periodeId) {
@@ -188,7 +188,7 @@ class CompetenceService {
             FROM competence_evaluations ce
             JOIN competences c ON ce.competence_id = c.id
             JOIN eleves e ON ce.eleve_id = e.id
-            WHERE e.classe_id = ?
+            WHERE e.classe = (SELECT nom FROM classes WHERE id = ?)
         ";
         $params = [$classeId];
         if ($periodeId) {
@@ -229,7 +229,7 @@ class CompetenceService {
      * Récupère les élèves d'une classe
      */
     public function getElevesClasse(int $classeId): array {
-        $stmt = $this->pdo->prepare("SELECT * FROM eleves WHERE classe_id = ? AND etablissement_id = ? ORDER BY nom, prenom");
+        $stmt = $this->pdo->prepare("SELECT * FROM eleves WHERE classe = (SELECT nom FROM classes WHERE id = ?) AND etablissement_id = ? ORDER BY nom, prenom");
         $stmt->execute([$classeId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -313,7 +313,7 @@ class CompetenceService {
             FROM competence_evaluations ce
             JOIN competences c ON ce.competence_id = c.id
             JOIN eleves e ON ce.eleve_id = e.id
-            WHERE e.classe_id = ?
+            WHERE e.classe = (SELECT nom FROM classes WHERE id = ?)
         ";
         $params = [$classeId];
         if ($periodeId) {
@@ -435,7 +435,7 @@ class CompetenceService {
             JOIN competences c ON ce.competence_id = c.id
             LEFT JOIN professeurs p ON ce.professeur_id = p.id
             LEFT JOIN matieres m ON ce.matiere_id = m.id
-            WHERE e.classe_id = ?
+            WHERE e.classe = (SELECT nom FROM classes WHERE id = ?)
         ";
         $params = [$classeId];
         if ($periodeId) { $sql .= ' AND ce.periode_id = ?'; $params[] = $periodeId; }

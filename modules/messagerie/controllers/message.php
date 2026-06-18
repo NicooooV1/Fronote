@@ -35,7 +35,7 @@ function handleSendMessage($convId, $user, $contenu, $importance = 'normal', $pa
     // Rate limiting (atomic check+hit to prevent race condition)
     if (!RateLimiter::attempt($user['id'], $user['type'], 'send_message')) {
         $info = RateLimiter::getInfo($user['id'], $user['type'], 'send_message');
-        return ['success' => false, 'message' => 'Trop de messages envoyés. Réessayez dans ' . $info['retry_after'] . 's'];
+        return ['success' => false, 'message' => 'Trop de messages envoyés. Réessayez dans ' . $info['reset_in'] . 's'];
     }
     
     $uploadedFiles = []; // Initialiser avant utilisation
@@ -61,11 +61,12 @@ function handleSendMessage($convId, $user, $contenu, $importance = 'normal', $pa
                 $user['id'],
                 $user['type'],
                 $contenu,
-                false, // Est annonce
-                false, // Notification obligatoire
-                $parentMessageId,
-                'standard',
-                [] // On traite les fichiers séparément
+                $importance,       // importance (5e param)
+                false,             // estAnnonce
+                false,             // notificationObligatoire
+                $parentMessageId,  // parentMessageId
+                'standard',        // typeMessage
+                []                 // filesData — traités séparément
             );
             
             if (!$messageId) {
@@ -103,7 +104,7 @@ function handleSendMessage($convId, $user, $contenu, $importance = 'normal', $pa
                     'timeout' => 2,
                 ]]);
                 @file_get_contents('http://localhost:3001/notify/message', false, $ctx);
-            } catch (\Exception $wsE) { /* WebSocket push is best-effort */ }
+            } catch (\Exception $wsEx) { error_log("WS push best-effort failed: " . $wsEx->getMessage()); }
 
             return [
                 'success' => true,
@@ -115,13 +116,14 @@ function handleSendMessage($convId, $user, $contenu, $importance = 'normal', $pa
             logUpload("Exception lors de l'envoi du message: " . $e->getMessage());
             return [
                 'success' => false,
-                'message' => "Erreur lors de l'envoi du message: " . $e->getMessage()
+                'message' => "Une erreur est survenue lors de l'envoi du message. Veuillez réessayer."
             ];
         }
     } catch (Exception $e) {
+        error_log('[messagerie] handleSendMessage critique: ' . $e->getMessage());
         return [
             'success' => false,
-            'message' => "Erreur critique: " . $e->getMessage()
+            'message' => "Une erreur technique est survenue. Veuillez réessayer plus tard."
         ];
     }
 }
@@ -160,12 +162,11 @@ function handleSendAnnouncement($user, $titre, $contenu, $participants, $notific
             return ['success' => false, 'message' => 'Contenu invalide (10 000 caractères max)'];
         }
         
-        // Rate limiting
-        if (!RateLimiter::check($user['id'], $user['type'], 'send_announcement')) {
+        // Rate limiting (atomique)
+        if (!RateLimiter::attempt($user['id'], $user['type'], 'send_announcement')) {
             $info = RateLimiter::getInfo($user['id'], $user['type'], 'send_announcement');
-            return ['success' => false, 'message' => 'Trop d\'annonces envoyées. Réessayez dans ' . $info['retry_after'] . 's'];
+            return ['success' => false, 'message' => 'Trop d\'annonces envoyées. Réessayez dans ' . $info['reset_in'] . 's'];
         }
-        RateLimiter::hit($user['id'], $user['type'], 'send_announcement');
         
         // Vérifier les pièces jointes avant de commencer la transaction
         $uploadedFiles = [];
@@ -251,14 +252,14 @@ function handleSendAnnouncement($user, $titre, $contenu, $participants, $notific
             logUpload("Exception lors de l'envoi de l'annonce: " . $e->getMessage());
             return [
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => "Une erreur est survenue lors de l'envoi de l'annonce. Veuillez réessayer."
             ];
         }
     } catch (Exception $e) {
         logUpload("Exception externe dans handleSendAnnouncement: " . $e->getMessage());
         return [
             'success' => false,
-            'message' => $e->getMessage()
+            'message' => "Une erreur est survenue lors de l'envoi de l'annonce. Veuillez réessayer."
         ];
     }
 }
@@ -299,12 +300,11 @@ function handleSendClassMessage($user, $classe, $titre, $contenu, $importance = 
         }
         $importance = Validator::importance($importance);
         
-        // Rate limiting
-        if (!RateLimiter::check($user['id'], $user['type'], 'send_message')) {
+        // Rate limiting (atomique)
+        if (!RateLimiter::attempt($user['id'], $user['type'], 'send_message')) {
             $info = RateLimiter::getInfo($user['id'], $user['type'], 'send_message');
-            return ['success' => false, 'message' => 'Trop de messages envoyés. Réessayez dans ' . $info['retry_after'] . 's'];
+            return ['success' => false, 'message' => 'Trop de messages envoyés. Réessayez dans ' . $info['reset_in'] . 's'];
         }
-        RateLimiter::hit($user['id'], $user['type'], 'send_message');
         
         // Vérifier les pièces jointes avant de commencer la transaction
         $uploadedFiles = [];
@@ -388,14 +388,14 @@ function handleSendClassMessage($user, $classe, $titre, $contenu, $importance = 
             logUpload("Exception lors de l'envoi du message à la classe: " . $e->getMessage());
             return [
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => "Une erreur est survenue lors de l'envoi du message à la classe. Veuillez réessayer."
             ];
         }
     } catch (Exception $e) {
         logUpload("Exception externe dans handleSendClassMessage: " . $e->getMessage());
         return [
             'success' => false,
-            'message' => $e->getMessage()
+            'message' => "Une erreur est survenue lors de l'envoi du message à la classe. Veuillez réessayer."
         ];
     }
 }
@@ -456,9 +456,10 @@ function handleMarkMessageAsRead($messageId, $user) {
             ];
         }
     } catch (Exception $e) {
+        error_log('[messagerie] handleMarkMessageAsRead: ' . $e->getMessage());
         return [
             'success' => false,
-            'message' => $e->getMessage()
+            'message' => "Une erreur est survenue. Veuillez réessayer."
         ];
     }
 }
@@ -519,9 +520,10 @@ function handleMarkMessageAsUnread($messageId, $user) {
             ];
         }
     } catch (Exception $e) {
+        error_log('[messagerie] handleMarkMessageAsUnread: ' . $e->getMessage());
         return [
             'success' => false,
-            'message' => $e->getMessage()
+            'message' => "Une erreur est survenue. Veuillez réessayer."
         ];
     }
 }

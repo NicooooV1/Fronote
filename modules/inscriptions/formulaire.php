@@ -6,7 +6,7 @@ $pageTitle = 'Inscrire un enfant';
 $activePage = 'formulaire';
 require_once __DIR__ . '/includes/header.php';
 
-if (!isParent()) { redirect('/inscriptions/inscriptions.php'); }
+if (!isParent()) { redirect('/modules/inscriptions/inscriptions.php'); }
 
 $classes = $inscriptionService->getClasses();
 
@@ -40,7 +40,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                 if ($_FILES['documents']['error'][$i] === UPLOAD_ERR_OK) {
                     $fichier = [
                         'name' => $name,
+                        'type' => $_FILES['documents']['type'][$i] ?? '',
                         'tmp_name' => $_FILES['documents']['tmp_name'][$i],
+                        'error' => $_FILES['documents']['error'][$i],
+                        'size' => $_FILES['documents']['size'][$i] ?? 0,
                     ];
                     $typeDoc = $typesDoc[$i] ?? 'autre';
                     $inscriptionService->ajouterDocument($inscId, $typeDoc, $fichier);

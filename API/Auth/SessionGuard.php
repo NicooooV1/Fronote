@@ -63,12 +63,59 @@ class SessionGuard {
         \API\Core\EstablishmentContext::set((int) $etabId);
 
         $this->user = $safeUser;
+
+        // Enregistrer la session active pour l'outil admin « Sessions actives »
+        // (la table session_security n'était jamais alimentée → page toujours vide).
+        // Best-effort : ne JAMAIS bloquer la connexion si l'écriture échoue.
+        try {
+            if (function_exists('getPDO') && session_status() === PHP_SESSION_ACTIVE) {
+                $lifetime = 7200;
+                getPDO()->prepare(
+                    "REPLACE INTO session_security
+                       (id, user_id, user_type, ip_address, user_agent, created_at, last_activity, expires_at, is_active)
+                     VALUES (?, ?, ?, ?, ?, NOW(), NOW(), DATE_ADD(NOW(), INTERVAL ? SECOND), 1)"
+                )->execute([
+                    session_id(),
+                    (int) $user['id'],
+                    $user['type'],
+                    $_SERVER['REMOTE_ADDR'] ?? '',
+                    substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 1000),
+                    $lifetime,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            error_log('session_security record failed: ' . $e->getMessage());
+        }
     }
 
     /**
      * Déconnecte l'utilisateur
      */
     public function logout() {
+        // Invalider le "Se souvenir de moi" AVANT de vider la session, sinon
+        // login/index.php restaure automatiquement la session via le cookie
+        // remember_<INSTANCE_ID> au prochain chargement et l'utilisateur se
+        // retrouve immédiatement reconnecté (logout "ne fonctionne pas").
+        $rememberId   = $_SESSION['user_id'] ?? null;
+        $rememberType = $_SESSION['user_type'] ?? null;
+        if ($rememberId !== null && function_exists('app')) {
+            try {
+                app('API\\Services\\UserService')->clearRememberToken((int) $rememberId, $rememberType);
+            } catch (\Throwable $e) {
+                // best-effort : ne jamais bloquer la déconnexion
+                error_log('logout: clearRememberToken failed: ' . $e->getMessage());
+            }
+        }
+
+        // Marquer la session inactive dans l'outil admin « Sessions actives »
+        // AVANT de détruire la session (besoin de session_id()). Best-effort.
+        try {
+            if (function_exists('getPDO') && session_status() === PHP_SESSION_ACTIVE) {
+                getPDO()->prepare("UPDATE session_security SET is_active = 0, expires_at = NOW() WHERE id = ?")
+                    ->execute([session_id()]);
+            }
+        } catch (\Throwable $e) { /* best-effort */ }
+
         $this->user = null;
 
         // Vider toutes les données de session

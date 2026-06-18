@@ -62,7 +62,7 @@ class PeriscolaireService
 
     public function getInscriptions(int $serviceId): array
     {
-        $stmt = $this->pdo->prepare("SELECT ip.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, cl.nom AS classe_nom FROM inscriptions_periscolaire ip JOIN eleves e ON ip.eleve_id = e.id LEFT JOIN classes cl ON e.classe_id = cl.id WHERE ip.service_id = ? AND ip.statut = 'active' ORDER BY e.nom");
+        $stmt = $this->pdo->prepare("SELECT ip.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, cl.nom AS classe_nom FROM inscriptions_periscolaire ip JOIN eleves e ON ip.eleve_id = e.id LEFT JOIN classes cl ON e.classe = cl.nom WHERE ip.service_id = ? AND ip.statut = 'active' ORDER BY e.nom");
         $stmt->execute([$serviceId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -76,7 +76,7 @@ class PeriscolaireService
 
     public function getInscriptionsParent(int $parentId): array
     {
-        $stmt = $this->pdo->prepare("SELECT ip.*, sp.nom AS service_nom, sp.type AS service_type, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom FROM inscriptions_periscolaire ip JOIN services_periscolaires sp ON ip.service_id = sp.id JOIN eleves e ON ip.eleve_id = e.id JOIN parent_eleve pe ON pe.eleve_id = e.id WHERE pe.parent_id = ? ORDER BY ip.created_at DESC");
+        $stmt = $this->pdo->prepare("SELECT ip.*, sp.nom AS service_nom, sp.type AS service_type, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom FROM inscriptions_periscolaire ip JOIN services_periscolaires sp ON ip.service_id = sp.id JOIN eleves e ON ip.eleve_id = e.id JOIN parent_eleve pe ON pe.id_eleve = e.id WHERE pe.id_parent = ? ORDER BY ip.created_at DESC");
         $stmt->execute([$parentId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -179,14 +179,14 @@ class PeriscolaireService
 
     public function getEleves(): array
     {
-        $s = $this->pdo->prepare("SELECT e.id, e.prenom, e.nom, cl.nom AS classe_nom FROM eleves e LEFT JOIN classes cl ON e.classe_id = cl.id WHERE e.etablissement_id = ? ORDER BY e.nom");
+        $s = $this->pdo->prepare("SELECT e.id, e.prenom, e.nom, cl.nom AS classe_nom FROM eleves e LEFT JOIN classes cl ON e.classe = cl.nom WHERE e.etablissement_id = ? ORDER BY e.nom");
         $s->execute([\API\Core\EstablishmentContext::id()]);
         return $s->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getEnfantsParent(int $parentId): array
     {
-        $stmt = $this->pdo->prepare("SELECT e.id, e.prenom, e.nom FROM eleves e JOIN parent_eleve pe ON pe.eleve_id = e.id WHERE pe.parent_id = ?");
+        $stmt = $this->pdo->prepare("SELECT e.id, e.prenom, e.nom FROM eleves e JOIN parent_eleve pe ON pe.id_eleve = e.id WHERE pe.id_parent = ?");
         $stmt->execute([$parentId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -219,7 +219,7 @@ class PeriscolaireService
                        sp.nom AS service_nom, sp.type AS service_type
                 FROM inscriptions_periscolaire ip
                 JOIN eleves e ON ip.eleve_id = e.id
-                LEFT JOIN classes cl ON e.classe_id = cl.id
+                LEFT JOIN classes cl ON e.classe = cl.nom
                 JOIN services_periscolaires sp ON ip.service_id = sp.id
                 WHERE ip.statut = 'active'
                 ORDER BY sp.nom, e.nom

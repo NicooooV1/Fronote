@@ -22,12 +22,27 @@ if (!file_exists($filepath)) {
     die('Fichier introuvable sur le serveur.');
 }
 
+// Contrôle de visibilité (évite l'IDOR : un élève/parent ne télécharge pas un
+// document non destiné à son rôle ; visibilité vide = visible par tous).
+$role    = getUserRole();
+$vis     = json_decode($doc['visibilite'] ?? '[]', true) ?: [];
+$isStaff = in_array($role, ['administrateur', 'professeur', 'vie_scolaire'], true);
+if (!$isStaff && !empty($vis) && !in_array($role, $vis, true)) {
+    http_response_code(403);
+    die('Accès non autorisé.');
+}
+
 $docService->incrementerTelechargements($id);
 
+// MIME recalculé sur le contenu réel (le type stocké provient du client → non fiable).
+$realMime     = (new \finfo(FILEINFO_MIME_TYPE))->file($filepath) ?: 'application/octet-stream';
+$downloadName = preg_replace('/[\r\n"]+/', '', basename((string) $doc['fichier_nom']));
+
 header('Content-Description: File Transfer');
-header('Content-Type: ' . ($doc['fichier_type'] ?: 'application/octet-stream'));
-header('Content-Disposition: attachment; filename="' . basename($doc['fichier_nom']) . '"');
+header('Content-Type: ' . $realMime);
+header('X-Content-Type-Options: nosniff');
+header('Content-Disposition: attachment; filename="' . $downloadName . '"');
 header('Content-Length: ' . filesize($filepath));
-header('Cache-Control: no-cache, must-revalidate');
+header('Cache-Control: no-store');
 readfile($filepath);
 exit;

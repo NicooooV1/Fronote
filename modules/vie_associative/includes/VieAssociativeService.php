@@ -23,7 +23,7 @@ class VieAssociativeService
         if ($etabId === null) return [];
         $sql = "SELECT a.*, CONCAT(e.prenom, ' ', e.nom) AS president_nom,
                        CONCAT(p.prenom, ' ', p.nom) AS referent_nom,
-                       (SELECT COUNT(*) FROM association_membres am WHERE am.association_id = a.id AND am.statut = 'actif') AS nb_membres
+                       (SELECT COUNT(*) FROM association_membres am WHERE am.association_id = a.id) AS nb_membres
                 FROM associations a
                 LEFT JOIN eleves e ON a.president_eleve_id = e.id
                 LEFT JOIN professeurs p ON a.referent_adulte_id = p.id
@@ -38,25 +38,27 @@ class VieAssociativeService
 
     public function getAssociation(int $id): ?array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return null;
         $stmt = $this->pdo->prepare(
             "SELECT a.*, CONCAT(e.prenom, ' ', e.nom) AS president_nom,
                     CONCAT(p.prenom, ' ', p.nom) AS referent_nom
              FROM associations a
              LEFT JOIN eleves e ON a.president_eleve_id = e.id
              LEFT JOIN professeurs p ON a.referent_adulte_id = p.id
-             WHERE a.id = ?"
+             WHERE a.id = ? AND a.etablissement_id = ?"
         );
-        $stmt->execute([$id]);
+        $stmt->execute([$id, $etabId]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function creerAssociation(array $d): int
     {
         $stmt = $this->pdo->prepare(
-            "INSERT INTO associations (nom, type, description, president_eleve_id, referent_adulte_id, budget_annuel, statut)
-             VALUES (?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO associations (etablissement_id, nom, type, description, president_eleve_id, referent_adulte_id, budget_annuel, statut)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         );
-        $stmt->execute([$d['nom'], $d['type'] ?? 'association', $d['description'] ?? null,
+        $stmt->execute([$this->etabId() ?? 1, $d['nom'], $d['type'] ?? 'association', $d['description'] ?? null,
             $d['president_eleve_id'] ?: null, $d['referent_adulte_id'] ?: null,
             $d['budget_annuel'] ?? null, $d['statut'] ?? 'active']);
         return (int) $this->pdo->lastInsertId();
@@ -82,7 +84,7 @@ class VieAssociativeService
              FROM association_membres am
              LEFT JOIN eleves e ON am.eleve_id = e.id
              WHERE am.association_id = ?
-             ORDER BY am.role DESC, nom_complet"
+             ORDER BY am.role_membre DESC, nom_complet"
         );
         $stmt->execute([$assoId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -91,14 +93,14 @@ class VieAssociativeService
     public function inscrireMembre(int $assoId, int $eleveId, string $role = 'membre'): bool
     {
         $stmt = $this->pdo->prepare(
-            "INSERT IGNORE INTO association_membres (association_id, eleve_id, role, statut) VALUES (?, ?, ?, 'actif')"
+            "INSERT IGNORE INTO association_membres (association_id, eleve_id, role_membre, date_adhesion) VALUES (?, ?, ?, CURDATE())"
         );
         return $stmt->execute([$assoId, $eleveId, $role]);
     }
 
     public function retirerMembre(int $membreId): bool
     {
-        $stmt = $this->pdo->prepare("UPDATE association_membres SET statut = 'inactif' WHERE id = ?");
+        $stmt = $this->pdo->prepare("DELETE FROM association_membres WHERE id = ?");
         return $stmt->execute([$membreId]);
     }
 
@@ -114,9 +116,9 @@ class VieAssociativeService
     public function ajouterActivite(int $assoId, array $d): int
     {
         $stmt = $this->pdo->prepare(
-            "INSERT INTO association_activites (association_id, titre, description, date_activite, lieu, budget_prevu) VALUES (?, ?, ?, ?, ?, ?)"
+            "INSERT INTO association_activites (association_id, titre, description, date_activite, lieu, budget_alloue) VALUES (?, ?, ?, ?, ?, ?)"
         );
-        $stmt->execute([$assoId, $d['titre'], $d['description'] ?? null, $d['date_activite'], $d['lieu'] ?? null, $d['budget_prevu'] ?? null]);
+        $stmt->execute([$assoId, $d['titre'], $d['description'] ?? null, $d['date_activite'], $d['lieu'] ?? null, $d['budget_alloue'] ?? $d['budget_prevu'] ?? null]);
         return (int) $this->pdo->lastInsertId();
     }
 
@@ -132,18 +134,18 @@ class VieAssociativeService
     public function ajouterOperation(int $assoId, array $d): int
     {
         $stmt = $this->pdo->prepare(
-            "INSERT INTO association_tresorerie (association_id, type_operation, montant, description, date_operation, piece_justificative)
+            "INSERT INTO association_tresorerie (association_id, type, montant, libelle, date_operation, justificatif_path)
              VALUES (?, ?, ?, ?, ?, ?)"
         );
-        $stmt->execute([$assoId, $d['type_operation'], $d['montant'], $d['description'] ?? null,
-            $d['date_operation'] ?? date('Y-m-d'), $d['piece_justificative'] ?? null]);
+        $stmt->execute([$assoId, $d['type'] ?? $d['type_operation'], $d['montant'], $d['libelle'] ?? $d['description'] ?? null,
+            $d['date_operation'] ?? date('Y-m-d'), $d['justificatif_path'] ?? $d['piece_justificative'] ?? null]);
         return (int) $this->pdo->lastInsertId();
     }
 
     public function getSolde(int $assoId): float
     {
         $stmt = $this->pdo->prepare(
-            "SELECT COALESCE(SUM(CASE WHEN type_operation = 'recette' THEN montant ELSE -montant END), 0)
+            "SELECT COALESCE(SUM(CASE WHEN type = 'recette' THEN montant ELSE -montant END), 0)
              FROM association_tresorerie WHERE association_id = ?"
         );
         $stmt->execute([$assoId]);
@@ -163,7 +165,7 @@ class VieAssociativeService
         $recettes = 0;
         $depenses = 0;
         foreach ($ops as $op) {
-            if ($op['type_operation'] === 'recette') {
+            if ($op['type'] === 'recette') {
                 $recettes += (float)$op['montant'];
             } else {
                 $depenses += (float)$op['montant'];
@@ -204,7 +206,7 @@ class VieAssociativeService
     public function getStats(): array
     {
         $total = (int)$this->pdo->query("SELECT COUNT(*) FROM associations WHERE statut = 'active'")->fetchColumn();
-        $membres = (int)$this->pdo->query("SELECT COUNT(*) FROM association_membres WHERE statut = 'actif'")->fetchColumn();
+        $membres = (int)$this->pdo->query("SELECT COUNT(*) FROM association_membres")->fetchColumn();
         $events = (int)$this->pdo->query("SELECT COUNT(*) FROM association_activites WHERE date_activite >= CURDATE()")->fetchColumn();
         return ['associations_actives' => $total, 'total_membres' => $membres, 'evenements_a_venir' => $events];
     }

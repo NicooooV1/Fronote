@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Ajouter un utilisateur — Formulaire dynamique selon le type
  */

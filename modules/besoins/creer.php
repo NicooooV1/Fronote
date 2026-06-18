@@ -6,7 +6,7 @@ $pageTitle = 'Nouveau plan';
 $activePage = 'creer';
 require_once __DIR__ . '/includes/header.php';
 
-if (!isAdmin() && !isPersonnelVS()) { redirect('/besoins/besoins.php'); }
+if (!isAdmin() && !isPersonnelVS()) { redirect('/modules/besoins/besoins.php'); }
 
 $eleves = $besoinService->getEleves();
 $profs = $besoinService->getProfesseurs();
@@ -16,6 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     $data = [
         'eleve_id' => (int)$_POST['eleve_id'],
         'type' => $_POST['type'],
+        'intitule' => trim($_POST['intitule'] ?? ''),
         'amenagements' => trim($_POST['amenagements'] ?? ''),
         'responsable_id' => (int)$_POST['responsable_id'] ?: null,
         'date_debut' => $_POST['date_debut'],
@@ -45,6 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
             <div class="form-grid-2">
                 <div class="form-group"><label>Élève *</label><select name="eleve_id" class="form-control" required><option value="">—</option><?php foreach ($eleves as $e): ?><option value="<?= $e['id'] ?>"><?= htmlspecialchars($e['nom'] . ' ' . $e['prenom']) ?> (<?= $e['classe_nom'] ?? '-' ?>)</option><?php endforeach; ?></select></div>
                 <div class="form-group"><label>Type *</label><select name="type" class="form-control"><?php foreach ($types as $k => $v): ?><option value="<?= $k ?>"><?= $k ?> — <?= $v ?></option><?php endforeach; ?></select></div>
+                <div class="form-group full-width"><label>Intitulé</label><input type="text" name="intitule" class="form-control" maxlength="255" placeholder="Ex. PAP - Dyslexie (laisser vide pour génération auto)"></div>
                 <div class="form-group"><label>Date début *</label><input type="date" name="date_debut" class="form-control" required></div>
                 <div class="form-group"><label>Date fin</label><input type="date" name="date_fin" class="form-control"></div>
                 <div class="form-group"><label>Responsable</label><select name="responsable_id" class="form-control"><option value="">—</option><?php foreach ($profs as $p): ?><option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['prenom'] . ' ' . $p['nom']) ?></option><?php endforeach; ?></select></div>

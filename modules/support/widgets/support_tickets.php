@@ -1,7 +1,7 @@
 <?php
 $tickets = $data['tickets'] ?? [];
 $count = $data['count'] ?? 0;
-$prioColors = ['urgent' => '#e53e3e', 'haute' => '#ed8936', 'normale' => '#667eea', 'basse' => '#a0aec0'];
+$prioColors = ['urgente' => '#e53e3e', 'haute' => '#ed8936', 'normale' => '#667eea', 'basse' => '#a0aec0'];
 ?>
 <?php if ($count > 0): ?>
     <div class="widget-stat-mini"><strong><?= $count ?></strong> ticket<?= $count > 1 ? 's' : '' ?> ouvert<?= $count > 1 ? 's' : '' ?></div>
@@ -18,14 +18,14 @@ $prioColors = ['urgent' => '#e53e3e', 'haute' => '#ed8936', 'normale' => '#667ee
             <div class="widget-list-content">
                 <div class="widget-list-title">
                     <?= htmlspecialchars($t['sujet']) ?>
-                    <?php if ($t['priorite'] === 'urgent'): ?>
+                    <?php if ($t['priorite'] === 'urgente'): ?>
                         <span class="widget-badge" style="background:#e53e3e">Urgent</span>
                     <?php endif; ?>
                 </div>
                 <div class="widget-list-meta">
                     <?= htmlspecialchars(ucfirst($t['categorie'] ?? '')) ?>
                     &middot; <?= htmlspecialchars(ucfirst($t['statut'])) ?>
-                    &middot; <?= htmlspecialchars(date('d/m', strtotime($t['created_at']))) ?>
+                    &middot; <?= htmlspecialchars(date('d/m', strtotime($t['date_creation']))) ?>
                 </div>
             </div>
         </li>

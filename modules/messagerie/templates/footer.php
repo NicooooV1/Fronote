@@ -17,10 +17,9 @@ if (in_array(basename($_SERVER['PHP_SELF']), ['new_message.php', 'new_announceme
     $extraJs[] = 'assets/js/forms.js';
 }
 
-// jQuery + scripts spécifiques messagerie
+// Scripts spécifiques messagerie
 ob_start();
 ?>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
     // ── CSRF Token ──
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';

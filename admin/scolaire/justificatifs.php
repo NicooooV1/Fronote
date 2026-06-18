@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Gestion des justificatifs — approuver / rejeter avec commentaire admin
  */

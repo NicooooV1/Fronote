@@ -144,17 +144,12 @@ if (!function_exists('hasPermission')) {
 	 * @return bool
 	 */
 	function hasPermission(string $action): bool {
-		try {
-			$rbac = app('rbac');
-			// Si la permission est déjà au format RBAC (contient un point), vérifier directement
-			if (str_contains($action, '.')) {
-				return $rbac->can($action);
-			}
-			// Format legacy "notes" → vérifier "notes.manage" (gestion)
-			return $rbac->can($action . '.manage');
-		} catch (\Throwable $e) {
-			return false;
-		}
+		// Format legacy "notes" → permission "notes.manage" (gestion). Route via can()
+		// unifié : catalogue/authz (rôles effectifs base + attribués, résolution .manage)
+		// d'abord, repli RBAC legacy ensuite. Zéro régression, et les rôles attribués
+		// (cpe, infirmerie, professeur_principal…) satisfont désormais canManageX().
+		$perm = str_contains($action, '.') ? $action : ($action . '.manage');
+		return can($perm);
 	}
 }
 
@@ -230,17 +225,26 @@ if (!function_exists('parentOwnsEleve')) {
     {
         try {
             $pdo = getPDO();
-            // Schéma observé sur la base : `parent_eleve` (parent_id, eleve_id) OU
-            // `eleve_parents` (parent_id, eleve_id). On teste les deux.
-            foreach (['parent_eleve', 'eleve_parents'] as $table) {
+            // Deux conventions de schéma coexistent dans le code :
+            //   - canonique (pronote.sql) : `parent_eleve` (id_parent, id_eleve)
+            //   - héritée (BulletinService / portail_parents) : `eleve_parents` (parent_id, eleve_id)
+            // On teste les deux avec les BONNES colonnes pour chacune.
+            $variants = [
+                ['table' => 'parent_eleve', 'pcol' => 'id_parent', 'ecol' => 'id_eleve'],
+                ['table' => 'eleve_parents', 'pcol' => 'parent_id', 'ecol' => 'eleve_id'],
+            ];
+            foreach ($variants as $v) {
                 try {
-                    $stmt = $pdo->prepare("SELECT 1 FROM `{$table}` WHERE parent_id = ? AND eleve_id = ? LIMIT 1");
+                    $stmt = $pdo->prepare(
+                        "SELECT 1 FROM `{$v['table']}` WHERE `{$v['pcol']}` = ? AND `{$v['ecol']}` = ? LIMIT 1"
+                    );
                     $stmt->execute([$parentId, $eleveId]);
                     if ($stmt->fetchColumn()) return true;
                 } catch (\Throwable $e) { /* table absente : on essaie l'autre */ }
             }
             return false;
         } catch (\Throwable $e) {
+            error_log('parentOwnsEleve: ' . $e->getMessage());
             return false;
         }
     }
@@ -272,54 +276,83 @@ if (!function_exists('assertUserCanReadEleve')) {
 
 // ==================== RBAC ====================
 
+if (!function_exists('getEffectiveRoles')) {
+	/**
+	 * Rôles EFFECTIFS de l'utilisateur courant : rôle de base (type de compte) +
+	 * rôles attribués actifs (table user_roles, scopés/temporisés), résolus par le
+	 * moteur catalogue (Authorization). C'est la base de tout contrôle d'accès par
+	 * rôle : un rôle attribué (cpe, infirmerie, professeur_principal…) compte autant
+	 * que le type de compte. Repli sur le seul type de base si le moteur échoue.
+	 *
+	 * @return string[] clés de rôles effectifs
+	 */
+	function getEffectiveRoles(): array {
+		try {
+			$keys = authz()->roleKeys();
+			if (!empty($keys)) return $keys;
+		} catch (\Throwable $e) {
+			error_log('[getEffectiveRoles] ' . $e->getMessage());
+		}
+		$base = getUserRole();
+		return $base ? [$base] : [];
+	}
+}
+
 if (!function_exists('requireRole')) {
 	/**
-	 * Bloque l'accès si le rôle courant n'est pas dans la liste
+	 * Bloque l'accès si AUCUN rôle effectif (base + attribués) n'est dans la liste.
+	 * super_admin a toujours accès (périmètre global).
 	 * @param string ...$roles Rôles autorisés
 	 */
 	function requireRole(string ...$roles) {
-		$userRole = getUserRole();
-		if (!in_array($userRole, $roles, true)) {
-			// Message explicite avec rôle requis + rôle actuel — sinon l'admin se
-			// retrouve avec une redirection muette et aucune trace utile.
-			$wanted  = implode(', ', $roles);
-			$current = $userRole ?: '(non authentifié)';
-			$script  = $_SERVER['SCRIPT_NAME'] ?? '?';
-			$_SESSION['error_message'] = "Accès refusé sur {$script} : rôle requis = [{$wanted}], rôle actuel = {$current}.";
-			error_log("[requireRole] denied script={$script} role={$current} expected=[{$wanted}]");
-			$base = defined('BASE_URL') ? BASE_URL : '';
-			header('Location: ' . $base . '/accueil/accueil.php');
-			exit;
-		}
+		$effective = getEffectiveRoles();
+		// super_admin = accès global, ne se voit jamais refuser par un requireRole.
+		if (in_array('super_admin', $effective, true)) return;
+		if (array_intersect($roles, $effective)) return;
+
+		// Message explicite avec rôle requis + rôles actuels — sinon l'admin se
+		// retrouve avec une redirection muette et aucune trace utile.
+		$wanted  = implode(', ', $roles);
+		$current = $effective ? implode(', ', $effective) : '(non authentifié)';
+		$script  = $_SERVER['SCRIPT_NAME'] ?? '?';
+		$_SESSION['error_message'] = "Accès refusé sur {$script} : rôle requis = [{$wanted}], rôles actuels = [{$current}].";
+		error_log("[requireRole] denied script={$script} roles=[{$current}] expected=[{$wanted}]");
+		$base = defined('BASE_URL') ? BASE_URL : '';
+		header('Location: ' . $base . '/accueil/accueil.php');
+		exit;
 	}
 }
 
 if (!function_exists('can')) {
 	/**
-	 * Vérifie une permission RBAC
+	 * L'utilisateur courant a-t-il $permission (dans le contexte $ctx) ?
+	 *
+	 * Source de vérité = catalogue/authz (rôles effectifs base + attribués, périmètre,
+	 * résolution .manage, audit des permissions sensibles). Repli sur l'ancien RBAC
+	 * pour les clés hors catalogue (admin.*, *.manage seedées par module.json, matrice
+	 * module_permissions éditable) → zéro régression pendant la convergence.
+	 *
+	 * $ctx (optionnel) : ['etablissement_id'=>, 'class_id'=>, 'subject_id'=>,
+	 * 'student_id'=>, 'owner_id'=>, 'owner_type'=>] — périmètre de l'action.
 	 */
-	function can(string $permission): bool {
-		try {
-			return app('rbac')->can($permission);
-		} catch (\Throwable $e) {
-			return false;
-		}
+	function can(string $permission, array $ctx = []): bool {
+		try { if (authz()->can($permission, $ctx)) return true; }
+		catch (\Throwable $e) { error_log('[can] authz: ' . $e->getMessage()); }
+		try { return app('rbac')->can($permission); }
+		catch (\Throwable $e) { return false; }
 	}
 }
 
 if (!function_exists('authorize')) {
 	/**
-	 * Vérifie une permission RBAC — bloque si refusée
+	 * Vérifie une permission — bloque (redirection) si refusée. Délègue à can() unifié.
 	 */
-	function authorize(string $permission): void {
-		try {
-			app('rbac')->authorize($permission);
-		} catch (\Throwable $e) {
-			$_SESSION['error_message'] = 'Accès refusé.';
-			$base = defined('BASE_URL') ? BASE_URL : '';
-			header('Location: ' . $base . '/accueil/accueil.php');
-			exit;
-		}
+	function authorize(string $permission, array $ctx = []): void {
+		if (can($permission, $ctx)) return;
+		$_SESSION['error_message'] = 'Accès refusé.';
+		$base = defined('BASE_URL') ? BASE_URL : '';
+		header('Location: ' . $base . '/accueil/accueil.php');
+		exit;
 	}
 }
 
@@ -499,10 +532,11 @@ if (!function_exists('generateCSRFToken')) {
 }
 if (!function_exists('validateCSRFToken')) {
 	function validateCSRFToken($token = null) {
-		if ($token === null && isset($_POST['csrf_token'])) {
-			$token = $_POST['csrf_token'];
+		// Délègue au validateur canonique : POST csrf_token/_csrf_token, header X-CSRF-Token, body JSON.
+		if ($token !== null) {
+			return app('csrf')->validate($token);
 		}
-		return $token ? app('csrf')->validate($token) : false;
+		return app('csrf')->validateFromRequest();
 	}
 }
 if (!function_exists('csrfField')) {
@@ -812,10 +846,10 @@ if (!function_exists('createUser')) {
 }
 
 if (!function_exists('changePassword')) {
-	function changePassword($userId, $newPassword) {
+	function changePassword($userId, $newPassword, ?string $userType = null) {
 		try {
 			$userService = app()->make('API\Services\UserService');
-			return $userService->changePassword($userId, $newPassword);
+			return $userService->changePassword($userId, $newPassword, $userType);
 		} catch (\Exception $e) {
 			error_log("Password change error: " . $e->getMessage());
 			return ['success' => false, 'message' => 'Erreur lors du changement de mot de passe'];
@@ -851,6 +885,46 @@ if (!function_exists('isSuperAdmin')) {
 	function isSuperAdmin(): bool {
 		return \API\Services\SuperAdminService::isSuperAdmin();
 	}
+}
+
+// ──────────── RBAC/ABAC : autorisation par permission + périmètre ────────────
+if (!function_exists('authz')) {
+	/**
+	 * Moteur d'autorisation courant (Authorization). Synchronise une seule fois par
+	 * requête l'utilisateur courant dans le moteur : le singleton peut avoir été
+	 * résolu avant l'ouverture de session (utilisateur null) ; sans cette synchro les
+	 * rôles attribués ne seraient jamais évalués. roles() reste mis en cache ensuite
+	 * (une seule lecture de user_roles par requête).
+	 */
+	function authz() {
+		$a = app('authz');
+		static $synced = false;
+		if (!$synced) {
+			$synced = true;
+			try { $a->setUser(app('auth')->user()); } catch (\Throwable $e) {}
+		}
+		return $a;
+	}
+}
+if (!function_exists('authorizeOr403')) {
+	/** Autorise ou coupe (403 JSON / redirection). */
+	function authorizeOr403(string $permission, array $ctx = []): void {
+		try { authz()->authorize($permission, $ctx); }
+		catch (\Throwable $e) { error_log('[authorize] ' . $e->getMessage()); }
+	}
+}
+if (!function_exists('hasRole')) {
+	/** L'utilisateur possède-t-il ce rôle effectif (base + attribués) ? */
+	function hasRole(string $roleKey): bool {
+		try { return authz()->hasRole($roleKey); }
+		catch (\Throwable $e) { return false; }
+	}
+}
+if (!function_exists('isTechnicien')) {
+	function isTechnicien(): bool { return getUserRole() === 'technicien'; }
+}
+if (!function_exists('isCpe')) {
+	function isCpe(): bool { return hasRole('cpe'); }
 }
 
 if (!function_exists('findUserByCredentials')) {

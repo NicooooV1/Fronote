@@ -4,253 +4,187 @@ declare(strict_types=1);
 namespace API\Services;
 
 /**
- * UpdateService — Vérification et application des mises à jour Fronote.
+ * UpdateService — mise à jour Fronote en UN bouton, via le dépôt Git.
  *
- * Vérifie les nouvelles versions via GitHub Releases.
- * Gère le cycle : check → download → backup → apply → verify
+ * Flux (synchrone, simple) :
+ *   git fetch  →  git reset --hard origin/<branche>  →  sync schéma SQL
+ *   (déclaratif, sans migrations)  →  re-sync des module.json  →  vide le cache.
+ *
+ * Aucune migration, aucun zip, aucun téléchargement de release : le dépôt Git
+ * EST la source. Les changements de schéma sont appliqués de façon idempotente
+ * par SchemaSyncService (création de tables/colonnes manquantes) — donc pas
+ * besoin de réinitialiser la base après un commit.
  *
  * Config .env :
- *   UPDATE_REPO=fronote/fronote     (GitHub repo)
- *   UPDATE_CHANNEL=stable           (stable | beta)
+ *   GITHUB_BRANCH=main      (branche à suivre)
+ *   GIT_BINARY=git          (chemin de git si absent du PATH d'Apache, ex. Windows)
  */
 class UpdateService
 {
     private string $basePath;
-    private string $repo;
-    private string $channel;
+    private string $branch;
     private string $currentVersion;
 
     public function __construct(string $basePath)
     {
-        $this->basePath = $basePath;
-        $this->repo = getenv('UPDATE_REPO') ?: 'fronote/fronote';
-        $this->channel = getenv('UPDATE_CHANNEL') ?: 'stable';
-
-        $versionFile = $basePath . '/version.json';
-        $data = file_exists($versionFile) ? json_decode(file_get_contents($versionFile), true) : [];
-        $this->currentVersion = $data['version'] ?? '2.0.0';
+        $this->basePath = rtrim($basePath, '/\\');
+        $this->branch = getenv('GITHUB_BRANCH') ?: 'main';
+        $this->currentVersion = $this->readVersion();
     }
 
-    /**
-     * Vérifie s'il y a une mise à jour disponible.
-     */
-    public function checkForUpdate(): ?array
-    {
-        $cache = app('cache');
-        $cached = $cache->get('update_check');
-        if ($cached !== null) return $cached;
-
-        $releases = $this->fetchReleases();
-        $latest = $this->findLatestRelease($releases);
-
-        if (!$latest) {
-            $cache->put('update_check', [], 3600);
-            return null;
-        }
-
-        $latestVersion = ltrim($latest['tag_name'] ?? '', 'v');
-        if (version_compare($latestVersion, $this->currentVersion, '<=')) {
-            $cache->put('update_check', [], 3600);
-            return null;
-        }
-
-        $sha256 = $this->parseChecksumFromBody($latest['body'] ?? '');
-        $result = [
-            'available' => true,
-            'current_version' => $this->currentVersion,
-            'new_version' => $latestVersion,
-            'release_name' => $latest['name'] ?? '',
-            'changelog' => $latest['body'] ?? '',
-            'download_url' => $latest['zipball_url'] ?? '',
-            'published_at' => $latest['published_at'] ?? '',
-            'sha256' => $sha256,
-        ];
-
-        $cache->put('update_check', $result, 3600);
-        return $result;
-    }
-
-    /**
-     * Télécharge et applique une mise à jour.
-     * ATTENTION : Crée un backup automatique avant l'application.
-     */
-    public function applyUpdate(string $downloadUrl, ?string $expectedSha256 = null): array
-    {
-        // 1) Backup
-        try {
-            $backup = app('backup');
-            $backupResult = $backup->createBackup();
-            if (empty($backupResult)) {
-                return ['success' => false, 'error' => 'Échec du backup pré-mise à jour.'];
-            }
-        } catch (\Throwable $e) {
-            return ['success' => false, 'error' => 'Backup failed: ' . $e->getMessage()];
-        }
-
-        // 2) Télécharger
-        $tmpDir = $this->basePath . '/storage/tmp';
-        if (!is_dir($tmpDir)) mkdir($tmpDir, 0755, true);
-
-        $zipPath = $tmpDir . '/update.zip';
-        $ctx = stream_context_create([
-            'http' => ['timeout' => 120, 'user_agent' => 'Fronote/' . $this->currentVersion],
-            'ssl'  => ['verify_peer' => true, 'verify_peer_name' => true],
-        ]);
-        $content = @file_get_contents($downloadUrl, false, $ctx);
-        if ($content === false) {
-            return ['success' => false, 'error' => 'Échec du téléchargement.'];
-        }
-        file_put_contents($zipPath, $content);
-
-        // 2b) Vérification d'intégrité
-        if ($expectedSha256 !== null) {
-            $actualSha256 = hash_file('sha256', $zipPath);
-            if (!hash_equals($expectedSha256, $actualSha256)) {
-                @unlink($zipPath);
-                return ['success' => false, 'error' => 'Checksum SHA-256 invalide — archive corrompue ou altérée.'];
-            }
-        }
-
-        // 3) Extraire dans un dossier temporaire
-        $extractDir = $tmpDir . '/update_extract';
-        if (is_dir($extractDir)) {
-            $this->removeDir($extractDir);
-        }
-
-        if (!class_exists('ZipArchive')) {
-            @unlink($zipPath);
-            return ['success' => false, 'error' => 'Extension ZipArchive requise.'];
-        }
-
-        $zip = new \ZipArchive();
-        if ($zip->open($zipPath) !== true) {
-            @unlink($zipPath);
-            return ['success' => false, 'error' => 'Archive ZIP invalide.'];
-        }
-        $zip->extractTo($extractDir);
-        $zip->close();
-        @unlink($zipPath);
-
-        // 4) Trouver le dossier racine dans l'extraction
-        $entries = array_diff(scandir($extractDir), ['.', '..']);
-        $sourceDir = $extractDir;
-        if (count($entries) === 1 && is_dir($extractDir . '/' . reset($entries))) {
-            $sourceDir = $extractDir . '/' . reset($entries);
-        }
-
-        // 5) Copier les fichiers (sans écraser .env, storage/, uploads/)
-        $protected = ['.env', 'storage', 'uploads', 'install.lock', 'logs', 'vendor', 'node_modules', '.git'];
-        $this->copyDirectory($sourceDir, $this->basePath, $protected);
-
-        // 6) Nettoyage
-        $this->removeDir($extractDir);
-
-        // 7) Vérification
-        $newVersionFile = $this->basePath . '/version.json';
-        if (file_exists($newVersionFile)) {
-            $newData = json_decode(file_get_contents($newVersionFile), true);
-            $newVersion = $newData['version'] ?? $this->currentVersion;
-        } else {
-            $newVersion = $this->currentVersion;
-        }
-
-        return [
-            'success' => true,
-            'message' => 'Mise à jour appliquée.',
-            'old_version' => $this->currentVersion,
-            'new_version' => $newVersion,
-        ];
-    }
-
-    /**
-     * Retourne la version actuelle.
-     */
     public function getCurrentVersion(): string
     {
         return $this->currentVersion;
     }
 
-    // ─── Helpers privés ─────────────────────────────────────────────
+    public function getBranch(): string
+    {
+        return $this->branch;
+    }
+
+    public function isGitAvailable(): bool
+    {
+        $this->git('--version', $code);
+        return $code === 0;
+    }
 
     /**
-     * Parses "SHA256: <hex>" from the release body (Fronote release convention).
+     * Y a-t-il des commits en attente sur origin/<branche> ?
+     * @return array|null  null si à jour / git indisponible
      */
-    private function parseChecksumFromBody(string $body): ?string
+    public function checkForUpdate(): ?array
     {
-        if (preg_match('/SHA256:\s*([a-f0-9]{64})/i', $body, $m)) {
-            return strtolower($m[1]);
+        if (!$this->isGitAvailable()) {
+            return null;
         }
-        return null;
+        $this->git('fetch --quiet origin ' . escapeshellarg($this->branch), $code);
+        $local  = trim($this->git('rev-parse HEAD', $c1));
+        $remote = trim($this->git('rev-parse ' . escapeshellarg('origin/' . $this->branch), $c2));
+        if ($c1 !== 0 || $c2 !== 0 || $local === '' || $remote === '' || $local === $remote) {
+            return null;
+        }
+        $behind = (int) trim($this->git('rev-list --count ' . escapeshellarg('HEAD..origin/' . $this->branch), $c3));
+        $logRaw = $this->git('log --oneline --no-decorate -15 ' . escapeshellarg('HEAD..origin/' . $this->branch), $c4);
+        $commits = array_values(array_filter(array_map('trim', explode("\n", $logRaw))));
+
+        return [
+            'available'       => true,
+            'current_version' => $this->currentVersion,
+            'branch'          => $this->branch,
+            'behind'          => $behind,
+            'commits'         => $commits,
+        ];
     }
 
-    private function fetchReleases(): array
+    /**
+     * Applique la mise à jour : pull du code + réconciliation du schéma SQL.
+     * @return array{success:bool,steps:string[],schema?:array,old_version?:string,new_version?:string,error?:string}
+     */
+    public function applyUpdate(): array
     {
-        $url = "https://api.github.com/repos/{$this->repo}/releases";
-        $ctx = stream_context_create([
-            'http' => [
-                'timeout' => 10,
-                'user_agent' => 'Fronote/' . $this->currentVersion,
-                'header' => "Accept: application/vnd.github.v3+json\r\n",
-            ],
-        ]);
-        $json = @file_get_contents($url, false, $ctx);
-        return $json ? (json_decode($json, true) ?? []) : [];
+        $steps = [];
+
+        if (!$this->isGitAvailable()) {
+            return ['success' => false, 'error' => "git est introuvable. Installez-le ou renseignez GIT_BINARY dans le .env.", 'steps' => $steps];
+        }
+
+        $old = $this->currentVersion;
+
+        // 0) Sauvegarde du .env (par sécurité, même si .gitignore le protège normalement).
+        $envFile = $this->basePath . '/.env';
+        $envBackup = null;
+        if (is_file($envFile)) {
+            $envBackup = @file_get_contents($envFile);
+        }
+
+        // 1) git fetch
+        $out = $this->git('fetch origin ' . escapeshellarg($this->branch), $c1);
+        $steps[] = 'git fetch' . ($out !== '' ? ' : ' . $out : '');
+        if ($c1 !== 0) {
+            return ['success' => false, 'error' => 'git fetch a échoué : ' . $out, 'steps' => $steps];
+        }
+
+        // 2) git reset --hard origin/<branche>  (le serveur reflète exactement le dépôt)
+        $out = $this->git('reset --hard ' . escapeshellarg('origin/' . $this->branch), $c2);
+        $steps[] = 'git reset --hard origin/' . $this->branch . ($out !== '' ? ' : ' . $out : '');
+        if ($c2 !== 0) {
+            return ['success' => false, 'error' => 'git reset a échoué : ' . $out, 'steps' => $steps];
+        }
+
+        // 2b) Restaurer le .env s'il a disparu (cas où il serait suivi par erreur).
+        if ($envBackup !== null && !is_file($envFile)) {
+            @file_put_contents($envFile, $envBackup);
+            $steps[] = '.env restauré';
+        }
+
+        // 3) Réconciliation du schéma SQL (déclaratif, idempotent, sans migrations).
+        $schema = ['created' => [], 'altered' => [], 'errors' => [], 'checked' => 0];
+        try {
+            $sync = new SchemaSyncService(getPDO(), $this->basePath);
+            $schema = $sync->sync();
+            $steps[] = sprintf(
+                'Schéma SQL : %d table(s) vérifiée(s), %d créée(s), %d modifiée(s)%s',
+                $schema['checked'], count($schema['created']), count($schema['altered']),
+                $schema['errors'] ? ', ' . count($schema['errors']) . ' erreur(s)' : ''
+            );
+        } catch (\Throwable $e) {
+            $steps[] = 'Schéma SQL : échec — ' . $e->getMessage();
+            $schema['errors'][] = $e->getMessage();
+        }
+
+        // 4) Re-synchroniser les manifestes des modules (permissions, widgets, routes…).
+        try {
+            $r = app('module_sdk')->syncAll();
+            $steps[] = 'Modules synchronisés : ' . ($r['synced'] ?? 0);
+        } catch (\Throwable $e) {
+            $steps[] = 'Sync modules : échec — ' . $e->getMessage();
+        }
+
+        // 4b) Synchroniser le catalogue de rôles RBAC (rbac_roles + grants rôle→permission).
+        try {
+            $rs = (new \API\Security\RoleSync(getPDO()))->sync();
+            $steps[] = sprintf('Rôles RBAC : %d rôle(s), %d permission(s) synchronisé(es)', $rs['roles'], $rs['grants']);
+        } catch (\Throwable $e) {
+            $steps[] = 'Sync rôles RBAC : échec — ' . $e->getMessage();
+        }
+
+        // 5) Vider le cache applicatif.
+        try { app('cache')->flush(); $steps[] = 'Cache vidé'; } catch (\Throwable $e) {}
+
+        // 6) Relire la version.
+        $this->currentVersion = $this->readVersion();
+
+        return [
+            'success'     => empty($schema['errors']),
+            'steps'       => $steps,
+            'schema'      => $schema,
+            'old_version' => $old,
+            'new_version' => $this->currentVersion,
+        ];
     }
 
-    private function findLatestRelease(array $releases): ?array
+    // ─── Helpers privés ─────────────────────────────────────────────
+
+    private function readVersion(): string
     {
-        foreach ($releases as $release) {
-            if ($this->channel === 'stable' && !empty($release['prerelease'])) {
-                continue;
-            }
-            return $release;
-        }
-        return null;
+        $f = $this->basePath . '/version.json';
+        $data = is_file($f) ? json_decode((string) file_get_contents($f), true) : [];
+        return $data['version'] ?? '0.0.0';
     }
 
-    private function copyDirectory(string $src, string $dst, array $protected = []): void
+    private function gitBin(): string
     {
-        $items = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($src, \RecursiveDirectoryIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::SELF_FIRST
-        );
-
-        foreach ($items as $item) {
-            // Skip symlinks to prevent escaping outside the project root
-            if ($item->isLink()) continue;
-
-            $relative = substr($item->getPathname(), strlen($src) + 1);
-            $relative = str_replace('\\', '/', $relative);
-
-            // Vérifier les fichiers/dossiers protégés
-            $skip = false;
-            foreach ($protected as $p) {
-                if (str_starts_with($relative, $p)) {
-                    $skip = true;
-                    break;
-                }
-            }
-            if ($skip) continue;
-
-            $target = $dst . '/' . $relative;
-            if ($item->isDir()) {
-                if (!is_dir($target)) mkdir($target, 0755, true);
-            } else {
-                copy($item->getPathname(), $target);
-            }
-        }
+        $bin = getenv('GIT_BINARY');
+        return ($bin && trim($bin) !== '') ? trim($bin) : 'git';
     }
 
-    private function removeDir(string $dir): void
+    /** Exécute `git -C <basePath> <args>` et renvoie la sortie (stdout+stderr). */
+    private function git(string $args, ?int &$code = 0): string
     {
-        if (!is_dir($dir)) return;
-        $items = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::CHILD_FIRST
-        );
-        foreach ($items as $item) {
-            $item->isDir() ? rmdir($item->getPathname()) : unlink($item->getPathname());
-        }
-        rmdir($dir);
+        $cmd = $this->gitBin() . ' -C ' . escapeshellarg($this->basePath) . ' ' . $args . ' 2>&1';
+        $output = [];
+        $code = 0;
+        @exec($cmd, $output, $code);
+        return trim(implode("\n", $output));
     }
 }

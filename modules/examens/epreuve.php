@@ -10,9 +10,13 @@ $epreuve = $examenService->getEpreuve($id);
 if (!$epreuve) { header('Location: examens.php'); exit; }
 
 $examen = $examenService->getExamen($epreuve['examen_id']);
+$isGestionnaire = isAdmin() || isPersonnelVS();
+// Cette page expose la liste nominative des candidats + présence + notes (données scolaires
+// d'autrui). Réservée au personnel (admin / vie scolaire / professeurs).
+if (!$isGestionnaire && !isTeacher()) { redirect('/modules/examens/examens.php'); }
+
 $convocations = $examenService->getConvocations($id);
 $surveillants = $examenService->getSurveillants($id);
-$isGestionnaire = isAdmin() || isPersonnelVS();
 $classes = $examenService->getClasses();
 $profs = $examenService->getProfesseurs();
 
@@ -87,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
             <?php if (empty($convocations)): ?><p class="text-muted">Aucun candidat.</p>
             <?php else: ?>
             <table class="table">
-                <thead><tr><th>Place</th><th>Élève</th><th>Classe</th><th>Présent</th><th>Note</th></tr></thead>
+                <thead><tr><th>Place</th><th>Élève</th><th>Classe</th><th>Présent</th><th>Note</th><th>Convocation</th></tr></thead>
                 <tbody>
                     <?php foreach ($convocations as $c): ?>
                     <tr>
@@ -104,6 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
                             <input type="number" name="convocation[<?= $c['id'] ?>][note]" class="form-control form-control-sm" style="width:80px;" step="0.25" min="0" max="20" value="<?= $c['note'] ?? '' ?>">
                             <?php else: echo $c['note'] !== null ? $c['note'] : '-'; endif; ?>
                         </td>
+                        <td><a href="export_convocation.php?id=<?= $c['id'] ?>" class="btn btn-sm btn-outline" target="_blank"><i class="fas fa-file-pdf"></i> PDF</a></td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>

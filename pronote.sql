@@ -49,7 +49,6 @@ DROP TABLE IF EXISTS `signatures`;
 
 -- Tables ajoutées (phases 2+)
 DROP TABLE IF EXISTS `app_metrics`;
-DROP TABLE IF EXISTS `module_migrations`;
 DROP TABLE IF EXISTS `module_settings_schema`;
 DROP TABLE IF EXISTS `job_queue`;
 DROP TABLE IF EXISTS `oauth_bindings`;
@@ -183,6 +182,7 @@ CREATE TABLE `super_admins` (
 
 CREATE TABLE `periodes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `etablissement_id` int(11) NOT NULL DEFAULT 1,
   `numero` int(11) NOT NULL DEFAULT 1,
   `nom` varchar(100) NOT NULL,
   `type` varchar(20) NOT NULL DEFAULT 'trimestre',
@@ -194,6 +194,7 @@ CREATE TABLE `periodes` (
 
 CREATE TABLE `matieres` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `etablissement_id` int(11) NOT NULL DEFAULT 1,
   `nom` varchar(100) NOT NULL,
   `code` varchar(10) NOT NULL,
   `coefficient` decimal(3,2) DEFAULT 1.00,
@@ -205,6 +206,7 @@ CREATE TABLE `matieres` (
 
 CREATE TABLE `classes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `etablissement_id` int(11) NOT NULL DEFAULT 1,
   `nom` varchar(50) NOT NULL,
   `niveau` varchar(20) NOT NULL,
   `annee_scolaire` varchar(10) NOT NULL,
@@ -222,6 +224,7 @@ CREATE TABLE `classes` (
 
 CREATE TABLE `administrateurs` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `etablissement_id` int(11) NOT NULL DEFAULT 1,
   `nom` varchar(100) NOT NULL,
   `prenom` varchar(100) NOT NULL,
   `mail` varchar(150) NOT NULL,
@@ -244,6 +247,7 @@ CREATE TABLE `administrateurs` (
 
 CREATE TABLE `eleves` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `etablissement_id` int(11) NOT NULL DEFAULT 1,
   `nom` varchar(100) NOT NULL,
   `prenom` varchar(100) NOT NULL,
   `date_naissance` date NOT NULL,
@@ -270,6 +274,7 @@ CREATE TABLE `eleves` (
 
 CREATE TABLE `professeurs` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `etablissement_id` int(11) NOT NULL DEFAULT 1,
   `nom` varchar(100) NOT NULL,
   `prenom` varchar(100) NOT NULL,
   `mail` varchar(150) NOT NULL,
@@ -295,6 +300,7 @@ CREATE TABLE `professeurs` (
 
 CREATE TABLE `parents` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `etablissement_id` int(11) NOT NULL DEFAULT 1,
   `nom` varchar(100) NOT NULL,
   `prenom` varchar(100) NOT NULL,
   `mail` varchar(150) NOT NULL,
@@ -319,6 +325,7 @@ CREATE TABLE `parents` (
 
 CREATE TABLE `vie_scolaire` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `etablissement_id` int(11) NOT NULL DEFAULT 1,
   `nom` varchar(100) NOT NULL,
   `prenom` varchar(100) NOT NULL,
   `mail` varchar(150) NOT NULL,
@@ -419,7 +426,7 @@ CREATE TABLE `api_rate_limits` (
   `attempts` int(11) NOT NULL DEFAULT 1,
   `expires_at` datetime NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `idx_identifier` (`identifier`),
+  UNIQUE KEY `idx_identifier` (`identifier`),
   KEY `idx_expires` (`expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -439,10 +446,15 @@ CREATE TABLE `remember_tokens` (
 CREATE TABLE `login_attempts` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `ip` varchar(45) NOT NULL,
+  `identifier` varchar(190) DEFAULT NULL,
   `attempted_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_ip_time` (`ip`, `attempted_at`)
+  KEY `idx_ip_time` (`ip`, `attempted_at`),
+  KEY `idx_identifier_time` (`identifier`, `attempted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- (oauth_bindings est défini plus bas dans ce schéma — pas de duplication ici.)
 
 CREATE TABLE `audit_log` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -453,6 +465,7 @@ CREATE TABLE `audit_log` (
   `user_type` varchar(20) DEFAULT NULL,
   `old_values` json DEFAULT NULL,
   `new_values` json DEFAULT NULL,
+  `details` text DEFAULT NULL,
   `ip_address` varchar(45) DEFAULT NULL,
   `user_agent` text DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -496,10 +509,6 @@ CREATE TABLE `demandes_reinitialisation` (
 -- 9. MODULE EMPLOI DU TEMPS (M03)
 -- ============================================================
 
--- NOTE migration modulaire : ces 3 tables (enseignant_disponibilites,
--- enseignant_preferences, edt_maquette) sont aussi déclarées dans
--- emploi_du_temps/Database/migrations/2.0.0.sql (IF NOT EXISTS). À retirer d'ici
--- une fois qu'une install neuve a confirmé l'exécution de la migration module.
 -- Indisponibilités enseignants — contrainte DURE du moteur EDT (CDC §7.3).
 -- Une ligne = un créneau récurrent où le prof ne peut pas être planifié.
 -- Préférences pédagogiques enseignants — contraintes SOUPLES (CDC §7.1/7.2).
@@ -552,6 +561,7 @@ CREATE TABLE `user_settings` (
   `banner_color` VARCHAR(7) DEFAULT NULL COMMENT 'Couleur de bannière profil (hex)',
   `banner_image` VARCHAR(255) DEFAULT NULL COMMENT 'Image de bannière profil',
   `accueil_config` JSON DEFAULT NULL COMMENT 'Configuration widgets accueil (JSON)',
+  `keybindings` TEXT DEFAULT NULL COMMENT 'Raccourcis clavier personnalisés (JSON)',
   `date_modification` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `unique_user_settings` (`user_id`, `user_type`)
@@ -963,6 +973,46 @@ CREATE TABLE `rbac_permissions` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- RBAC : catalogue des rôles (source de vérité = RoleCatalog en code,
+-- synchronisé ici par RoleSync). Voir API/Security/Authorization.php.
+-- ============================================================
+CREATE TABLE `rbac_roles` (
+  `role_key`    VARCHAR(50)  NOT NULL,
+  `label`       VARCHAR(120) NOT NULL,
+  `tier`        VARCHAR(40)  NOT NULL DEFAULT 'autre',
+  `is_system`   TINYINT(1)   NOT NULL DEFAULT 0,
+  `sensitive`   TINYINT(1)   NOT NULL DEFAULT 0,
+  `description` TEXT         DEFAULT NULL,
+  `created_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`role_key`),
+  KEY `idx_tier` (`tier`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- RBAC : attribution multi-rôles à un utilisateur, scopée (établissement / classes /
+-- élèves assignés via scope_json) et éventuellement temporaire (valid_from/until).
+-- Le "type de compte" reste le rôle de base ; cette table ajoute des rôles.
+-- ============================================================
+CREATE TABLE `user_roles` (
+  `id`               INT AUTO_INCREMENT PRIMARY KEY,
+  `user_type`        VARCHAR(30)  NOT NULL,            -- table de compte : eleve/parent/professeur/vie_scolaire/administrateur/super_admin/technicien
+  `user_id`          INT          NOT NULL,
+  `role_key`         VARCHAR(50)  NOT NULL,
+  `etablissement_id` INT          DEFAULT NULL,        -- NULL = tous (réservé super_admin / multi-établissement)
+  `scope_type`       VARCHAR(30)  NOT NULL DEFAULT 'establishment', -- global|establishment|establishments|self|children|assigned|own_classes
+  `scope_json`       JSON         DEFAULT NULL,        -- ex: {"class_ids":[..]}, {"student_ids":[..]}, {"etablissement_ids":[..]}
+  `valid_from`       DATETIME     DEFAULT NULL,
+  `valid_until`      DATETIME     DEFAULT NULL,        -- NULL = permanent (accès temporaires : technicien, invité, vacataire…)
+  `granted_by_type`  VARCHAR(30)  DEFAULT NULL,
+  `granted_by_id`    INT          DEFAULT NULL,
+  `created_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_user_role_etab` (`user_type`, `user_id`, `role_key`, `etablissement_id`),
+  KEY `idx_user` (`user_type`, `user_id`),
+  KEY `idx_role_key` (`role_key`),
+  KEY `idx_validity` (`valid_until`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- M100 : Permissions CRUD par module (admin)
 -- ============================================================
 CREATE TABLE `module_permissions` (
@@ -1082,7 +1132,7 @@ CREATE TABLE `user_profiles` (
 -- M103 : Configuration import/export
 -- ============================================================
 CREATE TABLE `import_export_logs` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `id` INT AUTO_INCREMENT,
   `type` ENUM('import','export') NOT NULL,
   `cible` VARCHAR(50) NOT NULL COMMENT 'users, config, notes, absences, etc.',
   `format` VARCHAR(20) NOT NULL DEFAULT 'csv' COMMENT 'csv, json, xlsx',
@@ -1376,14 +1426,14 @@ CREATE TABLE `oauth_bindings` (
 -- Audit log : colonnes supplémentaires pour traçabilité avancée
 -- ============================================================
 ALTER TABLE `audit_log`
-  ADD COLUMN IF NOT EXISTS `severity` ENUM('INFO','WARNING','CRITICAL') NOT NULL DEFAULT 'INFO' AFTER `user_agent`,
-  ADD COLUMN IF NOT EXISTS `request_method` VARCHAR(10) DEFAULT NULL AFTER `severity`,
-  ADD COLUMN IF NOT EXISTS `request_uri` VARCHAR(500) DEFAULT NULL AFTER `request_method`;
+  ADD COLUMN `severity` ENUM('INFO','WARNING','CRITICAL') NOT NULL DEFAULT 'INFO' AFTER `user_agent`,
+  ADD COLUMN `request_method` VARCHAR(10) DEFAULT NULL AFTER `severity`,
+  ADD COLUMN `request_uri` VARCHAR(500) DEFAULT NULL AFTER `request_method`;
 
 -- Index composites pour les requêtes fréquentes du dashboard admin
 ALTER TABLE `audit_log`
-  ADD INDEX IF NOT EXISTS `idx_severity_date` (`severity`, `created_at`),
-  ADD INDEX IF NOT EXISTS `idx_action_date` (`action`, `created_at`);
+  ADD INDEX `idx_severity_date` (`severity`, `created_at`),
+  ADD INDEX `idx_action_date` (`action`, `created_at`);
 
 -- ============================================================
 -- Job Queue (G4) — file d'attente asynchrone en base
@@ -1420,24 +1470,6 @@ CREATE TABLE `module_settings_schema` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- Module Migrations (I1) — suivi des migrations SQL par module
--- ============================================================
-CREATE TABLE `module_migrations` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `module_key` VARCHAR(50) NOT NULL,
-  `migration_file` VARCHAR(100) NOT NULL,
-  `migration_version` VARCHAR(50) NULL,
-  `checksum` VARCHAR(64) NULL,
-  `status` ENUM('success','failed','rolled_back') NOT NULL DEFAULT 'success',
-  `error_message` TEXT NULL,
-  `execution_time_ms` INT NULL,
-  `triggered_by` VARCHAR(100) NULL,
-  `executed_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY `uk_module_migration` (`module_key`, `migration_file`),
-  KEY `idx_mig_status` (`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ============================================================
 -- App Metrics (J2) — métriques applicatives
 -- ============================================================
 CREATE TABLE `app_metrics` (
@@ -1454,51 +1486,50 @@ CREATE TABLE `app_metrics` (
 INSERT INTO `modules_config` (`module_key`, `label`, `icon`, `category`, `route_path`)
 VALUES
   ('accueil','Accueil','fas fa-home','navigation','accueil/accueil.php'),
-  ('notes','Notes','fas fa-star','scolaire','notes/notes.php'),
-  ('agenda','Agenda','fas fa-calendar','scolaire','agenda/agenda.php'),
-  ('cahierdetextes','Cahier de textes','fas fa-book','scolaire','cahierdetextes/cahierdetextes.php'),
-  ('messagerie','Messagerie','fas fa-envelope','communication','messagerie/index.php'),
-  ('annonces','Annonces','fas fa-bullhorn','communication','annonces/annonces.php'),
-  ('emploi_du_temps','Emploi du temps','fas fa-clock','scolaire','emploi_du_temps/emploi_du_temps.php'),
-  ('absences','Absences','fas fa-user-times','vie_scolaire','absences/absences.php'),
-  ('appel','Appel','fas fa-check-square','vie_scolaire','appel/appel.php'),
-  ('discipline','Discipline','fas fa-gavel','vie_scolaire','discipline/incidents.php'),
-  ('vie_scolaire','Vie scolaire','fas fa-school','vie_scolaire','vie_scolaire/dashboard.php'),
-  ('reporting','Reporting','fas fa-chart-bar','systeme','reporting/reporting.php'),
-  ('bulletins','Bulletins','fas fa-file-alt','scolaire','bulletins/bulletins.php'),
-  ('devoirs','Devoirs','fas fa-tasks','scolaire','devoirs/mes_devoirs.php'),
-  ('competences','Compétences','fas fa-award','scolaire','competences/competences.php'),
-  ('trombinoscope','Trombinoscope','fas fa-id-badge','etablissement','trombinoscope/trombinoscope.php'),
-  ('documents','Documents','fas fa-folder','etablissement','documents/documents.php'),
-  ('notifications','Notifications','fas fa-bell','communication','notifications/notifications.php'),
-  ('reunions','Réunions','fas fa-handshake','etablissement','reunions/reunions.php'),
-  ('bibliotheque','Bibliothèque','fas fa-book-open','etablissement','bibliotheque/catalogue.php'),
-  ('clubs','Clubs','fas fa-users','etablissement','clubs/clubs.php'),
-  ('orientation','Orientation','fas fa-compass','scolaire','orientation/orientation.php'),
-  ('inscriptions','Inscriptions','fas fa-user-plus','etablissement','inscriptions/inscriptions.php'),
-  ('signalements','Signalements','fas fa-exclamation-triangle','vie_scolaire','signalements/signaler.php'),
-  ('infirmerie','Infirmerie','fas fa-heartbeat','sante','infirmerie/infirmerie.php'),
-  ('examens','Examens','fas fa-pencil-alt','scolaire','examens/examens.php'),
-  ('ressources','Ressources','fas fa-archive','etablissement','ressources/ressources.php'),
-  ('diplomes','Diplômes','fas fa-certificate','etablissement','diplomes/diplomes.php'),
-  ('periscolaire','Périscolaire','fas fa-child','logistique','periscolaire/services.php'),
-  ('cantine','Cantine','fas fa-utensils','logistique','cantine/menus.php'),
-  ('internat','Internat','fas fa-bed','logistique','internat/chambres.php'),
-  ('garderie','Garderie','fas fa-baby','logistique','garderie/creneaux.php'),
-  ('stages','Stages','fas fa-briefcase','scolaire','stages/stages.php'),
-  ('transports','Transports','fas fa-bus','logistique','transports/lignes.php'),
-  ('facturation','Facturation','fas fa-receipt','etablissement','facturation/factures.php'),
-  ('salles','Salles','fas fa-door-open','logistique','salles/reservations.php'),
-  ('personnel','Personnel','fas fa-id-card','etablissement','personnel/absences.php'),
-  ('besoins','Besoins éducatifs','fas fa-hands-helping','vie_scolaire','besoins/besoins.php'),
-  ('archivage','Archivage','fas fa-archive','systeme','archivage/archivage.php'),
+  ('notes','Notes','fas fa-star','scolaire','modules/notes/notes.php'),
+  ('agenda','Agenda','fas fa-calendar','scolaire','modules/agenda/agenda.php'),
+  ('cahierdetextes','Cahier de textes','fas fa-book','scolaire','modules/cahierdetextes/cahierdetextes.php'),
+  ('messagerie','Messagerie','fas fa-envelope','communication','modules/messagerie/index.php'),
+  ('annonces','Annonces','fas fa-bullhorn','communication','modules/annonces/annonces.php'),
+  ('emploi_du_temps','Emploi du temps','fas fa-clock','scolaire','modules/emploi_du_temps/emploi_du_temps.php'),
+  ('absences','Absences','fas fa-user-times','vie_scolaire','modules/absences/absences.php'),
+  ('appel','Appel','fas fa-check-square','vie_scolaire','modules/appel/appel.php'),
+  ('discipline','Discipline','fas fa-gavel','vie_scolaire','modules/discipline/incidents.php'),
+  ('vie_scolaire','Vie scolaire','fas fa-school','vie_scolaire','modules/vie_scolaire/dashboard.php'),
+  ('reporting','Reporting','fas fa-chart-bar','systeme','modules/reporting/reporting.php'),
+  ('bulletins','Bulletins','fas fa-file-alt','scolaire','modules/bulletins/bulletins.php'),
+  ('competences','Compétences','fas fa-award','scolaire','modules/competences/competences.php'),
+  ('trombinoscope','Trombinoscope','fas fa-id-badge','etablissement','modules/trombinoscope/trombinoscope.php'),
+  ('documents','Documents','fas fa-folder','etablissement','modules/documents/documents.php'),
+  ('notifications','Notifications','fas fa-bell','communication','modules/notifications/notifications.php'),
+  ('reunions','Réunions','fas fa-handshake','etablissement','modules/reunions/reunions.php'),
+  ('bibliotheque','Bibliothèque','fas fa-book-open','etablissement','modules/bibliotheque/catalogue.php'),
+  ('clubs','Clubs','fas fa-users','etablissement','modules/clubs/clubs.php'),
+  ('orientation','Orientation','fas fa-compass','scolaire','modules/orientation/orientation.php'),
+  ('inscriptions','Inscriptions','fas fa-user-plus','etablissement','modules/inscriptions/inscriptions.php'),
+  ('signalements','Signalements','fas fa-exclamation-triangle','vie_scolaire','modules/signalements/signalements.php'),
+  ('infirmerie','Infirmerie','fas fa-heartbeat','sante','modules/infirmerie/infirmerie.php'),
+  ('examens','Examens','fas fa-pencil-alt','scolaire','modules/examens/examens.php'),
+  ('ressources','Ressources','fas fa-archive','etablissement','modules/ressources/ressources.php'),
+  ('diplomes','Diplômes','fas fa-certificate','etablissement','modules/diplomes/diplomes.php'),
+  ('periscolaire','Périscolaire','fas fa-child','logistique','modules/periscolaire/services.php'),
+  ('cantine','Cantine','fas fa-utensils','logistique','modules/cantine/menus.php'),
+  ('internat','Internat','fas fa-bed','logistique','modules/internat/chambres.php'),
+  ('garderie','Garderie','fas fa-baby','logistique','modules/garderie/creneaux.php'),
+  ('stages','Stages','fas fa-briefcase','scolaire','modules/stages/stages.php'),
+  ('transports','Transports','fas fa-bus','logistique','modules/transports/lignes.php'),
+  ('facturation','Facturation','fas fa-receipt','etablissement','modules/facturation/factures.php'),
+  ('salles','Salles','fas fa-door-open','logistique','modules/salles/reservations.php'),
+  ('personnel','Personnel','fas fa-id-card','etablissement','modules/personnel/absences.php'),
+  ('besoins','Besoins éducatifs','fas fa-hands-helping','vie_scolaire','modules/besoins/besoins.php'),
+  ('archivage','Archivage','fas fa-archive','systeme','modules/archivage/archivage.php'),
   ('rgpd','RGPD','fas fa-shield-alt','systeme','rgpd/demandes.php'),
-  ('support','Support','fas fa-life-ring','systeme','support/aide.php'),
-  ('projets_pedagogiques','Projets pédagogiques','fas fa-project-diagram','scolaire','projets_pedagogiques/projets.php'),
-  ('parcours_educatifs','Parcours éducatifs','fas fa-road','scolaire','parcours_educatifs/parcours.php'),
-  ('vie_associative','Vie associative','fas fa-heart','etablissement','vie_associative/associations.php'),
+  ('support','Support','fas fa-life-ring','systeme','modules/support/aide.php'),
+  ('projets_pedagogiques','Projets pédagogiques','fas fa-project-diagram','scolaire','modules/projets_pedagogiques/projets.php'),
+  ('parcours_educatifs','Parcours éducatifs','fas fa-road','scolaire','modules/parcours_educatifs/parcours.php'),
+  ('vie_associative','Vie associative','fas fa-heart','etablissement','modules/vie_associative/associations.php'),
   ('parametres','Paramètres','fas fa-cog','systeme','parametres/parametres.php'),
-  ('profil','Profil','fas fa-user','systeme','profil/index.php')
+  ('profil','Profil','fas fa-user','systeme','modules/profil/index.php')
 ON DUPLICATE KEY UPDATE route_path = VALUES(route_path);
 
 -- ============================================================
@@ -1873,43 +1904,35 @@ CREATE TABLE `signatures` (
 
 -- Utilisateurs (5 tables)
 ALTER TABLE `administrateurs`
-  ADD COLUMN `etablissement_id` INT NOT NULL DEFAULT 1 AFTER `id`,
   ADD INDEX `idx_etab` (`etablissement_id`),
   ADD CONSTRAINT `fk_administrateurs_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`);
 
 ALTER TABLE `eleves`
-  ADD COLUMN `etablissement_id` INT NOT NULL DEFAULT 1 AFTER `id`,
   ADD INDEX `idx_etab` (`etablissement_id`),
   ADD CONSTRAINT `fk_eleves_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`);
 
 ALTER TABLE `professeurs`
-  ADD COLUMN `etablissement_id` INT NOT NULL DEFAULT 1 AFTER `id`,
   ADD INDEX `idx_etab` (`etablissement_id`),
   ADD CONSTRAINT `fk_professeurs_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`);
 
 ALTER TABLE `parents`
-  ADD COLUMN `etablissement_id` INT NOT NULL DEFAULT 1 AFTER `id`,
   ADD INDEX `idx_etab` (`etablissement_id`),
   ADD CONSTRAINT `fk_parents_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`);
 
 ALTER TABLE `vie_scolaire`
-  ADD COLUMN `etablissement_id` INT NOT NULL DEFAULT 1 AFTER `id`,
   ADD INDEX `idx_etab` (`etablissement_id`),
   ADD CONSTRAINT `fk_vie_scolaire_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`);
 
 -- Référentiels scolaires (3 tables)
 ALTER TABLE `periodes`
-  ADD COLUMN `etablissement_id` INT NOT NULL DEFAULT 1 AFTER `id`,
   ADD INDEX `idx_etab` (`etablissement_id`),
   ADD CONSTRAINT `fk_periodes_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`);
 
 ALTER TABLE `matieres`
-  ADD COLUMN `etablissement_id` INT NOT NULL DEFAULT 1 AFTER `id`,
   ADD INDEX `idx_etab` (`etablissement_id`),
   ADD CONSTRAINT `fk_matieres_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`);
 
 ALTER TABLE `classes`
-  ADD COLUMN `etablissement_id` INT NOT NULL DEFAULT 1 AFTER `id`,
   ADD INDEX `idx_etab` (`etablissement_id`),
   ADD CONSTRAINT `fk_classes_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`);
 
@@ -2081,6 +2104,14 @@ ALTER TABLE `matieres` DROP INDEX `code`, ADD UNIQUE KEY `uk_matiere_etab` (`cod
 ALTER TABLE `modules_config` DROP INDEX `uk_module_key`, ADD UNIQUE KEY `uk_module_etab` (`module_key`, `etablissement_id`);
 ALTER TABLE `feature_flags` DROP INDEX `uk_flag`, ADD UNIQUE KEY `uk_flag_etab` (`flag_key`, `etablissement_id`);
 
+-- Rendre les UNIQUE keys `mail` compatibles multi-établissement
+-- (mail unique PAR établissement, pas globalement)
+ALTER TABLE `administrateurs` DROP INDEX `mail`, ADD UNIQUE KEY `uk_mail_etab` (`mail`, `etablissement_id`);
+ALTER TABLE `eleves` DROP INDEX `mail`, ADD UNIQUE KEY `uk_mail_etab` (`mail`, `etablissement_id`);
+ALTER TABLE `professeurs` DROP INDEX `mail`, ADD UNIQUE KEY `uk_mail_etab` (`mail`, `etablissement_id`);
+ALTER TABLE `parents` DROP INDEX `mail`, ADD UNIQUE KEY `uk_mail_etab` (`mail`, `etablissement_id`);
+ALTER TABLE `vie_scolaire` DROP INDEX `mail`, ADD UNIQUE KEY `uk_mail_etab` (`mail`, `etablissement_id`);
+
 -- ============================================================
 -- V1.5.0 MODULE IMPROVEMENTS — New tables and columns
 -- ============================================================
@@ -2114,9 +2145,11 @@ CREATE TABLE IF NOT EXISTS `referentiel_competences` (
 -- Phase 6: Bulletins — templates and appreciations
 CREATE TABLE IF NOT EXISTS `bulletin_templates` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `template_key` VARCHAR(100) DEFAULT NULL,
   `name` VARCHAR(100) NOT NULL,
   `html_template` TEXT NOT NULL,
-  `etablissement_id` INT NOT NULL DEFAULT 1
+  `etablissement_id` INT NOT NULL DEFAULT 1,
+  UNIQUE KEY `uk_template_key_etab` (`template_key`, `etablissement_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `bulletin_appreciations` (
@@ -2202,7 +2235,7 @@ CREATE TABLE IF NOT EXISTS `absence_patterns` (
 
 -- Phase 7: Discipline — points system
 ALTER TABLE `eleves`
-  ADD COLUMN IF NOT EXISTS `discipline_points` INT DEFAULT 0;
+  ADD COLUMN `discipline_points` INT DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS `discipline_points` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -2350,9 +2383,9 @@ CREATE TABLE IF NOT EXISTS `eleve_allergies` (
 
 -- Phase 8: Trombinoscope — photo consent
 ALTER TABLE `eleves`
-  ADD COLUMN IF NOT EXISTS `photo_consent` TINYINT(1) DEFAULT 0;
+  ADD COLUMN `photo_consent` TINYINT(1) DEFAULT 0;
 ALTER TABLE `professeurs`
-  ADD COLUMN IF NOT EXISTS `photo_consent` TINYINT(1) DEFAULT 0;
+  ADD COLUMN `photo_consent` TINYINT(1) DEFAULT 0;
 
 -- Phase 8: Diplomes — PDF
 
@@ -2362,7 +2395,7 @@ ALTER TABLE `professeurs`
 
 -- Phase 9: User settings — privacy
 ALTER TABLE `user_settings`
-  ADD COLUMN IF NOT EXISTS `privacy_level` ENUM('public','private') DEFAULT 'public';
+  ADD COLUMN `privacy_level` ENUM('public','private') DEFAULT 'public';
 
 -- Phase 9: Plans accompagnement — type
 
@@ -2376,7 +2409,7 @@ ALTER TABLE `user_settings`
 
 -- Phase 9: RGPD — purge tracking
 ALTER TABLE `rgpd_demandes`
-  ADD COLUMN IF NOT EXISTS `purge_completed_at` DATETIME DEFAULT NULL;
+  ADD COLUMN `purge_completed_at` DATETIME DEFAULT NULL;
 
 -- Phase 9: Support — SLA
 
@@ -3578,18 +3611,20 @@ CREATE TABLE IF NOT EXISTS mediatheque_quotas (
 -- v2.0.0 — Performance Indexes
 -- ============================================================
 
-CREATE INDEX IF NOT EXISTS idx_notes_eleve_trim_mat ON notes(id_eleve, trimestre, id_matiere);
-CREATE INDEX IF NOT EXISTS idx_notif_user_lu_date ON notifications_globales(user_id, user_type, lu, date_creation);
+-- NB : l'index sur `notes` est créé par le module notes (modules/notes/Database/install.sql,
+-- index idx_eleve_matiere_trimestre). La table `notes` n'existe PAS lors de l'import du socle,
+-- donc l'index ne doit pas être déclaré ici (provoquait une erreur 1146 « table inexistante »).
+CREATE INDEX idx_notif_user_lu_date ON notifications_globales(user_id, user_type, lu, date_creation);
 
 -- ============================================================
 -- v2.0.0 — Extensions table etablissements
 -- ============================================================
 
 ALTER TABLE etablissements
-    ADD COLUMN IF NOT EXISTS slogan VARCHAR(255) AFTER nom,
-    ADD COLUMN IF NOT EXISTS charte_couleurs JSON AFTER slogan,
-    ADD COLUMN IF NOT EXISTS entete_pdf_html TEXT AFTER charte_couleurs,
-    ADD COLUMN IF NOT EXISTS pied_page_pdf_html TEXT AFTER entete_pdf_html;
+    ADD COLUMN slogan VARCHAR(255) AFTER nom,
+    ADD COLUMN charte_couleurs JSON AFTER slogan,
+    ADD COLUMN entete_pdf_html TEXT AFTER charte_couleurs,
+    ADD COLUMN pied_page_pdf_html TEXT AFTER entete_pdf_html;
 
 -- ============================================================
 -- v2.0.0 — Feature Flags pour les 13 nouveaux modules

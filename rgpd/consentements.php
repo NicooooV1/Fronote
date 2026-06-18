@@ -35,6 +35,13 @@ $consentements = $rgpdService->getConsentements($userId, $userType);
         <p>Conformément au RGPD, vous pouvez gérer vos consentements ci-dessous. Vous pouvez les modifier ou les retirer à tout moment.</p>
     </div>
 
+    <div class="alert alert-warning">
+        <i class="fas fa-child"></i>
+        <strong>Élèves mineurs :</strong> pour un élève mineur, les consentements relatifs aux données
+        sensibles (données médicales, droit à l'image, géolocalisation) relèvent du ou des représentants
+        légaux. Ce rappel est purement informatif et n'affecte pas l'enregistrement de vos choix ci-dessous.
+    </div>
+
     <div class="card">
         <div class="card-body">
             <form method="post">

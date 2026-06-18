@@ -10,6 +10,7 @@ require_once __DIR__ . '/../bootstrap.php';
 requireAuth();
 
 header('Content-Type: application/json');
+header('X-Content-Type-Options: nosniff');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -75,6 +76,20 @@ switch ($action) {
         if ($url === '') {
             http_response_code(400);
             echo json_encode(['error' => 'Missing url']);
+            break;
+        }
+        // N'accepter que des chemins internes relatifs : rejeter toute URL absolue
+        // (contenant '://'), protocole-relative ('//host'), ou pseudo-protocole
+        // dangereux (javascript:/data:) qui permettrait une redirection externe ou
+        // une injection au clic sur le favori.
+        $urlLower = strtolower($url);
+        if (strpos($url, '://') !== false
+            || strpos($url, '//') === 0
+            || strpos($urlLower, 'javascript:') === 0
+            || strpos($urlLower, 'data:') === 0
+            || strpos($urlLower, 'vbscript:') === 0) {
+            http_response_code(400);
+            echo json_encode(['error' => 'URL invalide : seuls les chemins internes relatifs sont autorisés']);
             break;
         }
         $ok = $modules->addPageFavorite($userId, $userType, $url, $label, $icon);

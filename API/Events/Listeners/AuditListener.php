@@ -13,43 +13,47 @@ class AuditListener
     /**
      * Map classe d'événement → label d'action lisible.
      */
+    // Clés = nom COURT de la classe d'événement (sans namespace), car les événements
+    // sont dispatchés sous des namespaces variés : API\Events\* (alias core) ET
+    // Modules\<Module>\Events\* (implémentation réelle des modules). Le matching par
+    // nom court fonctionne pour les deux.
     private static array $actionMap = [
         // Notes
-        'API\Events\NoteCreated'           => 'note.created',
-        'API\Events\NoteUpdated'           => 'note.updated',
-        'API\Events\NoteDeleted'           => 'note.deleted',
+        'NoteCreated'           => 'note.created',
+        'NoteUpdated'           => 'note.updated',
+        'NoteDeleted'           => 'note.deleted',
         // Absences
-        'API\Events\AbsenceCreated'        => 'absence.created',
-        'API\Events\AbsenceDeleted'        => 'absence.deleted',
-        'API\Events\RetardCreated'         => 'retard.created',
-        'API\Events\RetardDeleted'         => 'retard.deleted',
-        'API\Events\JustificatifApproved'  => 'justificatif.approved',
-        'API\Events\JustificatifRejected'  => 'justificatif.rejected',
+        'AbsenceCreated'        => 'absence.created',
+        'AbsenceDeleted'        => 'absence.deleted',
+        'RetardCreated'         => 'retard.created',
+        'RetardDeleted'         => 'retard.deleted',
+        'JustificatifApproved'  => 'justificatif.approved',
+        'JustificatifRejected'  => 'justificatif.rejected',
         // Devoirs
-        'API\Events\DevoirCreated'         => 'devoir.created',
-        'API\Events\DevoirUpdated'         => 'devoir.updated',
-        'API\Events\DevoirDeleted'         => 'devoir.deleted',
+        'DevoirCreated'         => 'devoir.created',
+        'DevoirUpdated'         => 'devoir.updated',
+        'DevoirDeleted'         => 'devoir.deleted',
         // Événements agenda
-        'API\Events\EvenementCreated'      => 'evenement.created',
-        'API\Events\EvenementUpdated'      => 'evenement.updated',
-        'API\Events\EvenementDeleted'      => 'evenement.deleted',
+        'EvenementCreated'      => 'evenement.created',
+        'EvenementUpdated'      => 'evenement.updated',
+        'EvenementDeleted'      => 'evenement.deleted',
         // Matières
-        'API\Events\MatiereCreated'        => 'matiere.created',
-        'API\Events\MatiereUpdated'        => 'matiere.updated',
-        'API\Events\MatiereDeleted'        => 'matiere.deleted',
+        'MatiereCreated'        => 'matiere.created',
+        'MatiereUpdated'        => 'matiere.updated',
+        'MatiereDeleted'        => 'matiere.deleted',
         // Périodes
-        'API\Events\PeriodeCreated'        => 'periode.created',
-        'API\Events\PeriodeUpdated'        => 'periode.updated',
-        'API\Events\PeriodeDeleted'        => 'periode.deleted',
+        'PeriodeCreated'        => 'periode.created',
+        'PeriodeUpdated'        => 'periode.updated',
+        'PeriodeDeleted'        => 'periode.deleted',
         // Classes
-        'API\Events\ClasseCreated'         => 'classe.created',
-        'API\Events\ClasseUpdated'         => 'classe.updated',
-        'API\Events\ClasseDeleted'         => 'classe.deleted',
+        'ClasseCreated'         => 'classe.created',
+        'ClasseUpdated'         => 'classe.updated',
+        'ClasseDeleted'         => 'classe.deleted',
         // Utilisateurs
-        'API\Events\UserCreated'           => 'user.created',
-        'API\Events\UserPasswordChanged'   => 'user.password_changed',
+        'UserCreated'           => 'user.created',
+        'UserPasswordChanged'   => 'user.password_changed',
         // Messages
-        'API\Events\MessageSent'           => 'message.sent',
+        'MessageSent'           => 'message.sent',
     ];
 
     public function handle(object $event): void
@@ -61,7 +65,10 @@ class AuditListener
             }
 
             $class  = get_class($event);
-            $action = self::$actionMap[$class] ?? strtolower(str_replace(['API\Events\\', '\\'], ['', '.'], $class));
+            // Nom court (sans namespace) pour matcher quel que soit le namespace de l'événement.
+            $short  = (($p = strrpos($class, '\\')) !== false) ? substr($class, $p + 1) : $class;
+            // Fallback : CamelCase → dotted.lower (NoteCreated → note.created).
+            $action = self::$actionMap[$short] ?? strtolower(preg_replace('/(?<!^)([A-Z])/', '.$1', $short));
 
             $props = get_object_vars($event);
             $modelId = null;

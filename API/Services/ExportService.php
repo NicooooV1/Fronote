@@ -48,13 +48,27 @@ class ExportService
         foreach ($data as $row) {
             $line = [];
             foreach (array_keys($columns) as $key) {
-                $line[] = $row[$key] ?? '';
+                $line[] = $this->csvSafe($row[$key] ?? '');
             }
             fputcsv($output, $line, ';');
         }
 
         fclose($output);
         exit;
+    }
+
+    /**
+     * Neutralise l'injection de formule CSV (OWASP « CSV Injection ») : préfixe
+     * d'une apostrophe toute valeur débutant par = + - @ (ou tab/CR), sinon
+     * interprétée comme formule par Excel/LibreOffice à l'ouverture du fichier.
+     */
+    private function csvSafe($value): string
+    {
+        $value = (string) $value;
+        if ($value !== '' && in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
+            return "'" . $value;
+        }
+        return $value;
     }
 
     /**

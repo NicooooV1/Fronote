@@ -65,14 +65,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Traitement des destinataires
         $participants = [];
         foreach ($destinataires as $dest) {
-            list($destType, $destId) = explode('_', $dest);
-            
+            // La valeur est "<type>_<id>". Le type "vie_scolaire" contient lui-même un
+            // underscore : on découpe donc sur le DERNIER underscore, pas le premier.
+            $sep = strrpos($dest, '_');
+            if ($sep === false) {
+                continue; // valeur malformée, on ignore
+            }
+            $destType = substr($dest, 0, $sep);
+            $destId = substr($dest, $sep + 1);
+
+            // Valider type + id
+            $destType = Validator::userType($destType);
+            $destId = Validator::id($destId);
+            if (!$destType || !$destId) {
+                continue;
+            }
+
             // Vérification pour éviter l'envoi à soi-même
             if ($destId == $user['id'] && $destType == $user['type']) {
                 $errors[] = "Vous ne pouvez pas vous envoyer un message à vous-même";
+                continue;
             }
-            
+
             $participants[] = ['id' => $destId, 'type' => $destType];
+        }
+
+        if (empty($participants) && empty($errors)) {
+            $errors[] = "Aucun destinataire valide sélectionné";
         }
         
         if (empty($errors)) {

@@ -64,6 +64,37 @@ class FileUploadService
             'allowed_ext'   => ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'doc', 'docx'],
             'subdir'        => 'justificatifs',
         ],
+        // Rendus de devoirs déposés par les élèves (cahierdetextes/RenduService).
+        'rendus' => [
+            'max_size'      => 20 * 1024 * 1024,
+            'max_files'     => 5,
+            'allowed_types' => [
+                'application/pdf',
+                'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/vnd.oasis.opendocument.text',
+                'application/vnd.oasis.opendocument.spreadsheet',
+                'text/plain',
+            ],
+            'allowed_ext'   => ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'doc', 'docx', 'xls', 'xlsx', 'odt', 'ods', 'txt'],
+            'subdir'        => 'rendus',
+        ],
+        // Pièces jointes d'un dossier d'inscription (inscriptions/InscriptionService).
+        'inscriptions' => [
+            'max_size'      => 10 * 1024 * 1024,
+            'max_files'     => 10,
+            'allowed_types' => [
+                'application/pdf',
+                'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            ],
+            'allowed_ext'   => ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'doc', 'docx'],
+            'subdir'        => 'inscriptions',
+        ],
     ];
 
     private string $baseDir;

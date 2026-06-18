@@ -6,13 +6,15 @@ CREATE TABLE IF NOT EXISTS `conversations` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `etablissement_id` int(11) NOT NULL DEFAULT 1,
   `subject` varchar(255) NOT NULL,
-  `type` varchar(50) DEFAULT 'standard',
+  `type` enum('individuelle','groupe','annonce','classe','information') NOT NULL DEFAULT 'individuelle',
+  `allow_replies` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `last_message_id` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_conv_updated` (`updated_at`),
   KEY `idx_conv_last_msg` (`last_message_id`),
+  KEY `idx_conv_type` (`type`),
   FULLTEXT KEY `ft_conversations_subject` (`subject`),
   KEY `idx_etab` (`etablissement_id`),
   CONSTRAINT `fk_conversations_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`)
@@ -122,4 +124,29 @@ CREATE TABLE IF NOT EXISTS `message_reports` (
   KEY `idx_report_message` (`message_id`),
   KEY `idx_report_status` (`status`),
   CONSTRAINT `fk_report_message` FOREIGN KEY (`message_id`) REFERENCES `messages` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `rate_limits` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `user_type` varchar(50) NOT NULL,
+  `action_type` varchar(50) NOT NULL,
+  `attempted_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_rl_lookup` (`user_id`, `user_type`, `action_type`, `attempted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `user_notification_preferences` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `user_type` enum('eleve','parent','professeur','vie_scolaire','administrateur') NOT NULL,
+  `email_notifications` tinyint(1) NOT NULL DEFAULT 0,
+  `browser_notifications` tinyint(1) NOT NULL DEFAULT 1,
+  `notification_sound` tinyint(1) NOT NULL DEFAULT 1,
+  `mention_notifications` tinyint(1) NOT NULL DEFAULT 1,
+  `reply_notifications` tinyint(1) NOT NULL DEFAULT 1,
+  `important_notifications` tinyint(1) NOT NULL DEFAULT 1,
+  `digest_frequency` enum('never','daily','weekly') NOT NULL DEFAULT 'never',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_user_prefs` (`user_id`, `user_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

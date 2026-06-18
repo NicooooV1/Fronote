@@ -24,17 +24,16 @@ class RenduService {
         $fichierTaille = 0;
 
         if ($fichier && !empty($fichier['name']) && $fichier['error'] === UPLOAD_ERR_OK) {
-            $uploadDir = __DIR__ . '/../../uploads/rendus/';
-            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+            $uploader = new \API\Services\FileUploadService('rendus');
+            $result = $uploader->upload($fichier);
+            if ($result['success'] === false) {
+                throw new Exception($result['error'] ?? "Échec de l'envoi du fichier");
+            }
 
-            $ext = pathinfo($fichier['name'], PATHINFO_EXTENSION);
-            $nomServeur = uniqid('rendu_') . '.' . $ext;
-            move_uploaded_file($fichier['tmp_name'], $uploadDir . $nomServeur);
-
-            $fichierNom = $fichier['name'];
-            $fichierChemin = 'uploads/rendus/' . $nomServeur;
-            $fichierType = $fichier['type'];
-            $fichierTaille = $fichier['size'];
+            $fichierNom = $result['nom_original'];
+            $fichierChemin = $result['chemin']; // relatif à uploads/ (servi via telecharger_rendu.php)
+            $fichierType = $result['type_mime'];
+            $fichierTaille = $result['taille'];
         }
 
         // Upsert
@@ -119,9 +118,38 @@ class RenduService {
     }
 
     public function getDevoir(int $id): ?array {
-        $stmt = $this->pdo->prepare("SELECT * FROM devoirs WHERE id = ?");
-        $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare("SELECT * FROM devoirs WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    /**
+     * Vérifie qu'un professeur (par son nom complet) est bien propriétaire du devoir,
+     * dans l'établissement courant. Les rôles admin/vie_scolaire passent toujours.
+     */
+    public function profOwnsDevoir(int $devoirId, string $profFullname, bool $isPrivileged = false): bool {
+        $devoir = $this->getDevoir($devoirId);
+        if (!$devoir) return false;
+        if ($isPrivileged) return true;
+        return $devoir['nom_professeur'] === $profFullname;
+    }
+
+    /**
+     * Vérifie qu'un rendu appartient à un devoir possédé par le professeur
+     * (ou rôle privilégié) dans l'établissement courant.
+     */
+    public function profOwnsRendu(int $renduId, string $profFullname, bool $isPrivileged = false): bool {
+        $stmt = $this->pdo->prepare("
+            SELECT d.nom_professeur
+            FROM devoirs_rendus r
+            JOIN devoirs d ON r.devoir_id = d.id
+            WHERE r.id = ? AND d.etablissement_id = ?
+        ");
+        $stmt->execute([$renduId, \API\Core\EstablishmentContext::id()]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) return false;
+        if ($isPrivileged) return true;
+        return $row['nom_professeur'] === $profFullname;
     }
 
     public function getDevoirsARendreEleve(int $eleveId): array {

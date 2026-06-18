@@ -13,15 +13,30 @@ if (!$id) { die('ID stage manquant.'); }
 
 $stmt = $pdo->prepare(
     "SELECT s.*, CONCAT(el.prenom, ' ', el.nom) AS eleve_nom, el.date_naissance, el.classe,
-            CONCAT(p.prenom, ' ', p.nom) AS tuteur_nom
+            CONCAT(p.prenom, ' ', p.nom) AS prof_nom
      FROM stages s
      LEFT JOIN eleves el ON s.eleve_id = el.id
-     LEFT JOIN professeurs p ON s.tuteur_id = p.id
+     LEFT JOIN professeurs p ON s.professeur_referent_id = p.id
      WHERE s.id = ?"
 );
 $stmt->execute([$id]);
 $stage = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$stage) { die('Stage introuvable.'); }
+
+// Contrôle d'accès : admin/vie scolaire et professeurs toujours ;
+// élève uniquement sa propre convention ; parent via parent_eleve ; sinon refus.
+$eleveId = (int) ($stage['eleve_id'] ?? 0);
+if (isAdmin() || isVieScolaire() || isProfesseur()) {
+    // accès autorisé
+} elseif (isEleve()) {
+    if ($eleveId !== (int) getUserId()) { http_response_code(403); die('Accès refusé.'); }
+} elseif (isParent()) {
+    $chk = $pdo->prepare("SELECT 1 FROM parent_eleve WHERE id_parent = ? AND id_eleve = ? LIMIT 1");
+    $chk->execute([getUserId(), $eleveId]);
+    if (!$chk->fetchColumn()) { http_response_code(403); die('Accès refusé.'); }
+} else {
+    http_response_code(403); die('Accès refusé.');
+}
 
 $etab = [];
 try { $etab = $pdo->query("SELECT * FROM etablissement LIMIT 1")->fetch(PDO::FETCH_ASSOC) ?: []; } catch (\Exception $e) {}
@@ -38,7 +53,7 @@ $html = '
 <p style="font-size:13px;margin-top:20px"><strong>Entre :</strong></p>
 <ol style="font-size:13px">
     <li><strong>' . htmlspecialchars($nomEtab) . '</strong>, ci-après dénommé « l\'établissement »</li>
-    <li><strong>' . htmlspecialchars($stage['entreprise'] ?? '—') . '</strong>, ci-après dénommé « l\'organisme d\'accueil »</li>
+    <li><strong>' . htmlspecialchars($stage['entreprise_nom'] ?? '—') . '</strong>, ci-après dénommé « l\'organisme d\'accueil »</li>
     <li><strong>' . htmlspecialchars($stage['eleve_nom'] ?? '—') . '</strong>, ci-après dénommé « le/la stagiaire »</li>
 </ol>
 
@@ -46,10 +61,10 @@ $html = '
 <table style="width:100%;font-size:13px;margin:10px 0">
     <tr><td style="width:200px;font-weight:bold">Élève :</td><td>' . htmlspecialchars($stage['eleve_nom'] ?? '—') . '</td></tr>
     <tr><td style="font-weight:bold">Classe :</td><td>' . htmlspecialchars($stage['classe'] ?? '—') . '</td></tr>
-    <tr><td style="font-weight:bold">Entreprise :</td><td>' . htmlspecialchars($stage['entreprise'] ?? '—') . '</td></tr>
-    <tr><td style="font-weight:bold">Adresse :</td><td>' . htmlspecialchars($stage['adresse_entreprise'] ?? '—') . '</td></tr>
-    <tr><td style="font-weight:bold">Tuteur entreprise :</td><td>' . htmlspecialchars($stage['tuteur_entreprise'] ?? '—') . '</td></tr>
-    <tr><td style="font-weight:bold">Tuteur pédagogique :</td><td>' . htmlspecialchars($stage['tuteur_nom'] ?? '—') . '</td></tr>
+    <tr><td style="font-weight:bold">Entreprise :</td><td>' . htmlspecialchars($stage['entreprise_nom'] ?? '—') . '</td></tr>
+    <tr><td style="font-weight:bold">Adresse :</td><td>' . htmlspecialchars($stage['entreprise_adresse'] ?? '—') . '</td></tr>
+    <tr><td style="font-weight:bold">Tuteur entreprise :</td><td>' . htmlspecialchars($stage['tuteur_nom'] ?? '—') . '</td></tr>
+    <tr><td style="font-weight:bold">Tuteur pédagogique :</td><td>' . htmlspecialchars($stage['prof_nom'] ?? '—') . '</td></tr>
 </table>
 
 <h4>Article 2 — Durée</h4>

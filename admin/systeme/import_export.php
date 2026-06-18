@@ -6,19 +6,34 @@
 require_once __DIR__ . '/../../API/core.php';
 require_once __DIR__ . '/../includes/admin_functions.php';
 require_once __DIR__ . '/../../API/Services/ImportExportService.php';
+require_once __DIR__ . '/../../API/Services/Import/ImportSchemas.php';
+require_once __DIR__ . '/../../API/Services/Import/BulkImporter.php';
 
 requireAuth();
 requireRole('administrateur');
 
 $pdo = getPDO();
-$service = new ImportExportService($pdo);
+$service = new \API\Services\ImportExportService($pdo);
 $admin = getCurrentUser();
+
+// ─── Téléchargement d'un modèle CSV (en-têtes canoniques d'une entité) ─────
+if (($_GET['download_template'] ?? '') !== '' && \API\Services\Import\ImportSchemas::get($_GET['download_template'])) {
+    $tplEntity = $_GET['download_template'];
+    $csv = (new \API\Services\Import\BulkImporter($pdo))->template($tplEntity);
+    if ($csv !== '') {
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="modele_' . preg_replace('/[^a-z_]/', '', $tplEntity) . '.csv"');
+        echo $csv;
+        exit;
+    }
+}
 
 $message = '';
 $messageType = '';
 $importResult = null;
 $previewData = null;
 $passwordsList = null;
+$bulkPreview = null;
 
 // ─── Traitement des actions POST ──────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken($_POST['csrf_token'] ?? '')) {
@@ -187,6 +202,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken($_POST['csrf_toke
         $message = 'Import annule.';
         $messageType = 'info';
     }
+
+    // --- IMPORT EN MASSE (entités : élèves, profs, notes, devoirs…) ---
+    if ($action === 'bulk_preview') {
+        $entity = $_POST['bulk_entity'] ?? '';
+        $raw = '';
+        if (!empty($_FILES['bulk_file']['tmp_name'])) {
+            $raw = (string) file_get_contents($_FILES['bulk_file']['tmp_name']);
+        } elseif (trim($_POST['bulk_paste'] ?? '') !== '') {
+            $raw = (string) $_POST['bulk_paste'];
+        }
+        if (!\API\Services\Import\ImportSchemas::get($entity)) {
+            $message = 'Type de données inconnu.'; $messageType = 'error';
+        } elseif (trim($raw) === '') {
+            $message = 'Aucune donnée : choisissez un fichier ou collez un tableau.'; $messageType = 'error';
+        } else {
+            $importer = new \API\Services\Import\BulkImporter($pdo);
+            $parsed = $importer->parse($raw);
+            if ($parsed['total'] === 0) {
+                $message = 'Aucune ligne de données détectée sous la ligne d\'en-têtes.'; $messageType = 'error';
+            } else {
+                $mapping = $importer->detectMapping($entity, $parsed['headers']);
+                $preview = $importer->preview($entity, $parsed['headers'], $parsed['rows'], $mapping);
+                $_SESSION['pending_bulk'] = [
+                    'entity'  => $entity,
+                    'headers' => $parsed['headers'],
+                    'rows'    => $parsed['rows'],
+                    'mapping' => $mapping,
+                ];
+                $bulkPreview = ['entity' => $entity, 'headers' => $parsed['headers'], 'mapping' => $mapping, 'preview' => $preview];
+                $message = $preview['valid'] . ' valide(s), ' . $preview['dedup'] . ' doublon(s), ' . count($preview['invalid']) . ' en erreur. Vérifiez la correspondance des colonnes puis confirmez.';
+                $messageType = 'info';
+            }
+        }
+    }
+
+    if ($action === 'bulk_confirm' && !empty($_SESSION['pending_bulk'])) {
+        $pb = $_SESSION['pending_bulk'];
+        // Remapping manuel éventuel (en-tête => colonne canonique) depuis le formulaire.
+        if (!empty($_POST['map']) && is_array($_POST['map'])) {
+            foreach ($pb['headers'] as $h) {
+                if (array_key_exists($h, $_POST['map'])) {
+                    $pb['mapping'][$h] = ($_POST['map'][$h] === '') ? null : $_POST['map'][$h];
+                }
+            }
+        }
+        $importer = new \API\Services\Import\BulkImporter($pdo);
+        $importResult = $importer->import($pb['entity'], $pb['headers'], $pb['rows'], $pb['mapping'], [
+            'generate_passwords' => isset($_POST['generate_passwords']),
+        ]);
+        $importResult['message'] = $importResult['nb_importes'] . ' importé(s).';
+        if (!empty($importResult['passwords'])) $passwordsList = $importResult['passwords'];
+        try {
+            $service->logImport('import', $importResult['nb_total'],
+                ($importResult['nb_erreurs'] > 0 ? 'partiel' : 'termine'),
+                'import_masse_' . $pb['entity'] . '.csv', $pb['entity'],
+                $importResult['nb_importes'], count($importResult['erreurs']), $importResult['erreurs']);
+        } catch (\Throwable $e) { /* log best-effort */ }
+        $message = $importResult['nb_importes'] . ' importé(s), ' . $importResult['nb_doublons'] . ' doublon(s), ' . $importResult['nb_erreurs'] . ' erreur(s).';
+        $messageType = ($importResult['nb_importes'] === 0 && $importResult['nb_erreurs'] > 0) ? 'error' : 'success';
+        unset($_SESSION['pending_bulk']);
+    }
+
+    if ($action === 'bulk_cancel') {
+        unset($_SESSION['pending_bulk']);
+        $message = 'Import annulé.'; $messageType = 'info';
+    }
 }
 
 // ─── Donnees pour la page ─────────────────────────────────────────────
@@ -205,7 +286,9 @@ $importCount = 0;
 try {
     $exportCount = (int)$pdo->query("SELECT COUNT(*) FROM import_export_logs WHERE type = 'export'")->fetchColumn();
     $importCount = (int)$pdo->query("SELECT COUNT(*) FROM import_export_logs WHERE type = 'import'")->fetchColumn();
-} catch (PDOException $e) {}
+} catch (PDOException $e) {
+    error_log('[' . basename(__FILE__) . '] ' . $e->getMessage());
+}
 
 $hasPending = !empty($_SESSION['pending_import']);
 
@@ -414,7 +497,76 @@ include __DIR__ . '/../includes/header.php';
     <!-- ================= ONGLET IMPORT ================= -->
     <?php if ($activeTab === 'import'): ?>
 
-        <?php if ($hasPending && !$importResult): ?>
+        <?php if ($bulkPreview):
+            $bpSchema  = \API\Services\Import\ImportSchemas::get($bulkPreview['entity']);
+            $bpCanon   = array_keys($bpSchema['columns'] ?? []);
+            $bpIsUser  = !empty($bpSchema['generate']);
+            $bpPrev    = $bulkPreview['preview'];
+        ?>
+            <!-- Correspondance des colonnes + aperçu (import en masse) -->
+            <div class="ie-card">
+                <h3><i class="fas fa-wand-magic-sparkles"></i> Correspondance des colonnes — <?= htmlspecialchars($bpSchema['label'] ?? $bulkPreview['entity']) ?></h3>
+                <div style="display:flex;gap:18px;margin:8px 0 14px">
+                    <div style="text-align:center"><div style="font-size:20px;font-weight:700;color:#059669"><?= $bpPrev['valid'] ?></div><div style="font-size:11px;color:#718096">Valides</div></div>
+                    <div style="text-align:center"><div style="font-size:20px;font-weight:700;color:#d97706"><?= $bpPrev['dedup'] ?></div><div style="font-size:11px;color:#718096">Doublons</div></div>
+                    <div style="text-align:center"><div style="font-size:20px;font-weight:700;color:#dc2626"><?= count($bpPrev['invalid']) ?></div><div style="font-size:11px;color:#718096">Erreurs</div></div>
+                    <div style="text-align:center"><div style="font-size:20px;font-weight:700;color:#2d3748"><?= $bpPrev['total'] ?></div><div style="font-size:11px;color:#718096">Total</div></div>
+                </div>
+
+                <form method="post" action="?tab=import">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
+                    <input type="hidden" name="action" value="bulk_confirm">
+                    <p style="font-size:12px;color:#718096;margin:0 0 8px">Vérifiez à quelle colonne de la base chaque en-tête de votre fichier correspond. « Ignorer » exclut la colonne.</p>
+                    <div style="overflow-x:auto">
+                        <table class="preview-table">
+                            <thead><tr><th>En-tête du fichier</th><th>→ Colonne cible</th></tr></thead>
+                            <tbody>
+                            <?php foreach ($bulkPreview['headers'] as $h): $sel = $bulkPreview['mapping'][$h] ?? null; ?>
+                                <tr>
+                                    <td style="font-family:monospace"><?= htmlspecialchars($h) ?></td>
+                                    <td>
+                                        <select name="map[<?= htmlspecialchars($h) ?>]">
+                                            <option value="">— Ignorer —</option>
+                                            <?php foreach ($bpCanon as $cc): ?>
+                                                <option value="<?= htmlspecialchars($cc) ?>" <?= $sel === $cc ? 'selected' : '' ?>><?= htmlspecialchars($cc) ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <?php if (!empty($bpPrev['invalid'])): ?>
+                        <details style="margin-top:10px">
+                            <summary style="font-size:12px;cursor:pointer;color:#991b1b;font-weight:600">Lignes en erreur (<?= count($bpPrev['invalid']) ?>) — elles seront ignorées</summary>
+                            <ul class="errors-list">
+                                <?php foreach (array_slice($bpPrev['invalid'], 0, 30) as $iv): ?>
+                                    <li>Ligne <?= (int)$iv['line'] ?> : <?= htmlspecialchars(implode(' ; ', $iv['errors'])) ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </details>
+                    <?php endif; ?>
+
+                    <?php if ($bpIsUser): ?>
+                        <div class="checkbox-row" style="margin:10px 0 8px">
+                            <input type="checkbox" name="generate_passwords" id="gen_pwd_bulk" checked>
+                            <label for="gen_pwd_bulk">Générer les mots de passe automatiquement</label>
+                        </div>
+                    <?php endif; ?>
+
+                    <hr class="ie-separator">
+                    <button type="submit" class="btn-export success"><i class="fas fa-check"></i> Confirmer l'import (<?= $bpPrev['valid'] ?>)</button>
+                </form>
+                <form method="post" action="?tab=import" style="display:inline">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
+                    <input type="hidden" name="action" value="bulk_cancel">
+                    <button type="submit" class="btn-export danger" style="margin-top:8px"><i class="fas fa-times"></i> Annuler</button>
+                </form>
+            </div>
+
+        <?php elseif ($hasPending && !$importResult): ?>
             <!-- Apercu en attente de confirmation -->
             <?php $pending = $_SESSION['pending_import']; ?>
 
@@ -554,6 +706,49 @@ include __DIR__ . '/../includes/header.php';
             </div>
 
         <?php else: ?>
+            <!-- Import en masse (toutes entités, CSV ou copier-coller) -->
+            <div class="ie-card">
+                <h3><i class="fas fa-table"></i> Import en masse</h3>
+                <p style="font-size:12px;color:#718096;margin:0 0 10px">
+                    Importez élèves, professeurs, parents, classes, matières, notes, devoirs — par fichier CSV/TSV
+                    <strong>ou en collant directement un tableau</strong> (depuis un tableur ou un export Pronote).
+                    Les en-têtes sont reconnus automatiquement (« Né(e) le », « Matière », « Période »…) ;
+                    vous vérifiez la correspondance à l'étape suivante. Tout est rattaché à l'établissement courant.
+                </p>
+                <form method="post" action="?tab=import" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
+                    <input type="hidden" name="action" value="bulk_preview">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Type de données</label>
+                            <select name="bulk_entity" id="bulk_entity">
+                                <?php foreach (\API\Services\Import\ImportSchemas::options() as $key => $label): ?>
+                                    <option value="<?= htmlspecialchars($key) ?>"><?= htmlspecialchars($label) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Fichier (CSV / TSV)</label>
+                            <input type="file" name="bulk_file" accept=".csv,.tsv,.txt">
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top:8px">
+                        <label>… ou coller un tableau ici</label>
+                        <textarea name="bulk_paste" rows="5" placeholder="Nom;Prénom;Né(e) le;Classe;Mail&#10;Dupont;Marie;12/03/2010;6A;marie.dupont@ecole.fr" style="width:100%;font-family:monospace;font-size:12px;padding:8px;border:1px solid #d2d6dc;border-radius:6px"></textarea>
+                    </div>
+                    <div style="display:flex;gap:10px;align-items:center;margin-top:8px">
+                        <button type="submit" class="btn-export primary"><i class="fas fa-eye"></i> Prévisualiser</button>
+                        <a id="tpl_link" href="?tab=import&download_template=eleve" class="btn-export secondary"><i class="fas fa-download"></i> Modèle CSV</a>
+                    </div>
+                </form>
+                <script nonce="<?= htmlspecialchars($_hdr_nonce ?? '') ?>">
+                (function(){
+                    var sel = document.getElementById('bulk_entity'), lnk = document.getElementById('tpl_link');
+                    if (sel && lnk) sel.addEventListener('change', function(){ lnk.href = '?tab=import&download_template=' + encodeURIComponent(sel.value); });
+                })();
+                </script>
+            </div>
+
             <!-- Formulaire d'upload -->
             <div class="ie-card">
                 <h3><i class="fas fa-file-upload"></i> Importer des utilisateurs (CSV)</h3>

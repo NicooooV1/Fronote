@@ -26,13 +26,17 @@ if ($cookieConsent === null):
 <script nonce="<?= $_hdr_nonce ?? '' ?>">
 (function() {
     function setCookieConsent(level) {
+        var banner = document.getElementById('cookie-consent-banner');
         var xhr = new XMLHttpRequest();
         xhr.open('POST', '<?= defined("BASE_URL") ? BASE_URL : "" ?>/API/endpoints/cookie_consent.php', true);
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         xhr.setRequestHeader('X-CSRF-TOKEN', document.querySelector('meta[name="csrf-token"]')?.content || '');
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4 && xhr.status >= 200 && xhr.status < 300) {
+                if (banner) banner.style.display = 'none';
+            }
+        };
         xhr.send('level=' + encodeURIComponent(level));
-        var banner = document.getElementById('cookie-consent-banner');
-        if (banner) banner.style.display = 'none';
     }
     var acceptBtn = document.getElementById('cookie-accept-all');
     var essentialBtn = document.getElementById('cookie-essential-only');

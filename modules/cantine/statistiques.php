@@ -14,7 +14,6 @@ $stats = $cantineService->getStats($dateDebut, $dateFin);
 $regimes = $cantineService->getStatsParRegime(date('Y-m-d'));
 ?>
 
-<div class="main-content">
     <div class="page-header">
         <h1><i class="fas fa-chart-pie"></i> Statistiques cantine</h1>
     </div>
@@ -51,6 +50,5 @@ $regimes = $cantineService->getStatsParRegime(date('Y-m-d'));
             <?php endif; ?>
         </div>
     </div>
-</div>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

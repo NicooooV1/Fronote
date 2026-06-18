@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
 
             // Generer mot de passe
             $plainPassword = bin2hex(random_bytes(8));
-            $hashedPassword = password_hash($plainPassword, PASSWORD_DEFAULT);
+            $hashedPassword = \API\Security\PasswordPolicy::hash($plainPassword);
 
             // Permissions selon le niveau
             $permissionsMap = [

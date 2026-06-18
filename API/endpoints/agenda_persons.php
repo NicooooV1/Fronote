@@ -11,6 +11,7 @@ require_once __DIR__ . '/../core.php';
 requireAuth();
 
 header('Content-Type: application/json; charset=utf-8');
+header('X-Content-Type-Options: nosniff');
 
 // Seuls admin / prof / vie_scolaire peuvent lister
 if (!isAdmin() && !isTeacher() && !isVieScolaire()) {
@@ -19,9 +20,33 @@ if (!isAdmin() && !isTeacher() && !isVieScolaire()) {
     exit;
 }
 
+// Rate limiting : cet endpoint énumère des personnes (élèves/profs/parents) ;
+// on plafonne les rafales par utilisateur+IP. Fail-open si le limiteur est
+// indisponible pour ne pas casser l'agenda sur incident infra.
+try {
+    $rl = app('rate_limiter');
+    $rlKey = 'agenda_persons.' . (int) getUserId();
+    $rl->setMaxAttempts(60)->setDecayMinutes(1);
+    if ($rl->tooManyAttempts($rlKey)) {
+        http_response_code(429);
+        echo json_encode(['success' => false, 'message' => 'Trop de requêtes. Veuillez patienter.']);
+        exit;
+    }
+    $rl->hit($rlKey);
+} catch (\Throwable $e) {
+    error_log('agenda_persons rate limiter unavailable: ' . $e->getMessage());
+}
+
 $visibility = filter_input(INPUT_GET, 'visibility', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? '';
 $pdo = getPDO();
-try { $etabId = \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { $etabId = 1; }
+// Scope établissement obligatoire — fail-closed (pas de fallback sur l'étab. 1).
+try {
+    $etabId = \API\Core\EstablishmentContext::id();
+} catch (\Throwable $e) {
+    http_response_code(409);
+    echo json_encode(['success' => false, 'message' => 'Établissement non résolu pour cette session.']);
+    exit;
+}
 $persons = [];
 
 try {
@@ -57,7 +82,7 @@ try {
                 "SELECT p.id, p.nom, p.prenom,
                         GROUP_CONCAT(DISTINCT e.prenom SEPARATOR ', ') AS enfants
                  FROM parents p
-                 LEFT JOIN parents_eleves pe ON p.id = pe.id_parent
+                 LEFT JOIN parent_eleve pe ON p.id = pe.id_parent
                  LEFT JOIN eleves e ON pe.id_eleve = e.id
                  WHERE p.etablissement_id = ?
                  GROUP BY p.id
@@ -75,34 +100,38 @@ try {
             break;
 
         case 'vie_scolaire':
+            // Table réelle = `vie_scolaire` (la table `personnels` n'existe pas), scopée par établissement.
             $stmt = $pdo->prepare(
-                "SELECT id, nom, prenom, fonction FROM personnels
-                 WHERE fonction LIKE '%scolaire%' OR service = 'vie scolaire'
+                "SELECT id, nom, prenom, est_CPE, est_infirmerie FROM vie_scolaire
+                 WHERE etablissement_id = ? AND actif = 1
                  ORDER BY nom, prenom"
             );
-            $stmt->execute();
+            $stmt->execute([$etabId]);
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $fonction = ($row['est_CPE'] ?? 'non') === 'oui' ? 'CPE'
+                          : (($row['est_infirmerie'] ?? 'non') === 'oui' ? 'Infirmerie' : 'Vie scolaire');
                 $persons[] = [
                     'id'   => $row['id'],
                     'name' => htmlspecialchars($row['prenom'] . ' ' . $row['nom']),
-                    'info' => htmlspecialchars($row['fonction'] ?? 'Vie scolaire'),
+                    'info' => htmlspecialchars($fonction),
                     'type' => 'personnel',
                 ];
             }
             break;
 
         case 'administration':
+            // Table réelle = `administrateurs` (la table `personnels` n'existe pas), scopée par établissement.
             $stmt = $pdo->prepare(
-                "SELECT id, nom, prenom, fonction FROM personnels
-                 WHERE fonction LIKE '%admin%' OR service = 'administration'
+                "SELECT id, nom, prenom, role FROM administrateurs
+                 WHERE etablissement_id = ? AND actif = 1
                  ORDER BY nom, prenom"
             );
-            $stmt->execute();
+            $stmt->execute([$etabId]);
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $persons[] = [
                     'id'   => $row['id'],
                     'name' => htmlspecialchars($row['prenom'] . ' ' . $row['nom']),
-                    'info' => htmlspecialchars($row['fonction'] ?? 'Administration'),
+                    'info' => htmlspecialchars($row['role'] ?? 'Administration'),
                     'type' => 'personnel',
                 ];
             }

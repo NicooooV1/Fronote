@@ -14,16 +14,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!validateCSRFToken()) {
         $message = 'Erreur de sécurité : token CSRF invalide.';
     } elseif (isset($_POST['inscrire'])) {
-        $jours = $_POST['jours'] ?? [];
-        $count = 0;
-        foreach ($jours as $j) {
-            $garderieService->inscrire((int)$_POST['creneau_id'], (int)$_POST['eleve_id'], $j, date('Y-m-d'), getUserRole());
-            $count++;
+        $eleveId = (int)($_POST['eleve_id'] ?? 0);
+        // IDOR : un parent ne peut inscrire que ses propres enfants ; le staff gère tout le monde.
+        $autorise = $isGestionnaire;
+        if (!$autorise && isParent() && $eleveId > 0) {
+            $chk = $pdo->prepare("SELECT 1 FROM parent_eleve WHERE id_parent = ? AND id_eleve = ?");
+            $chk->execute([$user['id'], $eleveId]);
+            $autorise = (bool)$chk->fetchColumn();
         }
-        $message = "$count inscription(s) enregistrée(s).";
+        if (!$autorise) {
+            $message = "Accès refusé : vous ne pouvez inscrire que vos propres enfants.";
+        } else {
+            $jours = $_POST['jours'] ?? [];
+            $count = 0;
+            foreach ($jours as $j) {
+                $garderieService->inscrire((int)$_POST['creneau_id'], $eleveId, $j, date('Y-m-d'), getUserRole());
+                $count++;
+            }
+            $message = "$count inscription(s) enregistrée(s).";
+        }
     } elseif (isset($_POST['desinscrire'])) {
-        $garderieService->desinscrire((int)$_POST['inscription_id']);
-        $message = 'Inscription annulée.';
+        // Désinscription réservée au staff (les boutons ne sont rendus que pour eux).
+        if (!$isGestionnaire) {
+            $message = "Accès refusé.";
+        } else {
+            $garderieService->desinscrire((int)$_POST['inscription_id']);
+            $message = 'Inscription annulée.';
+        }
     }
 }
 
@@ -41,7 +58,6 @@ if ($isGestionnaire) {
 }
 ?>
 
-<div class="main-content">
     <div class="page-header"><h1><i class="fas fa-user-plus"></i> Inscriptions garderie</h1></div>
 
     <?php if ($message): ?><div class="alert alert-success"><?= htmlspecialchars($message) ?></div><?php endif; ?>
@@ -82,6 +98,7 @@ if ($isGestionnaire) {
     </div>
     <?php endif; ?>
 
+    <?php if ($isGestionnaire): ?>
     <div class="card">
         <div class="card-header">
             <h3>Inscriptions actives (<?= count($inscriptions) ?>)</h3>
@@ -120,6 +137,6 @@ if ($isGestionnaire) {
             </table>
         </div>
     </div>
-</div>
+    <?php endif; ?>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

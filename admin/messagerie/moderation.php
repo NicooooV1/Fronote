@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Modération des messages — recherche FULLTEXT, suppression, édition, pin
  */

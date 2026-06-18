@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Journal d'audit — navigation, filtres, export
  */

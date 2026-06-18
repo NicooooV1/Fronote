@@ -30,10 +30,7 @@ function getConversations($userId, $userType, $dossier = 'reception', $limit = 2
     
     $baseQuery = "
         SELECT c.id, c.subject as titre, 
-               COALESCE(c.type, 
-                   CASE WHEN EXISTS (SELECT 1 FROM messages WHERE conversation_id = c.id AND status = 'annonce') 
-                        THEN 'annonce' ELSE 'standard' END
-               ) as type,
+               c.type,
                c.created_at as date_creation, 
                c.updated_at as dernier_message,
                lm.body as apercu,
@@ -144,7 +141,7 @@ function searchConversations($userId, $userType, $query, $limit = 20, $offset = 
     
     $stmt = $pdo->prepare("
         SELECT DISTINCT c.id, c.subject as titre,
-               COALESCE(c.type, 'standard') as type,
+               c.type,
                c.created_at as date_creation,
                c.updated_at as dernier_message,
                cp.unread_count as non_lus,
@@ -200,12 +197,19 @@ function searchConversations($userId, $userType, $query, $limit = 20, $offset = 
  */
 function createConversation($titre, $type, $createurId, $createurType, $participants) {
     global $pdo;
-    
-    $pdo->beginTransaction();
+
+    // Nesting-aware : createConversation est appelé seul (new_message) ou depuis un
+    // handler ayant déjà ouvert une transaction (handleSendAnnouncement, sendMessageToClass).
+    $ownTransaction = !$pdo->inTransaction();
+    if ($ownTransaction) {
+        $pdo->beginTransaction();
+    }
     try {
-        $sql = "INSERT INTO conversations (subject, created_at, updated_at) VALUES (?, NOW(), NOW())";
+        $validTypes = ['individuelle', 'groupe', 'annonce', 'classe', 'information'];
+        $type = in_array($type, $validTypes) ? $type : 'individuelle';
+        $sql = "INSERT INTO conversations (subject, type, created_at, updated_at) VALUES (?, ?, NOW(), NOW())";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$titre]);
+        $stmt->execute([$titre, $type]);
         $convId = $pdo->lastInsertId();
         
         $sql = "INSERT INTO conversation_participants 
@@ -222,10 +226,14 @@ function createConversation($titre, $type, $createurId, $createurType, $particip
             $stmt->execute([$convId, $p['id'], $p['type']]);
         }
         
-        $pdo->commit();
+        if ($ownTransaction) {
+            $pdo->commit();
+        }
         return $convId;
     } catch (Exception $e) {
-        $pdo->rollBack();
+        if ($ownTransaction && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         throw $e;
     }
 }
@@ -239,11 +247,7 @@ function getConversationInfo($convId) {
     global $pdo;
     
     $stmt = $pdo->prepare("
-        SELECT c.id, c.subject as titre, 
-        CASE 
-            WHEN EXISTS (SELECT 1 FROM messages WHERE conversation_id = c.id AND status = 'annonce') THEN 'annonce'
-            ELSE 'standard'
-        END as type
+        SELECT c.id, c.subject as titre, c.type, c.allow_replies
         FROM conversations c
         WHERE c.id = ?
     ");

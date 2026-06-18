@@ -14,6 +14,9 @@ class ModuleScanner
         'eval', 'exec', 'system', 'shell_exec', 'passthru',
         'proc_open', 'popen', 'pcntl_exec', 'dl',
         'putenv', 'apache_setenv',
+        // Indirection permettant de contourner la liste ci-dessus (SEC-03a)
+        'call_user_func', 'call_user_func_array', 'create_function', 'assert',
+        'forward_static_call', 'forward_static_call_array',
     ];
 
     // Fonctions conditionnellement bloquees (sauf si module declare permission 'network')
@@ -133,19 +136,37 @@ class ModuleScanner
                 }
             }
 
-            // Check for variable variables ($$var)
+            // Check for variable variables ($$var) — VIOLATION : couramment utilisé pour
+            // contourner la détection statique des appels de fonctions bloquées.
             if ($tokenType === T_VARIABLE) {
-                // Look ahead for another T_VARIABLE or $ sign
                 if ($i > 0) {
                     $prev = $tokens[$i - 1];
                     if (is_array($prev) && $prev[0] === T_VARIABLE) {
-                        $this->warnings[] = [
+                        $this->violations[] = [
                             'file'    => $relativePath,
                             'line'    => $tokenLine,
                             'type'    => 'variable_variable',
-                            'message' => "Variable variable detected — potential security risk",
+                            'message' => "Variable variable (\$\$var) detected — dynamic dispatch can bypass the scanner",
                         ];
                     }
+                }
+
+                // Appel de fonction variable : $fn(...)  → indirection permettant
+                // d'invoquer une fonction bloquée sans T_STRING littéral (SEC-03a).
+                for ($j = $i + 1; $j < $tokenCount; $j++) {
+                    $next = $tokens[$j];
+                    if (is_array($next) && $next[0] === T_WHITESPACE) {
+                        continue;
+                    }
+                    if ($next === '(') {
+                        $this->violations[] = [
+                            'file'    => $relativePath,
+                            'line'    => $tokenLine,
+                            'type'    => 'variable_function',
+                            'message' => "Variable function call (\$var()) detected — dynamic dispatch can bypass the scanner; use a named function",
+                        ];
+                    }
+                    break;
                 }
             }
 

@@ -141,12 +141,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $participants[] = ['id' => $eleveId, 'type' => 'eleve'];
                     }
                     
-                    // Parents des élèves de la classe si demandé
+                    // Parents des élèves de CETTE classe uniquement (table parent_eleve)
                     if ($includeParents) {
-                        // Dans la nouvelle structure, nous n'avons pas de relation explicite parents-élèves
-                        // On récupère simplement tous les parents
-                        $stmt = $pdo->prepare("SELECT id FROM parents WHERE est_parent_eleve = 'oui'");
-                        $stmt->execute();
+                        $stmt = $pdo->prepare("
+                            SELECT DISTINCT p.id
+                            FROM parents p
+                            JOIN parent_eleve pe ON pe.id_parent = p.id
+                            JOIN eleves e ON e.id = pe.id_eleve
+                            WHERE e.classe = ? AND p.est_parent_eleve = 'oui'
+                        ");
+                        $stmt->execute([$classe]);
                         $parents = $stmt->fetchAll(PDO::FETCH_COLUMN);
                         
                         foreach ($parents as $parentId) {

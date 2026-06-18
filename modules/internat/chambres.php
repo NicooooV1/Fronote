@@ -35,7 +35,6 @@ $chambres = $internatService->getChambres();
 $stats = $internatService->getStats();
 ?>
 
-<div class="main-content">
     <div class="page-header">
         <h1><i class="fas fa-bed"></i> Chambres de l'internat</h1>
         <button class="btn btn-primary" onclick="document.getElementById('formChambre').style.display='block'"><i class="fas fa-plus"></i> Nouvelle chambre</button>
@@ -92,6 +91,5 @@ $stats = $internatService->getStats();
         </div>
         <?php endforeach; ?>
     </div>
-</div>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

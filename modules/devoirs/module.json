@@ -14,7 +14,7 @@
         "submit": { "default_roles": ["eleve"] },
         "correct":{ "default_roles": ["administrateur", "professeur"] }
     },
-    "sidebar": { "hidden": false, "sort_order": 30 },
+    "sidebar": { "hidden": true, "sort_order": 30 },
     "establishment_types": null,
     "author": "Fronote Team",
     "license": "MIT"

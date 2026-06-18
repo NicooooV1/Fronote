@@ -22,12 +22,36 @@ class Encryption
 
     public function __construct(?string $masterKey = null)
     {
-        $key = $masterKey ?? getenv('APP_KEY') ?: '';
-        if (empty($key)) {
-            throw new \RuntimeException('APP_KEY must be set for encryption.');
+        $key = $masterKey ?? self::keyMaterial();
+        if ($key === null || $key === '') {
+            throw new \RuntimeException('Aucune clé applicative (APP_KEY ou JWT_SECRET) configurée pour le chiffrement.');
         }
-        // Dériver une clé 256 bits depuis APP_KEY
+        // Dériver une clé 256 bits depuis le matériel de clé.
         $this->masterKey = hash('sha256', $key, true);
+    }
+
+    /**
+     * Matériel de clé maître : APP_KEY en priorité, repli sur JWT_SECRET
+     * (toujours généré par install.php). Permet au chiffrement de fonctionner
+     * sur les installations existantes sans APP_KEY dédié.
+     */
+    public static function keyMaterial(): ?string
+    {
+        $appKey = getenv('APP_KEY');
+        if ($appKey !== false && $appKey !== '') {
+            return $appKey;
+        }
+        $jwt = getenv('JWT_SECRET');
+        if ($jwt !== false && $jwt !== '') {
+            return $jwt;
+        }
+        return null;
+    }
+
+    /** Le chiffrement at-rest est-il disponible (une clé est-elle configurée) ? */
+    public static function available(): bool
+    {
+        return self::keyMaterial() !== null;
     }
 
     /**

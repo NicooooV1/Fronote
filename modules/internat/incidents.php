@@ -30,7 +30,6 @@ $incidents = $internatService->getIncidents();
 $chambres = $internatService->getChambres();
 ?>
 
-<div class="main-content">
     <div class="page-header">
         <h1><i class="fas fa-exclamation-triangle"></i> Incidents internat</h1>
         <button class="btn btn-primary" onclick="document.getElementById('formIncident').style.display='block'"><i class="fas fa-plus"></i> Signaler</button>
@@ -103,6 +102,5 @@ $chambres = $internatService->getChambres();
             </table>
         </div>
     </div>
-</div>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

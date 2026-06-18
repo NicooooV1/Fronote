@@ -112,6 +112,7 @@ $currentConfig = $module['config'] ?? [];
 
 $pageTitle = 'Configuration : ' . $module['label'];
 $currentPage = 'modules_configure';
+$pageBack = 'admin/modules/index.php';
 $extraCss = ['../../assets/css/admin.css'];
 
 if (!isset($_SESSION['csrf_token'])) {

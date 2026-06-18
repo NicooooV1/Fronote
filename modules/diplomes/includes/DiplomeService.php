@@ -18,7 +18,7 @@ class DiplomeService
         $sql = "SELECT d.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, c.nom AS classe_nom
                 FROM diplomes d
                 JOIN eleves e ON d.eleve_id = e.id
-                LEFT JOIN classes c ON e.classe_id = c.id
+                LEFT JOIN classes c ON e.classe = c.nom
                 WHERE 1=1";
         $params = [];
         if (!empty($filters['type'])) { $sql .= ' AND d.type = ?'; $params[] = $filters['type']; }
@@ -34,7 +34,7 @@ class DiplomeService
     public function getDiplome(int $id): ?array
     {
         $stmt = $this->pdo->prepare("SELECT d.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, c.nom AS classe_nom
-                FROM diplomes d JOIN eleves e ON d.eleve_id = e.id LEFT JOIN classes c ON e.classe_id = c.id WHERE d.id = ?");
+                FROM diplomes d JOIN eleves e ON d.eleve_id = e.id LEFT JOIN classes c ON e.classe = c.nom WHERE d.id = ?");
         $stmt->execute([$id]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
@@ -72,8 +72,8 @@ class DiplomeService
         $stmt = $this->pdo->prepare("SELECT d.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom
             FROM diplomes d
             JOIN eleves e ON d.eleve_id = e.id
-            JOIN parent_eleve pe ON e.id = pe.eleve_id
-            WHERE pe.parent_id = ?
+            JOIN parent_eleve pe ON e.id = pe.id_eleve
+            WHERE pe.id_parent = ?
             ORDER BY d.date_obtention DESC");
         $stmt->execute([$parentId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -83,7 +83,7 @@ class DiplomeService
 
     public function getEleves(): array
     {
-        $s = $this->pdo->prepare("SELECT e.id, e.prenom, e.nom, c.nom AS classe_nom FROM eleves e LEFT JOIN classes c ON e.classe_id = c.id WHERE e.etablissement_id = ? ORDER BY e.nom");
+        $s = $this->pdo->prepare("SELECT e.id, e.prenom, e.nom, c.nom AS classe_nom FROM eleves e LEFT JOIN classes c ON e.classe = c.nom WHERE e.etablissement_id = ? ORDER BY e.nom");
         $s->execute([\API\Core\EstablishmentContext::id()]);
         return $s->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -190,7 +190,7 @@ class DiplomeService
             SELECT d.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, c.nom AS classe_nom
             FROM diplomes d
             JOIN eleves e ON d.eleve_id = e.id
-            LEFT JOIN classes c ON e.classe_id = c.id
+            LEFT JOIN classes c ON e.classe = c.nom
             WHERE d.verification_token = :t
         ");
         $stmt->execute([':t' => $token]);
@@ -203,7 +203,7 @@ class DiplomeService
     {
         $stmt = $this->pdo->prepare("
             SELECT e.id FROM eleves e
-            JOIN classes c ON e.classe_id = c.id
+            JOIN classes c ON e.classe = c.nom
             WHERE c.nom = :c AND e.etablissement_id = :etab AND e.id NOT IN (
                 SELECT eleve_id FROM diplomes WHERE type = :t AND YEAR(date_obtention) = YEAR(CURDATE())
             )
@@ -233,7 +233,7 @@ class DiplomeService
         $sql = "SELECT d.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, c.nom AS classe_nom
                 FROM diplomes d
                 JOIN eleves e ON d.eleve_id = e.id
-                LEFT JOIN classes c ON e.classe_id = c.id
+                LEFT JOIN classes c ON e.classe = c.nom
                 WHERE d.numero_registre IS NOT NULL";
         $params = [];
         if ($annee) { $sql .= " AND d.registre_annee = :a"; $params[':a'] = $annee; }

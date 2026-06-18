@@ -26,7 +26,7 @@ $average = $data['average'] ?? null;
                 <?php if (!empty($note['eleve_nom'])): ?>
                 <div class="widget-list-meta"><?= htmlspecialchars($note['eleve_nom']) ?></div>
                 <?php endif; ?>
-                <div class="widget-list-meta"><?= htmlspecialchars(date('d/m/Y', strtotime($note['date_devoir']))) ?></div>
+                <div class="widget-list-meta"><?= htmlspecialchars(date('d/m/Y', strtotime($note['date_note']))) ?></div>
             </div>
         </li>
         <?php endforeach; ?>

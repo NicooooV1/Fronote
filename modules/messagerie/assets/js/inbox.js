@@ -428,13 +428,14 @@ function markConversationAsUnread(convId) {
  * Ajouter des gestionnaires d'erreurs globaux
  */
 function initErrorHandlers() {
-    // Intercepter les erreurs non capturées
+    // Journaliser le détail en console (debug) sans l'exposer à l'utilisateur :
+    // toaster chaque erreur JS bruite l'UI et fuite des détails internes.
     window.addEventListener('error', function(event) {
-        afficherNotificationErreur('Erreur JavaScript: ' + event.message);
+        console.error('Erreur JavaScript:', event.message, event.error);
     });
-    
-    // Intercepter les rejets de promesses non capturés
+
+    // Rejets de promesses non capturés
     window.addEventListener('unhandledrejection', function(event) {
-        afficherNotificationErreur('Erreur asynchrone: ' + event.reason);
+        console.error('Erreur asynchrone:', event.reason);
     });
 }

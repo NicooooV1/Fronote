@@ -27,7 +27,7 @@ $queued = 0;
 foreach ($parents as $parent) {
     // Get children
     $enfants = $pdo->prepare("SELECT e.id, e.nom, e.prenom, e.classe FROM eleves e
-        JOIN parent_eleve pe ON e.id = pe.eleve_id WHERE pe.parent_id = :pid AND e.actif = 1");
+        JOIN parent_eleve pe ON e.id = pe.id_eleve WHERE pe.id_parent = :pid AND e.actif = 1");
     $enfants->execute([':pid' => $parent['id']]);
     $enfants = $enfants->fetchAll(PDO::FETCH_ASSOC);
 
@@ -39,7 +39,7 @@ foreach ($parents as $parent) {
         $body .= "--- {$enfant['prenom']} {$enfant['nom']} ({$enfant['classe']}) ---\n";
 
         // Notes this week
-        $notes = $pdo->prepare("SELECT COUNT(*) AS nb, ROUND(AVG(note),1) AS moy FROM notes WHERE id_eleve = :eid AND date_evaluation BETWEEN :s AND :e");
+        $notes = $pdo->prepare("SELECT COUNT(*) AS nb, ROUND(AVG(note),1) AS moy FROM notes WHERE id_eleve = :eid AND date_note BETWEEN :s AND :e");
         $notes->execute([':eid' => $enfant['id'], ':s' => $weekStart, ':e' => $weekEnd]);
         $n = $notes->fetch(PDO::FETCH_ASSOC);
         $body .= "Notes: {$n['nb']} nouvelles" . ($n['moy'] ? " (moyenne: {$n['moy']})" : '') . "\n";

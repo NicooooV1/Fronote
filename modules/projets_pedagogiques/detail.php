@@ -4,6 +4,11 @@ require_once __DIR__ . '/includes/header.php';
 
 $user = $_SESSION['user'];
 $role  = $user['type'] ?? 'eleve';
+
+// Contrôle d'accès : la consultation d'un projet est réservée aux rôles déclarés
+// dans module.json (administrateur, professeur, vie_scolaire) — pas les élèves/parents.
+if (!isAdmin() && !isProfesseur() && !isVieScolaire()) { header('Location: /'); exit; }
+
 $id    = (int) ($_GET['id'] ?? 0);
 $projet = $projetService->getProjet($id);
 if (!$projet) { echo '<div class="container mt-4"><div class="alert alert-danger">Projet introuvable.</div></div>'; require_once __DIR__ . '/includes/footer.php'; exit; }
@@ -11,7 +16,7 @@ if (!$projet) { echo '<div class="container mt-4"><div class="alert alert-danger
 $participants = $projetService->getParticipants($id);
 $etapes       = $projetService->getEtapes($id);
 $types        = ProjetPedagogiqueService::typesLabels();
-$isResponsable = ($role === 'admin' || (int)($user['id'] ?? 0) === (int)$projet['responsable_id']);
+$isResponsable = (isAdmin() || (int)($user['id'] ?? 0) === (int)$projet['responsable_id']);
 
 /* Actions POST */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isResponsable) {

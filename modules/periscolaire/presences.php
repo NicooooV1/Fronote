@@ -6,7 +6,7 @@ $pageTitle = 'Présences périscolaire';
 $activePage = 'presences';
 require_once __DIR__ . '/includes/header.php';
 
-if (!isAdmin() && !isPersonnelVS()) { redirect('/periscolaire/services.php'); }
+if (!isAdmin() && !isPersonnelVS()) { redirect('/modules/periscolaire/services.php'); }
 
 $services = $periService->getServices();
 $serviceId = (int)($_GET['service_id'] ?? ($services[0]['id'] ?? 0));

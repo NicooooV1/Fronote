@@ -1,32 +1,24 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) session_start();
+// Charger l'API (Bridge -> bootstrap.php) AVANT tout démarrage de session :
+// le bloc gardé de bootstrap.php démarre la session durcie (HttpOnly + Secure(https)
+// + SameSite=Lax + nom/path par instance). Ne PAS faire de session_start() nu ici.
 require_once __DIR__ . '/../../../API/Legacy/Bridge.php';
 requireAuth();
+
+// Données d'internes (localisation nocturne de mineurs) : réservé aux gestionnaires.
+if (!isAdmin() && !isPersonnelVS()) { redirect('/accueil/accueil.php'); }
 
 $pdo = getPDO();
 require_once __DIR__ . '/InternatService.php';
 $internatService = new InternatService($pdo);
 
 $activePage = $activePage ?? 'internat';
-$extraCss = ['internat/assets/css/internat.css'];
+$extraCss = ['assets/css/internat.css'];
 $isGestionnaire = isAdmin() || isPersonnelVS();
+$isAdmin = isAdmin();
 
-$sidebarLinks = '<li class="sidebar-item">
-    <a href="/internat/chambres.php" class="sidebar-link ' . ($activePage === 'chambres' ? 'active' : '') . '"><i class="fas fa-bed"></i><span>Chambres</span></a>
-</li>
-<li class="sidebar-item">
-    <a href="/internat/affectations.php" class="sidebar-link ' . ($activePage === 'affectations' ? 'active' : '') . '"><i class="fas fa-user-check"></i><span>Affectations</span></a>
-</li>';
-if ($isGestionnaire) {
-    $sidebarLinks .= '<li class="sidebar-item">
-        <a href="/internat/mouvements.php" class="sidebar-link ' . ($activePage === 'mouvements' ? 'active' : '') . '"><i class="fas fa-exchange-alt"></i><span>Mouvements</span></a>
-    </li>
-    <li class="sidebar-item">
-        <a href="/internat/incidents.php" class="sidebar-link ' . ($activePage === 'incidents' ? 'active' : '') . '"><i class="fas fa-exclamation-triangle"></i><span>Incidents</span></a>
-    </li>';
-}
-
-$sidebarExtraContent = $sidebarLinks;
 $pageTitle = $pageTitle ?? 'Internat';
 require_once __DIR__ . '/../../../templates/shared_header.php';
+require_once __DIR__ . '/../../../templates/shared_topbar.php';
 ?>
+            <div class="content-container">

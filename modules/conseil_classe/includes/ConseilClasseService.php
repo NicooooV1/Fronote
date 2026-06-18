@@ -60,7 +60,7 @@ class ConseilClasseService
         $session = $session->fetch(PDO::FETCH_ASSOC);
 
         $classeId = $session['classe_id'];
-        $stats = $this->pdo->prepare("SELECT COUNT(DISTINCT e.id) AS nb_eleves, ROUND(AVG(n.note),2) AS moyenne_classe, (SELECT COUNT(*) FROM absences a JOIN eleves e2 ON a.id_eleve = e2.id WHERE e2.classe = :c AND a.justifiee = 0) AS absences_nj_total FROM eleves e LEFT JOIN notes n ON n.id_eleve = e.id WHERE e.classe = :c2 AND e.actif = 1");
+        $stats = $this->pdo->prepare("SELECT COUNT(DISTINCT e.id) AS nb_eleves, ROUND(AVG(n.note),2) AS moyenne_classe, (SELECT COUNT(*) FROM absences a JOIN eleves e2 ON a.id_eleve = e2.id WHERE e2.classe = :c AND a.justifie = 0) AS absences_nj_total FROM eleves e LEFT JOIN notes n ON n.id_eleve = e.id WHERE e.classe = :c2 AND e.actif = 1");
         $stats->execute([':c' => $classeId, ':c2' => $classeId]);
 
         return ['session' => $session, 'stats_classe' => $stats->fetch(PDO::FETCH_ASSOC)];
@@ -75,7 +75,7 @@ class ConseilClasseService
         $moyennes = $this->pdo->prepare("SELECT m.nom AS matiere, ROUND(AVG(n.note),2) AS moyenne FROM notes n JOIN matieres m ON n.id_matiere = m.id WHERE n.id_eleve = :eid GROUP BY m.id ORDER BY m.nom");
         $moyennes->execute([':eid' => $eleveId]);
 
-        $absences = $this->pdo->prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN justifiee = 0 THEN 1 ELSE 0 END) AS non_justifiees FROM absences WHERE id_eleve = :eid");
+        $absences = $this->pdo->prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN justifie = 0 THEN 1 ELSE 0 END) AS non_justifiees FROM absences WHERE id_eleve = :eid");
         $absences->execute([':eid' => $eleveId]);
 
         $incidents = $this->pdo->prepare("SELECT COUNT(*) AS total FROM incidents WHERE eleve_id = :eid");

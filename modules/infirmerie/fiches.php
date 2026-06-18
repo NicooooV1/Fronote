@@ -6,7 +6,7 @@ $pageTitle = 'Fiches santé';
 $activePage = 'fiches';
 require_once __DIR__ . '/includes/header.php';
 
-if (!isAdmin() && !isPersonnelVS()) { redirect('/infirmerie/infirmerie.php'); }
+if (!isAdmin() && !isPersonnelVS()) { redirect('modules/infirmerie/infirmerie.php'); }
 
 $recherche = $_GET['q'] ?? '';
 $fiches = $infirmerieService->getFiches($recherche ?: null);

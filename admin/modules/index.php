@@ -60,33 +60,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === ($
         }
     }
 
-    // Synchronise les manifestes module.json (perms/widgets/settings/routes)
-    // et exécute les migrations SQL en attente déclarées par chaque module.
+    // Synchronise les manifestes module.json (perms/widgets/settings/routes).
     if ($action === 'sync_migrate') {
         try {
             $sdk = app('module_sdk');
             $sync = $sdk->syncAll();
-            $migExecuted = 0;
-            $migErrors = [];
-            foreach (array_keys($sdk->discover()) as $mk) {
-                $r = $sdk->migrate($mk, 'admin');
-                $migExecuted += count($r['executed']);
-                $migErrors = array_merge($migErrors, $r['errors']);
-            }
-            $allErrors = array_merge($sync['errors'] ?? [], $migErrors);
-            logAudit('module.sync_migrate', 'modules_config', null, null, [
-                'synced' => $sync['synced'] ?? 0, 'migrations' => $migExecuted, 'errors' => count($allErrors),
+            $allErrors = $sync['errors'] ?? [];
+            logAudit('module.sync', 'modules_config', null, null, [
+                'synced' => $sync['synced'] ?? 0, 'errors' => count($allErrors),
             ]);
             $moduleService->clearCache();
             if (empty($allErrors)) {
-                $message = "Synchronisation terminée : {$sync['synced']} module(s) synchronisé(s), {$migExecuted} migration(s) appliquée(s).";
+                $message = "Synchronisation terminée : {$sync['synced']} module(s) synchronisé(s).";
                 $messageType = 'success';
             } else {
                 $message = "Sync terminée avec " . count($allErrors) . " erreur(s) : " . implode(' | ', array_slice($allErrors, 0, 4));
                 $messageType = 'error';
             }
         } catch (\Throwable $e) {
-            $message = 'Échec de la synchronisation : ' . $e->getMessage();
+            error_log("module sync failed: " . $e->getMessage());
+            $message = 'Échec de la synchronisation des modules.';
             $messageType = 'error';
         }
     }
@@ -166,69 +159,20 @@ include __DIR__ . '/../includes/header.php';
 
 <?php if ($message): ?>
 <div class="msg msg-<?= $messageType === 'error' ? 'error' : ($messageType === 'success' ? 'success' : 'warn') ?>" style="padding:12px 16px;border-radius:6px;margin-bottom:16px;font-size:.92em">
-    <?= $messageType === 'success' ? '✅' : ($messageType === 'error' ? '❌' : 'ℹ️') ?> <?= $message ?>
+    <?= $messageType === 'success' ? '✅' : ($messageType === 'error' ? '❌' : 'ℹ️') ?> <?= htmlspecialchars($message) ?>
 </div>
 <?php endif; ?>
 
 <!-- Barre d'actions globales -->
 <div style="display:flex;justify-content:flex-end;margin-bottom:18px">
-    <form method="post" onsubmit="return confirm('Resynchroniser tous les module.json et exécuter les migrations SQL en attente ?');">
+    <form method="post" onsubmit="return confirm('Resynchroniser tous les module.json ?');">
         <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
         <input type="hidden" name="action" value="sync_migrate">
-        <button type="submit" class="btn btn-secondary btn-sm" title="Relit chaque module.json (permissions, widgets, settings, routes) et applique les migrations SQL déclarées non encore exécutées">
-            <i class="fas fa-rotate"></i> Synchroniser &amp; migrer les modules
+        <button type="submit" class="btn btn-secondary btn-sm" title="Relit chaque module.json (permissions, widgets, settings, routes)">
+            <i class="fas fa-rotate"></i> Synchroniser les modules
         </button>
     </form>
 </div>
-
-<!-- Historique des migrations -->
-<?php
-$migrations = [];
-try { $migrations = app('module_sdk')->getMigrations(null, 50); } catch (\Throwable $e) { $migrations = []; }
-?>
-<?php if (!empty($migrations)): ?>
-<div class="mod-category">
-    <div class="mod-category-title"><span>Migrations SQL</span>
-        <span style="font-size:.78em;font-weight:400;color:#a0aec0">(<?= count($migrations) ?>)</span>
-    </div>
-    <div style="overflow-x:auto">
-    <table style="width:100%;border-collapse:collapse;font-size:.85em">
-        <thead>
-            <tr style="text-align:left;color:#718096;border-bottom:1px solid #e2e8f0">
-                <th style="padding:6px 10px">Module</th>
-                <th style="padding:6px 10px">Fichier</th>
-                <th style="padding:6px 10px">Version</th>
-                <th style="padding:6px 10px">Statut</th>
-                <th style="padding:6px 10px">Durée</th>
-                <th style="padding:6px 10px">Déclenché par</th>
-                <th style="padding:6px 10px">Date</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($migrations as $mig): ?>
-            <tr style="border-bottom:1px solid #f7fafc">
-                <td style="padding:6px 10px"><?= htmlspecialchars($mig['module_key']) ?></td>
-                <td style="padding:6px 10px;font-family:monospace"><?= htmlspecialchars($mig['migration_file']) ?></td>
-                <td style="padding:6px 10px"><?= htmlspecialchars($mig['migration_version'] ?? '—') ?></td>
-                <td style="padding:6px 10px">
-                    <?php $st = $mig['status'] ?? 'success'; ?>
-                    <span style="padding:2px 8px;border-radius:10px;font-size:.78em;font-weight:600;<?= $st === 'success' ? 'background:#c6f6d5;color:#276749' : ($st === 'failed' ? 'background:#fed7d7;color:#9b2c2c' : 'background:#feebc8;color:#9c4221') ?>">
-                        <?= htmlspecialchars($st) ?>
-                    </span>
-                    <?php if (!empty($mig['error_message'])): ?>
-                        <div style="color:#c53030;font-size:.78em;margin-top:2px"><?= htmlspecialchars(mb_substr($mig['error_message'], 0, 160)) ?></div>
-                    <?php endif; ?>
-                </td>
-                <td style="padding:6px 10px"><?= $mig['execution_time_ms'] !== null ? (int)$mig['execution_time_ms'] . ' ms' : '—' ?></td>
-                <td style="padding:6px 10px"><?= htmlspecialchars($mig['triggered_by'] ?? '—') ?></td>
-                <td style="padding:6px 10px;white-space:nowrap"><?= htmlspecialchars($mig['executed_at'] ?? '') ?></td>
-            </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
-    </div>
-</div>
-<?php endif; ?>
 
 <!-- Modules par catégorie -->
 <?php foreach ($categories as $catKey => $modules): ?>

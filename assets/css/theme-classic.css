@@ -704,6 +704,25 @@ a {
   margin-bottom: var(--space-lg);
 }
 
+.page-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--text-secondary, #718096);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+.page-back:hover {
+  background: var(--bg-muted, #edf2f7);
+  color: var(--primary-color);
+}
+.page-back i { font-size: 0.85em; }
+
 .page-title h1 {
   font-size: var(--font-xl);
   font-weight: 500;

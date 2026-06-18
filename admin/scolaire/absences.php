@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Administration des absences et retards — deux onglets, CRUD, justifier, stats
  */
@@ -123,7 +123,10 @@ $totalRetardsAll = $retResult['total'];
 
 $eleves = [];
 try {
-    $eleves = $pdo->query("SELECT id, nom, prenom, classe FROM eleves WHERE actif = 1 ORDER BY nom, prenom")->fetchAll(PDO::FETCH_ASSOC);
+    // Scopé établissement + borné (sécurité/perf)
+    $stmtEleves = $pdo->prepare("SELECT id, nom, prenom, classe FROM eleves WHERE actif = 1 AND etablissement_id = ? ORDER BY nom, prenom LIMIT 1000");
+    $stmtEleves->execute([\API\Core\EstablishmentContext::id()]);
+    $eleves = $stmtEleves->fetchAll(PDO::FETCH_ASSOC);
 } catch (\Throwable $e) {}
 
 $pageTitle = 'Absences & Retards';

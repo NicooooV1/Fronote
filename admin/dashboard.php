@@ -293,6 +293,16 @@ include 'includes/header.php';
     <div class="admin-cards-section">
         <div class="admin-cards-section-title"><i class="fas fa-cog"></i> Système</div>
         <div class="admin-cards-grid">
+            <a href="systeme/import_export.php" class="admin-card">
+                <div class="admin-card-icon"><i class="fas fa-file-import"></i></div>
+                <div class="admin-card-title">Import / Export</div>
+                <div class="admin-card-stat">Import en masse (élèves, notes, devoirs…)</div>
+            </a>
+            <a href="../modules/support/tickets.php" class="admin-card">
+                <div class="admin-card-icon"><i class="fas fa-life-ring"></i></div>
+                <div class="admin-card-title">Tickets de support</div>
+                <div class="admin-card-stat">Traiter les demandes des utilisateurs</div>
+            </a>
             <a href="systeme/audit.php" class="admin-card">
                 <div class="admin-card-icon"><i class="fas fa-history"></i></div>
                 <div class="admin-card-title">Journal d'audit</div>

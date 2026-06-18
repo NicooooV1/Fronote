@@ -1,38 +1,39 @@
 # Guide d'installation — Fronote
 
-> Ce document est destiné aux **administrateurs système et responsables informatiques** des établissements scolaires.
-> Il ne nécessite aucune connaissance du développement logiciel.
+> Ce document s'adresse aux **administrateurs système** et **responsables informatiques** qui déploient Fronote sur un serveur, ainsi qu'aux **développeurs** qui veulent comprendre ce que fait l'assistant d'installation.
+>
+> Version documentée : **Fronote 3.2.4** (build 2026-05-31). Source de vérité : `install.php`, `.env.example`, `pronote.sql`, `API/Services/UpdateService.php`, `API/Services/SchemaSyncService.php`.
 
 ---
 
-## Ce que vous avez reçu
+## 1. Prérequis
 
-Votre pack d'installation Fronote contient les éléments suivants :
-
-| Élément | Forme | Description |
-|---------|-------|-------------|
-| **Archive du projet** | `fronote-vX.X.X.zip` | L'ensemble des fichiers de l'application |
-| **Clé webhook** | Chaîne de caractères | Votre clé unique pour les mises à jour automatiques |
-| **Identifiants de contact** | Email / ticket | Pour joindre le support |
-
-> La clé webhook est **unique à votre installation**. Ne la partagez pas et conservez-la précieusement.
-
----
-
-## Prérequis
-
-Avant de commencer, assurez-vous que votre serveur dispose de :
-
-| Logiciel | Version minimale | Vérification |
-|----------|-----------------|--------------|
-| PHP | 8.0+ | `php -v` |
-| MySQL | 5.7+ ou MariaDB 10.3+ | `mysql --version` |
-| Apache | 2.4+ | `apache2 -v` |
+| Logiciel / extension | Version minimale | Vérification |
+|----------------------|-----------------|--------------|
+| PHP | **8.0+** | `php -v` |
+| MySQL | **8.0+** *(ou MariaDB 10.3+)* | `mysql --version` |
+| Serveur web (Apache 2.4+ / Nginx) | — | `apache2 -v` |
 | Composer | 2.x | `composer --version` |
-| Extension PHP pdo_mysql | — | `php -m \| grep pdo_mysql` |
-| Extension PHP mbstring | — | `php -m \| grep mbstring` |
+| Git *(pour les mises à jour)* | 2.x | `git --version` |
 
-**Apache :** le module `mod_rewrite` doit être activé :
+### Extensions PHP
+
+L'assistant **refuse de continuer** si l'une de ces extensions est absente (vérifiées à l'étape 1 *et* au POST) :
+
+```
+pdo · pdo_mysql · json · mbstring · session · sodium · zip · fileinfo
+```
+
+Extensions **recommandées** (leur absence n'empêche pas l'installation mais dégrade des fonctionnalités — un avertissement est affiché) :
+
+```
+intl  (i18n)   ·   gd  (avatars / images)   ·   curl  (marketplace, HTTP sortant)
+```
+
+> `composer.json` exige `php >=8.0`, `ext-sodium`, `ext-json`, `ext-zip`, `ext-pdo` et la dépendance `firebase/php-jwt ^6.0`.
+
+### Apache : `mod_rewrite`
+
 ```bash
 sudo a2enmod rewrite
 sudo systemctl restart apache2
@@ -40,307 +41,336 @@ sudo systemctl restart apache2
 
 ---
 
-## Étape 1 — Déposer les fichiers
-
-Extrayez l'archive dans le répertoire web de votre serveur :
+## 2. Déposer les fichiers et installer les dépendances
 
 ```bash
-# Exemple sur un serveur Linux avec Apache
-unzip fronote-vX.X.X.zip -d /var/www/fronote
-```
-
-Définissez les permissions :
-```bash
-chown -R www-data:www-data /var/www/fronote
-chmod -R 755 /var/www/fronote
-chmod -R 775 /var/www/fronote/uploads  # Écriture nécessaire pour les fichiers
-```
-
----
-
-## Étape 2 — Installer les dépendances PHP
-
-```bash
+# Récupérer le code (recommandé : git, indispensable pour les mises à jour intégrées)
+git clone https://github.com/VOTRE-ORG/fronote.git /var/www/fronote
 cd /var/www/fronote
+
+# Dépendances PHP (sans les paquets de dev, autoload optimisé)
 composer install --no-dev --optimize-autoloader
 ```
 
-> Si `composer` n'est pas installé :
-> ```bash
-> sudo apt install composer    # Debian/Ubuntu
-> ```
+> Le code peut aussi être déposé depuis une archive ZIP, mais le bouton de mise à jour intégré (chapitre 7) nécessite un dépôt Git fonctionnel (`git init` + remote configuré).
+
+### Droits des dossiers
+
+L'utilisateur du serveur web doit pouvoir **écrire** dans le `.env`, les logs, les uploads et le stockage. L'assistant **crée et teste** ces répertoires lui‑même, mais ils doivent être inscriptibles :
+
+```bash
+chown -R www-data:www-data /var/www/fronote
+# 775 sur les dossiers d'écriture — l'assistant écrit .env, install.lock, logs, uploads, storage…
+chmod -R 755 /var/www/fronote
+chmod -R 775 /var/www/fronote/{uploads,temp,storage,API/logs}
+```
+
+Répertoires **créés et vérifiés** par l'assistant (étape 1) :
+
+```
+API/logs · API/config
+uploads · uploads/messagerie · uploads/devoirs · uploads/justificatifs
+temp
+storage · storage/cache · storage/tmp · storage/pdf
+storage/backups · storage/backups/modules
+storage/email_queue · storage/quarantine
+```
+
+> Si un répertoire manque ou n'est pas inscriptible, l'étape 1 affiche directement les commandes correctives (`mkdir -p …`, `chmod 755 …`, `chown -R www-data …`) à coller sur le serveur.
 
 ---
 
-## Étape 3 — Assistant d'installation
+## 3. L'assistant d'installation (`install.php`)
 
-Ouvrez votre navigateur et accédez à :
+Ouvrez dans un navigateur :
 
 ```
 http://votre-serveur/fronote/install.php
 ```
 
-> Par défaut, l'assistant n'est accessible **que depuis le réseau local** (192.168.x.x, 10.x.x.x…).
-> Si vous installez à distance, contactez le support pour obtenir la procédure d'accès temporaire.
+> **Accès restreint au réseau local.** `install.php` ne répond qu'aux IP privées (`127.0.0.1`, `::1`, `10.x`, `172.16–31.x`, `192.168.x`). Une IP supplémentaire peut être autorisée via la clé `ALLOWED_INSTALL_IP` du `.env` (liste séparée par des virgules). Toute autre adresse reçoit un **403**.
+>
+> **Anti‑réinstallation.** Si `install.lock` **et** un `.env` exploitable (> 10 octets) existent déjà, l'assistant renvoie un 403 « Installation déjà effectuée ». Si `install.lock` existe mais que `.env` est introuvable/illisible, l'assistant reste accessible en **mode récupération** pour réécrire la configuration.
 
-L'assistant vous guide en **5 étapes** :
+L'assistant déroule **5 étapes**, chacune validée côté serveur avant de passer à la suivante (impossible de sauter en avant ; on peut revenir en arrière). Les saisies sont conservées en session.
 
-| Étape | Ce qui se passe |
-|-------|-----------------|
-| **1. Pré-requis** | Vérification automatique de PHP, extensions, répertoires |
-| **2. Base de données** | Saisir l'hôte, le nom, l'utilisateur et le mot de passe MySQL |
-| **3. Application** | Nom de l'établissement, URL du site, paramètres de session |
-| **4. Administrateur** | Créer le premier compte administrateur |
-| **5. Finalisation** | Création de la base, import du socle, **provisionnement du schéma de tous les modules**, configuration, tests |
+| Étape | Contenu | Ce qui est vérifié / fait |
+|-------|---------|---------------------------|
+| **1. Pré‑requis** | — | Version PHP ≥ 8.0, extensions requises, répertoires inscriptibles, présence de `API/bootstrap.php`, `API/core.php`, `pronote.sql` |
+| **2. Base de données** | Hôte, port, utilisateur, mot de passe, **nom de la base**, charset | **Connexion MySQL testée en direct** (aucune base créée ici). `localhost` est converti en `127.0.0.1` (TCP obligatoire). En cas d'erreur 1045/2002, un message d'aide ciblé est affiché (GRANT à exécuter, port à ouvrir…) |
+| **3. Application** | Nom, environnement, mode debug, URL, chemin de base, paramètres session/CSRF/rate‑limit, **SMTP optionnel** | `APP_DEBUG` interdit si `APP_ENV=production`. Les valeurs de sécurité sont bornées (session ≥ 600 s, CSRF ≥ 300 s, tentatives login 3–10…) |
+| **4. Administrateur** | Nom, prénom, email, mot de passe | Mot de passe **≥ 12 caractères** avec majuscule, minuscule, chiffre et caractère spécial. L'**identifiant de connexion sera `admin`** (fixe) |
+| **5. Installation** | Récapitulatif → exécution | Voir détail ci‑dessous |
 
-> **Étape 5 en détail.** L'assistant crée la base, importe le socle `pronote.sql`, puis exécute `ModuleSDK::syncAll()` (enregistre chaque module dans `modules_config`, ses widgets et permissions) et `provisionSql()` pour **tous** les modules découverts — leurs tables (`Database/install.sql`) sont créées même si le module reste désactivé. Les contrôles de clés étrangères sont désactivés pendant l'import (références croisées). Seuls les modules `core` sont activés ; les autres restent à activer dans l'admin.
+### Détail de l'étape 5 (exécution)
 
-> **Protection contre l'écrasement** : si la base existe déjà et contient des tables, l'assistant affiche un avertissement avec le nombre de tables détectées. Vous devrez cocher explicitement une case de confirmation avant de procéder, ou revenir en arrière pour choisir un autre nom de base.
+L'assistant, dans l'ordre :
 
-À la fin de l'assistant, un fichier `install.lock` est créé automatiquement — il **bloque** toute réinstallation accidentelle.
+1. **Écrit `.env`** (écriture atomique : fichier temporaire + `fsync` + `rename`). Génère automatiquement `APP_KEY` et `JWT_SECRET` (32 octets aléatoires hex chacun), positionne `SESSION_SECURE` selon HTTPS, renseigne `ALLOWED_INSTALL_IP` avec l'IP courante.
+2. **Crée les fichiers de protection** : `.htaccess` racine (interdit `.env`, `install.lock`, `*.sql`, `*.ini`…), plus `uploads/.htaccess`, `temp/.htaccess`, `API/logs/.htaccess` (« Deny from all »).
+3. **Se connecte à MySQL** puis **crée la base** (`CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`).
+   - **Protection contre l'écrasement** : si la base existe déjà et contient des tables, l'assistant affiche le nombre de tables et **exige une case de confirmation** avant de la `DROP`/recréer. Sinon, revenez à l'étape 2 pour choisir un autre nom.
+4. **Importe `pronote.sql`** (le socle : `administrateurs`, `eleves`, `professeurs`, `parents`, `classes`, `matieres`, `periodes`, `modules_config`, audit, SMTP…). L'import désactive `FOREIGN_KEY_CHECKS` (FK croisées), découpe proprement le dump, et **échoue dur** sur toute erreur SQL non bénigne (une erreur réelle ne doit pas être présentée comme un succès).
+5. **Crée le compte administrateur** (`password_hash` BCRYPT cost 12, `identifiant = admin`, `role = administrateur`).
+6. **Configure le SMTP** si renseigné à l'étape 3 (`UPDATE smtp_config`).
+7. **Charge `API/bootstrap.php`** et lance des **tests de bout en bout** non bloquants : authentification de l'admin créé, RateLimiter, CSRF.
+8. **Synchronise et provisionne les modules** *(voir ci‑dessous)*.
+9. **Sécurise et vérifie `.env`** (`chmod 0640` en production), puis **crée `install.lock`** (écriture atomique également).
+10. **Purge les secrets en clair** de la session (mots de passe admin/DB/SMTP).
+11. **Neutralise l'installateur** : tente de renommer `install.php` en `install.php.disabled-AAAAMMJJ` (best‑effort ; sous Windows le rename peut échouer → repli `chmod 0400` + avertissement de le faire à la main).
+
+### Provisionnement du schéma des modules (PAS de migrations)
+
+> **Important.** Fronote n'utilise **aucun système de migration**. Il n'existe ni table `module_migrations`/`core_migrations`, ni dossier `Database/migrations`, ni `scripts/migrate.php`.
+
+Le schéma se compose de deux sources **déclaratives** (toutes en `CREATE TABLE IF NOT EXISTS`, schéma final complet) :
+
+- **`pronote.sql`** — le cœur (importé à l'étape 5.4 ci‑dessus) ;
+- **`modules/<clé>/Database/install.sql`** — le schéma de chaque module.
+
+À l'étape 5.8, l'assistant appelle `ModuleSDK::syncAll()` (enregistre chaque module dans `modules_config`, ses widgets, permissions et routes) puis `provisionSql()` pour **tous les modules découverts** — leurs tables sont créées **même si le module reste désactivé** (l'activation gère la *visibilité*, pas le *schéma*). Les modules essentiels (`core`) sont activés ; les autres restent à activer dans l'admin.
+
+> `ModuleSDK::discover()` scanne `modules/*/module.json` **et** `racine/*/module.json` (~61 modules : les modules métier vivent sous `modules/<clé>/`, les essentiels restent à la racine).
+
+À la fin, l'écran de succès affiche le **journal d'installation** complet et les informations de connexion.
 
 ---
 
-## Étape 4 — Première connexion & mise en route
+## 4. Le fichier `.env`
 
-Rendez-vous sur la page de connexion :
+`.env` est **généré automatiquement** par l'assistant — ne le créez pas à la main. `.env.example` documente toutes les clés disponibles. Principales clés écrites par l'installateur :
+
+```env
+# Base de données
+DB_HOST=127.0.0.1      # localhost est réécrit en 127.0.0.1 (TCP)
+DB_PORT=3306
+DB_NAME=...
+DB_USER=...
+DB_PASS=...
+DB_CHARSET=utf8mb4
+
+# Application
+APP_NAME=Fronote
+APP_ENV=production
+APP_DEBUG=false        # interdit à true si APP_ENV=production
+APP_URL=https://votre-domaine.fr/fronote
+APP_BASE_PATH=/var/www/fronote   # chemin disque absolu du projet
+BASE_URL=/fronote                 # préfixe d'URL (vide si à la racine du domaine)
+
+# Sécurité (générés aléatoirement à l'installation)
+APP_KEY=<64 hex>       # HMAC des cookies signés, chiffrement at-rest, sauvegardes
+JWT_SECRET=<64 hex>    # JWT (WebSocket) ; repli si APP_KEY absent
+TRUST_PROXY_HEADERS=false   # true UNIQUEMENT derrière un reverse-proxy de confiance terminant TLS
+SESSION_SECURE=true    # true si HTTPS détecté à l'installation
+SESSION_NAME=pronote_session
+SESSION_LIFETIME=7200
+CSRF_LIFETIME=3600
+MAX_LOGIN_ATTEMPTS=5
+RATE_LIMIT_ATTEMPTS=5
+
+# Chemins (déduits de APP_BASE_PATH)
+LOGS_PATH=.../API/logs
+UPLOADS_PATH=.../uploads
+TEMP_PATH=.../temp
+
+# Sécurité installateur
+ALLOWED_INSTALL_IP=<IP du poste d'installation>
+
+# Mises à jour
+GITHUB_BRANCH=main     # branche Git suivie
+# GIT_BINARY=          # chemin de git si absent du PATH (ex. Windows)
+
+# i18n
+APP_LOCALE=fr
+APP_FALLBACK_LOCALE=fr
+```
+
+> Pour générer manuellement une clé 64 hex : `php -r "echo bin2hex(random_bytes(32));"`.
+>
+> Le mail SMTP peut rester vide à l'installation et être configuré ensuite dans l'administration. Sans SMTP, Fronote retombe sur `mail()` de PHP (souvent bloqué par les hébergeurs).
+
+---
+
+## 5. Première connexion & onboarding
 
 ```
 http://votre-serveur/fronote/login/index.php
 ```
 
-Connectez-vous avec le compte **administrateur** créé à l'étape 3.
+Connectez‑vous avec **identifiant `admin`** et le mot de passe défini à l'étape 4.
 
-> **Assistant de mise en route (onboarding).** Au premier login admin, tant que l'établissement n'est pas configuré, Fronote redirige vers `modules/onboarding/index.php`. Vous y définissez l'identité de l'établissement, les classes, les matières et les **périodes** (trimestres *ou* semestres, avec leurs dates). Chaque établissement a ses propres périodes et son propre découpage — un collège peut être en trimestres et un lycée en semestres. Les établissements supplémentaires et la reconfiguration se gèrent ensuite dans **Administration → Établissement**.
+> **Assistant de mise en route (onboarding) — obligatoire.** Tant que l'établissement courant porte le code `default`, tout accès d'un compte `administrateur`/`super_admin` est redirigé vers **`/modules/onboarding/index.php`** (gate dans `API/onboarding_gate.php`, appliqué depuis `API/module_boot.php` et `admin/includes/header.php`). Vous y définissez l'identité de l'établissement, les classes, les matières et les **périodes** (trimestres *ou* semestres, avec leurs dates). Seules les pages `/admin/etablissement/*` restent accessibles pendant ce blocage (ce sont elles qui font sortir de l'état `default`).
+>
+> **Fin d'année scolaire.** Une fois configuré, si aucune période ne couvre la date du jour, l'admin est automatiquement renvoyé vers `admin/etablissement/periodes.php?reconfigure=1` pour redéfinir les plages avant de continuer.
 
-> **Fin d'année scolaire.** Lorsque la date du jour sort des plages de périodes définies, l'admin est automatiquement invité à redéfinir les trimestres/semestres avant de pouvoir continuer.
-
----
-
-## Étape 5 — Configurer les mises à jour automatiques
-
-Fronote peut se mettre à jour automatiquement dès qu'une nouvelle version est publiée, grâce à votre **clé webhook**.
-
-### 5.1 Ouvrir la configuration
-
-Dans Fronote, connectez-vous en tant qu'administrateur puis allez dans :
-**Administration → Système → Mises à jour**
-
-### 5.2 Saisir votre clé webhook
-
-Dans l'onglet **Configuration** :
-
-- **Webhook secret** : collez votre clé webhook reçue dans le pack
-- **Branche** : laissez `main` (valeur par défaut)
-- Cliquez **Enregistrer**
-
-### 5.3 Communiquer votre URL de mise à jour
-
-Transmettez au support l'**URL de mise à jour** de votre serveur, qui a la forme suivante :
-
-```
-https://votre-domaine.fr/fronote/API/endpoints/webhook_update.php
-```
-
-Le support enregistrera cette URL dans le système de déploiement, ce qui permettra à votre serveur de recevoir automatiquement les mises à jour lors de chaque nouvelle version.
-
-### Comment fonctionnent les mises à jour
-
-```
-Nouvelle version publiée par les développeurs
-  → Votre serveur reçoit un signal de mise à jour (webhook)
-  → Fronote vérifie l'authenticité du signal avec votre clé
-  → La mise à jour est téléchargée et appliquée
-  → Votre fichier de configuration (.env) est préservé
-  → Un test automatique vérifie que tout fonctionne
-```
-
-> En cas d'échec d'une mise à jour, tout est automatiquement restauré dans l'état précédent.
-
-### Déclencher une mise à jour manuellement
-
-Si vous souhaitez appliquer une mise à jour sans attendre le déclencheur automatique :
-
-**Administration → Système → Mises à jour → Statut → Déclencher une mise à jour**
-
-Vous pouvez suivre l'avancement dans l'onglet **Journal**.
+Chaque établissement a ses propres périodes et son propre découpage (un collège en trimestres, un lycée en semestres). Les **établissements supplémentaires** (multi‑établissement, géré par `super_admin`) et toute reconfiguration se font dans **Administration → Établissement**.
 
 ---
 
-## Étape 6 — WebSocket (optionnel)
+## 6. Tâches planifiées (cron)
 
-Le WebSocket permet les **notifications en temps réel** dans la messagerie (voir un nouveau message sans recharger la page, indicateur de frappe…).
-
-> **Sans WebSocket**, tout fonctionne normalement. L'application vérifie automatiquement les nouveaux messages en arrière-plan (toutes les 30 secondes environ).
-
-### Installer Node.js
+Fronote s'appuie sur des tâches de fond pour le traitement asynchrone et la maintenance.
 
 ```bash
-sudo apt install nodejs npm   # Debian/Ubuntu
-node -v                       # vérifier : v16+ requis
+crontab -e
 ```
 
-### Installer les dépendances du serveur WebSocket
+```cron
+# File de jobs (emails, notifications…) — toutes les minutes
+* * * * * php /var/www/fronote/scripts/worker.php >> /var/www/fronote/API/logs/worker.log 2>&1
 
-```bash
-cd /var/www/fronote/websocket-server
-npm init -y
-npm install express socket.io jsonwebtoken
+# Maintenance quotidienne (purge audit, backups + rotation, cache, tokens, rate-limit) — 2h du matin
+0 2 * * * php /var/www/fronote/cron/daily_maintenance.php >> /var/www/fronote/API/logs/cron.log 2>&1
 ```
 
-### Démarrer le serveur
+Tâches optionnelles supplémentaires disponibles dans `cron/` selon les modules activés : `hourly_maintenance.php`, `weekly_digest.php`, `formations_expirations.php`, `bourses_rappels.php`, `inventaire_maintenance.php`, `intelligence_calcul.php`.
+
+> Il n'existe **plus** de cron de vérification de mise à jour (`scripts/check_update.php` a été supprimé). Les mises à jour se déclenchent depuis l'interface (chapitre 7).
+
+---
+
+## 7. Mises à jour (un seul bouton)
+
+Fronote se met à jour depuis l'interface d'administration : **Administration → Système → Mises à jour** (`admin/systeme/update.php`, réservé au rôle `administrateur`).
+
+### Ce que fait « Mettre à jour maintenant »
+
+`app('updates')->applyUpdate()` (classe `API\Services\UpdateService`) exécute, dans l'ordre :
+
+1. `git fetch origin <branche>`
+2. `git reset --hard origin/<branche>` — le serveur reflète **exactement** le dépôt distant (le `.env` est sauvegardé puis restauré s'il venait à disparaître) ;
+3. **`SchemaSyncService::sync()`** — réconciliation **déclarative, idempotente et non destructive** du schéma : lit `pronote.sql` + tous les `install.sql`, **crée les tables manquantes** et **ajoute les colonnes manquantes** (`ADD COLUMN`). **Jamais** de migration, jamais de `DROP`, jamais de modification de type existant ;
+4. `module_sdk->syncAll()` — re‑synchronise les manifestes (permissions, widgets, routes) ;
+5. **vide le cache** applicatif.
+
+Le bouton **Vérifier** liste les commits en attente sur `origin/<branche>` sans rien appliquer.
+
+### Configuration
+
+Dans l'onglet de la page Mises à jour :
+
+| Clé `.env` | Rôle | Défaut |
+|------------|------|--------|
+| `GITHUB_BRANCH` | Branche Git suivie | `main` |
+| `GIT_BINARY` | Chemin de l'exécutable `git` s'il n'est pas dans le PATH du serveur web (utile sous Windows) | `git` |
+
+> **Prérequis : Git.** Le serveur doit avoir `git` installé et le projet doit être un dépôt Git valide avec un remote configuré. Le badge « git OK / git introuvable » de la page le confirme. Si Fronote a été déposé depuis un ZIP :
+> ```bash
+> cd /var/www/fronote
+> git init && git remote add origin https://github.com/VOTRE-ORG/fronote.git
+> git fetch origin && git reset --hard origin/main
+> ```
+>
+> Le mécanisme historique (webhook GitHub, releases ZIP, `webhook_update.php`, `scripts/update.php`) a été **supprimé**. La mise à jour est désormais 100 % « pull » déclenché depuis l'admin.
+
+---
+
+## 8. WebSocket temps réel (optionnel)
+
+Le serveur WebSocket (Socket.IO) alimente les **notifications temps réel** de la messagerie (nouveau message, indicateur de frappe…). Code dans **`websocket/`** (`server.js` + `package.json`).
+
+> **Sans WebSocket, tout fonctionne** : l'application interroge périodiquement le serveur en arrière‑plan. `WEBSOCKET_ENABLED=false` par défaut dans le `.env` généré.
 
 ```bash
-# Installation de PM2 (gestionnaire de processus)
+# Node.js 16+
+sudo apt install nodejs npm && node -v
+
+cd /var/www/fronote/websocket
+npm install                      # installe les dépendances (socket.io, jsonwebtoken, dotenv…)
+
+# Démarrage persistant avec PM2
 sudo npm install -g pm2
-
-# Démarrage
-cd /var/www/fronote/websocket-server
-pm2 start server.js --name "fronote-ws"
-pm2 save       # conserver après redémarrage serveur
-pm2 startup    # activer au démarrage automatique (suivre les instructions affichées)
+pm2 start server.js --name fronote-ws
+pm2 save && pm2 startup
 ```
 
-### Configurer Fronote
-
-Dans le fichier `.env` à la racine du projet, vérifiez ces lignes (normalement déjà renseignées par l'installateur) :
+Le serveur lit le `.env` **à la racine du projet** (`../.env`). Variables utiles : `WEBSOCKET_PORT` (défaut 3000), `WEBSOCKET_API_SECRET`, `JWT_SECRET` (ou `APP_KEY`), `WEBSOCKET_ALLOWED_ORIGINS`, et `WSS_CERT_PATH`/`WSS_KEY_PATH` pour le TLS. Activez‑le côté Fronote :
 
 ```env
 WEBSOCKET_ENABLED=true
-WEBSOCKET_CLIENT_URL=http://votre-serveur:3000
+WEBSOCKET_URL=http://localhost:3000
+WEBSOCKET_CLIENT_URL=ws://localhost:3000
 ```
 
-Vérifiez que le serveur WebSocket répond :
-```bash
-curl http://localhost:3000/health
-# → {"status":"ok","connections":0,"uptime":...}
-```
+Vérification : `curl http://localhost:3000/health`.
 
 ---
 
-## Étape 7 — Tâches planifiées (cron)
+## 9. Checklist post‑installation
 
-Fronote utilise des tâches de fond pour le traitement asynchrone et la maintenance.
+- [ ] Connexion administrateur (`admin`) fonctionnelle
+- [ ] **Onboarding terminé** : identité de l'établissement, classes, matières, périodes définies
+- [ ] Création des comptes enseignants / élèves / parents (**Administration → Utilisateurs**) — possible aussi par **import en masse** (voir ci‑dessous)
+- [ ] Activation et **permissions des modules** souhaités (**Administration → Modules**) — rappel : *installé ≠ activé*
+- [ ] **Messagerie** activée si nécessaire (désactivée par défaut pour des raisons de sécurité)
+- [ ] Tâches cron configurées (`worker.php` + `daily_maintenance.php`)
+- [ ] `APP_DEBUG=false` et `APP_ENV=production` dans `.env`
+- [ ] **HTTPS** configuré si accès depuis Internet (`SESSION_SECURE=true`)
+- [ ] Branche de mise à jour vérifiée (**Administration → Système → Mises à jour**)
+- [ ] Sauvegardes automatiques planifiées (chapitre 10)
 
-### Tâches obligatoires
-
-```bash
-crontab -e
-# Ajouter ces lignes :
-
-# Traitement de la file de tâches (emails, notifications…) — toutes les minutes
-* * * * * php /var/www/fronote/scripts/worker.php >> /dev/null 2>&1
-
-# Maintenance quotidienne (nettoyage logs, purge cache, sauvegardes) — chaque nuit à 2h
-0 2 * * * php /var/www/fronote/cron/daily_maintenance.php >> /dev/null 2>&1
-```
-
-### Tâche optionnelle (mises à jour automatiques)
-
-```bash
-# Vérification de mises à jour — toutes les 6 heures
-0 */6 * * * php /var/www/fronote/scripts/check_update.php >> /dev/null 2>&1
-```
-
-> **Note :** Les mises à jour automatiques nécessitent que **Git** soit installé sur le serveur (`sudo apt install git`). Si vous avez installé Fronote depuis une archive ZIP, installez Git et initialisez le dépôt :
-> ```bash
-> cd /var/www/fronote
-> git init && git remote add origin https://github.com/VOTRE-REPO/fronote.git
-> git fetch origin && git reset --hard origin/main
-> ```
+> **Import en masse.** Listes d'élèves, professeurs, parents, classes, matières, notes et devoirs importables (CSV ou copier‑coller, en‑têtes au format Pronote FR) via **Administration → Système → Import/Export** (`admin/systeme/import_export.php`).
 
 ---
 
-## Checklist post-installation
+## 10. Sauvegardes
 
-- [ ] Connexion administrateur fonctionnelle
-- [ ] Création des comptes enseignants, élèves et parents (Administration → Utilisateurs)
-- [ ] Configuration de l'établissement (Administration → Établissement)
-- [ ] Configuration des **permissions par module** (Administration → Modules → Permissions)
-- [ ] Activation de la **messagerie** si souhaitée (désactivée par défaut pour des raisons de sécurité)
-- [ ] Personnalisation des **widgets du tableau de bord** (page d'accueil → Personnaliser)
-- [ ] Tâches cron configurées (worker.php + daily_maintenance.php)
-- [ ] Clé webhook saisie et URL transmise au support
-- [ ] `APP_DEBUG=false` dans la configuration (vérifiable dans Administration → Système)
-- [ ] HTTPS configuré si accès depuis Internet
-- [ ] Sauvegardes automatiques planifiées (voir ci-dessous)
-
-> **Import d'utilisateurs** : vous pouvez importer des listes d'élèves, professeurs et parents depuis des fichiers CSV via **Administration → Système → Import/Export**.
-
----
-
-## Sauvegardes
-
-Il est fortement recommandé de planifier des sauvegardes automatiques quotidiennes.
-
-### Sauvegarder la base de données
+La maintenance quotidienne (chapitre 6) effectue déjà un **backup automatique de la base** avec rotation. Pour des sauvegardes manuelles ou redondantes :
 
 ```bash
-mysqldump -u utilisateur -p nom_base > sauvegarde_$(date +%Y%m%d).sql
-```
+# Base de données
+mysqldump -u utilisateur -p nom_base | gzip > fronote_$(date +%Y%m%d).sql.gz
 
-### Sauvegarder les fichiers uploadés
-
-```bash
+# Fichiers uploadés
 tar -czf uploads_$(date +%Y%m%d).tar.gz /var/www/fronote/uploads/
 ```
 
-### Automatiser avec cron
-
-```bash
-crontab -e
-# Ajouter cette ligne (sauvegarde quotidienne à 2h du matin) :
-0 2 * * * mysqldump -u fronote_user -pMOT_DE_PASSE fronote | gzip > /sauvegardes/fronote_$(date +\%Y\%m\%d).sql.gz
+```cron
+# Sauvegarde quotidienne supplémentaire à 3h
+0 3 * * * mysqldump -u fronote_user -pMOT_DE_PASSE fronote | gzip > /sauvegardes/fronote_$(date +\%Y\%m\%d).sql.gz
 ```
 
+> Les dumps SQL contiennent des données personnelles : `BACKUP_ENCRYPT=true` (défaut) chiffre les sauvegardes internes via `APP_KEY`.
+
 ---
 
-## Problèmes courants
+## 11. Problèmes courants
 
-### L'assistant d'installation ne s'ouvre pas
+### L'assistant ne s'ouvre pas (403 « Accès refusé »)
+→ Vous accédez depuis une IP publique. Connectez‑vous depuis le réseau local, ou ajoutez votre IP à `ALLOWED_INSTALL_IP` dans le `.env`.
 
-→ Vérifiez que vous accédez depuis le réseau local. Contactez le support si vous êtes à distance.
+### 403 « Installation déjà effectuée »
+→ `install.lock` et un `.env` valide existent. Pour réinstaller, supprimez `install.lock` (⚠️ la base sera recréée). Si vous vouliez seulement réparer la config, sachez que l'installateur reste accessible uniquement si `.env` est introuvable/illisible.
 
-### Erreur de connexion à la base de données
+### Erreur de connexion MySQL (étape 2)
+→ Erreur **1045 / Access denied** : l'utilisateur MySQL n'a pas le droit de se connecter **depuis l'IP du serveur web**. L'assistant affiche le `CREATE USER … GRANT … FLUSH PRIVILEGES` exact à exécuter.
+→ Erreur **2002 / 2006** : MySQL injoignable — service arrêté ou port filtré.
 
-→ Vérifiez que MySQL est démarré (`sudo systemctl status mysql`).
-→ Vérifiez les identifiants MySQL saisis.
-→ Vérifiez que l'utilisateur MySQL a les droits sur la base.
+### « install.php.disabled‑… » après installation
+→ Normal : l'installateur s'auto‑neutralise en fin de course. Sous Windows, si le rename a échoué, supprimez/renommez `install.php` manuellement.
 
-### Les pages s'affichent en blanc ou avec des erreurs
-
-→ Activez temporairement le mode debug dans `.env` : `APP_DEBUG=true`
-→ Consultez les logs dans `API/logs/` et les logs Apache (`/var/log/apache2/error.log`).
-→ Repassez ensuite à `APP_DEBUG=false`.
-
-### Les notifications ne s'affichent pas en temps réel
-
-→ Le WebSocket n'est pas démarré. Les notifications fonctionnent toujours mais avec un délai.
-→ Vérifiez l'état : `pm2 status` puis `pm2 logs fronote-ws`.
+### Pages blanches / erreurs 500
+→ Activez temporairement `APP_DEBUG=true` (uniquement hors production), consultez `API/logs/` et les logs du serveur web, puis repassez à `false`.
 
 ### Un module affiche « table … doesn't exist » ou n'apparaît pas
+→ Son schéma n'a pas été provisionné ou le module n'est pas synchronisé. **Administration → Modules → Synchroniser** ré‑exécute `provisionSql()` (les `install.sql` manquants). Vérifiez ensuite que le module est **activé** (les modules non essentiels sont désactivés par défaut).
 
-→ Le schéma du module n'a pas été provisionné, ou le module n'est pas synchronisé/activé.
-→ **Administration → Modules → Synchroniser** : recrée les entrées et provisionne les `Database/install.sql` manquants.
-→ Vérifiez ensuite que le module est **activé** (installé ≠ activé : les modules non essentiels sont désactivés par défaut).
+### Notifications pas en temps réel
+→ Le serveur WebSocket n'est pas démarré (les notifications fonctionnent quand même, avec un léger délai). `pm2 status` puis `pm2 logs fronote-ws`.
 
 ### Une mise à jour a échoué
+→ **Administration → Système → Mises à jour** affiche le détail des étapes (git, schéma SQL, erreurs). Vérifiez que `git` est disponible (`GIT_BINARY`) et que la branche `GITHUB_BRANCH` est correcte. Le `.env` est préservé automatiquement.
 
-→ Allez dans **Administration → Système → Mises à jour → Journal** pour voir les détails.
-→ Votre configuration a été préservée automatiquement.
-→ Contactez le support avec le contenu du journal.
-
-### Je dois réinstaller complètement
-
-1. Supprimez le fichier `install.lock` à la racine
-2. Retournez sur `install.php`
-3. ⚠️ La base de données sera **entièrement recréée** (toutes les données perdues)
+### Je dois tout réinstaller
+1. Supprimez `install.lock` (et restaurez `install.php` s'il a été renommé en `.disabled-…`).
+2. Retournez sur `install.php`.
+3. ⚠️ Si vous réutilisez le même nom de base, **toutes les données seront perdues** (l'assistant demande confirmation explicite).
 
 ---
 
-## Contact support
+## Annexe — version & dépendances
 
-En cas de problème non résolu, contactez le support en précisant :
-- La version de Fronote (visible dans Administration → Système → Mises à jour)
-- Le message d'erreur exact
-- Le contenu du journal de mise à jour si applicable
+- **Version** : `version.json` → `3.2.4` (build 2026-05-31, codename *Marketplace*).
+- **Architecture** : PHP sans framework, conteneur DI maison (`API/bootstrap.php`, services via `app('clé')`), autoload PSR‑4 (`API\ → API/`, `Pronote\ → API/`, `Modules\ → modules/`).
+- **Dépendance Composer** : `firebase/php-jwt ^6.0` ; extensions `sodium`, `json`, `zip`, `pdo`.
+- **Schéma** : déclaratif (`pronote.sql` + `modules/<m>/Database/install.sql`) — **aucune migration**.

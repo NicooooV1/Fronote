@@ -26,7 +26,8 @@ class InfirmerieService
         if ($etabId === null) return null;
         // Fiche scopée via JOIN sur eleves : un élève d'un autre établissement = introuvable.
         $stmt = $this->pdo->prepare(
-            "SELECT fs.* FROM fiches_sante fs
+            "SELECT fs.*, fs.contact_urgence AS contacts_urgence, fs.observations AS remarques
+             FROM fiches_sante fs
              JOIN eleves e ON fs.eleve_id = e.id
              WHERE fs.eleve_id = ? AND e.etablissement_id = ?"
         );
@@ -39,7 +40,7 @@ class InfirmerieService
         $existing = $this->getFiche($eleveId);
         if ($existing) {
             $stmt = $this->pdo->prepare("
-                UPDATE fiches_sante SET allergies=?, traitements=?, contacts_urgence=?, pai=?, groupe_sanguin=?, remarques=?, date_maj=NOW()
+                UPDATE fiches_sante SET allergies=?, traitements=?, contact_urgence=?, pai=?, groupe_sanguin=?, observations=?
                 WHERE eleve_id=?
             ");
             $stmt->execute([
@@ -49,8 +50,8 @@ class InfirmerieService
             ]);
         } else {
             $stmt = $this->pdo->prepare("
-                INSERT INTO fiches_sante (eleve_id, allergies, traitements, contacts_urgence, pai, groupe_sanguin, remarques, date_maj)
-                VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+                INSERT INTO fiches_sante (eleve_id, allergies, traitements, contact_urgence, pai, groupe_sanguin, observations)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $eleveId, $data['allergies'], $data['traitements'], $data['contacts_urgence'],
@@ -64,10 +65,11 @@ class InfirmerieService
         $etabId = $this->etabId();
         if ($etabId === null) return [];
         $sql = "
-            SELECT fs.*, e.prenom, e.nom AS eleve_nom, cl.nom AS classe_nom
+            SELECT fs.*, fs.contact_urgence AS contacts_urgence, fs.observations AS remarques,
+                   e.prenom, e.nom AS eleve_nom, cl.nom AS classe_nom
             FROM fiches_sante fs
             JOIN eleves e ON fs.eleve_id = e.id
-            LEFT JOIN classes cl ON e.classe_id = cl.id
+            LEFT JOIN classes cl ON e.classe = cl.nom
             WHERE e.etablissement_id = ?
         ";
         $params = [$etabId];
@@ -86,7 +88,7 @@ class InfirmerieService
     public function creerPassage(array $data): int
     {
         $stmt = $this->pdo->prepare("
-            INSERT INTO passages_infirmerie (eleve_id, date_passage, motif, symptomes, soins, orientation, notifier_parents, remarques)
+            INSERT INTO passages_infirmerie (eleve_id, date_passage, motif, symptomes, soins_prodigues, orientation, parent_prevenu, observations)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
@@ -101,10 +103,11 @@ class InfirmerieService
     public function getPassage(int $id): ?array
     {
         $stmt = $this->pdo->prepare("
-            SELECT p.*, e.prenom, e.nom AS eleve_nom, cl.nom AS classe_nom
+            SELECT p.*, p.soins_prodigues AS soins, p.parent_prevenu AS notifier_parents, p.observations AS remarques,
+                   e.prenom, e.nom AS eleve_nom, cl.nom AS classe_nom
             FROM passages_infirmerie p
             JOIN eleves e ON p.eleve_id = e.id
-            LEFT JOIN classes cl ON e.classe_id = cl.id
+            LEFT JOIN classes cl ON e.classe = cl.nom
             WHERE p.id = ?
         ");
         $stmt->execute([$id]);
@@ -114,10 +117,11 @@ class InfirmerieService
     public function getPassages(array $filtres = []): array
     {
         $sql = "
-            SELECT p.*, e.prenom, e.nom AS eleve_nom, cl.nom AS classe_nom
+            SELECT p.*, p.soins_prodigues AS soins, p.parent_prevenu AS notifier_parents, p.observations AS remarques,
+                   e.prenom, e.nom AS eleve_nom, cl.nom AS classe_nom
             FROM passages_infirmerie p
             JOIN eleves e ON p.eleve_id = e.id
-            LEFT JOIN classes cl ON e.classe_id = cl.id
+            LEFT JOIN classes cl ON e.classe = cl.nom
             WHERE 1=1
         ";
         $params = [];
@@ -150,7 +154,7 @@ class InfirmerieService
 
     public function getEleves(string $recherche = null): array
     {
-        $sql = "SELECT e.id, e.prenom, e.nom, cl.nom AS classe_nom FROM eleves e LEFT JOIN classes cl ON e.classe_id = cl.id";
+        $sql = "SELECT e.id, e.prenom, e.nom, cl.nom AS classe_nom FROM eleves e LEFT JOIN classes cl ON e.classe = cl.nom";
         $params = [];
         if ($recherche) { $sql .= ' WHERE e.nom LIKE ? OR e.prenom LIKE ?'; $params = ["%$recherche%", "%$recherche%"]; }
         $sql .= ' ORDER BY e.nom, e.prenom';
@@ -164,9 +168,9 @@ class InfirmerieService
         $stmt = $this->pdo->prepare("
             SELECT e.id, e.prenom, e.nom, cl.nom AS classe_nom
             FROM eleves e
-            JOIN parent_eleve pe ON e.id = pe.eleve_id
-            LEFT JOIN classes cl ON e.classe_id = cl.id
-            WHERE pe.parent_id = ?
+            JOIN parent_eleve pe ON e.id = pe.id_eleve
+            LEFT JOIN classes cl ON e.classe = cl.nom
+            WHERE pe.id_parent = ?
         ");
         $stmt->execute([$parentId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -204,7 +208,7 @@ class InfirmerieService
         $stmtMois->execute([$month]);
         $mois = $stmtMois->fetchColumn();
 
-        $envois = $this->pdo->query("SELECT COUNT(*) FROM passages_infirmerie WHERE orientation = 'renvoye_domicile'")->fetchColumn();
+        $envois = $this->pdo->query("SELECT COUNT(*) FROM passages_infirmerie WHERE orientation = 'domicile'")->fetchColumn();
         $urgences = $this->pdo->query("SELECT COUNT(*) FROM passages_infirmerie WHERE orientation = 'urgences'")->fetchColumn();
 
         return ['jour' => $jour, 'mois' => $mois, 'renvoyes' => $envois, 'urgences' => $urgences];
@@ -214,10 +218,10 @@ class InfirmerieService
     {
         return [
             'retour_classe' => 'Retour en classe',
-            'repos_infirmerie' => 'Repos à l\'infirmerie',
-            'renvoye_domicile' => 'Renvoyé à domicile',
+            'repos' => 'Repos à l\'infirmerie',
+            'domicile' => 'Renvoyé à domicile',
             'urgences' => 'Urgences / SAMU',
-            'medecin' => 'Médecin traitant',
+            'autre' => 'Autre',
         ];
     }
 
@@ -225,10 +229,10 @@ class InfirmerieService
     {
         $map = [
             'retour_classe' => 'success',
-            'repos_infirmerie' => 'info',
-            'renvoye_domicile' => 'warning',
+            'repos' => 'info',
+            'domicile' => 'warning',
             'urgences' => 'danger',
-            'medecin' => 'secondary',
+            'autre' => 'secondary',
         ];
         $labels = self::orientations();
         return '<span class="badge badge-' . ($map[$o] ?? 'secondary') . '">' . ($labels[$o] ?? $o) . '</span>';
@@ -259,10 +263,10 @@ class InfirmerieService
         $json = json_encode($vaccinations, JSON_UNESCAPED_UNICODE);
         $fiche = $this->getFiche($eleveId);
         if ($fiche) {
-            $this->pdo->prepare("UPDATE fiches_sante SET vaccinations = ?, date_maj = NOW() WHERE eleve_id = ?")
+            $this->pdo->prepare("UPDATE fiches_sante SET vaccinations = ? WHERE eleve_id = ?")
                        ->execute([$json, $eleveId]);
         } else {
-            $this->pdo->prepare("INSERT INTO fiches_sante (eleve_id, vaccinations, date_maj) VALUES (?, ?, NOW())")
+            $this->pdo->prepare("INSERT INTO fiches_sante (eleve_id, vaccinations) VALUES (?, ?)")
                        ->execute([$eleveId, $json]);
         }
     }
@@ -304,7 +308,11 @@ class InfirmerieService
      */
     public function getProtocoles(): array
     {
-        return $this->pdo->query("SELECT * FROM protocoles_urgence ORDER BY nom")->fetchAll(\PDO::FETCH_ASSOC);
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
+        $stmt = $this->pdo->prepare("SELECT * FROM protocoles_urgence WHERE etablissement_id = ? ORDER BY nom");
+        $stmt->execute([$etabId]);
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
     /**
@@ -312,9 +320,11 @@ class InfirmerieService
      */
     public function getProtocoleByPathologie(string $keyword): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM protocoles_urgence WHERE pathologie LIKE ? OR nom LIKE ? LIMIT 1");
+        $etabId = $this->etabId();
+        if ($etabId === null) return null;
+        $stmt = $this->pdo->prepare("SELECT * FROM protocoles_urgence WHERE (pathologie LIKE ? OR nom LIKE ?) AND etablissement_id = ? LIMIT 1");
         $like = '%' . $keyword . '%';
-        $stmt->execute([$like, $like]);
+        $stmt->execute([$like, $like, $etabId]);
         return $stmt->fetch(\PDO::FETCH_ASSOC) ?: null;
     }
 
@@ -343,7 +353,7 @@ class InfirmerieService
                    COUNT(*) AS nb_passages
             FROM passages_infirmerie p
             JOIN eleves e ON p.eleve_id = e.id
-            LEFT JOIN classes cl ON e.classe_id = cl.id
+            LEFT JOIN classes cl ON e.classe = cl.nom
             WHERE p.date_passage >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)
             GROUP BY e.id HAVING nb_passages >= 3
             ORDER BY nb_passages DESC LIMIT ?
@@ -405,7 +415,7 @@ class InfirmerieService
                 $p['symptomes'] ?? '',
                 $p['soins'] ?? '',
                 $orientations[$p['orientation'] ?? ''] ?? $p['orientation'] ?? '',
-                $p['commentaire'] ?? '',
+                $p['observations'] ?? '',
             ];
         }
         return $rows;
@@ -416,20 +426,22 @@ class InfirmerieService
     public function ajouterTraitement(int $eleveId, string $medicament, string $posologie, string $dateDebut, ?string $dateFin = null, bool $paiActif = false): int
     {
         $stmt = $this->pdo->prepare("
-            INSERT INTO infirmerie_traitements (eleve_id, medicament, posologie, date_debut, date_fin, pai, created_at)
-            VALUES (:e, :m, :p, :dd, :df, :pai, NOW())
+            INSERT INTO infirmerie_traitements (eleve_id, etablissement_id, medicament, posologie, date_debut, date_fin, pai, created_at)
+            VALUES (:e, :etab, :m, :p, :dd, :df, :pai, NOW())
         ");
-        $stmt->execute([':e' => $eleveId, ':m' => $medicament, ':p' => $posologie, ':dd' => $dateDebut, ':df' => $dateFin, ':pai' => $paiActif ? 1 : 0]);
+        $stmt->execute([':e' => $eleveId, ':etab' => $this->etabId(), ':m' => $medicament, ':p' => $posologie, ':dd' => $dateDebut, ':df' => $dateFin, ':pai' => $paiActif ? 1 : 0]);
         return (int)$this->pdo->lastInsertId();
     }
 
     public function getTraitements(int $eleveId, bool $actifsOnly = false): array
     {
-        $sql = "SELECT * FROM infirmerie_traitements WHERE eleve_id = :e";
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
+        $sql = "SELECT * FROM infirmerie_traitements WHERE eleve_id = :e AND etablissement_id = :etab";
         if ($actifsOnly) { $sql .= " AND (date_fin IS NULL OR date_fin >= CURDATE())"; }
         $sql .= " ORDER BY date_debut DESC";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([':e' => $eleveId]);
+        $stmt->execute([':e' => $eleveId, ':etab' => $etabId]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
@@ -463,7 +475,7 @@ class InfirmerieService
                 SELECT DISTINCT cl.nom AS classe
                 FROM passages_infirmerie p
                 JOIN eleves e ON p.eleve_id = e.id
-                LEFT JOIN classes cl ON e.classe_id = cl.id
+                LEFT JOIN classes cl ON e.classe = cl.nom
                 WHERE p.motif = :m AND p.date_passage >= DATE_SUB(CURDATE(), INTERVAL :j DAY)
             ");
             $stmtClasses->execute([':m' => $a['motif'], ':j' => $joursAnalyse]);
@@ -480,7 +492,7 @@ class InfirmerieService
                        fs.pai, fs.allergies, fs.pathologies
                 FROM fiches_sante fs
                 JOIN eleves e ON fs.eleve_id = e.id
-                LEFT JOIN classes cl ON e.classe_id = cl.id
+                LEFT JOIN classes cl ON e.classe = cl.nom
                 WHERE fs.pai IS NOT NULL AND fs.pai != ''";
         $params = [];
         if ($classe) { $sql .= " AND cl.nom = :c"; $params[':c'] = $classe; }

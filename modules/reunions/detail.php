@@ -69,7 +69,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && (isAdmin() |
                             <th>Horaire</th>
                             <th>Salle</th>
                             <th>Statut</th>
+                            <?php if (isAdmin() || isTeacher() || isVieScolaire()): ?>
                             <th>Réservé par</th>
+                            <?php endif; ?>
                         </tr>
                     </thead>
                     <tbody>
@@ -85,6 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && (isAdmin() |
                                     <span class="badge badge-info">Disponible</span>
                                 <?php endif; ?>
                             </td>
+                            <?php if (isAdmin() || isTeacher() || isVieScolaire()): ?>
                             <td>
                                 <?php if ($c['reservation_id']): ?>
                                     <?= htmlspecialchars($c['parent_prenom'] . ' ' . $c['parent_nom']) ?>
@@ -93,6 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && (isAdmin() |
                                     —
                                 <?php endif; ?>
                             </td>
+                            <?php endif; ?>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>

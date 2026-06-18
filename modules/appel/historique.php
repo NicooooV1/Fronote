@@ -28,29 +28,38 @@ $classeId  = isset($_GET['classe']) ? (int)$_GET['classe'] : null;
 
 $classes = $service->getClasses();
 
-// Récupérer les appels sur une période
-$sql = "SELECT a.*, cl.nom AS classe_nom,
-               CONCAT(p.prenom, ' ', p.nom) AS professeur_nom,
-               m.nom AS matiere_nom,
-               (SELECT COUNT(*) FROM appel_eleves ae WHERE ae.appel_id = a.id AND ae.statut = 'absent') AS nb_absents,
-               (SELECT COUNT(*) FROM appel_eleves ae WHERE ae.appel_id = a.id AND ae.statut = 'retard') AS nb_retards,
-               (SELECT COUNT(*) FROM appel_eleves ae WHERE ae.appel_id = a.id) AS nb_total
-        FROM appels a
-        JOIN classes cl ON a.classe_id = cl.id
-        JOIN professeurs p ON a.professeur_id = p.id
-        LEFT JOIN matieres m ON a.matiere_id = m.id
-        WHERE a.date_appel BETWEEN ? AND ?";
-$params = [$dateDebut, $dateFin];
-
-if ($classeId) {
-    $sql .= " AND a.classe_id = ?";
-    $params[] = $classeId;
+// Récupérer les appels sur une période (scopé à l'établissement courant)
+try {
+    $etabId = \API\Core\EstablishmentContext::id();
+} catch (\Throwable $e) {
+    $etabId = null;
 }
 
-$sql .= " ORDER BY a.date_appel DESC, a.heure_debut";
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$appels = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$appels = [];
+if ($etabId !== null) {
+    $sql = "SELECT a.*, cl.nom AS classe_nom,
+                   CONCAT(p.prenom, ' ', p.nom) AS professeur_nom,
+                   m.nom AS matiere_nom,
+                   (SELECT COUNT(*) FROM appel_eleves ae WHERE ae.appel_id = a.id AND ae.statut = 'absent') AS nb_absents,
+                   (SELECT COUNT(*) FROM appel_eleves ae WHERE ae.appel_id = a.id AND ae.statut = 'retard') AS nb_retards,
+                   (SELECT COUNT(*) FROM appel_eleves ae WHERE ae.appel_id = a.id) AS nb_total
+            FROM appels a
+            JOIN classes cl ON a.classe_id = cl.id
+            JOIN professeurs p ON a.professeur_id = p.id
+            LEFT JOIN matieres m ON a.matiere_id = m.id
+            WHERE a.date_appel BETWEEN ? AND ? AND a.etablissement_id = ?";
+    $params = [$dateDebut, $dateFin, $etabId];
+
+    if ($classeId) {
+        $sql .= " AND a.classe_id = ?";
+        $params[] = $classeId;
+    }
+
+    $sql .= " ORDER BY a.date_appel DESC, a.heure_debut";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $appels = $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
 
 $pageTitle = 'Historique des appels';
 $currentPage = 'historique';

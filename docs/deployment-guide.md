@@ -1,114 +1,185 @@
-# Deployment Guide
+# Guide de déploiement
 
-## Prerequisites
+Ce guide couvre l'installation initiale de Fronote puis sa mise à jour **en un seul
+bouton** (pull Git + réconciliation déclarative du schéma SQL). Il n'y a **aucune
+migration** dans Fronote : le schéma désiré vit dans les fichiers `*.sql` du dépôt et
+est appliqué de façon idempotente.
 
-| Software | Version | Required |
-|----------|---------|----------|
-| PHP | 8.1+ | Yes |
-| MySQL | 5.7+ / MariaDB 10.3+ | Yes |
-| Apache | 2.4+ with `mod_rewrite` | Yes |
-| Node.js | 18+ | Optional (WebSocket) |
+> Version documentée : **3.2.4** (`version.json`). Tous les chemins sont relatifs à la
+> racine du projet (ex. `/var/www/fronote`).
 
-### Required PHP Extensions
+---
 
-`pdo_mysql`, `mbstring`, `json`, `openssl`, `intl`, `gd`, `curl`, `fileinfo`, `zip`
+## 1. Pré-requis
 
-Check with:
-```bash
-php -m | grep -E "pdo_mysql|mbstring|json|openssl|intl|gd|curl|fileinfo|zip"
+| Logiciel | Version | Requis |
+|----------|---------|--------|
+| PHP | **8.0+** (`min_php` dans `version.json`) | Oui |
+| MySQL / MariaDB | **MySQL 8.0+ / MariaDB 10.3+** | Oui |
+| Apache | 2.4+ avec `mod_rewrite` | Oui |
+| `git` | n'importe quelle version récente | Oui (pour la MAJ en un bouton) |
+| Composer | 2.x | Pour `vendor/` (`firebase/php-jwt`) |
+| Node.js | 18+ | Optionnel (serveur WebSocket) |
+
+### Extensions PHP
+
+Liste **exigée** par l'installateur (`install.php`, étape « Pré-requis ») et par
+`composer.json` :
+
+```
+pdo  pdo_mysql  json  mbstring  session  sodium  zip  fileinfo
 ```
 
-## Installation
+Extensions **recommandées** (l'installateur avertit mais ne bloque pas) :
 
-### Option A: Web Installer (recommended)
+```
+intl  gd  curl
+```
 
-1. Upload the project files to your web server
-2. Navigate to `http://your-domain/install.php`
-3. Follow the wizard: database creation, **core schema import + provisioning of every module's `Database/install.sql`** (`ModuleSDK::syncAll()` + `provisionSql()`), admin account, `.env`
-4. First admin login launches the onboarding wizard (establishment identity, classes, subjects, periods)
-
-This is the recommended path: it creates the core **and** all module tables in one pass.
-
-### Option B: Manual
+Vérification :
 
 ```bash
-# 1. Clone or extract the project
-git clone https://github.com/your-org/fronote.git /var/www/fronote
+php -m | grep -iE "pdo_mysql|mbstring|json|sodium|zip|fileinfo|session"
+```
 
-# 2. Import the CORE schema only
+> `ext-sodium` est **obligatoire** : il sert au chiffrement (`API/Core/Encryption.php`).
+> Ce n'est pas `openssl`.
+
+---
+
+## 2. Installation
+
+Deux chemins. L'assistant web est recommandé : il crée le cœur **et** le schéma de tous
+les modules en une passe.
+
+### Option A — Assistant web (recommandé)
+
+1. Déployez les fichiers du projet (clone Git de préférence — voir § Mise à jour).
+2. Installez les dépendances : `composer install --no-dev` à la racine.
+3. Ouvrez `http://votre-domaine/install.php`.
+4. Suivez l'assistant (5 étapes) :
+   - **Pré-requis** : PHP, extensions, répertoires inscriptibles, fichiers présents.
+   - **Base de données** : connexion testée en direct, création de la base si besoin.
+   - **Application** : nom, environnement, paramètres de sécurité.
+   - **Administrateur** : compte principal (rôle `administrateur`).
+   - **Récapitulatif → exécution** : import de `pronote.sql` (cœur), puis
+     `ModuleSDK::syncAll()` (manifestes) **et** `provisionSql()` pour **chaque** module
+     (exécute son `modules/<m>/Database/install.sql`), écriture du `.env`, création
+     atomique de `install.lock`.
+5. À la première connexion admin, l'**onboarding obligatoire** se déclenche
+   (`API/onboarding_gate.php` → `/modules/onboarding/index.php`) tant que
+   l'établissement courant porte le code `'default'` : identité de l'établissement,
+   classes, matières, périodes.
+
+> ⚠️ L'installateur n'est accessible que depuis une **IP locale** et se bloque dès que
+> `install.lock` existe **et** que `.env` est lisible. Pour relancer l'assistant,
+> supprimez `install.lock`.
+
+### Option B — Manuelle
+
+```bash
+# 1. Cloner le dépôt (le clone Git est requis pour la MAJ en un bouton)
+git clone https://github.com/votre-org/fronote.git /var/www/fronote
+cd /var/www/fronote
+composer install --no-dev
+
+# 2. Importer UNIQUEMENT le schéma du cœur
 mysql -u root -p fronote < pronote.sql
 
-# 3. Configure environment
+# 3. Configurer l'environnement
 cp .env.example .env
-# Edit .env with your database credentials and settings
+# Éditez .env (identifiants base, secrets, GITHUB_BRANCH…)
 
-# 4. Set permissions
+# 4. Permissions
 chmod -R 755 /var/www/fronote
 chmod -R 775 storage/ uploads/ logs/
 chown -R www-data:www-data storage/ uploads/ logs/
 ```
 
-> ⚠️ `pronote.sql` only creates the **core** tables. Each business module ships its own `modules/<m>/Database/install.sql`, provisioned by the SDK — not by the raw `pronote.sql` import. After a manual import, either run the web installer once, or log in as admin and use **Administration → Modules → Synchronize** to provision all module schemas. Only then create `install.lock`:
+> ⚠️ `pronote.sql` ne crée que les tables du **cœur**. Chaque module métier embarque son
+> propre `modules/<m>/Database/install.sql`, provisionné par le SDK — **pas** par
+> l'import brut de `pronote.sql`. Après un import manuel, ouvrez l'assistant web une fois,
+> **ou** connectez-vous en admin et utilisez **Administration → Modules → Synchroniser**
+> pour provisionner le schéma de tous les modules. Vous pouvez aussi déclencher la
+> réconciliation déclarative via **Administration → Système → Mises à jour** (le pull Git
+> appelle `SchemaSyncService`, qui crée les tables/colonnes manquantes). Ensuite seulement,
+> créez le verrou :
 
 ```bash
-echo $(date +%Y-%m-%d) > install.lock
+date +%Y-%m-%d > install.lock
 ```
 
-## Environment Configuration (.env)
+---
 
-### Database
+## 3. Configuration `.env`
+
+Les clés ci-dessous sont celles **réellement lues** par
+`API/Providers/ConfigServiceProvider.php`. N'inventez pas de variantes
+(`DB_DATABASE`, `DB_USERNAME`, `WS_JWT_SECRET`… ne sont pas lues).
+
+### Base de données
 
 ```env
 DB_HOST=localhost
 DB_PORT=3306
 DB_NAME=fronote
 DB_USER=fronote_user
-DB_PASS=secure_password
+DB_PASS=mot_de_passe_securise
 DB_CHARSET=utf8mb4
 ```
-
-> Variable names match `.env.example` and `API/Providers/ConfigServiceProvider.php` (`DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`). Do **not** use `DB_DATABASE` / `DB_USERNAME` / `DB_PASSWORD` — those keys are unread.
 
 ### Application
 
 ```env
 APP_ENV=production          # production | staging | development
-APP_DEBUG=false             # true shows stack traces (NEVER in production)
+APP_DEBUG=false             # true affiche les traces — JAMAIS en production
 APP_URL=https://fronote.example.com
 APP_TIMEZONE=Europe/Paris
 ```
 
-### Security
+### Sécurité
 
 ```env
-SESSION_LIFETIME=7200       # 2h — matches .env.example and ConfigServiceProvider default
-CSRF_LIFETIME=3600          # 1 hour
+SESSION_LIFETIME=7200       # 2 h
+CSRF_LIFETIME=3600          # 1 h
 CSRF_MAX_TOKENS=10
-MAX_LOGIN_ATTEMPTS=5        # Max login attempts before lockout
+MAX_LOGIN_ATTEMPTS=5
 LOGIN_LOCKOUT_TIME=900
 RATE_LIMIT_ATTEMPTS=5
 RATE_LIMIT_DECAY=1
-AUDIT_RETENTION_DAYS=180    # default retention used by cron/daily_maintenance.php
+AUDIT_RETENTION_DAYS=180    # purge des audit logs (cron quotidien)
 ```
 
-### WebSocket
+### Mise à jour (Git)
 
 ```env
-JWT_SECRET=your-secret-key-here   # signed by PHP, verified by websocket-server/server.js
-API_SECRET=shared-secret-for-php-to-ws-bridge
+GITHUB_BRANCH=main          # branche distante suivie par le bouton de MAJ
+GIT_BINARY=git              # chemin de git s'il est absent du PATH d'Apache (ex. Windows)
+```
+
+> `GITHUB_BRANCH` et `GIT_BINARY` sont les **seules** clés lues par `UpdateService`.
+> Si `git` est dans le PATH du process Apache/PHP, laissez `GIT_BINARY` vide.
+> Les anciennes clés `GITHUB_WEBHOOK_SECRET` / `GITHUB_REPO` présentes dans
+> `.env.example` ne sont **plus utilisées** (le webhook a été supprimé) et peuvent être
+> ignorées/retirées.
+
+### WebSocket (optionnel)
+
+```env
+JWT_SECRET=clé-secrète       # signé par PHP, vérifié par websocket/server.js
+API_SECRET=secret-partagé-php-vers-ws
 WS_URL=https://fronote.example.com:3000
 ```
 
-> The Node server reads `JWT_SECRET` and `API_SECRET` (see `websocket-server/server.js`). Do not invent `WS_JWT_SECRET` / `WSS_*` keys — they are unread.
-
-### Backups
+### Sauvegardes
 
 ```env
-BACKUP_RETENTION=5          # Number of backups to keep
-BACKUP_PATH=storage/backups
+BACKUP_RETENTION=5           # nombre de sauvegardes conservées par type (cron)
 ```
 
-## Apache Configuration
+---
+
+## 4. Configuration Apache
 
 ```apache
 <VirtualHost *:443>
@@ -124,9 +195,9 @@ BACKUP_PATH=storage/backups
         Require all granted
     </Directory>
 
-    # Block sensitive directories — but keep API/endpoints/ reachable
-    # (webhook, AJAX endpoints, health check live there).
-    <DirectoryMatch "^/var/www/fronote/(storage|logs|migrations|cron|temp|vendor)">
+    # Bloquer les répertoires sensibles — mais garder API/endpoints/ accessible
+    # (endpoints AJAX et health check y vivent).
+    <DirectoryMatch "^/var/www/fronote/(storage|logs|cron|temp|vendor)">
         Require all denied
     </DirectoryMatch>
     <DirectoryMatch "^/var/www/fronote/API/(?!endpoints/)">
@@ -135,31 +206,40 @@ BACKUP_PATH=storage/backups
 </VirtualHost>
 ```
 
-> ⚠️ Do **not** blanket-deny `/API/` — the GitHub auto-update webhook (`/API/endpoints/webhook_update.php`), AJAX endpoints, and the health check (`/API/endpoints/health.php`) live under `API/endpoints/` and must be publicly reachable. The exclusion above whitelists that subfolder.
+> ⚠️ Ne bloquez **pas** tout `/API/` : les endpoints AJAX et le health check
+> (`/API/endpoints/health.php`) vivent sous `API/endpoints/` et doivent rester
+> joignables. La règle ci-dessus n'autorise que ce sous-dossier. (Il n'y a **plus** de
+> webhook de mise à jour ni de dossier `migrations/` à exposer.)
 
-Ensure `mod_rewrite` is enabled:
+Activez `mod_rewrite` et `ssl` :
+
 ```bash
 sudo a2enmod rewrite ssl
 sudo systemctl restart apache2
 ```
 
-## WebSocket Server
+> Le process Apache/PHP doit pouvoir exécuter `git` dans la racine du projet pour la
+> mise à jour en un bouton. En cas de PATH restreint (FPM, Windows…), renseignez
+> `GIT_BINARY` dans `.env`. Le dépôt cloné (`.git/`) doit appartenir à l'utilisateur
+> Apache pour que `git reset --hard` réussisse.
 
-### Using PM2 (recommended)
+---
+
+## 5. Serveur WebSocket (optionnel)
+
+### Avec PM2
 
 ```bash
 cd websocket/
 npm install
-
-# Start with PM2
 pm2 start server.js --name fronote-ws
 pm2 save
 pm2 startup
 ```
 
-### Using systemd
+### Avec systemd
 
-Create `/etc/systemd/system/fronote-ws.service`:
+`/etc/systemd/system/fronote-ws.service` :
 
 ```ini
 [Unit]
@@ -182,47 +262,128 @@ sudo systemctl enable fronote-ws
 sudo systemctl start fronote-ws
 ```
 
-## Cron Jobs
+> Le serveur Node lit `JWT_SECRET` et `API_SECRET` (cf. `websocket/server.js`).
 
-Add to crontab (`crontab -e`):
+---
+
+## 6. Tâches planifiées (cron)
 
 ```cron
-# Daily maintenance at 2:00 AM
+# Maintenance quotidienne à 02:00
 0 2 * * * php /var/www/fronote/cron/daily_maintenance.php >> /var/www/fronote/logs/cron.log 2>&1
 
-# Hourly maintenance
+# Maintenance horaire
 0 * * * * php /var/www/fronote/cron/hourly_maintenance.php >> /var/www/fronote/logs/cron_hourly.log 2>&1
 ```
 
-### What the crons do
+### Ce que fait `daily_maintenance.php` (02:00)
 
-**Daily** (02:00):
-- Audit log cleanup (respects `AUDIT_RETENTION_DAYS`)
-- Database backup + rotation
-- Cache garbage collection
-- API token purge
-- Rate limit cleanup
-- Temp file cleanup (> 24h)
-- Expired session purge
-- Old notification purge (> 90 days read)
-- Orphan upload cleanup
-- Translation coverage report
+- Purge des audit logs expirés (respecte `AUDIT_RETENTION_DAYS`)
+- Sauvegarde de la base (`app('backup')->createDatabaseBackup()`) + rotation
+  (conserve `BACKUP_RETENTION`, défaut 5)
+- Purge des tokens API expirés
+- Nettoyage du rate-limiting
+- Nettoyage des fichiers temporaires (> 24 h dans `storage/tmp`)
+- Purge des sessions expirées
+- Purge des notifications lues anciennes (> 90 jours)
+- Nettoyage des uploads orphelins
 
-**Hourly**:
-- Cache GC
-- Health check refresh
-- Disk space monitoring (warns at > 90%)
-- Rate limit cleanup
+### `hourly_maintenance.php`
 
-## Maintenance Mode
+- Rafraîchissement du health check
+- Surveillance de l'espace disque
+- Nettoyage du rate-limiting
 
-### Via Admin Panel
+> Autres crons métier présents (à planifier selon les modules activés) :
+> `weekly_digest.php`, `bourses_rappels.php`, `formations_expirations.php`,
+> `inventaire_maintenance.php`, `intelligence_calcul.php`.
 
-Navigate to `admin/systeme/maintenance.php` to toggle maintenance mode, set a custom message, and whitelist IP addresses.
+---
+
+## 7. Mise à jour de Fronote — **un seul bouton**
+
+La mise à jour ne se fait **pas** par script CLI, ni par téléchargement d'archive, ni
+par migrations. Il n'y a **aucune** des choses suivantes : `scripts/update.php`,
+`scripts/check_update.php`, `API/endpoints/webhook_update.php`, cron de vérification,
+GitHub Releases / zip. Le **dépôt Git est la source**.
+
+### Interface
+
+**Administration → Système → Mises à jour** (`admin/systeme/update.php`, rôle
+`administrateur`). La page affiche la version courante, la branche suivie et l'état de
+`git`. Deux actions :
+
+- **Vérifier** → `app('updates')->checkForUpdate()` : `git fetch` puis compare
+  `HEAD` à `origin/<branche>` et liste les commits en attente. Aucun changement appliqué.
+- **Mettre à jour maintenant** → `app('updates')->applyUpdate()`.
+
+### Ce que fait `applyUpdate()` (`API/Services/UpdateService.php`)
+
+Flux synchrone, dans l'ordre :
+
+1. Vérifie que `git` est disponible (sinon erreur — installez-le ou renseignez
+   `GIT_BINARY`).
+2. Sauvegarde en mémoire le contenu de `.env` (sécurité).
+3. `git fetch origin <branche>`.
+4. **`git reset --hard origin/<branche>`** — le serveur reflète **exactement** le dépôt
+   distant. ⚠️ Toute modification locale non commitée est **écrasée**.
+5. Restaure `.env` s'il avait disparu (cas où il aurait été suivi par erreur).
+6. **Réconciliation du schéma** via `API\Services\SchemaSyncService::sync()` (voir
+   ci-dessous).
+7. `app('module_sdk')->syncAll()` — re-synchronise les manifestes des modules
+   (permissions, widgets, routes…).
+8. `app('cache')->flush()` — vide le cache applicatif.
+9. Relit `version.json`.
+
+La page affiche le détail des étapes et `ancienne_version → nouvelle_version`. Le
+succès est conditionné à l'absence d'erreur de schéma.
+
+### `SchemaSyncService` — réconciliation déclarative (PAS de migration)
+
+`API/Services/SchemaSyncService.php` rend la base conforme aux fichiers `*.sql` du
+dépôt, de façon **non destructive et idempotente** :
+
+- **Source du schéma désiré** : `pronote.sql` (cœur) + tous les
+  `modules/*/Database/install.sql`. Les définitions de colonnes sont fusionnées en cas
+  de table déclarée à plusieurs endroits.
+- **Table absente** → `CREATE TABLE` (le statement complet du `.sql`).
+- **Table présente** → `ADD COLUMN` pour chaque colonne **manquante** uniquement.
+- **Jamais** de `DROP`, jamais de changement de type, jamais de suppression de
+  colonne/table — c'est de l'« ajout seulement ». Les `FOREIGN_KEY_CHECKS` sont
+  désactivés le temps de la passe (ordre d'activation des modules arbitraire).
+
+Conséquence : après un commit qui ajoute une table ou une colonne, **aucune action
+manuelle** sur la base n'est nécessaire — le bouton suffit. Pour un changement
+destructif (renommer/supprimer une colonne), il faut intervenir manuellement en SQL :
+`SchemaSyncService` ne le fera pas.
+
+### Procédure recommandée pour une montée de version
+
+1. (Optionnel) Activer le **mode maintenance** (§ 8).
+2. **Sauvegarder** la base et les fichiers (§ 9).
+3. **Administration → Système → Mises à jour → Mettre à jour maintenant**.
+4. Vérifier le détail des étapes (schéma, modules, cache) et la nouvelle version.
+5. Vérifier le health check : `GET /API/endpoints/health.php`.
+6. Désactiver le mode maintenance.
+
+### Configuration
+
+- `GITHUB_BRANCH` (défaut `main`) : branche distante suivie. Modifiable depuis la page
+  (formulaire « Branche à suivre ») ou dans `.env`.
+- `GIT_BINARY` : chemin de `git` si absent du PATH du process serveur.
+
+---
+
+## 8. Mode maintenance
+
+### Via l'admin
+
+`admin/systeme/maintenance.php` : active/désactive le mode, définit un message
+personnalisé et liste blanche d'IP.
 
 ### Via CLI
 
-Create `storage/maintenance.json`:
+Créez `storage/maintenance.json` :
 
 ```json
 {
@@ -233,21 +394,31 @@ Create `storage/maintenance.json`:
 }
 ```
 
-Remove the file or set `"active": false` to disable.
+Supprimez le fichier ou passez `"active": false` pour désactiver.
 
-## Backups
+---
 
-### Automatic
+## 9. Sauvegardes
 
-The daily cron runs `BackupService::createDatabaseBackup()` which creates a SQL dump in `storage/backups/`. Old backups are rotated based on `BACKUP_RETENTION`.
+### Automatique (cron quotidien)
 
-### Manual
+`BackupService::createDatabaseBackup()` (`API/Services/BackupService.php`) génère un
+dump SQL dans `storage/backups/` (fichier `backup_db_<timestamp>.sql`). **Le dump est
+produit en PHP pur** via PDO (`SHOW CREATE TABLE` + `SELECT` par curseur, écriture par
+lots pour ne pas charger toute la table en RAM) — il **n'appelle pas** `mysqldump` et ne
+dépend donc d'aucun binaire externe. La rotation (`cleanup()`) conserve les
+`BACKUP_RETENTION` plus récents par type.
+
+Méthodes utiles : `createUploadsBackup()`, `createFullBackup()`, `listBackups()`,
+`restoreDatabase()`, `deleteBackup()`.
+
+### Manuelle
 
 ```bash
-# Database backup
+# Base de données (équivalent externe, nécessite le client mysqldump)
 mysqldump -u fronote_user -p fronote > backup_$(date +%Y%m%d).sql
 
-# Full file backup
+# Fichiers
 tar -czf fronote_files_$(date +%Y%m%d).tar.gz \
     --exclude='storage/backups' \
     --exclude='storage/tmp' \
@@ -255,74 +426,82 @@ tar -czf fronote_files_$(date +%Y%m%d).tar.gz \
     /var/www/fronote
 ```
 
-## Monitoring
+> Avant une mise à jour (`git reset --hard`), une sauvegarde de la base est la sécurité
+> minimale. `.env` est protégé par `.gitignore` **et** restauré par `applyUpdate()`,
+> mais sauvegardez-le aussi par prudence.
 
-### Health Endpoint
+---
+
+## 10. Supervision
+
+### Endpoint de santé
 
 ```
 GET /API/endpoints/health.php
 ```
 
-Returns JSON with status of: database, disk, cache, SMTP, WebSocket, PHP version.
+Renvoie un JSON sur l'état des sous-systèmes (base, disque, cache, etc.).
 
-### Admin Dashboard
+### Tableau de bord admin
 
-`admin/systeme/monitoring.php` provides:
-- Global health status
-- Active sessions count
-- Database size and table count
-- Disk usage with visual indicator
-- PHP extensions status
-- Feature flags overview
+`admin/systeme/monitoring.php` :
+- État de santé global
+- Sessions actives
+- Taille de la base et nombre de tables
+- Usage disque
+- Statut des extensions PHP
+- Vue des feature flags
 
-### Log Files
+### Fichiers de logs
 
 ```
 logs/
-├── cron.log            ← Daily maintenance output
-├── cron_hourly.log     ← Hourly maintenance output
-├── error.log           ← PHP errors (production)
-└── audit.log           ← Security audit events
+├── cron.log            ← sortie de la maintenance quotidienne
+├── cron_hourly.log     ← sortie de la maintenance horaire
+├── error.log           ← erreurs PHP (production)
+└── audit.log           ← événements d'audit de sécurité
 ```
 
-## HTTPS Configuration
+---
 
-In production, Fronote enforces:
-- HSTS header (`Strict-Transport-Security`)
-- Secure cookie flag on sessions
-- WSS for WebSocket connections
+## 11. HTTPS
 
-Ensure your SSL certificate is valid and auto-renewed (e.g., via Let's Encrypt / certbot).
+En production, Fronote applique :
+- En-tête HSTS (`Strict-Transport-Security`) et CSP (`templates/shared_header.php`)
+- Cookies de session `Secure`
+- WSS pour le WebSocket
 
-## Performance Tuning
+Assurez un certificat valide et auto-renouvelé (Let's Encrypt / certbot).
+
+---
+
+## 12. Optimisation des performances
 
 ### PHP
 
 ```ini
-; php.ini recommendations
 opcache.enable=1
 opcache.memory_consumption=128
 opcache.max_accelerated_files=10000
-opcache.validate_timestamps=0    ; Set to 1 in development
+opcache.validate_timestamps=0    ; 1 en développement
 memory_limit=256M
 upload_max_filesize=10M
 post_max_size=12M
 ```
 
+> Si `opcache.validate_timestamps=0`, **rechargez PHP-FPM / Apache après une mise à
+> jour** (le `git reset --hard` change les fichiers, mais OPcache garde l'ancienne
+> version compilée).
+
 ### MySQL
 
 ```ini
-# my.cnf recommendations
 innodb_buffer_pool_size=256M
 innodb_log_file_size=64M
-query_cache_type=1
-query_cache_size=32M
 max_connections=100
 ```
 
-### Apache
-
-Enable compression and caching for static assets:
+### Apache (compression / cache des assets)
 
 ```apache
 <IfModule mod_deflate.c>
@@ -337,13 +516,3 @@ Enable compression and caching for static assets:
     ExpiresByType image/svg+xml "access plus 1 month"
 </IfModule>
 ```
-
-## Updating Fronote
-
-1. Enable maintenance mode
-2. Backup database and files
-3. Pull/extract new version
-4. Run migrations: `php API/Commands/migrate.php up`
-5. Clear cache
-6. Disable maintenance mode
-7. Verify health check: `GET /API/endpoints/health.php`

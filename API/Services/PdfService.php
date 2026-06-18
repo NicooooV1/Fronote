@@ -368,7 +368,9 @@ HTML;
         $tmpOut = tempnam(sys_get_temp_dir(), 'pdf_out_') . '.pdf';
         file_put_contents($tmpIn, $html);
 
-        $cmd = sprintf('wkhtmltopdf --quiet --encoding UTF-8 %s %s 2>&1',
+        // --disable-local-file-access : empêche l'accès au système de fichiers local
+        // (anti-LFR/SSRF) ; --disable-external-links : neutralise les liens sortants.
+        $cmd = sprintf('wkhtmltopdf --quiet --encoding UTF-8 --disable-local-file-access --disable-external-links %s %s 2>&1',
             escapeshellarg($tmpIn), escapeshellarg($tmpOut)
         );
         exec($cmd, $output, $code);
@@ -391,7 +393,9 @@ HTML;
 
     private function renderWithDompdf(string $html, string $filename, string $orientation, string $format, bool $inline): void
     {
-        $dompdf = new \Dompdf\Dompdf(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true]);
+        // isRemoteEnabled=false : Dompdf ne récupère AUCUNE ressource distante
+        // (anti-SSRF / anti-lecture de fichiers locaux). Cohérent avec BulletinPdfService.
+        $dompdf = new \Dompdf\Dompdf(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => false]);
         $dompdf->loadHtml($html);
         $dompdf->setPaper($format, $orientation);
         $dompdf->render();

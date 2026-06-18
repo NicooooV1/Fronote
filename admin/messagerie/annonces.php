@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Annonces admin — diffusion de messages à tous les utilisateurs ou par profil/classe
  */
@@ -92,7 +92,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
                 $message = "Annonce envoyée à " . count($recipients) . " destinataire(s).";
             } catch (Exception $e) {
                 $pdo->rollBack();
-                $error = "Erreur : " . $e->getMessage();
+                error_log("annonce send failed: " . $e->getMessage());
+                $error = "Erreur lors de l'envoi de l'annonce.";
             }
         }
     }

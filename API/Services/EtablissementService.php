@@ -282,10 +282,10 @@ class EtablissementService
         return $result;
     }
 
-    public function configurePeriodes(string $type, array $periodes): bool
+    public function configurePeriodes(string $type, array $periodes, ?int $etabId = null): bool
     {
         try {
-            $etabId = EstablishmentContext::id();
+            $etabId = $etabId ?? EstablishmentContext::id();
             $this->pdo->prepare("DELETE FROM periodes WHERE etablissement_id = ?")->execute([$etabId]);
 
             $stmt = $this->pdo->prepare("

@@ -35,8 +35,54 @@ const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 
 const PORT = parseInt(process.env.WEBSOCKET_PORT || '3000', 10);
-const API_SECRET = process.env.WEBSOCKET_API_SECRET || 'fronote_ws_secret';
-const JWT_SECRET = process.env.JWT_SECRET || process.env.APP_KEY || 'fronote_jwt_default';
+const API_SECRET = process.env.WEBSOCKET_API_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || process.env.APP_KEY;
+
+// Fail closed: never run with a guessable secret. No hard-coded fallbacks.
+if (!API_SECRET) {
+    console.error('[FATAL] WEBSOCKET_API_SECRET is not set. Refusing to start with a default secret.');
+    process.exit(1);
+}
+if (!JWT_SECRET) {
+    console.error('[FATAL] JWT_SECRET (or APP_KEY) is not set. Refusing to start with a default secret.');
+    process.exit(1);
+}
+
+// Allowed CORS origins — comma-separated env. When unset, falls back to '*'.
+// This is acceptable here because the Socket.IO handshake is authenticated by a
+// JWT in the handshake payload (not by ambient cookies), and `credentials` is
+// never enabled — so a permissive origin cannot be leveraged for CSRF-style
+// cookie replay. Set WEBSOCKET_ALLOWED_ORIGINS in production to lock it down.
+const ALLOWED_ORIGINS = process.env.WEBSOCKET_ALLOWED_ORIGINS
+    ? process.env.WEBSOCKET_ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
+    : null;
+
+const corsOrigin = ALLOWED_ORIGINS || '*';
+
+/**
+ * Extract the shared API secret from an inbound /notify or /metrics request.
+ * Accepts both `Authorization: Bearer <secret>` (what the PHP client sends)
+ * and the legacy `X-Api-Secret` header.
+ */
+function extractApiSecret(req) {
+    const auth = req.headers['authorization'] || '';
+    if (auth.startsWith('Bearer ')) {
+        return auth.slice(7).trim();
+    }
+    return req.headers['x-api-secret'] || '';
+}
+
+/** Constant-time-ish compare to avoid trivially leaking the secret length/prefix. */
+function secretMatches(provided) {
+    if (typeof provided !== 'string' || provided.length !== API_SECRET.length) {
+        return false;
+    }
+    let diff = 0;
+    for (let i = 0; i < provided.length; i++) {
+        diff |= provided.charCodeAt(i) ^ API_SECRET.charCodeAt(i);
+    }
+    return diff === 0;
+}
 
 // ─── TLS/WSS Support ───────────────────────────────────────────
 const certPath = process.env.WSS_CERT_PATH;
@@ -102,10 +148,15 @@ setInterval(() => {
 
 // ─── HTTP Handler ──────────────────────────────────────────────
 function handleHttp(req, res) {
-    // CORS
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    // CORS — only reflect explicitly whitelisted origins. The /notify and /metrics
+    // routes are server-to-server (secret-gated) and need no permissive CORS.
+    const origin = req.headers['origin'];
+    if (ALLOWED_ORIGINS && origin && ALLOWED_ORIGINS.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Vary', 'Origin');
+    }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Api-Secret');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Api-Secret, Authorization');
 
     if (req.method === 'OPTIONS') {
         res.writeHead(204);
@@ -127,7 +178,7 @@ function handleHttp(req, res) {
 
     // Metrics endpoint (admin only, requires API secret)
     if (req.method === 'GET' && req.url === '/metrics') {
-        if (req.headers['x-api-secret'] !== API_SECRET) {
+        if (!secretMatches(extractApiSecret(req))) {
             res.writeHead(403);
             res.end('Forbidden');
             return;
@@ -157,8 +208,7 @@ function handleHttp(req, res) {
 
     // Notification endpoints (called by PHP)
     if (req.method === 'POST' && req.url.startsWith('/notify/')) {
-        const authHeader = req.headers['x-api-secret'] || '';
-        if (authHeader !== API_SECRET) {
+        if (!secretMatches(extractApiSecret(req))) {
             res.writeHead(403, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Forbidden' }));
             return;
@@ -189,7 +239,7 @@ function handleHttp(req, res) {
 // ─── Socket.IO ──────────────────────────────────────────────────
 const io = new Server(server, {
     cors: {
-        origin: '*',
+        origin: corsOrigin,
         methods: ['GET', 'POST'],
     },
     pingTimeout: 60000,
@@ -206,8 +256,10 @@ io.use((socket, next) => {
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        socket.userId = decoded.sub || decoded.user_id;
-        socket.userType = decoded.role || decoded.user_type || '';
+        // PHP WebSocket::generateToken() emits `userId`/`userType` (plus `sub`).
+        // Keep the legacy claim names as fallbacks for forward/backward compat.
+        socket.userId = decoded.userId || decoded.sub || decoded.user_id;
+        socket.userType = decoded.userType || decoded.role || decoded.user_type || '';
         socket.userName = decoded.name || '';
         socket.tokenExp = decoded.exp || 0;
         next();

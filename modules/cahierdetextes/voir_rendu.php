@@ -43,7 +43,7 @@ if (!$rendu || !$devoir) {
         <div class="rendu-contenu"><?= nl2br(htmlspecialchars($rendu['contenu'])) ?></div>
         <?php endif; ?>
         <?php if ($rendu['fichier_nom']): ?>
-        <div class="rendu-fichier"><a href="../<?= htmlspecialchars($rendu['fichier_chemin']) ?>" target="_blank"><i class="fas fa-download"></i> <?= htmlspecialchars($rendu['fichier_nom']) ?></a></div>
+        <div class="rendu-fichier"><a href="telecharger_rendu.php?id=<?= (int)$rendu['id'] ?>" target="_blank"><i class="fas fa-download"></i> <?= htmlspecialchars($rendu['fichier_nom']) ?></a></div>
         <?php endif; ?>
         <p class="text-muted">Soumis le <?= formatDateTime($rendu['date_rendu']) ?></p>
     </div>

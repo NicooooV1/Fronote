@@ -74,6 +74,15 @@ class UserService
             'mot_de_passe' => $hashedPassword,
         ];
 
+        // Rattachement à l'établissement courant (sinon utilisateur orphelin / hors périmètre).
+        if (class_exists('\\API\\Core\\EstablishmentContext')) {
+            try {
+                $data['etablissement_id'] = \API\Core\EstablishmentContext::id();
+            } catch (\Throwable $e) {
+                // contexte ambigu : laisser le défaut SQL plutôt que crasher la création
+            }
+        }
+
         // Champs spécifiques par profil
         if ($profil === 'eleve') {
             $data['date_naissance'] = $userData['date_naissance'] ?? null;
@@ -167,9 +176,9 @@ class UserService
      */
     public function changePassword($userId, $newPassword, ?string $userType = null)
     {
-        // Validation via PasswordPolicy si disponible
+        // Validation via PasswordPolicy si disponible (instance configurée via le binding)
         if (class_exists('\API\Security\PasswordPolicy')) {
-            $policy = new \API\Security\PasswordPolicy();
+            $policy = function_exists('app') ? app('password_policy') : new \API\Security\PasswordPolicy();
             $policyResult = $policy->validate($newPassword);
             if (!$policyResult['valid']) {
                 return ['success' => false, 'message' => implode(' ', $policyResult['errors'])];
@@ -318,7 +327,7 @@ class UserService
             setcookie($cookieName, $token, [
                 'expires'  => time() + 30 * 86400,
                 'path'     => $cookiePath,
-                'secure'   => !empty($_SERVER['HTTPS']),
+                'secure'   => function_exists('request_is_https') ? request_is_https() : !empty($_SERVER['HTTPS']),
                 'httponly'  => true,
                 'samesite' => 'Lax',
             ]);
@@ -405,7 +414,23 @@ class UserService
      *          10 tentatives →  1 h
      *          20 tentatives → 24 h
      */
-    public function checkLoginRateLimit(string $ip): int
+    public function checkLoginRateLimit(string $ip, ?string $identifier = null): int
+    {
+        // Limitation par IP (toujours) ET par identifiant (anti brute-force ciblé
+        // distribué sur plusieurs IP — AUTH-04). On renvoie le délai le plus long.
+        $wait = $this->checkRateTier('ip', $ip);
+        if ($identifier !== null && $identifier !== '') {
+            $wait = max($wait, $this->checkRateTier('identifier', $identifier));
+        }
+        return $wait;
+    }
+
+    /**
+     * Calcule le délai d'attente (minutes) pour une dimension donnée.
+     *
+     * @param string $column 'ip' ou 'identifier' (littéral contrôlé — jamais une entrée utilisateur).
+     */
+    private function checkRateTier(string $column, string $value): int
     {
         // Paliers décroissants : vérifié du plus restrictif au moins restrictif
         $tiers = [
@@ -418,17 +443,17 @@ class UserService
             foreach ($tiers as $tier) {
                 $stmt = $this->pdo->prepare(
                     "SELECT COUNT(*) FROM login_attempts
-                     WHERE ip = ? AND attempted_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)"
+                     WHERE `{$column}` = ? AND attempted_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)"
                 );
-                $stmt->execute([$ip, $tier['window_min']]);
+                $stmt->execute([$value, $tier['window_min']]);
                 $attempts = (int) $stmt->fetchColumn();
 
                 if ($attempts >= $tier['threshold']) {
                     $stmt2 = $this->pdo->prepare(
                         "SELECT MIN(attempted_at) FROM login_attempts
-                         WHERE ip = ? AND attempted_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)"
+                         WHERE `{$column}` = ? AND attempted_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)"
                     );
-                    $stmt2->execute([$ip, $tier['window_min']]);
+                    $stmt2->execute([$value, $tier['window_min']]);
                     $first = $stmt2->fetchColumn();
 
                     if ($first) {
@@ -440,18 +465,25 @@ class UserService
             }
             return 0;
         } catch (\Throwable $e) {
-            return 0; // Ne pas bloquer en cas d'erreur DB
+            // Colonne identifier absente (ancienne base) ou erreur DB : ne pas bloquer.
+            return 0;
         }
     }
 
     /**
-     * Enregistre une tentative de connexion échouée.
+     * Enregistre une tentative de connexion échouée (par IP et, si fourni, par identifiant).
      */
-    public function recordFailedAttempt(string $ip): void
+    public function recordFailedAttempt(string $ip, ?string $identifier = null): void
     {
         try {
-            $this->pdo->prepare("INSERT INTO login_attempts (ip, attempted_at) VALUES (?, NOW())")->execute([$ip]);
-        } catch (\Throwable $e) { /* table peut ne pas exister */ }
+            $this->pdo->prepare("INSERT INTO login_attempts (ip, identifier, attempted_at) VALUES (?, ?, NOW())")
+                      ->execute([$ip, $identifier]);
+        } catch (\Throwable $e) {
+            // Repli si la colonne `identifier` n'existe pas encore (ancienne base).
+            try {
+                $this->pdo->prepare("INSERT INTO login_attempts (ip, attempted_at) VALUES (?, NOW())")->execute([$ip]);
+            } catch (\Throwable $e2) { /* table peut ne pas exister */ }
+        }
     }
 
     /**

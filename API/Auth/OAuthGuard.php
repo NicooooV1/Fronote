@@ -250,7 +250,8 @@ class OAuthGuard
 		];
 
 		foreach ($tables as $table => $type) {
-			$stmt = $this->pdo->prepare("SELECT * FROM `{$table}` WHERE email = ? LIMIT 1");
+			// Colonne réelle = `mail` (cf. pronote.sql) — il n'existe pas de colonne `email`.
+			$stmt = $this->pdo->prepare("SELECT * FROM `{$table}` WHERE mail = ? LIMIT 1");
 			$stmt->execute([$email]);
 			$user = $stmt->fetch(\PDO::FETCH_ASSOC);
 
@@ -278,19 +279,25 @@ class OAuthGuard
 	protected function saveOAuthBinding(int $userId, string $userType, string $provider, string $providerId): void
 	{
 		try {
-			// Créer la table si elle n'existe pas (auto-setup)
-			$this->pdo->exec("
-				CREATE TABLE IF NOT EXISTS `oauth_bindings` (
-					`id` INT AUTO_INCREMENT PRIMARY KEY,
-					`user_id` INT NOT NULL,
-					`user_type` VARCHAR(20) NOT NULL,
-					`provider` VARCHAR(50) NOT NULL,
-					`provider_user_id` VARCHAR(255) NOT NULL,
-					`created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-					UNIQUE KEY `uk_binding` (`provider`, `provider_user_id`),
-					KEY `idx_user` (`user_id`, `user_type`)
-				) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-			");
+			// La table oauth_bindings est fournie par le schéma (pronote.sql).
+			// Filet de sécurité auto-setup exécuté AU PLUS UNE FOIS par process
+			// (et non à chaque connexion SSO) — cf. SEC-05a.
+			static $tableEnsured = false;
+			if (!$tableEnsured) {
+				$this->pdo->exec("
+					CREATE TABLE IF NOT EXISTS `oauth_bindings` (
+						`id` INT AUTO_INCREMENT PRIMARY KEY,
+						`user_id` INT NOT NULL,
+						`user_type` VARCHAR(20) NOT NULL,
+						`provider` VARCHAR(50) NOT NULL,
+						`provider_user_id` VARCHAR(255) NOT NULL,
+						`created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+						UNIQUE KEY `uk_binding` (`provider`, `provider_user_id`),
+						KEY `idx_user` (`user_id`, `user_type`)
+					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+				");
+				$tableEnsured = true;
+			}
 
 			$stmt = $this->pdo->prepare("
 				INSERT INTO oauth_bindings (user_id, user_type, provider, provider_user_id)

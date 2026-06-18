@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Statistiques générales — graphiques Chart.js
  */

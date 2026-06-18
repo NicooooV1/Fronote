@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Gestion des mots de passe — Fusion demandes + réinitialisation manuelle
  */
@@ -90,7 +90,9 @@ try {
         ORDER BY r.date_demande DESC
     ");
     $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (Exception $e) {}
+} catch (Exception $e) {
+    error_log('[' . basename(__FILE__) . '] ' . $e->getMessage());
+}
 
 // Recherche pour réinit manuelle
 $searchResults = [];
@@ -98,7 +100,9 @@ $searchTerm = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['search_user'])) {
     $searchTerm = trim($_POST['search_term'] ?? '');
     if (!empty($searchTerm)) {
-        try { $searchResults = $userObj->searchUsers($searchTerm); } catch (Exception $e) {}
+        try { $searchResults = $userObj->searchUsers($searchTerm); } catch (Exception $e) {
+            error_log('[' . basename(__FILE__) . '] ' . $e->getMessage());
+        }
     }
 }
 

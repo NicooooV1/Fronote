@@ -301,7 +301,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 navigator.share({ title: title, text: 'Événement : ' + title, url: url }).catch(function() {});
             } else if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(url).then(function() {
-                    alert('Lien copié dans le presse-papier.');
+                    if (window.FronoteToast) { window.FronoteToast.success('Lien copié dans le presse-papier.'); }
+                    else { alert('Lien copié dans le presse-papier.'); }
                 });
             } else {
                 prompt('Copiez ce lien :', url);

@@ -16,12 +16,38 @@ function getCsrfToken() {
 }
 
 /**
+ * Fait tourner le token CSRF depuis l'entête X-Csrf-Token-Next renvoyé par le serveur.
+ * Les tokens sont à usage unique côté serveur : sans rotation, le 2e POST (envoi,
+ * mark_read, réaction…) échoue en 403. On met à jour la meta + les inputs cachés.
+ * @param {Response} response
+ */
+function rotateCsrfToken(response) {
+    try {
+        const next = response.headers.get('X-Csrf-Token-Next');
+        if (!next) return;
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta) meta.setAttribute('content', next);
+        window.csrfToken = next;
+        document.querySelectorAll('input[name="csrf_token"], input[name="_csrf_token"], input[name="_token"]')
+            .forEach(input => { input.value = next; });
+    } catch (e) { /* non bloquant */ }
+}
+
+/**
  * Construit l'URL de base de l'API centralisée (API/endpoints/)
  * Depuis les pages messagerie/ → remonte d'un niveau vers la racine
  * @returns {string}
  */
 function getApiBase() {
-    return window.location.pathname.split('/').slice(0, -2).join('/') + '/API/endpoints';
+    // Les pages messagerie sont servies sous <racine>/modules/messagerie/<page>.php
+    // et l'API centralisée sous <racine>/API/endpoints/. On ancre sur "/modules/"
+    // pour retrouver la racine quel que soit le sous-répertoire de déploiement.
+    const path = window.location.pathname;
+    const idx = path.indexOf('/modules/');
+    const root = idx !== -1
+        ? path.substring(0, idx)
+        : path.split('/').slice(0, -2).join('/'); // fallback ancienne structure
+    return root + '/API/endpoints';
 }
 
 /**
@@ -60,6 +86,7 @@ function apiFetch(url, options = {}) {
     }
 
     return fetch(url, merged).then(r => {
+        rotateCsrfToken(r);
         if (!r.ok) throw new Error(`Erreur réseau: ${r.status}`);
         return r.json();
     });
@@ -250,6 +277,27 @@ function closeModal(modal) {
     if (modal) modal.style.display = 'none';
 }
 
+/**
+ * Ferme le modal d'ajout de participants
+ */
+function closeAddParticipantModal() {
+    closeModal(document.getElementById('addParticipantModal'));
+}
+
+/**
+ * Ouvre/ferme le menu d'actions d'un participant
+ * @param {number} participantId
+ */
+function toggleParticipantActions(participantId) {
+    const menu = document.getElementById('participant-actions-' + participantId);
+    if (!menu) return;
+    const isOpen = menu.classList.contains('active');
+    // Fermer tous les menus ouverts
+    document.querySelectorAll('.participant-actions-menu.active').forEach(m => m.classList.remove('active'));
+    // Ouvrir celui-ci seulement s'il était fermé
+    if (!isOpen) menu.classList.add('active');
+}
+
 // ═══════════════════════════════════════════════════
 // ACTIONS DE CONVERSATION (archive, supprimer, restaurer)
 // Utilisées à la fois sur l'inbox et la conversation
@@ -318,6 +366,11 @@ function setupConversationActions() {
     document.addEventListener('click', function (event) {
         if (!event.target.closest('.quick-actions')) {
             document.querySelectorAll('.quick-actions-menu').forEach(menu => {
+                menu.classList.remove('active');
+            });
+        }
+        if (!event.target.closest('.participant-actions')) {
+            document.querySelectorAll('.participant-actions-menu.active').forEach(menu => {
                 menu.classList.remove('active');
             });
         }

@@ -31,7 +31,6 @@ if ($isGestionnaire) {
 }
 ?>
 
-<div class="main-content">
     <div class="page-header"><h1><i class="fas fa-user-check"></i> Affectations internat</h1></div>
 
     <?php if ($message): ?><div class="alert alert-success"><?= htmlspecialchars($message) ?></div><?php endif; ?>
@@ -101,6 +100,5 @@ if ($isGestionnaire) {
             </table>
         </div>
     </div>
-</div>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

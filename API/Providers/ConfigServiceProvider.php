@@ -46,7 +46,14 @@ class ConfigServiceProvider extends ServiceProvider
                     'csrf_max_tokens' => env('CSRF_MAX_TOKENS', 10),
                     'rate_limit_attempts' => env('RATE_LIMIT_ATTEMPTS', 5),
                     'rate_limit_decay' => env('RATE_LIMIT_DECAY', 1),
-                    'session_lifetime' => env('SESSION_LIFETIME', 7200)
+                    'session_lifetime' => env('SESSION_LIFETIME', 7200),
+                    // Politique de mot de passe (consommée par le binding password_policy)
+                    'password_min_length' => env('PASSWORD_MIN_LENGTH', 10),
+                    'password_require_upper' => env('PASSWORD_REQUIRE_UPPER', true),
+                    'password_require_lower' => env('PASSWORD_REQUIRE_LOWER', true),
+                    'password_require_digit' => env('PASSWORD_REQUIRE_DIGIT', true),
+                    'password_require_special' => env('PASSWORD_REQUIRE_SPECIAL', true),
+                    'password_max_repeating' => env('PASSWORD_MAX_REPEATING', 3)
                 ]
             ];
         });

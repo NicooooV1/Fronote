@@ -17,14 +17,32 @@ $eleves = $isGestionnaire ? $periService->getEleves() : [];
 $enfants = isParent() ? $periService->getEnfantsParent(getUserId()) : [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
+    // Autorité : seuls les gestionnaires (admin/vie scolaire) ou les parents peuvent muter
+    // (mêmes rôles que ceux à qui le formulaire d'inscription est affiché). N'altère PAS
+    // la consultation de la page (adaptative) : on ne bloque que l'écriture.
+    if (!($isGestionnaire || isParent())) {
+        $_SESSION['error_message'] = "Action non autorisée.";
+        header('Location: detail_service.php?id=' . $id); exit;
+    }
     $action = $_POST['action'] ?? '';
     try {
         if ($action === 'inscrire') {
             $eleveId = (int)$_POST['eleve_id'];
+            // Un parent ne peut inscrire que ses propres enfants ; un gestionnaire peut inscrire tout élève.
+            if (!$isGestionnaire) {
+                $enfantsIds = array_map(static fn($c) => (int)$c['id'], $enfants);
+                if (!in_array($eleveId, $enfantsIds, true)) {
+                    throw new RuntimeException("Élève non autorisé.");
+                }
+            }
             $jour = $_POST['jour'];
             $periService->inscrire($id, $eleveId, $jour);
             $_SESSION['success_message'] = 'Inscription réussie.';
         } elseif ($action === 'desinscrire') {
+            // La désinscription reste réservée aux gestionnaires (le formulaire n'est affiché qu'à eux).
+            if (!$isGestionnaire) {
+                throw new RuntimeException("Action non autorisée.");
+            }
             $periService->desinscrire((int)$_POST['inscription_id']);
             $_SESSION['success_message'] = 'Désinscription effectuée.';
         }
@@ -70,7 +88,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     </div>
     <?php endif; ?>
 
-    <!-- Liste inscrits -->
+    <!-- Liste inscrits (réservée au personnel : éviter d'exposer les noms d'autres élèves mineurs aux parents/élèves) -->
+    <?php if ($isGestionnaire): ?>
     <div class="card">
         <div class="card-header"><h2>Inscrits (<?= count($inscriptions) ?>)</h2></div>
         <div class="card-body">
@@ -96,6 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
             <?php endif; ?>
         </div>
     </div>
+    <?php endif; ?>
 </div>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

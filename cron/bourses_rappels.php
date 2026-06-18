@@ -24,8 +24,8 @@ foreach ($types as $type) {
     // Find parents with enrolled children who haven't submitted
     $stmt = $pdo->prepare("SELECT DISTINCT p.id, p.mail AS email, p.nom, p.prenom
         FROM parents p
-        JOIN parent_eleve pe ON p.id = pe.parent_id
-        JOIN eleves e ON pe.eleve_id = e.id AND e.actif = 1
+        JOIN parent_eleve pe ON p.id = pe.id_parent
+        JOIN eleves e ON pe.id_eleve = e.id AND e.actif = 1
         WHERE p.id NOT IN (
             SELECT DISTINCT bd.parent_id FROM bourses_demandes bd
             WHERE bd.type_bourse_id = :tid AND bd.statut != 'brouillon'

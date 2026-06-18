@@ -24,11 +24,11 @@ class NoteWidgetProvider extends AbstractWidgetProvider
 
         if ($userType === 'eleve') {
             $stmt = $pdo->prepare(
-                'SELECT n.note, n.note_sur, n.coefficient, n.date_devoir, m.nom AS matiere
+                'SELECT n.note, n.note_sur, n.coefficient, n.date_note, m.nom AS matiere
                  FROM notes n
                  LEFT JOIN matieres m ON m.id = n.id_matiere
                  WHERE n.id_eleve = ?
-                 ORDER BY n.date_devoir DESC
+                 ORDER BY n.date_note DESC
                  LIMIT ?'
             );
             $stmt->execute([$userId, $limit]);
@@ -49,13 +49,13 @@ class NoteWidgetProvider extends AbstractWidgetProvider
         // Professeur : dernières notes saisies dans leurs classes
         if ($userType === 'professeur') {
             $stmt = $pdo->prepare(
-                'SELECT n.note, n.note_sur, n.coefficient, n.date_devoir,
+                'SELECT n.note, n.note_sur, n.coefficient, n.date_note,
                         m.nom AS matiere, CONCAT(e.prenom, \' \', e.nom) AS eleve_nom
                  FROM notes n
                  LEFT JOIN matieres m ON m.id = n.id_matiere
                  LEFT JOIN eleves e ON e.id = n.id_eleve
                  WHERE n.id_professeur = ?
-                 ORDER BY n.date_devoir DESC
+                 ORDER BY n.date_note DESC
                  LIMIT ?'
             );
             $stmt->execute([$userId, $limit]);

@@ -9,6 +9,16 @@ $id = (int)($_GET['id'] ?? 0);
 $stage = $stageService->getStage($id);
 if (!$stage) { header('Location: stages.php'); exit; }
 
+// IDOR : un élève ne voit que SON stage ; un parent que celui de SES enfants.
+// Le staff (admin/vie scolaire) et les professeurs accèdent librement.
+if (isEleve()) {
+    if ((int)$stage['eleve_id'] !== (int)getUserId()) { redirect('/accueil/accueil.php'); }
+} elseif (isParent()) {
+    $chk = $pdo->prepare("SELECT 1 FROM parent_eleve WHERE id_parent = ? AND id_eleve = ? LIMIT 1");
+    $chk->execute([getUserId(), (int)$stage['eleve_id']]);
+    if (!$chk->fetchColumn()) { redirect('/accueil/accueil.php'); }
+}
+
 $types = StageService::typesStage();
 $statuts = StageService::statutsStage();
 $isGestionnaire = isAdmin() || isPersonnelVS();

@@ -11,8 +11,10 @@
  * Déplacé depuis messagerie/api/api.php pour centralisation.
  */
 
-// Dépendances du module messagerie (chemin absolu)
-define('MESSAGERIE_DIR', __DIR__ . '/../../messagerie');
+// Dépendances du module messagerie (chemin absolu).
+// Le module vit sous modules/messagerie/ depuis la restructuration ; l'ancien
+// chemin /../../messagerie n'existe plus et faisait planter tout l'endpoint.
+define('MESSAGERIE_DIR', __DIR__ . '/../../modules/messagerie');
 
 require_once MESSAGERIE_DIR . '/config/config.php';
 require_once MESSAGERIE_DIR . '/core/auth.php';
@@ -46,6 +48,21 @@ RateLimiter::enforce($user['id'], $user['type'], 'api_request');
 // ── Routing ──
 $resource = $_GET['resource'] ?? '';
 $action   = $_GET['action'] ?? '';
+
+/**
+ * Garde anti-IDOR : refuse l'accès à une conversation dont l'appelant n'est pas
+ * participant actif. Sans cela, tout utilisateur authentifié pouvait énumérer
+ * les conversations par ID et lire sujet + liste des participants d'échanges
+ * auxquels il ne participe pas.
+ */
+function requireConversationMembership($convId, array $user): void {
+    $membership = getParticipantInfo($convId, $user['id'], $user['type']);
+    if (!$membership || !empty($membership['is_deleted'])) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Accès refusé à cette conversation']);
+        exit;
+    }
+}
 
 try {
     switch ($resource) {
@@ -133,10 +150,12 @@ function handleConversations(string $action, array $user): void {
         case 'get':
             $convId = Validator::id($_GET['id'] ?? null);
             if (!$convId) throw new Exception('ID de conversation invalide');
-            
+
+            requireConversationMembership($convId, $user);
+
             $conv = getConversationInfo($convId);
             if (!$conv) throw new Exception('Conversation introuvable');
-            
+
             $participants = getParticipants($convId);
             echo json_encode(['success' => true, 'conversation' => $conv, 'participants' => $participants]);
             break;
@@ -179,24 +198,28 @@ function handleConversations(string $action, array $user): void {
             break;
 
         case 'archive':
+            requirePost(); // mutation → POST + CSRF obligatoire (anti-CSRF en GET)
             $convId = Validator::id($_GET['id'] ?? getJsonBody()['id'] ?? null);
             if (!$convId) throw new Exception('ID invalide');
             echo json_encode(['success' => archiveConversation($convId, $user['id'], $user['type'])]);
             break;
 
         case 'unarchive':
+            requirePost(); // mutation → POST + CSRF obligatoire
             $convId = Validator::id($_GET['id'] ?? getJsonBody()['id'] ?? null);
             if (!$convId) throw new Exception('ID invalide');
             echo json_encode(['success' => unarchiveConversation($convId, $user['id'], $user['type'])]);
             break;
 
         case 'delete':
+            requirePost(); // mutation destructive → POST + CSRF obligatoire
             $convId = Validator::id($_GET['id'] ?? getJsonBody()['id'] ?? null);
             if (!$convId) throw new Exception('ID invalide');
             echo json_encode(['success' => deleteConversation($convId, $user['id'], $user['type'])]);
             break;
 
         case 'restore':
+            requirePost(); // mutation → POST + CSRF obligatoire
             $convId = Validator::id($_GET['id'] ?? getJsonBody()['id'] ?? null);
             if (!$convId) throw new Exception('ID invalide');
             echo json_encode(['success' => restoreConversation($convId, $user['id'], $user['type'])]);
@@ -274,20 +297,27 @@ function handleMessages(string $action, array $user): void {
         case 'send_message':
             requirePost();
             if (!$convId) throw new Exception('conv_id requis');
-            
-            RateLimiter::enforce($user['id'], $user['type'], 'send_message');
-            
+
+            // Note : le rate limiting 'send_message' est appliqué dans handleSendMessage().
+            // Ne pas le doubler ici, sinon chaque envoi consomme 2 jetons.
+
             $contenu = Validator::messageBody($_POST['contenu'] ?? null);
             if (!$contenu) throw new Exception('Contenu du message invalide');
-            
+
             $importance = Validator::importance($_POST['importance'] ?? 'normal');
             $parentId = Validator::id($_POST['parent_message_id'] ?? null);
-            
+
             require_once MESSAGERIE_DIR . '/controllers/message.php';
             $result = handleSendMessage($convId, $user, $contenu, $importance, $parentId, $_FILES['attachments'] ?? []);
-            
+
             if ($result['success']) {
                 $message = getMessageById($result['messageId']);
+                // getMessageById force is_self=0 ; ici l'expéditeur EST l'utilisateur courant,
+                // donc le message doit s'afficher comme "self" (et déjà lu par soi).
+                if ($message) {
+                    $message['is_self'] = 1;
+                    $message['est_lu'] = 1;
+                }
                 echo json_encode(['success' => true, 'message' => $message]);
             } else {
                 throw new Exception($result['message']);
@@ -327,12 +357,13 @@ function handleMessages(string $action, array $user): void {
 
         case 'check_updates':
             if (!$convId) throw new Exception('conv_id requis');
+            requireConversationMembership($convId, $user); // IDOR : seul un participant peut lire
             $lastTs = Validator::timestamp($_GET['last_timestamp'] ?? 0);
             
             $stmt = $pdo->prepare("
                 SELECT COUNT(*) as new_count FROM messages
                 WHERE conversation_id = ? AND UNIX_TIMESTAMP(created_at) > ?
-                AND sender_id != ? AND sender_type != ? AND deleted_at IS NULL
+                AND NOT (sender_id = ? AND sender_type = ?) AND deleted_at IS NULL
             ");
             $stmt->execute([$convId, $lastTs, $user['id'], $user['type']]);
             $r = $stmt->fetch();
@@ -346,6 +377,7 @@ function handleMessages(string $action, array $user): void {
 
         case 'get_new':
             if (!$convId) throw new Exception('conv_id requis');
+            requireConversationMembership($convId, $user); // IDOR : seul un participant peut lire
             $lastTs = Validator::timestamp($_GET['last_timestamp'] ?? 0);
             $nameCase = getUserNameCaseSQL('m.sender_id', 'm.sender_type');
             
@@ -358,6 +390,7 @@ function handleMessages(string $action, array $user): void {
                        UNIX_TIMESTAMP(m.created_at) as timestamp
                 FROM messages m
                 WHERE m.conversation_id = ? AND UNIX_TIMESTAMP(m.created_at) > ?
+                AND m.deleted_at IS NULL
                 ORDER BY m.created_at ASC
             ");
             $stmt->execute([$user['id'], $user['type'], $convId, $lastTs]);
@@ -433,12 +466,14 @@ function handleParticipants(string $action, array $user): void {
         case 'list':
         case 'get_list':
             if (!$convId) throw new Exception('conv_id requis');
+            requireConversationMembership($convId, $user);
             $participants = getParticipants($convId);
             echo json_encode(['success' => true, 'participants' => $participants]);
             break;
 
         case 'available':
             if (!$convId) throw new Exception('conv_id requis');
+            requireConversationMembership($convId, $user);
             $type = Validator::userType($_GET['type'] ?? null);
             if (!$type) throw new Exception('Type invalide');
             $search = trim($_GET['search'] ?? '');

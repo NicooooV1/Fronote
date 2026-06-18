@@ -29,13 +29,17 @@ function getClassMembers($classeId, $includeEleves = true, $includeParents = fal
         $members = array_merge($members, $eleves->fetchAll());
     }
     
-    // Récupérer les parents
+    // Récupérer UNIQUEMENT les parents des élèves de la classe via la table de
+    // liaison parent_eleve. $classeId est le NOM de la classe (eleves.classe = nom).
     if ($includeParents) {
         $parents = $pdo->prepare("
-            SELECT id, 'parent' as type, CONCAT(prenom, ' ', nom) as nom_complet
-            FROM parents WHERE est_parent_eleve = 'oui'
+            SELECT DISTINCT p.id, 'parent' as type, CONCAT(p.prenom, ' ', p.nom) as nom_complet
+            FROM parents p
+            JOIN parent_eleve pe ON pe.id_parent = p.id
+            JOIN eleves e ON e.id = pe.id_eleve
+            WHERE e.classe = ? AND p.est_parent_eleve = 'oui'
         ");
-        $parents->execute();
+        $parents->execute([$classeId]);
         $members = array_merge($members, $parents->fetchAll());
     }
     
@@ -84,17 +88,16 @@ function sendMessageToClass($professeurId, $classeId, $titre, $contenu, $importa
     $convId = createConversation($titre, 'classe', $professeurId, 'professeur', $participants);
     
     // Envoyer le message initial
-    $messageId = addMessage(
-        $convId, 
-        $professeurId, 
-        'professeur', 
-        $contenu, 
-        $importance, 
-        false, // Est annonce
-        $notificationObligatoire, 
-        false, // Accusé de réception
-        null, // Parent message ID
-        'standard', // Type message
+    addMessage(
+        $convId,
+        $professeurId,
+        'professeur',
+        $contenu,
+        $importance,            // importance
+        false,                  // estAnnonce
+        $notificationObligatoire,
+        null,                   // parentMessageId
+        'standard',             // typeMessage
         $filesData
     );
     

@@ -25,21 +25,16 @@ $sevBadge = static function (string $sev): string {
 };
 
 $pageTitle = 'Audit code';
-$activePage = 'systeme';
-$rootPrefix = '../../';
+$currentPage = 'code_audit';
 
-require_once __DIR__ . '/../../templates/shared_header.php';
+ob_start();
 ?>
-
-<div class="topbar">
-    <div class="topbar-left">
-        <h1 class="page-title"><i class="fas fa-clipboard-check"></i> Audit code</h1>
-    </div>
-    <div class="topbar-right">
-        <span class="fs-xs text-muted"><?= (int) $result['scanned'] ?> fichiers analysés</span>
-        <a href="code_audit.php" class="ui-btn ui-btn--ghost ui-btn--sm"><i class="fas fa-sync-alt"></i> Relancer</a>
-    </div>
-</div>
+<span class="fs-xs text-muted"><?= (int) $result['scanned'] ?> fichiers analysés</span>
+<a href="code_audit.php" class="ui-btn ui-btn--ghost ui-btn--sm"><i class="fas fa-sync-alt"></i> Relancer</a>
+<?php
+$headerExtraActions = ob_get_clean();
+include __DIR__ . '/../includes/header.php';
+?>
 
 <div class="content-body p-lg">
 
@@ -83,4 +78,4 @@ require_once __DIR__ . '/../../templates/shared_header.php';
 
 </div>
 
-<?php require_once __DIR__ . '/../../templates/shared_footer.php'; ?>
+<?php include __DIR__ . '/../includes/footer.php'; ?>

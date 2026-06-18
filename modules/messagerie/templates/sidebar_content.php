@@ -33,7 +33,7 @@ $currentFolder = $currentFolder ?? 'reception';
             <div class="sidebar-section-header">Dossiers</div>
             <div class="sidebar-nav">
                 <?php foreach ($folders as $key => $name): ?>
-                <a href="<?= $rootPrefix ?>messagerie/index.php?folder=<?= $key ?>" class="sidebar-nav-item <?= $currentFolder === $key ? 'active' : '' ?>">
+                <a href="<?= $rootPrefix ?>modules/messagerie/index.php?folder=<?= $key ?>" class="sidebar-nav-item <?= $currentFolder === $key ? 'active' : '' ?>">
                     <span class="sidebar-nav-icon"><i class="fas fa-<?= getFolderIcon($key) ?>"></i></span>
                     <span><?= htmlspecialchars($name) ?></span>
                 </a>
@@ -45,20 +45,20 @@ $currentFolder = $currentFolder ?? 'reception';
         <div class="sidebar-section">
             <div class="sidebar-section-header">Actions</div>
             <div class="sidebar-nav">
-                <a href="<?= $rootPrefix ?>messagerie/new_message.php" class="sidebar-nav-item">
+                <a href="<?= $rootPrefix ?>modules/messagerie/new_message.php" class="sidebar-nav-item">
                     <span class="sidebar-nav-icon"><i class="fas fa-pen"></i></span>
                     <span>Nouveau message</span>
                 </a>
                 
                 <?php if ($isProfesseur): ?>
-                <a href="<?= $rootPrefix ?>messagerie/class_message.php" class="sidebar-nav-item">
+                <a href="<?= $rootPrefix ?>modules/messagerie/class_message.php" class="sidebar-nav-item">
                     <span class="sidebar-nav-icon"><i class="fas fa-graduation-cap"></i></span>
                     <span>Message à la classe</span>
                 </a>
                 <?php endif; ?>
                 
                 <?php if ($canSendAnnouncement): ?>
-                <a href="<?= $rootPrefix ?>messagerie/new_announcement.php" class="sidebar-nav-item">
+                <a href="<?= $rootPrefix ?>modules/messagerie/new_announcement.php" class="sidebar-nav-item">
                     <span class="sidebar-nav-icon"><i class="fas fa-bullhorn"></i></span>
                     <span>Nouvelle annonce</span>
                 </a>

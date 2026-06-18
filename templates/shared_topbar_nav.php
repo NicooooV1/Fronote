@@ -19,11 +19,15 @@ $isAdmin = $isAdmin ?? false;
 // Get modules grouped by topbar category
 $_topbar_modules = [];
 $_topbar_role = getUserRole() ?? 'eleve';
+// Rôles effectifs (base + attribués) : un compte avec un rôle attribué (infirmerie,
+// cpe, professeur_principal…) doit voir les modules de ce rôle dans la topbar.
+$_topbar_roles = function_exists('getEffectiveRoles') ? getEffectiveRoles() : [$_topbar_role];
+if (empty($_topbar_roles)) { $_topbar_roles = [$_topbar_role]; }
 $_topbar_favorites = [];
 $_topbar_fav_keys = [];
 try {
     $moduleService = app('modules');
-    $_topbar_modules = $moduleService->getForTopbar($_topbar_role);
+    $_topbar_modules = $moduleService->getForTopbar($_topbar_roles);
     if (!empty($_SESSION['user_id'])) {
         $_topbar_favorites = $moduleService->getFavorites(
             (int) $_SESSION['user_id'],
@@ -35,7 +39,53 @@ try {
         }
     }
 } catch (\Throwable $e) {
-    // Fallback: empty navigation
+    error_log('[topbar] getForTopbar failed (' . get_class($e) . '): ' . $e->getMessage());
+}
+
+// Fallback: direct DB query when service layer returns nothing
+// (guards against stale singleton cache, missing columns, or boot-time errors)
+if (empty($_topbar_modules)) {
+    try {
+        $_tb_pdo = getPDO();
+        $_tb_stmt = $_tb_pdo->query("SELECT module_key, label, icon, category, sort_order FROM modules_config WHERE enabled = 1 ORDER BY sort_order, label");
+        $_tb_rows = $_tb_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Category meta for fallback grouping
+        $_tb_meta = [
+            'scolaire'      => ['label' => 'Pédagogie',    'icon' => 'fas fa-graduation-cap', 'order' => 1],
+            'vie_scolaire'  => ['label' => 'Vie scol.',    'icon' => 'fas fa-school',         'order' => 2],
+            'communication' => ['label' => 'Communication','icon' => 'fas fa-comments',       'order' => 3],
+            'sante'         => ['label' => 'Santé',        'icon' => 'fas fa-heartbeat',      'order' => 4],
+            'etablissement' => ['label' => 'Établissement','icon' => 'fas fa-building',       'order' => 5],
+            'logistique'    => ['label' => 'Logistique',   'icon' => 'fas fa-cogs',           'order' => 6],
+            'systeme'       => ['label' => 'Outils',       'icon' => 'fas fa-tools',          'order' => 7],
+        ];
+        $_tb_overrides = ['messagerie' => 'communication', 'notifications' => 'communication', 'infirmerie' => 'sante', 'vie_associative' => 'systeme'];
+        $_tb_exclude = ['accueil', 'parametres', 'profil', 'notifications'];
+
+        foreach ($_tb_rows as $_tb_mod) {
+            $_tb_key = $_tb_mod['module_key'];
+            if (in_array($_tb_key, $_tb_exclude)) continue;
+            $_tb_cat = $_tb_overrides[$_tb_key] ?? $_tb_mod['category'];
+            if ($_tb_cat === 'navigation') continue;
+            if (!isset($_tb_meta[$_tb_cat])) continue;
+            if (!isset($_topbar_modules[$_tb_cat])) {
+                $_topbar_modules[$_tb_cat] = [
+                    'label'   => $_tb_meta[$_tb_cat]['label'],
+                    'icon'    => $_tb_meta[$_tb_cat]['icon'],
+                    'order'   => $_tb_meta[$_tb_cat]['order'],
+                    'modules' => [],
+                ];
+            }
+            // Determine route: try modules/<key>/<key>.php, fall back to <key>/<key>.php
+            $_tb_route = 'modules/' . $_tb_key . '/' . $_tb_key . '.php';
+            $_topbar_modules[$_tb_cat]['modules'][] = array_merge($_tb_mod, ['route' => $_tb_route, 'module_key' => $_tb_key]);
+        }
+        uasort($_topbar_modules, fn($a, $b) => ($a['order'] ?? 99) <=> ($b['order'] ?? 99));
+    } catch (\Throwable $_tb_ex) {
+        error_log('[topbar] direct-DB fallback failed: ' . $_tb_ex->getMessage());
+    }
+    unset($_tb_pdo, $_tb_stmt, $_tb_rows, $_tb_meta, $_tb_overrides, $_tb_exclude, $_tb_mod, $_tb_key, $_tb_cat, $_tb_route, $_tb_ex);
 }
 
 // Notification badge count
@@ -43,7 +93,9 @@ $_topbar_notif_count = 0;
 try {
     if (!empty($_SESSION['user_id'])) {
         $pdo_tb = getPDO();
-        $stmt = $pdo_tb->prepare("SELECT COUNT(*) FROM notifications WHERE user_id = ? AND user_type = ? AND is_read = 0");
+        // Table socle = notifications_globales, colonne non-lu = `lu` (et non la
+        // table `notifications`/`is_read` qui n'existe pas → badge toujours à 0).
+        $stmt = $pdo_tb->prepare("SELECT COUNT(*) FROM notifications_globales WHERE user_id = ? AND user_type = ? AND lu = 0");
         $stmt->execute([$_SESSION['user_id'], $_SESSION['user_type'] ?? '']);
         $_topbar_notif_count = (int) $stmt->fetchColumn();
     }

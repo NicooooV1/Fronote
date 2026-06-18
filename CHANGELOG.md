@@ -6,6 +6,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased] — Durcissement développement — 2026-06-17
+
+### Changed
+
+- **Suppression complète des migrations SQL.** Plus de `ModuleSDK::migrate()`, de tables `module_migrations` / `core_migrations`, de dossiers `*/Database/migrations/`, de `CoreMigrator`, de `scripts/migrate.php`, ni de clé `module.json["migrations"]`. Le schéma vit entièrement dans `pronote.sql` (cœur) + `modules/<m>/Database/install.sql` (`CREATE TABLE IF NOT EXISTS`, schéma final complet). `ModuleSDK::provisionSql()` n'exécute plus que `install.sql`.
+- **Mise à jour en un seul bouton.** `admin/systeme/update.php` → `app('updates')->applyUpdate()` = `git fetch` + `git reset --hard origin/<GITHUB_BRANCH>` + `API\Services\SchemaSyncService::sync()` (réconciliation déclarative idempotente : création des tables et ajout des colonnes manquantes lues depuis les `install.sql`/`pronote.sql`, **sans migration ni DROP**) + `module_sdk->syncAll()` + vidage du cache. Remplace l'ancien système (GitHub Releases + zip + `scripts/update.php` + webhook + cron).
+- **Restructuration vers la topbar.** 28 pages (22 modules + 6 pages d'administration) migrées de l'ancienne sidebar vers le layout topbar unifié (`shared_header` + `shared_topbar` + `.content-container`). CSS modules corrigé (`$extraCss` page-relatif).
+
+### Added
+
+- **Import en masse** : `admin/systeme/import_export.php` + `API/Services/Import/{BulkImporter,ImportSchemas}` — fichier CSV/TSV ou copier-coller, reconnaissance automatique des en-têtes d'un export Pronote (FR), entités élèves/professeurs/parents/classes/matières/notes/devoirs, écran de correspondance des colonnes, scoping établissement.
+- **Refonte du support** : fil de discussion multi-messages (`support_ticket_messages`), notifications (création / réponse / changement de statut), SLA + satisfaction + notes internes, accès admin (carte du tableau de bord).
+- **Périodes auto** : `PeriodeService::defaultPeriodes()` déduit trimestres/semestres à partir de l'année scolaire (rentrée septembre).
+- **Onboarding obligatoire** : `API/onboarding_gate.php` force la configuration de l'établissement tant que son code vaut `default`.
+- **Boutons retour** : convention `$pageBack` rendue par la topbar (automatique sur l'administration).
+- **`API\Services\SchemaSyncService`** : réconciliation de schéma déclarative (remplace les migrations).
+
+### Fixed
+
+- Déconnexion inopérante (cookie « se souvenir de moi » non invalidé → reconnexion immédiate).
+- Messagerie : bouton « Nouveau message » absent (perdu lors du passage à la topbar).
+- « Sessions actives » : sessions désormais enregistrées à la connexion + colonne corrigée.
+- Widgets d'accueil vides trop hauts + normalisation des données des fournisseurs SDK.
+- Clés i18n du bandeau cookies manquantes (une clé absente affichait son nom).
+- Périodes et notes scopées par établissement ; RGPD : anonymisation par identifiant `nom.prenom` (au lieu d'un ID numérique).
+- `super_admin` ne pouvait pas atteindre l'administration ; faux positifs du scanner d'audit de code réduits.
+
+### Removed
+
+- `scripts/update.php`, `scripts/check_update.php`, `API/endpoints/webhook_update.php`, `API/Database/CoreMigrator.php` + `API/Database/migrations/`, ancien `UpdateService` (GitHub Releases / zip).
+
+---
+
 ## [3.2.4] "Marketplace" — 2026-05-31
 
 ### Added — Marketplace v1.5.2 (CDC n°2 — format .fmod + infrastructure test)

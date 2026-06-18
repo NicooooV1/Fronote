@@ -36,6 +36,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_SERVER['HTTP_X_REQUESTED_W
             exit;
         }
 
+        // Anti-traversée : whitelist stricte du domaine (lettres/chiffres/_/-, optionnellement préfixé "modules/")
+        if (!preg_match('#^(modules/)?[a-z0-9_-]+$#', $domain) || strpos($domain, '..') !== false) {
+            echo json_encode(['success' => false, 'error' => 'Invalid domain']);
+            exit;
+        }
+
         // Determine file path
         $filePath = $langPath . '/' . $locale . '/' . $domain . '.json';
         if (strpos($domain, 'modules/') === 0) {
@@ -88,16 +94,10 @@ foreach ($domains as $domain) {
 
 $csrfToken = app('csrf')->generate();
 $pageTitle = 'Traductions';
-$activePage = 'systeme';
+$currentPage = 'translations';
 
-require_once __DIR__ . '/../../templates/shared_header.php';
+include __DIR__ . '/../includes/header.php';
 ?>
-
-<div class="topbar">
-    <div class="topbar-left">
-        <h1 class="page-title"><i class="fas fa-language"></i> Gestion des traductions</h1>
-    </div>
-</div>
 
 <div class="content-body p-lg">
 
@@ -192,4 +192,4 @@ function saveKey(locale, domain, key, btn) {
 }
 </script>
 
-<?php require_once __DIR__ . '/../../templates/shared_footer.php'; ?>
+<?php include __DIR__ . '/../includes/footer.php'; ?>

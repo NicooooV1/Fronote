@@ -207,21 +207,6 @@ class RessourceService
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
-    // ─── PARTAGE ENTRE PROFS ───
-
-    public function partagerRessource(int $ressourceId, array $profIds): void
-    {
-        $this->pdo->prepare("UPDATE ressources SET partage = 1, partage_avec = :pa WHERE id = :id")
-            ->execute([':pa' => json_encode($profIds), ':id' => $ressourceId]);
-    }
-
-    public function getRessourcesPartagees(int $profId): array
-    {
-        $stmt = $this->pdo->prepare("SELECT r.*, CONCAT(p.prenom,' ',p.nom) AS auteur_nom FROM ressources r LEFT JOIN professeurs p ON r.professeur_id = p.id WHERE r.partage = 1 AND (JSON_CONTAINS(r.partage_avec, CAST(:pid AS CHAR)) OR r.professeur_id = :pid2) ORDER BY r.date_creation DESC");
-        $stmt->execute([':pid' => $profId, ':pid2' => $profId]);
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-    }
-
     // ─── ANALYTICS USAGE ───
 
     public function getUsageStats(int $ressourceId): array

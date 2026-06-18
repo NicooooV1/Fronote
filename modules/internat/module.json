@@ -26,7 +26,7 @@
         }
     },
     "routes": {
-        "main": "affectations.php"
+        "main": "chambres.php"
     },
     "widgets": [],
     "establishment_types": [

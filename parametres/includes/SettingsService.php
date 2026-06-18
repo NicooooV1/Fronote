@@ -56,20 +56,47 @@ class SettingsService {
      * Upload avatar
      */
     public function uploadAvatar(int $userId, string $userType, array $file): string {
-        $uploadDir = __DIR__ . '/../uploads/avatars/';
-        if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
-
-        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-        if (!in_array($ext, $allowed)) {
-            throw new Exception('Format non autorisé. Utilisez JPG, PNG, GIF ou WebP.');
+        // Vérifier l'erreur d'upload avant tout traitement.
+        if (!isset($file['error']) || $file['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception('Échec du téléversement du fichier.');
         }
+        // S'assurer que le fichier provient bien d'un upload HTTP (anti-spoof tmp_name).
+        if (!is_uploaded_file($file['tmp_name'])) {
+            throw new Exception('Fichier invalide.');
+        }
+
+        $uploadDir = __DIR__ . '/../uploads/avatars/';
+        // 0755 et non 0777 : pas d'écriture « monde ».
+        if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+            throw new Exception('Impossible de créer le dossier de destination.');
+        }
+
         if ($file['size'] > 2 * 1024 * 1024) {
             throw new Exception('La photo ne doit pas dépasser 2 Mo.');
         }
 
-        $filename = 'avatar_' . $userType . '_' . $userId . '_' . uniqid() . '.' . $ext;
-        move_uploaded_file($file['tmp_name'], $uploadDir . $filename);
+        // Validation par TYPE MIME réel (pas seulement l'extension) : on déduit
+        // l'extension du contenu de l'image, ce qui bloque les fichiers polyglottes
+        // (ex. .php renommé .jpg) que la simple vérification d'extension laissait passer.
+        $allowedMime = [
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/gif'  => 'gif',
+            'image/webp' => 'webp',
+        ];
+        $imageInfo = @getimagesize($file['tmp_name']);
+        if ($imageInfo === false || !isset($imageInfo['mime']) || !isset($allowedMime[$imageInfo['mime']])) {
+            throw new Exception('Format non autorisé. Utilisez une vraie image JPG, PNG, GIF ou WebP.');
+        }
+        $ext = $allowedMime[$imageInfo['mime']];
+
+        $filename = 'avatar_' . $userType . '_' . $userId . '_' . bin2hex(random_bytes(8)) . '.' . $ext;
+        // Échec dur si le déplacement échoue : on n'enregistre jamais en base un
+        // chemin pointant vers un fichier inexistant.
+        if (!move_uploaded_file($file['tmp_name'], $uploadDir . $filename)) {
+            throw new Exception('Impossible d\'enregistrer le fichier téléversé.');
+        }
+        @chmod($uploadDir . $filename, 0644);
 
         $chemin = 'uploads/avatars/' . $filename;
         $stmt = $this->pdo->prepare("
@@ -85,8 +112,9 @@ class SettingsService {
      * Modifier le mot de passe
      */
     public function changerMotDePasse(int $userId, string $userType, string $ancien, string $nouveau): bool {
-        // Password policy enforcement
-        if (strlen($nouveau) < 8 || !preg_match('/[A-Z]/', $nouveau) || !preg_match('/[a-z]/', $nouveau)
+        // Password policy enforcement (≥ 12 caractères pour aligner avec
+        // l'installateur et fermer le chemin faible « 8 caractères »).
+        if (strlen($nouveau) < 12 || !preg_match('/[A-Z]/', $nouveau) || !preg_match('/[a-z]/', $nouveau)
             || !preg_match('/[0-9]/', $nouveau) || !preg_match('/[^A-Za-z0-9]/', $nouveau)) {
             return false;
         }
@@ -109,8 +137,8 @@ class SettingsService {
             return false;
         }
 
-        $newHash = password_hash($nouveau, PASSWORD_DEFAULT);
-        $stmt = $this->pdo->prepare("UPDATE {$table} SET mot_de_passe = ? WHERE id = ?");
+        $newHash = \API\Security\PasswordPolicy::hash($nouveau);
+        $stmt = $this->pdo->prepare("UPDATE {$table} SET mot_de_passe = ?, password_changed_at = NOW() WHERE id = ?");
         return $stmt->execute([$newHash, $userId]);
     }
 
@@ -252,24 +280,27 @@ class SettingsService {
 
     // ─── SESSIONS ACTIVES ───
 
+    // La table session_security utilise `is_active` (tinyint) et une PK `id`
+    // varchar(128) (l'identifiant de session), pas une colonne `expired` ni un id
+    // entier — d'où la signature string $sessionId.
     public function getSessionsActives(int $userId, string $userType): array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM session_security WHERE user_id = :u AND user_type = :t AND expired = 0 ORDER BY created_at DESC");
+        $stmt = $this->pdo->prepare("SELECT * FROM session_security WHERE user_id = :u AND user_type = :t AND is_active = 1 ORDER BY last_activity DESC");
         $stmt->execute([':u' => $userId, ':t' => $userType]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
-    public function revoquerSession(int $sessionId, int $userId, string $userType): bool
+    public function revoquerSession(string $sessionId, int $userId, string $userType): bool
     {
-        $stmt = $this->pdo->prepare("UPDATE session_security SET expired = 1 WHERE id = :s AND user_id = :u AND user_type = :t");
+        $stmt = $this->pdo->prepare("UPDATE session_security SET is_active = 0 WHERE id = :s AND user_id = :u AND user_type = :t");
         return $stmt->execute([':s' => $sessionId, ':u' => $userId, ':t' => $userType]);
     }
 
-    public function revoquerToutesSessions(int $userId, string $userType, ?int $exceptId = null): int
+    public function revoquerToutesSessions(int $userId, string $userType, ?string $exceptId = null): int
     {
-        $sql = "UPDATE session_security SET expired = 1 WHERE user_id = :u AND user_type = :t AND expired = 0";
+        $sql = "UPDATE session_security SET is_active = 0 WHERE user_id = :u AND user_type = :t AND is_active = 1";
         $params = [':u' => $userId, ':t' => $userType];
-        if ($exceptId) { $sql .= " AND id != :e"; $params[':e'] = $exceptId; }
+        if ($exceptId !== null && $exceptId !== '') { $sql .= " AND id != :e"; $params[':e'] = $exceptId; }
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
         return $stmt->rowCount();
@@ -291,11 +322,21 @@ class SettingsService {
     public function importSettings(int $userId, string $userType, array $data): bool
     {
         if (!empty($data['settings'])) {
-            $this->saveSettings($userId, $userType, $data['settings']);
+            $this->save($userId, $userType, $data['settings']);
         }
         if (!empty($data['accueil_config'])) {
             $this->saveAccueilConfig($userId, $userType, $data['accueil_config']);
         }
         return true;
+    }
+
+    /**
+     * Réinitialise les préférences de l'utilisateur aux valeurs par défaut
+     * (supprime sa ligne user_settings ; les getters retombent sur defaults()).
+     */
+    public function reinitialiser(int $userId, string $userType): void
+    {
+        $this->pdo->prepare("DELETE FROM user_settings WHERE user_id = :u AND user_type = :t")
+            ->execute([':u' => $userId, ':t' => $userType]);
     }
 }

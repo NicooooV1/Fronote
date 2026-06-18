@@ -41,7 +41,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isGestionnaire && isset($_POST['sa
 }
 ?>
 
-<div class="main-content">
     <div class="page-header">
         <h1><i class="fas fa-utensils"></i> Menus de la cantine</h1>
         <div class="week-nav">
@@ -99,7 +98,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isGestionnaire && isset($_POST['sa
         </div>
         <?php endfor; ?>
     </div>
-</div>
 
 <?php if ($isGestionnaire): ?>
 <div id="menuModal" class="modal" style="display:none">

@@ -1,19 +1,25 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) session_start();
+// Charger l'API (Bridge -> bootstrap.php) AVANT tout démarrage de session :
+// le bloc gardé de bootstrap.php démarre la session durcie (HttpOnly + Secure(https)
+// + SameSite=Lax + nom/path par instance). Ne PAS faire de session_start() nu ici.
 require_once __DIR__ . '/../../../API/Legacy/Bridge.php';
 requireAuth();
+
+// Gating M32 : pages de gestion transports/internat (listes d'élèves d'autrui,
+// inventaire des lignes/chambres) réservées au staff. Avant tout rendu HTML.
+if (!isAdmin() && !isPersonnelVS()) {
+    redirect('/accueil/accueil.php');
+}
 
 $pdo = getPDO();
 require_once __DIR__ . '/TransportInternatService.php';
 $tiService = new TransportInternatService($pdo);
 
 $activePage = $activePage ?? 'lignes';
-$extraCss = ['transports/assets/css/transports.css'];
+$extraCss = ['assets/css/transports.css'];
 
-$sidebarLinks = '<li class="sidebar-item"><a href="/transports/lignes.php" class="sidebar-link ' . ($activePage === 'lignes' ? 'active' : '') . '"><i class="fas fa-bus"></i><span>Transports</span></a></li>';
-$sidebarLinks .= '<li class="sidebar-item"><a href="/transports/internat.php" class="sidebar-link ' . ($activePage === 'internat' ? 'active' : '') . '"><i class="fas fa-bed"></i><span>Internat</span></a></li>';
-
-$sidebarExtraContent = $sidebarLinks;
 $pageTitle = $pageTitle ?? 'Transports & Internat';
 require_once __DIR__ . '/../../../templates/shared_header.php';
+require_once __DIR__ . '/../../../templates/shared_topbar.php';
 ?>
+            <div class="content-container">

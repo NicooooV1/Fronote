@@ -6,7 +6,7 @@ $pageTitle = 'Créer un examen';
 $activePage = 'creer';
 require_once __DIR__ . '/includes/header.php';
 
-if (!isAdmin() && !isPersonnelVS()) { redirect('/examens/examens.php'); }
+if (!isAdmin() && !isPersonnelVS()) { redirect('/modules/examens/examens.php'); }
 
 $types = ExamenService::typesExamen();
 

@@ -70,8 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
         if (empty($username) || empty($password)) {
             $error = 'Veuillez remplir votre identifiant et votre mot de passe.';
         } else {
-            // 2) Rate limiting progressif
-            $waitMinutes = $userService->checkLoginRateLimit($ip);
+            // 2) Rate limiting progressif (par IP et par identifiant)
+            $waitMinutes = $userService->checkLoginRateLimit($ip, $username);
             if ($waitMinutes > 0) {
                 $error = "Trop de tentatives. Réessayez dans {$waitMinutes} minute(s).";
             } else {
@@ -91,9 +91,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
 
                 if ($result === null) {
                     // Aucun compte trouvé
-                    $userService->recordFailedAttempt($ip);
+                    $userService->recordFailedAttempt($ip, $username);
                     $error = 'Identifiant ou mot de passe incorrect.';
                     $_SESSION['last_username'] = $username;
+                    try { app('audit')->logAuth('login_failed', (string) $username, false, []); } catch (\Throwable $e) {}
 
                 } elseif (is_array($result) && isset($result[0]) && isset($result[0]['type'])) {
                     // Plusieurs comptes — montrer un sélecteur de profil
@@ -119,6 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
                     } else {
                         // Pas de 2FA → créer la session directement
                         $auth->loginUser($user);
+                        try { app('audit')->logAuth('login', $user['type'] . ':' . $user['id'], true, []); } catch (\Throwable $e) {}
 
                         if ($rememberMe) {
                             $userService->createRememberToken((int)$user['id'], $user['type']);
@@ -129,6 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
                         if ($fullUser && empty($fullUser['password_changed_at'])) {
                             $_SESSION['force_password_change'] = true;
                             $_SESSION['reset_user_id']         = $user['id'];
+                            $_SESSION['reset_user_type']       = $user['type'];
                             $_SESSION['reset_code']            = 'force_change';
                             $_SESSION['reset_username']        = $user['identifiant'] ?? $username;
                             redirect('login/change_password.php');

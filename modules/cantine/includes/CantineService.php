@@ -327,7 +327,7 @@ class CantineService
                    cl.nom AS classe
             FROM cantine_reservations r
             JOIN eleves e ON r.eleve_id = e.id
-            LEFT JOIN classes cl ON e.classe_id = cl.id
+            LEFT JOIN classes cl ON e.classe = cl.nom
             WHERE r.date_repas BETWEEN ? AND ?
             ORDER BY r.date_repas, e.nom
         ");
@@ -376,7 +376,7 @@ class CantineService
                    SUM(CASE WHEN r.statut = 'consomme' THEN 1 ELSE 0 END) AS consommes
             FROM cantine_reservations r
             JOIN eleves e ON r.eleve_id = e.id
-            LEFT JOIN classes cl ON e.classe_id = cl.id
+            LEFT JOIN classes cl ON e.classe = cl.nom
             WHERE r.date_repas = ? AND r.statut != 'annule'
             GROUP BY cl.id, cl.nom ORDER BY cl.nom
         ");

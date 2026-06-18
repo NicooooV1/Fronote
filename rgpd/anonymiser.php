@@ -14,15 +14,19 @@ $messageType = '';
 $result = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
-    $userId = (int)$_POST['user_id'];
+    $identifiant = trim($_POST['identifiant'] ?? '');
     $userType = $_POST['user_type'] ?? '';
     $confirm = $_POST['confirmation'] ?? '';
+    $userId = 0;
 
     if ($confirm !== 'ANONYMISER') {
         $message = 'Veuillez taper ANONYMISER pour confirmer.';
         $messageType = 'danger';
-    } elseif ($userId <= 0 || !in_array($userType, ['eleve', 'professeur', 'parent', 'vie_scolaire'])) {
+    } elseif ($identifiant === '' || !in_array($userType, ['eleve', 'professeur', 'parent', 'vie_scolaire'])) {
         $message = 'Utilisateur invalide.';
+        $messageType = 'danger';
+    } elseif (!($userId = (int)$rgpdService->resoudreUtilisateur($identifiant, $userType))) {
+        $message = "Aucun utilisateur unique trouvé pour l'identifiant « " . $identifiant . " » (type " . $userType . ").";
         $messageType = 'danger';
     } else {
         $result = $rgpdService->anonymiserUtilisateur($userId, $userType, getUserId());
@@ -84,8 +88,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                     <small class="text-muted">Les administrateurs ne peuvent pas être anonymisés.</small>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">ID utilisateur</label>
-                    <input type="number" name="user_id" class="form-control" required min="1" placeholder="Ex: 42">
+                    <label class="form-label">Identifiant (login nom.prenom)</label>
+                    <input type="text" name="identifiant" class="form-control" required placeholder="Ex: dupont.marie"
+                           value="<?= htmlspecialchars($_POST['identifiant'] ?? '') ?>">
+                    <small class="text-muted">Saisissez l'identifiant de connexion (nom.prenom) ou l'adresse e-mail de l'utilisateur.</small>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Confirmation</label>

@@ -6,7 +6,7 @@
  */
 class AnnonceService
 {
-    protected $pdo;
+    protected \PDO $pdo;
 
     public function __construct(PDO $pdo)
     {
@@ -112,14 +112,22 @@ class AnnonceService
      */
     public function getAnnoncesVisibles(string $role, ?string $classeNom = null, ?int $classeId = null): array
     {
+        // Scope obligatoire : sans ça les annonces fuient cross-établissement.
+        try {
+            $etabId = \API\Core\EstablishmentContext::id();
+        } catch (\Throwable $e) {
+            return [];
+        }
         $sql = "SELECT a.*,
                        (SELECT COUNT(*) FROM annonces_lues al WHERE al.annonce_id = a.id) AS nb_lues
                 FROM annonces a
-                WHERE a.publie = 1
+                WHERE a.etablissement_id = ?
+                  AND a.publie = 1
                   AND (a.date_expiration IS NULL OR a.date_expiration > NOW())
                   AND a.date_publication <= NOW()
                 ORDER BY a.epingle DESC, a.date_publication DESC";
-        $stmt = $this->pdo->query($sql);
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$etabId]);
         $all = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Filtrer côté PHP pour gérer le ciblage JSON

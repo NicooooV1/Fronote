@@ -22,10 +22,34 @@ class AuditRgpdService
         if (!empty($filtres['action'])) { $sql .= ' AND action LIKE ?'; $params[] = '%' . $filtres['action'] . '%'; }
         if (!empty($filtres['date_debut'])) { $sql .= ' AND created_at >= ?'; $params[] = $filtres['date_debut']; }
         if (!empty($filtres['date_fin'])) { $sql .= ' AND created_at <= ?'; $params[] = $filtres['date_fin'] . ' 23:59:59'; }
+        // Scoper au journal de l'établissement courant pour un admin (un super_admin
+        // voit l'audit de tous les établissements). Cf. resoudreUtilisateur().
+        [$etabClause, $etabParams] = $this->etablissementScope();
+        $sql .= $etabClause;
+        $params = array_merge($params, $etabParams);
         $sql .= ' ORDER BY created_at DESC LIMIT 500';
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Construit le filtre d'établissement pour le journal d'audit.
+     * - Un super_admin n'est PAS scopé (visibilité cross-établissement).
+     * - Un admin (ou autre rôle) est scopé sur l'établissement courant.
+     * Retourne [clauseSQL, paramsBind] ; clause vide si pas de scope applicable.
+     */
+    private function etablissementScope(): array
+    {
+        if (function_exists('isSuperAdmin') && isSuperAdmin()) {
+            return ['', []];
+        }
+        try {
+            $eid = \API\Core\EstablishmentContext::id();
+            return [' AND etablissement_id = ?', [$eid]];
+        } catch (\Throwable $e) {
+            return ['', []];
+        }
     }
 
     public function getAuditStats(): array
@@ -38,18 +62,26 @@ class AuditRgpdService
         $today = date('Y-m-d');
         $month = date('Y-m');
 
-        $stmtToday = $this->pdo->prepare("SELECT COUNT(*) FROM audit_log WHERE DATE(created_at) = ?");
-        $stmtToday->execute([$today]);
+        // Mêmes règles de scope que getAuditLogs() : un admin ne voit que son
+        // établissement, un super_admin voit tout.
+        [$etabClause, $etabParams] = $this->etablissementScope();
+
+        $stmtToday = $this->pdo->prepare("SELECT COUNT(*) FROM audit_log WHERE DATE(created_at) = ?" . $etabClause);
+        $stmtToday->execute(array_merge([$today], $etabParams));
         $todayCount = (int)$stmtToday->fetchColumn();
 
+        $stmtTotal = $this->pdo->prepare("SELECT COUNT(*) FROM audit_log WHERE 1=1" . $etabClause);
+        $stmtTotal->execute($etabParams);
+        $totalCount = (int)$stmtTotal->fetchColumn();
+
+        $stmtMonth = $this->pdo->prepare("SELECT COUNT(*) FROM audit_log WHERE created_at LIKE ?" . $etabClause);
+        $stmtMonth->execute(array_merge([$month . '%'], $etabParams));
+        $monthCount = (int)$stmtMonth->fetchColumn();
+
         return [
-            'total' => (int)$this->pdo->query("SELECT COUNT(*) FROM audit_log")->fetchColumn(),
+            'total' => $totalCount,
             'today' => $todayCount,
-            'month' => (int)(function() use ($month) {
-                $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM audit_log WHERE created_at LIKE ?");
-                $stmt->execute([$month . '%']);
-                return $stmt->fetchColumn();
-            })(),
+            'month' => $monthCount,
         ];
     }
 
@@ -136,7 +168,14 @@ class AuditRgpdService
                     (SELECT CONCAT(prenom, ' ', nom) FROM eleves WHERE id = d.user_id AND d.user_type = 'eleve'),
                     (SELECT CONCAT(prenom, ' ', nom) FROM parents WHERE id = d.user_id AND d.user_type = 'parent'),
                     (SELECT CONCAT(prenom, ' ', nom) FROM vie_scolaire WHERE id = d.user_id AND d.user_type = 'vie_scolaire')
-                ) AS demandeur_nom
+                ) AS demandeur_nom,
+                COALESCE(
+                    (SELECT identifiant FROM administrateurs WHERE id = d.user_id AND d.user_type = 'administrateur'),
+                    (SELECT identifiant FROM professeurs WHERE id = d.user_id AND d.user_type = 'professeur'),
+                    (SELECT identifiant FROM eleves WHERE id = d.user_id AND d.user_type = 'eleve'),
+                    (SELECT identifiant FROM parents WHERE id = d.user_id AND d.user_type = 'parent'),
+                    (SELECT identifiant FROM vie_scolaire WHERE id = d.user_id AND d.user_type = 'vie_scolaire')
+                ) AS demandeur_identifiant
                 FROM rgpd_demandes d WHERE 1=1";
         $params = [];
         if (!empty($filtres['statut'])) { $sql .= ' AND d.statut = ?'; $params[] = $filtres['statut']; }
@@ -152,6 +191,35 @@ class AuditRgpdService
         $stmt = $this->pdo->prepare("SELECT * FROM rgpd_demandes WHERE id = ?");
         $stmt->execute([$id]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    /**
+     * Résout un identifiant humain (login nom.prenom ou mail) vers l'id interne
+     * d'un type d'utilisateur donné. Retourne null si introuvable / ambigu.
+     * Mirroir du resolver d'auth (UserProvider: WHERE mail = ? OR identifiant = ?).
+     */
+    public function resoudreUtilisateur(string $identifiant, string $userType): ?int
+    {
+        $tableMap = [
+            'eleve' => 'eleves', 'professeur' => 'professeurs',
+            'parent' => 'parents', 'administrateur' => 'administrateurs',
+            'vie_scolaire' => 'vie_scolaire',
+        ];
+        $table = $tableMap[$userType] ?? null;
+        if (!$table) return null;
+        $identifiant = trim($identifiant);
+        if ($identifiant === '') return null;
+        // Scoper à l'établissement courant : l'identifiant n'est unique que par
+        // (identifiant, etablissement_id) ; sans ce filtre, un même login présent dans
+        // deux établissements ferait échouer le contrôle d'ambiguïté (LIMIT 2).
+        $params = [$identifiant, $identifiant];
+        $etabClause = '';
+        try { $eid = \API\Core\EstablishmentContext::id(); $etabClause = ' AND etablissement_id = ?'; $params[] = $eid; } catch (\Throwable $e) {}
+        $stmt = $this->pdo->prepare("SELECT id FROM `{$table}` WHERE (identifiant = ? OR mail = ?){$etabClause} LIMIT 2");
+        $stmt->execute($params);
+        $ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        if (count($ids) !== 1) return null; // introuvable ou ambigu
+        return (int)$ids[0];
     }
 
     public function traiterDemande(int $id, string $statut, ?string $reponse, int $traiteParId): void
@@ -210,14 +278,14 @@ class AuditRgpdService
         if ($userType === 'eleve') {
             // Notes
             try {
-                $stmt = $pdo->prepare("SELECT n.*, m.nom AS matiere FROM notes n LEFT JOIN matieres m ON n.matiere_id = m.id WHERE n.eleve_id = ? ORDER BY n.date_note DESC");
+                $stmt = $pdo->prepare("SELECT n.*, m.nom AS matiere FROM notes n LEFT JOIN matieres m ON n.id_matiere = m.id WHERE n.id_eleve = ? ORDER BY n.date_note DESC");
                 $stmt->execute([$userId]);
                 $data['notes'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
             } catch (\Exception $e) { $data['notes'] = []; }
 
             // Absences
             try {
-                $stmt = $pdo->prepare("SELECT * FROM absences WHERE eleve_id = ? ORDER BY date_absence DESC");
+                $stmt = $pdo->prepare("SELECT * FROM absences WHERE id_eleve = ? ORDER BY date_debut DESC");
                 $stmt->execute([$userId]);
                 $data['absences'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
             } catch (\Exception $e) { $data['absences'] = []; }
@@ -314,17 +382,52 @@ class AuditRgpdService
         try {
             $pdo->beginTransaction();
 
-            // 1. Anonymiser le profil
-            $stmt = $pdo->prepare("
-                UPDATE {$table} SET 
-                    nom = ?, prenom = 'Anonyme', 
-                    email = ?, identifiant = ?,
-                    telephone = NULL, adresse = NULL,
-                    mot_de_passe = '', actif = 0,
-                    photo = NULL
-                WHERE id = ?
-            ");
-            $stmt->execute([$anonymId, $anonymId . '@anonymise.rgpd', $anonymId, $userId]);
+            // 1. Anonymiser le profil.
+            // Les tables utilisateurs n'ont pas toutes les mêmes colonnes (ex.
+            // administrateurs n'a pas `telephone`, vie_scolaire n'a pas `adresse`,
+            // aucune n'a `photo`). On construit donc le SET dynamiquement à partir
+            // des colonnes réellement présentes, sinon l'UPDATE échouait → rollback →
+            // droit à l'oubli (Art. 17 RGPD) jamais appliqué.
+            $stmtCols = $pdo->prepare(
+                "SELECT COLUMN_NAME FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?"
+            );
+            $stmtCols->execute([$table]);
+            $existingCols = $stmtCols->fetchAll(\PDO::FETCH_COLUMN);
+
+            // Colonne => valeur (NULL pour effacer, chaîne pour pseudonymiser).
+            $anonFields = [
+                'nom'          => $anonymId,
+                'prenom'       => 'Anonyme',
+                'mail'         => $anonymId . '@anonymise.rgpd',
+                'identifiant'  => $anonymId,
+                'telephone'    => null,
+                'adresse'      => null,
+                'mot_de_passe' => '',
+                'actif'        => 0,
+                'photo'        => null,
+            ];
+
+            $setParts = [];
+            $params = [];
+            foreach ($anonFields as $col => $val) {
+                if (!in_array($col, $existingCols, true)) {
+                    continue; // colonne absente sur cette table → on saute
+                }
+                if ($val === null) {
+                    $setParts[] = "`{$col}` = NULL";
+                } else {
+                    $setParts[] = "`{$col}` = ?";
+                    $params[] = $val;
+                }
+            }
+            if (empty($setParts)) {
+                throw new \RuntimeException("Aucune colonne anonymisable trouvée pour {$table}");
+            }
+            $params[] = $userId;
+
+            $stmt = $pdo->prepare("UPDATE `{$table}` SET " . implode(', ', $setParts) . " WHERE id = ?");
+            $stmt->execute($params);
             $actions[] = "Profil anonymisé dans {$table}";
 
             // 2. Supprimer consentements
@@ -368,11 +471,11 @@ class AuditRgpdService
     public static function retentionDefaults(): array
     {
         return [
-            'audit_log'        => ['label' => 'Logs d\'audit', 'duree' => 365, 'obligatoire' => true],
-            'session_security' => ['label' => 'Sessions de connexion', 'duree' => 90, 'obligatoire' => false],
-            'messages'         => ['label' => 'Messages supprimés', 'duree' => 180, 'obligatoire' => false],
-            'notifications'    => ['label' => 'Notifications lues', 'duree' => 90, 'obligatoire' => false],
-            'rate_limits'      => ['label' => 'Logs rate limiting', 'duree' => 30, 'obligatoire' => false],
+            'audit_log'             => ['label' => 'Logs d\'audit', 'duree' => 365, 'obligatoire' => true],
+            'session_security'      => ['label' => 'Sessions de connexion', 'duree' => 90, 'obligatoire' => false],
+            'messages'              => ['label' => 'Messages supprimés', 'duree' => 180, 'obligatoire' => false],
+            'notifications_globales' => ['label' => 'Notifications lues', 'duree' => 90, 'obligatoire' => false],
+            'rate_limits'           => ['label' => 'Logs rate limiting', 'duree' => 30, 'obligatoire' => false],
         ];
     }
 
@@ -425,16 +528,18 @@ class AuditRgpdService
     {
         $policies = $this->getRetentionPolicies();
         $results = [];
+        // Colonne de date réelle par table (le schéma livré diffère des noms
+        // « génériques » : rate_limits.attempted_at, notifications_globales.date_creation).
         $dateColumnMap = [
             'audit_log' => 'created_at',
             'session_security' => 'created_at',
             'messages' => 'created_at',
-            'notifications' => 'created_at',
-            'rate_limits' => 'timestamp',
+            'notifications_globales' => 'date_creation',
+            'rate_limits' => 'attempted_at',
         ];
         $conditionMap = [
             'messages' => 'is_deleted = 1 AND',
-            'notifications' => 'lu = 1 AND',
+            'notifications_globales' => 'lu = 1 AND',
         ];
 
         foreach ($policies as $table => $policy) {
@@ -471,7 +576,7 @@ class AuditRgpdService
         try {
             $stmt = $this->pdo->prepare("INSERT INTO audit_log (user_id, user_type, action, details, ip_address, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
             $stmt->execute([$userId, $userType, $action, $details, $_SERVER['REMOTE_ADDR'] ?? '']);
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) { error_log('[rgpd audit] ' . $e->getMessage()); }
     }
 
     /* ───────── STATIC ───────── */

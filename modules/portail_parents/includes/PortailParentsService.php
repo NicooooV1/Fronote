@@ -24,17 +24,22 @@ class PortailParentsService
 
     public function getResumeEnfant(int $parentId, int $eleveId): array
     {
-        $eleve = $this->pdo->prepare("SELECT id, nom, prenom, classe, date_naissance, photo FROM eleves WHERE id = :eid");
-        $eleve->execute([':eid' => $eleveId]);
+        // SÉCURITÉ : ne renvoyer l'enfant que s'il est rattaché au parent connecté
+        // (sinon IDOR : ?enfant=<id> exposerait le dossier de n'importe quel élève).
+        $eleve = $this->pdo->prepare("SELECT e.id, e.nom, e.prenom, e.classe, e.date_naissance, e.photo
+            FROM eleves e
+            JOIN parent_eleve pe ON pe.id_eleve = e.id
+            WHERE e.id = :eid AND pe.id_parent = :pid");
+        $eleve->execute([':eid' => $eleveId, ':pid' => $parentId]);
         $eleve = $eleve->fetch(PDO::FETCH_ASSOC);
         if (!$eleve) return [];
 
         // Dernières notes
-        $notes = $this->pdo->prepare("SELECT n.note, n.note_sur, n.date_evaluation, m.nom AS matiere FROM notes n JOIN matieres m ON n.id_matiere = m.id WHERE n.id_eleve = :eid ORDER BY n.date_evaluation DESC LIMIT 10");
+        $notes = $this->pdo->prepare("SELECT n.note, n.note_sur, n.date_note AS date_evaluation, m.nom AS matiere FROM notes n JOIN matieres m ON n.id_matiere = m.id WHERE n.id_eleve = :eid ORDER BY n.date_note DESC LIMIT 10");
         $notes->execute([':eid' => $eleveId]);
 
         // Absences récentes
-        $absences = $this->pdo->prepare("SELECT date_absence, motif, justifiee FROM absences WHERE id_eleve = :eid ORDER BY date_absence DESC LIMIT 10");
+        $absences = $this->pdo->prepare("SELECT date_debut, motif, justifie AS justifiee FROM absences WHERE id_eleve = :eid ORDER BY date_debut DESC LIMIT 10");
         $absences->execute([':eid' => $eleveId]);
 
         // Incidents
@@ -61,7 +66,7 @@ class PortailParentsService
 
     public function getEnfants(int $parentId): array
     {
-        $stmt = $this->pdo->prepare("SELECT e.id, e.nom, e.prenom, e.classe, e.photo FROM eleves e JOIN eleve_parents ep ON e.id = ep.eleve_id WHERE ep.parent_id = :pid AND e.actif = 1 ORDER BY e.prenom");
+        $stmt = $this->pdo->prepare("SELECT e.id, e.nom, e.prenom, e.classe, e.photo FROM eleves e JOIN parent_eleve ep ON e.id = ep.id_eleve WHERE ep.id_parent = :pid AND e.actif = 1 ORDER BY e.prenom");
         $stmt->execute([':pid' => $parentId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -135,9 +140,16 @@ class PortailParentsService
 
     public function getCalendrierIcs(int $parentId, int $eleveId): string
     {
-        $eleve = $this->pdo->prepare("SELECT nom, prenom, classe FROM eleves WHERE id = :eid");
-        $eleve->execute([':eid' => $eleveId]);
+        // SÉCURITÉ : vérifier le lien parent↔élève avant d'exposer le calendrier.
+        $eleve = $this->pdo->prepare("SELECT e.nom, e.prenom, e.classe
+            FROM eleves e
+            JOIN parent_eleve pe ON pe.id_eleve = e.id
+            WHERE e.id = :eid AND pe.id_parent = :pid");
+        $eleve->execute([':eid' => $eleveId, ':pid' => $parentId]);
         $eleve = $eleve->fetch(PDO::FETCH_ASSOC);
+        if (!$eleve) {
+            return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Fronote//Portail Parents//FR\r\nEND:VCALENDAR\r\n";
+        }
 
         $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Fronote//Portail Parents//FR\r\nCALSCALE:GREGORIAN\r\nX-WR-CALNAME:Fronote - {$eleve['prenom']} {$eleve['nom']}\r\n";
 

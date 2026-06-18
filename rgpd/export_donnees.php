@@ -12,7 +12,12 @@ $userType = getUserRole();
 
 if (isset($_GET['download']) && $_GET['download'] === '1' && validateCSRFToken()) {
     $data = $rgpdService->exporterDonneesUtilisateur($userId, $userType);
-    
+
+    // Traçabilité RGPD (Art.15) : journaliser l'export, comme annoncé à l'utilisateur.
+    try {
+        app('audit')->logAuth('rgpd_export', (string) $userId, true, ['user_type' => $userType]);
+    } catch (\Throwable $e) { error_log('[rgpd] export audit failed: ' . $e->getMessage()); }
+
     $filename = 'mes_donnees_rgpd_' . date('Y-m-d_His') . '.json';
     header('Content-Type: application/json; charset=utf-8');
     header('Content-Disposition: attachment; filename="' . $filename . '"');

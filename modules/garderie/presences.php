@@ -33,7 +33,6 @@ $creneaux = $garderieService->getCreneaux();
 $presences = $garderieService->getPresencesJour($dateVue, $creneauId ?: null);
 ?>
 
-<div class="main-content">
     <div class="page-header">
         <h1><i class="fas fa-check-circle"></i> Présences garderie</h1>
     </div>
@@ -82,6 +81,5 @@ $presences = $garderieService->getPresencesJour($dateVue, $creneauId ?: null);
             </form>
         </div>
     </div>
-</div>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

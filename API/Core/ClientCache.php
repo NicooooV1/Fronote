@@ -39,13 +39,21 @@ class ClientCache
     {
         $this->instanceId = defined('INSTANCE_ID') ? INSTANCE_ID : 'default';
         $this->cookiePath = defined('INSTANCE_COOKIE_PATH') ? INSTANCE_COOKIE_PATH : '/';
-        $this->secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+        $this->secure = function_exists('request_is_https')
+            ? request_is_https()
+            : (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off');
 
-        // Clé HMAC dérivée de APP_KEY (ou fallback sur instance + salt fixe)
-        $appKey = getenv('APP_KEY') ?: '';
-        $this->hmacKey = $appKey
-            ? hash('sha256', $appKey . ':client_cache:' . $this->instanceId, true)
-            : hash('sha256', 'fronote_cc_salt:' . $this->instanceId . ':' . realpath(defined('BASE_PATH') ? BASE_PATH : __DIR__), true);
+        // Clé HMAC dérivée du matériel de clé applicatif (APP_KEY, repli JWT_SECRET).
+        // Ces secrets sont aléatoires et propres à l'installation → cookies signés non forgeables.
+        $keyMaterial = \API\Core\Encryption::keyMaterial();
+        if ($keyMaterial !== null) {
+            $this->hmacKey = hash('sha256', $keyMaterial . ':client_cache:' . $this->instanceId, true);
+        } else {
+            // Aucune clé applicative configurée : repli FAIBLE (dérivé du chemin d'install).
+            // À éviter en production — on journalise pour alerter l'opérateur.
+            error_log('ClientCache: APP_KEY/JWT_SECRET absents — clé HMAC de repli faible utilisée (cookies signés potentiellement forgeables).');
+            $this->hmacKey = hash('sha256', 'fronote_cc_salt:' . $this->instanceId . ':' . realpath(defined('BASE_PATH') ? BASE_PATH : __DIR__), true);
+        }
     }
 
     // ─── Public API ─────────────────────────────────────────────────

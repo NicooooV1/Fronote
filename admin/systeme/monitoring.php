@@ -65,21 +65,16 @@ $diskPct = $diskTotal > 0 ? round(($diskTotal - $diskFree) / $diskTotal * 100) :
 
 $csrfToken = app('csrf')->generate();
 $pageTitle = 'Monitoring';
-$activePage = 'systeme';
-$rootPrefix = '../../';
+$currentPage = 'monitoring';
 
-require_once __DIR__ . '/../../templates/shared_header.php';
+ob_start();
 ?>
-
-<div class="topbar">
-    <div class="topbar-left">
-        <h1 class="page-title"><i class="fas fa-heartbeat"></i> Monitoring systeme</h1>
-    </div>
-    <div class="topbar-right">
-        <span class="fs-xs text-muted">Derniere verification: <?= date('H:i:s') ?></span>
-        <a href="" class="ui-btn ui-btn--ghost ui-btn--sm"><i class="fas fa-sync-alt"></i> Rafraichir</a>
-    </div>
-</div>
+<span class="fs-xs text-muted">Derniere verification: <?= date('H:i:s') ?></span>
+<a href="" class="ui-btn ui-btn--ghost ui-btn--sm"><i class="fas fa-sync-alt"></i> Rafraichir</a>
+<?php
+$headerExtraActions = ob_get_clean();
+include __DIR__ . '/../includes/header.php';
+?>
 
 <div class="content-body p-lg">
 
@@ -178,4 +173,4 @@ require_once __DIR__ . '/../../templates/shared_header.php';
 
 </div>
 
-<?php require_once __DIR__ . '/../../templates/shared_footer.php'; ?>
+<?php include __DIR__ . '/../includes/footer.php'; ?>

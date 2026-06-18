@@ -17,10 +17,15 @@ if ($role === 'eleve') {
     $eleveNom = getUserFullName();
 } elseif ($role === 'parent') {
     // Sélection enfant
-    $stmt = getPDO()->prepare("SELECT e.id, e.nom, e.prenom FROM parent_eleve pe JOIN eleves e ON pe.eleve_id = e.id WHERE pe.parent_id = ?");
+    $stmt = getPDO()->prepare("SELECT e.id, e.nom, e.prenom FROM parent_eleve pe JOIN eleves e ON pe.id_eleve = e.id WHERE pe.id_parent = ?");
     $stmt->execute([getUserId()]);
     $enfants = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $eleveId = isset($_GET['eleve_id']) ? (int)$_GET['eleve_id'] : ($enfants[0]['id'] ?? 0);
+    // Sécurité : un parent ne peut consulter que SES enfants (anti-IDOR)
+    $childIds = array_map(fn($enf) => (int)$enf['id'], $enfants);
+    if (!in_array($eleveId, $childIds, true)) {
+        $eleveId = $enfants[0]['id'] ?? 0;
+    }
     foreach ($enfants as $enf) {
         if ($enf['id'] == $eleveId) { $eleveNom = $enf['prenom'] . ' ' . $enf['nom']; break; }
     }

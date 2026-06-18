@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Gestion des sessions actives — vue admin des sessions utilisateurs
  */
@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
     if ($action === 'kill_session') {
         $sid = $_POST['session_id'] ?? '';
         if (!empty($sid)) {
-            $stmt = $pdo->prepare("UPDATE session_security SET is_active = 0, expires_at = NOW() WHERE session_id = ?");
+            $stmt = $pdo->prepare("UPDATE session_security SET is_active = 0, expires_at = NOW() WHERE id = ?");
             $stmt->execute([$sid]);
             logAudit('session_killed', 'session_security', 0, ['session_id' => $sid]);
             $message = "Session déconnectée.";
@@ -70,7 +70,9 @@ try {
         ORDER BY s.last_activity DESC
     ");
     $sessions = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (Exception $e) {}
+} catch (Exception $e) {
+    error_log('[' . basename(__FILE__) . '] ' . $e->getMessage());
+}
 
 // Détection multi-IP : utilisateurs avec session active depuis 2+ IPs distinctes
 $suspicious = [];
@@ -83,7 +85,9 @@ try {
         HAVING ip_count > 1
     ");
     $suspicious = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (Exception $e) {}
+} catch (Exception $e) {
+    error_log('[' . basename(__FILE__) . '] ' . $e->getMessage());
+}
 
 // Stats
 $totalActive = count($sessions);
@@ -168,7 +172,7 @@ include __DIR__ . '/../includes/header.php';
                 <td style="font-size:12px"><?= !empty($s['last_activity']) ? date('d/m H:i', strtotime($s['last_activity'])) : '-' ?></td>
                 <td style="font-size:12px"><?= date('d/m H:i', strtotime($s['expires_at'])) ?></td>
                 <td>
-                    <form method="post" style="display:inline"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="kill_session"><input type="hidden" name="session_id" value="<?= htmlspecialchars($s['session_id']) ?>"><button class="btn-xs danger" title="Déconnecter"><i class="fas fa-times"></i></button></form>
+                    <form method="post" style="display:inline"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="kill_session"><input type="hidden" name="session_id" value="<?= htmlspecialchars($s['id']) ?>"><button class="btn-xs danger" title="Déconnecter"><i class="fas fa-times"></i></button></form>
                 </td>
             </tr>
             <?php endforeach; ?>

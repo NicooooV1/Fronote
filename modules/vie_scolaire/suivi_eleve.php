@@ -5,9 +5,9 @@
 require_once __DIR__ . '/includes/VieScolaireService.php';
 $currentPage = 'suivi';
 $pageTitle = 'Suivi élève';
-require_once __DIR__ . '/includes/header.php';
-requireAuth();
 
+require_once __DIR__ . '/../../API/core.php';
+requireAuth();
 if (!isAdmin() && !isVieScolaire() && !isTeacher()) {
     header('Location: ../../accueil/accueil.php');
     exit;
@@ -17,12 +17,14 @@ $pdo = getPDO();
 $service = new VieScolaireService($pdo);
 $eleveId = (int)($_GET['id'] ?? 0);
 
-// Recherche AJAX
+// Recherche AJAX (sortie JSON — avant tout HTML/header.php)
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'search') {
     header('Content-Type: application/json');
     echo json_encode($service->rechercherEleves($_GET['q'] ?? ''));
     exit;
 }
+
+require_once __DIR__ . '/includes/header.php';
 
 $fiche = null;
 if ($eleveId) {

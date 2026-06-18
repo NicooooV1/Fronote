@@ -17,7 +17,7 @@ if (isParent()) {
     $enfants = $besoinService->getPlansParent(getUserId());
     foreach ($enfants as $e) { if ($e['id'] == $id) { $canView = true; break; } }
 }
-if (!$canView) { redirect('/besoins/besoins.php'); }
+if (!$canView) { redirect('/modules/besoins/besoins.php'); }
 
 $suivis = $besoinService->getSuivis($id);
 $typesPlan = BesoinService::typesPlan();
@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $canEdit) {
     <?php if (!empty($_SESSION['success_message'])): ?><div class="alert alert-success"><?= $_SESSION['success_message'] ?></div><?php unset($_SESSION['success_message']); endif; ?>
 
     <div class="info-grid">
-        <div class="info-item"><?= BesoinService::badgeType($plan['type']) ?> <?= $typesPlan[$plan['type']] ?? '' ?></div>
+        <div class="info-item"><?= BesoinService::badgeType($plan['type_plan']) ?> <?= $typesPlan[$plan['type_plan']] ?? '' ?></div>
         <div class="info-item"><i class="fas fa-users"></i><span><?= htmlspecialchars($plan['classe_nom'] ?? '-') ?></span></div>
         <div class="info-item"><i class="fas fa-calendar"></i><span><?= formatDate($plan['date_debut']) ?><?= $plan['date_fin'] ? ' → ' . formatDate($plan['date_fin']) : '' ?></span></div>
         <div class="info-item"><span class="badge badge-<?= $plan['statut'] === 'actif' ? 'success' : ($plan['statut'] === 'suspendu' ? 'warning' : 'secondary') ?>"><?= ucfirst($plan['statut']) ?></span></div>

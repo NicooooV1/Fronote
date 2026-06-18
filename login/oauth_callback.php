@@ -47,13 +47,30 @@ try {
 
 	$user = $result['user'];
 
-	// Connecter via SessionGuard
-	$sessionGuard = app('auth');
-	$sessionGuard->login($user);
+	// Si le compte a activé la 2FA, le SSO ne doit PAS la court-circuiter : on bascule
+	// vers l'étape de second facteur au lieu de créer directement la session.
+	$uId   = (int) ($user['id'] ?? 0);
+	$uType = $user['type'] ?? null;
+	if ($uId && $uType) {
+		try {
+			$twoFactor = new \API\Services\TwoFactorService(getPDO());
+			if ($twoFactor->isEnabled($uId, $uType)) {
+				$_SESSION['pending_2fa'] = ['user_id' => $uId, 'user_type' => $uType, 'remember_me' => false];
+				header('Location: verify_2fa.php');
+				exit;
+			}
+		} catch (\Throwable $e) {
+			error_log('[oauth] 2FA check failed: ' . $e->getMessage());
+		}
+	}
 
-	// Audit log
+	// Connecter via SessionGuard (app('auth') = AuthManager ; loginUser() crée la session à partir du tableau utilisateur)
+	$sessionGuard = app('auth');
+	$sessionGuard->loginUser($user);
+
+	// Audit log (OAuthGuard renvoie la colonne `mail`, pas `email`)
 	try {
-		app('audit')->logAuth('sso_login', $user['email'] ?? '', true, [
+		app('audit')->logAuth('sso_login', $user['mail'] ?? ($user['email'] ?? ''), true, [
 			'provider' => env('OAUTH_PROVIDER', 'unknown'),
 			'is_new' => $result['is_new'],
 		]);

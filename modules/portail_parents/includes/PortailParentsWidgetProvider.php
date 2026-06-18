@@ -29,8 +29,8 @@ class PortailParentsWidgetProvider extends AbstractWidgetProvider
                 "SELECT e.id, e.nom, e.prenom, e.classe,
                         (SELECT ROUND(AVG(note),2) FROM notes WHERE id_eleve = e.id) AS moyenne
                  FROM eleves e
-                 JOIN eleve_parents ep ON e.id = ep.eleve_id
-                 WHERE ep.parent_id = ? AND e.actif = 1
+                 JOIN parent_eleve ep ON e.id = ep.id_eleve
+                 WHERE ep.id_parent = ? AND e.actif = 1
                  ORDER BY e.prenom"
             );
             $stmt->execute([$userId]);

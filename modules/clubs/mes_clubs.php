@@ -6,7 +6,7 @@ $pageTitle = 'Mes clubs';
 $activePage = 'mes_clubs';
 require_once __DIR__ . '/includes/header.php';
 
-if (!isEleve()) { redirect('/clubs/clubs.php'); }
+if (!isEleve()) { redirect('/modules/clubs/clubs.php'); }
 
 $inscriptions = $clubService->getInscriptionsEleve(getUserId());
 $cats = ClubService::categories();

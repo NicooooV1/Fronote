@@ -248,7 +248,7 @@ class NoteService
                     "$type — consultez vos notes.", $lien, 'normale', 'note', $common['id_matiere'] ?? null);
 
                 // Notifier le(s) parent(s)
-                $parents = $this->pdo->prepare("SELECT id_parent FROM eleve_parent WHERE id_eleve = ?");
+                $parents = $this->pdo->prepare("SELECT id_parent FROM parent_eleve WHERE id_eleve = ?");
                 $parents->execute([$eid]);
                 while ($pid = $parents->fetchColumn()) {
                     $notifService->creer((int)$pid, 'parent', 'nouvelle_note', $titre,
@@ -260,6 +260,7 @@ class NoteService
             $this->pushWebSocket('grade', ['eleve_ids' => $eleveIds, 'matiere' => $matNom]);
         } catch (\Exception $e) {
             // Notification failures must not break the main flow
+            error_log('NoteService::notifyNewNotes failed: ' . $e->getMessage());
         }
     }
 
@@ -449,11 +450,13 @@ class NoteService
     {
         try {
             $stmt = $this->pdo->prepare(
-                "INSERT INTO audit_log (action, user_type, user_id, details, ip_address, created_at)
+                "INSERT INTO audit_log (action, user_type, user_id, new_values, ip_address, created_at)
                  VALUES (?, 'professeur', ?, ?, ?, NOW())"
             );
             $stmt->execute([$action, $userId, json_encode(['note_id' => $noteId, 'details' => $details]), $_SERVER['REMOTE_ADDR'] ?? '']);
-        } catch (\PDOException $e) {}
+        } catch (\PDOException $e) {
+            error_log('NoteService::logNoteAction audit_log insert failed: ' . $e->getMessage());
+        }
     }
 
     /**

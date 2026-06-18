@@ -171,7 +171,7 @@ class EvaluationService
 
         foreach ($sessions as $session) {
             $note = ($session['note_sur'] > 0) ? round(($session['score'] / $session['note_sur']) * $noteSur, 2) : 0;
-            $this->pdo->prepare("INSERT INTO notes (id_eleve, id_matiere, note, note_sur, date_evaluation, type_evaluation, commentaire) VALUES (:eid, :mid, :note, :sur, CURDATE(), 'evaluation_en_ligne', :com)")
+            $this->pdo->prepare("INSERT INTO notes (id_eleve, id_matiere, note, note_sur, date_note, type_evaluation, commentaire) VALUES (:eid, :mid, :note, :sur, CURDATE(), 'evaluation_en_ligne', :com)")
                 ->execute([':eid' => $session['eleve_id'], ':mid' => $eval['matiere_id'], ':note' => $note, ':sur' => $noteSur, ':com' => 'Évaluation: ' . $eval['titre']]);
             $count++;
         }

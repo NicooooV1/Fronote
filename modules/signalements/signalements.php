@@ -5,7 +5,7 @@
 $pageTitle = 'Gestion des signalements';
 require_once __DIR__ . '/includes/header.php';
 
-if (!isAdmin() && !isPersonnelVS()) { redirect('/signalements/signaler.php'); }
+if (!isAdmin() && !isPersonnelVS()) { redirect('modules/signalements/signaler.php'); }
 
 $filtreStatut = $_GET['statut'] ?? '';
 $filtreType = $_GET['type'] ?? '';

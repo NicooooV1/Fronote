@@ -30,24 +30,46 @@ class ModuleService
     public function getAll(): array
     {
         if ($this->cache === null) {
-            $this->cache = app('cache')->remember('modules:all', 300, function () {
-                try {
-                    $stmt = $this->pdo->query("SELECT * FROM modules_config ORDER BY sort_order, label");
-                    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                    $result = [];
-                    foreach ($rows as $row) {
-                        $row['config'] = !empty($row['config_json']) ? json_decode($row['config_json'], true) : [];
-                        $row['roles_autorises'] = !empty($row['roles_autorises']) ? json_decode($row['roles_autorises'], true) : null;
-                        $result[$row['module_key']] = $row;
-                    }
-                    return $result;
-                } catch (\PDOException $e) {
-                    error_log("ModuleService::getAll error: " . $e->getMessage());
-                    return [];
-                }
+            $fetched = app('cache')->remember('modules:all', 300, function () {
+                return $this->loadFromDb();
             });
+            // Don't permanently cache null/empty from a transient error:
+            // keep $this->cache as null so the next call in the same request retries.
+            if (!empty($fetched)) {
+                $this->cache = $fetched;
+            }
         }
-        return $this->cache;
+        // Fallback: try direct DB query if in-memory cache still empty
+        if (empty($this->cache)) {
+            $direct = $this->loadFromDb();
+            if (!empty($direct)) {
+                $this->cache = $direct;
+                try { app('cache')->put('modules:all', $direct, 300); } catch (\Throwable $e) {}
+            }
+        }
+        return $this->cache ?? [];
+    }
+
+    /**
+     * Charge les modules depuis la base de données.
+     * Retourne [] en cas d'erreur (loggée) ou de table vide.
+     */
+    private function loadFromDb(): array
+    {
+        try {
+            $stmt = $this->pdo->query("SELECT * FROM modules_config ORDER BY sort_order, label");
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $result = [];
+            foreach ($rows as $row) {
+                $row['config'] = !empty($row['config_json']) ? json_decode($row['config_json'], true) : [];
+                $row['roles_autorises'] = !empty($row['roles_autorises']) ? json_decode($row['roles_autorises'], true) : null;
+                $result[$row['module_key']] = $row;
+            }
+            return $result;
+        } catch (\Throwable $e) {
+            error_log("ModuleService::getAll error: " . $e->getMessage());
+            return [];
+        }
     }
 
     /**
@@ -322,6 +344,22 @@ class ModuleService
      */
     public function isVisibleForRole(string $moduleKey, string $role): bool
     {
+        return $this->isVisibleForRoles($moduleKey, [$role]);
+    }
+
+    /**
+     * Visibilité d'un module pour un ENSEMBLE de rôles effectifs (type de base +
+     * rôles attribués). Un module est visible si l'un quelconque des rôles est
+     * autorisé. super_admin voit tout. Sans restriction configurée → visible à tous.
+     *
+     * @param string[] $roles rôles effectifs (cf. getEffectiveRoles())
+     */
+    public function isVisibleForRoles(string $moduleKey, array $roles): bool
+    {
+        if (in_array('super_admin', $roles, true)) {
+            return true;
+        }
+
         $module = $this->get($moduleKey);
 
         if ($module !== null && isset($module['roles_autorises'])) {
@@ -329,7 +367,7 @@ class ModuleService
                 ? $module['roles_autorises']
                 : json_decode($module['roles_autorises'], true);
             if (is_array($rolesDb) && count($rolesDb) > 0) {
-                return in_array($role, $rolesDb, true);
+                return (bool) array_intersect($roles, $rolesDb);
             }
         }
 
@@ -344,8 +382,9 @@ class ModuleService
      *
      * @return array<string, array> Keyed by category
      */
-    public function getForSidebar(string $role): array
+    public function getForSidebar(array|string $role): array
     {
+        $roles = is_array($role) ? array_values($role) : [$role];
         $all = $this->getAll();
         $grouped = [];
         $categoryMeta = self::categoryMeta();
@@ -354,7 +393,7 @@ class ModuleService
         foreach ($all as $key => $mod) {
             if (empty($mod['enabled'])) continue;
             if (!empty($mod['sidebar_hidden'])) continue; // manifest sidebar.hidden = true
-            if (!$this->isVisibleForRole($key, $role)) continue;
+            if (!$this->isVisibleForRoles($key, $roles)) continue;
             if (in_array($key, ['accueil', 'parametres'])) continue;
 
             // Apply sidebar category override if defined, otherwise use DB category
@@ -385,8 +424,31 @@ class ModuleService
      *
      * @return array<string, array{label: string, icon: string, modules: array}>
      */
-    public function getForTopbar(string $role): array
+    /**
+     * Auto-heal : ajoute topbar_category et topbar_sort_order si absents (bases antérieures à leur introduction).
+     */
+    private bool $topbarColsEnsured = false;
+    private function ensureTopbarColumns(): void
     {
+        if ($this->topbarColsEnsured) return;
+        $this->topbarColsEnsured = true;
+        $columns = [
+            "ADD COLUMN IF NOT EXISTS `topbar_category` VARCHAR(50) DEFAULT NULL",
+            "ADD COLUMN IF NOT EXISTS `topbar_sort_order` INT NOT NULL DEFAULT 50",
+        ];
+        foreach ($columns as $clause) {
+            try {
+                $this->pdo->exec("ALTER TABLE `modules_config` {$clause}");
+            } catch (\Throwable $e) {
+                // MySQL < 8 : pas de IF NOT EXISTS — ignorer (colonne déjà présente ou table absente)
+            }
+        }
+    }
+
+    public function getForTopbar(array|string $role): array
+    {
+        $roles = is_array($role) ? array_values($role) : [$role];
+        $this->ensureTopbarColumns();
         $all = $this->getAll();
         $categoryMeta = self::categoryMeta();
         $catOverrides = self::sidebarCategoryOverrides();
@@ -407,7 +469,7 @@ class ModuleService
 
         foreach ($all as $key => $mod) {
             if (empty($mod['enabled'])) continue;
-            if (!$this->isVisibleForRole($key, $role)) continue;
+            if (!$this->isVisibleForRoles($key, $roles)) continue;
             if (in_array($key, ['accueil', 'parametres', 'profil', 'notifications'])) continue;
 
             // Determine category: topbar_category (DB) > override > category (DB)

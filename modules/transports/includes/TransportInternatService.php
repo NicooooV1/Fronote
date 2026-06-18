@@ -11,12 +11,24 @@ class TransportInternatService
         $this->pdo = $pdo;
     }
 
+    private function etabId(): ?int
+    {
+        try { return \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { return null; }
+    }
+
+    private function anneeScolaire(): string
+    {
+        $m = (int)date('n');
+        $y = (int)date('Y');
+        return ($m >= 9) ? ($y . '-' . ($y + 1)) : (($y - 1) . '-' . $y);
+    }
+
     /* ───── LIGNES TRANSPORT ───── */
 
     public function getLignes(?string $type = null): array
     {
-        $sql = "SELECT lt.*, (SELECT COUNT(*) FROM inscriptions_transport it WHERE it.ligne_id = lt.id) AS nb_inscrits FROM lignes_transport lt WHERE 1=1";
-        $params = [];
+        $sql = "SELECT lt.*, (SELECT COUNT(*) FROM inscriptions_transport it WHERE it.ligne_id = lt.id) AS nb_inscrits FROM lignes_transport lt WHERE lt.etablissement_id = ?";
+        $params = [$this->etabId() ?? 1];
         if ($type) { $sql .= ' AND lt.type = ?'; $params[] = $type; }
         $sql .= ' ORDER BY lt.nom';
         $stmt = $this->pdo->prepare($sql);
@@ -26,15 +38,15 @@ class TransportInternatService
 
     public function getLigne(int $id): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM lignes_transport WHERE id = ?");
-        $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare("SELECT * FROM lignes_transport WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$id, $this->etabId() ?? 1]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function creerLigne(array $d): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO lignes_transport (nom, type, itineraire, horaires, capacite) VALUES (?,?,?,?,?)");
-        $stmt->execute([$d['nom'], $d['type'], $d['itineraire'] ?? null, $d['horaires'] ?? null, $d['capacite'] ?? null]);
+        $stmt = $this->pdo->prepare("INSERT INTO lignes_transport (etablissement_id, nom, type, itineraire, horaire_depart, horaire_arrivee, capacite) VALUES (?,?,?,?,?,?,?)");
+        $stmt->execute([$this->etabId() ?? 1, $d['nom'], $d['type'], $d['itineraire'] ?? null, $d['horaire_depart'] ?? null, $d['horaire_arrivee'] ?? null, $d['capacite'] ?? null]);
         return $this->pdo->lastInsertId();
     }
 
@@ -42,13 +54,13 @@ class TransportInternatService
 
     public function inscrireTransport(int $ligneId, int $eleveId, ?string $arret): void
     {
-        $stmt = $this->pdo->prepare("INSERT IGNORE INTO inscriptions_transport (ligne_id, eleve_id, arret) VALUES (?,?,?)");
-        $stmt->execute([$ligneId, $eleveId, $arret]);
+        $stmt = $this->pdo->prepare("INSERT IGNORE INTO inscriptions_transport (etablissement_id, ligne_id, eleve_id, arret, annee_scolaire) VALUES (?,?,?,?,?)");
+        $stmt->execute([$this->etabId() ?? 1, $ligneId, $eleveId, $arret, $this->anneeScolaire()]);
     }
 
     public function getInscritsLigne(int $ligneId): array
     {
-        $stmt = $this->pdo->prepare("SELECT it.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, cl.nom AS classe_nom FROM inscriptions_transport it JOIN eleves e ON it.eleve_id = e.id LEFT JOIN classes cl ON e.classe_id = cl.id WHERE it.ligne_id = ? ORDER BY e.nom");
+        $stmt = $this->pdo->prepare("SELECT it.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, cl.nom AS classe_nom FROM inscriptions_transport it JOIN eleves e ON it.eleve_id = e.id LEFT JOIN classes cl ON e.classe = cl.nom WHERE it.ligne_id = ? ORDER BY e.nom");
         $stmt->execute([$ligneId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -64,8 +76,8 @@ class TransportInternatService
 
     public function getChambres(?string $batiment = null): array
     {
-        $sql = "SELECT ic.*, (SELECT COUNT(*) FROM internat_affectations ia WHERE ia.chambre_id = ic.id AND ia.annee_scolaire = ?) AS nb_occupants FROM internat_chambres ic WHERE 1=1";
-        $params = [date('Y') . '-' . (date('Y') + 1)];
+        $sql = "SELECT ic.*, (SELECT COUNT(*) FROM internat_affectations ia WHERE ia.chambre_id = ic.id AND ia.annee_scolaire = ?) AS nb_occupants FROM internat_chambres ic WHERE ic.etablissement_id = ?";
+        $params = [$this->anneeScolaire(), $this->etabId() ?? 1];
         if ($batiment) { $sql .= ' AND ic.batiment = ?'; $params[] = $batiment; }
         $sql .= ' ORDER BY ic.batiment, ic.etage, ic.numero';
         $stmt = $this->pdo->prepare($sql);
@@ -75,22 +87,22 @@ class TransportInternatService
 
     public function getChambre(int $id): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM internat_chambres WHERE id = ?");
-        $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare("SELECT * FROM internat_chambres WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$id, $this->etabId() ?? 1]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function creerChambre(array $d): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO internat_chambres (numero, batiment, etage, capacite, type) VALUES (?,?,?,?,?)");
-        $stmt->execute([$d['numero'], $d['batiment'] ?? null, $d['etage'] ?? null, $d['capacite'] ?? 1, $d['type'] ?? 'simple']);
+        $stmt = $this->pdo->prepare("INSERT INTO internat_chambres (etablissement_id, numero, batiment, etage, capacite, type) VALUES (?,?,?,?,?,?)");
+        $stmt->execute([$this->etabId() ?? 1, $d['numero'], $d['batiment'] ?? null, $d['etage'] ?? null, $d['capacite'] ?? 1, $d['type'] ?? 'simple']);
         return $this->pdo->lastInsertId();
     }
 
     public function getOccupants(int $chambreId): array
     {
-        $stmt = $this->pdo->prepare("SELECT ia.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, cl.nom AS classe_nom FROM internat_affectations ia JOIN eleves e ON ia.eleve_id = e.id LEFT JOIN classes cl ON e.classe_id = cl.id WHERE ia.chambre_id = ? AND ia.annee_scolaire = ? ORDER BY e.nom");
-        $stmt->execute([$chambreId, date('Y') . '-' . (date('Y') + 1)]);
+        $stmt = $this->pdo->prepare("SELECT ia.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, cl.nom AS classe_nom FROM internat_affectations ia JOIN eleves e ON ia.eleve_id = e.id LEFT JOIN classes cl ON e.classe = cl.nom WHERE ia.chambre_id = ? AND ia.annee_scolaire = ? ORDER BY e.nom");
+        $stmt->execute([$chambreId, $this->anneeScolaire()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -101,8 +113,8 @@ class TransportInternatService
         if ($chambre && count($occupants) >= $chambre['capacite']) {
             throw new RuntimeException('Chambre pleine.');
         }
-        $stmt = $this->pdo->prepare("INSERT INTO internat_affectations (chambre_id, eleve_id, annee_scolaire) VALUES (?,?,?)");
-        $stmt->execute([$chambreId, $eleveId, date('Y') . '-' . (date('Y') + 1)]);
+        $stmt = $this->pdo->prepare("INSERT INTO internat_affectations (etablissement_id, chambre_id, eleve_id, annee_scolaire, date_debut) VALUES (?,?,?,?,?)");
+        $stmt->execute([$this->etabId() ?? 1, $chambreId, $eleveId, $this->anneeScolaire(), date('Y-m-d')]);
     }
 
     /* ───── TRANSPORT DELAYS ───── */
@@ -127,7 +139,7 @@ class TransportInternatService
 
             foreach ($inscrits as $i) {
                 // Get parent of student
-                $parents = $this->pdo->prepare("SELECT parent_id FROM parent_eleve WHERE eleve_id = ?");
+                $parents = $this->pdo->prepare("SELECT id_parent AS parent_id FROM parent_eleve WHERE id_eleve = ?");
                 $parents->execute([$i['eleve_id']]);
                 while ($pid = $parents->fetchColumn()) {
                     $notif->creer((int)$pid, 'parent', 'transport', $titre, $message, '/transports/lignes.php', 'haute');
@@ -143,9 +155,14 @@ class TransportInternatService
      */
     public function pointerPresenceInternat(int $affectationId, string $type): void
     {
-        $col = ($type === 'matin') ? 'presence_matin' : 'presence_soir';
-        $this->pdo->prepare("UPDATE internat_affectations SET {$col} = NOW() WHERE id = ?")
-                   ->execute([$affectationId]);
+        // internat_affectations has no presence_matin/presence_soir columns; presence is tracked via internat_reglement entree/sortie.
+        $stmt = $this->pdo->prepare("SELECT chambre_id, eleve_id FROM internat_affectations WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$affectationId, $this->etabId() ?? 1]);
+        $aff = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$aff) { return; }
+        $regType = ($type === 'matin') ? 'sortie' : 'entree';
+        $this->pdo->prepare("INSERT INTO internat_reglement (eleve_id, chambre_id, type) VALUES (?,?,?)")
+                   ->execute([$aff['eleve_id'], $aff['chambre_id'], $regType]);
     }
 
     /**
@@ -159,11 +176,11 @@ class TransportInternatService
             FROM internat_affectations ia
             JOIN internat_chambres ic ON ia.chambre_id = ic.id
             JOIN eleves e ON ia.eleve_id = e.id
-            LEFT JOIN classes cl ON e.classe_id = cl.id
+            LEFT JOIN classes cl ON e.classe = cl.nom
             WHERE ia.annee_scolaire = ?
             ORDER BY ic.batiment, ic.numero, e.nom
         ");
-        $stmt->execute([date('Y') . '-' . (date('Y') + 1)]);
+        $stmt->execute([$this->anneeScolaire()]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
@@ -171,7 +188,7 @@ class TransportInternatService
 
     public function getEleves(): array
     {
-        $s = $this->pdo->prepare("SELECT e.id, e.prenom, e.nom, cl.nom AS classe_nom FROM eleves e LEFT JOIN classes cl ON e.classe_id = cl.id WHERE e.etablissement_id = ? ORDER BY e.nom");
+        $s = $this->pdo->prepare("SELECT e.id, e.prenom, e.nom, cl.nom AS classe_nom FROM eleves e LEFT JOIN classes cl ON e.classe = cl.nom WHERE e.etablissement_id = ? ORDER BY e.nom");
         $s->execute([\API\Core\EstablishmentContext::id()]);
         return $s->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -201,7 +218,8 @@ class TransportInternatService
             $l['nom'],
             $types[$l['type']] ?? $l['type'],
             $l['itineraire'] ?? '-',
-            $l['horaires'] ?? '-',
+            $l['horaire_depart'] ?? '-',
+            $l['horaire_arrivee'] ?? '-',
             $l['capacite'] ?? '-',
             $l['nb_inscrits'] ?? 0,
         ], $lignes);

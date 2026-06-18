@@ -5,7 +5,7 @@
 $pageTitle = 'Détail signalement';
 require_once __DIR__ . '/includes/header.php';
 
-if (!isAdmin() && !isPersonnelVS()) { redirect('/signalements/signaler.php'); }
+if (!isAdmin() && !isPersonnelVS()) { redirect('modules/signalements/signaler.php'); }
 
 $id = (int)($_GET['id'] ?? 0);
 $sig = $signalementService->getSignalement($id);
@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                 <option value="nouveau" <?= $sig['statut'] === 'nouveau' ? 'selected' : '' ?>>Nouveau</option>
                 <option value="en_cours" <?= $sig['statut'] === 'en_cours' ? 'selected' : '' ?>>En cours</option>
                 <option value="traite" <?= $sig['statut'] === 'traite' ? 'selected' : '' ?>>Traité</option>
-                <option value="classe" <?= $sig['statut'] === 'classe' ? 'selected' : '' ?>>Classé</option>
+                <option value="clos" <?= $sig['statut'] === 'clos' ? 'selected' : '' ?>>Classé</option>
             </select>
         </form>
     </div>

@@ -44,7 +44,7 @@ try {
 
     $pdo = getPDO();
     $edtService = new EdtService($pdo);
-    try { $etabId = \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { $etabId = 1; }
+    $etabId = \API\Core\EstablishmentContext::id();
 
     // Get current cours (scopé établissement courant)
     $stmt = $pdo->prepare("SELECT * FROM emploi_du_temps WHERE id = ? AND etablissement_id = ?");

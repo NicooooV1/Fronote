@@ -21,4 +21,5 @@ $cc = app('client_cache');
 $cc->set('cookie_consent', $level, 86400 * 365);
 
 header('Content-Type: application/json');
+header('X-Content-Type-Options: nosniff');
 echo json_encode(['ok' => true, 'level' => $level]);

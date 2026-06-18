@@ -119,7 +119,7 @@ try {
 // 9. Old notifications purge (> 90 days)
 try {
     $pdo = getPDO();
-    $stmt = $pdo->prepare("DELETE FROM notifications WHERE is_read = 1 AND created_at < DATE_SUB(NOW(), INTERVAL 90 DAY)");
+    $stmt = $pdo->prepare("DELETE FROM notifications_globales WHERE lu = 1 AND date_creation < DATE_SUB(NOW(), INTERVAL 90 DAY)");
     $stmt->execute();
     $purged = $stmt->rowCount();
     $log("Notifications: purged {$purged} old read notifications");

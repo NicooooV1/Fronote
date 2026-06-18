@@ -6,6 +6,10 @@ $rootPrefix = '../../';
 require_once __DIR__ . '/../../../API/bootstrap.php';
 requireAuth();
 
+// Photos/identités de mineurs : réservé au personnel (admin, professeurs, vie scolaire).
+// Empêche un élève/parent de moissonner les photos de tous les autres élèves.
+if (!isAdmin() && !isTeacher() && !isVieScolaire()) { redirect('/accueil/accueil.php'); }
+
 require_once __DIR__ . '/TrombinoscopeService.php';
 $trombiService = new TrombinoscopeService(getPDO());
 

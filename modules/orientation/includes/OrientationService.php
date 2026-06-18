@@ -56,7 +56,7 @@ class OrientationService
             SELECT f.*, e.prenom, e.nom AS eleve_nom, c.nom AS classe_nom
             FROM orientation_fiches f
             JOIN eleves e ON f.eleve_id = e.id
-            LEFT JOIN classes c ON e.classe_id = c.id
+            LEFT JOIN classes c ON e.classe = c.nom
             WHERE f.id = ?
         ");
         $stmt->execute([$id]);
@@ -80,12 +80,12 @@ class OrientationService
             SELECT f.*, e.prenom, e.nom AS eleve_nom, c.nom AS classe_nom
             FROM orientation_fiches f
             JOIN eleves e ON f.eleve_id = e.id
-            LEFT JOIN classes c ON e.classe_id = c.id
+            LEFT JOIN classes c ON e.classe = c.nom
             WHERE 1=1
         ";
         $params = [];
         if (!empty($filters['classe_id'])) {
-            $sql .= ' AND e.classe_id = ?';
+            $sql .= ' AND e.classe = (SELECT nom FROM classes WHERE id = ?)';
             $params[] = $filters['classe_id'];
         }
         if (!empty($filters['statut'])) {
@@ -102,7 +102,7 @@ class OrientationService
 
     public function getVoeux(int $ficheId): array
     {
-        $stmt = $this->pdo->prepare('SELECT * FROM orientation_voeux WHERE fiche_id = ? ORDER BY rang');
+        $stmt = $this->pdo->prepare('SELECT *, intitule AS formation FROM orientation_voeux WHERE fiche_id = ? ORDER BY rang');
         $stmt->execute([$ficheId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -112,7 +112,7 @@ class OrientationService
         $this->pdo->prepare('DELETE FROM orientation_voeux WHERE fiche_id = ?')->execute([$ficheId]);
 
         $stmt = $this->pdo->prepare("
-            INSERT INTO orientation_voeux (fiche_id, rang, formation, etablissement_vise, motivation, avis_pp, avis_conseil)
+            INSERT INTO orientation_voeux (fiche_id, rang, intitule, etablissement_vise, motivation, avis_pp, avis_conseil)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         ");
 
@@ -141,7 +141,7 @@ class OrientationService
 
     public function getElevesClasse(int $classeId): array
     {
-        $stmt = $this->pdo->prepare('SELECT id, prenom, nom FROM eleves WHERE classe_id = ? AND etablissement_id = ? ORDER BY nom, prenom');
+        $stmt = $this->pdo->prepare('SELECT id, prenom, nom FROM eleves WHERE classe = (SELECT nom FROM classes WHERE id = ?) AND etablissement_id = ? ORDER BY nom, prenom');
         $stmt->execute([$classeId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -154,9 +154,9 @@ class OrientationService
         $stmt = $this->pdo->prepare("
             SELECT e.id, e.prenom, e.nom, c.nom AS classe_nom
             FROM parent_eleve pe
-            JOIN eleves e ON pe.eleve_id = e.id
-            LEFT JOIN classes c ON e.classe_id = c.id
-            WHERE pe.parent_id = ?
+            JOIN eleves e ON pe.id_eleve = e.id
+            LEFT JOIN classes c ON e.classe = c.nom
+            WHERE pe.id_parent = ?
         ");
         $stmt->execute([$parentId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -209,7 +209,7 @@ class OrientationService
         $sql = "SELECT r.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, c.nom AS classe_nom
                 FROM orientation_rdv r
                 JOIN eleves e ON r.eleve_id = e.id
-                LEFT JOIN classes c ON e.classe_id = c.id
+                LEFT JOIN classes c ON e.classe = c.nom
                 WHERE 1=1";
         $params = [];
         if (!empty($filters['eleve_id'])) { $sql .= ' AND r.eleve_id = ?'; $params[] = $filters['eleve_id']; }

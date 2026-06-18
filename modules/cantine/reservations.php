@@ -52,7 +52,6 @@ if ($isGestionnaire) {
 }
 ?>
 
-<div class="main-content">
     <div class="page-header">
         <h1><i class="fas fa-calendar-check"></i> Réservations cantine</h1>
     </div>
@@ -173,6 +172,5 @@ if ($isGestionnaire) {
             </div>
         </div>
     <?php endif; ?>
-</div>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

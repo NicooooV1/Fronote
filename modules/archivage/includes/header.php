@@ -2,7 +2,9 @@
 /**
  * M35 – Archivage annuel — Header
  */
-if (session_status() === PHP_SESSION_NONE) session_start();
+// Charger l'API (Bridge -> bootstrap.php) AVANT tout démarrage de session :
+// le bloc gardé de bootstrap.php démarre la session durcie (HttpOnly + Secure(https)
+// + SameSite=Lax + nom/path par instance). Ne PAS faire de session_start() nu ici.
 require_once __DIR__ . '/../../../API/Legacy/Bridge.php';
 requireAuth();
 
@@ -16,20 +18,11 @@ require_once __DIR__ . '/ArchiveService.php';
 $archiveService = new ArchiveService($pdo);
 
 $activePage = $activePage ?? 'archivage';
-$extraCss = ['archivage/assets/css/archivage.css'];
-
-$sidebarExtraContent = '
-<li class="sidebar-item">
-    <a href="/archivage/archivage.php" class="sidebar-link ' . ($activePage === 'archivage' ? 'active' : '') . '">
-        <i class="fas fa-archive"></i><span>Archives</span>
-    </a>
-</li>
-<li class="sidebar-item">
-    <a href="/archivage/creer.php" class="sidebar-link ' . ($activePage === 'creer' ? 'active' : '') . '">
-        <i class="fas fa-plus-circle"></i><span>Nouvelle archive</span>
-    </a>
-</li>';
+$isAdmin = true;
+$extraCss = ['assets/css/archivage.css'];
 
 $pageTitle = $pageTitle ?? 'Archivage';
 require_once __DIR__ . '/../../../templates/shared_header.php';
+require_once __DIR__ . '/../../../templates/shared_topbar.php';
 ?>
+            <div class="content-container">

@@ -5,6 +5,7 @@
 CREATE TABLE IF NOT EXISTS `inscriptions` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `etablissement_id` int(11) NOT NULL DEFAULT 1,
+  `parent_id` int(11) DEFAULT NULL,
   `annee_scolaire` varchar(10) NOT NULL,
   `type` enum('inscription','reinscription') NOT NULL DEFAULT 'inscription',
   `nom_eleve` varchar(100) NOT NULL,
@@ -20,11 +21,18 @@ CREATE TABLE IF NOT EXISTS `inscriptions` (
   `nom_parent2` varchar(200) DEFAULT NULL,
   `telephone_parent2` varchar(20) DEFAULT NULL,
   `email_parent2` varchar(150) DEFAULT NULL,
+  `telephone` varchar(20) DEFAULT NULL,
+  `email_contact` varchar(150) DEFAULT NULL,
   `etablissement_precedent` varchar(255) DEFAULT NULL,
   `observations` text DEFAULT NULL,
-  `statut` enum('en_cours','complet','valide','refuse','archive') NOT NULL DEFAULT 'en_cours',
+  `statut` enum('en_cours','complet','valide','refuse','archive','brouillon','soumise','en_revision','documents_requis','liste_attente','acceptee','refusee','annulee') NOT NULL DEFAULT 'en_cours',
   `commentaire_admin` text DEFAULT NULL,
+  `commentaire_traitement` text DEFAULT NULL,
   `traite_par` int(11) DEFAULT NULL,
+  `waitlist_position` int(11) DEFAULT NULL,
+  `step_current` int(11) NOT NULL DEFAULT 1,
+  `step_data` text DEFAULT NULL,
+  `date_soumission` datetime DEFAULT NULL,
   `date_traitement` datetime DEFAULT NULL,
   `date_creation` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `date_modification` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -33,7 +41,9 @@ CREATE TABLE IF NOT EXISTS `inscriptions` (
   KEY `idx_inscription_statut` (`statut`),
   KEY `idx_inscription_nom` (`nom_eleve`, `prenom_eleve`),
   KEY `idx_etab` (`etablissement_id`),
-  CONSTRAINT `fk_inscriptions_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`)
+  KEY `idx_inscription_parent` (`parent_id`),
+  CONSTRAINT `fk_inscriptions_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`),
+  CONSTRAINT `fk_inscriptions_parent` FOREIGN KEY (`parent_id`) REFERENCES `parents` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `inscription_documents` (

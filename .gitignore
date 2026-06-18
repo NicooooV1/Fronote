@@ -1,4 +1,6 @@
 vendor/
+node_modules/
+websocket/node_modules/
 .env
 temp/
 logs/
@@ -17,8 +19,6 @@ storage/maintenance.json
 !storage/quarantine/.gitkeep
 .phpunit.cache/
 .claude/*
-.gitignore
-API/
 modules/*/uploads
 modules/hello_world
 

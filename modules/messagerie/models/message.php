@@ -12,14 +12,19 @@ function markConversationAsRead($convId, $userId, $userType) {
     global $pdo;
     try {
         $stmt = $pdo->prepare("
-            UPDATE conversation_participants 
-            SET last_read_at = NOW(), unread_count = 0
+            UPDATE conversation_participants
+            SET last_read_at = NOW(),
+                unread_count = 0,
+                last_read_message_id = GREATEST(
+                    COALESCE(last_read_message_id, 0),
+                    COALESCE((SELECT MAX(m.id) FROM messages m WHERE m.conversation_id = ? AND m.deleted_at IS NULL), 0)
+                )
             WHERE conversation_id = ? AND user_id = ? AND user_type = ?
         ");
-        $stmt->execute([$convId, $userId, $userType]);
+        $stmt->execute([$convId, $convId, $userId, $userType]);
         return $stmt->rowCount() > 0;
-    } catch (Exception $e) {
-        error_log("Erreur markConversationAsRead: " . $e->getMessage());
+    } catch (Exception $ex) {
+        error_log("Erreur markConversationAsRead: " . $ex->getMessage());
         return false;
     }
 }
@@ -67,8 +72,8 @@ function getMessages($convId, $userId, $userType, $limit = 50, $before = 0) {
                m.original_body, m.status, m.parent_message_id,
                m.created_at, m.updated_at, m.edited_at, m.deleted_at,
                m.is_pinned, m.pinned_at, m.pinned_by_id, m.pinned_by_type,
-               CASE 
-                   WHEN cp.last_read_at IS NULL OR m.created_at > cp.last_read_at THEN 0
+               CASE
+                   WHEN cp.last_read_message_id IS NULL OR m.id > cp.last_read_message_id THEN 0
                    ELSE 1
                END as est_lu,
                CASE 
@@ -133,10 +138,9 @@ function getMessages($convId, $userId, $userType, $limit = 50, $before = 0) {
         $reactionsByMsg = [];
         foreach ($allReactions as $r) {
             $reactionsByMsg[$r['message_id']][] = [
-                'reaction' => $r['reaction'],
-                'count' => (int) $r['count'],
-                'users' => $r['users'],
-                'user_reacted' => strpos($r['users'], "{$userId}:{$userType}") !== false
+                'emoji'        => $r['reaction'],
+                'count'        => (int) $r['count'],
+                'user_reacted' => strpos($r['users'], "{$userId}:{$userType}") !== false,
             ];
         }
         
@@ -177,9 +181,11 @@ function getMessages($convId, $userId, $userType, $limit = 50, $before = 0) {
     $pinnedStmt->execute([$convId]);
     $pinnedMessages = $pinnedStmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Marquer la conversation comme lue
-    markConversationAsRead($convId, $userId, $userType);
-    
+    // NB : le marquage « lu » n'est PLUS un effet de bord de la lecture. Lire des
+    // messages (page, pagination via action=list, polling) ne doit pas modifier
+    // l'état. Le marquage est explicite : à l'ouverture de la conversation
+    // (conversation.php) et au fil de la lecture via l'IntersectionObserver
+    // (action mark_read). Cf. audit M5.
     return [
         'messages' => $messages,
         'has_more' => $hasMore,
@@ -219,7 +225,7 @@ function getMessagesEvenIfDeleted($convId, $userId, $userType, $limit = 50, $bef
                m.original_body, m.status, m.parent_message_id,
                m.created_at, m.updated_at, m.edited_at, m.deleted_at,
                m.is_pinned, m.pinned_at,
-               CASE WHEN cp.last_read_at IS NULL OR m.created_at > cp.last_read_at THEN 0 ELSE 1 END as est_lu,
+               CASE WHEN cp.last_read_message_id IS NULL OR m.id > cp.last_read_message_id THEN 0 ELSE 1 END as est_lu,
                CASE WHEN m.sender_id = ? AND m.sender_type = ? THEN 1 ELSE 0 END as is_self,
                {$nameCase} as expediteur_nom,
                UNIX_TIMESTAMP(m.created_at) as timestamp
@@ -259,10 +265,9 @@ function getMessageById($messageId) {
     global $pdo;
     
     $sql = "
-        SELECT m.*, 
-               1 as est_lu,
-               1 as is_self,
-               CASE 
+        SELECT m.*,
+               0 as is_self,
+               CASE
                    WHEN m.sender_type = 'eleve' THEN 
                        (SELECT CONCAT(e.prenom, ' ', e.nom) FROM eleves e WHERE e.id = m.sender_id)
                    WHEN m.sender_type = 'parent' THEN 
@@ -355,16 +360,24 @@ function addMessage($convId, $senderId, $senderType, $content, $importance = 'no
         throw new Exception("Votre message est trop long (maximum $maxLength caractères)");
     }
     
-    $pdo->beginTransaction();
+    // Transaction nesting-aware : addMessage est appelé soit seul, soit depuis un
+    // handler qui a déjà ouvert une transaction (handleSendMessage, handleSendAnnouncement,
+    // sendMessageToClass…). PDO ne supporte pas les transactions imbriquées : appeler
+    // beginTransaction() deux fois lève "There is already an active transaction".
+    $ownTransaction = !$pdo->inTransaction();
+    if ($ownTransaction) {
+        $pdo->beginTransaction();
+    }
     try {
         // Déterminer le statut du message
-        $status = $estAnnonce ? 'annonce' : $importance;
-        
+        $validStatuses = ['normal', 'important', 'urgent', 'annonce'];
+        $status = $estAnnonce ? 'annonce' : (in_array($importance, $validStatuses) ? $importance : 'normal');
+
         // Insérer le message
-        $sql = "INSERT INTO messages (conversation_id, sender_id, sender_type, body, created_at, updated_at, status) 
-                VALUES (?, ?, ?, ?, NOW(), NOW(), ?)";
+        $sql = "INSERT INTO messages (conversation_id, sender_id, sender_type, body, original_body, parent_message_id, created_at, updated_at, status)
+                VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$convId, $senderId, $senderType, $content, $status]);
+        $stmt->execute([$convId, $senderId, $senderType, $content, $content, $parentMessageId, $status]);
         $messageId = $pdo->lastInsertId();
         
         // Mettre à jour la date du dernier message et last_message_id
@@ -450,41 +463,43 @@ function addMessage($convId, $senderId, $senderType, $content, $importance = 'no
             }
         }
         
-        $pdo->commit();
-        
-        // ✅ NOTIFICATION WEBSOCKET - Nouveau message
-        require_once __DIR__ . '/../../../API/Core/WebSocket.php';
-        
-        // Récupérer les données complètes du message pour diffusion
-        $messageData = getMessageById($messageId);
-        if ($messageData) {
-            \API\Core\WebSocket::notifyNewMessage($convId, $messageData);
+        if ($ownTransaction) {
+            $pdo->commit();
         }
-        
-        // ✅ NOTIFICATIONS WEBSOCKET - Pour chaque participant
-        foreach ($participants as $p) {
-            if ($p['user_id'] == $senderId && $p['user_type'] == $senderType) {
-                continue; // Skip expéditeur
-            }
-            
-            // Notifier via WebSocket
-            \API\Core\WebSocket::notifyUser($p['user_id'], [
-                'type' => 'message',
-                'convId' => $convId,
-                'messageId' => $messageId,
-                'senderName' => $messageData['expediteur_nom'] ?? 'Inconnu',
-                'preview' => mb_substr($content, 0, 100)
-            ]);
-            
-            // ...existing code (création notification DB)...
-        }
-        
-        return $messageId;
-        
+
     } catch (Exception $e) {
-        $pdo->rollBack();
+        if ($ownTransaction && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         throw $e;
     }
+
+    // Push WebSocket hors transaction : un échec ici ne doit pas annuler le message déjà enregistré
+    try {
+        if (file_exists(__DIR__ . '/../../../API/Core/WebSocket.php')) {
+            require_once __DIR__ . '/../../../API/Core/WebSocket.php';
+            $messageData = getMessageById($messageId);
+            if ($messageData && method_exists('\API\Core\WebSocket', 'notifyNewMessage')) {
+                \API\Core\WebSocket::notifyNewMessage($convId, $messageData);
+            }
+            if (!empty($participants) && method_exists('\API\Core\WebSocket', 'notifyUser')) {
+                foreach ($participants as $p) {
+                    if ($p['user_id'] == $senderId && $p['user_type'] == $senderType) continue;
+                    \API\Core\WebSocket::notifyUser($p['user_id'], [
+                        'type'       => 'message',
+                        'convId'     => $convId,
+                        'messageId'  => $messageId,
+                        'senderName' => $messageData['expediteur_nom'] ?? 'Inconnu',
+                        'preview'    => mb_substr($content, 0, 100),
+                    ]);
+                }
+            }
+        }
+    } catch (\Exception $wsEx) {
+        error_log("WebSocket push failed (non-fatal): " . $wsEx->getMessage());
+    }
+
+    return $messageId;
 }
 
 /**
@@ -534,11 +549,11 @@ function markMessageAsRead($messageId, $userId, $userType, $maxRetries = 3) {
                 ");
                 $updateStmt->execute([$messageId, $convId, $userId, $userType]);
                 
-                // Mettre à jour les notifications
+                // Marquer la notification correspondante comme lue
                 $updateNotif = $pdo->prepare("
-                    UPDATE notifications
-                    SET is_read = true, read_at = NOW()
-                    WHERE related_id = ? AND user_id = ? AND user_type = ?
+                    UPDATE message_notifications
+                    SET is_read = 1, read_at = NOW()
+                    WHERE message_id = ? AND user_id = ? AND user_type = ?
                 ");
                 $updateNotif->execute([$messageId, $userId, $userType]);
                 
@@ -552,7 +567,7 @@ function markMessageAsRead($messageId, $userId, $userType, $maxRetries = 3) {
                         WHERE m.conversation_id = ? 
                         AND cp.user_id = ? AND cp.user_type = ?
                         AND (cp.last_read_message_id IS NULL OR m.id > cp.last_read_message_id)
-                        AND m.sender_id != ? AND m.sender_type != ?
+                        AND NOT (m.sender_id = ? AND m.sender_type = ?)
                     )
                     WHERE conversation_id = ? AND user_id = ? AND user_type = ?
                 ");
@@ -618,8 +633,8 @@ function getMessageReadStatus($messageId) {
             SUM(CASE WHEN cp.last_read_message_id >= ? THEN 1 ELSE 0 END) as read_count
         FROM conversation_participants cp
         WHERE cp.conversation_id = ? AND cp.is_deleted = 0
-        AND cp.user_id != (SELECT sender_id FROM messages WHERE id = ?)
-        AND cp.user_type != (SELECT sender_type FROM messages WHERE id = ?)
+        AND NOT (cp.user_id = (SELECT sender_id FROM messages WHERE id = ?)
+             AND cp.user_type = (SELECT sender_type FROM messages WHERE id = ?))
     ");
     $readInfoStmt->execute([$messageId, $convId, $messageId, $messageId]);
     $readInfo = $readInfoStmt->fetch();
@@ -642,8 +657,8 @@ function getMessageReadStatus($messageId) {
                END as nom_complet
         FROM conversation_participants cp
         WHERE cp.conversation_id = ? AND cp.last_read_message_id >= ? AND cp.is_deleted = 0
-        AND cp.user_id != (SELECT sender_id FROM messages WHERE id = ?)
-        AND cp.user_type != (SELECT sender_type FROM messages WHERE id = ?)
+        AND NOT (cp.user_id = (SELECT sender_id FROM messages WHERE id = ?)
+             AND cp.user_type = (SELECT sender_type FROM messages WHERE id = ?))
     ");
     $readersStmt->execute([$convId, $messageId, $messageId, $messageId]);
     $readers = $readersStmt->fetchAll();
@@ -735,9 +750,9 @@ function markMessageAsUnread($messageId, $userId, $userType) {
                         SELECT COUNT(*) 
                         FROM messages m
                         LEFT JOIN message_notifications mn ON m.id = mn.message_id AND mn.user_id = ? AND mn.user_type = ?
-                        WHERE m.conversation_id = ? 
+                        WHERE m.conversation_id = ?
                         AND (mn.id IS NULL OR mn.is_read = 0)
-                        AND m.sender_id != ? AND m.sender_type != ?
+                        AND NOT (m.sender_id = ? AND m.sender_type = ?)
                     )
                     WHERE cp.conversation_id = ? AND cp.user_id = ? AND cp.user_type = ?
                 ");
@@ -765,8 +780,9 @@ function markMessageAsUnread($messageId, $userId, $userType) {
         
         $pdo->commit();
         return true;
-    } catch (Exception $e) {
+    } catch (Exception $ex) {
         $pdo->rollBack();
+        error_log("markMessageAsUnread error: " . $ex->getMessage());
         return false;
     }
 }
@@ -932,10 +948,10 @@ function toggleReaction($messageId, $userId, $userType, $reaction) {
     
     // Retourner le nouveau comptage
     $countStmt = $pdo->prepare("
-        SELECT reaction, COUNT(*) as count FROM message_reactions WHERE message_id = ? GROUP BY reaction
+        SELECT reaction as emoji, COUNT(*) as count FROM message_reactions WHERE message_id = ? GROUP BY reaction
     ");
     $countStmt->execute([$messageId]);
-    
+
     return ['action' => $action, 'reactions' => $countStmt->fetchAll(PDO::FETCH_ASSOC)];
 }
 

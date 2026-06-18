@@ -36,9 +36,9 @@ class BulletinService {
             JOIN eleves e ON b.eleve_id = e.id
             JOIN classes c ON b.classe_id = c.id
             JOIN periodes p ON b.periode_id = p.id
-            WHERE b.id = ?
+            WHERE b.id = ? AND b.etablissement_id = ?
         ");
-        $stmt->execute([$id]);
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
@@ -88,9 +88,13 @@ class BulletinService {
         $stmt->execute([$classeId, \API\Core\EstablishmentContext::id()]);
         $eleves = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
+        // PERF (N+1) : pré-calculer UNE fois les stats de classe (moyenne/min/max)
+        // par matière pour la période, plutôt que de les recalculer pour chaque élève.
+        $statsClasse = $this->computeStatsMatieresClasse($classeId, (int) $periode['numero']);
+
         $count = 0;
         foreach ($eleves as $eleveId) {
-            if ($this->genererBulletinEleve($eleveId, $classeId, $periodeId, $periode['numero'])) {
+            if ($this->genererBulletinEleve($eleveId, $classeId, $periodeId, $periode['numero'], $statsClasse)) {
                 $count++;
             }
         }
@@ -101,15 +105,82 @@ class BulletinService {
         return $count;
     }
 
-    private function genererBulletinEleve(int $eleveId, int $classeId, int $periodeId, int $trimestre): bool {
+    /**
+     * PERF : calcule en une seule passe les stats de classe (moyenne/min/max) par
+     * matière pour un trimestre donné. Indexé par id_matiere.
+     * Réutilisé pour tous les élèves de la classe lors de la génération de masse.
+     */
+    private function computeStatsMatieresClasse(int $classeId, int $trimestre): array {
+        $nomClasse = $this->pdo->prepare("SELECT nom FROM classes WHERE id = ?");
+        $nomClasse->execute([$classeId]);
+        $classe = $nomClasse->fetchColumn();
+        if ($classe === false) {
+            return [];
+        }
+
+        // Moyenne de classe par matière : on conserve la sémantique d'origine —
+        //  • moyenne_classe = moyenne plate de TOUTES les notes (AVG global),
+        //  • min/max        = sur la moyenne de chaque élève dans la matière.
+        // Min/Max (sur la moyenne par élève)
+        $s = $this->pdo->prepare("
+            SELECT sub.id_matiere,
+                   MIN(sub.avg_note) AS min_moy,
+                   MAX(sub.avg_note) AS max_moy
+            FROM (
+                SELECT n.id_matiere, n.id_eleve,
+                       AVG(n.note * 20 / n.note_sur) AS avg_note
+                FROM notes n
+                JOIN eleves e ON n.id_eleve = e.id
+                WHERE e.classe = ? AND n.trimestre = ?
+                GROUP BY n.id_matiere, n.id_eleve
+            ) sub
+            GROUP BY sub.id_matiere
+        ");
+        $s->execute([$classe, $trimestre]);
+        $stats = [];
+        foreach ($s->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $stats[(int) $row['id_matiere']] = [
+                'moy_classe' => null,
+                'min_moy'    => $row['min_moy'] !== null ? round((float) $row['min_moy'], 2) : null,
+                'max_moy'    => $row['max_moy'] !== null ? round((float) $row['max_moy'], 2) : null,
+            ];
+        }
+
+        // Moyenne de classe (AVG plat sur toutes les notes), même définition qu'avant.
+        $sm = $this->pdo->prepare("
+            SELECT n.id_matiere, AVG(n.note * 20 / n.note_sur) AS moy_classe
+            FROM notes n
+            JOIN eleves e ON n.id_eleve = e.id
+            WHERE e.classe = ? AND n.trimestre = ?
+            GROUP BY n.id_matiere
+        ");
+        $sm->execute([$classe, $trimestre]);
+        foreach ($sm->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $matId = (int) $row['id_matiere'];
+            if (!isset($stats[$matId])) {
+                $stats[$matId] = ['moy_classe' => null, 'min_moy' => null, 'max_moy' => null];
+            }
+            $stats[$matId]['moy_classe'] = $row['moy_classe'] !== null ? round((float) $row['moy_classe'], 2) : null;
+        }
+
+        return $stats;
+    }
+
+    private function genererBulletinEleve(int $eleveId, int $classeId, int $periodeId, int $trimestre, ?array $statsClasse = null): bool {
         // Vérifier si déjà existant
         $existing = $this->getBulletinEleve($eleveId, $periodeId);
         
-        // Calculer moyenne générale
+        // Calculer moyenne générale (moyenne pondérée par coefficient de matière
+        // des moyennes par matière, et non une moyenne plate de toutes les notes).
         $stmt = $this->pdo->prepare("
-            SELECT AVG(n.note * 20 / n.note_sur) AS moyenne
-            FROM notes n
-            WHERE n.id_eleve = ? AND n.trimestre = ?
+            SELECT SUM(avg_mat * coef) / SUM(coef) AS moyenne
+            FROM (
+                SELECT AVG(n.note * 20 / n.note_sur) AS avg_mat, m.coefficient AS coef
+                FROM notes n
+                JOIN matieres m ON n.id_matiere = m.id
+                WHERE n.id_eleve = ? AND n.trimestre = ?
+                GROUP BY n.id_matiere, m.coefficient
+            ) t
         ");
         $stmt->execute([$eleveId, $trimestre]);
         $moy = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -141,7 +212,7 @@ class BulletinService {
         }
 
         // Générer lignes matières
-        $this->genererLignesMatieres($bulletinId, $eleveId, $classeId, $trimestre);
+        $this->genererLignesMatieres($bulletinId, $eleveId, $classeId, $trimestre, $statsClasse);
 
         // Intégrer le bilan de compétences dans le bulletin
         $this->genererBilanCompetences($bulletinId, $eleveId, $periodeId);
@@ -149,10 +220,12 @@ class BulletinService {
         return true;
     }
 
-    private function genererLignesMatieres(int $bulletinId, int $eleveId, int $classeId, int $trimestre): void {
-        $nomClasse = $this->pdo->prepare("SELECT nom FROM classes WHERE id = ?");
-        $nomClasse->execute([$classeId]);
-        $classe = $nomClasse->fetchColumn();
+    private function genererLignesMatieres(int $bulletinId, int $eleveId, int $classeId, int $trimestre, ?array $statsClasse = null): void {
+        // PERF (N+1) : si les stats de classe ne sont pas fournies (appel hors
+        // génération de masse), on les calcule une fois ici pour cet élève.
+        if ($statsClasse === null) {
+            $statsClasse = $this->computeStatsMatieresClasse($classeId, $trimestre);
+        }
 
         // Récupérer toutes les matières avec notes pour cet élève
         $stmt = $this->pdo->prepare("
@@ -166,31 +239,20 @@ class BulletinService {
         $matieres = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($matieres as $mat) {
-            // Moyenne élève
+            $matId = (int) $mat['id_matiere'];
+
+            // Moyenne élève (spécifique à l'élève, reste une requête par matière)
             $s = $this->pdo->prepare("SELECT AVG(note * 20 / note_sur) FROM notes WHERE id_eleve = ? AND id_matiere = ? AND trimestre = ?");
-            $s->execute([$eleveId, $mat['id_matiere'], $trimestre]);
+            $s->execute([$eleveId, $matId, $trimestre]);
             $moyEleve = round((float)$s->fetchColumn(), 2);
 
-            // Moyenne classe
-            $s = $this->pdo->prepare("
-                SELECT AVG(n.note * 20 / n.note_sur) FROM notes n
-                JOIN eleves e ON n.id_eleve = e.id
-                WHERE e.classe = ? AND n.id_matiere = ? AND n.trimestre = ?
-            ");
-            $s->execute([$classe, $mat['id_matiere'], $trimestre]);
-            $moyClasse = round((float)$s->fetchColumn(), 2);
-
-            // Min/Max classe
-            $s = $this->pdo->prepare("
-                SELECT MIN(avg_note) AS min_moy, MAX(avg_note) AS max_moy FROM (
-                    SELECT AVG(n.note * 20 / n.note_sur) AS avg_note FROM notes n
-                    JOIN eleves e ON n.id_eleve = e.id
-                    WHERE e.classe = ? AND n.id_matiere = ? AND n.trimestre = ?
-                    GROUP BY n.id_eleve
-                ) sub
-            ");
-            $s->execute([$classe, $mat['id_matiere'], $trimestre]);
-            $minMax = $s->fetch(PDO::FETCH_ASSOC);
+            // Stats de classe (moyenne/min/max) pré-calculées une fois pour la classe.
+            // On conserve la sémantique d'origine où une valeur falsy (0/null) min/max
+            // était stockée comme NULL.
+            $stat      = $statsClasse[$matId] ?? null;
+            $moyClasse = $stat['moy_classe'] ?? null;
+            $minMoy    = !empty($stat['min_moy']) ? $stat['min_moy'] : null;
+            $maxMoy    = !empty($stat['max_moy']) ? $stat['max_moy'] : null;
 
             // Upsert
             $s = $this->pdo->prepare("
@@ -203,10 +265,10 @@ class BulletinService {
                     moyenne_max = VALUES(moyenne_max)
             ");
             $s->execute([
-                $bulletinId, $mat['id_matiere'], $mat['id_professeur'],
+                $bulletinId, $matId, $mat['id_professeur'],
                 $moyEleve, $moyClasse,
-                $minMax['min_moy'] ? round($minMax['min_moy'], 2) : null,
-                $minMax['max_moy'] ? round($minMax['max_moy'], 2) : null,
+                $minMoy,
+                $maxMoy,
                 $mat['coefficient'] ?? 1
             ]);
         }
@@ -520,15 +582,40 @@ class BulletinService {
      */
     public function getSignatures(int $bulletinId): array
     {
+        // Pas de table `utilisateurs` dans ce schema : le nom du signataire est
+        // denormalise (colonne signataire_nom) au moment de la signature.
         $stmt = $this->pdo->prepare("
-            SELECT bs.*, CONCAT(u.prenom, ' ', u.nom) AS signataire_nom
+            SELECT bs.*
             FROM bulletin_signatures bs
-            LEFT JOIN utilisateurs u ON bs.signataire_id = u.id
             WHERE bs.bulletin_id = :bulletin_id
             ORDER BY bs.date_signature DESC
         ");
         $stmt->execute([':bulletin_id' => $bulletinId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Résout le nom affichable d'un signataire à partir de son rôle et de son id,
+     * en interrogeant la table de personnes correspondante. Renvoie null si introuvable.
+     */
+    private function resoudreNomSignataire(string $role, int $signataireId): ?string
+    {
+        $table = [
+            'administrateur' => 'administrateurs',
+            'professeur'     => 'professeurs',
+            'vie_scolaire'   => 'administrateurs',
+            'eleve'          => 'eleves',
+            'parent'         => 'parents',
+        ][$role] ?? null;
+
+        if ($table === null) {
+            return null;
+        }
+
+        $stmt = $this->pdo->prepare("SELECT CONCAT(prenom, ' ', nom) FROM `{$table}` WHERE id = ? LIMIT 1");
+        $stmt->execute([$signataireId]);
+        $nom = $stmt->fetchColumn();
+        return $nom !== false ? (string) $nom : null;
     }
 
     /**
@@ -538,7 +625,7 @@ class BulletinService {
     {
         $stmt = $this->pdo->prepare("
             SELECT id FROM bulletin_signatures
-            WHERE bulletin_id = :bulletin_id AND signataire_id = :signataire_id AND role = :role
+            WHERE bulletin_id = :bulletin_id AND signataire_id = :signataire_id AND signataire_role = :role
             LIMIT 1
         ");
         $stmt->execute([
@@ -548,26 +635,32 @@ class BulletinService {
         ]);
         $existing = $stmt->fetchColumn();
 
+        // Nom denormalise (pas de table `utilisateurs`) resolu par role.
+        $signataireNom = $this->resoudreNomSignataire($role, $signataire_id);
+
         if ($existing) {
             $stmt = $this->pdo->prepare("
                 UPDATE bulletin_signatures
-                SET signature_id = :signature_id, date_signature = NOW()
+                SET signature_id = :signature_id, signataire_nom = :signataire_nom, date_signature = NOW()
                 WHERE id = :id
             ");
             $stmt->execute([
-                ':signature_id' => $signatureId,
-                ':id'           => $existing,
+                ':signature_id'  => $signatureId,
+                ':signataire_nom' => $signataireNom,
+                ':id'            => $existing,
             ]);
         } else {
             $stmt = $this->pdo->prepare("
-                INSERT INTO bulletin_signatures (bulletin_id, signataire_id, role, signature_id, date_signature)
-                VALUES (:bulletin_id, :signataire_id, :role, :signature_id, NOW())
+                INSERT INTO bulletin_signatures (bulletin_id, signataire_id, signataire_role, signataire_nom, signature_id, etablissement_id, date_signature)
+                VALUES (:bulletin_id, :signataire_id, :role, :signataire_nom, :signature_id, :etablissement_id, NOW())
             ");
             $stmt->execute([
                 ':bulletin_id'   => $bulletinId,
                 ':signataire_id' => $signataire_id,
                 ':role'          => $role,
+                ':signataire_nom' => $signataireNom,
                 ':signature_id'  => $signatureId,
+                ':etablissement_id' => \API\Core\EstablishmentContext::id(),
             ]);
         }
     }
@@ -583,7 +676,7 @@ class BulletinService {
             UPDATE bulletins
             SET consulte_par_parent = 1, date_consultation_parent = NOW()
             WHERE id = :bulletin_id AND eleve_id IN (
-                SELECT eleve_id FROM eleve_parents WHERE parent_id = :parent_id
+                SELECT id_eleve FROM parent_eleve WHERE id_parent = :parent_id
             )
         ");
         $stmt->execute([
@@ -633,8 +726,8 @@ class BulletinService {
     public function queueBulkGeneration(int $classeId, int $periodeId): int
     {
         $stmt = $this->pdo->prepare("
-            INSERT INTO jobs (queue, payload, status, created_at)
-            VALUES (:queue, :payload, 'pending', NOW())
+            INSERT INTO jobs (queue, payload, status, etablissement_id, created_at)
+            VALUES (:queue, :payload, 'pending', :etablissement_id, NOW())
         ");
         $payload = json_encode([
             'action'     => 'bulk_generation_bulletins',
@@ -645,6 +738,7 @@ class BulletinService {
         $stmt->execute([
             ':queue'   => 'bulletins',
             ':payload' => $payload,
+            ':etablissement_id' => \API\Core\EstablishmentContext::id(),
         ]);
 
         return (int) $this->pdo->lastInsertId();

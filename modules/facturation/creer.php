@@ -6,7 +6,7 @@ $pageTitle = 'Nouvelle facture';
 $activePage = 'creer';
 require_once __DIR__ . '/includes/header.php';
 
-if (!isAdmin() && !isPersonnelVS()) { redirect('/facturation/factures.php'); }
+if (!isAdmin() && !isPersonnelVS()) { redirect('/modules/facturation/factures.php'); }
 
 $parents = $factService->getParents();
 $types = FacturationService::typesFacture();

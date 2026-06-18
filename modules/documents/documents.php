@@ -68,8 +68,12 @@ $categories = DocumentService::categories();
                     <div class="doc-actions">
                         <a href="telecharger.php?id=<?= $doc['id'] ?>" class="btn btn-sm btn-primary" title="Télécharger"><i class="fas fa-download"></i></a>
                         <?php if (isAdmin()): ?>
-                            <a href="supprimer.php?id=<?= $doc['id'] ?>" class="btn btn-sm btn-danger" title="Supprimer"
-                               onclick="return confirm('Supprimer ce document ?')"><i class="fas fa-trash"></i></a>
+                            <form method="post" action="supprimer.php" style="display:inline"
+                                  onsubmit="return confirm('Supprimer ce document ?')">
+                                <?= csrfField() ?>
+                                <input type="hidden" name="id" value="<?= $doc['id'] ?>">
+                                <button type="submit" class="btn btn-sm btn-danger" title="Supprimer"><i class="fas fa-trash"></i></button>
+                            </form>
                         <?php endif; ?>
                     </div>
                 </div>

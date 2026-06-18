@@ -5,6 +5,10 @@
 $pageTitle = 'Facturation';
 require_once __DIR__ . '/includes/header.php';
 
+// Accès : gestionnaires (toutes les factures) ou parents (leurs propres factures via la vue adaptative).
+// Les élèves/enseignants n'ont rien à voir ici (données financières d'autrui).
+if (!isAdmin() && !isPersonnelVS() && !isParent()) { redirect('/accueil/accueil.php'); }
+
 $isGestionnaire = isAdmin() || isPersonnelVS();
 $filtreStatut = $_GET['statut'] ?? '';
 $filters = [];

@@ -83,7 +83,7 @@ class SuperAdminService
             $data['prenom'],
             $data['mail'],
             $data['identifiant'],
-            password_hash($data['mot_de_passe'], PASSWORD_DEFAULT),
+            \API\Security\PasswordPolicy::hash($data['mot_de_passe']),
         ]);
         return (int) $this->pdo->lastInsertId();
     }
@@ -105,7 +105,7 @@ class SuperAdminService
 
         if (isset($data['mot_de_passe']) && $data['mot_de_passe'] !== '') {
             $fields[] = '`mot_de_passe` = ?';
-            $values[] = password_hash($data['mot_de_passe'], PASSWORD_DEFAULT);
+            $values[] = \API\Security\PasswordPolicy::hash($data['mot_de_passe']);
         }
 
         if (empty($fields)) {
@@ -140,6 +140,61 @@ class SuperAdminService
             ORDER BY e.nom
         ");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Purge TOTALE d'un établissement (réservé super_admin ; appelé par purge.php après
+     * confirmation forte + sauvegarde obligatoire). Supprime, en transaction, toutes les
+     * lignes scopées `etablissement_id` de TOUTES les tables qui possèdent cette colonne,
+     * puis l'établissement lui-même. Découverte des tables via information_schema (pas de
+     * liste codée en dur). Refuse de purger le dernier établissement.
+     *
+     * @return array{establishment:int, tables:array<string,int>}
+     */
+    public function purgeEstablishment(int $id): array
+    {
+        if ($id <= 0) {
+            throw new \InvalidArgumentException('Identifiant d\'établissement invalide.');
+        }
+        $total = (int) $this->pdo->query("SELECT COUNT(*) FROM etablissements")->fetchColumn();
+        if ($total <= 1) {
+            throw new \RuntimeException('Impossible de purger le dernier établissement.');
+        }
+
+        $db = (string) $this->pdo->query("SELECT DATABASE()")->fetchColumn();
+        $stmt = $this->pdo->prepare(
+            "SELECT TABLE_NAME FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = ? AND COLUMN_NAME = 'etablissement_id'"
+        );
+        $stmt->execute([$db]);
+        $tables = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        $deleted = [];
+        $this->pdo->beginTransaction();
+        try {
+            // Désactive les contraintes le temps de la purge pour s'affranchir de l'ordre des FK.
+            $this->pdo->exec('SET FOREIGN_KEY_CHECKS=0');
+            foreach ($tables as $t) {
+                if ($t === 'etablissements') {
+                    continue;
+                }
+                // $t provient d'information_schema (pas d'entrée utilisateur) → interpolation sûre.
+                $d = $this->pdo->prepare("DELETE FROM `{$t}` WHERE etablissement_id = ?");
+                $d->execute([$id]);
+                if ($d->rowCount() > 0) {
+                    $deleted[$t] = $d->rowCount();
+                }
+            }
+            $this->pdo->prepare("DELETE FROM etablissements WHERE id = ?")->execute([$id]);
+            $this->pdo->exec('SET FOREIGN_KEY_CHECKS=1');
+            $this->pdo->commit();
+        } catch (\Throwable $e) {
+            $this->pdo->rollBack();
+            try { $this->pdo->exec('SET FOREIGN_KEY_CHECKS=1'); } catch (\Throwable $e2) {}
+            throw $e;
+        }
+
+        return ['establishment' => $id, 'tables' => $deleted];
     }
 
     /**

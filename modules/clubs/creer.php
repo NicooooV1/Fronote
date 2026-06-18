@@ -4,9 +4,14 @@
  */
 $pageTitle = 'Créer un club';
 $activePage = 'creer';
-require_once __DIR__ . '/includes/header.php';
 
-if (!isAdmin() && !isPersonnelVS() && !isProfesseur()) { redirect('/clubs/clubs.php'); }
+// Gate AVANT tout rendu HTML : page de gestion réservée au staff (admin/vie scolaire/profs).
+// Charger l'auth (Bridge) avant le check pour que la redirection parte avant tout output.
+require_once __DIR__ . '/../../API/Legacy/Bridge.php';
+requireAuth();
+if (!isAdmin() && !isPersonnelVS() && !isProfesseur()) { redirect('/modules/clubs/clubs.php'); }
+
+require_once __DIR__ . '/includes/header.php';
 
 $cats = ClubService::categories();
 $profs = $clubService->getProfesseurs();

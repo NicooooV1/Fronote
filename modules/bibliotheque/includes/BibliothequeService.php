@@ -24,7 +24,7 @@ class BibliothequeService
     {
         $etabId = $this->etabId();
         if ($etabId === null) return [];
-        $sql = 'SELECT l.*, (l.exemplaires_total - COALESCE((SELECT COUNT(*) FROM emprunts WHERE livre_id = l.id AND statut = "emprunte"), 0)) AS exemplaires_disponibles
+        $sql = 'SELECT l.*, (l.exemplaires_total - COALESCE((SELECT COUNT(*) FROM emprunts WHERE livre_id = l.id AND statut = "en_cours"), 0)) AS exemplaires_disponibles
                 FROM livres l WHERE l.etablissement_id = ?';
         $params = [$etabId];
         if (!empty($filters['recherche'])) {
@@ -44,21 +44,26 @@ class BibliothequeService
 
     public function getLivre(int $id): ?array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return null;
         $stmt = $this->pdo->prepare('
-            SELECT l.*, (l.exemplaires_total - COALESCE((SELECT COUNT(*) FROM emprunts WHERE livre_id = l.id AND statut = "emprunte"), 0)) AS exemplaires_disponibles
-            FROM livres l WHERE l.id = ?
+            SELECT l.*, (l.exemplaires_total - COALESCE((SELECT COUNT(*) FROM emprunts WHERE livre_id = l.id AND statut = "en_cours"), 0)) AS exemplaires_disponibles
+            FROM livres l WHERE l.id = ? AND l.etablissement_id = ?
         ');
-        $stmt->execute([$id]);
+        $stmt->execute([$id, $etabId]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function ajouterLivre(array $data): int
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) throw new RuntimeException('Établissement introuvable.');
         $stmt = $this->pdo->prepare("
-            INSERT INTO livres (titre, auteur, isbn, editeur, annee_publication, categorie, description, exemplaires_total, emplacement, date_ajout)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            INSERT INTO livres (etablissement_id, titre, auteur, isbn, editeur, annee_publication, categorie, description, exemplaires_total, emplacement)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
+            $etabId,
             $data['titre'], $data['auteur'] ?? null, $data['isbn'] ?? null,
             $data['editeur'] ?? null, $data['annee_publication'] ?? null,
             $data['categorie'] ?? 'general', $data['description'] ?? null,
@@ -100,7 +105,7 @@ class BibliothequeService
         $dateRetourPrevue = date('Y-m-d', strtotime('+21 days'));
         $stmt = $this->pdo->prepare("
             INSERT INTO emprunts (livre_id, emprunteur_id, emprunteur_type, date_emprunt, date_retour_prevue, statut)
-            VALUES (?, ?, ?, NOW(), ?, 'emprunte')
+            VALUES (?, ?, ?, NOW(), ?, 'en_cours')
         ");
         $stmt->execute([$livreId, $emprunteurId, $emprunteurType, $dateRetourPrevue]);
         return $this->pdo->lastInsertId();
@@ -108,13 +113,13 @@ class BibliothequeService
 
     public function retourner(int $empruntId): void
     {
-        $stmt = $this->pdo->prepare("UPDATE emprunts SET statut = 'retourne', date_retour_effectif = NOW() WHERE id = ?");
+        $stmt = $this->pdo->prepare("UPDATE emprunts SET statut = 'rendu', date_retour_effective = NOW() WHERE id = ?");
         $stmt->execute([$empruntId]);
     }
 
     public function prolonger(int $empruntId, int $jours = 14): void
     {
-        $stmt = $this->pdo->prepare("UPDATE emprunts SET date_retour_prevue = DATE_ADD(date_retour_prevue, INTERVAL ? DAY) WHERE id = ? AND statut = 'emprunte'");
+        $stmt = $this->pdo->prepare("UPDATE emprunts SET date_retour_prevue = DATE_ADD(date_retour_prevue, INTERVAL ? DAY) WHERE id = ? AND statut = 'en_cours'");
         $stmt->execute([$jours, $empruntId]);
     }
 
@@ -123,7 +128,7 @@ class BibliothequeService
         $sql = "
             SELECT e.*, l.titre, l.auteur
             FROM emprunts e JOIN livres l ON e.livre_id = l.id
-            WHERE e.statut = 'emprunte'
+            WHERE e.statut = 'en_cours'
         ";
         $params = [];
         if ($userId) {
@@ -150,10 +155,12 @@ class BibliothequeService
 
     public function getTousEmprunts(array $filters = []): array
     {
-        $sql = "SELECT e.*, l.titre, l.auteur FROM emprunts e JOIN livres l ON e.livre_id = l.id WHERE 1=1";
-        $params = [];
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
+        $sql = "SELECT e.*, l.titre, l.auteur FROM emprunts e JOIN livres l ON e.livre_id = l.id WHERE l.etablissement_id = ?";
+        $params = [$etabId];
         if (!empty($filters['statut'])) { $sql .= ' AND e.statut = ?'; $params[] = $filters['statut']; }
-        if (!empty($filters['retard'])) { $sql .= " AND e.statut = 'emprunte' AND e.date_retour_prevue < CURDATE()"; }
+        if (!empty($filters['retard'])) { $sql .= " AND e.statut = 'en_cours' AND e.date_retour_prevue < CURDATE()"; }
         $sql .= ' ORDER BY e.date_emprunt DESC';
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
@@ -164,12 +171,19 @@ class BibliothequeService
 
     public function getStats(): array
     {
-        $livres = $this->pdo->query("SELECT COUNT(*) AS total, SUM(exemplaires_total) AS exemplaires FROM livres")->fetch(PDO::FETCH_ASSOC);
-        $emprunts = $this->pdo->query("
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
+        $stmtLivres = $this->pdo->prepare("SELECT COUNT(*) AS total, SUM(exemplaires_total) AS exemplaires FROM livres WHERE etablissement_id = ?");
+        $stmtLivres->execute([$etabId]);
+        $livres = $stmtLivres->fetch(PDO::FETCH_ASSOC);
+        $stmtEmprunts = $this->pdo->prepare("
             SELECT COUNT(*) AS actifs,
-                   COUNT(CASE WHEN date_retour_prevue < CURDATE() THEN 1 END) AS retards
-            FROM emprunts WHERE statut = 'emprunte'
-        ")->fetch(PDO::FETCH_ASSOC);
+                   COUNT(CASE WHEN e.date_retour_prevue < CURDATE() THEN 1 END) AS retards
+            FROM emprunts e JOIN livres l ON e.livre_id = l.id
+            WHERE e.statut = 'en_cours' AND l.etablissement_id = ?
+        ");
+        $stmtEmprunts->execute([$etabId]);
+        $emprunts = $stmtEmprunts->fetch(PDO::FETCH_ASSOC);
         return array_merge($livres, $emprunts);
     }
 
@@ -260,7 +274,10 @@ class BibliothequeService
      */
     public function getEmpruntsEnRetard(): array
     {
-        $stmt = $this->pdo->query("
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
+
+        $stmt = $this->pdo->prepare("
             SELECT e.*, l.titre, l.isbn,
                    DATEDIFF(CURDATE(), e.date_retour_prevue) AS jours_retard,
                    COALESCE(
@@ -269,9 +286,10 @@ class BibliothequeService
                    ) AS emprunteur_nom
             FROM emprunts e
             JOIN livres l ON e.livre_id = l.id
-            WHERE e.statut = 'emprunte' AND e.date_retour_prevue < CURDATE()
+            WHERE e.statut = 'en_cours' AND e.date_retour_prevue < CURDATE() AND l.etablissement_id = ?
             ORDER BY e.date_retour_prevue ASC
         ");
+        $stmt->execute([$etabId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -426,9 +444,9 @@ class BibliothequeService
     {
         $stmt = $this->pdo->prepare("
             SELECT COUNT(*) AS total_emprunts,
-                   COUNT(CASE WHEN statut = 'retourne' THEN 1 END) AS retournes,
-                   COUNT(CASE WHEN statut = 'emprunte' THEN 1 END) AS en_cours,
-                   COUNT(CASE WHEN statut = 'emprunte' AND date_retour_prevue < CURDATE() THEN 1 END) AS en_retard
+                   COUNT(CASE WHEN statut = 'rendu' THEN 1 END) AS retournes,
+                   COUNT(CASE WHEN statut = 'en_cours' THEN 1 END) AS en_cours,
+                   COUNT(CASE WHEN statut = 'en_cours' AND date_retour_prevue < CURDATE() THEN 1 END) AS en_retard
             FROM emprunts WHERE emprunteur_id = ? AND emprunteur_type = 'eleve'
         ");
         $stmt->execute([$eleveId]);

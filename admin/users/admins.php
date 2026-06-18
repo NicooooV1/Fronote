@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Gestion des administrateurs — Édition info, MDP, 2FA, déverrouillage
  */
@@ -76,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
                     logAudit('admin_info_updated', 'administrateurs', $adminId);
                     $message = "Informations mises à jour.";
                 }
-            } catch (PDOException $e) { $error = "Erreur : " . $e->getMessage(); }
+            } catch (PDOException $e) { error_log("admin update failed: " . $e->getMessage()); $error = "Erreur lors de la mise à jour."; }
         }
     }
 
@@ -96,7 +96,7 @@ $admins = [];
 try {
     $stmt = $pdo->query("SELECT * FROM administrateurs ORDER BY nom, prenom");
     $admins = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) { $error = "Erreur : " . $e->getMessage(); }
+} catch (PDOException $e) { error_log("admins load failed: " . $e->getMessage()); $error = "Erreur lors du chargement des administrateurs."; }
 
 $pageTitle = 'Gestion des administrateurs';
 $currentPage = 'admins';

@@ -23,7 +23,7 @@ class CrossModuleAnalyticsService
     /** Établissement courant (scope multi-établissement). */
     private function etabId(): int
     {
-        try { return \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { return 1; }
+        return \API\Core\EstablishmentContext::id();
     }
 
     /**

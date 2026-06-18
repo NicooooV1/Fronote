@@ -27,7 +27,6 @@ $mouvements = $internatService->getMouvementsJour($dateVue);
 $affectations = $internatService->getAffectations();
 ?>
 
-<div class="main-content">
     <div class="page-header">
         <h1><i class="fas fa-exchange-alt"></i> Mouvements du <?= date('d/m/Y', strtotime($dateVue)) ?></h1>
         <form method="get" class="inline-form"><input type="date" name="date" value="<?= $dateVue ?>" class="form-control" onchange="this.form.submit()"></form>
@@ -87,7 +86,6 @@ $affectations = $internatService->getAffectations();
             </table>
         </div>
     </div>
-</div>
 
 <script>
 function updateChambre(sel) {

@@ -56,6 +56,7 @@ $updates = $marketplace->checkUpdates();
 
 $pageTitle = 'Marketplace';
 $currentPage = 'marketplace';
+$pageBack = 'admin/modules/index.php';
 $extraCss = ['../../assets/css/admin.css'];
 
 if (!isset($_SESSION['csrf_token'])) {

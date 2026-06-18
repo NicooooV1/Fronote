@@ -1,4 +1,8 @@
 <?php
+namespace API\Services;
+
+use PDO;
+
 /**
  * Service d'import/export de donnees (utilisateurs, configuration, sauvegarde SQL).
  *

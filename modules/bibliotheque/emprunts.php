@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 }
 
 if ($isGestionnaire) {
-    $filtreStatut = $_GET['statut'] ?? 'emprunte';
+    $filtreStatut = $_GET['statut'] ?? 'en_cours';
     $filters = ['statut' => $filtreStatut];
     if (isset($_GET['retard'])) $filters['retard'] = true;
     $emprunts = $biblioService->getTousEmprunts($filters);
@@ -36,9 +36,9 @@ if ($isGestionnaire) {
 
     <?php if ($isGestionnaire): ?>
     <div class="filter-bar">
-        <a href="emprunts.php?statut=emprunte" class="filter-btn <?= ($filtreStatut ?? '') === 'emprunte' ? 'active' : '' ?>">En cours</a>
+        <a href="emprunts.php?statut=en_cours" class="filter-btn <?= ($filtreStatut ?? '') === 'en_cours' ? 'active' : '' ?>">En cours</a>
         <a href="emprunts.php?retard=1" class="filter-btn <?= isset($_GET['retard']) ? 'active' : '' ?>">En retard</a>
-        <a href="emprunts.php?statut=retourne" class="filter-btn <?= ($filtreStatut ?? '') === 'retourne' ? 'active' : '' ?>">Retournés</a>
+        <a href="emprunts.php?statut=rendu" class="filter-btn <?= ($filtreStatut ?? '') === 'rendu' ? 'active' : '' ?>">Retournés</a>
     </div>
     <?php endif; ?>
 
@@ -49,7 +49,7 @@ if ($isGestionnaire) {
     <?php else: ?>
     <div class="emprunt-list">
         <?php foreach ($emprunts as $e):
-            $retard = $e['statut'] === 'emprunte' && strtotime($e['date_retour_prevue']) < time();
+            $retard = $e['statut'] === 'en_cours' && strtotime($e['date_retour_prevue']) < time();
         ?>
         <div class="emprunt-item <?= $retard ? 'retard' : '' ?>">
             <div class="emprunt-book"><i class="fas fa-book"></i></div>
@@ -60,10 +60,10 @@ if ($isGestionnaire) {
                     <span><i class="fas fa-calendar-plus"></i> <?= formatDate($e['date_emprunt']) ?></span>
                     <span><i class="fas fa-calendar-check"></i> Retour: <?= formatDate($e['date_retour_prevue']) ?></span>
                     <?php if ($retard): ?><span class="badge badge-danger">En retard</span><?php endif; ?>
-                    <?php if ($e['statut'] === 'retourne'): ?><span class="badge badge-success">Retourné le <?= formatDate($e['date_retour_effectif']) ?></span><?php endif; ?>
+                    <?php if ($e['statut'] === 'rendu'): ?><span class="badge badge-success">Retourné le <?= formatDate($e['date_retour_effective']) ?></span><?php endif; ?>
                 </div>
             </div>
-            <?php if ($e['statut'] === 'emprunte'): ?>
+            <?php if ($e['statut'] === 'en_cours'): ?>
             <div class="emprunt-actions">
                 <?php if ($isGestionnaire): ?>
                 <form method="post" style="display:inline;">
@@ -93,7 +93,7 @@ if ($isGestionnaire) {
             <div class="emprunt-info">
                 <h3><?= htmlspecialchars($h['titre']) ?></h3>
                 <div class="emprunt-meta">
-                    <span><?= formatDate($h['date_emprunt']) ?> → <?= $h['date_retour_effectif'] ? formatDate($h['date_retour_effectif']) : 'En cours' ?></span>
+                    <span><?= formatDate($h['date_emprunt']) ?> → <?= $h['date_retour_effective'] ? formatDate($h['date_retour_effective']) : 'En cours' ?></span>
                 </div>
             </div>
         </div>

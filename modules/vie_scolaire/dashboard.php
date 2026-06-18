@@ -5,13 +5,15 @@
 require_once __DIR__ . '/includes/VieScolaireService.php';
 $currentPage = 'dashboard';
 $pageTitle = 'Vie scolaire — Tableau de bord';
-require_once __DIR__ . '/includes/header.php';
-requireAuth();
 
+require_once __DIR__ . '/../../API/core.php';
+requireAuth();
 if (!isAdmin() && !isVieScolaire()) {
     header('Location: ../../accueil/accueil.php');
     exit;
 }
+
+require_once __DIR__ . '/includes/header.php';
 
 $pdo = getPDO();
 $service = new VieScolaireService($pdo);

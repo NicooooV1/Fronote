@@ -4,7 +4,7 @@ require_once __DIR__ . '/includes/header.php';
 
 $user = $_SESSION['user'];
 $role  = $user['type'] ?? 'eleve';
-if (!in_array($role, ['admin', 'professeur'])) { header('Location: projets.php'); exit; }
+if (!isAdmin() && !isProfesseur()) { header('Location: projets.php'); exit; }
 
 $editId  = (int) ($_GET['id'] ?? 0);
 $projet  = $editId ? $projetService->getProjet($editId) : null;

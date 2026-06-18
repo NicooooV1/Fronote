@@ -2,7 +2,9 @@
 /**
  * En-tête standardisé pour le module Examens (topbar layout)
  */
-if (session_status() === PHP_SESSION_NONE) session_start();
+// Charger l'API (core.php -> bootstrap.php) AVANT tout démarrage de session :
+// le bloc gardé de bootstrap.php démarre la session durcie (HttpOnly + Secure(https)
+// + SameSite=Lax + nom/path par instance). Ne PAS faire de session_start() nu ici.
 require_once __DIR__ . '/../../../API/core.php';
 requireAuth();
 

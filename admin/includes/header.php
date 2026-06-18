@@ -8,7 +8,16 @@ require_once __DIR__ . '/../../API/core.php';
 require_once __DIR__ . '/admin_functions.php';
 
 requireAuth();
-requireRole('administrateur');
+// Le super-admin (gestion multi-établissements) doit pouvoir atteindre les pages
+// d'administration (notamment admin/etablissement/*) : sans lui, requireRole le
+// renvoyait vers l'accueil avant même que la page ne s'affiche.
+requireRole('administrateur', 'super_admin');
+
+// Onboarding obligatoire : tant que l'établissement n'est pas configuré, on
+// redirige vers le wizard depuis n'importe quelle page admin (sauf les pages de
+// configuration de l'établissement, exemptées dans le gate pour éviter la boucle).
+require_once __DIR__ . '/../../API/onboarding_gate.php';
+enforceOnboardingGate();
 
 if (!isset($user_initials)) {
     $user_initials = getUserInitials();
@@ -32,6 +41,14 @@ if (!isset($rootPrefix)) {
     $relative = substr($callerDir, strlen($adminDir));
     $depth = $relative ? substr_count(ltrim($relative, '/'), '/') + 1 : 0;
     $rootPrefix = str_repeat('../', $depth + 1);
+}
+
+// Bouton « Retour » par défaut sur toutes les pages admin : le tableau de bord
+// renvoie à l'accueil, toute autre page admin renvoie au tableau de bord. Une page
+// peut surcharger $pageBack AVANT d'inclure ce header pour cibler son parent réel
+// (ex. admin/users/create.php -> 'admin/users/index.php').
+if (!isset($pageBack)) {
+    $pageBack = ($currentPage === 'dashboard') ? 'accueil/accueil.php' : 'admin/dashboard.php';
 }
 
 include __DIR__ . '/../../templates/shared_header.php';

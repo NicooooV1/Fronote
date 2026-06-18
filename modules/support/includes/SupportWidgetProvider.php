@@ -7,10 +7,10 @@ namespace Support\Widgets;
 use API\Contracts\AbstractWidgetProvider;
 
 /**
- * Note scope : tickets_support n'a pas (encore) de colonne `etablissement_id`. Le scope
- * admin/vie_scolaire est donc limité aux utilisateurs ayant un compte dans cet
- * établissement (résolu via JOIN sur la table user_type correspondante). Cette
- * stratégie évite la fuite cross-tenant sans changer le schéma.
+ * Note scope : tickets_support possède une colonne `etablissement_id`. Le scope
+ * admin/vie_scolaire est ici renforcé en limitant aux utilisateurs ayant un compte
+ * dans cet établissement (résolu via sous-requête sur la table user_type
+ * correspondante). Cette stratégie évite la fuite cross-tenant.
  */
 class SupportWidgetProvider extends AbstractWidgetProvider
 {
@@ -29,17 +29,17 @@ class SupportWidgetProvider extends AbstractWidgetProvider
             // Admin : tickets ouverts MAIS scopés aux utilisateurs de cet établissement.
             // On filtre par sous-requête UNION par type → table d'origine pour matcher l'etab.
             $stmt = $pdo->prepare(
-                "SELECT id, sujet, categorie, priorite, statut, created_at
+                "SELECT id, sujet, categorie, priorite, statut, date_creation
                  FROM tickets_support t
                  WHERE statut IN ('ouvert','en_cours')
                    AND (
-                        (t.auteur_type = 'eleve'          AND t.auteur_id IN (SELECT id FROM eleves          WHERE etablissement_id = :eid))
-                     OR (t.auteur_type = 'parent'         AND t.auteur_id IN (SELECT id FROM parents         WHERE etablissement_id = :eid))
-                     OR (t.auteur_type = 'professeur'    AND t.auteur_id IN (SELECT id FROM professeurs     WHERE etablissement_id = :eid))
-                     OR (t.auteur_type = 'vie_scolaire'  AND t.auteur_id IN (SELECT id FROM vie_scolaire    WHERE etablissement_id = :eid))
-                     OR (t.auteur_type = 'administrateur' AND t.auteur_id IN (SELECT id FROM administrateurs WHERE etablissement_id = :eid))
+                        (t.user_type = 'eleve'          AND t.user_id IN (SELECT id FROM eleves          WHERE etablissement_id = :eid))
+                     OR (t.user_type = 'parent'         AND t.user_id IN (SELECT id FROM parents         WHERE etablissement_id = :eid))
+                     OR (t.user_type = 'professeur'    AND t.user_id IN (SELECT id FROM professeurs     WHERE etablissement_id = :eid))
+                     OR (t.user_type = 'vie_scolaire'  AND t.user_id IN (SELECT id FROM vie_scolaire    WHERE etablissement_id = :eid))
+                     OR (t.user_type = 'administrateur' AND t.user_id IN (SELECT id FROM administrateurs WHERE etablissement_id = :eid))
                    )
-                 ORDER BY FIELD(priorite, 'urgent', 'haute', 'normale', 'basse'), created_at DESC
+                 ORDER BY FIELD(priorite, 'urgente', 'haute', 'normale', 'basse'), date_creation DESC
                  LIMIT :lim"
             );
             $stmt->bindValue(':eid', $etabId, \PDO::PARAM_INT);
@@ -48,11 +48,11 @@ class SupportWidgetProvider extends AbstractWidgetProvider
         } else {
             // Utilisateur : ses propres tickets
             $stmt = $pdo->prepare(
-                "SELECT id, sujet, categorie, priorite, statut, created_at
+                "SELECT id, sujet, categorie, priorite, statut, date_creation
                  FROM tickets_support
-                 WHERE auteur_id = ? AND auteur_type = ?
+                 WHERE user_id = ? AND user_type = ?
                    AND statut IN ('ouvert','en_cours')
-                 ORDER BY created_at DESC
+                 ORDER BY date_creation DESC
                  LIMIT ?"
             );
             $stmt->execute([$userId, $userType, $limit]);

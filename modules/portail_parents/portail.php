@@ -74,7 +74,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
             <p style="color:var(--text-muted,#64748b);font-size:.9em">Aucune absence récente.</p>
             <?php else: foreach (array_slice($resume['absences_recentes'], 0, 6) as $a): ?>
             <div style="display:flex;justify-content:space-between;font-size:.9em;padding:6px 0;border-bottom:1px solid #f1f5f9">
-                <span><?= htmlspecialchars($a['date_absence'] ?? '') ?></span>
+                <span><?= htmlspecialchars($a['date_debut'] ?? '') ?></span>
                 <span style="color:<?= !empty($a['justifiee']) ? '#16a34a' : '#dc2626' ?>"><?= !empty($a['justifiee']) ? 'Justifiée' : 'Non justifiée' ?></span>
             </div>
             <?php endforeach; endif; ?>

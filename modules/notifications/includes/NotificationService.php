@@ -372,8 +372,9 @@ class NotificationService
 
     public function envoyerAClasse(int $classeId, string $titre, string $contenu, ?string $lien = null): int
     {
-        $stmt = $this->pdo->prepare("SELECT id FROM eleves WHERE classe_id = ? AND actif = 1");
-        $stmt->execute([$classeId]);
+        $etabId = \API\Core\EstablishmentContext::id();
+        $stmt = $this->pdo->prepare("SELECT id FROM eleves WHERE classe = (SELECT nom FROM classes WHERE id = ? AND etablissement_id = ?) AND etablissement_id = ? AND actif = 1");
+        $stmt->execute([$classeId, $etabId, $etabId]);
         $ids = $stmt->fetchAll(\PDO::FETCH_COLUMN);
         $count = 0;
         foreach ($ids as $id) {

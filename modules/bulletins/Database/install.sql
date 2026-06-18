@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS `bulletins` (
   `nb_retards` int(11) DEFAULT 0,
   `statut` enum('brouillon','valide','publie','archive') NOT NULL DEFAULT 'brouillon',
   `competences_bilan` json DEFAULT NULL,
+  `consulte_par_parent` tinyint(1) NOT NULL DEFAULT 0,
+  `date_consultation_parent` datetime DEFAULT NULL,
   `valide_par` int(11) DEFAULT NULL,
   `date_validation` datetime DEFAULT NULL,
   `date_publication` datetime DEFAULT NULL,
@@ -51,4 +53,38 @@ CREATE TABLE IF NOT EXISTS `bulletin_matieres` (
   CONSTRAINT `fk_bm_bulletin` FOREIGN KEY (`bulletin_id`) REFERENCES `bulletins` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_bm_matiere` FOREIGN KEY (`matiere_id`) REFERENCES `matieres` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_bm_prof` FOREIGN KEY (`professeur_id`) REFERENCES `professeurs` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Signatures numeriques apposees sur un bulletin (workflow de signature).
+-- Pas de table `utilisateurs` dans ce schema : on denormalise le nom du signataire
+-- (signataire_nom) au moment de la signature, resolu par role depuis
+-- eleves/parents/professeurs/administrateurs.
+CREATE TABLE IF NOT EXISTS `bulletin_signatures` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `bulletin_id` int(11) NOT NULL,
+  `signataire_role` varchar(30) DEFAULT NULL,
+  `signataire_id` int(11) DEFAULT NULL,
+  `signataire_nom` varchar(150) DEFAULT NULL,
+  `signature_id` int(11) DEFAULT NULL,
+  `date_signature` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `etablissement_id` int(11) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  KEY `idx_bsig_bulletin` (`bulletin_id`),
+  KEY `idx_bsig_etab` (`etablissement_id`),
+  CONSTRAINT `fk_bsig_bulletin` FOREIGN KEY (`bulletin_id`) REFERENCES `bulletins` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- File d'attente minimale pour la generation asynchrone des bulletins en lot
+-- (cf. BulletinService::queueBulkGeneration).
+CREATE TABLE IF NOT EXISTS `jobs` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `etablissement_id` int(11) NOT NULL DEFAULT 1,
+  `queue` varchar(50) NOT NULL DEFAULT 'default',
+  `payload` text DEFAULT NULL,
+  `status` varchar(20) NOT NULL DEFAULT 'pending',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_jobs_queue` (`queue`),
+  KEY `idx_jobs_status` (`status`),
+  KEY `idx_jobs_etab` (`etablissement_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

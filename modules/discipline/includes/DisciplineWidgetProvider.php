@@ -29,7 +29,7 @@ class DisciplineWidgetProvider implements WidgetDataProvider
                  ORDER BY i.date_incident DESC
                  LIMIT ?"
             );
-            try { $etab = \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { $etab = 1; }
+            $etab = \API\Core\EstablishmentContext::id();
             $stmt->execute([$etab, $limit]);
             $incidents = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 

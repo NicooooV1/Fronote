@@ -1,0 +1,43 @@
+# Fronote — exclusions du contexte de build Docker
+# (réduit la taille de l'image et évite de copier secrets / artefacts locaux)
+
+# Contrôle de version
+.git
+.gitignore
+.github
+
+# Dépendances (réinstallées dans l'image)
+vendor
+node_modules
+websocket/node_modules
+
+# Sauvegardes & artefacts runtime
+storage/backups
+storage/tmp
+storage/cache
+storage/quarantine
+uploads
+logs
+API/logs
+temp
+
+# Journaux et fichiers temporaires
+*.log
+*.bak
+
+# Tests & documentation (inutiles à l'exécution)
+tests
+docs
+
+# Secrets / config locale (jamais dans l'image)
+.env
+install.lock
+config/marketplace/keys
+*.sk
+
+# Outils & méta
+.claude
+.phpunit.cache
+Dockerfile
+docker-compose.yml
+.dockerignore

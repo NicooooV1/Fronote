@@ -13,7 +13,7 @@ class AbsenceService
 
     private function etabId(): int
     {
-        try { return \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { return 1; }
+        return \API\Core\EstablishmentContext::id();
     }
 
     public function getAbsences(array $filters, int $page = 1, int $perPage = 30): array

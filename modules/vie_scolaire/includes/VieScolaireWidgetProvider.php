@@ -20,7 +20,7 @@ class VieScolaireWidgetProvider implements WidgetDataProvider
         }
 
         $today = date('Y-m-d');
-        try { $etab = \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { $etab = 1; }
+        $etab = \API\Core\EstablishmentContext::id();
 
         // Absences du jour
         $stmtAbs = $pdo->prepare(

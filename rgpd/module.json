@@ -27,6 +27,9 @@
     "routes": {
         "main": "anonymiser.php"
     },
+    "database": {
+        "install": "Database/install.sql"
+    },
     "widgets": [],
     "establishment_types": null,
     "sidebar": {

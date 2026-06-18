@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
             <div class="archive-info">
                 <h3><?= $types[$ar['type']] ?? $ar['type'] ?> — <?= htmlspecialchars($ar['annee_scolaire']) ?></h3>
                 <div class="archive-meta">
-                    <span><i class="fas fa-calendar"></i> <?= formatDateTime($ar['date_archive']) ?></span>
+                    <span><i class="fas fa-calendar"></i> <?= formatDateTime($ar['date_archivage']) ?></span>
                     <?php if ($ar['verrouille']): ?><span class="badge badge-warning"><i class="fas fa-lock"></i> Verrouillée</span><?php endif; ?>
                 </div>
             </div>

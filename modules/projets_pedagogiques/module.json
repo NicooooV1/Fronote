@@ -28,7 +28,7 @@
         }
     },
     "routes": {
-        "main": "creer.php"
+        "main": "projets.php"
     },
     "widgets": [],
     "establishment_types": null,

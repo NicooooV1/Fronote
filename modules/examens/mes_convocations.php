@@ -6,7 +6,7 @@ $pageTitle = 'Mes convocations';
 $activePage = 'mes_convocations';
 require_once __DIR__ . '/includes/header.php';
 
-if (!isEleve()) { redirect('/examens/examens.php'); }
+if (!isEleve()) { redirect('/modules/examens/examens.php'); }
 
 $convocations = $examenService->getConvocationsEleve(getUserId());
 $typesEpreuve = ExamenService::typesEpreuve();

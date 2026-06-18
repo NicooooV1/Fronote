@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Vue admin des conversations — navigation, participants, statistiques
  */

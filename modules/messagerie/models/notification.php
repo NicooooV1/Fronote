@@ -139,21 +139,20 @@ function updateUserNotificationPreferences($userId, $userType, $preferences) {
 if (!function_exists('countUnreadNotifications')) {
     function countUnreadNotifications($userId, $userType) {
         global $pdo;
-        if (!isset($pdo)) {
-            return 0; // Si pas de connexion à la BDD, retourner 0
-        }
-        
+        if (!isset($pdo)) return 0;
+
         try {
+            // Source unique : SUM(unread_count) dans conversation_participants
             $stmt = $pdo->prepare("
-                SELECT COUNT(*) FROM notifications 
-                WHERE user_id = ? AND user_type = ? AND is_read = 0
+                SELECT COALESCE(SUM(unread_count), 0)
+                FROM conversation_participants
+                WHERE user_id = ? AND user_type = ? AND is_deleted = 0 AND is_archived = 0
             ");
             $stmt->execute([$userId, $userType]);
-            return (int)$stmt->fetchColumn();
-        } catch (Exception $e) {
-            // Journaliser l'erreur mais ne pas interrompre le flux
-            error_log('Error in countUnreadNotifications: ' . $e->getMessage());
-            return 0; // En cas d'erreur, retourner 0
+            return (int) $stmt->fetchColumn();
+        } catch (Exception $ex) {
+            error_log('Error in countUnreadNotifications: ' . $ex->getMessage());
+            return 0;
         }
     }
 }
@@ -172,17 +171,18 @@ function getUserNotifications($userId, $userType, $options = []) {
     $limit = isset($options['limit']) ? (int)$options['limit'] : 20;
     
     $sql = "
-        SELECT n.*, c.title as conversation_title
-        FROM notifications n
-        LEFT JOIN conversations c ON n.conversation_id = c.id
-        WHERE n.user_id = ? AND n.user_type = ?
+        SELECT mn.*, c.subject as conversation_title
+        FROM message_notifications mn
+        JOIN messages m ON mn.message_id = m.id
+        LEFT JOIN conversations c ON m.conversation_id = c.id
+        WHERE mn.user_id = ? AND mn.user_type = ?
     ";
     
     if ($unreadOnly) {
-        $sql .= " AND n.is_read = 0";
+        $sql .= " AND mn.is_read = 0";
     }
-    
-    $sql .= " ORDER BY n.created_at DESC";
+
+    $sql .= " ORDER BY mn.notified_at DESC";
     
     if ($limit > 0) {
         $sql .= " LIMIT " . $limit;

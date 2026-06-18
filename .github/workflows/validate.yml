@@ -10,13 +10,17 @@ jobs:
   lint:
     name: PHP syntax + JSON manifests
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.0', '8.1', '8.2', '8.3']
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup PHP 8.0
+      - name: Setup PHP ${{ matrix.php }}
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.0'
+          php-version: ${{ matrix.php }}
           extensions: sodium, zip, json, pdo_mysql, pdo_sqlite, mbstring, openssl
           coverage: none
           tools: composer:v2
@@ -26,6 +30,9 @@ jobs:
 
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress --no-dev
+
+      - name: Security audit of dependencies
+        run: composer audit
 
       - name: Provision a minimal .env for bootstrap
         run: cp .env.ci.example .env
@@ -65,3 +72,19 @@ jobs:
         run: cp .env.ci.example .env
       - name: Module discovery + manifest validation
         run: php tests/module_sdk_smoke.php
+
+  tests:
+    name: PHPUnit (unit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: sodium, zip, json, pdo, pdo_sqlite, mbstring
+          coverage: none
+          tools: composer:v2
+      - name: Install dependencies (with dev)
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Run unit tests
+        run: vendor/bin/phpunit --testsuite unit

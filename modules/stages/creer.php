@@ -6,7 +6,7 @@ $pageTitle = 'Nouveau stage';
 $activePage = 'creer';
 require_once __DIR__ . '/includes/header.php';
 
-if (!isAdmin() && !isPersonnelVS()) { redirect('/stages/stages.php'); }
+if (!isAdmin() && !isPersonnelVS()) { redirect('modules/stages/stages.php'); }
 
 $eleves = $stageService->getEleves();
 $profs = $stageService->getProfesseurs();

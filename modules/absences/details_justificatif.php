@@ -18,6 +18,11 @@ if (!isLoggedIn()) {
 $pdo  = getPDO();
 $repo = new AbsenceRepository($pdo);
 
+$user          = getCurrentUser();
+if (!$user) {
+    header('Location: ' . LOGIN_URL);
+    exit;
+}
 $user_fullname = getUserFullName();
 $user_role     = getUserRole();
 $user_initials = getUserInitials();
@@ -53,7 +58,7 @@ if (!canManageAbsences()) {
     }
     if (!$allowed) {
         $_SESSION['error_message'] = "Accès non autorisé";
-        header('Location: ../../index.php');
+        header('Location: absences.php');
         exit;
     }
 }

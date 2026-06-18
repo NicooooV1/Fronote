@@ -173,17 +173,19 @@ try {
 
 // ─── Security headers ────────────────────────────────────────────────────────
 if (!headers_sent()) {
-    // CSP permissive : 'unsafe-inline' pour scripts ET styles, pas de nonce (évite
-    // les écueils d'intégration avec les onclick/styles inline de modules tiers).
+    // CSP : 'unsafe-eval' supprimé, sources http:// supprimées (anti-MITM CDN),
+    // object-src 'none'. 'unsafe-inline' conservé tant que les <script>/onclick/style
+    // inline (parametres.php, footer, modules tiers) ne sont pas externalisés — à
+    // durcir dans un second temps (nonce + refactor des handlers inline).
     // upgrade-insecure-requests désactivé sur HTTP-only (sinon ERR_CONNECTION_REFUSED).
     $_hdr_isHttps = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
     $_hdr_csp = "default-src 'self'; "
-        . "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.socket.io https://code.jquery.com http://cdnjs.cloudflare.com http://cdn.socket.io http://code.jquery.com; "
-        . "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com http://cdnjs.cloudflare.com; "
-        . "font-src 'self' https://cdnjs.cloudflare.com http://cdnjs.cloudflare.com data:; "
-        . "img-src 'self' data: blob: https: http:; "
-        . "connect-src 'self' ws: wss: https: http:; "
-        . "frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+        . "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.socket.io; "
+        . "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+        . "font-src 'self' https://cdnjs.cloudflare.com data:; "
+        . "img-src 'self' data: blob: https:; "
+        . "connect-src 'self' ws: wss: https:; "
+        . "object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
         . ($_hdr_isHttps ? ' upgrade-insecure-requests;' : '');
     header("Content-Security-Policy: {$_hdr_csp}");
     header("X-Frame-Options: DENY");
@@ -307,7 +309,7 @@ try {
     <?= $extraHeadHtml ?>
     <!-- WebSocket global -->
     <script nonce="<?= $_hdr_nonce ?>">window.FRONOTE_WS = <?= $_hdr_ws_config ?>;</script>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous" defer></script>
     <script src="<?= $_assetVersion('assets/js/topbar.js') ?>" defer></script>
     <script src="<?= $_assetVersion('assets/js/components.js') ?>" defer></script>
     <script src="<?= $_assetVersion('assets/js/fronote-ajax.js') ?>" defer></script>

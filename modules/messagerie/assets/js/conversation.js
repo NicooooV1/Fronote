@@ -45,6 +45,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Dropdown menus pour actions messages
     setupMessageDropdowns();
 
+    // Délégation : boutons "Répondre" / réactions rendus côté serveur (XSS-safe)
+    setupDelegatedMessageActions();
+
     // WebSocket (désactive polling si connecté)
     setupWebSocketForConversation();
 });
@@ -344,6 +347,8 @@ function setupAjaxMessageSending() {
             credentials: 'same-origin'
         })
         .then(response => {
+            // Faire tourner le token CSRF (usage unique côté serveur)
+            rotateCsrfToken(response);
             // Vérifier si la réponse est ok avant de continuer
             if (!response.ok) {
                 throw new Error(`Erreur HTTP: ${response.status}`);
@@ -1171,6 +1176,26 @@ function setupMessageDropdowns() {
         } else {
             // Fermer tous les dropdowns
             document.querySelectorAll('.message-dropdown-content.show').forEach(d => d.classList.remove('show'));
+        }
+    });
+}
+
+/**
+ * Délégation d'événements pour les actions rendues côté serveur (message-item.php).
+ * Remplace les handlers inline onclick="...'<?= nom ?>'..." qui interpolaient un
+ * nom d'expéditeur (texte libre) dans une chaîne JS → XSS stockée. Les valeurs
+ * transitent désormais par data-* (lues telles quelles, jamais ré-évaluées).
+ */
+function setupDelegatedMessageActions() {
+    document.addEventListener('click', (e) => {
+        const replyBtn = e.target.closest('.js-reply');
+        if (replyBtn) {
+            replyToMessage(parseInt(replyBtn.dataset.messageId, 10), replyBtn.dataset.sender || '');
+            return;
+        }
+        const reactBtn = e.target.closest('.js-reaction');
+        if (reactBtn) {
+            toggleReaction(parseInt(reactBtn.dataset.messageId, 10), reactBtn.dataset.emoji || '');
         }
     });
 }

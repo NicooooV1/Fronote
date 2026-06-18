@@ -25,7 +25,7 @@
         }
     },
     "routes": {
-        "main": "reservations.php"
+        "main": "menus.php"
     },
     "widgets": [
         {

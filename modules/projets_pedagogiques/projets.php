@@ -4,6 +4,12 @@ require_once __DIR__ . '/includes/header.php';
 
 $user     = $_SESSION['user'];
 $role     = $user['type'] ?? 'eleve';
+
+// Contrôle d'accès : la liste des projets (responsables, budgets…) est réservée aux
+// rôles déclarés dans module.json (administrateur, professeur, vie_scolaire) — pas les
+// élèves/parents. Cohérent avec detail.php.
+if (!isAdmin() && !isProfesseur() && !isVieScolaire()) { header('Location: /'); exit; }
+
 $filtres  = ['statut' => $_GET['statut'] ?? '', 'type' => $_GET['type'] ?? ''];
 if ($role === 'professeur') $filtres['responsable_id'] = $user['id'] ?? null;
 $projets  = $projetService->getProjets($filtres);

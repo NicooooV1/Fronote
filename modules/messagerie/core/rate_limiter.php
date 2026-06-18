@@ -34,14 +34,15 @@ class RateLimiter {
     private static function ensureTable(): bool {
         if (self::$tableVerified) return true;
         global $pdo;
-        if (!isset($pdo)) return false;
+        if (!isset($pdo)) return true; // fail-open: pas de connexion, on autorise
         try {
             $pdo->query("SELECT 1 FROM rate_limits LIMIT 0");
             self::$tableVerified = true;
             return true;
-        } catch (PDOException $e) {
-            error_log("RateLimiter: table rate_limits manquante — " . $e->getMessage());
-            return false;
+        } catch (PDOException $ex) {
+            // fail-open: table absente → on laisse passer et on journalise
+            error_log("RateLimiter: table rate_limits manquante (fail-open) — " . $ex->getMessage());
+            return true;
         }
     }
 

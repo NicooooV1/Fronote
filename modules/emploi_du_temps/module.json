@@ -1,9 +1,6 @@
 {
     "key": "emploi_du_temps",
     "version": "2.0.0",
-    "migrations": [
-        "Database/migrations/2.0.0.sql"
-    ],
     "name": {
         "fr": "Emploi du temps",
         "en": "Timetable"

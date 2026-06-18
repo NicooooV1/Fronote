@@ -257,7 +257,7 @@ class GarderieService
 
     public function notifierArriveeParent(int $eleveId): void
     {
-        $stmt = $this->pdo->prepare("SELECT pe.parent_id FROM parent_eleve pe WHERE pe.eleve_id = :e");
+        $stmt = $this->pdo->prepare("SELECT pe.id_parent AS parent_id FROM parent_eleve pe WHERE pe.id_eleve = :e");
         $stmt->execute([':e' => $eleveId]);
         $parentIds = $stmt->fetchAll(\PDO::FETCH_COLUMN);
 

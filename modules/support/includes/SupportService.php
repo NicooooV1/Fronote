@@ -2,11 +2,9 @@
 /**
  * M34 – Support & Aide — Service
  *
- * @global-scope FAQ + tickets de support sont des entités système (le support
- * Fronote répond aux tickets quel que soit l'établissement). Les tickets sont
- * scopés implicitement par user_id+user_type ; un admin local ne voit que ceux
- * de SES utilisateurs si l'UI filtre par établissement. Ne PAS injecter
- * `etablissement_id` sans ajouter d'abord la colonne au schéma tickets_support.
+ * Les tickets de support portent une colonne `etablissement_id` (schéma
+ * tickets_support) : les lectures admin sont scopées sur l'établissement courant
+ * via EstablishmentContext, et les créations injectent l'etablissement_id.
  */
 class SupportService
 {
@@ -17,13 +15,26 @@ class SupportService
         $this->pdo = $pdo;
     }
 
+    private function etabId(): ?int
+    {
+        try {
+            return \API\Core\EstablishmentContext::id();
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
     // ── Tickets ──
 
     public function creerTicket(int $userId, string $userType, string $sujet, string $description, string $categorie = 'technique', string $priorite = 'normale'): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO tickets_support (user_id, user_type, sujet, description, categorie, priorite) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$userId, $userType, $sujet, $description, $categorie, $priorite]);
-        return (int)$this->pdo->lastInsertId();
+        $etabId = $this->etabId();
+        $stmt = $this->pdo->prepare("INSERT INTO tickets_support (etablissement_id, user_id, user_type, sujet, description, categorie, priorite) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$etabId, $userId, $userType, $sujet, $description, $categorie, $priorite]);
+        $ticketId = (int)$this->pdo->lastInsertId();
+        // Notifier le staff de l'établissement (best-effort).
+        $this->notifierStaff($etabId, $sujet, $ticketId);
+        return $ticketId;
     }
 
     public function getTicketsUser(int $userId, string $userType): array
@@ -35,14 +46,16 @@ class SupportService
 
     public function getTousTickets(array $filters = []): array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $sql = "SELECT t.*, COALESCE(
             (SELECT CONCAT(e.prenom, ' ', e.nom) FROM eleves e WHERE e.id = t.user_id AND t.user_type = 'eleve'),
             (SELECT CONCAT(p.prenom, ' ', p.nom) FROM parents p WHERE p.id = t.user_id AND t.user_type = 'parent'),
             (SELECT CONCAT(pr.prenom, ' ', pr.nom) FROM professeurs pr WHERE pr.id = t.user_id AND t.user_type = 'professeur'),
             (SELECT CONCAT(v.prenom, ' ', v.nom) FROM vie_scolaire v WHERE v.id = t.user_id AND t.user_type = 'vie_scolaire'),
             (SELECT CONCAT(a.prenom, ' ', a.nom) FROM administrateurs a WHERE a.id = t.user_id AND t.user_type = 'administrateur')
-        ) AS nom_utilisateur FROM tickets_support t WHERE 1=1";
-        $params = [];
+        ) AS nom_utilisateur FROM tickets_support t WHERE t.etablissement_id = ?";
+        $params = [$etabId];
         if (!empty($filters['statut'])) { $sql .= " AND t.statut = ?"; $params[] = $filters['statut']; }
         if (!empty($filters['categorie'])) { $sql .= " AND t.categorie = ?"; $params[] = $filters['categorie']; }
         if (!empty($filters['priorite'])) { $sql .= " AND t.priorite = ?"; $params[] = $filters['priorite']; }
@@ -54,26 +67,104 @@ class SupportService
 
     public function getTicket(int $id): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM tickets_support WHERE id = ?");
-        $stmt->execute([$id]);
+        $etabId = $this->etabId();
+        if ($etabId === null) return null;
+        $stmt = $this->pdo->prepare("SELECT * FROM tickets_support WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$id, $etabId]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
-    public function repondre(int $id, string $reponse, int $adminId): bool
+    public function repondre(int $id, string $reponse, int $adminId, string $adminType = 'administrateur'): bool
     {
-        $stmt = $this->pdo->prepare("UPDATE tickets_support SET reponse = ?, traite_par = ?, date_reponse = NOW(), statut = 'resolu' WHERE id = ?");
-        return $stmt->execute([$reponse, $adminId, $id]);
+        $ticket = $this->getTicket($id);
+        if (!$ticket) return false;
+        // Ajoute la réponse au fil de discussion + marque la 1ère réponse.
+        $this->addMessage($id, $adminId, $adminType, $reponse, true);
+        $this->recordFirstResponse($id);
+        // On NE force PLUS 'resolu' : une réponse passe un ticket 'ouvert' à
+        // 'en_cours' (le staff clôt explicitement via le statut). Conserve
+        // `reponse` = dernière réponse (rétro-compat export/affichage legacy).
+        $this->pdo->prepare("UPDATE tickets_support SET reponse = ?, traite_par = ?, date_reponse = NOW(), statut = CASE WHEN statut = 'ouvert' THEN 'en_cours' ELSE statut END WHERE id = ?")
+            ->execute([$reponse, $adminId, $id]);
+        $this->notifier((int) $ticket['user_id'], $ticket['user_type'], 'Réponse à votre ticket #' . $id,
+            mb_substr($reponse, 0, 140), 'modules/support/voir_ticket.php?id=' . $id);
+        return true;
     }
 
     public function changerStatut(int $id, string $statut): bool
     {
-        $stmt = $this->pdo->prepare("UPDATE tickets_support SET statut = ? WHERE id = ?");
-        return $stmt->execute([$statut, $id]);
+        $ok = $this->pdo->prepare("UPDATE tickets_support SET statut = ? WHERE id = ?")->execute([$statut, $id]);
+        if ($ok) {
+            $t = $this->getTicket($id);
+            if ($t) {
+                $labels = ['ouvert' => 'Ouvert', 'en_cours' => 'En cours', 'resolu' => 'Résolu', 'ferme' => 'Fermé'];
+                $this->notifier((int) $t['user_id'], $t['user_type'], 'Ticket #' . $id . ' : statut mis à jour',
+                    'Nouveau statut : ' . ($labels[$statut] ?? $statut), 'modules/support/voir_ticket.php?id=' . $id);
+            }
+        }
+        return $ok;
+    }
+
+    // ── Fil de discussion ──
+
+    public function addMessage(int $ticketId, int $auteurId, string $auteurType, string $contenu, bool $isStaff = false): int
+    {
+        $stmt = $this->pdo->prepare("INSERT INTO support_ticket_messages (ticket_id, auteur_id, auteur_type, contenu, is_staff) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$ticketId, $auteurId, $auteurType, $contenu, $isStaff ? 1 : 0]);
+        return (int)$this->pdo->lastInsertId();
+    }
+
+    public function getMessages(int $ticketId): array
+    {
+        $stmt = $this->pdo->prepare("SELECT * FROM support_ticket_messages WHERE ticket_id = ? ORDER BY date_creation ASC, id ASC");
+        $stmt->execute([$ticketId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /** Le demandeur répond dans son propre ticket (notifie le staff). */
+    public function repondreUtilisateur(int $id, int $userId, string $userType, string $contenu): bool
+    {
+        $ticket = $this->getTicket($id);
+        if (!$ticket) return false;
+        $this->addMessage($id, $userId, $userType, $contenu, false);
+        // Rouvre un ticket résolu si le demandeur relance.
+        $this->pdo->prepare("UPDATE tickets_support SET statut = CASE WHEN statut IN ('resolu','ferme') THEN 'en_cours' ELSE statut END, date_modification = NOW() WHERE id = ?")->execute([$id]);
+        $this->notifierStaff($this->etabId(), 'Réponse au ticket #' . $id . ' : ' . ($ticket['sujet'] ?? ''), $id);
+        return true;
+    }
+
+    // ── Notifications (best-effort, table notifications_globales) ──
+
+    private function notifier(int $userId, string $userType, string $titre, string $contenu, string $lien): void
+    {
+        try {
+            $this->pdo->prepare(
+                "INSERT INTO notifications_globales (user_id, user_type, type, titre, contenu, lien, icone, importance, source_type, source_id)
+                 VALUES (?, ?, 'support', ?, ?, ?, 'fas fa-life-ring', 'normale', 'support', NULL)"
+            )->execute([$userId, $userType, $titre, $contenu, $lien]);
+        } catch (\Throwable $e) { /* notifications optionnelles */ }
+    }
+
+    private function notifierStaff(?int $etabId, string $sujet, int $ticketId): void
+    {
+        try {
+            $lien = 'modules/support/voir_ticket.php?id=' . $ticketId;
+            foreach (['administrateurs' => 'administrateur', 'vie_scolaire' => 'vie_scolaire'] as $table => $type) {
+                $sql = "SELECT id FROM `{$table}`" . ($etabId !== null ? ' WHERE etablissement_id = ?' : '');
+                $stmt = $this->pdo->prepare($sql);
+                $stmt->execute($etabId !== null ? [$etabId] : []);
+                foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $sid) {
+                    $this->notifier((int) $sid, $type, 'Nouveau ticket de support', mb_substr($sujet, 0, 140), $lien);
+                }
+            }
+        } catch (\Throwable $e) { /* best-effort */ }
     }
 
     public function getStatsTickets(): array
     {
-        $stmt = $this->pdo->query("
+        $etabId = $this->etabId();
+        if ($etabId === null) return ['total' => 0, 'ouverts' => 0, 'en_cours' => 0, 'resolus' => 0, 'urgents' => 0];
+        $stmt = $this->pdo->prepare("
             SELECT 
                 COUNT(*) as total,
                 SUM(statut = 'ouvert') as ouverts,
@@ -81,7 +172,9 @@ class SupportService
                 SUM(statut = 'resolu') as resolus,
                 SUM(priorite = 'urgente' AND statut IN ('ouvert','en_cours')) as urgents
             FROM tickets_support
+            WHERE etablissement_id = ?
         ");
+        $stmt->execute([$etabId]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
     }
 
@@ -91,6 +184,8 @@ class SupportService
     {
         $sql = "SELECT * FROM faq_articles WHERE actif = 1";
         $params = [];
+        $etabId = $this->etabId();
+        if ($etabId !== null) { $sql .= " AND etablissement_id = ?"; $params[] = $etabId; }
         if ($categorie) { $sql .= " AND categorie = ?"; $params[] = $categorie; }
         if ($recherche) { $sql .= " AND (question LIKE ? OR reponse LIKE ?)"; $params[] = "%$recherche%"; $params[] = "%$recherche%"; }
         $sql .= " ORDER BY ordre, vues DESC";
@@ -319,7 +414,7 @@ class SupportService
 
     public function noterSatisfaction(int $ticketId, int $note, string $commentaire = ''): void
     {
-        $this->pdo->prepare("UPDATE support_tickets SET satisfaction_note = :n, satisfaction_commentaire = :c WHERE id = :id")
+        $this->pdo->prepare("UPDATE tickets_support SET satisfaction_note = :n, satisfaction_commentaire = :c WHERE id = :id")
             ->execute([':n' => $note, ':c' => $commentaire, ':id' => $ticketId]);
     }
 
@@ -327,13 +422,13 @@ class SupportService
 
     public function suggestFaq(string $sujet): array
     {
-        $stmt = $this->pdo->prepare("SELECT id, question, reponse FROM support_faq WHERE MATCH(question, reponse) AGAINST(:s IN NATURAL LANGUAGE MODE) LIMIT 5");
+        $stmt = $this->pdo->prepare("SELECT id, question, reponse FROM faq_articles WHERE MATCH(question, reponse) AGAINST(:s IN NATURAL LANGUAGE MODE) LIMIT 5");
         try {
             $stmt->execute([':s' => $sujet]);
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         } catch (\PDOException $e) {
             // Fallback LIKE search if FULLTEXT not available
-            $stmt = $this->pdo->prepare("SELECT id, question, reponse FROM support_faq WHERE question LIKE :q OR reponse LIKE :q2 LIMIT 5");
+            $stmt = $this->pdo->prepare("SELECT id, question, reponse FROM faq_articles WHERE question LIKE :q OR reponse LIKE :q2 LIMIT 5");
             $stmt->execute([':q' => "%{$sujet}%", ':q2' => "%{$sujet}%"]);
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         }
@@ -350,7 +445,12 @@ class SupportService
 
     public function getNotesInternes(int $ticketId): array
     {
-        $stmt = $this->pdo->prepare("SELECT ni.*, CONCAT(p.prenom,' ',p.nom) AS auteur_nom FROM support_notes_internes ni LEFT JOIN professeurs p ON ni.auteur_id = p.id WHERE ni.ticket_id = :tid ORDER BY ni.created_at ASC");
+        $stmt = $this->pdo->prepare("SELECT ni.*, COALESCE(
+                (SELECT CONCAT(prenom,' ',nom) FROM administrateurs WHERE id = ni.auteur_id),
+                (SELECT CONCAT(prenom,' ',nom) FROM vie_scolaire WHERE id = ni.auteur_id),
+                (SELECT CONCAT(prenom,' ',nom) FROM professeurs WHERE id = ni.auteur_id)
+            ) AS auteur_nom
+            FROM support_notes_internes ni WHERE ni.ticket_id = :tid ORDER BY ni.created_at ASC");
         $stmt->execute([':tid' => $ticketId]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }

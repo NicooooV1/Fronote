@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Gestion des classes — CRUD, effectifs, prof principal, affectation rapide
  */
@@ -36,7 +36,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
                 logAudit('class_created', 'classes', $pdo->lastInsertId());
                 $message = "Classe « $nom » créée.";
             } catch (PDOException $e) {
-                $error = str_contains($e->getMessage(), 'Duplicate') ? "Cette classe existe déjà pour cette année." : "Erreur : " . $e->getMessage();
+                if (str_contains($e->getMessage(), 'Duplicate')) {
+                    $error = "Cette classe existe déjà pour cette année.";
+                } else {
+                    error_log("create_class failed: " . $e->getMessage());
+                    $error = "Erreur lors de la création de la classe.";
+                }
             }
         }
     }
@@ -75,15 +80,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
         $className = trim($_POST['class_name'] ?? '');
         $studentIds = $_POST['student_ids'] ?? [];
         if ($cid > 0 && !empty($className)) {
-            // Retirer tous les élèves de cette classe
-            $pdo->prepare("UPDATE eleves SET classe = '' WHERE classe = ?")->execute([$className]);
-            // Affecter les sélectionnés
-            if (!empty($studentIds)) {
-                $in = implode(',', array_map('intval', $studentIds));
-                $pdo->exec("UPDATE eleves SET classe = " . $pdo->quote($className) . " WHERE id IN ($in)");
+            try {
+                $pdo->beginTransaction();
+                // Retirer tous les élèves de cette classe
+                $pdo->prepare("UPDATE eleves SET classe = '' WHERE classe = ?")->execute([$className]);
+                // Affecter les sélectionnés
+                if (!empty($studentIds)) {
+                    $in = implode(',', array_map('intval', $studentIds));
+                    $pdo->exec("UPDATE eleves SET classe = " . $pdo->quote($className) . " WHERE id IN ($in)");
+                }
+                $pdo->commit();
+                logAudit('students_assigned', 'classes', $cid, [], ['count' => count($studentIds)]);
+                $message = count($studentIds) . " élève(s) affecté(s) à " . htmlspecialchars($className) . ".";
+            } catch (\Throwable $e) {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                error_log("assign_students failed: " . $e->getMessage());
+                $error = "Échec de l'affectation des élèves.";
             }
-            logAudit('students_assigned', 'classes', $cid, [], ['count' => count($studentIds)]);
-            $message = count($studentIds) . " élève(s) affecté(s) à " . htmlspecialchars($className) . ".";
         }
     }
 }
@@ -157,8 +170,8 @@ include __DIR__ . '/../includes/header.php';
                 <?php if (!empty($c['pp_nom'])): ?><div><i class="fas fa-user-tie"></i> <?= htmlspecialchars($c['pp_nom']) ?></div><?php endif; ?>
             </div>
             <div class="class-actions">
-                <button class="btn-xs primary" onclick='openEdit(<?= json_encode($c) ?>)' title="Modifier"><i class="fas fa-pen"></i></button>
-                <button class="btn-xs success" onclick='openStudents(<?= $c["id"] ?>, <?= json_encode($c["nom"]) ?>)' title="Gérer élèves"><i class="fas fa-users"></i></button>
+                <button class="btn-xs primary" onclick='openEdit(<?= json_encode($c, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)' title="Modifier"><i class="fas fa-pen"></i></button>
+                <button class="btn-xs success" onclick='openStudents(<?= $c["id"] ?>, <?= json_encode($c["nom"], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)' title="Gérer élèves"><i class="fas fa-users"></i></button>
                 <form method="post" style="display:inline" onsubmit="return confirm('Supprimer cette classe ?')"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="delete_class"><input type="hidden" name="class_id" value="<?= $c['id'] ?>"><button class="btn-xs danger" title="Supprimer"><i class="fas fa-trash"></i></button></form>
             </div>
         </div>
@@ -226,7 +239,7 @@ include __DIR__ . '/../includes/header.php';
 </div>
 
 <script>
-const allStudents = <?= json_encode($pdo->query("SELECT id, nom, prenom, classe FROM eleves WHERE actif = 1 ORDER BY nom, prenom")->fetchAll(PDO::FETCH_ASSOC)) ?>;
+const allStudents = <?= json_encode($pdo->query("SELECT id, nom, prenom, classe FROM eleves WHERE actif = 1 ORDER BY nom, prenom")->fetchAll(PDO::FETCH_ASSOC), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
 
 function openEdit(c) {
     document.getElementById('edit_cid').value = c.id;
@@ -241,10 +254,12 @@ function openStudents(cid, className) {
     document.getElementById('sm_cid').value = cid;
     document.getElementById('sm_cname').value = className;
     document.getElementById('sm_class_name').textContent = className;
+    // Échappe nom/prénom/classe avant innerHTML (anti XSS stocké via profil élève).
+    const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     let html = '';
     allStudents.forEach(s => {
         const checked = s.classe === className ? 'checked' : '';
-        html += `<label><input type="checkbox" name="student_ids[]" value="${s.id}" ${checked}> ${s.prenom} ${s.nom} <small style="color:#888">(${s.classe || 'Sans classe'})</small></label>`;
+        html += `<label><input type="checkbox" name="student_ids[]" value="${parseInt(s.id, 10)}" ${checked}> ${esc(s.prenom)} ${esc(s.nom)} <small style="color:#888">(${esc(s.classe) || 'Sans classe'})</small></label>`;
     });
     document.getElementById('sm_list').innerHTML = html;
     document.getElementById('studentsModal').classList.add('active');

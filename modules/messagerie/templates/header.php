@@ -58,9 +58,8 @@ if (in_array($currentPage, ['conversation'])) {
 ob_start();
 ?>
     <?= csrf_meta() ?>
-    <!-- Socket.IO client -->
-    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
-    <script src="<?= $rootPrefix ?>messagerie/assets/js/websocket-client.js"></script>
+    <!-- Socket.IO client chargé par shared_header.php (4.7.5) -->
+    <script src="<?= $rootPrefix ?>modules/messagerie/assets/js/websocket-client.js"></script>
     <?php if (isset($wsToken)): ?>
     <script>
         window.currentUserId = <?= json_encode($user['id']) ?>;
@@ -78,8 +77,27 @@ ob_start();
 include __DIR__ . '/sidebar_content.php';
 $sidebarExtraContent = ob_get_clean();
 
-// Actions supplémentaires dans le header (aucune — le thème est géré par la topbar globale)
-$headerExtraActions = '';
+// Actions supplémentaires dans le header : bouton de composition (rendu dans
+// .header-actions par shared_topbar.php). L'ancienne sidebar n'étant plus rendue,
+// c'est ici que doit vivre le bouton « Nouveau message ».
+$_msgUserType = $user['type'] ?? 'eleve';
+ob_start();
+?>
+                <a href="<?= $rootPrefix ?>modules/messagerie/new_message.php" class="btn btn-primary">
+                    <i class="fas fa-pen"></i> <span>Nouveau message</span>
+                </a>
+                <?php if ($_msgUserType === 'professeur'): ?>
+                <a href="<?= $rootPrefix ?>modules/messagerie/class_message.php" class="btn">
+                    <i class="fas fa-graduation-cap"></i> <span>Message à la classe</span>
+                </a>
+                <?php endif; ?>
+                <?php if (in_array($_msgUserType, ['vie_scolaire', 'administrateur'], true)): ?>
+                <a href="<?= $rootPrefix ?>modules/messagerie/new_announcement.php" class="btn">
+                    <i class="fas fa-bullhorn"></i> <span>Nouvelle annonce</span>
+                </a>
+                <?php endif; ?>
+<?php
+$headerExtraActions = ob_get_clean();
 
 // Custom page title for topbar
 if (isset($customTitle)) {

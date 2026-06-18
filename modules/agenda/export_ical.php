@@ -25,7 +25,7 @@ $sql = "
     AND (
         e.visibilite = 'global'
         OR (e.visibilite = 'classe' AND e.classe_id IN (
-            SELECT classe_id FROM eleves WHERE id = ? AND ? = 'eleve'
+            SELECT classe FROM eleves WHERE id = ? AND ? = 'eleve'
             UNION SELECT classe_id FROM professeurs WHERE id = ? AND ? = 'professeur'
         ))
         OR e.createur_id = ?

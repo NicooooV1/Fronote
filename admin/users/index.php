@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Gestion de tous les utilisateurs — Recherche avancée, consultation, édition, actions
  */
@@ -109,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['csrf_token']) && $_PO
                         logAudit('user_updated', $table, $uid);
                         $message = "Utilisateur mis à jour.";
                     } else { $error = "Erreur lors de la mise à jour."; }
-                } catch (PDOException $e) { $error = "Erreur : " . $e->getMessage(); }
+                } catch (PDOException $e) { error_log("user update failed: " . $e->getMessage()); $error = "Erreur lors de la mise à jour."; }
             }
         }
     }
@@ -173,7 +173,8 @@ try {
     $totalUsers = count($allResults);
     $usersList = array_slice($allResults, ($page - 1) * $perPage, $perPage);
 } catch (Exception $e) {
-    $error = "Erreur de chargement : " . $e->getMessage();
+    error_log("users list load failed: " . $e->getMessage());
+    $error = "Erreur lors du chargement des utilisateurs.";
 }
 
 $totalPages = max(1, ceil($totalUsers / $perPage));
@@ -182,7 +183,9 @@ $totalPages = max(1, ceil($totalUsers / $perPage));
 $classesList = [];
 try {
     $classesList = $pdo->query("SELECT DISTINCT nom FROM classes WHERE actif = 1 ORDER BY niveau, nom")->fetchAll(PDO::FETCH_COLUMN);
-} catch (Exception $e) {}
+} catch (Exception $e) {
+    error_log('[' . basename(__FILE__) . '] ' . $e->getMessage());
+}
 
 $pageTitle = 'Gestion des utilisateurs';
 $currentPage = 'users';
@@ -199,6 +202,10 @@ include __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="users-container">
+    <div style="margin-bottom:12px">
+        <a href="roles.php" class="btn btn-secondary"><i class="fas fa-user-shield"></i> Attribution des rôles (RBAC)</a>
+        <a href="../modules/role_permissions.php" class="btn btn-secondary"><i class="fas fa-user-lock"></i> Permissions par rôle</a>
+    </div>
     <?php if (!empty($message)): ?>
         <div class="alert alert-success"><?= $message ?></div>
     <?php endif; ?>

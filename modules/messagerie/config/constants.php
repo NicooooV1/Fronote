@@ -3,9 +3,14 @@
  * Constantes pour le module de messagerie
  */
 
-// Vérifier si les constantes sont déjà définies dans le système central
+// Vérifier si les constantes sont déjà définies dans le système central.
+// En fonctionnement normal, BASE_URL est défini en amont par API/bootstrap.php.
+// Repli SANS chemin de dev en dur : on déduit la racine depuis le script courant.
 if (!defined('BASE_URL')) {
-    define('BASE_URL', '/~u22405372/SAE/Pronote'); // URL de base de l'application
+    $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+    $marker = '/modules/messagerie';
+    $pos = strpos($scriptDir, $marker);
+    define('BASE_URL', $pos !== false ? substr($scriptDir, 0, $pos) : '');
 }
 
 if (!defined('HOME_URL')) {

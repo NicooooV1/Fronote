@@ -21,6 +21,18 @@ $stmt->execute([$id]);
 $diplome = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$diplome) { die('Diplôme introuvable.'); }
 
+// Contrôle d'accès : admin/VS toujours ; élève seulement le sien ; parent via parent_eleve.
+// (mêmes règles que telecharger.php — empêche un élève/parent de lire le diplôme d'autrui)
+if (!isAdmin() && !isPersonnelVS()) {
+    if (isEleve() && (int)($diplome['eleve_id'] ?? 0) !== (int)getUserId()) { die('Accès refusé.'); }
+    if (isParent()) {
+        $checkAcces = $pdo->prepare("SELECT 1 FROM parent_eleve WHERE id_parent = ? AND id_eleve = ?");
+        $checkAcces->execute([getUserId(), (int)($diplome['eleve_id'] ?? 0)]);
+        if (!$checkAcces->fetchColumn()) { die('Accès refusé.'); }
+    }
+    if (!isEleve() && !isParent()) { die('Accès refusé.'); }
+}
+
 $etab = [];
 try { $etab = $pdo->query("SELECT * FROM etablissement LIMIT 1")->fetch(PDO::FETCH_ASSOC) ?: []; } catch (\Exception $e) {}
 $nomEtab = $etab['nom'] ?? 'Établissement';

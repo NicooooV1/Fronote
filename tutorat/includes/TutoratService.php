@@ -129,10 +129,10 @@ class TutoratService
         $p = $pair->fetch(PDO::FETCH_ASSOC);
         if (!$p) return [];
 
-        $avant = $this->pdo->prepare("SELECT ROUND(AVG(note),2) AS moyenne FROM notes WHERE id_eleve = :eid AND id_matiere = :mid AND date_evaluation < :d");
+        $avant = $this->pdo->prepare("SELECT ROUND(AVG(note),2) AS moyenne FROM notes WHERE id_eleve = :eid AND id_matiere = :mid AND date_note < :d");
         $avant->execute([':eid' => $p['tutore_id'], ':mid' => $p['matiere_id'], ':d' => $p['created_at']]);
 
-        $apres = $this->pdo->prepare("SELECT ROUND(AVG(note),2) AS moyenne FROM notes WHERE id_eleve = :eid AND id_matiere = :mid AND date_evaluation >= :d");
+        $apres = $this->pdo->prepare("SELECT ROUND(AVG(note),2) AS moyenne FROM notes WHERE id_eleve = :eid AND id_matiere = :mid AND date_note >= :d");
         $apres->execute([':eid' => $p['tutore_id'], ':mid' => $p['matiere_id'], ':d' => $p['created_at']]);
 
         $moyAvant = (float)($avant->fetchColumn() ?: 0);

@@ -6,7 +6,7 @@ $pageTitle = 'Ma fiche d\'orientation';
 $activePage = 'fiche';
 require_once __DIR__ . '/includes/header.php';
 
-if (!isEleve()) { redirect('/orientation/orientation.php'); }
+if (!isEleve()) { redirect('/modules/orientation/orientation.php'); }
 
 $currentYear = date('Y') . '-' . (date('Y') + 1);
 $fiche = $orientationService->getFicheEleve(getUserId());

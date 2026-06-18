@@ -16,7 +16,7 @@ use PDO;
  *
  * Usage :
  *   $fw = new IpFirewall($pdo);
- *   if ($fw->isBlocked($ip)) { /* 403 */ }
+ *   if ($fw->isBlocked($ip)) { http_response_code(403); exit; }
  *   $fw->recordFailedAttempt($ip);  // après un login raté
  */
 class IpFirewall

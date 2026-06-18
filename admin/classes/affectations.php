@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Affectations professeurs ↔ classes — vue matricielle avec checkbox toggle
  */
@@ -33,21 +33,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
 
     if ($action === 'save_matrix') {
         $assignments = $_POST['assign'] ?? [];
-        // Supprimer toutes les affectations
-        $pdo->exec("DELETE FROM professeur_classes");
-        // Insérer les nouvelles
-        $insert = $pdo->prepare("INSERT INTO professeur_classes (id_professeur, nom_classe) VALUES (?, ?)");
-        $count = 0;
-        foreach ($assignments as $key => $val) {
-            // key = profId_className
-            $parts = explode('_', $key, 2);
-            if (count($parts) === 2) {
-                $insert->execute([intval($parts[0]), $parts[1]]);
-                $count++;
+        try {
+            $pdo->beginTransaction();
+            // Supprimer toutes les affectations
+            $pdo->exec("DELETE FROM professeur_classes");
+            // Insérer les nouvelles
+            $insert = $pdo->prepare("INSERT INTO professeur_classes (id_professeur, nom_classe) VALUES (?, ?)");
+            $count = 0;
+            foreach ($assignments as $key => $val) {
+                // key = profId_className
+                $parts = explode('_', $key, 2);
+                if (count($parts) === 2) {
+                    $insert->execute([intval($parts[0]), $parts[1]]);
+                    $count++;
+                }
             }
+            $pdo->commit();
+            logAudit('affectations_saved', 'professeur_classes', 0, [], ['total' => $count]);
+            $message = "$count affectation(s) enregistrée(s).";
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            error_log("save_matrix failed: " . $e->getMessage());
+            $message = "Échec de l'enregistrement des affectations (aucune modification appliquée).";
         }
-        logAudit('affectations_saved', 'professeur_classes', 0, [], ['total' => $count]);
-        $message = "$count affectation(s) enregistrée(s).";
         // Recharger
         $existing = [];
         $stmt = $pdo->query("SELECT id_professeur, nom_classe FROM professeur_classes");

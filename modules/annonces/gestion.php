@@ -19,12 +19,19 @@ if (!isAdmin()) {
 $pdo = getPDO();
 $service = new AnnonceService($pdo);
 
-// Statistiques rapides
-$totalAnnonces = $pdo->query("SELECT COUNT(*) FROM annonces")->fetchColumn();
-$totalPubliees = $pdo->query("SELECT COUNT(*) FROM annonces WHERE publie = 1")->fetchColumn();
-$totalBrouillons = $pdo->query("SELECT COUNT(*) FROM annonces WHERE publie = 0")->fetchColumn();
-$totalSondages = $pdo->query("SELECT COUNT(*) FROM sondages")->fetchColumn();
-$totalVotes = $pdo->query("SELECT COUNT(*) FROM sondage_votes")->fetchColumn();
+// Statistiques rapides — scopées à l'établissement courant (pas de fuite inter-tenant)
+try { $etabId = \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { $etabId = 0; }
+
+$q = function (string $sql) use ($pdo, $etabId) {
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$etabId]);
+    return $stmt->fetchColumn();
+};
+$totalAnnonces   = $q("SELECT COUNT(*) FROM annonces WHERE etablissement_id = ?");
+$totalPubliees   = $q("SELECT COUNT(*) FROM annonces WHERE publie = 1 AND etablissement_id = ?");
+$totalBrouillons = $q("SELECT COUNT(*) FROM annonces WHERE publie = 0 AND etablissement_id = ?");
+$totalSondages   = $q("SELECT COUNT(*) FROM sondages WHERE etablissement_id = ?");
+$totalVotes      = $q("SELECT COUNT(*) FROM sondage_votes v JOIN sondages s ON v.sondage_id = s.id WHERE s.etablissement_id = ?");
 
 $annonces = $service->getAllAnnonces();
 $types = AnnonceService::getTypes();

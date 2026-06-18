@@ -49,9 +49,9 @@ class InscriptionService
             SELECT i.*, c.nom AS classe_nom
             FROM inscriptions i
             LEFT JOIN classes c ON i.classe_demandee = c.id
-            WHERE i.id = ?
+            WHERE i.id = ? AND i.etablissement_id = ?
         ");
-        $stmt->execute([$id]);
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
@@ -151,24 +151,31 @@ class InscriptionService
 
     public function ajouterDocument(int $inscriptionId, string $typeDoc, array $fichier): int
     {
-        $dir = __DIR__ . '/../../uploads/inscriptions/';
-        if (!is_dir($dir)) mkdir($dir, 0755, true);
-
-        $ext = pathinfo($fichier['name'], PATHINFO_EXTENSION);
-        $filename = 'doc_' . $inscriptionId . '_' . uniqid() . '.' . $ext;
-        move_uploaded_file($fichier['tmp_name'], $dir . $filename);
+        // Validation ext/MIME/taille + stockage sécurisé sous /uploads via le service centralisé.
+        $uploader = new \API\Services\FileUploadService('inscriptions');
+        $result   = $uploader->upload($fichier);
+        if (($result['success'] ?? false) !== true) {
+            throw new \RuntimeException('Échec du téléchargement du document : ' . ($result['error'] ?? 'erreur inconnue'));
+        }
 
         $stmt = $this->pdo->prepare("
-            INSERT INTO inscription_documents (inscription_id, type_document, fichier_chemin, date_ajout)
-            VALUES (?, ?, ?, NOW())
+            INSERT INTO inscription_documents (inscription_id, type_document, nom_fichier, chemin_fichier, type_mime, taille, date_upload)
+            VALUES (?, ?, ?, ?, ?, ?, NOW())
         ");
-        $stmt->execute([$inscriptionId, $typeDoc, 'uploads/inscriptions/' . $filename]);
+        $stmt->execute([
+            $inscriptionId,
+            $typeDoc,
+            $result['nom_original'],
+            $result['chemin'],
+            $result['type_mime'],
+            $result['taille'],
+        ]);
         return $this->pdo->lastInsertId();
     }
 
     public function getDocuments(int $inscriptionId): array
     {
-        $stmt = $this->pdo->prepare('SELECT * FROM inscription_documents WHERE inscription_id = ? ORDER BY date_ajout');
+        $stmt = $this->pdo->prepare('SELECT *, date_upload AS date_ajout FROM inscription_documents WHERE inscription_id = ? ORDER BY date_upload');
         $stmt->execute([$inscriptionId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -190,7 +197,7 @@ class InscriptionService
 
     public function getStats(): array
     {
-        $stmt = $this->pdo->query("
+        $stmt = $this->pdo->prepare("
             SELECT
                 COUNT(*) AS total,
                 COUNT(CASE WHEN statut = 'soumise' THEN 1 END) AS soumises,
@@ -198,7 +205,9 @@ class InscriptionService
                 COUNT(CASE WHEN statut = 'acceptee' THEN 1 END) AS acceptees,
                 COUNT(CASE WHEN statut = 'refusee' THEN 1 END) AS refusees
             FROM inscriptions
+            WHERE etablissement_id = ?
         ");
+        $stmt->execute([\API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
@@ -415,7 +424,7 @@ class InscriptionService
 
         $stmt2 = $this->pdo->prepare("
             SELECT c.id, c.nom, c.capacite_max,
-                   (SELECT COUNT(*) FROM eleves e WHERE e.classe_id = c.id AND e.etablissement_id = c.etablissement_id) AS effectif
+                   (SELECT COUNT(*) FROM eleves e WHERE e.classe = c.nom AND e.etablissement_id = c.etablissement_id) AS effectif
             FROM classes c WHERE c.niveau = ? AND c.etablissement_id = ?
             HAVING effectif < COALESCE(c.capacite_max, 35)
             ORDER BY effectif ASC LIMIT 1
@@ -456,10 +465,10 @@ class InscriptionService
     {
         $stmt = $this->pdo->prepare("
             SELECT e.id, e.nom, e.prenom, e.date_naissance, c.nom AS classe_nom, c.id AS classe_id,
-                   pe.parent_id
+                   pe.id_parent AS parent_id
             FROM eleves e
-            LEFT JOIN classes c ON e.classe_id = c.id
-            LEFT JOIN parent_eleve pe ON pe.eleve_id = e.id
+            LEFT JOIN classes c ON e.classe = c.nom
+            LEFT JOIN parent_eleve pe ON pe.id_eleve = e.id
             WHERE e.actif = 1 AND e.etablissement_id = ?
         ");
         $stmt->execute([\API\Core\EstablishmentContext::id()]);
@@ -472,7 +481,7 @@ class InscriptionService
             if ($exists->fetch()) continue;
 
             $this->pdo->prepare("
-                INSERT INTO inscriptions (nom_eleve, prenom_eleve, date_naissance, classe_demandee, statut, annee_scolaire, date_soumission, type_inscription)
+                INSERT INTO inscriptions (nom_eleve, prenom_eleve, date_naissance, classe_demandee, statut, annee_scolaire, date_soumission, type)
                 VALUES (?, ?, ?, ?, 'brouillon', ?, NOW(), 'reinscription')
             ")->execute([$el['nom'], $el['prenom'], $el['date_naissance'], $el['classe_id'], $anneeCible]);
             $count++;

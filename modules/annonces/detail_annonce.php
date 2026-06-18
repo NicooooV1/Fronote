@@ -29,6 +29,21 @@ if (!$annonce) {
     exit;
 }
 
+// Anti-IDOR / anti-fuite inter-établissement : une annonce d'un autre
+// établissement ne doit jamais être lisible via ?id=. On scope au tenant courant.
+// (Le ciblage fin rôle/classe reste géré ailleurs ; ici on bloque la fuite cross-tenant.)
+try {
+    $etabCourant = \API\Core\EstablishmentContext::id();
+} catch (\Throwable $e) {
+    $etabCourant = null;
+}
+if ($etabCourant !== null && isset($annonce['etablissement_id'])
+    && (int)$annonce['etablissement_id'] !== (int)$etabCourant) {
+    echo '<div class="alert alert-danger">Annonce introuvable.</div>';
+    require_once __DIR__ . '/includes/footer.php';
+    exit;
+}
+
 // Marquer comme lue
 $service->marquerLue($id, $user['id'], $role);
 

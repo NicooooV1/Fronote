@@ -47,7 +47,13 @@ function generateSecurePassword($length = 12) {
         $password .= $all[random_int(0, strlen($all)-1)];
     }
     
-    return str_shuffle($password);
+    // Mélange Fisher-Yates avec CSPRNG (str_shuffle s'appuie sur Mersenne Twister, non cryptographique).
+    $chars = str_split($password);
+    for ($i = count($chars) - 1; $i > 0; $i--) {
+        $j = random_int(0, $i);
+        [$chars[$i], $chars[$j]] = [$chars[$j], $chars[$i]];
+    }
+    return implode('', $chars);
 }
 
 /**

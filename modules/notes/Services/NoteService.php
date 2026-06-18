@@ -16,7 +16,7 @@ class NoteService
 
     private function etabId(): int
     {
-        try { return \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { return 1; }
+        return \API\Core\EstablishmentContext::id();
     }
 
     public function getFiltered(array $filters, int $page = 1, int $perPage = 50): array
@@ -59,8 +59,12 @@ class NoteService
 
     public function create(array $data): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO notes (id_eleve, id_matiere, id_professeur, note, date_note, trimestre, note_sur, coefficient, type_evaluation, commentaire) VALUES (:id_eleve, :id_matiere, :id_professeur, :note, :date_note, :trimestre, :note_sur, :coefficient, :type_evaluation, :commentaire)");
-        $stmt->execute([':id_eleve' => (int) $data['id_eleve'], ':id_matiere' => (int) $data['id_matiere'], ':id_professeur' => (int) $data['id_professeur'], ':note' => $data['note'], ':date_note' => $data['date_note'], ':trimestre' => (int) $data['trimestre'], ':note_sur' => $data['note_sur'] ?? 20, ':coefficient' => $data['coefficient'] ?? 1, ':type_evaluation' => $data['type_evaluation'] ?? null, ':commentaire' => $data['commentaire'] ?? null]);
+        $etabId = null;
+        try { $etabId = \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { /* défaut SQL si contexte ambigu */ }
+        $stmt = $this->pdo->prepare("INSERT INTO notes (id_eleve, id_matiere, id_professeur, note, date_note, trimestre, note_sur, coefficient, type_evaluation, commentaire" . ($etabId !== null ? ", etablissement_id" : "") . ") VALUES (:id_eleve, :id_matiere, :id_professeur, :note, :date_note, :trimestre, :note_sur, :coefficient, :type_evaluation, :commentaire" . ($etabId !== null ? ", :etab" : "") . ")");
+        $params = [':id_eleve' => (int) $data['id_eleve'], ':id_matiere' => (int) $data['id_matiere'], ':id_professeur' => (int) $data['id_professeur'], ':note' => $data['note'], ':date_note' => $data['date_note'], ':trimestre' => (int) $data['trimestre'], ':note_sur' => $data['note_sur'] ?? 20, ':coefficient' => $data['coefficient'] ?? 1, ':type_evaluation' => $data['type_evaluation'] ?? null, ':commentaire' => $data['commentaire'] ?? null];
+        if ($etabId !== null) { $params[':etab'] = $etabId; }
+        $stmt->execute($params);
         $id = (int) $this->pdo->lastInsertId();
         app('hooks')?->dispatch(new \Modules\Notes\Events\NoteCreated($id, $data));
         return $id;

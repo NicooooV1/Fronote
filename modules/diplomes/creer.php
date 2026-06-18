@@ -6,7 +6,7 @@ $pageTitle = 'Nouveau diplôme';
 $activePage = 'creer';
 require_once __DIR__ . '/includes/header.php';
 
-if (!isAdmin() && !isPersonnelVS()) { redirect('/diplomes/diplomes.php'); }
+if (!isAdmin() && !isPersonnelVS()) { redirect('/modules/diplomes/diplomes.php'); }
 
 $types = DiplomeService::typesDiplome();
 $mentions = DiplomeService::mentions();

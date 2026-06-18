@@ -21,6 +21,25 @@ class UserProvider
      */
     public function retrieveById($userId, $userType)
     {
+        // Rôles infrastructure : tables dédiées (colonnes différentes des 5 tables métier).
+        if ($userType === 'super_admin') {
+            $stmt = $this->pdo->prepare("SELECT id, nom, prenom, mail AS email, actif FROM super_admins WHERE id = ?");
+            $stmt->execute([$userId]);
+            $u = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$u || (int) ($u['actif'] ?? 1) === 0) return null;
+            $u['type'] = 'super_admin';
+            $u['etablissement_id'] = null; // accès global, hors périmètre établissement
+            return $u;
+        }
+        if ($userType === 'technicien') {
+            $stmt = $this->pdo->prepare("SELECT id, nom, prenom, email AS email, actif FROM technicien_access WHERE id = ? AND actif = 1");
+            $stmt->execute([$userId]);
+            $u = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$u) return null;
+            $u['type'] = 'technicien';
+            return $u;
+        }
+
         $table = $this->getTableForUserType($userType);
 
         if (!$table) {
@@ -28,16 +47,21 @@ class UserProvider
         }
 
         $stmt = $this->pdo->prepare("
-            SELECT id, nom, prenom, mail AS email, etablissement_id
+            SELECT id, nom, prenom, mail AS email, etablissement_id, actif
             FROM `{$table}` WHERE id = ?
         ");
         $stmt->execute([$userId]);
 
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($user) {
-            $user['type'] = $userType;
+        if (!$user) {
+            return null;
         }
-        return $user ?: null;
+        // Compte désactivé par l'admin → invalider (révoque aussi les sessions déjà ouvertes).
+        if ((int) ($user['actif'] ?? 1) === 0) {
+            return null;
+        }
+        $user['type'] = $userType;
+        return $user;
     }
 
     /**
@@ -76,7 +100,7 @@ class UserProvider
 
         if ($etabId !== null) {
             $stmt = $this->pdo->prepare(
-                "SELECT id, nom, prenom, mail AS email, mot_de_passe, etablissement_id
+                "SELECT id, nom, prenom, mail AS email, mot_de_passe, etablissement_id, actif, locked_until
                  FROM `{$table}`
                  WHERE (mail = ? OR identifiant = ?) AND etablissement_id = ?
                  LIMIT 1"
@@ -84,7 +108,7 @@ class UserProvider
             $stmt->execute([$login, $login, $etabId]);
         } else {
             $stmt = $this->pdo->prepare(
-                "SELECT id, nom, prenom, mail AS email, mot_de_passe, etablissement_id
+                "SELECT id, nom, prenom, mail AS email, mot_de_passe, etablissement_id, actif, locked_until
                  FROM `{$table}`
                  WHERE (mail = ? OR identifiant = ?)
                  LIMIT 1"
@@ -110,7 +134,27 @@ class UserProvider
             return false;
         }
 
-        return password_verify($password, $user['mot_de_passe']);
+        if (!password_verify($password, $user['mot_de_passe'])) {
+            return false;
+        }
+
+        // Refuser les comptes désactivés (actif=0) ou temporairement verrouillés.
+        // Sans ce contrôle, la désactivation et le verrouillage côté admin sont décoratifs.
+        return $this->accountUsable($user);
+    }
+
+    /**
+     * Un compte est utilisable s'il est actif et non verrouillé temporairement.
+     */
+    protected function accountUsable(array $user): bool
+    {
+        if (array_key_exists('actif', $user) && (int) $user['actif'] === 0) {
+            return false;
+        }
+        if (!empty($user['locked_until']) && strtotime((string) $user['locked_until']) > time()) {
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -140,7 +184,7 @@ class UserProvider
             try {
                 if ($etabId !== null) {
                     $stmt = $this->pdo->prepare(
-                        "SELECT id, nom, prenom, mail AS email, mot_de_passe, identifiant, etablissement_id
+                        "SELECT id, nom, prenom, mail AS email, mot_de_passe, identifiant, etablissement_id, actif, locked_until
                          FROM `{$table}`
                          WHERE (mail = ? OR identifiant = ?) AND etablissement_id = ?
                          LIMIT 1"
@@ -148,7 +192,7 @@ class UserProvider
                     $stmt->execute([$login, $login, $etabId]);
                 } else {
                     $stmt = $this->pdo->prepare(
-                        "SELECT id, nom, prenom, mail AS email, mot_de_passe, identifiant, etablissement_id
+                        "SELECT id, nom, prenom, mail AS email, mot_de_passe, identifiant, etablissement_id, actif, locked_until
                          FROM `{$table}`
                          WHERE (mail = ? OR identifiant = ?)
                          LIMIT 1"
@@ -164,6 +208,21 @@ class UserProvider
                 continue;
             }
         }
+
+        // Rôles infrastructure (tables dédiées, colonnes spécifiques). Chaque requête est
+        // isolée : une table absente ou un schéma différent ne casse pas le login métier.
+        try {
+            $stmt = $this->pdo->prepare("SELECT id, nom, prenom, mail AS email, mot_de_passe, identifiant, actif FROM super_admins WHERE (mail = ? OR identifiant = ?) LIMIT 1");
+            $stmt->execute([$login, $login]);
+            $u = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($u) { $u['type'] = 'super_admin'; $found[] = $u; }
+        } catch (\PDOException $e) { /* table super_admins absente */ }
+        try {
+            $stmt = $this->pdo->prepare("SELECT id, nom, prenom, email AS email, mot_de_passe, identifiant, actif FROM technicien_access WHERE (email = ? OR identifiant = ?) AND actif = 1 LIMIT 1");
+            $stmt->execute([$login, $login]);
+            $u = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($u) { $u['type'] = 'technicien'; $found[] = $u; }
+        } catch (\PDOException $e) { /* table technicien_access absente */ }
 
         return $found;
     }

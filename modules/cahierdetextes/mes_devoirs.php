@@ -3,10 +3,14 @@
  * Devoirs en ligne — Vue élève : liste des devoirs à rendre
  */
 require_once __DIR__ . '/includes/RenduService.php';
+// Auth gate AVANT toute sortie HTML : header_rendus.php émet le header/topbar,
+// donc requireAuth() doit s'exécuter avant son inclusion (sinon le redirect via
+// header() échoue « headers already sent » et la page fuit en accès non authentifié).
+require_once __DIR__ . '/../../API/core.php';
+requireAuth();
 $currentPage = 'mes_devoirs';
 $pageTitle = 'Mes devoirs';
 require_once __DIR__ . '/includes/header_rendus.php';
-requireAuth();
 
 $pdo = getPDO();
 $service = new RenduService($pdo);
@@ -15,6 +19,14 @@ if ($user_role === 'eleve') {
     $devoirs = $service->getDevoirsARendreEleve($user['id']);
 } elseif ($user_role === 'parent') {
     $eleveId = (int)($_GET['eleve'] ?? ($_SESSION['selected_enfant_id'] ?? 0));
+    // IDOR : un parent ne peut consulter que les devoirs de ses propres enfants.
+    if ($eleveId) {
+        $chk = $pdo->prepare("SELECT 1 FROM parent_eleve WHERE id_parent = ? AND id_eleve = ? LIMIT 1");
+        $chk->execute([$user['id'], $eleveId]);
+        if (!$chk->fetchColumn()) {
+            $eleveId = 0;
+        }
+    }
     $devoirs = $eleveId ? $service->getDevoirsARendreEleve($eleveId) : [];
 } else {
     // Prof: voir les devoirs créés via cahier de textes avec stats rendus

@@ -71,7 +71,8 @@ class BulletinPdfService
         foreach ($notes as $n) {
             $m = $n['matiere_nom'] ?? '?';
             if (!isset($byMat[$m])) $byMat[$m] = ['c' => 0, 's' => 0, 'w' => 0];
-            $n20 = $n['bareme'] > 0 ? $n['note'] / $n['bareme'] * 20 : 0;
+            $noteSur = (float)($n['note_sur'] ?? 20);
+            $n20 = $noteSur > 0 ? $n['note'] / $noteSur * 20 : 0;
             $co = (float)($n['coefficient'] ?? 1);
             $byMat[$m]['c']++;
             $byMat[$m]['s'] += $n20 * $co;
@@ -88,6 +89,9 @@ class BulletinPdfService
             $rows .= "<tr><td><b>" . htmlspecialchars($mat) . "</b></td><td class='c'>{$d['c']}</td><td class='c'><b>{$avg}</b>/20</td></tr>";
         }
 
+        // Pré-calcul : l'interpolation heredoc n'accepte ni ?? ni les appels de fonction.
+        $annee = htmlspecialchars((string) ($periode['annee_scolaire'] ?? date('Y')));
+
         return <<<HTML
 <!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Bulletin - {$fullName}</title>
 <style>
@@ -102,7 +106,7 @@ td{padding:5px 10px;border-bottom:1px solid #e2e8f0;font-size:9pt}.c{text-align:
 .ft{margin-top:20px;font-size:7.5pt;color:#a0aec0;text-align:center;border-top:1px solid #eee;padding-top:8px}
 </style></head><body>
 <div class="h"><div><h1>BULLETIN SCOLAIRE</h1><div class="s">{$eNom}</div></div><div style="text-align:right"><b>{$pNom}</b><br><span class="s">{$now}</span></div></div>
-<div class="ig"><span><b>Élève :</b> {$fullName}</span><span><b>Classe :</b> {$classe}</span><span><b>Naissance :</b> {$dob}</span><span><b>Année :</b> {$periode['annee_scolaire'] ?? date('Y')}</span></div>
+<div class="ig"><span><b>Élève :</b> {$fullName}</span><span><b>Classe :</b> {$classe}</span><span><b>Naissance :</b> {$dob}</span><span><b>Année :</b> {$annee}</span></div>
 <table><thead><tr><th>Matière</th><th class="c">Éval.</th><th class="c">Moyenne</th></tr></thead><tbody>{$rows}</tbody></table>
 <div class="sm"><div><div class="sv">{$mg}</div><div class="sl">Moyenne /20</div></div><div><div class="sv">{$aT}</div><div class="sl">Absences</div></div><div><div class="sv">{$aJ}</div><div class="sl">Justifiées</div></div></div>
 <div class="ft">Fronote — {$eNom}</div></body></html>
@@ -111,7 +115,7 @@ HTML;
 
     private function getEleve(int $id): ?array
     {
-        $s = $this->pdo->prepare("SELECT e.*, c.nom AS classe_nom FROM eleves e LEFT JOIN classes c ON c.id = e.classe_id WHERE e.id = ?");
+        $s = $this->pdo->prepare("SELECT e.*, c.nom AS classe_nom FROM eleves e LEFT JOIN classes c ON c.nom = e.classe WHERE e.id = ?");
         $s->execute([$id]); return $s->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
@@ -123,13 +127,13 @@ HTML;
 
     private function getNotes(int $eleveId, int $periodeId): array
     {
-        $s = $this->pdo->prepare("SELECT n.*, m.nom AS matiere_nom FROM notes n LEFT JOIN matieres m ON m.id = n.matiere_id WHERE n.eleve_id = ? AND n.periode_id = ? ORDER BY m.nom");
+        $s = $this->pdo->prepare("SELECT n.*, m.nom AS matiere_nom FROM notes n LEFT JOIN matieres m ON m.id = n.id_matiere WHERE n.id_eleve = ? AND n.trimestre = (SELECT numero FROM periodes WHERE id = ?) ORDER BY m.nom");
         $s->execute([$eleveId, $periodeId]); return $s->fetchAll(PDO::FETCH_ASSOC);
     }
 
     private function getAbsences(int $eleveId, int $periodeId): array
     {
-        $s = $this->pdo->prepare("SELECT a.* FROM absences a JOIN periodes p ON p.id = ? WHERE a.eleve_id = ? AND a.date_absence BETWEEN p.date_debut AND p.date_fin");
+        $s = $this->pdo->prepare("SELECT a.* FROM absences a JOIN periodes p ON p.id = ? WHERE a.id_eleve = ? AND a.date_debut BETWEEN p.date_debut AND p.date_fin");
         $s->execute([$periodeId, $eleveId]); return $s->fetchAll(PDO::FETCH_ASSOC);
     }
 

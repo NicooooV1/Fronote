@@ -94,7 +94,7 @@ class ExamenService
             SELECT ec.*, e.prenom, e.nom AS eleve_nom, cl.nom AS classe_nom
             FROM epreuve_convocations ec
             JOIN eleves e ON ec.eleve_id = e.id
-            LEFT JOIN classes cl ON e.classe_id = cl.id
+            LEFT JOIN classes cl ON e.classe = cl.nom
             WHERE ec.epreuve_id = ?
             ORDER BY e.nom
         ");
@@ -110,7 +110,7 @@ class ExamenService
 
     public function convoquerClasse(int $epreuveId, int $classeId): int
     {
-        $eleves = $this->pdo->prepare("SELECT id FROM eleves WHERE classe_id = ? ORDER BY nom");
+        $eleves = $this->pdo->prepare("SELECT id FROM eleves WHERE classe = (SELECT nom FROM classes WHERE id = ?) ORDER BY nom");
         $eleves->execute([$classeId]);
         $count = 0;
         $place = 1;

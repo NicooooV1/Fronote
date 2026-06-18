@@ -18,12 +18,20 @@ $service = new RenduService($pdo);
 $devoirId = (int)($_GET['devoir'] ?? 0);
 $message = '';
 
+// Les rôles admin / vie scolaire peuvent corriger n'importe quel rendu ;
+// un professeur ne peut corriger que ses propres devoirs.
+$isPrivileged = isAdmin() || isVieScolaire();
+
 // POST: corriger un rendu
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     $renduId = (int)$_POST['rendu_id'];
     $action = $_POST['action'] ?? 'corriger';
-    
-    if ($action === 'corriger') {
+
+    // Ownership : le rendu doit appartenir à un devoir possédé par l'utilisateur.
+    if (!$service->profOwnsRendu($renduId, $user_fullname, $isPrivileged)) {
+        http_response_code(403);
+        $message = 'Action non autorisée.';
+    } elseif ($action === 'corriger') {
         $note = isset($_POST['note']) && $_POST['note'] !== '' ? (float)$_POST['note'] : null;
         $noteSur = (float)($_POST['note_sur'] ?? 20);
         $commentaire = trim($_POST['commentaire'] ?? '');
@@ -38,6 +46,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 
 if ($devoirId) {
     $devoir = $service->getDevoir($devoirId);
+    // Ownership : un professeur ne peut consulter que ses propres devoirs.
+    if (!$devoir || !$service->profOwnsDevoir($devoirId, $user_fullname, $isPrivileged)) {
+        echo '<div class="alert alert-error">Devoir introuvable ou accès refusé.</div>';
+        require_once __DIR__ . '/includes/footer_rendus.php';
+        exit;
+    }
     $rendus = $service->getRendusDevoir($devoirId);
     $stats = $service->getStatsDevoir($devoirId);
 } else {
@@ -91,7 +105,7 @@ if ($devoirId) {
         <div class="rendu-contenu"><?= nl2br(htmlspecialchars($r['contenu'])) ?></div>
         <?php endif; ?>
         <?php if ($r['fichier_nom']): ?>
-        <div class="rendu-fichier"><a href="../<?= htmlspecialchars($r['fichier_chemin']) ?>" target="_blank"><i class="fas fa-paperclip"></i> <?= htmlspecialchars($r['fichier_nom']) ?></a></div>
+        <div class="rendu-fichier"><a href="telecharger_rendu.php?id=<?= (int)$r['id'] ?>" target="_blank"><i class="fas fa-paperclip"></i> <?= htmlspecialchars($r['fichier_nom']) ?></a></div>
         <?php endif; ?>
 
         <form method="POST" class="correction-form">

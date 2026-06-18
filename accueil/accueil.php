@@ -87,13 +87,19 @@ include __DIR__ . '/../templates/shared_topbar.php';
                     $wIcon  = $widget['icon'] ?? 'fas fa-puzzle-piece';
                     $wWidth = (int) ($widget['width'] ?? $widget['default_width'] ?? 2);
                     $wData  = $widgetDataMap[$wKey] ?? ['type' => 'empty', 'items' => []];
+                    // Empty-state: a widget whose normalized payload has no items/value
+                    // gets the .is-empty class so it collapses instead of rendering a tall box.
+                    $wIsEmpty = empty($wData['items'])
+                        && !array_key_exists('value', $wData)
+                        && empty($wData['reunions']) && empty($wData['notes'])
+                        && empty($wData['devoirs']) && empty($wData['tickets']);
                     $sizeClass = match(true) {
                         $wWidth >= 4 => 'widget-size-large',
                         $wWidth >= 2 => 'widget-size-medium',
                         default      => 'widget-size-small',
                     };
                 ?>
-                <div class="widget-card <?= $sizeClass ?>"
+                <div class="widget-card <?= $sizeClass ?><?= $wIsEmpty ? ' is-empty' : '' ?>"
                      data-widget-key="<?= htmlspecialchars($wKey) ?>"
                      data-widget-type="<?= htmlspecialchars($wType) ?>"
                      data-position="<?= $idx ?>"

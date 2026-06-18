@@ -26,7 +26,6 @@ $typeLabels = ['matin' => 'Matin', 'soir' => 'Soir', 'mercredi' => 'Mercredi', '
 $typeColors = ['matin' => '#f59e0b', 'soir' => '#6366f1', 'mercredi' => '#10b981', 'vacances' => '#ef4444'];
 ?>
 
-<div class="main-content">
     <div class="page-header">
         <h1><i class="fas fa-child"></i> Créneaux de garderie</h1>
         <?php if ($isGestionnaire): ?>
@@ -84,6 +83,5 @@ $typeColors = ['matin' => '#f59e0b', 'soir' => '#6366f1', 'mercredi' => '#10b981
         </div>
         <?php endforeach; ?>
     </div>
-</div>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

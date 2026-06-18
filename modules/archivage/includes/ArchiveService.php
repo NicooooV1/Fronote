@@ -29,7 +29,7 @@ class ArchiveService
         $params = [$etabId];
         if ($annee) { $sql .= ' AND annee_scolaire = ?'; $params[] = $annee; }
         if ($type) { $sql .= ' AND type = ?'; $params[] = $type; }
-        $sql .= ' ORDER BY date_archive DESC';
+        $sql .= ' ORDER BY date_archivage DESC';
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -40,8 +40,10 @@ class ArchiveService
      */
     public function getArchive(int $id): ?array
     {
-        $stmt = $this->pdo->prepare('SELECT * FROM archives_annuelles WHERE id = ?');
-        $stmt->execute([$id]);
+        $etabId = $this->etabId();
+        if ($etabId === null) return null;
+        $stmt = $this->pdo->prepare('SELECT * FROM archives_annuelles WHERE id = ? AND etablissement_id = ?');
+        $stmt->execute([$id, $etabId]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
@@ -53,9 +55,9 @@ class ArchiveService
         $stmt = $this->pdo->prepare("
             SELECT n.*, m.nom AS matiere_nom, e.prenom, e.nom AS eleve_nom, c.nom AS classe_nom
             FROM notes n
-            JOIN matieres m ON n.matiere_id = m.id
-            JOIN eleves e ON n.eleve_id = e.id
-            JOIN classes c ON e.classe_id = c.id
+            JOIN matieres m ON n.id_matiere = m.id
+            JOIN eleves e ON n.id_eleve = e.id
+            JOIN classes c ON e.classe = c.nom
         ");
         $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -71,8 +73,8 @@ class ArchiveService
         $stmt = $this->pdo->prepare("
             SELECT a.*, e.prenom, e.nom AS eleve_nom, c.nom AS classe_nom
             FROM absences a
-            JOIN eleves e ON a.eleve_id = e.id
-            JOIN classes c ON e.classe_id = c.id
+            JOIN eleves e ON a.id_eleve = e.id
+            JOIN classes c ON e.classe = c.nom
         ");
         $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -140,11 +142,12 @@ class ArchiveService
         $filename = "archive_{$annee}_{$type}_" . date('Ymd_His') . '.json';
         file_put_contents($dir . $filename, $json);
 
+        // date_archivage est omis : valeur par défaut CURRENT_TIMESTAMP.
         $stmt = $this->pdo->prepare("
-            INSERT INTO archives_annuelles (annee_scolaire, type, donnees, fichier_chemin, date_archive)
-            VALUES (?, ?, ?, ?, NOW())
+            INSERT INTO archives_annuelles (etablissement_id, annee_scolaire, type, donnees, fichier_chemin, archive_par)
+            VALUES (?, ?, ?, ?, ?, ?)
         ");
-        $stmt->execute([$annee, $type, $json, 'exports/' . $filename]);
+        $stmt->execute([$this->etabId(), $annee, $type, $json, 'exports/' . $filename, getUserId()]);
         return $this->pdo->lastInsertId();
     }
 
@@ -213,17 +216,17 @@ class ArchiveService
         $dossier = [];
 
         // Student info
-        $stmt = $this->pdo->prepare("SELECT e.*, c.nom AS classe_nom FROM eleves e LEFT JOIN classes c ON e.classe_id = c.id WHERE e.id = ?");
+        $stmt = $this->pdo->prepare("SELECT e.*, c.nom AS classe_nom FROM eleves e LEFT JOIN classes c ON e.classe = c.nom WHERE e.id = ?");
         $stmt->execute([$eleveId]);
         $dossier['eleve'] = $stmt->fetch(PDO::FETCH_ASSOC);
 
         // Notes
-        $stmt = $this->pdo->prepare("SELECT n.*, m.nom AS matiere_nom FROM notes n JOIN matieres m ON n.matiere_id = m.id WHERE n.eleve_id = ? ORDER BY n.date_evaluation DESC");
+        $stmt = $this->pdo->prepare("SELECT n.*, m.nom AS matiere_nom FROM notes n JOIN matieres m ON n.id_matiere = m.id WHERE n.id_eleve = ? ORDER BY n.date_note DESC");
         $stmt->execute([$eleveId]);
         $dossier['notes'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Absences
-        $stmt = $this->pdo->prepare("SELECT * FROM absences WHERE eleve_id = ? ORDER BY date_absence DESC");
+        $stmt = $this->pdo->prepare("SELECT * FROM absences WHERE id_eleve = ? ORDER BY date_debut DESC");
         $stmt->execute([$eleveId]);
         $dossier['absences'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

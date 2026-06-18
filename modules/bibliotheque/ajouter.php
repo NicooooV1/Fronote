@@ -6,7 +6,7 @@ $pageTitle = 'Ajouter un livre';
 $activePage = 'ajouter';
 require_once __DIR__ . '/includes/header.php';
 
-if (!isAdmin() && !isPersonnelVS()) { redirect('/bibliotheque/catalogue.php'); }
+if (!isAdmin() && !isPersonnelVS()) { redirect('/modules/bibliotheque/catalogue.php'); }
 
 $cats = BibliothequeService::categories();
 $editId = (int)($_GET['edit'] ?? 0);

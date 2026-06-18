@@ -34,6 +34,7 @@
     "nav.dashboard": "Tableau de bord",
     "nav.home": "Accueil",
     "nav.profile": "Mon profil",
+    "nav.back": "Retour",
     "nav.settings": "Paramètres",
     "nav.admin": "Administration",
     "nav.logout": "Déconnexion",
@@ -99,5 +100,10 @@
     "legal.copyright_desc": "L'ensemble du contenu de cette application est protégé. Toute reproduction non autorisée est interdite.",
 
     "confirm.delete": "Êtes-vous sûr de vouloir supprimer cet élément ?",
-    "confirm.action": "Êtes-vous sûr de vouloir effectuer cette action ?"
+    "confirm.action": "Êtes-vous sûr de vouloir effectuer cette action ?",
+
+    "cookie_consent": "Consentement aux cookies",
+    "cookie_consent_text": "Ce site utilise des cookies essentiels au fonctionnement. En continuant, vous acceptez leur utilisation.",
+    "accept_all": "Accepter tout",
+    "essential_only": "Essentiels uniquement"
 }

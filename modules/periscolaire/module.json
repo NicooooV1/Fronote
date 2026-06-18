@@ -25,7 +25,7 @@
         }
     },
     "routes": {
-        "main": "detail_service.php"
+        "main": "services.php"
     },
     "widgets": [],
     "establishment_types": [

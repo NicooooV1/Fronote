@@ -1,5 +1,7 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) session_start();
+// Charger l'API (Bridge -> bootstrap.php) AVANT tout démarrage de session :
+// le bloc gardé de bootstrap.php démarre la session durcie (HttpOnly + Secure(https)
+// + SameSite=Lax + nom/path par instance). Ne PAS faire de session_start() nu ici.
 require_once __DIR__ . '/../../../API/Legacy/Bridge.php';
 requireAuth();
 
@@ -8,14 +10,10 @@ require_once __DIR__ . '/FacturationService.php';
 $factService = new FacturationService($pdo);
 
 $activePage = $activePage ?? 'factures';
-$extraCss = ['facturation/assets/css/facturation.css'];
+$extraCss = ['assets/css/facturation.css'];
 
-$sidebarLinks = '<li class="sidebar-item"><a href="/facturation/factures.php" class="sidebar-link ' . ($activePage === 'factures' ? 'active' : '') . '"><i class="fas fa-file-invoice-dollar"></i><span>Factures</span></a></li>';
-if (isAdmin() || isPersonnelVS()) {
-    $sidebarLinks .= '<li class="sidebar-item"><a href="/facturation/creer.php" class="sidebar-link ' . ($activePage === 'creer' ? 'active' : '') . '"><i class="fas fa-plus-circle"></i><span>Nouvelle</span></a></li>';
-}
-
-$sidebarExtraContent = $sidebarLinks;
 $pageTitle = $pageTitle ?? 'Facturation';
 require_once __DIR__ . '/../../../templates/shared_header.php';
+require_once __DIR__ . '/../../../templates/shared_topbar.php';
 ?>
+            <div class="content-container">

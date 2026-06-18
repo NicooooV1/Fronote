@@ -29,6 +29,19 @@ class MarketplaceService
         }
     }
 
+    /** Environnement de production ? */
+    private function isProduction(): bool
+    {
+        $env = strtolower((string) (getenv('APP_ENV') ?: 'production'));
+        return in_array($env, ['production', 'prod'], true);
+    }
+
+    /** Installation distante NON signée explicitement autorisée ? (échappatoire opérateur) */
+    private function unsignedInstallAllowed(): bool
+    {
+        return in_array(strtolower((string) getenv('MARKETPLACE_ALLOW_UNSIGNED')), ['1', 'true', 'yes', 'on'], true);
+    }
+
     // ─── Catalogue ──────────────────────────────────────────────────
 
     /**
@@ -196,6 +209,17 @@ class MarketplaceService
         $item = $this->getItem($key, 'module');
         if (!$item) {
             return ['success' => false, 'error' => "Module '{$key}' introuvable dans le catalogue."];
+        }
+
+        // ─── Gouvernance : installation distante non signée interdite en production (SEC-03b) ───
+        // Ce flux (registre distant) ne vérifie PAS de signature Ed25519, contrairement au
+        // sideload .fmod (FmodService::verifyAndExtract). En production on exige donc un paquet
+        // .fmod signé, sauf autorisation explicite via MARKETPLACE_ALLOW_UNSIGNED.
+        if ($this->isProduction() && !$this->unsignedInstallAllowed()) {
+            return [
+                'success' => false,
+                'error' => "Installation depuis le registre distant désactivée en production : utilisez un paquet .fmod signé (sideload), ou définissez MARKETPLACE_ALLOW_UNSIGNED=true en connaissance de cause.",
+            ];
         }
 
         // Pré-vérification gouvernance (déjà installé, compat Fronote, PHP, dépendances)
@@ -747,12 +771,20 @@ class MarketplaceService
      */
     public function getInstalled(): array
     {
+        // Vue unifiée des DEUX chemins d'installation, normalisée sur item_key/item_type/version :
+        //  - catalog (installModule/installTheme) → marketplace_installs (item_key, item_type)
+        //  - sideload .fmod                        → marketplace_installed (module_key)
+        // Chaque source est lue indépendamment pour qu'une table absente ne masque pas l'autre.
+        $rows = [];
         try {
-            $stmt = $this->pdo->query("SELECT * FROM marketplace_installed ORDER BY installed_at DESC");
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (\Throwable $e) {
-            return [];
-        }
+            $stmt = $this->pdo->query("SELECT item_key, item_type, version, installed_at FROM marketplace_installs ORDER BY installed_at DESC");
+            $rows = array_merge($rows, $stmt->fetchAll(PDO::FETCH_ASSOC));
+        } catch (\Throwable $e) { /* table absente : ignorer */ }
+        try {
+            $stmt = $this->pdo->query("SELECT module_key AS item_key, 'module' AS item_type, version, installed_at FROM marketplace_installed ORDER BY installed_at DESC");
+            $rows = array_merge($rows, $stmt->fetchAll(PDO::FETCH_ASSOC));
+        } catch (\Throwable $e) { /* table absente : ignorer */ }
+        return $rows;
     }
 
     // ─── Helpers privés ─────────────────────────────────────────────

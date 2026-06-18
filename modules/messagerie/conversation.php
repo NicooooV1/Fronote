@@ -57,6 +57,9 @@ try {
         $pinnedMessages = $messagesResult['pinned'] ?? [];
         $hasMoreMessages = $messagesResult['has_more'];
         $participants = getParticipants($convId);
+        // Ouvrir la conversation (page complète) = intention de lecture : marquage
+        // explicite ici (getMessages n'a plus cet effet de bord — cf. audit M5).
+        markConversationAsRead($convId, $user['id'], $user['type']);
     } else {
         $messagesResult = getMessagesEvenIfDeleted($convId, $user['id'], $user['type']);
         $messages = $messagesResult['messages'];

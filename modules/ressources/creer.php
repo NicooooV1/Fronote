@@ -6,7 +6,7 @@ $pageTitle = 'Créer une ressource';
 $activePage = 'creer';
 require_once __DIR__ . '/includes/header.php';
 
-if (!isAdmin() && !isProfesseur()) { redirect('/ressources/ressources.php'); }
+if (!isAdmin() && !isProfesseur()) { redirect('/modules/ressources/ressources.php'); }
 
 $types = RessourceService::types();
 $niveaux = RessourceService::niveaux();

@@ -11,8 +11,12 @@
  */
 
 // ─── Configuration initiale ─────────────────────────────────────────────────
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+// display_errors n'est activé que si l'on est explicitement en mode debug
+// d'installation (INSTALL_DEBUG=1). Par défaut on n'expose aucune stack trace
+// sur un serveur potentiellement accessible publiquement.
+$installDebug = (getenv('INSTALL_DEBUG') === '1') || (($_GET['debug'] ?? '') === '1');
+ini_set('display_errors', $installDebug ? '1' : '0');
+error_reporting($installDebug ? E_ALL : 0);
 set_time_limit(300);
 
 // ─── Protection : déjà installé ? ───────────────────────────────────────────
@@ -282,6 +286,10 @@ function writeEnvFile(string $dir, array $c): bool {
         "APP_BASE_PATH={$dir}",
         "BASE_URL={$c['base_url']}", "",
         "# Sécurité",
+        "# Clé applicative maître (HMAC cookies signés, chiffrement at-rest, sauvegardes).",
+        "APP_KEY=" . bin2hex(random_bytes(32)),
+        "# Mettre à true UNIQUEMENT derrière un reverse-proxy de confiance terminant TLS.",
+        "TRUST_PROXY_HEADERS=false",
         "CSRF_LIFETIME={$c['csrf_lifetime']}",
         "CSRF_MAX_TOKENS=10",
         "SESSION_NAME={$c['session_name']}",
@@ -309,11 +317,13 @@ function writeEnvFile(string $dir, array $c): bool {
         "# Audit",
         "AUDIT_ENABLED=true",
         "AUDIT_RETENTION_DAYS=90", "",
+        "# Monitoring — protège /API/endpoints/health.php (détails infra). Vide = statut binaire en prod.",
+        "HEALTH_TOKEN=" . bin2hex(random_bytes(16)), "",
         "# WebSocket (optionnel)",
         "WEBSOCKET_ENABLED=false",
         "WEBSOCKET_URL=http://localhost:3100",
         "WEBSOCKET_CLIENT_URL=ws://localhost:3100",
-        "WEBSOCKET_API_SECRET=" . bin2hex(random_bytes(16)), "",
+        "WEBSOCKET_API_SECRET=" . bin2hex(random_bytes(32)), "",
         "# Mise à jour GitHub (optionnel)",
         "GITHUB_WEBHOOK_SECRET=",
         "GITHUB_REPO=",
@@ -328,13 +338,15 @@ function writeEnvFile(string $dir, array $c): bool {
         "CACHE_DRIVER=file",
         "REDIS_HOST=127.0.0.1",
         "REDIS_PORT=6379", "",
-        "# SSO / OAuth2 (optionnel)",
-        "SSO_ENABLED=false",
-        "SSO_PROVIDER=",
-        "SSO_CLIENT_ID=",
-        "SSO_CLIENT_SECRET=",
-        "SSO_REDIRECT_URI=",
-        "SSO_TENANT_ID=", "",
+        "# SSO / OAuth2 (optionnel) — noms EXACTS lus par le code (API/Auth/OAuthGuard).",
+        "OAUTH_PROVIDER=",
+        "OAUTH_CLIENT_ID=",
+        "OAUTH_CLIENT_SECRET=",
+        "OAUTH_REDIRECT_URI=",
+        "OAUTH_SCOPES=",
+        "OAUTH_AUTHORIZE_URL=",
+        "OAUTH_TOKEN_URL=",
+        "OAUTH_USERINFO_URL=", "",
         "# Sauvegardes",
         "BACKUP_RETENTION=30",
     ];
@@ -385,9 +397,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // ── Étape 1 → 2 : validation des pré-requis ─────────────────────────
         if ($postStep === 1) {
-            $exts = ['pdo', 'pdo_mysql', 'json', 'mbstring', 'session'];
+            // Extensions strictement requises (échec dur si absentes).
+            $exts = ['pdo', 'pdo_mysql', 'json', 'mbstring', 'session', 'sodium', 'zip', 'fileinfo'];
             foreach ($exts as $e) {
                 if (!extension_loaded($e)) throw new RuntimeException("Extension PHP manquante : {$e}");
+            }
+            // Extensions recommandées (i18n, traitement image, HTTP sortant) — l'absence
+            // dégrade certaines fonctionnalités (marketplace, avatars, traductions).
+            $extsRecommended = ['intl', 'gd', 'curl'];
+            foreach ($extsRecommended as $e) {
+                if (!extension_loaded($e)) {
+                    $inst['ext_warnings'][] = $e;
+                }
             }
             $dirs = [
                 'API/logs', 'API/config',
@@ -477,6 +498,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (!in_array($appEnv, ['production', 'development', 'test'], true)) {
                 throw new RuntimeException('Environnement invalide.');
+            }
+            // Sécurité : le mode debug expose des traces et désactive certaines
+            // protections — interdit en production.
+            if ($appEnv === 'production' && $appDebug) {
+                throw new RuntimeException('Le mode debug (APP_DEBUG) ne peut pas être activé en environnement « production ».');
             }
 
             $inst['app'] = compact(
@@ -635,7 +661,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($sql === false) throw new RuntimeException('Impossible de lire pronote.sql.');
 
             $tableCount = 0;
-            $errors = [];
+            $benignWarnings = [];
+            $fatalErrors = [];
+            // Codes d'erreur MySQL/MariaDB considérés comme bénins lors d'un import
+            // idempotent (ré-exécution, colonne/index déjà présent via le CREATE de base).
+            //   1050 table déjà existante · 1060 colonne dupliquée · 1061 index dupliqué
+            //   1062 entrée dupliquée (seed déjà inséré) · 1091 colonne/clé absente à DROP
+            //   1022 clé dupliquée · 1826 nom de contrainte FK dupliqué
+            $benignCodes = [1050, 1060, 1061, 1062, 1091, 1022, 1826];
             // Désactive les contrôles de clés étrangères pendant l'import : les CREATE TABLE
             // de pronote.sql contiennent des FK croisées dont l'ordre n'est pas garanti, ce
             // qui provoquait des erreurs errno 150 « non bloquantes » mais trompeuses.
@@ -649,16 +682,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $pdo->exec($q);
                     if (stripos($q, 'CREATE TABLE') !== false) $tableCount++;
                 } catch (PDOException $e) {
-                    $errors[] = $e->getMessage();
+                    $driverCode = (int)($e->errorInfo[1] ?? 0);
+                    if (in_array($driverCode, $benignCodes, true)) {
+                        $benignWarnings[] = "[{$driverCode}] " . $e->getMessage();
+                    } else {
+                        // Erreur réelle (syntaxe, table absente, type…) → l'install
+                        // NE DOIT PAS être annoncée comme réussie sur un schéma partiel.
+                        $fatalErrors[] = "[{$driverCode}] " . $e->getMessage();
+                    }
                 }
             }
             try { $pdo->exec('SET FOREIGN_KEY_CHECKS=1'); } catch (PDOException $e) {}
-            if ($tableCount === 0 && !empty($errors)) {
-                throw new RuntimeException("Aucune table créée. Première erreur SQL : " . $errors[0]);
+
+            // Échec dur dès la première erreur SQL non bénigne : on refuse de
+            // poursuivre sur une base potentiellement incomplète.
+            if (!empty($fatalErrors)) {
+                $shown = array_slice($fatalErrors, 0, 5);
+                throw new RuntimeException(
+                    count($fatalErrors) . " erreur(s) SQL bloquante(s) pendant l'import du schéma :\n• "
+                    . implode("\n• ", $shown)
+                    . (count($fatalErrors) > 5 ? "\n• … (+" . (count($fatalErrors) - 5) . " autres)" : '')
+                );
             }
             $log[] = ['ok', "Structure importée ({$tableCount} tables créées)"];
-            if (!empty($errors)) {
-                $log[] = ['warn', count($errors) . " requête(s) SQL en erreur (non bloquant)"];
+            if (!empty($benignWarnings)) {
+                $log[] = ['warn', count($benignWarnings) . " instruction(s) déjà appliquée(s) (ignorées, idempotent)"];
             }
 
             // 5e-bis — Validation du schéma (tables critiques)
@@ -762,7 +810,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $sync    = $sdk->syncAll();
                         $provDone = 0;
                         $migErrs = $sync['errors'] ?? [];
-                        // Provisionne le schéma de TOUS les modules (install.sql + migrations),
+                        // Provisionne le schéma de TOUS les modules (install.sql ; pas de migrations),
                         // indépendamment de leur état d'activation : les tables doivent exister
                         // même si le module reste désactivé (activation = visibilité, pas schéma).
                         foreach (array_keys($sdk->discover()) as $mk) {
@@ -864,6 +912,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException("Impossible de renommer {$tmpLock} en {$lockFile}");
             }
             $log[] = ['ok', 'Fichier install.lock créé'];
+
+            // 5k — Purge des secrets en clair conservés en session pendant le flux
+            // multi-étapes (mots de passe admin / DB / SMTP). Ils ne doivent pas
+            // survivre à l'installation dans le fichier de session sur disque.
+            unset($inst['admin']['pw'], $inst['db']['dbPass'], $inst['smtp']['password']);
+
+            // 5l — Neutraliser l'installateur : on tente de le renommer pour qu'il
+            // ne soit plus exécutable. Le verrou install.lock + le garde en tête de
+            // fichier bloquent déjà l'accès, mais retirer le point d'entrée réduit la
+            // surface d'attaque (best-effort : rename peut échouer si le fichier est
+            // verrouillé — sous Windows notamment ; l'échec n'interrompt pas l'install).
+            $disabledName = $installDir . '/install.php.disabled-' . date('Ymd');
+            if (@rename(__FILE__, $disabledName)) {
+                $log[] = ['ok', 'Installateur neutralisé (renommé en ' . basename($disabledName) . ')'];
+            } else {
+                @chmod(__FILE__, 0400);
+                $log[] = ['warn', 'Installateur non renommé automatiquement — supprimez ou renommez install.php manuellement.'];
+            }
 
             $inst['log']       = $log;
             $inst['installed'] = true;
@@ -1032,7 +1098,7 @@ code{background:#edf2f7;padding:1px 6px;border-radius:3px;font-size:.88em;font-f
 <?php
     $phpOk = version_compare(PHP_VERSION, '8.0.0', '>=');
 
-    $requiredExts = ['pdo', 'pdo_mysql', 'json', 'mbstring', 'session'];
+    $requiredExts = ['pdo', 'pdo_mysql', 'json', 'mbstring', 'session', 'sodium', 'zip', 'fileinfo'];
     $extResults = [];
     foreach ($requiredExts as $ext) $extResults[$ext] = extension_loaded($ext);
 
@@ -1053,7 +1119,7 @@ code{background:#edf2f7;padding:1px 6px;border-radius:3px;font-size:.88em;font-f
 <ul class="check-list">
     <li>
         <span class="badge <?= $phpOk ? 'badge-ok' : 'badge-fail' ?>"><?= $phpOk ? 'OK' : 'FAIL' ?></span>
-        PHP <?= PHP_VERSION ?> (≥ 7.4 requis)
+        PHP <?= PHP_VERSION ?> (≥ 8.0 requis)
     </li>
     <?php foreach ($extResults as $ext => $ok): ?>
     <li>

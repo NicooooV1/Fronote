@@ -37,7 +37,7 @@ $log('Élèves à calculer: ' . count($eleves));
 $updated = 0;
 $alertes = 0;
 
-$stmtAbsences = $pdo->prepare("SELECT COUNT(*) FROM absences WHERE id_eleve = :eid AND justifiee = 0");
+$stmtAbsences = $pdo->prepare("SELECT COUNT(*) FROM absences WHERE id_eleve = :eid AND justifie = 0");
 $stmtNotes = $pdo->prepare("SELECT AVG(note) FROM notes WHERE id_eleve = :eid");
 $stmtDiscipline = $pdo->prepare("SELECT COUNT(*) FROM incidents WHERE eleve_id = :eid");
 

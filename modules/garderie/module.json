@@ -28,7 +28,7 @@
         }
     },
     "routes": {
-        "main": "inscriptions.php"
+        "main": "creneaux.php"
     },
     "widgets": [],
     "establishment_types": [

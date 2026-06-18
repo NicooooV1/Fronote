@@ -163,11 +163,11 @@ $topIncidents    = $reportService->getTopIncidents();
 new Chart(document.getElementById('chartMoyClasse'), {
     type: 'bar',
     data: {
-        labels: <?= json_encode($clLabels) ?>,
+        labels: <?= json_encode($clLabels, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
         datasets: [{
             label: 'Moyenne /20',
-            data: <?= json_encode($clValues) ?>,
-            backgroundColor: <?= json_encode($clColors) ?>,
+            data: <?= json_encode($clValues, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
+            backgroundColor: <?= json_encode($clColors, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
             borderWidth: 1
         }]
     },
@@ -183,18 +183,18 @@ new Chart(document.getElementById('chartMoyClasse'), {
 new Chart(document.getElementById('chartEvolution'), {
     type: 'line',
     data: {
-        labels: <?= json_encode($evoLabels) ?>,
+        labels: <?= json_encode($evoLabels, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
         datasets: [
             {
                 label: 'Absences',
-                data: <?= json_encode($evoAbs) ?>,
+                data: <?= json_encode($evoAbs, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
                 borderColor: '#f59e0b',
                 backgroundColor: 'rgba(245,158,11,.1)',
                 fill: true, tension: .3
             },
             {
                 label: 'Retards',
-                data: <?= json_encode($evoRet) ?>,
+                data: <?= json_encode($evoRet, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
                 borderColor: '#3b82f6',
                 backgroundColor: 'rgba(59,130,246,.1)',
                 fill: true, tension: .3
@@ -212,10 +212,10 @@ new Chart(document.getElementById('chartEvolution'), {
 new Chart(document.getElementById('chartRepartition'), {
     type: 'bar',
     data: {
-        labels: <?= json_encode($repLabels) ?>,
+        labels: <?= json_encode($repLabels, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
         datasets: [{
             label: 'Nombre de notes',
-            data: <?= json_encode($repValues) ?>,
+            data: <?= json_encode($repValues, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
             backgroundColor: [
                 '#ef4444','#f97316','#f59e0b','#eab308',
                 '#84cc16','#22c55e','#10b981','#059669'
@@ -234,11 +234,11 @@ new Chart(document.getElementById('chartRepartition'), {
 new Chart(document.getElementById('chartReussite'), {
     type: 'bar',
     data: {
-        labels: <?= json_encode($trLabels) ?>,
+        labels: <?= json_encode($trLabels, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
         datasets: [{
             label: '% réussite (≥10/20)',
-            data: <?= json_encode($trValues) ?>,
-            backgroundColor: <?= json_encode(array_map(fn($v) => $v >= 75 ? 'rgba(34,197,94,.7)' : ($v >= 50 ? 'rgba(234,179,8,.7)' : 'rgba(239,68,68,.7)'), $trValues)) ?>,
+            data: <?= json_encode($trValues, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
+            backgroundColor: <?= json_encode(array_map(fn($v) => $v >= 75 ? 'rgba(34,197,94,.7)' : ($v >= 50 ? 'rgba(234,179,8,.7)' : 'rgba(239,68,68,.7)'), $trValues), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
             borderWidth: 1
         }]
     },

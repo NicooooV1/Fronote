@@ -23,8 +23,8 @@ class SendAbsenceNotificationJob
         if (!$eleve) return;
 
         $stmt = $pdo->prepare(
-            'SELECT p.mail FROM parents p JOIN parent_eleve pe ON pe.parent_id = p.id
-             WHERE pe.eleve_id = ? AND p.mail IS NOT NULL AND p.mail != \'\''
+            'SELECT p.mail FROM parents p JOIN parent_eleve pe ON pe.id_parent = p.id
+             WHERE pe.id_eleve = ? AND p.mail IS NOT NULL AND p.mail != \'\''
         );
         $stmt->execute([$eleveId]);
         $parentEmails = $stmt->fetchAll(\PDO::FETCH_COLUMN);

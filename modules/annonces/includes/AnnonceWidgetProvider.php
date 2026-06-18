@@ -18,7 +18,7 @@ class AnnonceWidgetProvider implements WidgetDataProvider
         $limit = (int) ($config['limit'] ?? 5);
         $limit = min(20, max(1, $limit));
 
-        try { $etab = \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { $etab = 1; }
+        $etab = \API\Core\EstablishmentContext::id();
         $stmt = $pdo->prepare(
             'SELECT id, titre, type, epingle, date_publication
              FROM annonces

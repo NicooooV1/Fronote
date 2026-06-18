@@ -59,8 +59,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $confirm = $_POST['confirmer'] ?? '';
         if ($nouveau !== $confirm) {
             $error = 'Les mots de passe ne correspondent pas.';
-        } elseif (strlen($nouveau) < 8) {
-            $error = 'Le mot de passe doit contenir au moins 8 caractères.';
+        } elseif (strlen($nouveau) < 12) {
+            $error = 'Le mot de passe doit contenir au moins 12 caractères.';
         } elseif (!preg_match('/[A-Z]/', $nouveau) || !preg_match('/[a-z]/', $nouveau) || !preg_match('/[0-9]/', $nouveau) || !preg_match('/[^A-Za-z0-9]/', $nouveau)) {
             $error = 'Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre et un caractère spécial.';
         } elseif (!$settingsService->changerMotDePasse($userId, $userType, $ancien, $nouveau)) {
@@ -105,6 +105,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $widgetConfig = $_POST['widgets'] ?? [];
         $settingsService->saveAccueilConfig($userId, $userType, $widgetConfig);
         $success = 'Configuration du tableau de bord enregistrée.';
+    } elseif ($action === 'logout_all') {
+        // Révoque toutes les autres sessions actives (conserve la session courante).
+        try {
+            $count = $settingsService->revoquerToutesSessions($userId, $userType, session_id());
+            $success = $count > 0
+                ? "Déconnexion effectuée sur {$count} autre(s) session(s)."
+                : 'Aucune autre session active à déconnecter.';
+        } catch (Exception $e) {
+            $error = 'Impossible de révoquer les sessions : ' . $e->getMessage();
+        }
+        $section = 'confidentialite';
+    } elseif ($action === 'reset_settings') {
+        // Réinitialise les préférences aux valeurs par défaut.
+        try {
+            $settingsService->reinitialiser($userId, $userType);
+            $settings = $settingsService->getSettings($userId, $userType);
+            $success = 'Préférences réinitialisées aux valeurs par défaut.';
+        } catch (Exception $e) {
+            $error = 'Impossible de réinitialiser les préférences : ' . $e->getMessage();
+        }
+        $section = 'confidentialite';
     }
     }
 }
@@ -349,7 +370,7 @@ $roleWidgets = match ($userType) {
                 <div class="card-body">
                     <p class="form-text" style="margin-bottom:12px">Modules actuellement activés pour votre profil. Contactez l'administrateur pour modifier la visibilité.</p>
                     <?php
-                    $sidebarMods = $moduleService->getForSidebar($userType);
+                    $sidebarMods = $moduleService->getForSidebar(function_exists('getEffectiveRoles') ? getEffectiveRoles() : $userType);
                     $catMeta = \API\Services\ModuleService::categoryMeta();
                     ?>
                     <?php foreach ($sidebarMods as $catKey => $mods): ?>

@@ -6,8 +6,9 @@ require_once __DIR__ . '/../includes/header.php';
 
 use API\Services\SuperAdminService;
 
-// Only super-admin or admin can access
-if (!SuperAdminService::isSuperAdmin() && getUserRole() !== 'administrateur') {
+// Gestion multi-établissements (création/activation + panorama cross-tenant) :
+// réservée au super-administrateur. Un admin classique ne gère que SON établissement.
+if (!SuperAdminService::isSuperAdmin()) {
     redirect('accueil/accueil.php');
 }
 
@@ -40,7 +41,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             $message = 'success:' . __('admin.establishment_created');
         } catch (\PDOException $e) {
-            $message = 'error:' . ($e->getCode() === '23000' ? __('admin.code_already_exists') : $e->getMessage());
+            if ($e->getCode() === '23000') {
+                $message = 'error:' . __('admin.code_already_exists');
+            } else {
+                error_log("establishment create failed: " . $e->getMessage());
+                $message = 'error:Erreur lors de la création de l\'établissement.';
+            }
         }
     } elseif ($action === 'toggle') {
         $id = (int) ($_POST['id'] ?? 0);
@@ -114,9 +120,13 @@ $pageTitle = __('admin.establishments');
                         <a href="info.php?etab_id=<?= $etab['id'] ?>" class="btn btn-sm btn-outline" title="<?= __('common.edit') ?>">
                             <i class="fas fa-edit"></i>
                         </a>
-                        <a href="switch.php?id=<?= $etab['id'] ?>" class="btn btn-sm btn-outline" title="<?= __('admin.switch_to') ?>">
-                            <i class="fas fa-exchange-alt"></i>
-                        </a>
+                        <form method="POST" action="switch.php" style="display:inline">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="id" value="<?= $etab['id'] ?>">
+                            <button type="submit" class="btn btn-sm btn-outline" title="<?= __('admin.switch_to') ?>">
+                                <i class="fas fa-exchange-alt"></i>
+                            </button>
+                        </form>
                         <form method="POST" style="display:inline" onsubmit="return confirm('<?= $etab['actif'] ? 'Archiver' : 'Activer' ?> cet établissement ?')">
                             <?= csrf_field() ?>
                             <input type="hidden" name="action" value="toggle">
@@ -124,6 +134,14 @@ $pageTitle = __('admin.establishments');
                             <input type="hidden" name="actif" value="<?= $etab['actif'] ? 0 : 1 ?>">
                             <button type="submit" class="btn btn-sm btn-outline" title="<?= $etab['actif'] ? 'Archiver' : 'Activer' ?>">
                                 <i class="fas fa-<?= $etab['actif'] ? 'box-archive' : 'check' ?>"></i>
+                            </button>
+                        </form>
+                        <form method="POST" action="purge.php" style="display:inline" onsubmit="return (function(f){var n=prompt('PURGE DÉFINITIVE de cet établissement (sauvegarde automatique avant). Tapez le NOM EXACT pour confirmer :');if(n===null)return false;f.confirm_nom.value=n;return true;})(this)">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="id" value="<?= $etab['id'] ?>">
+                            <input type="hidden" name="confirm_nom" value="">
+                            <button type="submit" class="btn btn-sm btn-danger" title="Purger (super-admin, irréversible)">
+                                <i class="fas fa-trash"></i>
                             </button>
                         </form>
                     </td>

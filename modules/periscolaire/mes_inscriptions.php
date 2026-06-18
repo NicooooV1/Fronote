@@ -6,7 +6,7 @@ $pageTitle = 'Mes inscriptions';
 $activePage = 'mes_inscriptions';
 require_once __DIR__ . '/includes/header.php';
 
-if (!isParent() && !isEleve()) { redirect('/periscolaire/services.php'); }
+if (!isParent() && !isEleve()) { redirect('/modules/periscolaire/services.php'); }
 
 $inscriptions = isParent() ? $periService->getInscriptionsParent(getUserId()) : $periService->getInscriptionsEleve(getUserId());
 $types = PeriscolaireService::typesService();

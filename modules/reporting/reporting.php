@@ -135,10 +135,10 @@ $rapport = $classeId ? $reportService->getRapportClasse($classeId, $periodeId ?:
         new Chart(document.getElementById('chartMoyennes'), {
             type: 'bar',
             data: {
-                labels: <?= json_encode($matLabels) ?>,
+                labels: <?= json_encode($matLabels, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
                 datasets: [{
                     label: 'Moyenne /20',
-                    data: <?= json_encode($matValues) ?>,
+                    data: <?= json_encode($matValues, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
                     backgroundColor: 'rgba(99,102,241,.6)',
                     borderColor: 'rgba(99,102,241,1)',
                     borderWidth: 1

@@ -248,8 +248,8 @@ class VieScolaireService {
                     SELECT p.id AS pid,
                            ROUND(SUM(n.note * n.coefficient) / NULLIF(SUM(n.coefficient), 0), 2) AS moy
                     FROM notes n
-                    JOIN periodes p ON n.periode_id = p.id
-                    WHERE n.eleve_id = ?
+                    JOIN periodes p ON n.trimestre = p.id
+                    WHERE n.id_eleve = ?
                     GROUP BY p.id
                     ORDER BY p.date_debut DESC
                     LIMIT 2
@@ -333,11 +333,11 @@ class VieScolaireService {
 
     public function getBriefingQuotidien(int $etabId): array
     {
-        $absJour = $this->pdo->prepare("SELECT COUNT(*) FROM absences WHERE date_absence = CURDATE()");
+        $absJour = $this->pdo->prepare("SELECT COUNT(*) FROM absences WHERE date_debut = CURDATE()");
         $absJour->execute();
 
-        $retards = $this->pdo->prepare("SELECT COUNT(*) FROM appel_details WHERE statut = 'retard' AND DATE(created_at) = CURDATE()");
-        $retards->execute();
+        $retards = $this->pdo->prepare("SELECT COUNT(*) FROM appel_eleves ae JOIN appels a ON ae.appel_id = a.id WHERE ae.statut = 'retard' AND a.date_appel = CURDATE() AND a.etablissement_id = :eid");
+        $retards->execute([':eid' => $etabId]);
 
         $incidents = $this->pdo->prepare("SELECT COUNT(*) FROM incidents WHERE DATE(date_incident) = CURDATE() AND etablissement_id = :eid");
         $incidents->execute([':eid' => $etabId]);
@@ -360,7 +360,7 @@ class VieScolaireService {
     {
         $events = [];
 
-        $abs = $this->pdo->prepare("SELECT 'absence' AS type, date_absence AS date, motif AS detail FROM absences WHERE id_eleve = :eid ORDER BY date_absence DESC LIMIT 20");
+        $abs = $this->pdo->prepare("SELECT 'absence' AS type, date_debut AS date, motif AS detail FROM absences WHERE id_eleve = :eid ORDER BY date_debut DESC LIMIT 20");
         $abs->execute([':eid' => $eleveId]);
         foreach ($abs as $a) $events[] = $a;
 
@@ -383,7 +383,7 @@ class VieScolaireService {
         $alertes = [];
 
         // Absences non justifiées > 3 jours
-        $abs = $this->pdo->prepare("SELECT a.id_eleve, CONCAT(e.prenom,' ',e.nom) AS eleve, e.classe, COUNT(*) AS nb FROM absences a JOIN eleves e ON a.id_eleve = e.id WHERE a.justifiee = 0 AND a.date_absence >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND e.actif = 1 GROUP BY a.id_eleve HAVING nb >= 3 ORDER BY nb DESC");
+        $abs = $this->pdo->prepare("SELECT a.id_eleve, CONCAT(e.prenom,' ',e.nom) AS eleve, e.classe, COUNT(*) AS nb FROM absences a JOIN eleves e ON a.id_eleve = e.id WHERE a.justifie = 0 AND a.date_debut >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND e.actif = 1 GROUP BY a.id_eleve HAVING nb >= 3 ORDER BY nb DESC");
         $abs->execute();
         foreach ($abs as $a) $alertes[] = ['type' => 'absences_repetees', 'eleve' => $a['eleve'], 'classe' => $a['classe'], 'detail' => $a['nb'] . ' absences non justifiées'];
 

@@ -10,7 +10,7 @@ class MatiereService
 {
     private PDO $pdo;
     public function __construct(PDO $pdo) { $this->pdo = $pdo; }
-    private function etabId(): int { try { return \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { return 1; } }
+    private function etabId(): int { return \API\Core\EstablishmentContext::id(); }
 
     public function getAll(): array
     {

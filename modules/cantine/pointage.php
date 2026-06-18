@@ -29,7 +29,6 @@ $nonPointes = array_filter($pointage, fn($r) => $r['statut'] === 'reserve');
 $pointes = array_filter($pointage, fn($r) => $r['statut'] === 'consomme');
 ?>
 
-<div class="main-content">
     <div class="page-header">
         <h1><i class="fas fa-check-double"></i> Pointage cantine</h1>
         <form method="get" class="inline-form">
@@ -94,7 +93,6 @@ $pointes = array_filter($pointage, fn($r) => $r['statut'] === 'consomme');
         </div>
     </div>
     <?php endif; ?>
-</div>
 
 <script>
 function toggleAll(checked) {

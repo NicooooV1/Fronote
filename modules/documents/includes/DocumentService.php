@@ -8,6 +8,62 @@ class DocumentService {
 
     public function __construct(PDO $pdo) { $this->pdo = $pdo; }
 
+    /** Extensions autorisées (dernière extension uniquement → bloque les doubles extensions). */
+    private const ALLOWED_EXT = ['pdf','doc','docx','xls','xlsx','ppt','pptx','odt','ods','odp','txt','csv','jpg','jpeg','png','webp','gif','zip'];
+    /** Types MIME réels autorisés (vérifiés via finfo sur le contenu, pas l'en-tête client). */
+    private const ALLOWED_MIME = [
+        'application/pdf','application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'application/vnd.oasis.opendocument.text','application/vnd.oasis.opendocument.spreadsheet','application/vnd.oasis.opendocument.presentation',
+        'text/plain','text/csv',
+        'image/jpeg','image/png','image/webp','image/gif',
+        'application/zip','application/x-zip-compressed',
+    ];
+
+    /**
+     * Valide et stocke un fichier uploadé. Retourne le nom de stockage (aléatoire).
+     * SÉCURITÉ : whitelist d'extension + MIME réel (finfo) + nom aléatoire + dossier non exécutable.
+     * @throws \RuntimeException si le fichier est refusé ou non écrit.
+     */
+    private function storeUpload(array $file): string
+    {
+        if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'])) {
+            throw new \RuntimeException("Téléversement invalide.");
+        }
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, self::ALLOWED_EXT, true)) {
+            throw new \RuntimeException("Extension non autorisée : .$ext");
+        }
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+        if (!in_array($mime, self::ALLOWED_MIME, true)) {
+            throw new \RuntimeException("Type de fichier non autorisé : $mime");
+        }
+        $uploadDir = __DIR__ . '/../uploads/';
+        if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+            throw new \RuntimeException("Répertoire d'upload indisponible.");
+        }
+        $this->ensureUploadGuard($uploadDir);
+        $filename = bin2hex(random_bytes(16)) . '.' . $ext; // jamais le nom/extension fourni pour exécuter du PHP
+        if (!move_uploaded_file($file['tmp_name'], $uploadDir . $filename)) {
+            throw new \RuntimeException("Échec de l'enregistrement du fichier.");
+        }
+        return $filename;
+    }
+
+    /** Pose un .htaccess interdisant l'exécution PHP et l'accès direct dans le dossier d'upload. */
+    private function ensureUploadGuard(string $dir): void
+    {
+        $ht = rtrim($dir, '/\\') . '/.htaccess';
+        if (is_file($ht)) return;
+        @file_put_contents(
+            $ht,
+            "Require all denied\nDeny from all\n<IfModule mod_php.c>\nphp_flag engine off\n</IfModule>\n"
+            . "<FilesMatch \"\\.(php|phtml|phar|cgi|pl|py|sh|htaccess)$\">\nRequire all denied\n</FilesMatch>\n"
+        );
+    }
+
     /**
      * Récupère les documents visibles pour un rôle donné
      */
@@ -55,12 +111,7 @@ class DocumentService {
      * Ajouter un document
      */
     public function ajouter(array $data, array $file): int {
-        $uploadDir = __DIR__ . '/../../uploads/';
-        if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
-
-        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        $filename = uniqid('doc_') . '.' . $ext;
-        move_uploaded_file($file['tmp_name'], $uploadDir . $filename);
+        $filename = $this->storeUpload($file); // validation extension + MIME + nom aléatoire
 
         $visibilite = !empty($data['visibilite']) ? json_encode($data['visibilite']) : '[]';
 
@@ -164,13 +215,8 @@ class DocumentService {
             $uploadedBy, $uploadedByType
         ]);
 
-        // Upload new file
-        $uploadDir = __DIR__ . '/../../uploads/';
-        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-
-        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        $filename = uniqid('doc_v' . ($currentVersion + 1) . '_') . '.' . $ext;
-        move_uploaded_file($file['tmp_name'], $uploadDir . $filename);
+        // Upload new file (validation centralisée : extension + MIME + nom aléatoire)
+        $filename = $this->storeUpload($file);
 
         // Update document with new file
         $newVersion = $currentVersion + 1;

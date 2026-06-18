@@ -1,0 +1,51 @@
+# Fronote — orchestration locale reproductible (application + base MySQL)
+# Démarrage : cp .env.example .env  (puis renseigner DB_NAME/DB_USER/DB_PASS)
+#             docker compose up --build
+# Application disponible sur http://localhost:8080
+services:
+  app:
+    build: .
+    image: fronote-app
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    # Variables applicatives lues depuis .env (DB_HOST, DB_NAME, APP_KEY, etc.).
+    env_file:
+      - .env
+    # Le code est monté pour le développement ; vendor/ reste celui de l'image.
+    volumes:
+      - .:/var/www/html
+      - /var/www/html/vendor
+    networks:
+      - fronote
+
+  db:
+    image: mysql:8
+    restart: unless-stopped
+    # MySQL attend MYSQL_* ; on réutilise les variables DB_* du .env de l'app.
+    environment:
+      MYSQL_DATABASE: "${DB_NAME:-fronote}"
+      MYSQL_USER: "${DB_USER:-fronote}"
+      MYSQL_PASSWORD: "${DB_PASS:-fronote}"
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASS:-root}"
+    # Persistance des données dans un volume nommé.
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASS:-root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - fronote
+
+volumes:
+  db_data:
+
+networks:
+  fronote:
+    driver: bridge

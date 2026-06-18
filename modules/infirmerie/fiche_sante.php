@@ -12,11 +12,11 @@ $eleveId = (int)($_GET['eleve'] ?? 0);
 if (isParent()) {
     $enfants = $infirmerieService->getEnfantsParent(getUserId());
     $ids = array_column($enfants, 'id');
-    if (!in_array($eleveId, $ids)) { redirect('/infirmerie/infirmerie.php'); }
+    if (!in_array($eleveId, $ids)) { redirect('modules/infirmerie/infirmerie.php'); }
 } elseif (isEleve()) {
     $eleveId = getUserId();
 } elseif (!isAdmin() && !isPersonnelVS()) {
-    redirect('/infirmerie/infirmerie.php');
+    redirect('modules/infirmerie/infirmerie.php');
 }
 
 $fiche = $infirmerieService->getFiche($eleveId);
@@ -24,10 +24,10 @@ $canEdit = isAdmin() || isPersonnelVS();
 $groupes = InfirmerieService::groupesSanguins();
 
 // Informations élève
-$stmt = getPDO()->prepare("SELECT e.*, cl.nom AS classe_nom FROM eleves e LEFT JOIN classes cl ON e.classe_id = cl.id WHERE e.id = ?");
+$stmt = getPDO()->prepare("SELECT e.*, cl.nom AS classe_nom FROM eleves e LEFT JOIN classes cl ON e.classe = cl.nom WHERE e.id = ?");
 $stmt->execute([$eleveId]);
 $eleve = $stmt->fetch(PDO::FETCH_ASSOC);
-if (!$eleve) { redirect('/infirmerie/infirmerie.php'); }
+if (!$eleve) { redirect('modules/infirmerie/infirmerie.php'); }
 
 // Derniers passages
 $passages = $infirmerieService->getPassagesEleve($eleveId);

@@ -65,10 +65,20 @@ class PaymentService
     }
 
     /**
-     * Confirme un paiement après callback du provider.
+     * Confirme un paiement APRÈS vérification de la signature du webhook provider.
+     *
+     * SÉCURITÉ (SEC-12) : ne JAMAIS appeler depuis un endpoint public en faisant
+     * confiance à un providerReference fourni par le client — ce serait un bypass de
+     * paiement. L'appelant DOIT d'abord vérifier la signature du webhook côté serveur
+     * (ex. Stripe : \Stripe\Webhook::constructEvent avec l'en-tête Stripe-Signature)
+     * puis passer $signatureVerified = true.
      */
-    public function confirmPayment(int $paymentId, string $providerReference): bool
+    public function confirmPayment(int $paymentId, string $providerReference, bool $signatureVerified = false): bool
     {
+        if (!$signatureVerified) {
+            error_log('PaymentService::confirmPayment refusé : signature de webhook non vérifiée (SEC-12).');
+            return false;
+        }
         $stmt = $this->pdo->prepare(
             "UPDATE payments SET status = 'completed', provider_reference = ?, completed_at = NOW() WHERE id = ? AND status = 'pending'"
         );

@@ -9,8 +9,10 @@ $id = (int)($_GET['id'] ?? 0);
 $facture = $factService->getFacture($id);
 if (!$facture) { header('Location: factures.php'); exit; }
 
-// Accès parent = seulement ses factures
-if (isParent() && $facture['parent_id'] != getUserId()) { redirect('/facturation/factures.php'); }
+// Accès : gestionnaires ou parents uniquement (les élèves/enseignants n'ont rien à voir ici).
+if (!isAdmin() && !isPersonnelVS() && !isParent()) { redirect('/accueil/accueil.php'); }
+// Accès parent = seulement ses factures (protection IDOR)
+if (isParent() && $facture['parent_id'] != getUserId()) { redirect('/modules/facturation/factures.php'); }
 
 $lignes = $factService->getLignes($id);
 $paiements = $factService->getPaiements($id);

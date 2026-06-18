@@ -116,30 +116,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$ok) {
                 $error = "Échec de l'enregistrement de l'établissement (le code est peut-être déjà utilisé).";
             } else {
-                // Périodes (établissement principal uniquement ; les suivants se
-                // paramètrent depuis l'administration). configurePeriodes opère sur
-                // l'établissement courant (= défaut au premier login).
-                if (empty($_POST['create_new'])) {
-                    $periodeSystem = ($_POST['periode_system'] ?? 'trimestre') === 'semestre' ? 'semestre' : 'trimestre';
-                    $periodes = [];
-                    if ($periodeSystem === 'trimestre') {
-                        $labels = ['1er trimestre', '2ème trimestre', '3ème trimestre'];
-                        for ($i = 1; $i <= 3; $i++) {
-                            $d = $_POST["p{$i}_debut"] ?? '';
-                            $f = $_POST["p{$i}_fin"] ?? '';
-                            if ($d && $f) $periodes[] = ['nom' => $labels[$i - 1], 'date_debut' => $d, 'date_fin' => $f];
-                        }
-                    } else {
-                        $labels = ['1er semestre', '2ème semestre'];
-                        for ($i = 1; $i <= 2; $i++) {
-                            $d = $_POST["s{$i}_debut"] ?? '';
-                            $f = $_POST["s{$i}_fin"] ?? '';
-                            if ($d && $f) $periodes[] = ['nom' => $labels[$i - 1], 'date_debut' => $d, 'date_fin' => $f];
-                        }
+                // Périodes scolaires — configurées pour l'établissement CIBLE (le
+                // principal au premier login, ou le nouvel établissement créé). On
+                // passe explicitement $targetId pour ne pas dépendre du scope de
+                // session (qui pointe encore l'ancien établissement pour un create_new).
+                $periodeSystem = ($_POST['periode_system'] ?? 'trimestre') === 'semestre' ? 'semestre' : 'trimestre';
+                $periodes = [];
+                if ($periodeSystem === 'trimestre') {
+                    $labels = ['1er trimestre', '2ème trimestre', '3ème trimestre'];
+                    for ($i = 1; $i <= 3; $i++) {
+                        $d = $_POST["p{$i}_debut"] ?? '';
+                        $f = $_POST["p{$i}_fin"] ?? '';
+                        if ($d && $f) $periodes[] = ['nom' => $labels[$i - 1], 'date_debut' => $d, 'date_fin' => $f];
                     }
-                    if (!empty($periodes)) {
-                        $etabService->configurePeriodes($periodeSystem, $periodes);
+                } else {
+                    $labels = ['1er semestre', '2ème semestre'];
+                    for ($i = 1; $i <= 2; $i++) {
+                        $d = $_POST["s{$i}_debut"] ?? '';
+                        $f = $_POST["s{$i}_fin"] ?? '';
+                        if ($d && $f) $periodes[] = ['nom' => $labels[$i - 1], 'date_debut' => $d, 'date_fin' => $f];
                     }
+                }
+                if (!empty($periodes)) {
+                    $etabService->configurePeriodes($periodeSystem, $periodes, $targetId);
                 }
 
                 // Classes par défaut selon le type (optionnel), insérées avec l'id
@@ -176,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if (!empty($_POST['add_another'])) {
                     // Enchaîner sur la création d'un autre établissement.
-                    header('Location: index.php?nouveau=1&ok=1');
+                    header('Location: ' . (defined('BASE_URL') ? BASE_URL : '') . '/modules/onboarding/index.php?nouveau=1');
                     exit;
                 }
                 if (!empty($_POST['finish'])) {
@@ -197,17 +196,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Valeurs de pré-remplissage des dates de périodes.
 $curYear  = (int) date('Y');
-$nextYear = $curYear + (date('n') >= 9 ? 1 : 0);
-$baseYear = date('n') >= 9 ? $curYear : $curYear - 1;
-$defTri = [
-    ['debut' => "$baseYear-09-01", 'fin' => "$baseYear-12-15"],
-    ['debut' => "$nextYear-01-03", 'fin' => "$nextYear-03-15"],
-    ['debut' => "$nextYear-03-16", 'fin' => "$nextYear-06-30"],
-];
-$defSem = [
-    ['debut' => "$baseYear-09-01", 'fin' => "$nextYear-01-31"],
-    ['debut' => "$nextYear-02-01", 'fin' => "$nextYear-06-30"],
-];
+// Année scolaire saisie (ou par défaut) → plages de périodes déduites automatiquement.
+$anneeForm = $_POST['annee_scolaire'] ?? ($current['annee_scolaire'] ?? ($curYear . '-' . ($curYear + 1)));
+$mapDef = fn(array $rows) => array_map(fn($r) => ['debut' => $r['date_debut'], 'fin' => $r['date_fin']], $rows);
+$defTri = $mapDef(\Modules\EmploiDuTemps\Services\PeriodeService::defaultPeriodes($anneeForm, 'trimestre'));
+$defSem = $mapDef(\Modules\EmploiDuTemps\Services\PeriodeService::defaultPeriodes($anneeForm, 'semestre'));
 
 include __DIR__ . '/../../templates/shared_header.php';
 include __DIR__ . '/../../templates/shared_topbar.php';
@@ -295,7 +288,6 @@ include __DIR__ . '/../../templates/shared_topbar.php';
             <div class="form-group"><label>Académie</label><input type="text" name="academie" value="<?= htmlspecialchars($_POST['academie'] ?? '') ?>" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px"></div>
         </div>
 
-        <?php if (!$createNew): ?>
         <h3 style="margin:0 0 14px;font-size:1.05em">📅 Périodes scolaires</h3>
         <div class="form-group" style="margin-bottom:14px">
             <label>Système de périodes</label>
@@ -326,7 +318,6 @@ include __DIR__ . '/../../templates/shared_topbar.php';
             </div>
             <?php endfor; ?>
         </div>
-        <?php endif; ?>
 
         <h3 style="margin:20px 0 14px;font-size:1.05em">🎨 Couleurs (optionnel)</h3>
         <div style="display:flex;gap:24px;margin-bottom:20px">

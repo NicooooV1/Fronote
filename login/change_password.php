@@ -18,8 +18,8 @@ if (!isset($_SESSION['reset_user_id']) || !isset($_SESSION['reset_code'])) {
 $error   = '';
 $success = false;
 
-// Charger la politique de mot de passe
-$passwordPolicy = new \API\Security\PasswordPolicy();
+// Charger la politique de mot de passe (instance configurée via le binding)
+$passwordPolicy = app('password_policy');
 $passwordRules  = $passwordPolicy->getRules();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
@@ -40,7 +40,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
             if (!$policyResult['valid']) {
                 $error = implode('<br>', $policyResult['errors']);
             } else {
-                $changeResult = changePassword($_SESSION['reset_user_id'], $password);
+                // SÉCURITÉ : transmettre le type d'utilisateur. Sans lui, UserService
+                // itère toutes les tables et écrase le mot de passe du PREMIER id trouvé
+                // (collision d'id inter-tables → prise de contrôle d'un compte tiers).
+                $changeResult = changePassword(
+                    $_SESSION['reset_user_id'],
+                    $password,
+                    $_SESSION['reset_user_type'] ?? null
+                );
 
                 if ($changeResult['success']) {
                     $success = true;

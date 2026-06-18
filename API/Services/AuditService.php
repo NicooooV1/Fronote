@@ -520,11 +520,15 @@ class AuditService {
      * Récupère le type de l'utilisateur actuel
      */
     protected function getCurrentUserType() {
-        if (session_status() === PHP_SESSION_ACTIVE && isset($_SESSION['user']['profil'])) {
-            return $_SESSION['user']['profil'];
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            return null;
         }
-        
-        return null;
+        // SessionGuard stocke la clé de rôle sous 'type' (cf. UserProvider) ; 'profil'
+        // est l'ancienne clé conservée en repli. $_SESSION['user_type'] est aussi posé.
+        return $_SESSION['user']['type']
+            ?? $_SESSION['user']['profil']
+            ?? $_SESSION['user_type']
+            ?? null;
     }
     
     /**

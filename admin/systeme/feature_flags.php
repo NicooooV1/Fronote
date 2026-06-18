@@ -52,7 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_SERVER['HTTP_X_REQUESTED_W
             $features->clearCache();
             echo json_encode(['success' => true]);
         } catch (\Throwable $e) {
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            error_log("feature_flag create failed: " . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => 'Erreur lors de la création du flag.']);
         }
         exit;
     }
@@ -83,22 +84,16 @@ $totalCount = count($allFlags);
 $csrfToken = $csrf->generate();
 
 $pageTitle = 'Feature Flags';
-$activePage = 'systeme';
-$rootPrefix = '../../';
+$currentPage = 'feature_flags';
 
-require_once __DIR__ . '/../../templates/shared_header.php';
+ob_start(); ?>
+<button type="button" class="ui-btn ui-btn--primary ui-btn--sm" onclick="openCreateModal()">
+    <i class="fas fa-plus"></i> Nouveau flag
+</button>
+<?php $headerExtraActions = ob_get_clean();
+
+include __DIR__ . '/../includes/header.php';
 ?>
-
-<div class="topbar">
-    <div class="topbar-left">
-        <h1 class="page-title"><i class="fas fa-toggle-on"></i> Feature Flags</h1>
-    </div>
-    <div class="topbar-right">
-        <button type="button" class="ui-btn ui-btn--primary ui-btn--sm" onclick="openCreateModal()">
-            <i class="fas fa-plus"></i> Nouveau flag
-        </button>
-    </div>
-</div>
 
 <div class="content-body p-lg">
 
@@ -321,4 +316,4 @@ function collapseAll() {
 }
 </script>
 
-<?php require_once __DIR__ . '/../../templates/shared_footer.php'; ?>
+<?php include __DIR__ . '/../includes/footer.php'; ?>

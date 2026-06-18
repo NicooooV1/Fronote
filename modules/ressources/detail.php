@@ -7,7 +7,7 @@ require_once __DIR__ . '/includes/header.php';
 
 $id = (int)($_GET['id'] ?? 0);
 $res = $resService->getRessource($id);
-if (!$res) { redirect('/ressources/ressources.php'); }
+if (!$res) { redirect('/modules/ressources/ressources.php'); }
 
 $isAuteur = ($res['auteur_id'] == getUserId());
 $isGestionnaire = isAdmin() || (isProfesseur() && $isAuteur);

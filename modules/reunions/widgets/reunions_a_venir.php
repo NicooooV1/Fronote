@@ -11,7 +11,7 @@ $reunions = $data['reunions'] ?? [];
             <div class="widget-list-content">
                 <div class="widget-list-title"><?= htmlspecialchars($r['titre']) ?></div>
                 <div class="widget-list-meta">
-                    <?= htmlspecialchars(date('d/m/Y', strtotime($r['date_reunion']))) ?>
+                    <?= htmlspecialchars(date('d/m/Y', strtotime($r['date_debut']))) ?>
                     <?php if (!empty($r['heure_debut'])): ?>
                         à <?= htmlspecialchars(substr($r['heure_debut'], 0, 5)) ?>
                     <?php endif; ?>

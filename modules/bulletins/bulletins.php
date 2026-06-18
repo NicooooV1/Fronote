@@ -106,6 +106,12 @@ if (!$selectedPeriode && !empty($periodes)) {
     $stmt->execute([$user['id']]);
     $enfants = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $selectedEnfant = (int)($_GET['eleve'] ?? ($enfants[0]['id'] ?? 0));
+    // Anti-IDOR : un parent ne peut consulter QUE le bulletin de ses propres enfants.
+    // Si ?eleve= est altéré pour viser un autre élève, on retombe sur le 1er enfant.
+    $enfantIds = array_map('intval', array_column($enfants, 'id'));
+    if ($selectedEnfant && !in_array($selectedEnfant, $enfantIds, true)) {
+        $selectedEnfant = (int)($enfants[0]['id'] ?? 0);
+    }
     ?>
     <div class="enfant-tabs">
         <?php foreach ($enfants as $enf): ?>

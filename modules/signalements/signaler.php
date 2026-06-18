@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
         'personnes_impliquees' => trim($_POST['personnes_impliquees'] ?? ''),
         'temoins' => trim($_POST['temoins'] ?? ''),
         'anonyme' => isset($_POST['anonyme']),
-        'urgence' => $_POST['urgence'] ?? 'normale',
+        'urgence' => $_POST['urgence'] ?? 'moyenne',
     ];
 
     if (empty($data['description'])) {
@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                         <label for="urgence">Niveau d'urgence</label>
                         <select name="urgence" id="urgence" class="form-control">
                             <option value="basse">Basse</option>
-                            <option value="normale" selected>Normale</option>
+                            <option value="moyenne" selected>Moyenne</option>
                             <option value="haute">Haute</option>
                             <option value="critique">Critique — nécessite intervention immédiate</option>
                         </select>

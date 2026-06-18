@@ -35,7 +35,9 @@ if ($user_role === 'parent') {
         ");
         $stmtEnfants->execute([$user['id']]);
         $enfants = $stmtEnfants->fetchAll(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {}
+    } catch (PDOException $e) {
+        error_log('[' . basename(__FILE__) . '] ' . $e->getMessage());
+    }
 
     $selectedEnfantId = (int) ($_GET['enfant'] ?? ($_SESSION['selected_enfant_id'] ?? 0));
 
@@ -109,7 +111,9 @@ if ($user_role !== 'eleve') {
     try {
         $availableClasses  = $noteService->getClasses();
         $availableMatieres = $noteService->getMatieres();
-    } catch (PDOException $e) {}
+    } catch (PDOException $e) {
+        error_log('[' . basename(__FILE__) . '] ' . $e->getMessage());
+    }
 
     // Filtrer côté PHP pour le professeur (petit dataset)
     if ($user_role === 'professeur' && !empty($notes)) {
@@ -140,7 +144,9 @@ $extraCss = ['assets/css/notes.css'];
 
 // Feature flags
 $features = null;
-try { $features = app('features'); } catch (\Throwable $e) {}
+try { $features = app('features'); } catch (\Throwable $e) {
+    error_log('[' . basename(__FILE__) . '] ' . $e->getMessage());
+}
 $ffGraphs     = $features ? $features->isEnabled('notes.statistics_graphs') : true;
 $ffBatchEntry = $features ? $features->isEnabled('notes.batch_entry') : true;
 $ffExportPdf  = $features ? $features->isEnabled('notes.export_pdf') : true;
@@ -149,7 +155,7 @@ $ffLock       = $features ? $features->isEnabled('notes.lock_after_deadline') : 
 // Extra JS for graphs
 $extraHeadHtml = '';
 if ($ffGraphs) {
-    $extraHeadHtml = '<script src="' . $rootPrefix . 'notes/assets/js/notes-graphs.js" defer></script>';
+    $extraHeadHtml = '<script src="' . $rootPrefix . 'modules/notes/assets/js/notes-graphs.js" defer></script>';
 }
 
 // Inclusion des templates partagés
