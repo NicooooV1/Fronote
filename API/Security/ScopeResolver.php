@@ -58,10 +58,16 @@ final class ScopeResolver
     /** L'utilisateur courant est-il responsable (parent / tuteur légal / …) de l'élève $studentId ? */
     public function isGuardianOf(int $studentId): bool
     {
-        if ($this->relationExists($this->utype(), $this->uid(), self::GUARDIAN_RELS, 'eleve', $studentId)) {
+        $state = $this->relationState(self::GUARDIAN_RELS, 'eleve', $studentId);
+        if ($state === 'active') {
             return true;
         }
-        // Repli hérité : table parent_eleve (lien parent → élève).
+        // Une relation existe mais est désactivée/expirée → décision AUTORITAIRE (révoquée) :
+        // surtout PAS de repli hérité, sinon la révocation serait contournée par parent_eleve.
+        if ($state === 'inactive') {
+            return false;
+        }
+        // Aucune relation enregistrée → repli sur le lien hérité (parent non encore reflété).
         if ($this->utype() === 'parent') {
             return $this->legacyExists(
                 'SELECT 1 FROM parent_eleve WHERE id_parent = ? AND id_eleve = ? LIMIT 1',
@@ -81,11 +87,17 @@ final class ScopeResolver
     public function teachesClass($class): bool
     {
         $classId = $this->classId($class);
-        if ($classId !== null
-            && $this->relationExists($this->utype(), $this->uid(), self::TEACH_RELS, 'classe', $classId)) {
-            return true;
+        if ($classId !== null) {
+            $state = $this->relationState(self::TEACH_RELS, 'classe', $classId);
+            if ($state === 'active') {
+                return true;
+            }
+            // Relation désactivée/expirée → autoritaire (pas de repli, sinon révocation contournée).
+            if ($state === 'inactive') {
+                return false;
+            }
         }
-        // Repli hérité : professeur_classes (lien prof → classe par NOM).
+        // Aucune relation enregistrée → repli sur professeur_classes (lien hérité par NOM).
         if ($this->utype() === 'professeur') {
             $nom = $this->className($class);
             if ($nom !== null) {
@@ -152,8 +164,63 @@ final class ScopeResolver
             $stmt->execute(array_merge([$st, $sid, $tt, $tid], $relTypes));
             return (bool) $stmt->fetchColumn();
         } catch (\PDOException $e) {
+            $this->logIfReal($e);
             return false; // table absente → l'appelant gère le repli hérité
         }
+    }
+
+    /**
+     * État d'une relation pour l'utilisateur courant :
+     *  - 'active'   : au moins une ligne active ET temporellement valide ;
+     *  - 'inactive' : des lignes existent mais aucune active (révoquée/expirée) → décision
+     *                 AUTORITAIRE, l'appelant NE DOIT PAS retomber sur le lien hérité ;
+     *  - 'none'     : aucune ligne → repli hérité autorisé.
+     * Corrige le contournement de révocation : désactiver une relation suffit à retirer
+     * l'accès même si le lien hérité (parent_eleve / professeur_classes) subsiste.
+     */
+    private function relationState(array $relTypes, string $targetType, int $targetId): string
+    {
+        if ($this->uid() <= 0 || $this->utype() === '' || $targetId <= 0 || $relTypes === []) {
+            return 'none';
+        }
+        try {
+            $place = implode(',', array_fill(0, count($relTypes), '?'));
+            $stmt  = $this->pdo->prepare(
+                "SELECT (is_active = 1
+                         AND (starts_at  IS NULL OR starts_at  <= NOW())
+                         AND (expires_at IS NULL OR expires_at >= NOW())) AS usable
+                  FROM account_relationships
+                  WHERE source_type = ? AND source_id = ? AND target_type = ? AND target_id = ?
+                    AND relationship_type IN ($place)"
+            );
+            $stmt->execute(array_merge([$this->utype(), $this->uid(), $targetType, $targetId], $relTypes));
+            $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            if (!$rows) {
+                return 'none';
+            }
+            foreach ($rows as $usable) {
+                if ((int) $usable === 1) {
+                    return 'active';
+                }
+            }
+            return 'inactive';
+        } catch (\PDOException $e) {
+            $this->logIfReal($e);
+            return 'none'; // table absente → repli hérité géré par l'appelant
+        }
+    }
+
+    /** Journalise une PDOException SAUF si elle signale une table absente (dégradation attendue :
+     *  SQLite de test / migration non encore jouée). Sinon une vraie panne SQL resterait invisible. */
+    private function logIfReal(\PDOException $e): void
+    {
+        $msg = $e->getMessage();
+        if (stripos($msg, 'no such table') !== false
+            || stripos($msg, "doesn't exist") !== false
+            || stripos($msg, 'Base table or view not found') !== false) {
+            return;
+        }
+        error_log('[ScopeResolver] ' . $msg);
     }
 
     /** Cibles d'un ensemble de relations pour l'utilisateur courant. */
@@ -174,6 +241,7 @@ final class ScopeResolver
             $stmt->execute(array_merge([$this->utype(), $this->uid(), $targetType], $relTypes));
             return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
         } catch (\PDOException $e) {
+            $this->logIfReal($e);
             return [];
         }
     }
@@ -185,6 +253,7 @@ final class ScopeResolver
             $s->execute($args);
             return (bool) $s->fetchColumn();
         } catch (\PDOException $e) {
+            $this->logIfReal($e);
             return false;
         }
     }
@@ -196,6 +265,7 @@ final class ScopeResolver
             $s->execute($args);
             return array_map('intval', $s->fetchAll(PDO::FETCH_COLUMN) ?: []);
         } catch (\PDOException $e) {
+            $this->logIfReal($e);
             return [];
         }
     }
@@ -211,6 +281,7 @@ final class ScopeResolver
             $v = $s->fetchColumn();
             return $v !== false ? (int) $v : null;
         } catch (\PDOException $e) {
+            $this->logIfReal($e);
             return null;
         }
     }
@@ -226,6 +297,7 @@ final class ScopeResolver
             $v = $s->fetchColumn();
             return $v !== false ? (string) $v : null;
         } catch (\PDOException $e) {
+            $this->logIfReal($e);
             return null;
         }
     }

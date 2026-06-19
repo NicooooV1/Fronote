@@ -264,7 +264,7 @@ class UserProvider
     {
         try {
             $stmt = $this->pdo->prepare(
-                "SELECT legacy_type, legacy_id, status, password_hash FROM accounts
+                "SELECT username, legacy_type, legacy_id, status, password_hash FROM accounts
                   WHERE (username = ? OR email = ?)
                     AND legacy_type IS NOT NULL AND legacy_id IS NOT NULL"
             );
@@ -273,8 +273,17 @@ class UserProvider
         } catch (\PDOException $e) {
             return ['candidates' => [], 'matched' => false]; // table absente → repli hérité
         }
+
+        // Désambiguïsation username/email : le username (unique par établissement, miroir de
+        // l'identifiant hérité) est l'identité PRIMAIRE et fait autorité. On ne retient les
+        // correspondances par email QUE si aucun username ne correspond — sinon un compte dont
+        // l'email égale le username d'un AUTRE compte coupterait des identités sans lien
+        // (statut d'autrui bloquant le login, hash d'autrui vérifié).
+        $byUsername = array_values(array_filter($rows, fn($r) => ($r['username'] ?? null) === $login));
+        $effective  = $byUsername !== [] ? $byUsername : $rows;
+
         $candidates = [];
-        foreach ($rows as $r) {
+        foreach ($effective as $r) {
             if (($r['status'] ?? '') !== 'active') {
                 continue;
             }
@@ -288,7 +297,11 @@ class UserProvider
                 $candidates[] = $u;
             }
         }
-        return ['candidates' => $candidates, 'matched' => !empty($rows)];
+        // Le verrou « compte présent mais inactif → pas de repli hérité » n'est autoritaire que
+        // pour une correspondance par USERNAME (identifiant canonique). Une correspondance seulement
+        // par email ne supprime pas le repli (le scan hérité cherche aussi par mail) — évite qu'un
+        // compte homonyme inactif verrouille un utilisateur non encore reflété dans accounts.
+        return ['candidates' => $candidates, 'matched' => $byUsername !== []];
     }
 
     /** Charge une ligne héritée (avec mot_de_passe) par (type, id), pour vérifier le login. */

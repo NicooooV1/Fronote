@@ -182,6 +182,33 @@ final class ScopeResolverTest extends TestCase
         $this->assertTrue($resolver->teachesClass(9));
     }
 
+    public function testRevokedTeacherRelationshipBlocksDespiteLegacyLink(): void
+    {
+        // Lien hérité présent (prof 5 ↔ 4A) MAIS relation account_relationships désactivée :
+        // la révocation doit faire autorité — pas de re-grant par professeur_classes.
+        $this->pdo->exec("INSERT INTO professeur_classes (id_professeur, nom_classe) VALUES (5, '4A')");
+        $this->pdo->prepare(
+            'INSERT INTO account_relationships (source_type, source_id, target_type, target_id, relationship_type, is_active)
+             VALUES (?, ?, ?, ?, ?, 0)'
+        )->execute(['professeur', 5, 'classe', 8, 'teacher_of']);
+
+        $resolver = new ScopeResolver($this->pdo, ['id' => 5, 'type' => 'professeur', 'etablissement_id' => 1]);
+        $this->assertFalse($resolver->teachesClass(8), 'Relation révoquée → accès retiré malgré le lien hérité (par id).');
+        $this->assertFalse($resolver->teachesClass('4A'), 'Idem via le nom de classe.');
+    }
+
+    public function testRevokedGuardianRelationshipBlocksDespiteParentEleve(): void
+    {
+        // parent_eleve (10→100) présent (setUp) MAIS relation parent_of désactivée → accès retiré.
+        $this->pdo->prepare(
+            'INSERT INTO account_relationships (source_type, source_id, target_type, target_id, relationship_type, is_active)
+             VALUES (?, ?, ?, ?, ?, 0)'
+        )->execute(['parent', 10, 'eleve', 100, 'parent_of']);
+
+        $resolver = new ScopeResolver($this->pdo, ['id' => 10, 'type' => 'parent', 'etablissement_id' => 1]);
+        $this->assertFalse($resolver->isGuardianOf(100), 'Relation parentale révoquée → accès retiré malgré parent_eleve.');
+    }
+
     public function testResolverDegradesWithoutRelationshipTable(): void
     {
         // Sans table account_relationships, le résolveur ne doit PAS fataliser

@@ -282,11 +282,12 @@ if (!function_exists('assertUserCanReadEleve')) {
         if ($myEtab > 0 && (int) $eRow['etablissement_id'] !== $myEtab) return false;
         if (in_array($role, ['administrateur', 'vie_scolaire'], true)) return true;
         if ($role === 'professeur') {
-            try {
-                $stC = $pdo->prepare("SELECT 1 FROM professeur_classes WHERE id_professeur = ? AND nom_classe = ? LIMIT 1");
-                $stC->execute([(int) $user['id'], (string) ($eRow['classe'] ?? '')]);
-                return (bool) $stC->fetchColumn();
-            } catch (\PDOException $e) { return false; }
+            // Périmètre unifié (account_relationships ∪ professeur_classes, avec respect de
+            // l'activation/expiration des relations) — cohérent avec Authorization::can(own_classes).
+            $resolver = new \API\Security\ScopeResolver($pdo, [
+                'id' => (int) $user['id'], 'type' => 'professeur', 'etablissement_id' => $myEtab,
+            ]);
+            return $resolver->teachesClass((string) ($eRow['classe'] ?? ''));
         }
         if ($role === 'eleve')  return (int) $user['id'] === $eleveId;
         if ($role === 'parent') return parentOwnsEleve((int) $user['id'], $eleveId);

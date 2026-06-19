@@ -17,16 +17,15 @@ $pdo   = getPDO();
 $svc   = new RelationshipService($pdo);
 $actor = getCurrentUser();
 
-if (!isset($_SESSION['csrf_token'])) { $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); }
-$csrf = $_SESSION['csrf_token'];
-
 $message = '';
 $error   = '';
 
 $srcType = $_GET['st'] ?? ($_POST['st'] ?? '');
 $srcId   = (int) ($_GET['sid'] ?? ($_POST['sid'] ?? 0));
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && hash_equals($csrf, $_POST['csrf_token'] ?? '')) {
+// CSRF : on s'appuie sur le validateur canonique du framework (rotation de jeton,
+// usage unique, expiration) — cf. docs/security.md, plutôt qu'un schéma maison.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     try {
         if (($_POST['action'] ?? '') === 'add') {
             $svc->add(
@@ -98,7 +97,7 @@ include __DIR__ . '/../includes/header.php';
                         <td><?= !empty($r['expires_at']) ? htmlspecialchars($r['expires_at']) : '<em>permanent</em>' ?></td>
                         <td>
                             <form method="post" onsubmit="return confirm('Désactiver cette relation ?')">
-                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
+                                <?= csrfField() ?>
                                 <input type="hidden" name="st" value="<?= htmlspecialchars($srcType) ?>">
                                 <input type="hidden" name="sid" value="<?= $srcId ?>">
                                 <input type="hidden" name="action" value="remove">
@@ -117,7 +116,7 @@ include __DIR__ . '/../includes/header.php';
         <div class="card-header"><h2>Ajouter une relation</h2></div>
         <div class="card-body">
             <form method="post" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
+                <?= csrfField() ?>
                 <input type="hidden" name="st" value="<?= htmlspecialchars($srcType) ?>">
                 <input type="hidden" name="sid" value="<?= $srcId ?>">
                 <input type="hidden" name="action" value="add">

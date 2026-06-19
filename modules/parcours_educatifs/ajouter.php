@@ -30,6 +30,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !validateCSRFToken($_POST['csrf_tok
     } elseif (!assertUserCanReadEleve((int) $data['eleve_id'])) {
         // Anti-IDOR : un parcours ne se crée que pour un élève du périmètre.
         $erreur = "Vous n'avez pas accès à cet élève.";
+    } elseif ($editId && (!$entry || !assertUserCanReadEleve((int) ($entry['eleve_id'] ?? 0)))) {
+        // Anti-IDOR (édition) : vérifie l'élève PROPRIÉTAIRE de l'enregistrement existant,
+        // pas seulement l'eleve_id du corps POST — sinon un editId forgé permet de modifier
+        // le parcours d'un élève hors périmètre.
+        $erreur = "Vous n'avez pas accès à cet enregistrement.";
     }
     if (!$erreur) {
         if ($editId) {
