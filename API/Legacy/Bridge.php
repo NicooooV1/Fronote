@@ -1080,4 +1080,42 @@ if (!function_exists('validate')) {
 	}
 }
 
+// ──────────── REFONTE 3-MONDES : helpers d'autorisation par monde ────────────
+// Remplacent l'ancien requireRole(). Délèguent à API\Security\WorldContext.
+if (!function_exists('platformCan')) {
+	function platformCan(string $permission): bool { return \API\Security\WorldContext::platformCan($permission); }
+}
+if (!function_exists('platformAuthorize')) {
+	function platformAuthorize(string $permission): void { \API\Security\WorldContext::platformAuthorize($permission); }
+}
+if (!function_exists('tenantCan')) {
+	function tenantCan(string $permission): bool { return \API\Security\WorldContext::tenantCan($permission); }
+}
+if (!function_exists('tenantCanOn')) {
+	function tenantCanOn(string $permission, string $resourceType, int $resourceId): bool {
+		return \API\Security\WorldContext::tenantCanOn($permission, $resourceType, $resourceId);
+	}
+}
+if (!function_exists('tenantAuthorize')) {
+	function tenantAuthorize(string $permission): void { \API\Security\WorldContext::tenantAuthorize($permission); }
+}
+if (!function_exists('tenantAuthorizeOn')) {
+	function tenantAuthorizeOn(string $permission, string $resourceType, int $resourceId): void {
+		\API\Security\WorldContext::tenantAuthorizeOn($permission, $resourceType, $resourceId);
+	}
+}
+if (!function_exists('supportCan')) {
+	function supportCan(int $establishmentId, string $level, ?string $type = null, ?int $id = null, bool $sensitive = false): bool {
+		return \API\Security\WorldContext::supportCan($establishmentId, $level, $type, $id, $sensitive);
+	}
+}
+if (!function_exists('supportAuthorize')) {
+	function supportAuthorize(int $establishmentId, string $level, ?string $type = null, ?int $id = null, bool $sensitive = false): void {
+		\API\Security\WorldContext::supportAuthorize($establishmentId, $level, $type, $id, $sensitive);
+	}
+}
+if (!function_exists('currentWorld')) {
+	function currentWorld(): ?string { return \API\Security\WorldContext::currentWorld(); }
+}
+
 // ==================== FIN DU BRIDGE ====================
