@@ -156,9 +156,16 @@ CREATE TABLE `etablissements` (
   `pied_de_page` text DEFAULT NULL,
   `default_locale` varchar(10) NOT NULL DEFAULT 'fr',
   `actif` tinyint(1) NOT NULL DEFAULT 1,
+  `slug` varchar(120) DEFAULT NULL,
+  `status` enum('draft','onboarding','active','suspended','archived','deleted','purged') NOT NULL DEFAULT 'active',
+  `created_from_invite_id` int(11) DEFAULT NULL,
+  `created_by_tenant_account_id` int(11) DEFAULT NULL,
+  `created_by_platform_account_id` int(11) DEFAULT NULL,
   `date_creation` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_code` (`code`)
+  UNIQUE KEY `uk_code` (`code`),
+  KEY `idx_etab_slug` (`slug`),
+  KEY `idx_etab_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `etablissements` (`id`, `nom`, `code`, `type`) VALUES (1, 'Établissement Scolaire', 'default', 'college');
@@ -1217,6 +1224,164 @@ CREATE TABLE `director_invitations` (
   KEY `idx_dirinvite_email` (`email`),
   KEY `idx_dirinvite_status` (`status`),
   CONSTRAINT `fk_dirinvite_creator` FOREIGN KEY (`created_by_platform_account_id`) REFERENCES `platform_accounts` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================================
+-- Monde 2 = ÉTABLISSEMENT (locataire SaaS) : tables tenant_*.
+-- L'appartenance (tenant_memberships) fournit le périmètre établissement ; les
+-- rôles sont attribués AU NIVEAU DE L'APPARTENANCE (multi-établissement possible).
+-- Aucune FK vers les tables platform_*. (etablissements sert de table establishments.)
+-- ============================================================================
+
+CREATE TABLE `tenant_accounts` (
+  `id`                INT AUTO_INCREMENT PRIMARY KEY,
+  `email`             VARCHAR(180) NULL,
+  `username`          VARCHAR(100) NOT NULL,
+  `password_hash`     VARCHAR(255) NULL,
+  `first_name`        VARCHAR(100) NOT NULL,
+  `last_name`         VARCHAR(100) NOT NULL,
+  `display_name`      VARCHAR(180) NULL,
+  `account_type`      ENUM('director','staff','teacher','student','family','external','temporary','system') NOT NULL,
+  `status`            ENUM('pending','active','inactive','locked','archived','deleted') NOT NULL DEFAULT 'pending',
+  `must_change_password` TINYINT(1) NOT NULL DEFAULT 1,
+  `password_changed_at`  DATETIME  NULL,
+  `two_factor_enabled`   TINYINT(1) NOT NULL DEFAULT 0,
+  `two_factor_secret`    VARCHAR(128) NULL,
+  `last_login_at`     DATETIME NULL,
+  `locked_until`      DATETIME NULL,
+  `failed_login_attempts` INT NOT NULL DEFAULT 0,
+  `legacy_type`       VARCHAR(30) NULL,   -- table d'origine (eleves/parents/…) pour la migration
+  `legacy_id`         INT NULL,
+  `created_by`        INT NULL,
+  `created_at`        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`        DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at`        DATETIME NULL,
+  UNIQUE KEY `uk_tenant_username` (`username`),
+  UNIQUE KEY `uk_tenant_legacy` (`legacy_type`, `legacy_id`),
+  KEY `idx_tenant_email` (`email`),
+  KEY `idx_tenant_type` (`account_type`),
+  KEY `idx_tenant_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `tenant_account_profiles` (
+  `id`               INT AUTO_INCREMENT PRIMARY KEY,
+  `tenant_account_id` INT NOT NULL,
+  `profile_type`     ENUM('staff','student','family','external','system') NOT NULL,
+  `establishment_id` INT NULL,
+  `date_of_birth`    DATE NULL,
+  `place_of_birth`   VARCHAR(150) NULL,
+  `address`          TEXT NULL,
+  `job_title`        VARCHAR(150) NULL,
+  `employee_number`  VARCHAR(100) NULL,
+  `student_number`   VARCHAR(100) NULL,
+  `class_id`         INT NULL,
+  `company_id`       INT NULL,
+  `created_at`       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`       DATETIME NULL,
+  KEY `idx_tap_account` (`tenant_account_id`),
+  CONSTRAINT `fk_tap_account` FOREIGN KEY (`tenant_account_id`) REFERENCES `tenant_accounts` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_tap_etab`    FOREIGN KEY (`establishment_id`) REFERENCES `etablissements` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `tenant_memberships` (
+  `id`                INT AUTO_INCREMENT PRIMARY KEY,
+  `establishment_id`  INT NOT NULL,
+  `tenant_account_id` INT NOT NULL,
+  `status`            ENUM('pending','active','inactive','revoked') NOT NULL DEFAULT 'active',
+  `joined_at`         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `revoked_at`        DATETIME NULL,
+  UNIQUE KEY `uk_membership` (`establishment_id`, `tenant_account_id`),
+  KEY `idx_membership_account` (`tenant_account_id`),
+  CONSTRAINT `fk_mbr_etab`    FOREIGN KEY (`establishment_id`) REFERENCES `etablissements` (`id`),
+  CONSTRAINT `fk_mbr_account` FOREIGN KEY (`tenant_account_id`) REFERENCES `tenant_accounts` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `tenant_roles` (
+  `id`            INT AUTO_INCREMENT PRIMARY KEY,
+  `role_key`      VARCHAR(100) NOT NULL,
+  `label`         VARCHAR(180) NOT NULL,
+  `description`   TEXT NULL,
+  `category`      ENUM('direction','administratif','vie_scolaire','pedagogique','sante_social','famille','eleve','externe','systeme') NOT NULL,
+  `default_scope_type` VARCHAR(80) NOT NULL,
+  `is_sensitive`  TINYINT(1) NOT NULL DEFAULT 0,
+  `is_system`     TINYINT(1) NOT NULL DEFAULT 1,
+  `is_assignable` TINYINT(1) NOT NULL DEFAULT 1,
+  UNIQUE KEY `uk_tenant_role_key` (`role_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `tenant_permissions` (
+  `id`             INT AUTO_INCREMENT PRIMARY KEY,
+  `permission_key` VARCHAR(150) NOT NULL,
+  `label`          VARCHAR(180) NOT NULL,
+  `description`    TEXT NULL,
+  `domain`         VARCHAR(100) NOT NULL,
+  `action`         VARCHAR(80) NOT NULL,
+  `is_sensitive`   TINYINT(1) NOT NULL DEFAULT 0,
+  `created_at`     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_tenant_permission_key` (`permission_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `tenant_role_permissions` (
+  `id`                  INT AUTO_INCREMENT PRIMARY KEY,
+  `tenant_role_id`      INT NOT NULL,
+  `tenant_permission_id` INT NOT NULL,
+  `granted`             TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at`          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_trp` (`tenant_role_id`, `tenant_permission_id`),
+  CONSTRAINT `fk_trp_role` FOREIGN KEY (`tenant_role_id`) REFERENCES `tenant_roles` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_trp_perm` FOREIGN KEY (`tenant_permission_id`) REFERENCES `tenant_permissions` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `tenant_membership_roles` (
+  `id`            INT AUTO_INCREMENT PRIMARY KEY,
+  `membership_id` INT NOT NULL,
+  `tenant_role_id` INT NOT NULL,
+  `scope_type`    ENUM('global','establishment','establishments','class','classes','group','groups','subject','subjects','student','students','children','own_classes','assigned','self','company','temporary') NOT NULL,
+  `scope_id`      INT NULL,
+  `starts_at`     DATETIME NULL,
+  `expires_at`    DATETIME NULL,
+  `reason`        VARCHAR(255) NULL,
+  `assigned_by_membership_id` INT NULL,
+  `assigned_by_platform_account_id` INT NULL,
+  `is_active`     TINYINT(1) NOT NULL DEFAULT 1,
+  `assigned_at`   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `revoked_at`    DATETIME NULL,
+  UNIQUE KEY `uk_membership_role` (`membership_id`, `tenant_role_id`),
+  KEY `idx_tmr_membership` (`membership_id`),
+  KEY `idx_tmr_role` (`tenant_role_id`),
+  KEY `idx_tmr_validity` (`expires_at`),
+  CONSTRAINT `fk_tmr_membership` FOREIGN KEY (`membership_id`) REFERENCES `tenant_memberships` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_tmr_role`       FOREIGN KEY (`tenant_role_id`) REFERENCES `tenant_roles` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `tenant_membership_role_scope_values` (
+  `id`                INT AUTO_INCREMENT PRIMARY KEY,
+  `membership_role_id` INT NOT NULL,
+  `scope_type`        VARCHAR(80) NOT NULL,
+  `scope_id`          INT NOT NULL,
+  `created_at`        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_tmrsv` (`membership_role_id`, `scope_type`, `scope_id`),
+  KEY `idx_tmrsv_role` (`membership_role_id`),
+  KEY `idx_tmrsv_target` (`scope_type`, `scope_id`),
+  CONSTRAINT `fk_tmrsv_role` FOREIGN KEY (`membership_role_id`) REFERENCES `tenant_membership_roles` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `tenant_audit_logs` (
+  `id`               INT AUTO_INCREMENT PRIMARY KEY,
+  `establishment_id` INT NOT NULL,
+  `actor_account_id` INT NULL,
+  `target_account_id` INT NULL,
+  `action`           VARCHAR(60) NOT NULL,  -- role_assigned|account_created|sensitive_access|import|export|settings_changed|…
+  `target_type`      VARCHAR(100) NULL,
+  `target_id`        INT NULL,
+  `old_value`        JSON NULL,
+  `new_value`        JSON NULL,
+  `ip_address`       VARCHAR(45) NULL,
+  `user_agent`       TEXT NULL,
+  `created_at`       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_tal_etab` (`establishment_id`),
+  KEY `idx_tal_action` (`action`),
+  CONSTRAINT `fk_tal_etab` FOREIGN KEY (`establishment_id`) REFERENCES `etablissements` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
