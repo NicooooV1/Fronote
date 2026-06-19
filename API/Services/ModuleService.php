@@ -432,16 +432,25 @@ class ModuleService
     {
         if ($this->topbarColsEnsured) return;
         $this->topbarColsEnsured = true;
-        $columns = [
-            "ADD COLUMN IF NOT EXISTS `topbar_category` VARCHAR(50) DEFAULT NULL",
-            "ADD COLUMN IF NOT EXISTS `topbar_sort_order` INT NOT NULL DEFAULT 50",
+        // On vérifie l'existence des colonnes AVANT d'altérer : "ADD COLUMN IF NOT EXISTS"
+        // n'est pas supporté par toutes les versions MySQL/MariaDB (erreur de syntaxe à
+        // chaque page sinon).
+        $wanted = [
+            'topbar_category'   => "ADD COLUMN `topbar_category` VARCHAR(50) DEFAULT NULL",
+            'topbar_sort_order' => "ADD COLUMN `topbar_sort_order` INT NOT NULL DEFAULT 50",
         ];
-        foreach ($columns as $clause) {
+        try {
+            $existing = $this->pdo->query("SHOW COLUMNS FROM `modules_config`")->fetchAll(\PDO::FETCH_COLUMN);
+        } catch (\Throwable $e) {
+            error_log('[ModuleService] ensureTopbarColumns SHOW COLUMNS: ' . $e->getMessage());
+            return;
+        }
+        foreach ($wanted as $col => $clause) {
+            if (in_array($col, $existing, true)) continue;
             try {
                 $this->pdo->exec("ALTER TABLE `modules_config` {$clause}");
             } catch (\Throwable $e) {
-                // MySQL < 8 : pas de IF NOT EXISTS — ignorer (colonne déjà présente ou table absente)
-                error_log('[ModuleService.php] ' . $e->getMessage());
+                error_log('[ModuleService] ensureTopbarColumns ALTER ' . $col . ': ' . $e->getMessage());
             }
         }
     }

@@ -2,8 +2,9 @@
 $activePage = 'projets';
 require_once __DIR__ . '/includes/header.php';
 
-$user     = $_SESSION['user'];
-$role     = $user['type'] ?? 'eleve';
+// Source de vérité = helpers d'auth (et non $_SESSION['user'] brut, fragile/incohérent).
+$user     = getCurrentUser();
+$role     = getUserRole() ?? 'eleve';
 
 // Contrôle d'accès : la liste des projets (responsables, budgets…) est réservée aux
 // rôles déclarés dans module.json (administrateur, professeur, vie_scolaire) — pas les
@@ -11,7 +12,7 @@ $role     = $user['type'] ?? 'eleve';
 if (!isAdmin() && !isProfesseur() && !isVieScolaire()) { header('Location: /'); exit; }
 
 $filtres  = ['statut' => $_GET['statut'] ?? '', 'type' => $_GET['type'] ?? ''];
-if ($role === 'professeur') $filtres['responsable_id'] = $user['id'] ?? null;
+if ($role === 'professeur') $filtres['responsable_id'] = getUserId();
 $projets  = $projetService->getProjets($filtres);
 $stats    = $projetService->getStats();
 $types    = ProjetPedagogiqueService::typesLabels();

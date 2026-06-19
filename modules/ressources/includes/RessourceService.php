@@ -16,11 +16,10 @@ class RessourceService
     public function getRessources(array $filters = []): array
     {
         $sql = "SELECT r.*, m.nom AS matiere_nom,
-                       COALESCE(CONCAT(pr.prenom, ' ', pr.nom), CONCAT(u.prenom, ' ', u.nom)) AS auteur_nom
+                       CONCAT(pr.prenom, ' ', pr.nom) AS auteur_nom
                 FROM ressources_pedagogiques r
                 LEFT JOIN matieres m ON r.matiere_id = m.id
                 LEFT JOIN professeurs pr ON r.auteur_id = pr.id
-                LEFT JOIN utilisateurs u ON r.auteur_id = u.id
                 WHERE 1=1";
         $params = [];
         if (!empty($filters['type'])) {
@@ -52,11 +51,10 @@ class RessourceService
     public function getRessource(int $id): ?array
     {
         $stmt = $this->pdo->prepare("SELECT r.*, m.nom AS matiere_nom,
-                COALESCE(CONCAT(pr.prenom, ' ', pr.nom), CONCAT(u.prenom, ' ', u.nom)) AS auteur_nom
+                CONCAT(pr.prenom, ' ', pr.nom) AS auteur_nom
                 FROM ressources_pedagogiques r
                 LEFT JOIN matieres m ON r.matiere_id = m.id
                 LEFT JOIN professeurs pr ON r.auteur_id = pr.id
-                LEFT JOIN utilisateurs u ON r.auteur_id = u.id
                 WHERE r.id = ?");
         $stmt->execute([$id]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;

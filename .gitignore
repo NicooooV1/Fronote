@@ -27,3 +27,4 @@ modules/hello_world
 config/marketplace/keys/
 *.sk
 dist/*.fmod
+.phpunit.result.cache
