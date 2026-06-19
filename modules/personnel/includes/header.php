@@ -4,6 +4,8 @@
 // + SameSite=Lax + nom/path par instance). Ne PAS faire de session_start() nu ici.
 require_once __DIR__ . '/../../../API/Legacy/Bridge.php';
 requireAuth();
+// Gate d'autorisation par module (défense en profondeur).
+enforceModuleAccess(basename(dirname(__DIR__)));
 
 if (!isAdmin() && !isPersonnelVS()) { redirect('/accueil/accueil.php'); }
 

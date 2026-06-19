@@ -5,6 +5,8 @@
 $rootPrefix = '../../';
 require_once __DIR__ . '/../../../API/bootstrap.php';
 requireAuth();
+// Gate d'autorisation par module (défense en profondeur).
+enforceModuleAccess(basename(dirname(__DIR__)));
 
 // Photos/identités de mineurs : réservé au personnel (admin, professeurs, vie scolaire).
 // Empêche un élève/parent de moissonner les photos de tous les autres élèves.

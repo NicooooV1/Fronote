@@ -1,5 +1,8 @@
 <?php
 require_once __DIR__ . '/../../../API/core.php';
+// Auth + gate d'autorisation par module (avant tout rendu).
+requireAuth();
+enforceModuleAccess(basename(dirname(__DIR__)));
 
 $pageTitle = $pageTitle ?? 'Bulletins';
 $activePage = 'bulletins';

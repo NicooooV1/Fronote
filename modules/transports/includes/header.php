@@ -4,6 +4,8 @@
 // + SameSite=Lax + nom/path par instance). Ne PAS faire de session_start() nu ici.
 require_once __DIR__ . '/../../../API/Legacy/Bridge.php';
 requireAuth();
+// Gate d'autorisation par module (défense en profondeur).
+enforceModuleAccess(basename(dirname(__DIR__)));
 
 // Gating M32 : pages de gestion transports/internat (listes d'élèves d'autrui,
 // inventaire des lignes/chambres) réservées au staff. Avant tout rendu HTML.

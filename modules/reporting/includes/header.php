@@ -5,6 +5,8 @@
 $rootPrefix = '../../';
 require_once __DIR__ . '/../../../API/bootstrap.php';
 requireAuth();
+// Gate d'autorisation par module (défense en profondeur).
+enforceModuleAccess(basename(dirname(__DIR__)));
 
 if (!isAdmin() && !isTeacher() && !isVieScolaire()) {
     redirect('accueil/accueil.php');

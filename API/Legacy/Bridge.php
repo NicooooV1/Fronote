@@ -343,6 +343,47 @@ if (!function_exists('requireRole')) {
 	}
 }
 
+if (!function_exists('enforceModuleAccess')) {
+	/**
+	 * Gate d'autorisation PAR MODULE (défense en profondeur, fail-closed).
+	 *
+	 * Si le module $moduleKey déclare une liste de rôles autorisés
+	 * (modules_config.roles_autorises) et qu'aucun rôle effectif de l'utilisateur n'y
+	 * figure, l'accès est refusé (redirection vers l'accueil, comme requireRole). Les
+	 * modules sans restriction (roles_autorises NULL ou "*") restent accessibles à tout
+	 * utilisateur authentifié ; super_admin a toujours accès. Garantit que la visibilité
+	 * du menu == l'accès réel (corrige « lien affiché mais accès qui rebondit »), et
+	 * bloque l'accès direct par URL aux modules réservés.
+	 */
+	function enforceModuleAccess(string $moduleKey): void {
+		$moduleKey = trim($moduleKey);
+		if ($moduleKey === '') return;
+		try {
+			$roles   = getEffectiveRoles();
+			$allowed = app('modules')->isVisibleForRoles($moduleKey, $roles);
+		} catch (\Throwable $e) {
+			// Erreur d'infrastructure (DB/cache) : ne pas verrouiller toute l'application.
+			error_log('[enforceModuleAccess] ' . $e->getMessage());
+			return;
+		}
+		if ($allowed) return;
+
+		$script  = $_SERVER['SCRIPT_NAME'] ?? '?';
+		$current = $roles ? implode(', ', $roles) : '(non authentifié)';
+		if (session_status() === PHP_SESSION_ACTIVE) {
+			$_SESSION['error_message'] = "Accès refusé au module « {$moduleKey} » (rôles : {$current}).";
+		}
+		error_log("[enforceModuleAccess] denied module={$moduleKey} script={$script} roles=[{$current}]");
+		if (!headers_sent()) {
+			$base = defined('BASE_URL') ? BASE_URL : '';
+			header('Location: ' . $base . '/accueil/accueil.php');
+			exit;
+		}
+		http_response_code(403);
+		exit('Accès non autorisé.');
+	}
+}
+
 if (!function_exists('can')) {
 	/**
 	 * L'utilisateur courant a-t-il $permission (dans le contexte $ctx) ?

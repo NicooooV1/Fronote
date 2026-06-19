@@ -50,6 +50,18 @@ $isAdmin       = ($user_role === 'administrateur');
 // Connexion base de données
 $pdo = getPDO();
 
+// Gate d'autorisation par module (défense en profondeur — cohérent avec la nav).
+$__moduleKey = $activePage ?? '';
+if ($__moduleKey === '') {
+    $__caller = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1)[0]['file'] ?? '';
+    if (preg_match('#/modules/([^/]+)/#', str_replace('\\', '/', $__caller), $__mm)) {
+        $__moduleKey = $__mm[1];
+    }
+}
+if ($__moduleKey !== '' && function_exists('enforceModuleAccess')) {
+    enforceModuleAccess($__moduleKey);
+}
+
 // Onboarding gate — au premier login admin, tant que l'établissement n'est pas
 // configuré (code 'default'), rediriger vers l'assistant de mise en route ; puis,
 // une fois configuré, forcer la redéfinition des périodes si l'année est terminée.

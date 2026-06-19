@@ -4,6 +4,8 @@
 // + nom/path par instance). Ne PAS faire de session_start() nu ici.
 require_once __DIR__ . '/../../../API/bootstrap.php';
 requireAuth();
+// Gate d'autorisation par module (défense en profondeur).
+enforceModuleAccess(basename(dirname(__DIR__)));
 $pdo = getPDO();
 require_once __DIR__ . '/VieAssociativeService.php';
 $vieAssoService = new VieAssociativeService($pdo);

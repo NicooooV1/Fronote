@@ -3,6 +3,9 @@
  * En-tête standardisé pour le module Emploi du Temps (topbar layout)
  */
 require_once __DIR__ . '/../../../API/core.php';
+// Auth + gate d'autorisation par module (avant tout rendu).
+requireAuth();
+enforceModuleAccess(basename(dirname(__DIR__)));
 
 $pageTitle = $pageTitle ?? 'Emploi du temps';
 $currentPage = $currentPage ?? '';

@@ -6,6 +6,9 @@
 
 // S'assurer que l'API est chargée
 require_once __DIR__ . '/../../../API/core.php';
+// Auth + gate d'autorisation par module (avant tout rendu).
+requireAuth();
+enforceModuleAccess(basename(dirname(__DIR__)));
 
 // S'assurer que les variables nécessaires sont définies
 $pageTitle = $pageTitle ?? 'Absences';
