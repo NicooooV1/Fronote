@@ -1136,6 +1136,89 @@ CREATE TABLE `account_profiles` (
   CONSTRAINT `fk_ap_account` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ============================================================================
+-- ============================================================================
+-- REFONTE 3-MONDES (cahier des charges « Plateforme / Établissements / Support »)
+-- Monde 1 = PLATEFORME (équipe interne Fronote) : tables platform_*.
+-- Séparées physiquement des comptes établissement (tenant_*) : aucune FK ne relie
+-- un compte plateforme à un rôle établissement, ni l'inverse.
+-- ============================================================================
+-- ============================================================================
+
+-- ── PLATEFORME : comptes internes Fronote (équipe) ──
+CREATE TABLE `platform_accounts` (
+  `id`                 INT AUTO_INCREMENT PRIMARY KEY,
+  `email`              VARCHAR(180) NOT NULL,
+  `username`           VARCHAR(100) NOT NULL,
+  `password_hash`      VARCHAR(255) NOT NULL,
+  `first_name`         VARCHAR(100) NOT NULL,
+  `last_name`          VARCHAR(100) NOT NULL,
+  `status`             ENUM('active','inactive','locked','archived') NOT NULL DEFAULT 'active',
+  `two_factor_enabled` TINYINT(1)   NOT NULL DEFAULT 0,
+  `two_factor_secret`  VARCHAR(128) NULL,
+  `last_login_at`      DATETIME     NULL,
+  `locked_until`       DATETIME     NULL,
+  `failed_login_attempts` INT       NOT NULL DEFAULT 0,
+  `legacy_super_admin_id` INT       NULL,   -- traçabilité de migration (super_admins.id)
+  `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`         DATETIME     NULL ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_platform_email` (`email`),
+  UNIQUE KEY `uk_platform_username` (`username`),
+  KEY `idx_platform_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── PLATEFORME : catalogue des rôles internes (jamais de rôle établissement ici) ──
+CREATE TABLE `platform_roles` (
+  `id`           INT AUTO_INCREMENT PRIMARY KEY,
+  `role_key`     VARCHAR(100) NOT NULL,  -- super_admin, platform_admin, platform_support, platform_security, platform_dpo, platform_maintenance, platform_auditor
+  `label`        VARCHAR(180) NOT NULL,
+  `description`  TEXT         NULL,
+  `is_sensitive` TINYINT(1)   NOT NULL DEFAULT 0,
+  `is_system`    TINYINT(1)   NOT NULL DEFAULT 1,
+  `created_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_platform_role_key` (`role_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── PLATEFORME : attribution de rôles internes ──
+CREATE TABLE `platform_account_roles` (
+  `id`                  INT AUTO_INCREMENT PRIMARY KEY,
+  `platform_account_id` INT NOT NULL,
+  `platform_role_id`    INT NOT NULL,
+  `scope_type`          ENUM('global','support_only','security_only') NOT NULL DEFAULT 'global',
+  `assigned_by_platform_account_id` INT NULL,
+  `assigned_at`         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `revoked_by_platform_account_id`  INT NULL,
+  `revoked_at`          DATETIME NULL,
+  `is_active`           TINYINT(1) NOT NULL DEFAULT 1,
+  UNIQUE KEY `uk_platform_account_role` (`platform_account_id`, `platform_role_id`),
+  KEY `idx_par_account` (`platform_account_id`),
+  KEY `idx_par_role` (`platform_role_id`),
+  CONSTRAINT `fk_par_account` FOREIGN KEY (`platform_account_id`) REFERENCES `platform_accounts` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_par_role`    FOREIGN KEY (`platform_role_id`)    REFERENCES `platform_roles` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── PLATEFORME : invitations Directeur (le Directeur devient un tenant_account) ──
+CREATE TABLE `director_invitations` (
+  `id`           INT AUTO_INCREMENT PRIMARY KEY,
+  `email`        VARCHAR(180) NOT NULL,
+  `first_name`   VARCHAR(100) NULL,
+  `last_name`    VARCHAR(100) NULL,
+  `invitation_type` ENUM('create_establishment','join_establishment','manage_multiple_establishments') NOT NULL,
+  `token_hash`   VARCHAR(255) NOT NULL,
+  `allowed_establishment_ids` JSON NULL,
+  `default_tenant_role` VARCHAR(100) NOT NULL DEFAULT 'directeur',
+  `created_by_platform_account_id` INT NOT NULL,
+  `expires_at`   DATETIME NOT NULL,
+  `accepted_at`  DATETIME NULL,
+  `revoked_at`   DATETIME NULL,
+  `status`       ENUM('pending','accepted','expired','revoked') NOT NULL DEFAULT 'pending',
+  `created_at`   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_dirinvite_token` (`token_hash`),
+  KEY `idx_dirinvite_email` (`email`),
+  KEY `idx_dirinvite_status` (`status`),
+  CONSTRAINT `fk_dirinvite_creator` FOREIGN KEY (`created_by_platform_account_id`) REFERENCES `platform_accounts` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ============================================================
 -- M100 : Permissions CRUD par module (admin)
 -- ============================================================
