@@ -49,7 +49,14 @@ foreach ($map as $table => [$accountType, $profileType]) {
         $legacyType = rtrim($table, 's');                       // eleves→eleve, parents→parent…
         $legacyType = $table === 'technicien_access' ? 'technicien' : ($table === 'vie_scolaire' ? 'vie_scolaire' : $legacyType);
         $legacyType = $table === 'super_admins' ? 'super_admin' : $legacyType;
-        if ($svc->findByLegacy($legacyType, $legacyId)) { $skipped++; continue; }
+        if ($svc->findByLegacy($legacyType, $legacyId)) {
+            // Compte déjà reflété : on resynchronise au moins le hash (réparation de dérive).
+            if (!empty($r['mot_de_passe'])) {
+                $svc->syncPassword($legacyType, $legacyId, (string) $r['mot_de_passe']);
+            }
+            $skipped++;
+            continue;
+        }
         try {
             $svc->createAccount([
                 'account_type'     => $accountType,

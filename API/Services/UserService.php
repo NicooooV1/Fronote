@@ -220,6 +220,9 @@ class UserService
                         WHERE id = ?
                     ");
                     $stmt2->execute([$hash, $userId]);
+                    // Synchronise le miroir accounts.password_hash (basculement complet).
+                    try { (new AccountService($this->pdo))->syncPassword($profil, (int) $userId, $hash); }
+                    catch (\Throwable $e) { error_log('[changePassword] sync accounts: ' . $e->getMessage()); }
                     return ['success' => true, 'message' => 'Mot de passe changé avec succès.'];
                 }
             } catch (\Throwable $e) {

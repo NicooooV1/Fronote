@@ -139,7 +139,13 @@ class SettingsService {
 
         $newHash = \API\Security\PasswordPolicy::hash($nouveau);
         $stmt = $this->pdo->prepare("UPDATE {$table} SET mot_de_passe = ?, password_changed_at = NOW() WHERE id = ?");
-        return $stmt->execute([$newHash, $userId]);
+        $ok = $stmt->execute([$newHash, $userId]);
+        if ($ok) {
+            // Synchronise le miroir accounts.password_hash (basculement complet).
+            try { (new \API\Services\AccountService($this->pdo))->syncPassword($userType, (int) $userId, $newHash); }
+            catch (\Throwable $e) { error_log('[changerMotDePasse] sync accounts: ' . $e->getMessage()); }
+        }
+        return $ok;
     }
 
     /**

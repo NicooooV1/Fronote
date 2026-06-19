@@ -104,6 +104,30 @@ final class AccountService
         return $this->pdo->prepare("UPDATE accounts SET " . implode(', ', $sets) . " WHERE id = ?")->execute($args);
     }
 
+    /**
+     * Synchronise le hash de mot de passe du compte unifié correspondant à une ligne
+     * héritée. Appelé à CHAQUE changement de mot de passe legacy pour garder
+     * accounts.password_hash à jour — prérequis du basculement COMPLET (auth vérifiée
+     * directement contre accounts). No-op si la table/le compte n'existe pas (le miroir
+     * reste simplement absent ; le login retombe alors sur la table héritée).
+     */
+    public function syncPassword(string $legacyType, int $legacyId, string $hash): bool
+    {
+        if ($legacyType === '' || $legacyId <= 0 || $hash === '') {
+            return false;
+        }
+        try {
+            $stmt = $this->pdo->prepare(
+                "UPDATE accounts SET password_hash = ?, must_change_password = 0
+                  WHERE legacy_type = ? AND legacy_id = ?"
+            );
+            $stmt->execute([$hash, $legacyType, $legacyId]);
+            return $stmt->rowCount() > 0;
+        } catch (\PDOException $e) {
+            return false;
+        }
+    }
+
     public function disableAccount(int $id, string $reason = ''): bool
     {
         return $this->setStatus($id, 'inactive');

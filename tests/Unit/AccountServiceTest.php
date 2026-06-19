@@ -107,6 +107,20 @@ final class AccountServiceTest extends TestCase
         if ($prev === false) { putenv('FEATURE_ACCOUNTS'); } else { putenv('FEATURE_ACCOUNTS=' . $prev); }
     }
 
+    public function testSyncPasswordUpdatesMirror(): void
+    {
+        $svc = $this->svc();
+        $id = $svc->createAccount([
+            'account_type' => 'student', 'username' => 'x.y',
+            'legacy_type' => 'eleve', 'legacy_id' => 42, 'password_hash' => 'OLD',
+        ]);
+        $this->assertTrue($svc->syncPassword('eleve', 42, 'NEWHASH'));
+        $this->assertSame('NEWHASH', $this->pdo->query("SELECT password_hash FROM accounts WHERE id = {$id}")->fetchColumn());
+        $this->assertSame(0, (int) $this->pdo->query("SELECT must_change_password FROM accounts WHERE id = {$id}")->fetchColumn());
+        // Aucun compte correspondant → false, sans erreur.
+        $this->assertFalse($svc->syncPassword('eleve', 999, 'X'));
+    }
+
     private function accountStatus(int $id): string
     {
         return (string) $this->pdo->query("SELECT status FROM accounts WHERE id = {$id}")->fetchColumn();
