@@ -128,6 +128,29 @@ class UserService
         try {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute(array_values($data));
+            $legacyId = (int) $this->pdo->lastInsertId();
+
+            // Bascule comptes unifiés : créer le compte miroir (login désormais piloté par
+            // `accounts`). N'échoue JAMAIS la création de l'utilisateur (filet : sans miroir,
+            // le login retombe sur le scan hérité).
+            try {
+                $accountType = ['eleve' => 'student', 'parent' => 'family'][$profil] ?? 'personnel';
+                (new AccountService($this->pdo))->createAccount([
+                    'account_type'         => $accountType,
+                    'username'             => $identifiant,
+                    'email'                => $userData['mail'] ?? null,
+                    'password_hash'        => $hashedPassword,
+                    'first_name'           => $userData['prenom'] ?? null,
+                    'last_name'            => $userData['nom'] ?? null,
+                    'etablissement_id'     => $etabId,
+                    'status'               => 'active',
+                    'legacy_type'          => $profil,
+                    'legacy_id'            => $legacyId,
+                    'must_change_password' => 1,
+                ]);
+            } catch (\Throwable $e) {
+                error_log('[create] mirror account: ' . $e->getMessage());
+            }
 
             return [
                 'success'     => true,

@@ -129,12 +129,22 @@ class UserProvider
     public function validateCredentials($user, $credentials)
     {
         $password = $credentials['password'] ?? null;
-        
-        if (!$password || !isset($user['mot_de_passe'])) {
+        if (!$password) {
             return false;
         }
 
-        if (!password_verify($password, $user['mot_de_passe'])) {
+        // Bascule complète : on vérifie D'ABORD contre le hash du compte unifié
+        // (accounts.password_hash, présent sur les candidats résolus via `accounts`),
+        // puis on retombe sur le hash hérité (mot_de_passe) — filet anti-verrouillage
+        // si le miroir manquait ou différait. Les candidats issus du scan hérité n'ont
+        // que mot_de_passe → comportement inchangé.
+        $ok = false;
+        if (!empty($user['account_password_hash']) && password_verify($password, (string) $user['account_password_hash'])) {
+            $ok = true;
+        } elseif (!empty($user['mot_de_passe']) && password_verify($password, (string) $user['mot_de_passe'])) {
+            $ok = true;
+        }
+        if (!$ok) {
             return false;
         }
 
@@ -254,7 +264,7 @@ class UserProvider
     {
         try {
             $stmt = $this->pdo->prepare(
-                "SELECT legacy_type, legacy_id, status FROM accounts
+                "SELECT legacy_type, legacy_id, status, password_hash FROM accounts
                   WHERE (username = ? OR email = ?)
                     AND legacy_type IS NOT NULL AND legacy_id IS NOT NULL"
             );
@@ -270,6 +280,11 @@ class UserProvider
             }
             $u = $this->loadLegacyForAuth((string) $r['legacy_type'], (int) $r['legacy_id']);
             if ($u !== null) {
+                // Hash du compte unifié = source de vérité des credentials (bascule complète) ;
+                // mot_de_passe (hérité) reste attaché comme filet de repli.
+                if (!empty($r['password_hash'])) {
+                    $u['account_password_hash'] = $r['password_hash'];
+                }
                 $candidates[] = $u;
             }
         }

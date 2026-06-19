@@ -43,7 +43,7 @@ final class UserProviderAccountsTest extends TestCase
         $this->pdo->exec(
             'CREATE TABLE accounts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, account_type TEXT, username TEXT, email TEXT,
-                status TEXT DEFAULT "active", legacy_type TEXT, legacy_id INTEGER
+                status TEXT DEFAULT "active", legacy_type TEXT, legacy_id INTEGER, password_hash TEXT
             )'
         );
         // Administrateur hérité #5, identifiant "admin", hash connu.
@@ -61,12 +61,12 @@ final class UserProviderAccountsTest extends TestCase
         else { putenv('FEATURE_ACCOUNTS=' . $this->prevFlag); }
     }
 
-    private function linkAccount(string $status): void
+    private function linkAccount(string $status, string $passwordHash = 'ACCT_HASH'): void
     {
-        $this->pdo->exec(
-            "INSERT INTO accounts (account_type, username, email, status, legacy_type, legacy_id)
-             VALUES ('personnel', 'admin', 'ada@ex.fr', '{$status}', 'administrateur', 5)"
-        );
+        $this->pdo->prepare(
+            "INSERT INTO accounts (account_type, username, email, status, legacy_type, legacy_id, password_hash)
+             VALUES ('personnel', 'admin', 'ada@ex.fr', ?, 'administrateur', 5, ?)"
+        )->execute([$status, $passwordHash]);
     }
 
     public function testActiveAccountResolvesToLegacyIdentity(): void
@@ -78,7 +78,40 @@ final class UserProviderAccountsTest extends TestCase
         $this->assertCount(1, $c);
         $this->assertSame('administrateur', $c[0]['type']);
         $this->assertSame(5, (int) $c[0]['id']);
-        $this->assertSame('HASH5', $c[0]['mot_de_passe'], 'Le mot de passe vient de la table héritée.');
+        $this->assertSame('HASH5', $c[0]['mot_de_passe'], 'Le hash hérité reste attaché (filet de repli).');
+        $this->assertSame('ACCT_HASH', $c[0]['account_password_hash'] ?? null, 'Le hash du compte unifié est attaché (source de vérité).');
+    }
+
+    public function testValidateCredentialsPrefersAccountHashWithLegacyFallback(): void
+    {
+        $accHash = password_hash('AccountPass!2345', PASSWORD_BCRYPT);
+        $legHash = password_hash('LegacyPass!2345', PASSWORD_BCRYPT);
+
+        // Hash du compte → OK.
+        $this->assertTrue($this->provider->validateCredentials(
+            ['account_password_hash' => $accHash, 'mot_de_passe' => $legHash, 'actif' => 1],
+            ['password' => 'AccountPass!2345']
+        ));
+        // Hash compte ne matche pas mais hérité oui → repli OK (anti-verrouillage).
+        $this->assertTrue($this->provider->validateCredentials(
+            ['account_password_hash' => $accHash, 'mot_de_passe' => $legHash, 'actif' => 1],
+            ['password' => 'LegacyPass!2345']
+        ));
+        // Candidat hérité seul (scan legacy) → comportement inchangé.
+        $this->assertTrue($this->provider->validateCredentials(
+            ['mot_de_passe' => $legHash, 'actif' => 1],
+            ['password' => 'LegacyPass!2345']
+        ));
+        // Mauvais mot de passe → refus.
+        $this->assertFalse($this->provider->validateCredentials(
+            ['account_password_hash' => $accHash, 'mot_de_passe' => $legHash, 'actif' => 1],
+            ['password' => 'Wrong']
+        ));
+        // Compte désactivé → refus même avec le bon mot de passe.
+        $this->assertFalse($this->provider->validateCredentials(
+            ['account_password_hash' => $accHash, 'actif' => 0],
+            ['password' => 'AccountPass!2345']
+        ));
     }
 
     public function testInactiveAccountBlocksLoginNoFallback(): void
