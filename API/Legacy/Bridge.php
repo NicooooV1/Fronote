@@ -417,6 +417,37 @@ if (!function_exists('authorize')) {
 	}
 }
 
+if (!function_exists('canOn')) {
+	/**
+	 * « L'utilisateur peut-il $permission SUR cette ressource ? » — forme à privilégier
+	 * dans les modules pour bloquer l'IDOR : le périmètre est déduit du type+id de la
+	 * ressource. Ex: canOn('notes.view', 'student', $eleveId), canOn('cdt.edit', 'class', $id).
+	 * Types reconnus : student/eleve, class/classe, establishment/etablissement,
+	 * subject/matiere, self/owner. $extra ajoute des clés de contexte (ex. owner_type).
+	 *
+	 * Contrairement à can(), pas de repli RBAC aveugle au périmètre : l'enforcement de
+	 * scope est précisément le but ici (les permissions visées sont au catalogue).
+	 */
+	function canOn(string $permission, string $resourceType, int $resourceId, array $extra = []): bool {
+		try { return authz()->canOn($permission, $resourceType, $resourceId, $extra); }
+		catch (\Throwable $e) { error_log('[canOn] ' . $e->getMessage()); return false; }
+	}
+}
+
+if (!function_exists('authorizeOn')) {
+	/**
+	 * Vérifie une permission SUR une ressource — bloque (redirection) si refusée.
+	 * Fail-closed : toute erreur d'évaluation ⇒ refus (canOn() renvoie false).
+	 */
+	function authorizeOn(string $permission, string $resourceType, int $resourceId, array $extra = []): void {
+		if (canOn($permission, $resourceType, $resourceId, $extra)) return;
+		$_SESSION['error_message'] = 'Accès refusé.';
+		$base = defined('BASE_URL') ? BASE_URL : '';
+		if (!headers_sent()) header('Location: ' . $base . '/accueil/accueil.php');
+		exit;
+	}
+}
+
 if (!function_exists('canModule')) {
 	/**
 	 * Vérifie une permission CRUD sur un module.

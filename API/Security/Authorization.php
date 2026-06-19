@@ -29,6 +29,7 @@ final class Authorization
     private PDO $pdo;
     private ?array $user;          // ['id'=>int,'type'=>string,'etablissement_id'=>int,...]
     private ?array $roles = null;  // liste de ['role'=>string,'scope_type'=>string,'scope'=>array,'etab'=>?int]
+    private ?ScopeResolver $scopeResolver = null;
 
     public function __construct(PDO $pdo, ?array $user = null)
     {
@@ -172,6 +173,53 @@ final class Authorization
         return false;
     }
 
+    /**
+     * Variante ergonomique : « l'utilisateur peut-il $permission SUR cette ressource ? »
+     * Construit le contexte de périmètre à partir du type/id de la ressource — c'est la
+     * forme à privilégier dans les modules (anti-IDOR) : canOn('notes.view','student',$id).
+     * $extra permet d'ajouter des clés de contexte (ex. owner_type, etablissement_id).
+     */
+    public function canOn(string $permission, string $resourceType, int $resourceId, array $extra = []): bool
+    {
+        return $this->can($permission, self::ctxForResource($resourceType, $resourceId) + $extra);
+    }
+
+    public function authorizeOn(string $permission, string $resourceType, int $resourceId, array $extra = []): void
+    {
+        if (!$this->canOn($permission, $resourceType, $resourceId, $extra)) {
+            $this->deny($permission);
+        }
+    }
+
+    /** Traduit (type de ressource, id) → clés de contexte attendues par scopeAllows(). */
+    private static function ctxForResource(string $type, int $id): array
+    {
+        switch ($type) {
+            case 'student':
+            case 'eleve':            return ['student_id' => $id];
+            case 'class':
+            case 'classe':           return ['class_id' => $id];
+            case 'establishment':
+            case 'etablissement':    return ['etablissement_id' => $id];
+            case 'subject':
+            case 'matiere':          return ['subject_id' => $id];
+            case 'self':
+            case 'owner':            return ['owner_id' => $id];
+            default:                 return ['resource_type' => $type, 'resource_id' => $id];
+        }
+    }
+
+    /** Résolveur de périmètre (relations parent/AESH/prof…), synchronisé sur l'utilisateur courant. */
+    private function scope(): ScopeResolver
+    {
+        if ($this->scopeResolver === null) {
+            $this->scopeResolver = new ScopeResolver($this->pdo, $this->user ?? []);
+        } else {
+            $this->scopeResolver->setUser($this->user ?? []);
+        }
+        return $this->scopeResolver;
+    }
+
     // ───────────────────────── interne ─────────────────────────
 
     /** Un rôle accorde-t-il une permission ? La matrice ÉDITABLE (rbac_permissions) prime
@@ -239,21 +287,27 @@ final class Authorization
 
             case 'children':
                 if (empty($ctx['student_id'])) return false;
-                return $this->isChildOfCurrentParent((int) $ctx['student_id']);
+                // Responsable de l'élève : account_relationships ∪ parent_eleve (repli).
+                return $this->scope()->isGuardianOf((int) $ctx['student_id']);
 
             case 'assigned':
                 if (empty($ctx['student_id'])) return false;
+                // 1) liste explicite portée par l'attribution (scope_json['student_ids']) ;
                 $ids = array_map('intval', $r['scope']['student_ids'] ?? []);
-                return in_array((int) $ctx['student_id'], $ids, true);
+                if (in_array((int) $ctx['student_id'], $ids, true)) return true;
+                // 2) relation de suivi unifiée (AESH/psy/médical/social/tuteur entreprise).
+                return $this->scope()->isAssignedToStudent((int) $ctx['student_id']);
 
             case 'own_classes':
                 $cls = $ctx['class_id'] ?? ($ctx['class_name'] ?? null);
                 if ($cls === null) return false;
+                // 1) classes explicitement portées par l'attribution (scope_json['class_ids']) ;
                 if (isset($ctx['class_id'])) {
                     $ids = array_map('intval', $r['scope']['class_ids'] ?? []);
                     if (in_array((int) $ctx['class_id'], $ids, true)) return true;
                 }
-                return $this->teachesClass($cls);
+                // 2) classe enseignée : account_relationships ∪ professeur_classes (repli).
+                return $this->scope()->teachesClass($cls);
 
             default:
                 return false; // périmètre inconnu → fail-closed
@@ -272,41 +326,6 @@ final class Authorization
             case 'parent':        return 'children';
             case 'eleve':         return 'self';
             default:              return 'establishment';
-        }
-    }
-
-    private function isChildOfCurrentParent(int $studentId): bool
-    {
-        if (($this->user['type'] ?? null) !== 'parent') return false;
-        try {
-            $stmt = $this->pdo->prepare(
-                "SELECT 1 FROM parent_eleve WHERE id_parent = ? AND id_eleve = ? LIMIT 1"
-            );
-            $stmt->execute([(int) ($this->user['id'] ?? 0), $studentId]);
-            return (bool) $stmt->fetchColumn();
-        } catch (\PDOException $e) {
-            return false;
-        }
-    }
-
-    private function teachesClass($class): bool
-    {
-        if (($this->user['type'] ?? null) !== 'professeur') return false;
-        try {
-            // professeur_classes lie le prof à ses classes par NOM (nom_classe), pas par id.
-            $nom = $class;
-            if (is_numeric($class)) {
-                $s = $this->pdo->prepare("SELECT nom FROM classes WHERE id = ?");
-                $s->execute([(int) $class]);
-                $nom = $s->fetchColumn() ?: $class;
-            }
-            $stmt = $this->pdo->prepare(
-                "SELECT 1 FROM professeur_classes WHERE id_professeur = ? AND nom_classe = ? LIMIT 1"
-            );
-            $stmt->execute([(int) ($this->user['id'] ?? 0), (string) $nom]);
-            return (bool) $stmt->fetchColumn();
-        } catch (\PDOException $e) {
-            return false;
         }
     }
 

@@ -1013,6 +1013,74 @@ CREATE TABLE `user_roles` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- RBAC : valeurs de périmètre normalisées (complète user_roles.scope_json).
+-- Une ligne par (attribution de rôle, type de périmètre, ressource ciblée).
+-- Ex. un prof sur 3 classes = 3 lignes scope_type='class'. Requêtable en SQL
+-- (contrairement à scope_json), tout en gardant scope_json comme repli.
+-- ============================================================
+CREATE TABLE `user_role_scope_values` (
+  `id`            INT AUTO_INCREMENT PRIMARY KEY,
+  `user_role_id`  INT          NOT NULL,
+  `scope_type`    VARCHAR(40)  NOT NULL,  -- class|classes|subject|subjects|student|students|establishment|group
+  `scope_id`      INT          NOT NULL,
+  `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_urs` (`user_role_id`, `scope_type`, `scope_id`),
+  KEY `idx_urs_role` (`user_role_id`),
+  KEY `idx_urs_target` (`scope_type`, `scope_id`),
+  CONSTRAINT `fk_urs_role` FOREIGN KEY (`user_role_id`) REFERENCES `user_roles` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- Relations entre comptes (modèle cible : un lien métier sujet → ressource).
+-- Unifie parent_eleve / professeur_classes / suivis AESH-médico-psycho-sociaux.
+-- Identité = (type de compte, id) pour rester compatible avec le modèle legacy
+-- AVANT la table accounts unifiée ; transposable plus tard sur accounts.id.
+-- ============================================================
+CREATE TABLE `account_relationships` (
+  `id`                INT AUTO_INCREMENT PRIMARY KEY,
+  `source_type`       VARCHAR(30)  NOT NULL,  -- compte sujet : parent/professeur/vie_scolaire/...
+  `source_id`         INT          NOT NULL,
+  `target_type`       VARCHAR(30)  NOT NULL,  -- ressource/compte cible : eleve/classe/...
+  `target_id`         INT          NOT NULL,
+  `relationship_type` VARCHAR(40)  NOT NULL,  -- parent_of|legal_guardian_of|financial_responsible_of|aesh_of|teacher_of|main_teacher_of|tutor_of|company_tutor_of|medical_follow_of|psychological_follow_of|social_follow_of
+  `etablissement_id`  INT          DEFAULT NULL,
+  `starts_at`         DATETIME     DEFAULT NULL,
+  `expires_at`        DATETIME     DEFAULT NULL,  -- NULL = permanent
+  `is_active`         TINYINT(1)   NOT NULL DEFAULT 1,
+  `created_by_type`   VARCHAR(30)  DEFAULT NULL,
+  `created_by_id`     INT          DEFAULT NULL,
+  `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_rel` (`source_type`, `source_id`, `target_type`, `target_id`, `relationship_type`),
+  KEY `idx_rel_source` (`source_type`, `source_id`),
+  KEY `idx_rel_target` (`target_type`, `target_id`),
+  KEY `idx_rel_type` (`relationship_type`),
+  KEY `idx_rel_active` (`is_active`, `expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- Journal d'audit dédié aux rôles/relations/accès sensibles (cf. §5.9).
+-- Distinct d'audit_log (changements de données) : trace QUI a donné/retiré QUOI
+-- à QUI, et les accès sensibles, avec ancienne/nouvelle valeur.
+-- ============================================================
+CREATE TABLE `user_role_audit_logs` (
+  `id`           INT AUTO_INCREMENT PRIMARY KEY,
+  `actor_type`   VARCHAR(30)  DEFAULT NULL,
+  `actor_id`     INT          DEFAULT NULL,
+  `target_type`  VARCHAR(30)  NOT NULL,
+  `target_id`    INT          NOT NULL,
+  `action`       VARCHAR(40)  NOT NULL,  -- role_assigned|role_updated|role_revoked|scope_changed|relationship_added|relationship_removed|sensitive_access|account_*
+  `role_key`     VARCHAR(50)  DEFAULT NULL,
+  `old_value`    JSON         DEFAULT NULL,
+  `new_value`    JSON         DEFAULT NULL,
+  `ip_address`   VARCHAR(45)  DEFAULT NULL,
+  `user_agent`   TEXT         DEFAULT NULL,
+  `created_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_ural_target` (`target_type`, `target_id`),
+  KEY `idx_ural_action` (`action`),
+  KEY `idx_ural_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- M100 : Permissions CRUD par module (admin)
 -- ============================================================
 CREATE TABLE `module_permissions` (
