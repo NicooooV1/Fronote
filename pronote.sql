@@ -1384,6 +1384,159 @@ CREATE TABLE `tenant_audit_logs` (
   CONSTRAINT `fk_tal_etab` FOREIGN KEY (`establishment_id`) REFERENCES `etablissements` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ============================================================================
+-- Monde 3 = SUPPORT (pont contrôlé) : tables support_*.
+-- Le Support n'est JAMAIS un rôle établissement : c'est un platform_account qui
+-- obtient une SESSION temporaire, bornée, auditée, révocable, sur un ticket précis,
+-- validée par la Direction. ticket → demande d'accès → validation → session.
+-- ============================================================================
+
+CREATE TABLE `support_tickets` (
+  `id`               INT AUTO_INCREMENT PRIMARY KEY,
+  `establishment_id` INT NOT NULL,
+  `created_by_tenant_account_id` INT NULL,
+  `created_by_membership_id`     INT NULL,
+  `assigned_platform_account_id` INT NULL,
+  `title`            VARCHAR(255) NOT NULL,
+  `category`         ENUM('account','permissions','configuration','module','data','bug','security','performance','billing','other') NOT NULL DEFAULT 'other',
+  `priority`         ENUM('low','normal','high','critical') NOT NULL DEFAULT 'normal',
+  `description`      TEXT NOT NULL,
+  `status`           ENUM('draft','submitted','triaged','waiting_support_access','access_requested','access_approved','access_refused','in_progress','waiting_establishment','resolved','closed','cancelled') NOT NULL DEFAULT 'submitted',
+  `sensitive_flag`   TINYINT(1) NOT NULL DEFAULT 0,
+  `created_at`       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`       DATETIME NULL,
+  `resolved_at`      DATETIME NULL,
+  `closed_at`        DATETIME NULL,
+  KEY `idx_st_etab` (`establishment_id`),
+  KEY `idx_st_status` (`status`),
+  CONSTRAINT `fk_st_etab` FOREIGN KEY (`establishment_id`) REFERENCES `etablissements` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- NB : nommé support_bridge_messages (et NON support_ticket_messages) pour ne pas
+-- entrer en collision avec la table du module historique modules/support, qui possède
+-- déjà un support_ticket_messages (colonnes auteur_id/contenu NOT NULL).
+CREATE TABLE `support_bridge_messages` (
+  `id`        INT AUTO_INCREMENT PRIMARY KEY,
+  `ticket_id` INT NOT NULL,
+  `author_type` ENUM('tenant','platform','system') NOT NULL,
+  `tenant_account_id`   INT NULL,
+  `platform_account_id` INT NULL,
+  `message`   TEXT NOT NULL,
+  `is_internal_note`  TINYINT(1) NOT NULL DEFAULT 0,
+  `visible_to_tenant` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_sbm_ticket` (`ticket_id`),
+  CONSTRAINT `fk_sbm_ticket` FOREIGN KEY (`ticket_id`) REFERENCES `support_tickets` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `support_access_requests` (
+  `id`               INT AUTO_INCREMENT PRIMARY KEY,
+  `ticket_id`        INT NOT NULL,
+  `establishment_id` INT NOT NULL,
+  `requested_by_platform_account_id` INT NOT NULL,
+  `reviewed_by_membership_id`        INT NULL,
+  `access_level`     ENUM('read_only','diagnostic','configuration','account_assistance','data_assistance','impersonation','sensitive_data_access') NOT NULL,
+  `requested_scope_type`    VARCHAR(100) NOT NULL,
+  `requested_scope_payload` JSON NULL,
+  `reason`           VARCHAR(255) NOT NULL,
+  `detailed_reason`  TEXT NULL,
+  `planned_actions`  TEXT NULL,
+  `requested_duration_minutes` INT NOT NULL,
+  `approved_duration_minutes`  INT NULL,
+  `requested_expires_at` DATETIME NOT NULL,
+  `approved_expires_at`  DATETIME NULL,
+  `status`           ENUM('draft','sent_to_direction','waiting_direction','approved','approved_with_changes','refused','more_info_requested','expired','revoked','cancelled') NOT NULL DEFAULT 'draft',
+  `refusal_reason`   TEXT NULL,
+  `direction_comment` TEXT NULL,
+  `requires_sensitive_validation` TINYINT(1) NOT NULL DEFAULT 0,
+  `sensitive_validation_status` ENUM('not_required','pending','approved','refused') NOT NULL DEFAULT 'not_required',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `sent_at`    DATETIME NULL,
+  `reviewed_at` DATETIME NULL,
+  `revoked_at`  DATETIME NULL,
+  KEY `idx_sar_ticket` (`ticket_id`),
+  KEY `idx_sar_etab` (`establishment_id`),
+  KEY `idx_sar_status` (`status`),
+  CONSTRAINT `fk_sar_ticket` FOREIGN KEY (`ticket_id`) REFERENCES `support_tickets` (`id`),
+  CONSTRAINT `fk_sar_etab`   FOREIGN KEY (`establishment_id`) REFERENCES `etablissements` (`id`),
+  CONSTRAINT `fk_sar_requester` FOREIGN KEY (`requested_by_platform_account_id`) REFERENCES `platform_accounts` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `support_access_request_approvals` (
+  `id`                INT AUTO_INCREMENT PRIMARY KEY,
+  `access_request_id` INT NOT NULL,
+  `approver_membership_id` INT NOT NULL,
+  `decision`          ENUM('approved','refused','more_info_requested') NOT NULL,
+  `approved_access_level`   VARCHAR(100) NULL,
+  `approved_scope_payload`  JSON NULL,
+  `approved_duration_minutes` INT NULL,
+  `comment`           TEXT NULL,
+  `created_at`        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_sara_request` (`access_request_id`),
+  CONSTRAINT `fk_sara_request` FOREIGN KEY (`access_request_id`) REFERENCES `support_access_requests` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `support_sessions` (
+  `id`                INT AUTO_INCREMENT PRIMARY KEY,
+  `access_request_id` INT NOT NULL,
+  `ticket_id`         INT NOT NULL,
+  `establishment_id`  INT NOT NULL,
+  `platform_account_id` INT NOT NULL,
+  `access_level`      ENUM('read_only','diagnostic','configuration','account_assistance','data_assistance','impersonation','sensitive_data_access') NOT NULL,
+  `active_scope_payload` JSON NULL,
+  `status`            ENUM('pending_start','active','paused','expired','ended','revoked','security_stopped') NOT NULL DEFAULT 'pending_start',
+  `started_at`        DATETIME NULL,
+  `expires_at`        DATETIME NOT NULL,
+  `ended_at`          DATETIME NULL,
+  `ended_by_type`     ENUM('platform','tenant','system') NULL,
+  `ended_by_platform_account_id` INT NULL,
+  `ended_by_membership_id`       INT NULL,
+  `end_reason`        VARCHAR(255) NULL,
+  `ip_address`        VARCHAR(45) NULL,
+  `user_agent`        TEXT NULL,
+  `created_at`        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_ss_etab` (`establishment_id`),
+  KEY `idx_ss_account` (`platform_account_id`),
+  KEY `idx_ss_status` (`status`),
+  CONSTRAINT `fk_ss_request` FOREIGN KEY (`access_request_id`) REFERENCES `support_access_requests` (`id`),
+  CONSTRAINT `fk_ss_ticket`  FOREIGN KEY (`ticket_id`) REFERENCES `support_tickets` (`id`),
+  CONSTRAINT `fk_ss_etab`    FOREIGN KEY (`establishment_id`) REFERENCES `etablissements` (`id`),
+  CONSTRAINT `fk_ss_account` FOREIGN KEY (`platform_account_id`) REFERENCES `platform_accounts` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Journal d'intervention APPEND-ONLY (aucune mise à jour ni suppression autorisée).
+CREATE TABLE `support_session_audit_logs` (
+  `id`               INT AUTO_INCREMENT PRIMARY KEY,
+  `support_session_id` INT NOT NULL,
+  `ticket_id`        INT NOT NULL,
+  `establishment_id` INT NOT NULL,
+  `platform_account_id` INT NOT NULL,
+  `action`           VARCHAR(150) NOT NULL,
+  `target_type`      VARCHAR(100) NULL,
+  `target_id`        INT NULL,
+  `permission_used`  VARCHAR(150) NULL,
+  `access_level`     VARCHAR(100) NULL,
+  `description`      TEXT NULL,
+  `old_value`        JSON NULL,
+  `new_value`        JSON NULL,
+  `sensitive`        TINYINT(1) NOT NULL DEFAULT 0,
+  `ip_address`       VARCHAR(45) NULL,
+  `user_agent`       TEXT NULL,
+  `created_at`       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_ssal_session` (`support_session_id`),
+  CONSTRAINT `fk_ssal_session` FOREIGN KEY (`support_session_id`) REFERENCES `support_sessions` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `support_session_restrictions` (
+  `id`                INT AUTO_INCREMENT PRIMARY KEY,
+  `support_session_id` INT NOT NULL,
+  `restriction_key`   VARCHAR(150) NOT NULL,  -- hide_medical_data, disable_destructive_actions, allowed_student_ids, …
+  `restriction_value` JSON NULL,
+  `created_at`        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_ssr_session` (`support_session_id`),
+  CONSTRAINT `fk_ssr_session` FOREIGN KEY (`support_session_id`) REFERENCES `support_sessions` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ============================================================
 -- M100 : Permissions CRUD par module (admin)
 -- ============================================================
