@@ -100,9 +100,18 @@ final class RoleManagementService
             $scopeType = $catScope;
         }
 
-        $scopeJson = !empty($opts['scope']) && is_array($opts['scope']) ? json_encode($opts['scope']) : null;
-        $from      = $opts['valid_from'] ?? null;
-        $until     = $opts['valid_until'] ?? null;
+        // Rôle SENSIBLE : justification obligatoire (cf. §8.2 — confirmation forte + audit).
+        $reason = isset($opts['reason']) ? trim((string) $opts['reason']) : '';
+        if (!empty($meta['sensitive']) && $reason === '') {
+            throw new \RuntimeException("Le rôle sensible « {$roleKey} » exige une justification.");
+        }
+
+        // Validation stricte du périmètre fin (scope_json) : seules des listes d'IDs
+        // entiers sous des clés connues sont acceptées (refus silencieux des typos).
+        $cleanScope = $this->validateScope(is_array($opts['scope'] ?? null) ? $opts['scope'] : []);
+        $scopeJson  = $cleanScope ? json_encode($cleanScope) : null;
+        $from       = $opts['valid_from'] ?? null;
+        $until      = $opts['valid_until'] ?? null;
 
         $stmt = $this->pdo->prepare(
             "INSERT INTO user_roles (user_type, user_id, role_key, etablissement_id, scope_type, scope_json, valid_from, valid_until, granted_by_type, granted_by_id)
@@ -120,6 +129,10 @@ final class RoleManagementService
         $this->audit('role.assigned', $userType, $userId, [
             'role' => $roleKey, 'etablissement_id' => $etabId, 'scope_type' => $scopeType,
             'valid_until' => $until, 'by' => ($actor['type'] ?? '') . ':' . ($actor['id'] ?? ''),
+        ]);
+        $this->roleAudit($actor, 'role_assigned', $userType, $userId, $roleKey, null, [
+            'scope_type' => $scopeType, 'scope' => $cleanScope, 'etablissement_id' => $etabId,
+            'valid_from' => $from ?: null, 'valid_until' => $until ?: null, 'reason' => $reason ?: null,
         ]);
         return $id;
     }
@@ -144,8 +157,86 @@ final class RoleManagementService
             $this->audit('role.revoked', $row['user_type'], (int) $row['user_id'], [
                 'role' => $row['role_key'], 'by' => ($actor['type'] ?? '') . ':' . ($actor['id'] ?? ''),
             ]);
+            $this->roleAudit($actor, 'role_revoked', $row['user_type'], (int) $row['user_id'], $row['role_key'], [
+                'scope_type' => $row['scope_type'] ?? null, 'etablissement_id' => $row['etablissement_id'] ?? null,
+            ], null);
         }
         return $ok;
+    }
+
+    /**
+     * Purge les rôles attribués EXPIRÉS (valid_until dépassé) — comptes temporaires,
+     * vacataires, invités, techniciens. À déclencher périodiquement (scripts/purge_expired_roles.php
+     * en cron) pour garantir l'expiration automatique exigée par le cahier des charges (§10.5).
+     * @return int nombre d'attributions purgées.
+     */
+    public function purgeExpired(): int
+    {
+        try {
+            $sel = $this->pdo->query(
+                "SELECT id, user_type, user_id, role_key FROM user_roles
+                  WHERE valid_until IS NOT NULL AND valid_until < NOW()"
+            );
+            $rows = $sel->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (\PDOException $e) {
+            return 0;
+        }
+        if ($rows === []) {
+            return 0;
+        }
+        $ids = array_map(static fn($r) => (int) $r['id'], $rows);
+        $place = implode(',', array_fill(0, count($ids), '?'));
+        $this->pdo->prepare("DELETE FROM user_roles WHERE id IN ($place)")->execute($ids);
+        foreach ($rows as $r) {
+            $this->roleAudit(['type' => 'system', 'id' => 0], 'role_revoked',
+                $r['user_type'], (int) $r['user_id'], $r['role_key'], ['cause' => 'expired'], null);
+        }
+        return count($rows);
+    }
+
+    /**
+     * Valide un périmètre fin : uniquement des listes d'IDs entiers (>0) sous des clés
+     * connues. Toute clé inconnue ou valeur non-liste est rejetée (anti scope_json malformé).
+     * @return array périmètre nettoyé (clés présentes seulement si non vides).
+     */
+    private function validateScope(array $scope): array
+    {
+        $allowed = ['class_ids', 'classes', 'student_ids', 'students', 'etablissement_ids', 'subject_ids', 'group_ids'];
+        $clean = [];
+        foreach ($scope as $key => $values) {
+            if (!in_array($key, $allowed, true)) {
+                throw new \RuntimeException("Clé de périmètre inconnue : « {$key} ».");
+            }
+            if (!is_array($values)) {
+                throw new \RuntimeException("Le périmètre « {$key} » doit être une liste d'identifiants.");
+            }
+            $ints = array_values(array_filter(array_map('intval', $values), static fn($n) => $n > 0));
+            if ($ints !== []) {
+                $clean[$key] = array_values(array_unique($ints));
+            }
+        }
+        return $clean;
+    }
+
+    /** Journal dédié des changements de rôles/relations/accès sensibles (table user_role_audit_logs). */
+    private function roleAudit(array $actor, string $action, string $targetType, int $targetId, ?string $roleKey, ?array $oldValue, ?array $newValue): void
+    {
+        try {
+            $this->pdo->prepare(
+                "INSERT INTO user_role_audit_logs
+                    (actor_type, actor_id, target_type, target_id, action, role_key, old_value, new_value, ip_address, user_agent)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            )->execute([
+                $actor['type'] ?? null, (int) ($actor['id'] ?? 0),
+                $targetType, $targetId, $action, $roleKey,
+                $oldValue !== null ? json_encode($oldValue, JSON_UNESCAPED_UNICODE) : null,
+                $newValue !== null ? json_encode($newValue, JSON_UNESCAPED_UNICODE) : null,
+                $_SERVER['REMOTE_ADDR'] ?? '',
+                substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 500),
+            ]);
+        } catch (\PDOException $e) {
+            error_log('[roles] user_role_audit_logs failed: ' . $e->getMessage());
+        }
     }
 
     private function audit(string $action, string $userType, int $userId, array $details): void
