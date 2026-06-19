@@ -59,6 +59,25 @@ return new class {
                JOIN parents p ON p.id = pe.id_parent"
         );
 
+        // Idempotence sur changement de `lien` : une exécution antérieure a pu refléter un
+        // autre type (ex. parent_of) pour ce couple ; si pe.lien a changé depuis, on désactive
+        // l'ancien type — UNIQUEMENT les lignes issues du backfill (created_by_id IS NULL),
+        // jamais une relation saisie à la main via RelationshipService.
+        $this->run($pdo,
+            "UPDATE account_relationships ar
+               JOIN parent_eleve pe
+                 ON pe.id_parent = ar.source_id AND pe.id_eleve = ar.target_id
+              SET ar.is_active = 0
+              WHERE ar.source_type = 'parent' AND ar.target_type = 'eleve'
+                AND ar.created_by_id IS NULL
+                AND ar.relationship_type IN ('parent_of','legal_guardian_of','financial_responsible_of')
+                AND ar.relationship_type <> CASE pe.lien
+                        WHEN 'tuteur_legal'           THEN 'legal_guardian_of'
+                        WHEN 'responsable_financier'  THEN 'financial_responsible_of'
+                        ELSE 'parent_of'
+                    END"
+        );
+
         // professeur_classes (lien par NOM) → teacher_of (résolu en id de classe).
         $this->run($pdo,
             "INSERT IGNORE INTO account_relationships

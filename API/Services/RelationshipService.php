@@ -50,6 +50,7 @@ final class RelationshipService
                  etablissement_id, starts_at, expires_at, is_active, created_by_type, created_by_id)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
              ON DUPLICATE KEY UPDATE
+                id               = LAST_INSERT_ID(id),
                 etablissement_id = VALUES(etablissement_id),
                 starts_at        = VALUES(starts_at),
                 expires_at       = VALUES(expires_at),

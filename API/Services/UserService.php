@@ -70,9 +70,10 @@ class UserService
             return ['success' => false, 'message' => "L'adresse email est déjà utilisée."];
         }
 
-        // Mot de passe sécurisé
+        // Mot de passe sécurisé — hachage via la politique centrale (point d'entrée unique :
+        // si l'algo/coût évolue, toutes les créations suivent automatiquement).
         $password       = self::generatePassword();
-        $hashedPassword = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
+        $hashedPassword = \API\Security\PasswordPolicy::hash($password);
 
         // Données de base
         $data = [

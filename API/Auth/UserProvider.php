@@ -309,7 +309,7 @@ class UserProvider
     {
         try {
             if ($type === 'super_admin') {
-                $stmt = $this->pdo->prepare("SELECT id, nom, prenom, mail AS email, mot_de_passe, identifiant, actif FROM super_admins WHERE id = ? LIMIT 1");
+                $stmt = $this->pdo->prepare("SELECT id, nom, prenom, mail AS email, mot_de_passe, identifiant, actif FROM super_admins WHERE id = ? AND actif = 1 LIMIT 1");
                 $stmt->execute([$id]);
                 $u = $stmt->fetch(PDO::FETCH_ASSOC);
                 if ($u) { $u['type'] = 'super_admin'; }
@@ -326,7 +326,7 @@ class UserProvider
             if (!$table) {
                 return null;
             }
-            $stmt = $this->pdo->prepare("SELECT id, nom, prenom, mail AS email, mot_de_passe, identifiant, etablissement_id, actif, locked_until FROM `{$table}` WHERE id = ? LIMIT 1");
+            $stmt = $this->pdo->prepare("SELECT id, nom, prenom, mail AS email, mot_de_passe, identifiant, etablissement_id, actif, locked_until FROM `{$table}` WHERE id = ? AND actif = 1 LIMIT 1");
             $stmt->execute([$id]);
             $u = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($u) { $u['type'] = $type; }

@@ -308,7 +308,7 @@ class ImportExportService
                 continue;
             }
 
-            $hashedPassword = password_hash($plainPassword, PASSWORD_BCRYPT, ['cost' => 12]);
+            $hashedPassword = \API\Security\PasswordPolicy::hash($plainPassword);
 
             // Construction de l'insertion
             $insertData = [
