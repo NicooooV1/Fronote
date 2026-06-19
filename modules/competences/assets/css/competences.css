@@ -56,3 +56,6 @@
     .bilan-grid { grid-template-columns: 1fr; }
     .comp-selector-form { flex-direction: column; }
 }
+
+/* ===== THÈME SOMBRE ===== */
+[data-theme="dark"] .comp-distrib { background: #334155; }

@@ -110,6 +110,16 @@
   --border-color: var(--ds-border);
   --primary-bg: rgba(37, 99, 235, 0.04);
 
+  /* ── Surfaces & textes : alias largement utilisés par le CSS des modules
+        (étaient non définis → repli clair en thème sombre = surfaces blanches). ── */
+  --bg-card: #ffffff;
+  --bg-secondary: #f1f5f9;
+  --bg-tertiary: #e2e8f0;
+  --bg-hover: #f1f5f9;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --border: #e2e8f0;
+
   /* ── Spacing (4px grid, used by utility classes) ── */
   --sp-1: 4px;
   --sp-2: 8px;
@@ -175,4 +185,13 @@
   --text-muted: var(--ds-text-muted);
   --border-color: var(--ds-border);
   --primary-bg: rgba(59, 130, 246, 0.06);
+
+  /* ── Surfaces & textes (sombre) — corrige les modules qui utilisaient ces alias ── */
+  --bg-card: #1e293b;
+  --bg-secondary: #273449;
+  --bg-tertiary: #334155;
+  --bg-hover: #273449;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --border: #334155;
 }
