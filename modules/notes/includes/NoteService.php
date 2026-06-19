@@ -646,30 +646,67 @@ class NoteService
     }
 
     /**
-     * Évolution des moyennes d'un élève par trimestre (courbe).
-     * Retourne par matière : [matiere_nom => [T1 => moy, T2 => moy, T3 => moy]].
+     * Évolution de la MOYENNE GÉNÉRALE de l'élève par trimestre, comparée à la
+     * moyenne de sa classe. Deux séries lisibles (au lieu d'une courbe par matière,
+     * qui produisait un enchevêtrement illisible) :
+     *   ['Ma moyenne'          => ['couleur' => …, 'trimestres' => [T1, T2, T3]],
+     *    'Moyenne de la classe' => ['couleur' => …, 'trimestres' => [T1, T2, T3]]]
+     * La moyenne générale = moyenne des moyennes par matière (cf. getMoyenneGenerale),
+     * pour rester cohérente avec le reste du module. Valeur null = pas de note ce trimestre.
      */
     public function getEvolutionEleve(int $eleveId): array
     {
-        $stmt = $this->pdo->prepare("
-            SELECT n.trimestre, m.nom AS matiere_nom, m.couleur,
-                   ROUND(SUM(n.note / n.note_sur * 20 * n.coefficient) / SUM(n.coefficient), 2) AS moyenne
-            FROM notes n
-            LEFT JOIN matieres m ON n.id_matiere = m.id
-            WHERE n.id_eleve = ?
-            GROUP BY n.trimestre, n.id_matiere, m.nom, m.couleur
-            ORDER BY m.nom, n.trimestre
-        ");
-        $stmt->execute([$eleveId]);
-        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        // Moyenne générale de l'élève, trimestre par trimestre.
+        $eleveTrim = [null, null, null];
+        for ($t = 1; $t <= 3; $t++) {
+            $eleveTrim[$t - 1] = $this->getMoyenneGenerale($eleveId, $t);
+        }
 
-        $result = [];
-        foreach ($rows as $r) {
-            $key = $r['matiere_nom'];
-            if (!isset($result[$key])) {
-                $result[$key] = ['couleur' => $r['couleur'] ?? '#3498db', 'trimestres' => [null, null, null]];
+        $result = ['Moyenne' => ['couleur' => '#2563eb', 'trimestres' => $eleveTrim]];
+
+        // Classe de l'élève → moyenne de classe par trimestre (ligne de comparaison).
+        $stmt = $this->pdo->prepare("SELECT classe, etablissement_id FROM eleves WHERE id = ? LIMIT 1");
+        $stmt->execute([$eleveId]);
+        $eleve = $stmt->fetch(\PDO::FETCH_ASSOC);
+        $classe = trim((string) ($eleve['classe'] ?? ''));
+
+        if ($classe !== '') {
+            // Moyenne de classe = moyenne des moyennes générales individuelles des élèves
+            // de la classe (mêmes règles de calcul que pour l'élève), par trimestre.
+            $stmt = $this->pdo->prepare("
+                SELECT trimestre, ROUND(AVG(moy_gen), 2) AS moyenne
+                FROM (
+                    SELECT par_matiere.eid, par_matiere.trimestre, AVG(par_matiere.moy_matiere) AS moy_gen
+                    FROM (
+                        SELECT e.id AS eid, n.trimestre,
+                               SUM(n.note / n.note_sur * 20 * n.coefficient) / SUM(n.coefficient) AS moy_matiere
+                        FROM notes n
+                        JOIN eleves e ON e.id = n.id_eleve
+                        WHERE e.classe = ? AND e.etablissement_id = ?
+                        GROUP BY e.id, n.trimestre, n.id_matiere
+                    ) par_matiere
+                    GROUP BY par_matiere.eid, par_matiere.trimestre
+                ) par_eleve
+                GROUP BY trimestre
+            ");
+            $stmt->execute([$classe, (int) ($eleve['etablissement_id'] ?? 1)]);
+
+            $classeTrim = [null, null, null];
+            $nbEleves = 0;
+            foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $r) {
+                $idx = (int) $r['trimestre'] - 1;
+                if ($idx >= 0 && $idx <= 2) {
+                    $classeTrim[$idx] = (float) $r['moyenne'];
+                }
             }
-            $result[$key]['trimestres'][$r['trimestre'] - 1] = (float) $r['moyenne'];
+            // Combien d'élèves dans la classe ? (n'afficher la comparaison que si pertinent)
+            $cnt = $this->pdo->prepare("SELECT COUNT(*) FROM eleves WHERE classe = ? AND etablissement_id = ?");
+            $cnt->execute([$classe, (int) ($eleve['etablissement_id'] ?? 1)]);
+            $nbEleves = (int) $cnt->fetchColumn();
+
+            if ($nbEleves > 1 && array_filter($classeTrim, fn($v) => $v !== null)) {
+                $result['Classe'] = ['couleur' => '#94a3b8', 'trimestres' => $classeTrim];
+            }
         }
 
         return $result;
