@@ -16,6 +16,19 @@ if (!$doc) {
     die('Document introuvable.');
 }
 
+// Cloisonnement établissement (anti-IDOR cross-tenant) : un document d'un autre
+// établissement est traité comme introuvable. Repli sur le contrôle de visibilité
+// par rôle ci-dessous si le contexte établissement est indéterminé.
+if (isset($doc['etablissement_id'])) {
+    $__etab = 0;
+    try { $__etab = (int) \API\Core\EstablishmentContext::id(); }
+    catch (\Throwable $e) { error_log('[telecharger] contexte établissement indéterminé: ' . $e->getMessage()); }
+    if ($__etab > 0 && (int) $doc['etablissement_id'] !== $__etab) {
+        http_response_code(404);
+        die('Document introuvable.');
+    }
+}
+
 $filepath = __DIR__ . '/' . $doc['fichier_chemin'];
 if (!file_exists($filepath)) {
     http_response_code(404);

@@ -156,8 +156,9 @@ class ArchiveService
      */
     public function verrouillerArchive(int $id, bool $verrouiller): void
     {
-        $stmt = $this->pdo->prepare('UPDATE archives_annuelles SET verrouille = ? WHERE id = ?');
-        $stmt->execute([$verrouiller ? 1 : 0, $id]);
+        // Cloisonnement établissement (anti-IDOR cross-tenant).
+        $stmt = $this->pdo->prepare('UPDATE archives_annuelles SET verrouille = ? WHERE id = ? AND etablissement_id = ?');
+        $stmt->execute([$verrouiller ? 1 : 0, $id, $this->etabId()]);
     }
 
     /**

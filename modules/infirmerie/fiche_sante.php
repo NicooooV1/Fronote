@@ -29,6 +29,11 @@ $stmt->execute([$eleveId]);
 $eleve = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$eleve) { redirect('modules/infirmerie/infirmerie.php'); }
 
+// RGPD Art.9 : journaliser TOUT accès à un dossier de santé (donnée sensible).
+if (function_exists('app') && ($__audit = app('audit'))) {
+    $__audit->log('medical.fiche_sante.view', null, ['new' => ['eleve_id' => $eleveId]], \API\Services\AuditService::CRITICAL);
+}
+
 // Derniers passages
 $passages = $infirmerieService->getPassagesEleve($eleveId);
 
@@ -42,6 +47,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canEdit && validateCSRFToken()) {
         'remarques' => trim($_POST['remarques'] ?? ''),
     ];
     $infirmerieService->sauvegarderFiche($eleveId, $data);
+    if (function_exists('app') && ($__audit = app('audit'))) {
+        $__audit->log('medical.fiche_sante.update', null, ['new' => ['eleve_id' => $eleveId]], \API\Services\AuditService::CRITICAL);
+    }
     $_SESSION['success_message'] = 'Fiche santé mise à jour.';
     header('Location: fiche_sante.php?eleve=' . $eleveId);
     exit;
