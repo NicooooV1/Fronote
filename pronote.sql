@@ -1081,6 +1081,62 @@ CREATE TABLE `user_role_audit_logs` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- COMPTES UNIFIÉS (préparation — derrière le flag FEATURE_ACCOUNTS).
+-- Identité de connexion unique cible (cahier des charges §5.1/§5.2). NON branchée
+-- sur l'authentification : les 5 tables héritées restent la source de login tant
+-- que FEATURE_ACCOUNTS=false. legacy_type/legacy_id relient chaque compte à sa
+-- ligne d'origine pour permettre un basculement progressif (voir AccountService
+-- et scripts/backfill_accounts.php). Tables créées mais inertes par défaut.
+-- ============================================================
+CREATE TABLE `accounts` (
+  `id`                    INT AUTO_INCREMENT PRIMARY KEY,
+  `account_type`          ENUM('platform','personnel','student','family','external','system','temporary') NOT NULL,
+  `username`              VARCHAR(100) NOT NULL,
+  `email`                 VARCHAR(180) DEFAULT NULL,
+  `password_hash`         VARCHAR(255) DEFAULT NULL,
+  `first_name`            VARCHAR(100) DEFAULT NULL,
+  `last_name`             VARCHAR(100) DEFAULT NULL,
+  `display_name`          VARCHAR(180) DEFAULT NULL,
+  `phone`                 VARCHAR(30)  DEFAULT NULL,
+  `status`                ENUM('active','inactive','pending','locked','archived','deleted') NOT NULL DEFAULT 'pending',
+  `etablissement_id`      INT          DEFAULT NULL,
+  `legacy_type`           VARCHAR(30)  DEFAULT NULL,   -- table de compte d'origine (eleves/parents/…)
+  `legacy_id`             INT          DEFAULT NULL,
+  `must_change_password`  TINYINT(1)   NOT NULL DEFAULT 1,
+  `two_factor_enabled`    TINYINT(1)   NOT NULL DEFAULT 0,
+  `last_login_at`         DATETIME     DEFAULT NULL,
+  `locked_until`          DATETIME     DEFAULT NULL,
+  `failed_login_attempts` INT          NOT NULL DEFAULT 0,
+  `created_by`            INT          DEFAULT NULL,
+  `created_at`            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`            DATETIME     DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at`            DATETIME     DEFAULT NULL,
+  UNIQUE KEY `uk_acc_username_etab` (`username`, `etablissement_id`),
+  UNIQUE KEY `uk_acc_legacy` (`legacy_type`, `legacy_id`),
+  KEY `idx_acc_email` (`email`),
+  KEY `idx_acc_type` (`account_type`),
+  KEY `idx_acc_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `account_profiles` (
+  `id`               INT AUTO_INCREMENT PRIMARY KEY,
+  `account_id`       INT          NOT NULL,
+  `profile_type`     ENUM('personnel','student','family','external','system') NOT NULL,
+  `etablissement_id` INT          DEFAULT NULL,
+  `date_of_birth`    DATE         DEFAULT NULL,
+  `address`          TEXT         DEFAULT NULL,
+  `job_title`        VARCHAR(150) DEFAULT NULL,
+  `employee_number`  VARCHAR(100) DEFAULT NULL,
+  `student_number`   VARCHAR(100) DEFAULT NULL,
+  `class_id`         INT          DEFAULT NULL,
+  `company_id`       INT          DEFAULT NULL,
+  `created_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`       DATETIME     DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  KEY `idx_ap_account` (`account_id`),
+  CONSTRAINT `fk_ap_account` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- M100 : Permissions CRUD par module (admin)
 -- ============================================================
 CREATE TABLE `module_permissions` (
