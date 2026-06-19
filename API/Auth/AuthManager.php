@@ -89,6 +89,7 @@ class AuthManager
         if ($type) {
             $user = $this->userProvider->retrieveByCredentials($credentials);
             if ($user && $this->userProvider->validateCredentials($user, $credentials)) {
+                if (!$this->demoAllowed() && $this->isDemoAccount($user)) { $this->denyDemo($login); return null; }
                 return $user;
             }
             if (!$user) {
@@ -110,6 +111,12 @@ class AuthManager
             }
         }
 
+        // Comptes de démonstration : refusés sauf si explicitement autorisés (dev/test).
+        if (!$this->demoAllowed()) {
+            $valid = array_values(array_filter($valid, fn($u) => !$this->isDemoAccount($u)));
+            if (empty($valid)) { $this->denyDemo($login); return null; }
+        }
+
         if (count($valid) === 1) {
             return $valid[0];
         }
@@ -119,6 +126,30 @@ class AuthManager
         }
 
         return null;
+    }
+
+    /** Les comptes de démonstration ne sont autorisés que si ALLOW_DEMO_ACCOUNTS=true (dev/test). */
+    private function demoAllowed(): bool
+    {
+        return filter_var(getenv('ALLOW_DEMO_ACCOUNTS') ?: 'false', FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /** Compte de démonstration = e-mail @demo.fronote.test (cf. scripts/seed_demo_*). */
+    private function isDemoAccount(array $user): bool
+    {
+        $mail = strtolower((string) ($user['email'] ?? $user['mail'] ?? ''));
+        return $mail !== '' && str_ends_with($mail, '@demo.fronote.test');
+    }
+
+    /** Journalise un refus de connexion d'un compte de démonstration. */
+    private function denyDemo(string $login): void
+    {
+        error_log("[auth] connexion refusée : compte de démonstration '{$login}' (ALLOW_DEMO_ACCOUNTS != true)");
+        try {
+            if (function_exists('app') && ($a = app('audit'))) { $a->logAuth('demo_blocked', $login, false); }
+        } catch (\Throwable $e) {
+            error_log('[auth] audit demo_blocked: ' . $e->getMessage());
+        }
     }
 
     /**
