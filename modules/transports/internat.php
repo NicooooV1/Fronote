@@ -23,6 +23,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
                 'type' => $_POST['type'],
             ]);
         } elseif ($action === 'affecter') {
+
+            if (!assertUserCanReadEleve((int)$_POST['eleve_id'])) {
+                $_SESSION['error_message'] = "Vous n'avez pas accès à cet élève.";
+                header('Location: ' . (defined('BASE_URL') ? BASE_URL : '') . '/accueil/accueil.php');
+                exit;
+            }
             $tiService->affecterChambre((int)$_POST['chambre_id'], (int)$_POST['eleve_id']);
         }
     } catch (RuntimeException $e) {

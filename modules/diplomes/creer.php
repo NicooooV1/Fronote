@@ -13,6 +13,11 @@ $mentions = DiplomeService::mentions();
 $eleves = $diplService->getEleves();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
+    // Anti-IDOR : un diplôme ne se crée que pour un élève du périmètre de l'utilisateur.
+    if (!assertUserCanReadEleve((int) ($_POST['eleve_id'] ?? 0))) {
+        $_SESSION['error_message'] = "Vous n'avez pas accès à cet élève.";
+        header('Location: diplomes.php'); exit;
+    }
     $fichier = null;
     if (!empty($_FILES['fichier']['name'])) {
         $dir = __DIR__ . '/uploads/';

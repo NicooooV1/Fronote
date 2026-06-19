@@ -28,6 +28,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     try {
         if ($action === 'inscrire') {
             $eleveId = (int)$_POST['eleve_id'];
+
+            // Anti-IDOR : refuse l'accès à un élève hors périmètre de l'utilisateur.
+            if (!assertUserCanReadEleve((int) $eleveId)) {
+                $_SESSION['error_message'] = "Vous n'avez pas accès à cet élève.";
+                header('Location: ' . (defined('BASE_URL') ? BASE_URL : '') . '/accueil/accueil.php');
+                exit;
+            }
             // Un parent ne peut inscrire que ses propres enfants ; un gestionnaire peut inscrire tout élève.
             if (!$isGestionnaire) {
                 $enfantsIds = array_map(static fn($c) => (int)$c['id'], $enfants);

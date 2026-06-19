@@ -15,6 +15,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enregistrer'])) {
     if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
         $message = 'Jeton de sécurité invalide. Veuillez recharger la page.';
     } else {
+
+        // Anti-IDOR : refuse l'accès à un élève hors périmètre de l'utilisateur.
+        if (!assertUserCanReadEleve((int)$_POST['eleve_id'])) {
+            $_SESSION['error_message'] = "Vous n'avez pas accès à cet élève.";
+            header('Location: ' . (defined('BASE_URL') ? BASE_URL : '') . '/accueil/accueil.php');
+            exit;
+        }
     $internatService->enregistrerMouvement(
         (int)$_POST['eleve_id'], (int)$_POST['chambre_id'],
         $_POST['type'], $_POST['motif'] ?? null, $user['id']

@@ -19,6 +19,13 @@ if (isParent()) {
     redirect('modules/infirmerie/infirmerie.php');
 }
 
+// Anti-IDOR : refuse l'accès à un élève hors périmètre de l'utilisateur.
+if (!assertUserCanReadEleve((int) $eleveId)) {
+    $_SESSION['error_message'] = "Vous n'avez pas accès à cet élève.";
+    header('Location: ' . (defined('BASE_URL') ? BASE_URL : '') . '/accueil/accueil.php');
+    exit;
+}
+
 $fiche = $infirmerieService->getFiche($eleveId);
 $canEdit = isAdmin() || isPersonnelVS();
 $groupes = InfirmerieService::groupesSanguins();

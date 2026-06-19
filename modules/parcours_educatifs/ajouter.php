@@ -27,6 +27,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !validateCSRFToken($_POST['csrf_tok
     ];
     if (!$data['titre'] || !$data['eleve_id'] || !$data['type_parcours']) {
         $erreur = 'Champs obligatoires manquants (élève, type, titre).';
+    } elseif (!assertUserCanReadEleve((int) $data['eleve_id'])) {
+        // Anti-IDOR : un parcours ne se crée que pour un élève du périmètre.
+        $erreur = "Vous n'avez pas accès à cet élève.";
     }
     if (!$erreur) {
         if ($editId) {

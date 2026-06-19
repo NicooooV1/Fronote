@@ -30,6 +30,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creer
     } else {
         try {
             $sigType = isAdmin() ? 'administrateur' : 'vie_scolaire';
+            // Anti-IDOR : sanction limitée aux élèves du périmètre de l'utilisateur.
+            if (!assertUserCanReadEleve((int) ($_POST['eleve_id'] ?? 0))) {
+                throw new RuntimeException("Vous n'avez pas accès à cet élève.");
+            }
             $sanctionId = $service->createSanction([
                 'incident_id'    => (int)($_POST['incident_id'] ?? 0) ?: null,
                 'eleve_id'       => (int)$_POST['eleve_id'],

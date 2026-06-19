@@ -13,6 +13,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
         $message = 'Jeton de sécurité invalide. Veuillez recharger la page.';
     } elseif (isset($_POST['signaler'])) {
+
+        $eleveId = (int)($_POST['eleve_id'] ?? 0);
+        if ($eleveId > 0 && !assertUserCanReadEleve($eleveId)) {
+            $_SESSION['error_message'] = "Vous n'avez pas accès à cet élève.";
+            header('Location: ' . (defined('BASE_URL') ? BASE_URL : '') . '/accueil/accueil.php');
+            exit;
+        }
         $internatService->signalerIncident([
             'chambre_id' => $_POST['chambre_id'] ?: null,
             'eleve_id' => $_POST['eleve_id'] ?: null,

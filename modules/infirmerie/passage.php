@@ -24,6 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     ];
     if (empty($data['eleve_id']) || empty($data['motif'])) {
         $error = 'L\'élève et le motif sont obligatoires.';
+    } elseif (!assertUserCanReadEleve((int) $data['eleve_id'])) {
+        // Anti-IDOR : passage à l'infirmerie limité aux élèves du périmètre.
+        $error = "Vous n'avez pas accès à cet élève.";
     } else {
         $id = $infirmerieService->creerPassage($data);
         $_SESSION['success_message'] = 'Passage enregistré.';

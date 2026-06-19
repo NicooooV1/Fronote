@@ -24,6 +24,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
         'date_debut' => $_POST['date_debut'], 'date_fin' => $_POST['date_fin'],
         'description' => trim($_POST['description'] ?? ''),
     ];
+
+    // Anti-IDOR : refuse l'accès à un élève hors périmètre de l'utilisateur.
+    if (!assertUserCanReadEleve((int) $data['eleve_id'])) {
+        $_SESSION['error_message'] = "Vous n'avez pas accès à cet élève.";
+        header('Location: ' . (defined('BASE_URL') ? BASE_URL : '') . '/accueil/accueil.php');
+        exit;
+    }
     $id = $stageService->creerStage($data);
     header('Location: detail.php?id=' . $id); exit;
 }

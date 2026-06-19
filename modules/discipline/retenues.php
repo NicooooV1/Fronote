@@ -53,6 +53,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'affec
         $error = 'Session expirée.';
     } else {
         try {
+            // Anti-IDOR : affectation en retenue limitée aux élèves du périmètre.
+            if (!assertUserCanReadEleve((int) ($_POST['eleve_id'] ?? 0))) {
+                throw new RuntimeException("Vous n'avez pas accès à cet élève.");
+            }
             $service->affecterEleveRetenue(
                 (int)$_POST['retenue_id'],
                 (int)$_POST['eleve_id'],

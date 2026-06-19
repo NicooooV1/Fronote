@@ -49,6 +49,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $erreur = "Motif invalide.";
             } elseif (strtotime($date_fin) <= strtotime($date_debut)) {
                 $erreur = "La date/heure de fin doit être après la date/heure de début.";
+            } elseif (!assertUserCanReadEleve((int) ($_POST['id_eleve'] ?? 0))) {
+                // Anti-IDOR : on ne saisit une absence que pour un élève de son périmètre.
+                $erreur = "Vous n'avez pas accès à cet élève.";
             } else {
                 $data = [
                     'id_eleve'      => intval($_POST['id_eleve']),

@@ -13,6 +13,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isGestionnaire) {
     if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
         $message = 'Jeton de sécurité invalide. Veuillez recharger la page.';
     } elseif (isset($_POST['affecter'])) {
+
+        // Anti-IDOR : refuse l'accès à un élève hors périmètre de l'utilisateur.
+        if (!assertUserCanReadEleve((int) $_POST['eleve_id'])) {
+            $_SESSION['error_message'] = "Vous n'avez pas accès à cet élève.";
+            header('Location: ' . (defined('BASE_URL') ? BASE_URL : '') . '/accueil/accueil.php');
+            exit;
+        }
         $internatService->affecterEleve((int)$_POST['chambre_id'], (int)$_POST['eleve_id'], $_POST['date_debut']);
         $message = 'Élève affecté.';
     } elseif (isset($_POST['liberer'])) {

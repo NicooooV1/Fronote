@@ -24,6 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     ];
     if (empty($data['eleve_id']) || empty($data['date_debut'])) {
         $error = 'Élève et date obligatoires.';
+    } elseif (!assertUserCanReadEleve((int) $data['eleve_id'])) {
+        // Anti-IDOR : plan de besoins limité aux élèves du périmètre de l'utilisateur.
+        $error = "Vous n'avez pas accès à cet élève.";
     } else {
         $id = $besoinService->creerPlan($data);
         header('Location: detail.php?id=' . $id);

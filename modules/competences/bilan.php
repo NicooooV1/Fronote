@@ -40,6 +40,13 @@ if ($role === 'eleve') {
     }
 }
 
+// Anti-IDOR : un bilan de compétences ne se consulte que pour un élève du périmètre.
+if ($eleveId && !assertUserCanReadEleve((int) $eleveId)) {
+    $_SESSION['error_message'] = "Vous n'avez pas accès à cet élève.";
+    header('Location: ' . (defined('BASE_URL') ? BASE_URL : '') . '/accueil/accueil.php');
+    exit;
+}
+
 $bilan = $eleveId ? $compService->getBilanEleve($eleveId, $periodeId ?: null) : [];
 $niveaux = CompetenceService::niveauxLabels();
 ?>

@@ -48,6 +48,13 @@ if (isAdmin() || isVieScolaire()) {
     $enfants = $stmtEnfants->fetchAll(PDO::FETCH_ASSOC);
 
     if ($eleveId > 0) {
+
+        // Anti-IDOR : refuse l'accès à un élève hors périmètre de l'utilisateur.
+        if (!assertUserCanReadEleve((int) $eleveId)) {
+            $_SESSION['error_message'] = "Vous n'avez pas accès à cet élève.";
+            header('Location: ' . (defined('BASE_URL') ? BASE_URL : '') . '/accueil/accueil.php');
+            exit;
+        }
         $cours = $service->getEdtParent($user['id'], $eleveId);
     } elseif (!empty($enfants)) {
         $eleveId = $enfants[0]['id'];
