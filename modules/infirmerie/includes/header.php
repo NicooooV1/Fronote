@@ -5,10 +5,13 @@
 require_once __DIR__ . '/../../../API/Legacy/Bridge.php';
 requireAuth();
 
-// Infirmerie = données médicales SENSIBLES. Accès réservé au personnel médical
-// (rôles infirmerie / infirmier_scolaire / medecin_scolaire) ou au super-admin.
-// La CPE, la vie scolaire générale, les élèves/parents/profs NE doivent PAS entrer.
-if (!isSuperAdmin() && !can('medical.view')) {
+// Accès au module Infirmerie :
+//  - personnel (admin + vie scolaire / personnel médical) : gère TOUS les passages ;
+//  - élève : consulte SON propre dossier (ses passages à l'infirmerie) ;
+//  - parent : consulte le dossier de SES enfants.
+// Le périmètre exact (gestionnaire vs élève vs parent) est appliqué dans la page.
+$canManageInfirmerie = isAdmin() || isPersonnelVS() || can('medical.view');
+if (!isSuperAdmin() && !$canManageInfirmerie && !isEleve() && !isParent()) {
     redirect('/accueil/accueil.php');
 }
 

@@ -128,6 +128,7 @@ function cleanAll(PDO $pdo, string $S, int $ETAB): array {
         $del("DELETE FROM evenements WHERE description LIKE ?", [$like]);
         $del("DELETE FROM passages_infirmerie WHERE observations LIKE ?", [$like]);
         $del("DELETE FROM suivi_eleves WHERE JSON_EXTRACT(notes_json,'$.demo') = true");
+        $del("DELETE FROM parent_eleve WHERE id_parent IN (SELECT id FROM parents WHERE etablissement_id={$ETAB} AND mail LIKE '%@demo.fronote.test')");
     } catch (\Throwable $e) {
         echo "  ⚠ clean: " . $e->getMessage() . "\n";
     }
@@ -148,6 +149,17 @@ cleanAll($pdo, $SENT, $ETAB);
 
 $count = [];
 $bump  = function (string $k, int $by = 1) use (&$count) { $count[$k] = ($count[$k] ?? 0) + $by; };
+
+/* ──────────────── 0. LIENS PARENT-ENFANT (portail parents, infirmerie…) ──────────────── */
+// Chaque parent démo est rattaché à 2 élèves : indispensable pour que les vues
+// « parent » (infirmerie, notes, absences…) affichent les enfants concernés.
+foreach ($parents as $pi => $par) {
+    for ($c = 0; $c < 2; $c++) {
+        $e = $eleves[($pi * 2 + $c) % count($eleves)];
+        ins($pdo, 'parent_eleve', ['id_parent' => $par['id'], 'id_eleve' => $e['id'], 'lien' => pick(['pere', 'mere', 'parent', 'tuteur'])]);
+        $bump('parent_eleve');
+    }
+}
 
 /* ───────────────────────── 1. NOTES ───────────────────────── */
 $typesEval = ['Contrôle', 'Devoir surveillé', 'Interrogation', 'Devoir maison', 'Oral', 'TP'];
@@ -514,8 +526,11 @@ foreach ($events as $ev) {
 }
 
 /* ───────────────────────── 9. INFIRMERIE ───────────────────────── */
-foreach ($eleves as $e) {
-    if (!chance(30)) continue;
+foreach ($eleves as $idx => $e) {
+    // Les élèves d'index impair ont toujours ≥1 passage : comme chaque parent est lié à
+    // 2 élèves consécutifs (cf. section 0), cela garantit que la vue parent affiche des données.
+    $force = ($idx % 2 === 1);
+    if (!$force && !chance(40)) continue;
     $d = randDateBetween('2025-10-01', date('Y-m-d'));
     ins($pdo, 'passages_infirmerie', [
         'etablissement_id' => $ETAB,

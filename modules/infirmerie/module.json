@@ -16,7 +16,9 @@
         "view": {
             "default_roles": [
                 "administrateur",
-                "vie_scolaire"
+                "vie_scolaire",
+                "eleve",
+                "parent"
             ]
         },
         "manage": {
