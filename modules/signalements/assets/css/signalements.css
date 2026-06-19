@@ -80,3 +80,32 @@
     .form-grid-2 { grid-template-columns: 1fr; }
     .signalement-item { flex-direction: column; align-items: flex-start; }
 }
+
+/* ===== THÈME SOMBRE (auto) ===== */
+[data-theme="dark"] .info-banner {
+    background: #1e3a5f;
+    color: #93c5fd;
+    border-left-color: #3b82f6;
+}
+[data-theme="dark"] .signalement-item {
+    background: #1e293b;
+    border-color: #334155;
+}
+[data-theme="dark"] .signalement-item.urgence-critique {
+    background: #450a0a;
+}
+[data-theme="dark"] .notes-pre {
+    background: #273449;
+    color: #e2e8f0;
+}
+[data-theme="dark"] .checkbox-label {
+    border-color: #334155;
+}
+[data-theme="dark"] .checkbox-label:has(input:checked) {
+    border-color: #3b82f6;
+    background: #273449;
+}
+[data-theme="dark"] .number-card {
+    background: #1e293b;
+    border-color: #334155;
+}

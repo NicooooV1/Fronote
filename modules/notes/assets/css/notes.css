@@ -439,3 +439,8 @@
   background: #450a0a;
   color: #fca5a5;
 }
+
+/* ===== THÈME SOMBRE (auto) ===== */
+
+/* Stat "primary" : bleu navy (#0f4c81) illisible sur fond sombre */
+[data-theme="dark"] .notes-stat-value.primary { color: #93c5fd; }

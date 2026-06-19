@@ -65,3 +65,16 @@
     .form-grid-2 { grid-template-columns: 1fr; }
     .doc-row { flex-direction: column; }
 }
+
+/* ===== THÈME SOMBRE (auto) ===== */
+[data-theme="dark"] .filter-btn {
+    background: #273449;
+    color: #e2e8f0;
+}
+[data-theme="dark"] .inscription-item {
+    background: #1e293b;
+    border-color: #334155;
+}
+[data-theme="dark"] .doc-item {
+    background: #273449;
+}

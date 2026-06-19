@@ -42,3 +42,21 @@
     .form-grid-2 { grid-template-columns: 1fr; }
     .filter-form .form-control { max-width: 100%; }
 }
+
+/* ===== THÈME SOMBRE (auto) ===== */
+[data-theme="dark"] .stat-card {
+    background: #1e293b;
+    border-color: #334155;
+}
+[data-theme="dark"] .ressource-card {
+    background: #1e293b;
+    border-color: #334155;
+}
+[data-theme="dark"] .tag {
+    background: #273449;
+    color: #94a3b8;
+}
+[data-theme="dark"] .info-item {
+    background: #273449;
+    color: #e2e8f0;
+}

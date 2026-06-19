@@ -118,3 +118,29 @@
     .ticket-item { flex-direction: column; align-items: flex-start; }
     .ticket-detail-header { flex-direction: column; }
 }
+
+/* ===== THÈME SOMBRE (auto) ===== */
+[data-theme="dark"] .cat-chip,
+[data-theme="dark"] .filter-btn {
+    background: #273449;
+    color: #e2e8f0;
+}
+[data-theme="dark"] .faq-item,
+[data-theme="dark"] .ticket-item {
+    background: #1e293b;
+    border-color: #334155;
+}
+[data-theme="dark"] .faq-cat-badge,
+[data-theme="dark"] .admin-avatar {
+    background: #1e3a5f;
+    color: #93c5fd;
+}
+[data-theme="dark"] .feedback-btn,
+[data-theme="dark"] .message-avatar {
+    background: #273449;
+    color: #94a3b8;
+}
+[data-theme="dark"] .help-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+}

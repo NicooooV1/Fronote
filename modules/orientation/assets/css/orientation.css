@@ -76,3 +76,11 @@
     .voeu-row { flex-direction: column; align-items: stretch; }
     .enfants-grid { grid-template-columns: 1fr; }
 }
+
+/* ===== THÈME SOMBRE (auto) ===== */
+[data-theme="dark"] .enfant-card {
+    background: #1e293b;
+}
+[data-theme="dark"] .fiche-item {
+    background: #1e293b;
+}

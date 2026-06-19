@@ -47,3 +47,24 @@
     .convocations-list { grid-template-columns: 1fr; }
     .epreuve-item { flex-direction: column; align-items: flex-start; }
 }
+
+/* ===== THÈME SOMBRE (auto) ===== */
+[data-theme="dark"] .examen-item {
+    background: #1e293b;
+    border-color: #334155;
+}
+[data-theme="dark"] .info-item {
+    background: #273449;
+    color: #e2e8f0;
+}
+[data-theme="dark"] .epreuve-item {
+    border-color: #334155;
+}
+[data-theme="dark"] .convocation-card {
+    background: #1e293b;
+    border-color: #334155;
+}
+[data-theme="dark"] .convocation-note {
+    background: #1e3a5f;
+    color: #93c5fd;
+}

@@ -53,3 +53,16 @@
     .doc-card { flex-direction: column; }
     .doc-actions { width: 100%; justify-content: flex-end; }
 }
+
+/* ===== THÈME SOMBRE (auto) ===== */
+[data-theme="dark"] .doc-card {
+    background: #1e293b;
+    box-shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+[data-theme="dark"] .doc-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,.5);
+}
+[data-theme="dark"] .doc-icon {
+    background: #273449;
+    color: #e2e8f0;
+}

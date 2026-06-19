@@ -59,3 +59,9 @@
 
 /* ===== THÈME SOMBRE ===== */
 [data-theme="dark"] .comp-distrib { background: #334155; }
+
+/* ===== THÈME SOMBRE (auto) ===== */
+[data-theme="dark"] .comp-domain,
+[data-theme="dark"] .bilan-domain-card { background: #1e293b; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+[data-theme="dark"] .comp-children { border-left-color: #334155; }
+[data-theme="dark"] .bilan-domain-header { border-bottom-color: #334155; }

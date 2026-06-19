@@ -47,3 +47,11 @@
     .form-grid-3 { grid-template-columns: 1fr; }
     .services-grid { grid-template-columns: 1fr; }
 }
+
+/* ===== THÈME SOMBRE (auto) ===== */
+[data-theme="dark"] .info-item { background: #273449; color: #e2e8f0; }
+[data-theme="dark"] .service-card { background: #1e293b; border-color: #334155; color: #e2e8f0; }
+[data-theme="dark"] .menu-day { background: #1e293b; border-color: #334155; }
+[data-theme="dark"] .menu-day-header { background: #273449; color: #e2e8f0; }
+[data-theme="dark"] .menu-allergenes { background: #451a03; color: #fcd34d; }
+[data-theme="dark"] .inscription-card { background: #1e293b; border-color: #334155; color: #e2e8f0; }

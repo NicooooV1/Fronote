@@ -374,3 +374,56 @@ textarea.form-control { resize: vertical; min-height: 80px; }
     .annonce-detail-titre { font-size: 1.2rem; }
     .sondage-info { flex-direction: column; gap: .25rem; }
 }
+
+/* ===== THÈME SOMBRE (auto) ===== */
+[data-theme="dark"] .annonce-card {
+    background: #1e293b;
+}
+[data-theme="dark"] .annonce-non-lue {
+    background: #273449;
+}
+[data-theme="dark"] .annonce-titre,
+[data-theme="dark"] .annonce-detail-titre,
+[data-theme="dark"] .sondage-titre {
+    color: #f1f5f9;
+}
+[data-theme="dark"] .annonce-contenu,
+[data-theme="dark"] .annonce-detail-contenu {
+    color: #e2e8f0;
+}
+[data-theme="dark"] .annonce-footer {
+    border-top-color: #334155;
+}
+[data-theme="dark"] .sondage-preview {
+    background: #273449;
+    border-color: #334155;
+}
+[data-theme="dark"] .sondage-option-label {
+    background: #273449;
+    border-color: #334155;
+}
+[data-theme="dark"] .sondage-option-label:hover {
+    background: #334155;
+    border-color: #3b82f6;
+}
+[data-theme="dark"] .sondage-result-bar {
+    background: #334155;
+}
+[data-theme="dark"] .stat-card {
+    background: #1e293b;
+}
+[data-theme="dark"] .stat-card .stat-number {
+    color: #f1f5f9;
+}
+[data-theme="dark"] .badge-info { background: #1e3a5f; color: #93c5fd; }
+[data-theme="dark"] .badge-urgent { background: #450a0a; color: #fca5a5; }
+[data-theme="dark"] .badge-event { background: #052e16; color: #86efac; }
+[data-theme="dark"] .badge-poll { background: #1e3a5f; color: #93c5fd; }
+[data-theme="dark"] .badge-pin { background: #451a03; color: #fcd34d; }
+[data-theme="dark"] .badge-secondary { background: #273449; color: #e2e8f0; }
+[data-theme="dark"] .data-table {
+    background: #1e293b;
+}
+[data-theme="dark"] .alert-success { background: #052e16; color: #86efac; border-color: #334155; }
+[data-theme="dark"] .alert-danger { background: #450a0a; color: #fca5a5; border-color: #334155; }
+[data-theme="dark"] .alert-info { background: #1e3a5f; color: #93c5fd; border-color: #334155; }

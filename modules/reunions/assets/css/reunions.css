@@ -110,3 +110,35 @@
     .rdv-card { flex-direction: column; text-align: center; }
     .filter-form .form-control { max-width: 100%; }
 }
+
+/* ===== THÈME SOMBRE (auto) ===== */
+[data-theme="dark"] .reunion-card,
+[data-theme="dark"] .rdv-card,
+[data-theme="dark"] .convocation-item {
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+[data-theme="dark"] .reunion-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.4); }
+
+[data-theme="dark"] .reunion-type-badge { background: #1e3a5f; color: #93c5fd; }
+[data-theme="dark"] .type-conseil_classe { background: #451a03; color: #fcd34d; }
+[data-theme="dark"] .type-reunion_equipe { background: #052e16; color: #86efac; }
+[data-theme="dark"] .type-individuel { background: #1e3a5f; color: #93c5fd; }
+
+[data-theme="dark"] .reunion-meta,
+[data-theme="dark"] .reunion-desc,
+[data-theme="dark"] .rdv-info p,
+[data-theme="dark"] .conv-content p,
+[data-theme="dark"] .reunion-description { color: #94a3b8; }
+[data-theme="dark"] .conv-meta { color: #64748b; }
+
+[data-theme="dark"] .reunion-description { border-top-color: #334155; }
+[data-theme="dark"] .pv-content { background: #273449; color: #e2e8f0; }
+
+[data-theme="dark"] .creneau-card { border-color: #334155; background: #1e293b; }
+[data-theme="dark"] .creneau-free { background: #052e16; border-color: #86efac; }
+[data-theme="dark"] .creneau-taken { background: #450a0a; border-color: #fca5a5; }
+
+[data-theme="dark"] .convocation-unread { background: #1e3a5f; }
+[data-theme="dark"] .conv-icon { background: #1e3a5f; color: #93c5fd; }

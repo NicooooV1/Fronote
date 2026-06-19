@@ -27,3 +27,8 @@
     .form-grid-3 { grid-template-columns: 1fr; }
     .stages-list { grid-template-columns: 1fr; }
 }
+
+/* ===== THÈME SOMBRE (auto) ===== */
+[data-theme="dark"] .stat-card { background: #1e293b; border-color: #334155; }
+[data-theme="dark"] .stage-card { background: #1e293b; border-color: #334155; }
+[data-theme="dark"] .info-item { background: #273449; }

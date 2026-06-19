@@ -28,3 +28,17 @@
     .diplomes-grid { grid-template-columns: 1fr; }
     .form-grid-2 { grid-template-columns: 1fr; }
 }
+
+/* ===== THÈME SOMBRE (auto) ===== */
+[data-theme="dark"] .stat-card {
+    background: #1e293b;
+    border-color: #334155;
+}
+[data-theme="dark"] .diplome-card {
+    background: #1e293b;
+    border-color: #334155;
+}
+[data-theme="dark"] .info-item {
+    background: #273449;
+    color: #e2e8f0;
+}

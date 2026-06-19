@@ -79,3 +79,25 @@
   .devoirs-grid { grid-template-columns: 1fr; }
   .correction-grid { flex-direction: column; }
 }
+
+/* ===== THÈME SOMBRE (auto) ===== */
+[data-theme="dark"] .devoir-card,
+[data-theme="dark"] .devoir-detail-card,
+[data-theme="dark"] .rendu-card,
+[data-theme="dark"] .stat-card {
+  background: #1e293b;
+}
+[data-theme="dark"] .devoir-footer,
+[data-theme="dark"] .devoir-description,
+[data-theme="dark"] .correction-form {
+  border-top-color: #334155;
+}
+[data-theme="dark"] .rendu-contenu {
+  background: #273449;
+  color: #e2e8f0;
+}
+[data-theme="dark"] .prof-commentaire {
+  background: #052e16;
+  border-left-color: #86efac;
+  color: #86efac;
+}

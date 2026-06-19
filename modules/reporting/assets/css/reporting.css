@@ -56,3 +56,19 @@
     .report-stats-grid { grid-template-columns: repeat(2, 1fr); }
     .form-row { flex-direction: column; }
 }
+
+/* ===== THÈME SOMBRE (auto) ===== */
+[data-theme="dark"] .report-stat-card {
+    background: #1e293b;
+    box-shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+[data-theme="dark"] .export-card {
+    background: #1e293b;
+    color: #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+[data-theme="dark"] .export-card:hover {
+    background: #3b82f6;
+    color: #f1f5f9;
+    box-shadow: 0 4px 12px rgba(0,0,0,.5);
+}

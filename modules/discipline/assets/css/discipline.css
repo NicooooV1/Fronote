@@ -588,3 +588,112 @@ textarea.form-control {
     .fiche-info-grid { flex-direction: column; gap: 1rem; }
     .retenues-grid { grid-template-columns: 1fr; }
 }
+
+/* ===== THÈME SOMBRE (auto) ===== */
+[data-theme="dark"] .stat-card {
+    background: #1e293b;
+    box-shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+[data-theme="dark"] .stat-card .stat-number { color: #e2e8f0; }
+[data-theme="dark"] .stat-card .stat-label { color: #94a3b8; }
+
+[data-theme="dark"] .filter-group label { color: #94a3b8; }
+[data-theme="dark"] .filter-group select,
+[data-theme="dark"] .filter-group input {
+    border: 1px solid #334155;
+    background: #1e293b;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .badge-type { background: #1e3a5f; color: #93c5fd; }
+[data-theme="dark"] .badge-sanction { background: #451a03; color: #fcd34d; }
+[data-theme="dark"] .badge-gravite-mineur { background: #052e16; color: #86efac; }
+[data-theme="dark"] .badge-gravite-moyen { background: #451a03; color: #fcd34d; }
+[data-theme="dark"] .badge-gravite-grave { background: #450a0a; color: #fca5a5; }
+[data-theme="dark"] .badge-statut-signale { background: #451a03; color: #fcd34d; }
+[data-theme="dark"] .badge-statut-en_cours { background: #1e3a5f; color: #93c5fd; }
+[data-theme="dark"] .badge-statut-traite { background: #052e16; color: #86efac; }
+[data-theme="dark"] .badge-statut-classe { background: #273449; color: #94a3b8; }
+[data-theme="dark"] .badge-success { background: #052e16; color: #86efac; }
+[data-theme="dark"] .badge-danger { background: #450a0a; color: #fca5a5; }
+[data-theme="dark"] .badge-secondary { background: #273449; color: #94a3b8; }
+
+[data-theme="dark"] .table-responsive { box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+[data-theme="dark"] .data-table { background: #1e293b; }
+[data-theme="dark"] .data-table thead { background: #273449; }
+[data-theme="dark"] .data-table th {
+    color: #94a3b8;
+    border-bottom: 2px solid #334155;
+}
+[data-theme="dark"] .data-table td {
+    border-bottom: 1px solid #334155;
+    color: #e2e8f0;
+}
+[data-theme="dark"] .data-table tbody tr:hover { background: #273449; }
+
+[data-theme="dark"] .empty-state i { opacity: .55; }
+
+[data-theme="dark"] .form-card h2 { color: #f1f5f9; }
+[data-theme="dark"] .form-section { border-bottom: 1px solid #334155; }
+[data-theme="dark"] .form-section h3 { color: #f1f5f9; }
+[data-theme="dark"] .form-group label { color: #94a3b8; }
+[data-theme="dark"] .form-control {
+    border: 1px solid #334155;
+    background: #1e293b;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .search-dropdown {
+    background: #1e293b;
+    border: 1px solid #334155;
+    box-shadow: 0 4px 16px rgba(0,0,0,.4);
+}
+[data-theme="dark"] .search-item {
+    border-bottom: 1px solid #334155;
+    color: #e2e8f0;
+}
+[data-theme="dark"] .search-item:hover { background: #273449; }
+[data-theme="dark"] .search-item.search-empty { color: #94a3b8; }
+[data-theme="dark"] .search-classe { color: #94a3b8; }
+
+[data-theme="dark"] .detail-section h3 { color: #94a3b8; }
+[data-theme="dark"] .detail-info { background: #273449; }
+[data-theme="dark"] .detail-info-item { border-bottom: 1px solid #334155; }
+[data-theme="dark"] .detail-label { color: #94a3b8; }
+[data-theme="dark"] .sanction-mini-card {
+    background: #273449;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .fiche-label { color: #94a3b8; }
+[data-theme="dark"] .fiche-value { color: #e2e8f0; }
+
+[data-theme="dark"] .tabs-header { border-bottom: 2px solid #334155; }
+[data-theme="dark"] .tab-btn { color: #94a3b8; }
+[data-theme="dark"] .tab-btn:hover { color: #60a5fa; }
+[data-theme="dark"] .tab-btn.active {
+    color: #60a5fa;
+    border-bottom-color: #60a5fa;
+}
+
+[data-theme="dark"] .timeline::before { background: #334155; }
+[data-theme="dark"] .timeline-item::before {
+    border: 2px solid #1e293b;
+    box-shadow: 0 0 0 2px #334155;
+}
+[data-theme="dark"] .timeline-date { color: #94a3b8; }
+[data-theme="dark"] .timeline-content {
+    background: #1e293b;
+    box-shadow: 0 1px 4px rgba(0,0,0,.3);
+}
+
+[data-theme="dark"] .retenue-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+[data-theme="dark"] .retenue-info { color: #e2e8f0; }
+[data-theme="dark"] .retenue-info i { color: #94a3b8; }
+
+[data-theme="dark"] .alert-success { background: #052e16; color: #86efac; border: 1px solid #334155; }
+[data-theme="dark"] .alert-danger { background: #450a0a; color: #fca5a5; border: 1px solid #334155; }
+[data-theme="dark"] .alert-info { background: #1e3a5f; color: #93c5fd; border: 1px solid #334155; }
+[data-theme="dark"] .alert-warning { background: #451a03; color: #fcd34d; border: 1px solid #334155; }
+
+[data-theme="dark"] .text-muted { color: #94a3b8; }

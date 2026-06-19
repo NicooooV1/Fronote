@@ -29,3 +29,17 @@
     .chambres-grid { grid-template-columns: 1fr 1fr; }
     .form-grid-3 { grid-template-columns: 1fr; }
 }
+
+/* ===== THÈME SOMBRE (auto) ===== */
+[data-theme="dark"] .ligne-card {
+    background: #1e293b;
+    border-color: #334155;
+}
+[data-theme="dark"] .chambre-card {
+    background: #1e293b;
+    border-color: #334155;
+}
+[data-theme="dark"] .chambre-card.full {
+    background: #450a0a;
+    border-color: #fca5a5;
+}
