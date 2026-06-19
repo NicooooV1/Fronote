@@ -274,7 +274,7 @@ class GarderieService
                     "{$nom} a quitté la garderie à " . date('H:i') . '.',
                     '/garderie/', 'normale');
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) { error_log('[GarderieService.php] ' . $e->getMessage()); }
     }
 
     // ─── BILAN MENSUEL ───

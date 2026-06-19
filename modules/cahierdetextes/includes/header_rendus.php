@@ -14,7 +14,7 @@ $user_initials = getUserInitials();
 
 // Feature flags
 $_devFeatures = null;
-try { $_devFeatures = app('features'); } catch (\Throwable $e) {}
+try { $_devFeatures = app('features'); } catch (\Throwable $e) { error_log('[header_rendus.php] ' . $e->getMessage()); }
 $ffOnlineSubmission = $_devFeatures ? $_devFeatures->isEnabled('devoirs.online_submission') : true;
 $ffAutoReminders    = $_devFeatures ? $_devFeatures->isEnabled('devoirs.auto_reminders') : true;
 $ffAnnotation       = $_devFeatures ? $_devFeatures->isEnabled('devoirs.annotation') : true;

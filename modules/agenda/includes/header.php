@@ -25,7 +25,7 @@ $extraCss = array_merge(['assets/css/agenda.css'], $extraCss ?? []);
 
 // Feature flags
 $_agFeatures = null;
-try { $_agFeatures = app('features'); } catch (\Throwable $e) {}
+try { $_agFeatures = app('features'); } catch (\Throwable $e) { error_log('[header.php] ' . $e->getMessage()); }
 $ffRecurrence       = $_agFeatures ? $_agFeatures->isEnabled('agenda.recurrence') : true;
 $ffIcalExport       = $_agFeatures ? $_agFeatures->isEnabled('agenda.ical_export') : true;
 $ffConflictDetect   = $_agFeatures ? $_agFeatures->isEnabled('agenda.conflict_detection') : true;

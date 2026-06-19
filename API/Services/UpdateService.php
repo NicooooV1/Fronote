@@ -121,7 +121,7 @@ class UpdateService
             }
         };
         $endMaintenance = function () use (&$steps, &$maintActive): void {
-            if ($maintActive) { try { app('maintenance')->deactivate(); $steps[] = 'Maintenance désactivée'; } catch (\Throwable $e) {} $maintActive = false; }
+            if ($maintActive) { try { app('maintenance')->deactivate(); $steps[] = 'Maintenance désactivée'; } catch (\Throwable $e) { error_log('[UpdateService.php] ' . $e->getMessage()); } $maintActive = false; }
         };
 
         // 1) git fetch
@@ -205,7 +205,7 @@ class UpdateService
         }
 
         // 5) Vider le cache applicatif.
-        try { app('cache')->flush(); $steps[] = 'Cache vidé'; } catch (\Throwable $e) {}
+        try { app('cache')->flush(); $steps[] = 'Cache vidé'; } catch (\Throwable $e) { error_log('[UpdateService.php] ' . $e->getMessage()); }
 
         // 6) Sortie de maintenance + relire la version.
         $endMaintenance();

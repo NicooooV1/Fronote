@@ -120,13 +120,13 @@ class ReportingService {
                 $stmt = $pdo->prepare("SELECT COUNT(*) FROM absences WHERE DATE_FORMAT(date_debut, '%Y-%m') = ?");
                 $stmt->execute([$month]);
                 $absences = (int)$stmt->fetchColumn();
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) { error_log('[ReportingService.php] ' . $e->getMessage()); }
 
             try {
                 $stmt = $pdo->prepare("SELECT COUNT(*) FROM retards WHERE DATE_FORMAT(date_retard, '%Y-%m') = ?");
                 $stmt->execute([$month]);
                 $retards = (int)$stmt->fetchColumn();
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) { error_log('[ReportingService.php] ' . $e->getMessage()); }
 
             $result[] = [
                 'mois' => $label,
@@ -370,7 +370,7 @@ class ReportingService {
             $stmt = $pdo->prepare("SELECT COUNT(*) FROM retards r JOIN eleves e ON r.id_eleve = e.id WHERE e.classe = ?");
             $stmt->execute([$classeNom]);
             $totalRetards = (int)$stmt->fetchColumn();
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) { error_log('[ReportingService.php] ' . $e->getMessage()); }
 
         // Incidents (incidents.eleve_id)
         $nbIncidents = 0;
@@ -378,7 +378,7 @@ class ReportingService {
             $stmt = $pdo->prepare("SELECT COUNT(*) FROM incidents i JOIN eleves e ON i.eleve_id = e.id WHERE e.classe = ?");
             $stmt->execute([$classeNom]);
             $nbIncidents = (int)$stmt->fetchColumn();
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) { error_log('[ReportingService.php] ' . $e->getMessage()); }
 
         // Moyennes par matière
         $sqlMat = "

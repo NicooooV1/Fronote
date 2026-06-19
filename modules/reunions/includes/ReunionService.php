@@ -274,7 +274,7 @@ class ReunionService
                         $notifService->creer((int)$pid, 'parent', 'reunion', $titre, $message, $lien, 'haute');
                     }
                 }
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) { error_log('[ReunionService.php] ' . $e->getMessage()); }
 
             $this->pdo->prepare("UPDATE reunions SET reminder_sent = 1 WHERE id = ?")->execute([$r['id']]);
             $count++;

@@ -81,17 +81,17 @@ class AdminDashboardService
             $totalEleves = max((int) $s->fetchColumn(), 1);
             $s = $this->pdo->prepare("SELECT COUNT(DISTINCT id_eleve) FROM absences WHERE date_debut >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND etablissement_id = ?"); $s->execute([$etab]);
             $kpi['taux_absenteisme'] = round(((int) $s->fetchColumn() / $totalEleves) * 100, 1);
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) { error_log('[AdminDashboardService.php] ' . $e->getMessage()); }
         try {
             $stmt = $this->pdo->prepare("SELECT ROUND(AVG(note / note_sur * 20), 2) FROM notes WHERE trimestre = ? AND etablissement_id = ?"); $stmt->execute([$trimestre, $etab]);
             $kpi['moyenne_generale'] = $stmt->fetchColumn() ?: null;
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) { error_log('[AdminDashboardService.php] ' . $e->getMessage()); }
         try {
             $stmtProfs = $this->pdo->prepare("SELECT COUNT(DISTINCT id_professeur) FROM notes WHERE trimestre = ? AND etablissement_id = ?"); $stmtProfs->execute([$trimestre, $etab]);
             $profsAvecNotes = (int) $stmtProfs->fetchColumn();
             $sp = $this->pdo->prepare("SELECT COUNT(*) FROM professeurs WHERE actif = 1 AND etablissement_id = ?"); $sp->execute([$etab]);
             $kpi['taux_remplissage_notes'] = round(($profsAvecNotes / max((int) $sp->fetchColumn(), 1)) * 100, 1);
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) { error_log('[AdminDashboardService.php] ' . $e->getMessage()); }
         try {
             $wsUrl = function_exists('env') ? env('WEBSOCKET_CLIENT_URL', '') : '';
             if ($wsUrl) {
@@ -100,7 +100,7 @@ class AdminDashboardService
                 if ($wsHealth) { $wsData = json_decode($wsHealth, true); $kpi['ws_connections'] = $wsData['connections'] ?? 0; }
             }
         } catch (\Throwable $e) { $kpi['ws_status'] = 'error'; }
-        try { $kpi['sessions_actives'] = (int) $this->pdo->query("SELECT COUNT(*) FROM session_security WHERE is_active = 1 AND expires_at > NOW()")->fetchColumn(); } catch (\Throwable $e) {}
+        try { $kpi['sessions_actives'] = (int) $this->pdo->query("SELECT COUNT(*) FROM session_security WHERE is_active = 1 AND expires_at > NOW()")->fetchColumn(); } catch (\Throwable $e) { error_log('[AdminDashboardService.php] ' . $e->getMessage()); }
         return $kpi;
     }
 

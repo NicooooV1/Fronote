@@ -24,7 +24,7 @@ if (in_array($role, ['professeur', 'administrateur'], true)) {
         $st = $pdo->prepare("SELECT classe FROM eleves WHERE id = :id LIMIT 1");
         $st->execute([':id' => $uid]);
         $classe = (string) $st->fetchColumn();
-    } catch (\Throwable $e) {}
+    } catch (\Throwable $e) { error_log('[evaluations.php] ' . $e->getMessage()); }
     $evals = $classe ? $svc->getEvaluationsClasse($classe) : [];
 }
 

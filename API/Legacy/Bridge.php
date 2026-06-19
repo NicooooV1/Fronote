@@ -240,7 +240,7 @@ if (!function_exists('parentOwnsEleve')) {
                     );
                     $stmt->execute([$parentId, $eleveId]);
                     if ($stmt->fetchColumn()) return true;
-                } catch (\Throwable $e) { /* table absente : on essaie l'autre */ }
+                } catch (\Throwable $e) { /* table absente : on essaie l'autre */ error_log('[Bridge.php] ' . $e->getMessage()); }
             }
             return false;
         } catch (\Throwable $e) {
@@ -278,7 +278,7 @@ if (!function_exists('assertUserCanReadEleve')) {
         if (!$eRow) return false;
         if ($role === 'super_admin') return true;
         $myEtab = (int) ($user['etablissement_id'] ?? 0);
-        if ($myEtab <= 0) { try { $myEtab = (int) \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) {} }
+        if ($myEtab <= 0) { try { $myEtab = (int) \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { error_log('[Bridge.php] ' . $e->getMessage()); } }
         if ($myEtab > 0 && (int) $eRow['etablissement_id'] !== $myEtab) return false;
         if (in_array($role, ['administrateur', 'vie_scolaire'], true)) return true;
         if ($role === 'professeur') {
@@ -744,6 +744,7 @@ if (!function_exists('cleanExpiredSessions')) {
 			$stmt->execute([$lifetime]);
 		} catch (\Throwable $e) {
 			// Silent fail
+			error_log('[Bridge.php] ' . $e->getMessage());
 		}
 	}
 }
@@ -962,7 +963,7 @@ if (!function_exists('authz')) {
 		static $synced = false;
 		if (!$synced) {
 			$synced = true;
-			try { $a->setUser(app('auth')->user()); } catch (\Throwable $e) {}
+			try { $a->setUser(app('auth')->user()); } catch (\Throwable $e) { error_log('[Bridge.php] ' . $e->getMessage()); }
 		}
 		return $a;
 	}

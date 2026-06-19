@@ -16,7 +16,7 @@ $annee  = (string) date('Y');
 $stats     = $svc->getStatistiques($etabId, $annee);
 $catalogue = $svc->getCatalogue($etabId);
 $expirant  = [];
-try { $expirant = $svc->checkExpirations($etabId, 60); } catch (\Throwable $e) {}
+try { $expirant = $svc->checkExpirations($etabId, 60); } catch (\Throwable $e) { error_log('[formations.php] ' . $e->getMessage()); }
 
 include __DIR__ . '/../../templates/shared_header.php';
 include __DIR__ . '/../../templates/shared_topbar.php';

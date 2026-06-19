@@ -34,7 +34,7 @@ if (!isAdmin() && !isPersonnelVS()) {
 }
 
 $etab = [];
-try { $etab = $pdo->query("SELECT * FROM etablissement LIMIT 1")->fetch(PDO::FETCH_ASSOC) ?: []; } catch (\Exception $e) {}
+try { $etab = $pdo->query("SELECT * FROM etablissement LIMIT 1")->fetch(PDO::FETCH_ASSOC) ?: []; } catch (\Exception $e) { error_log('[export_diplome.php] ' . $e->getMessage()); }
 $nomEtab = $etab['nom'] ?? 'Établissement';
 $academie = $etab['academie'] ?? 'Académie';
 

@@ -343,7 +343,7 @@ $app->register(new \API\Providers\SecurityServiceProvider($app));
 // de l'utilisateur courant pour ne pas forcer la session avant son démarrage.
 $app->singleton('authz', function($app) {
 	$u = null;
-	try { $u = $app->make('auth')->user(); } catch (\Throwable $e) {}
+	try { $u = $app->make('auth')->user(); } catch (\Throwable $e) { error_log('[bootstrap.php] ' . $e->getMessage()); }
 	return new \API\Security\Authorization($app->make('db')->getConnection(), $u);
 });
 $app->register(new \API\Providers\EtablissementServiceProvider($app));
@@ -498,13 +498,13 @@ if (php_sapi_name() !== 'cli' && !empty($_SESSION['user_id'])) {
 		} elseif ($_ssRow !== false) {
 			getPDO()->prepare("UPDATE session_security SET last_activity = NOW() WHERE id = ?")->execute([session_id()]);
 		}
-	} catch (\Throwable $e) { /* fail-open */ }
+	} catch (\Throwable $e) { /* fail-open */ error_log('[bootstrap.php] ' . $e->getMessage()); }
 
 	// (2) Compte désactivé/verrouillé : UserProvider::retrieveById() renvoie null si
 	//     actif=0 → universel, indépendamment du fait que la page appelle requireAuth().
 	if (!$_forceLogout) {
 		try { if (app('auth')->user() === null) { $_forceLogout = true; } }
-		catch (\Throwable $e) { /* fail-open */ }
+		catch (\Throwable $e) { /* fail-open */ error_log('[bootstrap.php] ' . $e->getMessage()); }
 	}
 
 	if ($_forceLogout) {

@@ -261,7 +261,7 @@ class BibliothequeService
                 "Le livre « {$livre['titre']} » est maintenant disponible. Venez le chercher au CDI.",
                 '/bibliotheque/detail.php?id=' . $livreId, 'haute'
             );
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) { error_log('[BibliothequeService.php] ' . $e->getMessage()); }
 
         $this->pdo->prepare("UPDATE livre_reservations SET statut = 'notifie', notified_at = NOW() WHERE id = ?")
                    ->execute([$next['id']]);
@@ -315,7 +315,7 @@ class BibliothequeService
                 $stmt = $this->pdo->prepare("UPDATE emprunts SET rappel_envoye = 1 WHERE id = ?");
                 $stmt->execute([$r['id']]);
                 $count++;
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) { error_log('[BibliothequeService.php] ' . $e->getMessage()); }
         }
         return $count;
     }

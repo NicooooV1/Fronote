@@ -44,7 +44,7 @@ class ModuleService
             $direct = $this->loadFromDb();
             if (!empty($direct)) {
                 $this->cache = $direct;
-                try { app('cache')->put('modules:all', $direct, 300); } catch (\Throwable $e) {}
+                try { app('cache')->put('modules:all', $direct, 300); } catch (\Throwable $e) { error_log('[ModuleService.php] ' . $e->getMessage()); }
             }
         }
         return $this->cache ?? [];
@@ -441,6 +441,7 @@ class ModuleService
                 $this->pdo->exec("ALTER TABLE `modules_config` {$clause}");
             } catch (\Throwable $e) {
                 // MySQL < 8 : pas de IF NOT EXISTS — ignorer (colonne déjà présente ou table absente)
+                error_log('[ModuleService.php] ' . $e->getMessage());
             }
         }
     }
@@ -611,6 +612,7 @@ class ModuleService
                 $this->pdo->exec("ALTER TABLE `user_favorites` {$clause}");
             } catch (\Throwable $e) {
                 // Colonne déjà présente → ignorer.
+                error_log('[ModuleService.php] ' . $e->getMessage());
             }
         }
     }

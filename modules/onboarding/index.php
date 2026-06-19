@@ -35,7 +35,7 @@ try {
             $configuredEtabs[] = $e;
         }
     }
-} catch (\Throwable $e) {}
+} catch (\Throwable $e) { error_log('[index.php] ' . $e->getMessage()); }
 
 /**
  * Insère une classe pour un établissement donné (id explicite, sans dépendre
@@ -48,7 +48,7 @@ $insertClasse = function (int $targetEtab, string $niveau, string $nom, string $
     try {
         $pdo->prepare("INSERT INTO classes (niveau, nom, annee_scolaire, etablissement_id) VALUES (?,?,?,?)")
             ->execute([$niveau, $nom, $annee, $targetEtab]);
-    } catch (\PDOException $e) { /* doublon nom/année → ignoré */ }
+    } catch (\PDOException $e) { /* doublon nom/année → ignoré */ error_log('[index.php] ' . $e->getMessage()); }
 };
 
 // Classes par défaut selon le type (réutilisé de l'ancien install.php).

@@ -96,13 +96,13 @@ $roles = [
 $niveaux = [];
 try {
     $niveaux = $pdo->query("SELECT DISTINCT niveau FROM classes WHERE actif = 1 ORDER BY niveau")->fetchAll(PDO::FETCH_COLUMN);
-} catch (\Throwable $e) {}
+} catch (\Throwable $e) { error_log('[creer_annonce.php] ' . $e->getMessage()); }
 
 // Matières disponibles
 $matieres = [];
 try {
     $matieres = $pdo->query("SELECT id, nom FROM matieres WHERE actif = 1 ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
-} catch (\Throwable $e) {}
+} catch (\Throwable $e) { error_log('[creer_annonce.php] ' . $e->getMessage()); }
 ?>
 
 <h1 class="page-title"><i class="fas fa-plus-circle"></i> Nouvelle annonce</h1>

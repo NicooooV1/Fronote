@@ -38,7 +38,7 @@ if (!$exam) { die('Convocation introuvable.'); }
 $etab = [];
 try {
     $etab = $pdo->query("SELECT * FROM etablissement LIMIT 1")->fetch(PDO::FETCH_ASSOC) ?: [];
-} catch (\Exception $e) {}
+} catch (\Exception $e) { error_log('[export_convocation.php] ' . $e->getMessage()); }
 
 $nomEtab = $etab['nom'] ?? 'Établissement';
 $adresse = trim(($etab['adresse'] ?? '') . ' ' . ($etab['code_postal'] ?? '') . ' ' . ($etab['ville'] ?? ''));

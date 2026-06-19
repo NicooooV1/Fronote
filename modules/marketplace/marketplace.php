@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'confi
                         "INSERT INTO marketplace_consents (module_key, version, permissions_granted, granted_by, granted_by_name, granted_at)
                          VALUES (?,?,?,?,?,NOW()) ON DUPLICATE KEY UPDATE permissions_granted=VALUES(permissions_granted),granted_by=VALUES(granted_by),granted_by_name=VALUES(granted_by_name),granted_at=NOW()"
                     )->execute([$sess['manifest']['key'] ?? '', $sess['manifest']['version'] ?? '', json_encode($granted), $user['id'] ?? null, trim(($user['prenom'] ?? '') . ' ' . ($user['nom'] ?? ''))]);
-                } catch (\Throwable $e) {}
+                } catch (\Throwable $e) { error_log('[marketplace.php] ' . $e->getMessage()); }
 
                 $result = $marketplace->confirmInstall($sess['staging'], $sess['manifest'], $sess['fmod_path'], $sess['sig_data']);
                 unset($_SESSION['marketplace_pending']);

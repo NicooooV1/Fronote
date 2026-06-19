@@ -22,7 +22,7 @@ $extraCss = array_merge(['assets/css/emploi_du_temps.css'], $extraCss ?? []);
 
 // Feature flags
 $_edtFeatures = null;
-try { $_edtFeatures = app('features'); } catch (\Throwable $e) {}
+try { $_edtFeatures = app('features'); } catch (\Throwable $e) { error_log('[header.php] ' . $e->getMessage()); }
 $ffDragDrop         = $_edtFeatures ? $_edtFeatures->isEnabled('emploi_du_temps.drag_drop_editor') : true;
 $ffConflictDetect   = $_edtFeatures ? $_edtFeatures->isEnabled('emploi_du_temps.conflict_detection') : true;
 $ffIcalExport       = $_edtFeatures ? $_edtFeatures->isEnabled('emploi_du_temps.ical_export') : true;

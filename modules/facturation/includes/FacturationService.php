@@ -311,7 +311,7 @@ class FacturationService
                             $niveau
                         );
                     }
-                } catch (\Exception $e) {}
+                } catch (\Exception $e) { error_log('[FacturationService.php] ' . $e->getMessage()); }
 
                 $this->pdo->prepare("UPDATE factures SET relance_count = relance_count + 1, derniere_relance = CURDATE(), statut = 'en_retard' WHERE id = ?")
                            ->execute([$f['id']]);

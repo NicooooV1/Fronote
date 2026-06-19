@@ -268,7 +268,7 @@ class VieScolaireService {
                         $indicators[] = "Moyenne < 8: {$current}";
                     }
                 }
-            } catch (\Exception $e2) {}
+            } catch (\Exception $e2) { error_log('[VieScolaireService.php] ' . $e2->getMessage()); }
 
             // 4. Unjustified absences
             $injStmt = $this->pdo->prepare("SELECT COUNT(*) FROM absences WHERE id_eleve = ? AND justifie = 0 AND date_debut >= ?");

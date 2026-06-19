@@ -145,7 +145,7 @@ class TransportInternatService
                     $notif->creer((int)$pid, 'parent', 'transport', $titre, $message, '/transports/lignes.php', 'haute');
                 }
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) { error_log('[TransportInternatService.php] ' . $e->getMessage()); }
     }
 
     /* ───── INTERNAT ATTENDANCE ───── */

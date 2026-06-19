@@ -190,7 +190,7 @@ class SuperAdminService
             $this->pdo->commit();
         } catch (\Throwable $e) {
             $this->pdo->rollBack();
-            try { $this->pdo->exec('SET FOREIGN_KEY_CHECKS=1'); } catch (\Throwable $e2) {}
+            try { $this->pdo->exec('SET FOREIGN_KEY_CHECKS=1'); } catch (\Throwable $e2) { error_log('[SuperAdminService.php] ' . $e2->getMessage()); }
             throw $e;
         }
 

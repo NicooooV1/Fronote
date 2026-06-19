@@ -15,7 +15,7 @@ $user_initials = getUserInitials();
 
 // Feature flags
 $_bulFeatures = null;
-try { $_bulFeatures = app('features'); } catch (\Throwable $e) {}
+try { $_bulFeatures = app('features'); } catch (\Throwable $e) { error_log('[header.php] ' . $e->getMessage()); }
 $ffBatchGen     = $_bulFeatures ? $_bulFeatures->isEnabled('bulletins.batch_generation') : true;
 $ffLivePreview  = $_bulFeatures ? $_bulFeatures->isEnabled('bulletins.live_preview') : true;
 $ffCustomTpl    = $_bulFeatures ? $_bulFeatures->isEnabled('bulletins.custom_templates') : true;

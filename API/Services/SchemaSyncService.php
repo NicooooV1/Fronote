@@ -42,7 +42,7 @@ class SchemaSyncService
 
         // FK off : les CREATE peuvent référencer des tables pas encore créées
         // (ordre d'activation arbitraire entre modules).
-        try { $this->pdo->exec('SET FOREIGN_KEY_CHECKS=0'); } catch (\Throwable $e) {}
+        try { $this->pdo->exec('SET FOREIGN_KEY_CHECKS=0'); } catch (\Throwable $e) { error_log('[SchemaSyncService.php] ' . $e->getMessage()); }
 
         foreach ($tables as $name => $def) {
             try {
@@ -67,7 +67,7 @@ class SchemaSyncService
             }
         }
 
-        try { $this->pdo->exec('SET FOREIGN_KEY_CHECKS=1'); } catch (\Throwable $e) {}
+        try { $this->pdo->exec('SET FOREIGN_KEY_CHECKS=1'); } catch (\Throwable $e) { error_log('[SchemaSyncService.php] ' . $e->getMessage()); }
 
         return $report;
     }

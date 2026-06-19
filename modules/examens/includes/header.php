@@ -20,7 +20,7 @@ $isGestionnaire = isAdmin() || isVieScolaire();
 
 // Feature flags
 $_exFeatures = null;
-try { $_exFeatures = app('features'); } catch (\Throwable $e) {}
+try { $_exFeatures = app('features'); } catch (\Throwable $e) { error_log('[header.php] ' . $e->getMessage()); }
 $ffAutoRoom       = $_exFeatures ? $_exFeatures->isEnabled('examens.auto_room_assignment') : true;
 $ffPdfConvoc      = $_exFeatures ? $_exFeatures->isEnabled('examens.pdf_convocations') : true;
 $ffSurveillance   = $_exFeatures ? $_exFeatures->isEnabled('examens.surveillance_planning') : true;

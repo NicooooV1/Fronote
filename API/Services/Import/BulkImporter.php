@@ -288,7 +288,7 @@ class BulkImporter
         if (array_key_exists($cacheKey, $this->fkCache)) return $this->fkCache[$cacheKey];
 
         $etab = null;
-        try { $etab = \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) {}
+        try { $etab = \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { error_log('[BulkImporter.php] ' . $e->getMessage()); }
         $etabClause = $etab !== null ? ' AND etablissement_id = ?' : '';
 
         $id = null;
@@ -338,7 +338,7 @@ class BulkImporter
             $params[] = $data[$col] ?? '';
         }
         if (!empty($schema['scoped'])) {
-            try { $etab = \API\Core\EstablishmentContext::id(); $where[] = 'etablissement_id = ?'; $params[] = $etab; } catch (\Throwable $e) {}
+            try { $etab = \API\Core\EstablishmentContext::id(); $where[] = 'etablissement_id = ?'; $params[] = $etab; } catch (\Throwable $e) { error_log('[BulkImporter.php] ' . $e->getMessage()); }
         }
         $sql = "SELECT 1 FROM `{$schema['table']}` WHERE " . implode(' AND ', $where) . ' LIMIT 1';
         try {

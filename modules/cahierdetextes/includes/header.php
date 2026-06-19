@@ -20,7 +20,7 @@ $extraJs  = $extraJs  ?? ['assets/js/cahierdetextes.js'];
 
 // Feature flags
 $_cdtFeatures = null;
-try { $_cdtFeatures = app('features'); } catch (\Throwable $e) {}
+try { $_cdtFeatures = app('features'); } catch (\Throwable $e) { error_log('[header.php] ' . $e->getMessage()); }
 $ffRichEditor     = $_cdtFeatures ? $_cdtFeatures->isEnabled('cahierdetextes.rich_editor') : true;
 $ffFileAttach     = $_cdtFeatures ? $_cdtFeatures->isEnabled('cahierdetextes.file_attachments') : true;
 $ffCopyToClass    = $_cdtFeatures ? $_cdtFeatures->isEnabled('cahierdetextes.copy_to_class') : true;

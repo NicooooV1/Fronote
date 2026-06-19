@@ -70,7 +70,7 @@ class ConfigServiceProvider extends ServiceProvider
             // Si EnvLoader::load() avait déjà échoué (.env absent/illisible),
             // surfacer la cause racine au lieu de l'erreur générique "vars manquantes".
             $loadError = null;
-            try { $loadError = $this->app->make('env.load_error'); } catch (\Throwable $_) {}
+            try { $loadError = $this->app->make('env.load_error'); } catch (\Throwable $e) { error_log('[ConfigServiceProvider.php] ' . $e->getMessage()); }
 
             if ($loadError instanceof \Throwable) {
                 throw new \RuntimeException(

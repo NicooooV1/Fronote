@@ -30,8 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken($_POST['csrf_toke
 $stats = ['par_statut' => [], 'par_type' => [], 'par_echelon' => []];
 $aInstruire = [];
 if ($isAdmin) {
-    try { $stats = $svc->getStatistiquesCampagne($etabId, $annee); } catch (\Throwable $e) {}
-    try { $aInstruire = $svc->getDemandesAInstruire($etabId); } catch (\Throwable $e) {}
+    try { $stats = $svc->getStatistiquesCampagne($etabId, $annee); } catch (\Throwable $e) { error_log('[bourses.php] ' . $e->getMessage()); }
+    try { $aInstruire = $svc->getDemandesAInstruire($etabId); } catch (\Throwable $e) { error_log('[bourses.php] ' . $e->getMessage()); }
 }
 
 include __DIR__ . '/../../templates/shared_header.php';

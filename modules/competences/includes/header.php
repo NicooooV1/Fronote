@@ -17,7 +17,7 @@ $extraCss = ['assets/css/competences.css'];
 
 // Feature flags
 $_compFeatures = null;
-try { $_compFeatures = app('features'); } catch (\Throwable $e) {}
+try { $_compFeatures = app('features'); } catch (\Throwable $e) { error_log('[header.php] ' . $e->getMessage()); }
 $ffRadarGraph  = $_compFeatures ? $_compFeatures->isEnabled('competences.radar_graph') : true;
 $ffLsuExport   = $_compFeatures ? $_compFeatures->isEnabled('competences.lsu_export') : true;
 $ffLinkGrades  = $_compFeatures ? $_compFeatures->isEnabled('competences.link_to_grades') : true;
