@@ -814,3 +814,288 @@ textarea.form-control {
   outline: none;
   border-color: var(--accent-cahier, #6c5ce7);
 }
+
+/* ===== THÈME SOMBRE ===== */
+
+/* --- Cartes & surfaces principales --- */
+[data-theme="dark"] .summary-card,
+[data-theme="dark"] .filter-toolbar,
+[data-theme="dark"] .devoir-card,
+[data-theme="dark"] .calendar-container,
+[data-theme="dark"] .calendar-popover {
+  background-color: #1e293b;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .summary-card:hover,
+[data-theme="dark"] .devoir-card:hover {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+}
+
+/* --- Textes --- */
+[data-theme="dark"] .summary-value,
+[data-theme="dark"] .devoir-title,
+[data-theme="dark"] .devoir-info .info-value,
+[data-theme="dark"] .calendar-date,
+[data-theme="dark"] .devoir-description p,
+[data-theme="dark"] .selected-user-display {
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .summary-label,
+[data-theme="dark"] .devoir-meta,
+[data-theme="dark"] .devoir-info .info-label,
+[data-theme="dark"] .popover-desc {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .popover-meta,
+[data-theme="dark"] .pagination-info,
+[data-theme="dark"] .fichier-taille {
+  color: #64748b;
+}
+
+/* --- En-tête de carte / bordures --- */
+[data-theme="dark"] .card-header {
+  background-color: #273449;
+  border-bottom-color: #334155;
+}
+
+/* --- View toggle --- */
+[data-theme="dark"] .view-toggle {
+  background-color: #273449;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .view-toggle-option {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .view-toggle-option.active {
+  background-color: rgba(52, 199, 89, 0.18);
+  color: #4ade80;
+}
+
+/* --- Description du devoir --- */
+[data-theme="dark"] .devoir-description {
+  background-color: #273449;
+}
+
+[data-theme="dark"] .devoir-description h4 {
+  color: #4ade80;
+}
+
+/* --- Calendrier --- */
+[data-theme="dark"] .calendar-header {
+  background-color: rgba(52, 199, 89, 0.18);
+  color: #4ade80;
+}
+
+[data-theme="dark"] .calendar-nav-btn {
+  background-color: #273449;
+  color: #4ade80;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .calendar-nav-btn:hover {
+  background-color: #334155;
+}
+
+[data-theme="dark"] .calendar-weekday {
+  background-color: #273449;
+  border-bottom-color: #334155;
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .calendar-day {
+  border-color: #334155;
+}
+
+[data-theme="dark"] .calendar-day.today {
+  background-color: rgba(52, 199, 89, 0.12);
+}
+
+[data-theme="dark"] .calendar-day.other-month {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+[data-theme="dark"] .today .calendar-date {
+  color: #4ade80;
+}
+
+[data-theme="dark"] .calendar-event {
+  background-color: rgba(52, 199, 89, 0.18);
+  color: #4ade80;
+  border-left-color: #4ade80;
+}
+
+[data-theme="dark"] .calendar-event.urgent {
+  background-color: #450a0a;
+  color: #fca5a5;
+  border-left-color: #ef4444;
+}
+
+[data-theme="dark"] .calendar-event.soon {
+  background-color: #451a03;
+  color: #fcd34d;
+  border-left-color: #f59e0b;
+}
+
+[data-theme="dark"] .calendar-event.expired {
+  background-color: #273449;
+  color: #94a3b8;
+  border-left-color: #64748b;
+}
+
+/* --- Badges sémantiques --- */
+[data-theme="dark"] .badge-urgent {
+  background-color: #450a0a;
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .badge-soon {
+  background-color: #451a03;
+  color: #fcd34d;
+}
+
+[data-theme="dark"] .badge-expired {
+  background-color: #273449;
+  color: #94a3b8;
+}
+
+/* --- Dates de rendu (lisibilité sémantique) --- */
+[data-theme="dark"] .date-rendu.expired {
+  color: #94a3b8;
+}
+
+/* --- Affichage utilisateur sélectionné --- */
+[data-theme="dark"] .selected-user-display {
+  background-color: #273449;
+}
+
+/* --- Barre de recherche --- */
+[data-theme="dark"] .search-bar input[type="text"] {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .search-bar input[type="text"]::placeholder {
+  color: #64748b;
+}
+
+[data-theme="dark"] .search-bar input[type="text"]:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+/* --- Bouton « fait » (élève) --- */
+[data-theme="dark"] .btn-fait {
+  color: #64748b;
+}
+
+[data-theme="dark"] .btn-fait:hover {
+  background: rgba(0, 184, 148, 0.18);
+  color: #34d399;
+}
+
+[data-theme="dark"] .btn-fait.fait {
+  color: #34d399;
+}
+
+/* --- Zone d'upload (drag & drop) --- */
+[data-theme="dark"] .upload-zone {
+  border-color: #334155;
+}
+
+[data-theme="dark"] .upload-zone:hover,
+[data-theme="dark"] .upload-zone.dragover {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.08);
+}
+
+[data-theme="dark"] .upload-zone i {
+  color: #64748b;
+}
+
+[data-theme="dark"] .upload-zone p {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .upload-browse {
+  color: #60a5fa;
+}
+
+[data-theme="dark"] .upload-preview-item {
+  background: #273449;
+  color: #e2e8f0;
+}
+
+/* --- Liste de fichiers joints --- */
+[data-theme="dark"] .fichier-item {
+  background: #273449;
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .fichier-item:hover {
+  background: #334155;
+  color: #60a5fa;
+}
+
+[data-theme="dark"] .fichier-item i {
+  color: #60a5fa;
+}
+
+[data-theme="dark"] .fichier-delete {
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .fichier-delete:hover {
+  color: #ef4444;
+}
+
+/* --- Pagination --- */
+[data-theme="dark"] .pagination a,
+[data-theme="dark"] .pagination span {
+  color: #94a3b8;
+  border-color: #334155;
+  background-color: #1e293b;
+}
+
+[data-theme="dark"] .pagination a:hover {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+}
+
+[data-theme="dark"] .pagination .active {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+}
+
+/* --- Popover calendrier --- */
+[data-theme="dark"] .popover-header {
+  background: rgba(52, 199, 89, 0.22);
+  color: #4ade80;
+}
+
+[data-theme="dark"] .popover-footer {
+  border-top-color: #334155;
+}
+
+[data-theme="dark"] .popover-footer a {
+  color: #60a5fa;
+}
+
+/* --- Filtres select --- */
+[data-theme="dark"] .filter-row select {
+  background: #1e293b;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .filter-row select:focus {
+  border-color: #3b82f6;
+}

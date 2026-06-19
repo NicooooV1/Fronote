@@ -141,3 +141,60 @@
     .pref-table { font-size: .85rem; }
     .pref-table th:nth-child(5), .pref-table td:nth-child(5) { display: none; }
 }
+
+/* ===== THÈME SOMBRE ===== */
+[data-theme="dark"] .stat-card {
+    background: #1e293b;
+    border-color: #334155;
+}
+[data-theme="dark"] .stat-card .stat-value { color: #60a5fa; }
+[data-theme="dark"] .stat-card .stat-label { color: #94a3b8; }
+[data-theme="dark"] .stat-card.stat-warning .stat-value { color: #f59e0b; }
+[data-theme="dark"] .stat-card.stat-danger .stat-value { color: #ef4444; }
+
+[data-theme="dark"] .filter-btn {
+    background: #273449;
+    color: #e2e8f0;
+}
+[data-theme="dark"] .filter-btn:hover { background: #3b82f6; color: #fff; }
+[data-theme="dark"] .filter-btn.active { background: #3b82f6; color: #fff; }
+
+[data-theme="dark"] .notif-item {
+    background: #1e293b;
+    border-color: #334155;
+}
+[data-theme="dark"] .notif-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+[data-theme="dark"] .notif-item.notif-unread {
+    background: #273449;
+    border-left-color: #3b82f6;
+}
+[data-theme="dark"] .notif-item.notif-importance-urgente { border-left-color: #ef4444; }
+[data-theme="dark"] .notif-item.notif-importance-haute { border-left-color: #f59e0b; }
+
+[data-theme="dark"] .notif-icon {
+    background: #273449;
+    color: #60a5fa;
+}
+[data-theme="dark"] .notif-unread .notif-icon { background: #3b82f6; color: #fff; }
+
+[data-theme="dark"] .notif-titre { color: #e2e8f0; }
+[data-theme="dark"] .notif-text { color: #94a3b8; }
+[data-theme="dark"] .notif-meta { color: #64748b; }
+
+[data-theme="dark"] .empty-state { color: #94a3b8; }
+
+[data-theme="dark"] .pref-intro { color: #94a3b8; }
+[data-theme="dark"] .pref-table th,
+[data-theme="dark"] .pref-table td { border-bottom-color: #334155; color: #e2e8f0; }
+[data-theme="dark"] .pref-table thead th { color: #94a3b8; }
+[data-theme="dark"] .pref-type i { color: #60a5fa; }
+
+[data-theme="dark"] .toggle-slider { background: #334155; }
+[data-theme="dark"] .toggle-slider::before { background: #e2e8f0; }
+[data-theme="dark"] .toggle-switch input:checked + .toggle-slider { background: #3b82f6; }
+
+[data-theme="dark"] .badge-secondary { background: #273449; color: #94a3b8; }
+[data-theme="dark"] .badge-info { background: #164e63; color: #67e8f9; }
+[data-theme="dark"] .badge-warning { background: #451a03; color: #fcd34d; }
+[data-theme="dark"] .badge-danger { background: #450a0a; color: #fca5a5; }
+[data-theme="dark"] .badge-success { background: #052e16; color: #86efac; }

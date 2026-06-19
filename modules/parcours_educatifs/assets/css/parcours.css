@@ -4,3 +4,9 @@
 .parcours-badge{color:#fff;padding:2px 10px;border-radius:4px;font-size:.72rem;font-weight:600;white-space:nowrap}
 .modele-link{color:#6366f1;text-decoration:none}
 .modele-link:hover{text-decoration:underline}
+
+/* ===== THÈME SOMBRE ===== */
+[data-theme="dark"] .parcours-type-card{background:#1e293b;border-color:#334155;color:#e2e8f0}
+[data-theme="dark"] .parcours-type-card:hover{background:#273449;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+[data-theme="dark"] .modele-link{color:#3b82f6}
+[data-theme="dark"] .modele-link:hover{color:#60a5fa}

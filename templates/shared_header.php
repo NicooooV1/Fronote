@@ -306,6 +306,8 @@ try {
     ?>
     <link rel="stylesheet" href="<?= htmlspecialchars($_cssHref) ?>">
     <?php endforeach; ?>
+    <!-- Couche de cohérence du thème sombre : EN DERNIER pour primer sur le CSS des modules + les styles inline. -->
+    <link rel="stylesheet" href="<?= $_assetVersion('assets/css/dark-overrides.css') ?>">
     <?= $extraHeadHtml ?>
     <!-- WebSocket global -->
     <script nonce="<?= $_hdr_nonce ?>">window.FRONOTE_WS = <?= $_hdr_ws_config ?>;</script>

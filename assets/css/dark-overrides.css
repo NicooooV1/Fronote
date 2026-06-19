@@ -1,0 +1,204 @@
+/**
+ * FRONOTE — Couche de cohérence du THÈME SOMBRE
+ * ------------------------------------------------------------------
+ * Chargée EN DERNIER (après le CSS des modules et après les styles inline)
+ * afin de garantir la lisibilité du thème sombre partout, même là où un
+ * module ou un style inline impose encore du blanc / du gris clair.
+ *
+ * Règle d'or : en thème sombre il peut y avoir du clair, mais JAMAIS de
+ * fond blanc ni de texte clair sur fond clair. Tout fond neutre clair
+ * devient une surface sombre et son texte devient clair.
+ *
+ * N'affecte QUE [data-theme="dark"] → le thème clair n'est jamais modifié.
+ * Palette alignée sur tokens.css (#0f172a / #1e293b / #334155 / #e2e8f0…).
+ */
+[data-theme="dark"] {
+  --dk-bg: #0f172a;          /* fond de page */
+  --dk-surface: #1e293b;     /* cartes, panneaux, champs, modales */
+  --dk-surface-2: #273449;   /* éléments secondaires : boutons neutres, survols */
+  --dk-surface-3: #334155;   /* survol plus marqué, bordures actives */
+  --dk-border: #334155;
+  --dk-text: #e2e8f0;
+  --dk-text-muted: #94a3b8;
+  --dk-text-faint: #64748b;
+  --dk-accent: #3b82f6;
+  --dk-accent-hover: #60a5fa;
+}
+
+/* ===================================================================
+   1. BOUTONS — corrige les boutons « blancs / gris clair » illisibles
+   =================================================================== */
+/* Boutons neutres (secondaire, défaut, clair, annuler) : surface sombre + texte clair. */
+[data-theme="dark"] .btn-secondary,
+[data-theme="dark"] .btn-default,
+[data-theme="dark"] .btn-light,
+[data-theme="dark"] .btn-cancel,
+[data-theme="dark"] .btn-gray,
+[data-theme="dark"] .btn-white,
+[data-theme="dark"] button.secondary,
+[data-theme="dark"] .ui-btn--secondary,
+[data-theme="dark"] .ds-btn--secondary {
+  background-color: var(--dk-surface-2) !important;
+  color: var(--dk-text) !important;
+  border-color: var(--dk-border) !important;
+}
+[data-theme="dark"] .btn-secondary:hover,
+[data-theme="dark"] .btn-default:hover,
+[data-theme="dark"] .btn-light:hover,
+[data-theme="dark"] .btn-cancel:hover,
+[data-theme="dark"] button.secondary:hover,
+[data-theme="dark"] .ui-btn--secondary:hover,
+[data-theme="dark"] .ds-btn--secondary:hover {
+  background-color: var(--dk-surface-3) !important;
+  color: #fff !important;
+}
+
+/* Boutons « outline » : fond transparent, texte et bordure clairs. */
+[data-theme="dark"] .btn-outline,
+[data-theme="dark"] .btn-outline-secondary,
+[data-theme="dark"] .btn-outline-primary,
+[data-theme="dark"] .btn-ghost {
+  background-color: transparent !important;
+  color: var(--dk-text) !important;
+  border-color: var(--dk-border) !important;
+}
+[data-theme="dark"] .btn-outline:hover,
+[data-theme="dark"] .btn-outline-secondary:hover {
+  background-color: var(--dk-surface-2) !important;
+  color: #fff !important;
+}
+
+/* ===================================================================
+   2. STYLES INLINE — neutralise les fonds BLANCS / GRIS CLAIRS inline
+   (les styles inline priment sur le CSS : on les bat via !important).
+   On ne cible QUE les neutres → les pastels sémantiques (rouge/jaune/
+   vert/bleu clair avec texte sombre coloré) restent lisibles tels quels.
+   =================================================================== */
+[data-theme="dark"] [style*="background:#fff"],
+[data-theme="dark"] [style*="background: #fff"],
+[data-theme="dark"] [style*="background:#ffffff"],
+[data-theme="dark"] [style*="background: #ffffff"],
+[data-theme="dark"] [style*="background:white"],
+[data-theme="dark"] [style*="background: white"],
+[data-theme="dark"] [style*="background-color:#fff"],
+[data-theme="dark"] [style*="background-color: #fff"],
+[data-theme="dark"] [style*="background-color:#ffffff"],
+[data-theme="dark"] [style*="background-color: #ffffff"],
+[data-theme="dark"] [style*="background-color:white"],
+[data-theme="dark"] [style*="background-color: white"],
+[data-theme="dark"] [style*="background:#f7fafc"],
+[data-theme="dark"] [style*="background: #f7fafc"],
+[data-theme="dark"] [style*="background:#f8f9fa"],
+[data-theme="dark"] [style*="background: #f8f9fa"],
+[data-theme="dark"] [style*="background:#f8fafc"],
+[data-theme="dark"] [style*="background: #f8fafc"],
+[data-theme="dark"] [style*="background:#f5f6fa"],
+[data-theme="dark"] [style*="background:#f5f5f5"],
+[data-theme="dark"] [style*="background:#fafafa"],
+[data-theme="dark"] [style*="background:#f9fafb"],
+[data-theme="dark"] [style*="background:#f1f5f9"],
+[data-theme="dark"] [style*="background:#f4f4f7"],
+[data-theme="dark"] [style*="background:#f3f4f6"],
+[data-theme="dark"] [style*="background:#f0f0f0"],
+[data-theme="dark"] [style*="background:#edf2f7"],
+[data-theme="dark"] [style*="background: #edf2f7"],
+[data-theme="dark"] [style*="background:#e2e8f0"],
+[data-theme="dark"] [style*="background: #e2e8f0"],
+[data-theme="dark"] [style*="background:#e9ecef"],
+[data-theme="dark"] [style*="background:#eee"] {
+  background-color: var(--dk-surface) !important;
+  color: var(--dk-text) !important;
+}
+
+/* Cartes/encadrés inline avec bordure claire → bordure sombre. */
+[data-theme="dark"] [style*="border:1px solid #e"],
+[data-theme="dark"] [style*="border: 1px solid #e"],
+[data-theme="dark"] [style*="border:1px solid #d"],
+[data-theme="dark"] [style*="border: 1px solid #d"],
+[data-theme="dark"] [style*="border-color:#e"],
+[data-theme="dark"] [style*="border-color: #e"] {
+  border-color: var(--dk-border) !important;
+}
+
+/* Textes sombres inline les plus fréquents (gris de corps de texte) → clairs. */
+[data-theme="dark"] [style*="color:#4a5568"],
+[data-theme="dark"] [style*="color: #4a5568"],
+[data-theme="dark"] [style*="color:#2d3748"],
+[data-theme="dark"] [style*="color: #2d3748"],
+[data-theme="dark"] [style*="color:#1a202c"],
+[data-theme="dark"] [style*="color:#2c3e50"],
+[data-theme="dark"] [style*="color:#333"],
+[data-theme="dark"] [style*="color: #333"],
+[data-theme="dark"] [style*="color:#222"],
+[data-theme="dark"] [style*="color:#000"],
+[data-theme="dark"] [style*="color:black"],
+[data-theme="dark"] [style*="color: black"],
+[data-theme="dark"] [style*="color:#444"],
+[data-theme="dark"] [style*="color:#555"],
+[data-theme="dark"] [style*="color: #555"] {
+  color: var(--dk-text) !important;
+}
+/* Gris moyens (légendes) inline → gris clair lisible. */
+[data-theme="dark"] [style*="color:#666"],
+[data-theme="dark"] [style*="color: #666"],
+[data-theme="dark"] [style*="color:#777"],
+[data-theme="dark"] [style*="color:#718096"],
+[data-theme="dark"] [style*="color:#6b7280"],
+[data-theme="dark"] [style*="color:#64748b"] {
+  color: var(--dk-text-muted) !important;
+}
+
+/* ===================================================================
+   3. SURFACES GÉNÉRIQUES — filet de sécurité pour les classes communes
+   non couvertes par theme-classic.css (chargé après le CSS des modules).
+   =================================================================== */
+[data-theme="dark"] .card,
+[data-theme="dark"] .panel,
+[data-theme="dark"] .box,
+[data-theme="dark"] .tile,
+[data-theme="dark"] .section-card,
+[data-theme="dark"] .content-card,
+[data-theme="dark"] .info-card,
+[data-theme="dark"] .data-card,
+[data-theme="dark"] .list-card,
+[data-theme="dark"] .detail-card,
+[data-theme="dark"] .empty-state,
+[data-theme="dark"] .filter-bar,
+[data-theme="dark"] .toolbar,
+[data-theme="dark"] .list-group-item,
+[data-theme="dark"] .dropdown-menu,
+[data-theme="dark"] .menu,
+[data-theme="dark"] .popover,
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] .modal-body,
+[data-theme="dark"] .modal-header,
+[data-theme="dark"] .modal-footer {
+  background-color: var(--dk-surface);
+  border-color: var(--dk-border);
+  color: var(--dk-text);
+}
+
+/* Champs de formulaire génériques restés clairs (modules). */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background-color: var(--dk-surface);
+  border-color: var(--dk-border);
+  color: var(--dk-text);
+}
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder { color: var(--dk-text-faint); }
+
+/* Tableaux génériques (modules) : en-têtes et bordures sombres. */
+[data-theme="dark"] table { color: var(--dk-text); }
+[data-theme="dark"] thead th,
+[data-theme="dark"] table th {
+  background-color: var(--dk-surface);
+  color: var(--dk-text-muted);
+  border-color: var(--dk-border);
+}
+[data-theme="dark"] table td { border-color: var(--dk-border); }
+[data-theme="dark"] tbody tr:hover td { background-color: rgba(59, 130, 246, 0.06); }
+
+/* Liens neutres rendus illisibles : accent clair. */
+[data-theme="dark"] a:not(.btn):not([class*="badge"]):not([style*="color"]) { color: var(--dk-accent-hover); }

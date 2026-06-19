@@ -260,3 +260,83 @@
         width: 100%;
     }
 }
+
+/* ===== THÈME SOMBRE ===== */
+[data-theme="dark"] .date-input {
+    background: #1e293b;
+    color: #e2e8f0;
+    border-color: #334155;
+}
+
+[data-theme="dark"] .appel-table th {
+    background: #273449;
+    color: #e2e8f0;
+    border-bottom-color: #334155;
+}
+
+[data-theme="dark"] .appel-table td {
+    border-bottom-color: #334155;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .appel-row[data-statut="absent"] {
+    background-color: rgba(239, 68, 68, 0.12);
+}
+
+[data-theme="dark"] .appel-row[data-statut="retard"] {
+    background-color: rgba(245, 158, 11, 0.12);
+}
+
+[data-theme="dark"] .appel-row[data-statut="dispense"] {
+    background-color: rgba(6, 182, 212, 0.12);
+}
+
+[data-theme="dark"] .row-highlight-absent { background-color: rgba(239, 68, 68, 0.18); }
+[data-theme="dark"] .row-highlight-retard { background-color: rgba(245, 158, 11, 0.18); }
+[data-theme="dark"] .row-highlight-dispense { background-color: rgba(6, 182, 212, 0.18); }
+
+[data-theme="dark"] .appel-radio-mark {
+    border-color: #334155;
+    background: #1e293b;
+}
+
+[data-theme="dark"] .appel-summary {
+    background: #1e293b;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .appel-card {
+    background: #1e293b;
+    color: #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .appel-card:hover {
+    background: #273449;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"] .appel-card-time {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .appel-card-classe {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .appel-card-matiere,
+[data-theme="dark"] .appel-card-prof {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .form-actions {
+    border-top-color: #334155;
+}
+
+[data-theme="dark"] .empty-state {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .empty-state h3 {
+    color: #e2e8f0;
+}

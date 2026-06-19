@@ -285,3 +285,94 @@
         align-items: stretch;
     }
 }
+
+/* ===== THÈME SOMBRE ===== */
+[data-theme="dark"] {
+    --edt-border-color: #334155;
+    --edt-time-bg: #273449;
+}
+
+/* ----- Grille EDT ----- */
+[data-theme="dark"] .edt-table thead th {
+    border-color: #334155;
+}
+
+[data-theme="dark"] .edt-table tbody td {
+    border-color: #334155;
+    background-color: #1e293b;
+}
+
+[data-theme="dark"] .edt-time-cell {
+    background-color: #273449;
+}
+
+[data-theme="dark"] .edt-time-label {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .edt-time-range {
+    color: #64748b;
+}
+
+/* ----- Cellule cours ----- */
+[data-theme="dark"] .edt-cours {
+    background: #273449;
+}
+
+[data-theme="dark"] .edt-cours:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"] .edt-cours-matiere {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .edt-cours-prof,
+[data-theme="dark"] .edt-cours-classe,
+[data-theme="dark"] .edt-cours-salle {
+    color: #94a3b8;
+}
+
+/* ----- Filtres ----- */
+[data-theme="dark"] .filters-bar {
+    background: #1e293b;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .filter-group label {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .filter-group select {
+    border-color: #334155;
+    background: #1e293b;
+    color: #e2e8f0;
+}
+
+/* ----- Formulaire gestion cours ----- */
+[data-theme="dark"] .form-grid .form-group label {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .form-grid .form-group .required {
+    color: #fca5a5;
+}
+
+[data-theme="dark"] .form-grid .form-group .form-control {
+    border-color: #334155;
+    background: #1e293b;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .form-actions {
+    border-top-color: #334155;
+}
+
+/* ----- Empty state ----- */
+[data-theme="dark"] .empty-state {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .empty-state h3 {
+    color: #e2e8f0;
+}

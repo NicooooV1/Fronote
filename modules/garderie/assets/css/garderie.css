@@ -17,3 +17,15 @@
 .form-row .form-group { flex: 1; min-width: 150px; }
 .filter-form { margin-bottom: 20px; }
 .inline-form { display: inline-flex; gap: 8px; align-items: center; }
+
+/* ===== THÈME SOMBRE ===== */
+[data-theme="dark"] .creneau-card,
+[data-theme="dark"] .stat-card { background: #1e293b; box-shadow: 0 2px 8px rgba(0,0,0,0.35); }
+[data-theme="dark"] .creneau-header h3 { color: #e2e8f0; }
+[data-theme="dark"] .creneau-info { color: #94a3b8; }
+[data-theme="dark"] .stat-card .stat-value { color: #e2e8f0; }
+[data-theme="dark"] .stat-card .stat-label { color: #94a3b8; }
+[data-theme="dark"] .stat-card.stat-info .stat-value { color: #60a5fa; }
+[data-theme="dark"] .stat-card.stat-success .stat-value { color: #22c55e; }
+[data-theme="dark"] .checkbox-label { background: #273449; color: #e2e8f0; }
+[data-theme="dark"] .checkbox-label:hover { background: #334155; }

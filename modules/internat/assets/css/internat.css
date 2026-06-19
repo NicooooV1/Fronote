@@ -14,3 +14,13 @@
 .form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
 .form-row .form-group { flex: 1; min-width: 150px; }
 .inline-form { display: inline-flex; gap: 8px; align-items: center; }
+
+/* ===== THÈME SOMBRE ===== */
+[data-theme="dark"] .chambre-card { background: #1e293b; border: 1px solid #334155; box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+[data-theme="dark"] .chambre-numero { color: #e2e8f0; }
+[data-theme="dark"] .chambre-info { color: #94a3b8; }
+[data-theme="dark"] .stat-card { background: #1e293b; border: 1px solid #334155; box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+[data-theme="dark"] .stat-card .stat-value { color: #e2e8f0; }
+[data-theme="dark"] .stat-card .stat-label { color: #94a3b8; }
+[data-theme="dark"] .stat-card.stat-success .stat-value { color: #22c55e; }
+[data-theme="dark"] .stat-card.stat-info .stat-value { color: #3b82f6; }

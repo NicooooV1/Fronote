@@ -27,3 +27,20 @@
 .badge-warning{background:#f59e0b;color:#fff;padding:2px 8px;border-radius:.25rem;font-size:.75rem}
 .badge-success{background:#10b981;color:#fff;padding:2px 8px;border-radius:.25rem;font-size:.75rem}
 .badge-danger{background:#ef4444;color:#fff;padding:2px 8px;border-radius:.25rem;font-size:.75rem}
+
+/* ===== THÈME SOMBRE ===== */
+[data-theme="dark"] .projet-card{background:#1e293b;border-color:#334155;color:#e2e8f0}
+[data-theme="dark"] .projet-card:hover{box-shadow:0 4px 15px rgba(0,0,0,.4)}
+[data-theme="dark"] .projet-titre{color:#e2e8f0}
+[data-theme="dark"] .stat-card{color:#e2e8f0}
+[data-theme="dark"] .stat-card .stat-value{color:#e2e8f0}
+[data-theme="dark"] .stat-card .stat-label{color:#94a3b8}
+[data-theme="dark"] .bg-primary-light{background:#164e63;color:#67e8f9}
+[data-theme="dark"] .bg-warning-light{background:#451a03;color:#fcd34d}
+[data-theme="dark"] .bg-success-light{background:#052e16;color:#86efac}
+[data-theme="dark"] .etapes-timeline{border-left-color:#334155}
+[data-theme="dark"] .etape-item{background:#273449;color:#e2e8f0}
+[data-theme="dark"] .etape-item::before{background:#1e293b;border-color:#334155}
+[data-theme="dark"] .etape-a_faire::before{border-color:#94a3b8}
+[data-theme="dark"] .etape-en_cours::before{border-color:#f59e0b;background:#451a03}
+[data-theme="dark"] .etape-termine::before{border-color:#22c55e;background:#052e16}

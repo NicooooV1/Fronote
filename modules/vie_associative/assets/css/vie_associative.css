@@ -3,3 +3,8 @@
 .asso-card{background:#fff;border:1px solid #e2e8f0;border-radius:.75rem;padding:1.2rem;display:flex;flex-direction:column;transition:box-shadow .2s}
 .asso-card:hover{box-shadow:0 4px 15px rgba(0,0,0,.08)}
 .asso-type-badge{color:#fff;padding:2px 10px;border-radius:4px;font-size:.72rem;font-weight:600}
+
+/* ===== THÈME SOMBRE ===== */
+[data-theme="dark"] .asso-card{background:#1e293b;border-color:#334155;color:#e2e8f0}
+[data-theme="dark"] .asso-card:hover{box-shadow:0 4px 15px rgba(0,0,0,.45)}
+

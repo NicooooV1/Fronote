@@ -458,3 +458,7 @@
 /* Stats page */
 [data-theme="dark"] .chart-card h3 { color: var(--text-color); }
 [data-theme="dark"] .kpi .v { color: var(--text-color); }
+
+/* Compact stats bar (list pages) */
+[data-theme="dark"] .stats-bar .stat-card .val { color: var(--text-color); }
+[data-theme="dark"] .stats-bar .stat-card .lbl { color: #94a3b8; }

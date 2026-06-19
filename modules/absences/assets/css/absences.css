@@ -984,3 +984,298 @@
     margin-left: 19px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   ===== THÈME SOMBRE =====
+   Règles appliquées uniquement sous [data-theme="dark"].
+   Le thème clair n'est jamais modifié.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Barre de filtres ─────────────────────────────────────────── */
+[data-theme="dark"] .filters-bar {
+  background-color: #1e293b;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+[data-theme="dark"] .filter-item .form-label {
+  color: #94a3b8;
+}
+
+/* ── Section de contenu ───────────────────────────────────────── */
+[data-theme="dark"] .content-section {
+  background-color: #1e293b;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+[data-theme="dark"] .content-header {
+  border-bottom-color: #334155;
+  background-color: rgba(0, 0, 0, 0.2);
+}
+[data-theme="dark"] .content-header h2 {
+  color: #e2e8f0;
+}
+
+/* ── Boutons secondaires ──────────────────────────────────────── */
+[data-theme="dark"] .btn-outline {
+  border-color: #334155;
+  color: #e2e8f0;
+}
+[data-theme="dark"] .btn-outline:hover {
+  background-color: #273449;
+  border-color: #475569;
+}
+
+/* ── Liste des absences ───────────────────────────────────────── */
+[data-theme="dark"] .list-header {
+  background-color: #273449;
+  border-bottom-color: #334155;
+}
+[data-theme="dark"] .list-row {
+  border-bottom-color: #334155;
+}
+[data-theme="dark"] .list-row:hover:not(.header-row) {
+  background-color: #273449;
+}
+[data-theme="dark"] .header-row .list-cell {
+  color: #94a3b8;
+}
+[data-theme="dark"] .list-cell {
+  color: #e2e8f0;
+}
+
+/* ── État vide ────────────────────────────────────────────────── */
+[data-theme="dark"] .no-data-message {
+  color: #94a3b8;
+}
+
+/* ── Items d'absence ──────────────────────────────────────────── */
+[data-theme="dark"] .absence-item:hover {
+  background-color: #273449;
+}
+[data-theme="dark"] .text-muted {
+  color: #94a3b8;
+}
+
+/* ── Cartes statistiques (résumé) ─────────────────────────────── */
+[data-theme="dark"] .stat-card {
+  background-color: #1e293b;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+[data-theme="dark"] .stat-label {
+  color: #94a3b8;
+}
+
+/* ── Sections de détails ──────────────────────────────────────── */
+[data-theme="dark"] .details-section {
+  background-color: #1e293b;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+[data-theme="dark"] .details-section h3 {
+  color: #e2e8f0;
+  border-bottom-color: #334155;
+}
+[data-theme="dark"] .details-label {
+  color: #94a3b8;
+}
+[data-theme="dark"] .details-value {
+  color: #e2e8f0;
+}
+
+/* ── Vue calendrier ───────────────────────────────────────────── */
+[data-theme="dark"] .calendar-container {
+  background-color: #1e293b;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+[data-theme="dark"] .calendar-header {
+  background-color: #273449;
+  border-bottom-color: #334155;
+}
+[data-theme="dark"] .calendar-navigation h2 {
+  color: #e2e8f0;
+}
+[data-theme="dark"] .calendar-day-header {
+  color: #94a3b8;
+}
+[data-theme="dark"] .calendar-day {
+  background-color: #1e293b;
+}
+[data-theme="dark"] .calendar-day.weekend {
+  background-color: #18212f;
+}
+[data-theme="dark"] .calendar-day.today {
+  background-color: #052e16;
+}
+[data-theme="dark"] .calendar-day.has-absences {
+  background-color: #2a1416;
+}
+[data-theme="dark"] .calendar-day-number {
+  color: #e2e8f0;
+}
+[data-theme="dark"] .calendar-more-absences {
+  color: #94a3b8;
+}
+
+/* Items du calendrier — fonds pastel → sombres sémantiques */
+[data-theme="dark"] .calendar-absence-item {
+  background-color: #450a0a;
+  color: #fca5a5;
+}
+[data-theme="dark"] .calendar-absence-item.type-cours {
+  background-color: #451a03;
+  border-left-color: #f59e0b;
+  color: #fcd34d;
+}
+[data-theme="dark"] .calendar-absence-item.type-demi {
+  background-color: #3f0a23;
+  border-left-color: #ec4899;
+  color: #f9a8d4;
+}
+[data-theme="dark"] .calendar-absence-item.type-journee {
+  background-color: #450a0a;
+  border-left-color: #ef4444;
+  color: #fca5a5;
+}
+[data-theme="dark"] .calendar-absence-item.type-autre {
+  background-color: #1e2a52;
+  border-left-color: #6366f1;
+  color: #c7d2fe;
+}
+[data-theme="dark"] .calendar-absence-item.justified {
+  background-color: #052e16;
+  border-left-color: #22c55e;
+  color: #86efac;
+}
+
+/* ── Résumé mensuel ───────────────────────────────────────────── */
+[data-theme="dark"] .calendar-summary {
+  background: #1e293b;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+[data-theme="dark"] .summary-value {
+  color: #e2e8f0;
+}
+[data-theme="dark"] .summary-label {
+  color: #94a3b8;
+}
+[data-theme="dark"] .summary-type-badge.type-cours {
+  background: #451a03;
+  color: #fcd34d;
+}
+[data-theme="dark"] .summary-type-badge.type-demi {
+  background: #3f0a23;
+  color: #f9a8d4;
+}
+[data-theme="dark"] .summary-type-badge.type-journee {
+  background: #450a0a;
+  color: #fca5a5;
+}
+[data-theme="dark"] .summary-type-badge.type-autre {
+  background: #1e2a52;
+  color: #c7d2fe;
+}
+
+/* ── Légende ──────────────────────────────────────────────────── */
+[data-theme="dark"] .calendar-legend {
+  color: #94a3b8;
+}
+
+/* ── Vue statistiques ─────────────────────────────────────────── */
+[data-theme="dark"] .stats-section {
+  background-color: #1e293b;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+[data-theme="dark"] .stats-section h2 {
+  color: #e2e8f0;
+  border-bottom-color: #334155;
+}
+[data-theme="dark"] .stats-card {
+  background-color: #273449;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+[data-theme="dark"] .stats-icon {
+  background-color: #052e16;
+  color: #22c55e;
+}
+[data-theme="dark"] .stats-info h3 {
+  color: #94a3b8;
+}
+[data-theme="dark"] .stats-label {
+  color: #94a3b8;
+}
+[data-theme="dark"] .stats-value {
+  color: #e2e8f0;
+}
+[data-theme="dark"] .stats-percent {
+  color: #64748b;
+}
+[data-theme="dark"] .stats-chart {
+  background-color: #273449;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+[data-theme="dark"] .stats-chart h3 {
+  color: #e2e8f0;
+}
+
+/* ── Tableau de statistiques ──────────────────────────────────── */
+[data-theme="dark"] .stats-table th,
+[data-theme="dark"] .stats-table td {
+  border-bottom-color: #334155;
+}
+[data-theme="dark"] .stats-table th {
+  background-color: #273449;
+  color: #e2e8f0;
+}
+[data-theme="dark"] .stats-table tr:hover {
+  background-color: #273449;
+}
+
+/* ── Boutons icône ────────────────────────────────────────────── */
+[data-theme="dark"] .btn-icon {
+  background-color: #273449;
+  color: #e2e8f0;
+}
+[data-theme="dark"] .btn-icon:hover {
+  background-color: #334155;
+}
+
+/* ── Pagination ───────────────────────────────────────────────── */
+[data-theme="dark"] .pagination {
+  border-top-color: #334155;
+}
+[data-theme="dark"] .page-number {
+  color: #e2e8f0;
+}
+[data-theme="dark"] .page-number:hover {
+  background-color: #273449;
+}
+[data-theme="dark"] .page-link {
+  color: #e2e8f0;
+}
+[data-theme="dark"] .page-link:hover:not([disabled]) {
+  background-color: #273449;
+}
+
+/* ── Timeline de justificatif ─────────────────────────────────── */
+[data-theme="dark"] .justificatif-timeline {
+  background: #1e293b;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+[data-theme="dark"] .timeline-dot {
+  background: #334155;
+  color: #94a3b8;
+}
+[data-theme="dark"] .timeline-content strong {
+  color: #e2e8f0;
+}
+[data-theme="dark"] .timeline-date {
+  color: #94a3b8;
+}
+[data-theme="dark"] .timeline-date.text-muted {
+  color: #64748b;
+}
+[data-theme="dark"] .timeline-line {
+  background: #334155;
+}
+
+/* ── Aperçu de fichiers ───────────────────────────────────────── */
+[data-theme="dark"] .file-preview-item {
+  color: #94a3b8;
+}

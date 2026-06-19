@@ -77,40 +77,40 @@
 
 /* ─── Dark theme ─── */
 [data-theme="dark"] {
-    --bg-primary: #1a1a2e;
-    --bg-secondary: #16213e;
-    --bg-tertiary: #1c2744;
-    --bg-hover: #1e3a5f;
-    --bg-active: #264a6e;
-    --bg-message-self: #1b4332;
-    --bg-message-other: #1c2744;
-    --bg-pinned: #3d3316;
-    --bg-deleted: #2a2a2a;
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-tertiary: #273449;
+    --bg-hover: #273449;
+    --bg-active: #334155;
+    --bg-message-self: #052e16;
+    --bg-message-other: #273449;
+    --bg-pinned: #451a03;
+    --bg-deleted: #273449;
     --bg-input: #0f172a;
-    --bg-modal: #16213e;
-    --bg-tooltip: #e0e0e0;
+    --bg-modal: #1e293b;
+    --bg-tooltip: #e2e8f0;
 
-    --text-primary: #e0e0e0;
-    --text-secondary: #a0a0a0;
-    --text-muted: #707070;
-    --text-inverse: #1a1a2e;
-    --text-link: #4ecca3;
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --text-inverse: #0f172a;
+    --text-link: #60a5fa;
 
-    --border-color: #2a3a5c;
-    --border-light: #1e2d4d;
-    --border-focus: #4ecca3;
+    --border-color: #334155;
+    --border-light: #334155;
+    --border-focus: #3b82f6;
 
-    --accent: #4ecca3;
-    --accent-light: #1b4332;
-    --accent-hover: #3db890;
+    --accent: #3b82f6;
+    --accent-light: #1e3a5f;
+    --accent-hover: #60a5fa;
     --danger: #ef4444;
-    --danger-light: #3b1c1c;
+    --danger-light: #450a0a;
     --warning: #f59e0b;
-    --warning-light: #3d3316;
-    --info: #3b82f6;
-    --info-light: #1e3a5f;
+    --warning-light: #451a03;
+    --info: #06b6d4;
+    --info-light: #164e63;
     --success: #22c55e;
-    --success-light: #1b4332;
+    --success-light: #052e16;
 
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
     --shadow-md: 0 2px 8px rgba(0,0,0,0.4);
@@ -655,3 +655,119 @@ main h2 { font-size: 20px; margin-bottom: 20px; color: #212529; font-weight: 500
     }
     .notification-toast { left: 10px; right: 10px; bottom: 10px; }
 }
+
+/* ═══════════════════════════════════════════════
+   ===== THÈME SOMBRE =====
+   Surcharges des couleurs codées en dur qui ne passent
+   pas par les variables CSS. Palette canonique Fronote.
+   ═══════════════════════════════════════════════ */
+
+/* ── Boutons ── */
+[data-theme="dark"] .back-button { background-color: #273449; color: #e2e8f0; }
+[data-theme="dark"] .back-button:hover { background-color: #334155; }
+[data-theme="dark"] .button-secondary { background-color: #273449; color: #e2e8f0; }
+[data-theme="dark"] .button-secondary:hover { background-color: #334155; }
+
+/* ── Liste des conversations ── */
+[data-theme="dark"] .conversation-item { background-color: #1e293b; }
+[data-theme="dark"] .conversation-item.selected { background-color: #273449; border-left-color: var(--accent); }
+[data-theme="dark"] .conversation-item.unread { background-color: rgba(59,130,246,0.08); border-left-color: var(--accent); }
+[data-theme="dark"] .conversation-item.annonce { background-color: #451a03; border-left-color: var(--warning); }
+[data-theme="dark"] .conversation-header { border-bottom-color: #334155; }
+[data-theme="dark"] .conversation-footer { background-color: #273449; border-top-color: #334155; }
+
+/* ── Checkboxes / bulk actions ── */
+[data-theme="dark"] .checkmark { background-color: #0f172a; border-color: #334155; }
+[data-theme="dark"] .checkbox-container:hover input ~ .checkmark { background-color: #273449; }
+[data-theme="dark"] .bulk-action-btn { background-color: #273449; color: #e2e8f0; }
+[data-theme="dark"] .bulk-action-btn:hover { background-color: #334155; }
+[data-theme="dark"] .bulk-action-btn.danger { color: #fca5a5; }
+[data-theme="dark"] .bulk-action-btn.danger:hover { background-color: #450a0a; }
+[data-theme="dark"] .conversation-search input { background-color: #0f172a; color: #e2e8f0; border-color: #334155; }
+
+/* ── Badges (badge neutre par défaut) ── */
+[data-theme="dark"] .badge { background-color: #273449; color: #e2e8f0; }
+[data-theme="dark"] .badge-secondary { background-color: #475569; color: #ffffff; }
+
+/* ── Empty states ── */
+[data-theme="dark"] .empty-state i { color: #64748b; }
+[data-theme="dark"] .empty-state p { color: #94a3b8; }
+
+/* ── Formulaires ── */
+[data-theme="dark"] .form-container { background-color: #1e293b; }
+[data-theme="dark"] .form-title { color: #e2e8f0; border-bottom-color: #334155; }
+[data-theme="dark"] .form-content h2 { color: #e2e8f0; }
+[data-theme="dark"] .form-content p { color: #94a3b8; }
+[data-theme="dark"] .form-group label { color: #e2e8f0; }
+[data-theme="dark"] .form-actions { border-top-color: #334155; }
+[data-theme="dark"] .form-control,
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="email"],
+[data-theme="dark"] input[type="password"],
+[data-theme="dark"] input[type="date"],
+[data-theme="dark"] input[type="time"],
+[data-theme="dark"] input[type="number"],
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+    background-color: #0f172a; color: #e2e8f0; border-color: #334155;
+}
+[data-theme="dark"] .form-control:focus,
+[data-theme="dark"] input:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] textarea:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
+}
+[data-theme="dark"] ::placeholder { color: #64748b; }
+
+/* ── Sélection des destinataires ── */
+[data-theme="dark"] .multiselect-container { border-color: #334155; }
+[data-theme="dark"] .search-box { border-bottom-color: #334155; }
+[data-theme="dark"] .search-box input { background-color: #0f172a; color: #e2e8f0; border-color: #334155; }
+[data-theme="dark"] .recipient-tabs { border-bottom-color: #334155; background-color: #273449; }
+[data-theme="dark"] .recipient-tab { color: #94a3b8; }
+[data-theme="dark"] .recipient-tab.active { background-color: #1e293b; color: var(--accent); border-bottom-color: var(--accent); }
+[data-theme="dark"] .recipient-tab:hover:not(.active) { background-color: #334155; }
+[data-theme="dark"] .category-title { color: #e2e8f0; border-bottom-color: #334155; }
+[data-theme="dark"] .category-count { color: #94a3b8; }
+[data-theme="dark"] .recipient-item:hover { background-color: #273449; }
+[data-theme="dark"] .selected-recipients { border-top-color: #334155; }
+[data-theme="dark"] .recipient-tag { background-color: #1e3a5f; color: #93c5fd; }
+[data-theme="dark"] .remove-tag { background-color: rgba(255,255,255,0.12); }
+[data-theme="dark"] .remove-tag:hover { background-color: rgba(255,255,255,0.22); }
+
+/* ── Options / radios ── */
+[data-theme="dark"] .radio-option { border-color: #334155; }
+[data-theme="dark"] .radio-option:hover { background-color: #273449; }
+[data-theme="dark"] .radio-option.selected { background-color: #1e3a5f; border-color: var(--accent); }
+
+/* ── Upload de fichiers / pièces jointes ── */
+[data-theme="dark"] .file-upload label { background-color: #273449; color: #e2e8f0; }
+[data-theme="dark"] .file-upload label:hover { background-color: #334155; }
+[data-theme="dark"] .file-info { background-color: #273449; color: #e2e8f0; }
+[data-theme="dark"] .file-info .file-delete { color: #fca5a5; }
+
+/* ── Éditeur de texte enrichi ── */
+[data-theme="dark"] .editor-container { border-color: #334155; }
+[data-theme="dark"] .editor-toolbar { border-bottom-color: #334155; background-color: #273449; }
+[data-theme="dark"] .editor-button { color: #94a3b8; }
+[data-theme="dark"] .editor-button:hover { background-color: #334155; }
+[data-theme="dark"] .editor-button.active { background-color: #1e3a5f; color: var(--accent); }
+[data-theme="dark"] .editor-content { color: #e2e8f0; }
+[data-theme="dark"] .char-counter { background-color: #273449; border-top-color: #334155; color: #94a3b8; }
+
+/* ── Aperçu ── */
+[data-theme="dark"] .preview-container { background-color: #273449; border-color: #334155; }
+[data-theme="dark"] .preview-header { border-bottom-color: #334155; }
+[data-theme="dark"] .preview-content { background-color: #1e293b; color: #e2e8f0; border-color: #334155; }
+
+/* ── Réactions / pinned ── */
+[data-theme="dark"] .pinned-message-preview { border-top-color: #334155; }
+
+/* ── Lueurs de focus / overlays (passage vert→bleu canonique) ── */
+[data-theme="dark"] .search-input-wrapper:focus-within { box-shadow: 0 0 0 2px rgba(59,130,246,0.25); }
+[data-theme="dark"] .reply-box.drag-over { background: rgba(59,130,246,0.12); }
+[data-theme="dark"] .reply-box .drag-overlay { background: rgba(59,130,246,0.12); }
+
+/* ── Conteneur / contenu principal ── */
+[data-theme="dark"] .container { background-color: #0f172a; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+[data-theme="dark"] main h2 { color: #e2e8f0; }

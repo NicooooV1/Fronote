@@ -335,34 +335,107 @@
   color: var(--module-color);
 }
 
-/* ──────────────────────────────────────────────
-   Dark mode overrides
-   ────────────────────────────────────────────── */
+/* ===== THÈME SOMBRE ===== */
 
+/* Carte hero — dégradé assombri, texte blanc déjà lisible (non touché) */
 [data-theme="dark"] .notes-hero-card {
   background: linear-gradient(135deg, #1a365d, #2a4a7f);
+  color: #e2e8f0;
 }
 
-[data-theme="dark"] .notes-matiere-card,
-[data-theme="dark"] .notes-stat-card,
-[data-theme="dark"] .notes-table-wrapper,
-[data-theme="dark"] .notes-graph-panel {
-  background: var(--bg-card, #1a202c);
+/* Pastilles de note : la version "good/bad" plein texte → teintes sémantiques claires */
+[data-theme="dark"] .note-value.note-good { color: #86efac; }
+[data-theme="dark"] .note-value.note-bad  { color: #fca5a5; }
+[data-theme="dark"] .note-sur { color: #64748b; }
+
+/* Sélecteur de trimestre */
+[data-theme="dark"] .trimestre-selector .trimestre-label {
+  color: #94a3b8;
 }
 
+/* Titres de section */
+[data-theme="dark"] .section-title,
+[data-theme="dark"] .notes-graph-title {
+  color: #e2e8f0;
+}
+
+/* Cartes de moyenne par matière */
+[data-theme="dark"] .notes-matiere-card {
+  background: #1e293b;
+  border-left-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+[data-theme="dark"] .notes-matiere-name { color: #94a3b8; }
+[data-theme="dark"] .notes-matiere-moyenne { color: #e2e8f0; }
+[data-theme="dark"] .notes-matiere-unit { color: #64748b; }
+[data-theme="dark"] .notes-matiere-count { color: #64748b; }
+
+/* Table des notes */
+[data-theme="dark"] .notes-table-wrapper {
+  background: #1e293b;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
 [data-theme="dark"] .notes-table thead tr {
-  background: var(--bg-hover, #2d3748);
+  background: #273449;
 }
-
+[data-theme="dark"] .notes-table th {
+  color: #94a3b8;
+}
+[data-theme="dark"] .notes-table td {
+  color: #e2e8f0;
+}
 [data-theme="dark"] .notes-table tbody tr {
-  border-color: var(--border-color, #2d3748);
+  border-bottom-color: #334155;
 }
 
+/* Cartes statistiques */
+[data-theme="dark"] .notes-stat-card {
+  background: #1e293b;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+[data-theme="dark"] .notes-stat-value.success { color: #22c55e; }
+[data-theme="dark"] .notes-stat-value.info { color: #67e8f9; }
+[data-theme="dark"] .notes-stat-label { color: #94a3b8; }
+
+/* Utilitaires */
+[data-theme="dark"] .text-muted { color: #94a3b8; }
+
+/* Section graphiques */
+[data-theme="dark"] .notes-graph-panel {
+  background: #1e293b;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
 [data-theme="dark"] .notes-graphs-tabs {
-  background: var(--bg-hover, #2d3748);
+  background: #273449;
 }
-
+[data-theme="dark"] .notes-graphs-tab {
+  color: #94a3b8;
+}
+[data-theme="dark"] .notes-graphs-tab:hover {
+  background: #334155;
+  color: #e2e8f0;
+}
 [data-theme="dark"] .notes-graphs-tab.active {
-  background: var(--bg-card, #1a202c);
-  color: var(--primary-light, #90cdf4);
+  background: #1e293b;
+  color: #60a5fa;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+[data-theme="dark"] .notes-graph-empty { color: #64748b; }
+
+/* Indicateur d'auto-sauvegarde — fonds pastel sémantiques assombris */
+[data-theme="dark"] .autosave-dirty {
+  background: #451a03;
+  color: #fcd34d;
+}
+[data-theme="dark"] .autosave-saving {
+  background: #164e63;
+  color: #67e8f9;
+}
+[data-theme="dark"] .autosave-saved {
+  background: #052e16;
+  color: #86efac;
+}
+[data-theme="dark"] .autosave-error {
+  background: #450a0a;
+  color: #fca5a5;
 }
