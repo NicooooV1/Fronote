@@ -152,6 +152,13 @@ final class ProductionReadinessChecker
                 'DB_PASS est vide : compte MySQL sans mot de passe.');
         }
 
+        // ── Comptes de démonstration autorisés : mot de passe public exploitable. ──
+        if ($this->boolish($this->get('ALLOW_DEMO_ACCOUNTS'), false)) {
+            $issues[] = $this->issue(self::WARNING, 'ALLOW_DEMO_ACCOUNTS',
+                'ALLOW_DEMO_ACCOUNTS=true : les comptes de démonstration (@demo.fronote.test, '
+                . 'mot de passe public) peuvent se connecter. À passer à false avant la production.');
+        }
+
         return $this->cachedIssues = $issues;
     }
 

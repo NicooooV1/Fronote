@@ -28,3 +28,6 @@ config/marketplace/keys/
 *.sk
 dist/*.fmod
 .phpunit.result.cache
+.env.*.bak
+!.env.example
+!.env.ci.example

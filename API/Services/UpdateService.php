@@ -88,6 +88,20 @@ class UpdateService
             return ['success' => false, 'error' => "git est introuvable. Installez-le ou renseignez GIT_BINARY dans le .env.", 'steps' => $steps];
         }
 
+        // Garde-fou anti-catastrophe : "git reset --hard origin/<branche>" plus bas est
+        // destructif. On refuse la mise à jour si (a) la branche courante diffère de la
+        // branche configurée (GITHUB_BRANCH) — sinon le serveur basculerait silencieusement
+        // de branche — ou (b) l'arbre de travail contient des modifications non commitées
+        // qui seraient détruites.
+        $currentBranch = trim($this->git('rev-parse --abbrev-ref HEAD', $cBranch));
+        if ($cBranch === 0 && $currentBranch !== '' && $currentBranch !== 'HEAD' && $currentBranch !== $this->branch) {
+            return ['success' => false, 'error' => "Mise à jour refusée : la branche servie « {$currentBranch} » ne correspond pas à la branche configurée « {$this->branch} » (GITHUB_BRANCH). Alignez GITHUB_BRANCH ou basculez sur la bonne branche avant de mettre à jour.", 'steps' => $steps];
+        }
+        $dirty = trim($this->git('status --porcelain', $cStatus));
+        if ($cStatus === 0 && $dirty !== '') {
+            return ['success' => false, 'error' => "Mise à jour refusée : l'arbre de travail contient des modifications non commitées (git reset --hard les détruirait). Committez ou remisez (stash) ces changements d'abord.", 'steps' => $steps];
+        }
+
         $old = $this->currentVersion;
 
         // 0) Sauvegarde du .env (par sécurité, même si .gitignore le protège normalement).
