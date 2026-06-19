@@ -15,16 +15,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $message = 'Erreur de sécurité : token CSRF invalide. Veuillez recharger la page.';
     } elseif ($_POST['action'] === 'reserver') {
         $eleveId = (int)($_POST['eleve_id'] ?? $user['id']);
-        $dates = $_POST['dates'] ?? [];
-        $regime = $_POST['regime'] ?? null;
-        $par = getUserRole();
-        foreach ($dates as $d) {
-            $cantineService->reserver($eleveId, $d, 'dejeuner', $regime, $par);
+        // Anti-IDOR : on ne réserve que pour un élève de son périmètre
+        // (élève=lui-même, parent=ses enfants, personnel=son établissement).
+        if (!assertUserCanReadEleve($eleveId)) {
+            $message = "Vous n'avez pas accès à cet élève.";
+        } else {
+            $dates = $_POST['dates'] ?? [];
+            $regime = $_POST['regime'] ?? null;
+            $par = getUserRole();
+            foreach ($dates as $d) {
+                $cantineService->reserver($eleveId, $d, 'dejeuner', $regime, $par);
+            }
+            $message = count($dates) . ' réservation(s) enregistrée(s).';
         }
-        $message = count($dates) . ' réservation(s) enregistrée(s).';
     } elseif ($_POST['action'] === 'annuler') {
-        $cantineService->annulerReservation((int)$_POST['reservation_id']);
-        $message = 'Réservation annulée.';
+        // Anti-IDOR : annulation interdite sur la réservation d'un élève hors périmètre.
+        $resaId = (int)($_POST['reservation_id'] ?? 0);
+        $stResa = $pdo->prepare("SELECT eleve_id FROM cantine_reservations WHERE id = ?");
+        $stResa->execute([$resaId]);
+        $resaEleve = (int) $stResa->fetchColumn();
+        if ($resaEleve > 0 && !assertUserCanReadEleve($resaEleve)) {
+            $message = "Vous n'avez pas accès à cette réservation.";
+        } else {
+            $cantineService->annulerReservation($resaId);
+            $message = 'Réservation annulée.';
+        }
     }
 }
 

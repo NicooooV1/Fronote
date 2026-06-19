@@ -10,6 +10,11 @@ if (!isAdmin() && !isPersonnelVS()) { redirect('/modules/diplomes/diplomes.php')
 $id = (int)($_GET['id'] ?? 0);
 $diplome = $diplService->getDiplome($id);
 if (!$diplome) { redirect('/modules/diplomes/diplomes.php'); }
+// Anti-IDOR : interdit la consultation/modification/suppression d'un diplôme dont
+// l'élève est hors du périmètre de l'utilisateur (borne établissement incluse).
+if (!empty($diplome['eleve_id']) && !assertUserCanReadEleve((int) $diplome['eleve_id'])) {
+    redirect('/modules/diplomes/diplomes.php');
+}
 
 $types = DiplomeService::typesDiplome();
 $mentions = DiplomeService::mentions();

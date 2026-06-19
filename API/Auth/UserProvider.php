@@ -164,6 +164,24 @@ class UserProvider
      */
     public function findByLoginAllTypes(string $login): array
     {
+        // Voie COMPTES UNIFIÉS (si FEATURE_ACCOUNTS activé) : on résout l'identité via la
+        // table `accounts` (username/email → legacy_type/legacy_id), puis on vérifie le mot
+        // de passe sur la table HÉRITÉE — source de vérité des credentials, donc jamais de
+        // hash périmé ni de verrouillage accidentel.
+        //   - compte ACTIF trouvé           → on l'utilise (login piloté par `accounts`) ;
+        //   - compte présent mais INACTIF    → blocage, pas de repli (désactivation effective) ;
+        //   - AUCUN compte pour ce login     → repli sur le scan hérité (utilisateur non encore reflété).
+        if (\API\Services\AccountService::isEnabled()) {
+            $res = $this->findViaAccounts($login);
+            if (!empty($res['candidates'])) {
+                return $res['candidates'];
+            }
+            if ($res['matched']) {
+                return []; // un compte existe mais n'est pas actif → connexion refusée
+            }
+            // aucun compte ne correspond → repli sur le scan des tables héritées ↓
+        }
+
         $types = [
             'administrateur' => 'administrateurs',
             'vie_scolaire'   => 'vie_scolaire',
@@ -225,6 +243,69 @@ class UserProvider
         } catch (\PDOException $e) { /* table technicien_access absente */ }
 
         return $found;
+    }
+
+    /**
+     * Résout un login via la table `accounts` (comptes unifiés).
+     * @return array{candidates: array, matched: bool} candidates = lignes héritées prêtes
+     *         pour la vérification ; matched = vrai si au moins un compte (tout statut) matche.
+     */
+    private function findViaAccounts(string $login): array
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT legacy_type, legacy_id, status FROM accounts
+                  WHERE (username = ? OR email = ?)
+                    AND legacy_type IS NOT NULL AND legacy_id IS NOT NULL"
+            );
+            $stmt->execute([$login, $login]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\PDOException $e) {
+            return ['candidates' => [], 'matched' => false]; // table absente → repli hérité
+        }
+        $candidates = [];
+        foreach ($rows as $r) {
+            if (($r['status'] ?? '') !== 'active') {
+                continue;
+            }
+            $u = $this->loadLegacyForAuth((string) $r['legacy_type'], (int) $r['legacy_id']);
+            if ($u !== null) {
+                $candidates[] = $u;
+            }
+        }
+        return ['candidates' => $candidates, 'matched' => !empty($rows)];
+    }
+
+    /** Charge une ligne héritée (avec mot_de_passe) par (type, id), pour vérifier le login. */
+    private function loadLegacyForAuth(string $type, int $id): ?array
+    {
+        try {
+            if ($type === 'super_admin') {
+                $stmt = $this->pdo->prepare("SELECT id, nom, prenom, mail AS email, mot_de_passe, identifiant, actif FROM super_admins WHERE id = ? LIMIT 1");
+                $stmt->execute([$id]);
+                $u = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($u) { $u['type'] = 'super_admin'; }
+                return $u ?: null;
+            }
+            if ($type === 'technicien') {
+                $stmt = $this->pdo->prepare("SELECT id, nom, prenom, email AS email, mot_de_passe, identifiant, actif FROM technicien_access WHERE id = ? AND actif = 1 LIMIT 1");
+                $stmt->execute([$id]);
+                $u = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($u) { $u['type'] = 'technicien'; }
+                return $u ?: null;
+            }
+            $table = $this->getTableForUserType($type);
+            if (!$table) {
+                return null;
+            }
+            $stmt = $this->pdo->prepare("SELECT id, nom, prenom, mail AS email, mot_de_passe, identifiant, etablissement_id, actif, locked_until FROM `{$table}` WHERE id = ? LIMIT 1");
+            $stmt->execute([$id]);
+            $u = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($u) { $u['type'] = $type; }
+            return $u ?: null;
+        } catch (\PDOException $e) {
+            return null;
+        }
     }
 
     /**

@@ -55,6 +55,9 @@ foreach ($map as $table => [$accountType, $profileType]) {
                 'account_type'     => $accountType,
                 'username'         => $r['identifiant'] ?? ('legacy_' . $legacyType . '_' . $legacyId),
                 'email'            => $r['mail'] ?? ($r['email'] ?? null),
+                // Miroir du hash (l'auth vérifie pour l'instant le mot de passe sur la table
+                // héritée ; password_hash sert au futur basculement complet vers accounts).
+                'password_hash'    => $r['mot_de_passe'] ?? null,
                 'first_name'       => $r['prenom'] ?? null,
                 'last_name'        => $r['nom'] ?? null,
                 'etablissement_id' => $r['etablissement_id'] ?? null,
