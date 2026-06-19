@@ -267,7 +267,27 @@ if (!function_exists('assertUserCanReadEleve')) {
         $user = getCurrentUser();
         if (!$user) return false;
         $role = getUserRole();
-        if (in_array($role, ['administrateur', 'vie_scolaire', 'professeur'], true)) return true;
+        // Borne établissement + périmètre par rôle : anti-fuite inter-établissement
+        // ET anti-IDOR (un professeur ne lit QUE les élèves de ses classes, pas tous).
+        $pdo = getPDO();
+        try {
+            $stE = $pdo->prepare("SELECT etablissement_id, classe FROM eleves WHERE id = ? LIMIT 1");
+            $stE->execute([$eleveId]);
+            $eRow = $stE->fetch(\PDO::FETCH_ASSOC);
+        } catch (\PDOException $e) { return false; }
+        if (!$eRow) return false;
+        if ($role === 'super_admin') return true;
+        $myEtab = (int) ($user['etablissement_id'] ?? 0);
+        if ($myEtab <= 0) { try { $myEtab = (int) \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) {} }
+        if ($myEtab > 0 && (int) $eRow['etablissement_id'] !== $myEtab) return false;
+        if (in_array($role, ['administrateur', 'vie_scolaire'], true)) return true;
+        if ($role === 'professeur') {
+            try {
+                $stC = $pdo->prepare("SELECT 1 FROM professeur_classes WHERE id_professeur = ? AND nom_classe = ? LIMIT 1");
+                $stC->execute([(int) $user['id'], (string) ($eRow['classe'] ?? '')]);
+                return (bool) $stC->fetchColumn();
+            } catch (\PDOException $e) { return false; }
+        }
         if ($role === 'eleve')  return (int) $user['id'] === $eleveId;
         if ($role === 'parent') return parentOwnsEleve((int) $user['id'], $eleveId);
         return false;

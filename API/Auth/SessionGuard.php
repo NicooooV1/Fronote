@@ -64,6 +64,24 @@ class SessionGuard {
 
         $this->user = $safeUser;
 
+        // Date de dernière connexion sur la table de l'utilisateur. Point de passage
+        // unique (couvre 2FA, sans-2FA, remember-me). Best-effort. Avant : jamais écrit
+        // pour les 5 types → la colonne restait NULL (« dernière connexion ne marche pas »).
+        try {
+            $llMap = [
+                'eleve' => 'eleves', 'parent' => 'parents', 'professeur' => 'professeurs',
+                'vie_scolaire' => 'vie_scolaire', 'administrateur' => 'administrateurs',
+                'super_admin' => 'super_admins',
+            ];
+            $llTbl = $llMap[$user['type']] ?? null;
+            if ($llTbl !== null && function_exists('getPDO')) {
+                getPDO()->prepare("UPDATE `{$llTbl}` SET last_login = NOW() WHERE id = ?")
+                    ->execute([(int) $user['id']]);
+            }
+        } catch (\Throwable $e) {
+            error_log('last_login update failed: ' . $e->getMessage());
+        }
+
         // Enregistrer la session active pour l'outil admin « Sessions actives »
         // (la table session_security n'était jamais alimentée → page toujours vide).
         // Best-effort : ne JAMAIS bloquer la connexion si l'écriture échoue.

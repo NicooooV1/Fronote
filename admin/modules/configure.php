@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === ($
     }
 
     if ($action === 'update_roles') {
-        $allRoles = ['administrateur', 'professeur', 'eleve', 'parent', 'personnel', 'vie_scolaire'];
+        $allRoles = array_keys(\API\Security\RoleCatalog::roles()); // tous les rôles catalogue
         $selectedRoles = [];
         foreach ($allRoles as $r) {
             if (!empty($_POST['role_' . $r])) {
@@ -261,23 +261,26 @@ include __DIR__ . '/../includes/header.php';
         <input type="hidden" name="action" value="update_roles">
         <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
         <?php
-        $allRoles = [
-            'administrateur' => 'Administrateur',
-            'professeur'     => 'Professeur',
-            'eleve'          => 'Élève',
-            'parent'         => 'Parent',
-            'personnel'      => 'Personnel',
-            'vie_scolaire'   => 'Vie scolaire',
-        ];
         $currentRoles = $module['roles_autorises'] ?? null;
+        $rolesByTier  = \API\Security\RoleCatalog::rolesByTier();
+        $tierLabels = [
+            'plateforme'=>'Plateforme','direction'=>'Direction','administratif'=>'Administratif',
+            'vie_scolaire'=>'Vie scolaire','pedagogique'=>'Pédagogique','sante_social'=>'Santé & social',
+            'eleve_famille'=>'Élève & famille','organisation'=>'Organisation','communication'=>'Communication',
+            'documents'=>'Documents','services'=>'Services','stages'=>'Stages & alternance',
+            'controle'=>'Contrôle & lecture','systeme'=>'Système',
+        ];
         ?>
-        <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px">
-        <?php foreach ($allRoles as $roleKey => $roleLabel): ?>
-            <label style="display:flex;align-items:center;gap:6px;font-size:.92em;cursor:pointer;padding:8px 14px;border:1px solid #e2e8f0;border-radius:6px;background:#f8f9fa">
-                <input type="checkbox" name="role_<?= $roleKey ?>" value="1"
-                    <?= (is_array($currentRoles) && in_array($roleKey, $currentRoles)) ? 'checked' : '' ?>>
-                <?= htmlspecialchars($roleLabel) ?>
-            </label>
+        <div style="max-height:280px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;padding:10px;margin-bottom:16px">
+        <?php foreach ($rolesByTier as $tier => $roles): ?>
+            <strong style="display:block;font-size:.78em;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin:6px 0 3px"><?= htmlspecialchars($tierLabels[$tier] ?? $tier) ?></strong>
+            <?php foreach ($roles as $roleKey => $meta): ?>
+                <label style="display:inline-flex;align-items:center;gap:5px;font-size:.88em;cursor:pointer;margin:2px 10px 2px 0;font-weight:normal">
+                    <input type="checkbox" name="role_<?= htmlspecialchars($roleKey) ?>" value="1"
+                        <?= (is_array($currentRoles) && in_array($roleKey, $currentRoles, true)) ? 'checked' : '' ?>>
+                    <?= htmlspecialchars($meta['label'] ?? $roleKey) ?><?= !empty($meta['sensitive']) ? ' 🔒' : '' ?>
+                </label>
+            <?php endforeach; ?>
         <?php endforeach; ?>
         </div>
         <?php if (empty($currentRoles)): ?>

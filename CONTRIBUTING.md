@@ -59,7 +59,7 @@ module, l'architecture est violée. Seule exception : ajouter une interface dans
 - **Node.js 18+** uniquement si vous lancez le serveur temps réel (`websocket/server.js`)
 - Apache ou Nginx avec réécriture d'URL
 
-Dépendance Composer : `firebase/php-jwt ^6.0`.
+Dépendance Composer : `firebase/php-jwt ^7.0`.
 
 ### Installation
 

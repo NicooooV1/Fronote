@@ -93,6 +93,27 @@ final class Authorization
             // table absente → seul le rôle de base s'applique (rétro-compat)
         }
 
+        // 3) Rôles dérivés des sous-fonctions de compte (vie_scolaire : est_CPE / est_infirmerie).
+        //    Le vrai personnel CPE/infirmerie obtient ainsi les rôles catalogue correspondants
+        //    (et donc l'accès disciplinaire/médical) sans attribution manuelle dans user_roles.
+        if ($type === 'vie_scolaire') {
+            try {
+                $vs = $this->pdo->prepare("SELECT est_CPE, est_infirmerie FROM vie_scolaire WHERE id = ? LIMIT 1");
+                $vs->execute([(int) ($this->user['id'] ?? 0)]);
+                if ($flags = $vs->fetch(PDO::FETCH_ASSOC)) {
+                    $own = isset($this->user['etablissement_id']) ? (int) $this->user['etablissement_id'] : null;
+                    if (($flags['est_CPE'] ?? 'non') === 'oui') {
+                        $roles[] = ['role' => 'cpe', 'scope_type' => 'establishment', 'scope' => [], 'etab' => $own];
+                    }
+                    if (($flags['est_infirmerie'] ?? 'non') === 'oui') {
+                        $roles[] = ['role' => 'infirmerie', 'scope_type' => 'establishment', 'scope' => [], 'etab' => $own];
+                    }
+                }
+            } catch (\PDOException $e) {
+                // colonnes/table absentes → ignorer
+            }
+        }
+
         return $this->roles = $roles;
     }
 

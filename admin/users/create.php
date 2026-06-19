@@ -32,6 +32,20 @@ try {
     $matieresList = $pdo->query("SELECT nom FROM matieres WHERE actif = 1 ORDER BY nom")->fetchAll(PDO::FETCH_COLUMN);
 } catch (Exception $e) {}
 
+// Rôles catalogue attribuables par l'acteur courant (rôle principal + sous-rôles).
+$rms = new \API\Services\RoleManagementService($pdo);
+$assignableRoleKeys = [];
+try { $assignableRoleKeys = $rms->assignableRoles(app('authz')->roleKeys()); } catch (\Throwable $e) {}
+$assignableSet = array_flip($assignableRoleKeys);
+$rolesByTier   = \API\Security\RoleCatalog::rolesByTier();
+$tierLabels = [
+    'plateforme'=>'Plateforme','direction'=>'Direction','administratif'=>'Administratif',
+    'vie_scolaire'=>'Vie scolaire','pedagogique'=>'Pédagogique','sante_social'=>'Santé & social',
+    'eleve_famille'=>'Élève & famille','organisation'=>'Organisation','communication'=>'Communication',
+    'documents'=>'Documents','services'=>'Services','stages'=>'Stages & alternance',
+    'controle'=>'Contrôle & lecture','systeme'=>'Système',
+];
+
 // Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['csrf_token']) && $_POST['csrf_token'] === $csrf_token) {
     $profil = $_POST['profil'] ?? '';
@@ -81,6 +95,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['csrf_token']) && $_PO
             $generatedIdentifier = $result['identifiant'] ?? '';
             logAudit('user_created', $userObj->getTableName($profil), null, null, ['identifiant' => $generatedIdentifier, 'profil' => $profil]);
             $message = "Utilisateur créé avec succès.";
+
+            // Attribution des rôles catalogue (rôle principal + sous-rôles) à la création.
+            try {
+                $tbl = $userObj->getTableName($profil);
+                $idStmt = $pdo->prepare("SELECT id FROM `{$tbl}` WHERE identifiant = ? ORDER BY id DESC LIMIT 1");
+                $idStmt->execute([$generatedIdentifier]);
+                $newId = (int) $idStmt->fetchColumn();
+                if ($newId > 0) {
+                    $actor      = getCurrentUser();
+                    $actorRoles = app('authz')->roleKeys();
+                    $wanted = [];
+                    if (!empty($_POST['principal_role'])) $wanted[] = (string) $_POST['principal_role'];
+                    foreach ((array) ($_POST['sub_roles'] ?? []) as $sr) {
+                        if ($sr !== '') $wanted[] = (string) $sr;
+                    }
+                    $assigned = [];
+                    foreach (array_unique($wanted) as $rk) {
+                        try {
+                            $rms->assign($actor, $actorRoles, $profil, $newId, $rk, ['etablissement_id' => $actor['etablissement_id'] ?? null]);
+                            $assigned[] = \API\Security\RoleCatalog::roles()[$rk]['label'] ?? $rk;
+                        } catch (\Throwable $e) { /* rôle non attribuable → ignoré */ }
+                    }
+                    if ($assigned) $message .= ' Rôles attribués : ' . implode(', ', $assigned) . '.';
+                }
+            } catch (\Throwable $e) { /* l'attribution de rôle ne doit pas bloquer la création */ }
         } else {
             $error = $result['message'] ?? 'Erreur lors de la création.';
         }
@@ -216,6 +255,43 @@ include __DIR__ . '/../includes/header.php';
             <p style="font-size:13px;color:#718096;">Aucun champ spécifique requis. L'utilisateur aura un accès complet au panneau d'administration.</p>
         </div>
 
+        <!-- Rôles fonctionnels (catalogue) — rôle principal + sous-rôles, pour le personnel -->
+        <div class="dynamic-fields" id="fields-roles">
+            <h3><i class="fas fa-user-shield"></i> Rôles fonctionnels</h3>
+            <p style="font-size:13px;color:#718096;">Un <strong>rôle principal</strong> + des <strong>sous-rôles</strong> donnant des permissions spécifiques. Les élèves et les parents n'ont en général qu'un seul rôle (leur type) ; le personnel peut en cumuler plusieurs.</p>
+            <div class="form-group">
+                <label>Rôle principal</label>
+                <select name="principal_role">
+                    <option value="">— Aucun (rôle de base du type) —</option>
+                    <?php foreach ($rolesByTier as $tier => $roles): ?>
+                        <?php $opts = array_filter($roles, fn($rk) => isset($assignableSet[$rk]), ARRAY_FILTER_USE_KEY); if (!$opts) continue; ?>
+                        <optgroup label="<?= htmlspecialchars($tierLabels[$tier] ?? $tier) ?>" data-tier="<?= htmlspecialchars($tier) ?>">
+                        <?php foreach ($opts as $rk => $meta): ?>
+                            <option value="<?= htmlspecialchars($rk) ?>"><?= htmlspecialchars($meta['label'] ?? $rk) ?><?= !empty($meta['sensitive']) ? ' 🔒' : '' ?></option>
+                        <?php endforeach; ?>
+                        </optgroup>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Sous-rôles (permissions additionnelles)</label>
+                <div style="max-height:240px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;padding:10px">
+                    <?php foreach ($rolesByTier as $tier => $roles):
+                        $opts = array_filter($roles, fn($rk) => isset($assignableSet[$rk]), ARRAY_FILTER_USE_KEY);
+                        if (!$opts) continue; ?>
+                        <div class="role-tier" data-tier="<?= htmlspecialchars($tier) ?>">
+                        <strong style="display:block;font-size:.78em;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin:6px 0 3px"><?= htmlspecialchars($tierLabels[$tier] ?? $tier) ?></strong>
+                        <?php foreach ($opts as $rk => $meta): ?>
+                            <label style="display:inline-flex;align-items:center;gap:5px;margin:2px 12px 2px 0;font-weight:normal;font-size:.9em">
+                                <input type="checkbox" name="sub_roles[]" value="<?= htmlspecialchars($rk) ?>"> <?= htmlspecialchars($meta['label'] ?? $rk) ?><?= !empty($meta['sensitive']) ? ' 🔒' : '' ?>
+                            </label>
+                        <?php endforeach; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+
         <div style="margin-top: 20px;">
             <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus"></i> Créer l'utilisateur</button>
         </div>
@@ -223,6 +299,23 @@ include __DIR__ . '/../includes/header.php';
 </div>
 
 <script>
+// Tiers de rôles autorisés par type de compte (garde-fou : vie scolaire ≠ administration).
+var ALLOWED_TIERS = <?= json_encode(\API\Security\RoleCatalog::accountAllowedTiers(), JSON_UNESCAPED_UNICODE) ?>;
+
+function filterRolesByAccount(profil) {
+    var allowed = ALLOWED_TIERS[profil] || [];
+    document.querySelectorAll('#fields-roles .role-tier').forEach(function (div) {
+        var ok = allowed.indexOf(div.getAttribute('data-tier')) !== -1;
+        div.style.display = ok ? '' : 'none';
+        if (!ok) div.querySelectorAll('input[type=checkbox]').forEach(function (c) { c.checked = false; });
+    });
+    document.querySelectorAll('select[name="principal_role"] optgroup').forEach(function (og) {
+        var ok = allowed.indexOf(og.getAttribute('data-tier')) !== -1;
+        og.disabled = !ok; og.style.display = ok ? '' : 'none';
+        og.querySelectorAll('option').forEach(function (o) { o.disabled = !ok; if (!ok && o.selected) o.selected = false; });
+    });
+}
+
 function selectProfil(profil) {
     document.getElementById('profilInput').value = profil;
     document.querySelectorAll('.profil-btn').forEach(b => b.classList.remove('selected'));
@@ -230,6 +323,11 @@ function selectProfil(profil) {
     document.querySelectorAll('.dynamic-fields').forEach(f => f.classList.remove('visible'));
     const fields = document.getElementById('fields-' + profil);
     if (fields) fields.classList.add('visible');
+    // Rôles fonctionnels : affichés pour le personnel (pas pour élève/parent).
+    const staff = ['professeur', 'vie_scolaire', 'administrateur'].includes(profil);
+    const rolesBox = document.getElementById('fields-roles');
+    if (rolesBox) rolesBox.classList.toggle('visible', staff);
+    filterRolesByAccount(profil);
 }
 </script>
 

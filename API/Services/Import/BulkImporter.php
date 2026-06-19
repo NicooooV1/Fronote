@@ -166,7 +166,7 @@ class BulkImporter
             $plainPassword = null;
             foreach ($schema['generate'] ?? [] as $gen) {
                 if ($gen === 'identifiant' && empty($data['identifiant'])) {
-                    $data['identifiant'] = $this->generateIdentifier($data['nom'] ?? 'user', $data['prenom'] ?? '', $schema['table']);
+                    $data['identifiant'] = \API\Services\IdentifierGenerator::generate($this->pdo, $data['nom'] ?? '', $data['prenom'] ?? '', $etabId);
                 }
                 if ($gen === 'mot_de_passe') {
                     $plainPassword = $generatePasswords ? $this->generatePassword() : 'Fronote2025!';
@@ -360,36 +360,6 @@ class BulkImporter
     }
 
     /* ============================== HELPERS ============================== */
-
-    private function generateIdentifier(string $nom, string $prenom, string $table): string
-    {
-        $base = $this->slug($prenom) . '.' . $this->slug($nom);
-        $base = trim($base, '.') ?: 'user';
-        $candidate = $base;
-        $i = 1;
-        while ($this->identifierExists($table, $candidate)) {
-            $candidate = $base . $i;
-            $i++;
-        }
-        return $candidate;
-    }
-
-    private function identifierExists(string $table, string $identifiant): bool
-    {
-        try {
-            $stmt = $this->pdo->prepare("SELECT 1 FROM `{$table}` WHERE identifiant = ? LIMIT 1");
-            $stmt->execute([$identifiant]);
-            return (bool) $stmt->fetchColumn();
-        } catch (\Throwable $e) {
-            return false;
-        }
-    }
-
-    private function slug(string $s): string
-    {
-        $s = self::normalizeHeader($s); // minuscule sans accent
-        return str_replace(' ', '-', $s);
-    }
 
     private function generatePassword(int $length = 12): string
     {

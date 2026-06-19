@@ -470,6 +470,7 @@ class ModuleService
         foreach ($all as $key => $mod) {
             if (empty($mod['enabled'])) continue;
             if (!$this->isVisibleForRoles($key, $roles)) continue;
+            if (!empty($mod['sidebar_hidden'])) continue; // module masqué/headless : pas un item de nav cliquable
             if (in_array($key, ['accueil', 'parametres', 'profil', 'notifications'])) continue;
 
             // Determine category: topbar_category (DB) > override > category (DB)

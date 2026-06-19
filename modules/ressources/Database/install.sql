@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS `ressources_pedagogiques` (
   `fichier_path` varchar(500) DEFAULT NULL,
   `url_externe` varchar(500) DEFAULT NULL,
   `difficulte` enum('facile','moyen','difficile') DEFAULT 'moyen',
+  `niveau` varchar(20) DEFAULT NULL,
   `tags` varchar(500) DEFAULT NULL,
   `publie` tinyint(1) NOT NULL DEFAULT 0,
   `vues` int(11) NOT NULL DEFAULT 0,

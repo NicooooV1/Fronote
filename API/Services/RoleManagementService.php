@@ -70,6 +70,13 @@ final class RoleManagementService
         if (!in_array($roleKey, $this->assignableRoles($actorRoleKeys), true)) {
             throw new \RuntimeException("Vous n'avez pas le droit d'attribuer le rôle « {$roleKey} ».");
         }
+        // Compatibilité type de compte ↔ rôle : un rôle d'un tier non autorisé pour ce
+        // type de compte est refusé (ex. la vie scolaire ne reçoit pas de rôle d'administration).
+        // super_admin n'est pas limité.
+        if (!in_array('super_admin', $actorRoleKeys, true)
+            && !isset(RoleCatalog::rolesForAccount($userType)[$roleKey])) {
+            throw new \RuntimeException("Le rôle « {$roleKey} » n'est pas compatible avec un compte « {$userType} ».");
+        }
         // Anti-escalade : on ne s'attribue pas à soi-même un rôle qu'on ne possède pas déjà.
         $isSelf = ($actor['type'] ?? null) === $userType && (int) ($actor['id'] ?? 0) === $userId;
         if ($isSelf && !in_array($roleKey, $actorRoleKeys, true)) {

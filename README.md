@@ -51,7 +51,7 @@ Tout est livré dans un seul dépôt, installé via un assistant web (`install.p
 | Base de données | **MySQL ≥ 8.0** ou **MariaDB ≥ 10.3**, via **PDO** (`ERRMODE_EXCEPTION`, `utf8mb4`) |
 | Framework | **Aucun** — conteneur DI maison (`API/Core/Application`), providers, facades |
 | Autoload | PSR-4 (`composer.json`) : `API\` → `API/`, `Pronote\` → `API/`, `Modules\` → `modules/` |
-| Dépendance Composer | `firebase/php-jwt ^6.0` (JWT WebSocket) |
+| Dépendance Composer | `firebase/php-jwt ^7.0` (JWT WebSocket) |
 | Extensions PHP requises | `ext-sodium` (signature `.fmod` marketplace), `ext-json`, `ext-zip`, `ext-pdo` |
 | Temps réel | Serveur Node.js (`websocket-server/server.js`, Socket.IO) — optionnel, fallback HTTP |
 | Front | HTML/CSS/JS sans build — design tokens CSS + thèmes (classic / glass) |

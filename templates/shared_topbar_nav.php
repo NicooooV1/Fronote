@@ -47,7 +47,7 @@ try {
 if (empty($_topbar_modules)) {
     try {
         $_tb_pdo = getPDO();
-        $_tb_stmt = $_tb_pdo->query("SELECT module_key, label, icon, category, sort_order FROM modules_config WHERE enabled = 1 ORDER BY sort_order, label");
+        $_tb_stmt = $_tb_pdo->query("SELECT module_key, label, icon, category, sort_order FROM modules_config WHERE enabled = 1 AND sidebar_hidden = 0 ORDER BY sort_order, label");
         $_tb_rows = $_tb_stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Category meta for fallback grouping

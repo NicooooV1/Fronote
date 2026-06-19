@@ -1,67 +1,9 @@
-Options -Indexes
-
-# Protéger les fichiers sensibles
-<FilesMatch "(^\.env$|^install\.lock$|^composer\.lock$|^pronote\.sql$|\.bak$|\.log$)">
-    Require all denied
+<FilesMatch "^(\.env|install\.lock)$">
+  Order allow,deny
+  Deny from all
 </FilesMatch>
-
-# Compression gzip
-<IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json text/xml application/xml
-</IfModule>
-
-# Cache des assets statiques
-<IfModule mod_expires.c>
-    ExpiresActive On
-    ExpiresByType text/css "access plus 1 month"
-    ExpiresByType application/javascript "access plus 1 month"
-    ExpiresByType image/png "access plus 1 month"
-    ExpiresByType image/jpeg "access plus 1 month"
-    ExpiresByType image/svg+xml "access plus 1 month"
-    ExpiresByType font/woff2 "access plus 1 year"
-    ExpiresByType font/woff "access plus 1 year"
-</IfModule>
-
-# Headers de cache pour les fichiers statiques
-<IfModule mod_headers.c>
-    # En-têtes de sécurité appliqués aussi aux fichiers statiques (défense en profondeur).
-    Header always set X-Content-Type-Options "nosniff"
-    Header always set X-Frame-Options "DENY"
-    Header always set Referrer-Policy "strict-origin-when-cross-origin"
-    <FilesMatch "\.(css|js|png|jpg|jpeg|gif|svg|woff|woff2)$">
-        Header set Cache-Control "public, max-age=2592000"
-    </FilesMatch>
-    # Pas de cache pour les fichiers PHP
-    <FilesMatch "\.php$">
-        Header set Cache-Control "no-store, no-cache, must-revalidate"
-    </FilesMatch>
-</IfModule>
-
-# Custom error pages
-ErrorDocument 403 /templates/errors/403.php
-ErrorDocument 404 /templates/errors/404.php
-ErrorDocument 500 /templates/errors/500.php
-ErrorDocument 503 /templates/errors/503.php
-
-<IfModule mod_rewrite.c>
-    RewriteEngine On
-
-    # Bloquer .git et tout dossier/fichier caché (dotfile) — fuite code/historique/secrets.
-    # Exception : /.well-known (ACME / certificats).
-    RewriteRule (^|/)\.(?!well-known)[^/]* - [F,L]
-
-    # Bloquer l'accès aux répertoires sensibles + scripts CLI/tests (non destinés au web).
-    RewriteRule ^(temp|[Ll]ogs|vendor|storage|tests|scripts|cron|config|docs|node_modules|websocket)(/|$) - [F,L]
-    RewriteRule ^API/(Auth|Core|Database|Services|Events|Jobs|Providers|Legacy|Security|Middleware|Admin|Contracts|UI)(/|$) - [F,L]
-
-    # Forcer HTTPS en production : DÉCOMMENTER après avoir installé un certificat TLS.
-    # (Laisser commenté en dev HTTP local pour ne pas casser l'accès.)
-    # RewriteCond %{HTTPS} off
-    # RewriteCond %{HTTP:X-Forwarded-Proto} !https
-    # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
-
-    # Les endpoints API sont appelés directement (ex: API/endpoints/messagerie.php)
-
-    # Service Worker scope
-    RewriteRule ^sw\.js$ - [L]
-</IfModule>
+<FilesMatch "\.(ini|conf|bak|sql|db)$">
+  Order allow,deny
+  Deny from all
+</FilesMatch>
+Options -Indexes

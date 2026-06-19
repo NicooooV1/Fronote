@@ -239,6 +239,59 @@ if (!headers_sent()) {
 	}
 }
 
+// ─── Vérification de configuration production (fail-fast) ────────────────────
+// En production, refuser de servir si un secret est absent/factice (APP_KEY/JWT/WS)
+// ou si la config expose des données (APP_DEBUG ON, cookie de session en clair sur
+// HTTPS). Les WARNING sont seulement journalisés. Ignoré en CLI, pendant
+// l'installation et si .env a échoué (déjà redirigé vers l'installateur ci-dessus).
+if (php_sapi_name() !== 'cli'
+	&& !isset($envLoadError) // isset(null) === false → on n'entre PAS si EnvLoader a échoué
+	&& strpos($_SERVER['SCRIPT_NAME'] ?? '', '/install.php') === false) {
+	$_readiness = \API\Core\ProductionReadinessChecker::fromEnvironment(request_is_https());
+
+	// WARNING : journalisés au plus une fois par heure. Sans throttle, une instance LAN en
+	// HTTP (où APP_URL=http://, HEALTH_TOKEN/DB_PASS vides sont des warnings permanents)
+	// inonderait error_log de plusieurs lignes À CHAQUE requête.
+	$_readinessStamp = BASE_PATH . '/storage/cache/.readiness_warned';
+	$_readinessWarnedAt = @filemtime($_readinessStamp); // false si jamais journalisé
+	if ($_readinessWarnedAt === false || (time() - $_readinessWarnedAt) > 3600) {
+		$_readinessWarns = $_readiness->warnings();
+		if ($_readinessWarns !== []) {
+			foreach ($_readinessWarns as $_rw) {
+				error_log("[readiness][warn] {$_rw['key']}: {$_rw['message']}");
+			}
+			@touch($_readinessStamp);
+		}
+		unset($_readinessWarns, $_rw);
+	}
+
+	if ($_readiness->shouldBlockBoot()) {
+		// CRITICAL rares (uniquement quand on bloque le boot) : toujours journalisés.
+		foreach ($_readiness->criticalIssues() as $_rc) {
+			error_log("[readiness][CRITICAL] {$_rc['key']}: {$_rc['message']}");
+		}
+		// La page d'erreur pose elle-même ses en-têtes 503 ; le fallback inline ne les pose
+		// que s'il n'y a pas de template (évite de dupliquer status + headers).
+		$_readinessPage = BASE_PATH . '/templates/readiness_error.php';
+		if (is_file($_readinessPage)) {
+			require $_readinessPage;
+		} else {
+			if (!headers_sent()) {
+				http_response_code(503);
+				header('Content-Type: text/html; charset=utf-8');
+				header('Retry-After: 3600');
+			}
+			echo '<!doctype html><meta charset="utf-8"><title>Configuration incomplète</title>'
+			   . '<h1>503 — Configuration incomplète</h1>'
+			   . '<p>Le service ne peut pas démarrer : la configuration de production est '
+			   . 'incomplète ou non sécurisée. Consultez les journaux serveur (motif '
+			   . '« [readiness] ») pour le détail.</p>';
+		}
+		exit;
+	}
+	unset($_readiness, $_readinessStamp, $_readinessWarnedAt);
+}
+
 // Démarrer la session si pas déjà démarrée
 // Nom et path scopés par instance pour éviter les conflits multi-installation
 if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -426,6 +479,42 @@ require_once API_PATH . '/Legacy/Bridge.php';
 // Contrôle d'accès centralisé (front controller de sécurité) : impose authentification
 // + rôle minimal selon le chemin du point d'entrée appelé, en fail-closed. Complète
 // (sans les remplacer) les gardes requireAuth()/requireRole() par page.
+// ─── Garde de session par requête : déconnexion forcée si la session a été révoquée
+//     (fermée par un admin via « Sessions actives ») OU si le compte a été désactivé
+//     (actif=0). Sans cela, « kill session » ne faisait que masquer la ligne en base et
+//     la désactivation n'agissait que sur les pages appelant requireAuth(). ─────────────
+if (php_sapi_name() !== 'cli' && !empty($_SESSION['user_id'])) {
+	$_forceLogout = false;
+	// (1) Session révoquée côté serveur (session_security). Fail-OPEN sur erreur DB :
+	//     une indisponibilité base ne doit JAMAIS déconnecter tout le monde.
+	try {
+		// Comparaison expires_at <= NOW() faite DANS MySQL (même fuseau que NOW()) :
+		// comparer en PHP via strtotime() casserait sur le décalage UTC/Europe-Paris.
+		$_ss = getPDO()->prepare("SELECT is_active, (expires_at IS NOT NULL AND expires_at <= NOW()) AS expired FROM session_security WHERE id = ? LIMIT 1");
+		$_ss->execute([session_id()]);
+		$_ssRow = $_ss->fetch(\PDO::FETCH_ASSOC);
+		if ($_ssRow !== false && ((int) $_ssRow['is_active'] === 0 || (int) $_ssRow['expired'] === 1)) {
+			$_forceLogout = true;
+		} elseif ($_ssRow !== false) {
+			getPDO()->prepare("UPDATE session_security SET last_activity = NOW() WHERE id = ?")->execute([session_id()]);
+		}
+	} catch (\Throwable $e) { /* fail-open */ }
+
+	// (2) Compte désactivé/verrouillé : UserProvider::retrieveById() renvoie null si
+	//     actif=0 → universel, indépendamment du fait que la page appelle requireAuth().
+	if (!$_forceLogout) {
+		try { if (app('auth')->user() === null) { $_forceLogout = true; } }
+		catch (\Throwable $e) { /* fail-open */ }
+	}
+
+	if ($_forceLogout) {
+		try { app('auth')->logout(); }
+		catch (\Throwable $e) { unset($_SESSION['user_id'], $_SESSION['user_type'], $_SESSION['user'], $_SESSION['logged_in']); }
+		$_SESSION['session_expired'] = true;
+	}
+	unset($_forceLogout, $_ss, $_ssRow);
+}
+
 \API\Core\AccessControl::enforce(BASE_PATH);
 
 return $app;

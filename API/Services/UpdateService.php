@@ -97,10 +97,38 @@ class UpdateService
             $envBackup = @file_get_contents($envFile);
         }
 
+        // 0b) Filet de récupération : capturer l'état AVANT toute opération destructive
+        //     (HEAD git + sauvegarde de la base) et passer le site en maintenance.
+        $oldHead = trim($this->git('rev-parse HEAD', $cHead));
+        if ($cHead !== 0 || $oldHead === '') { $oldHead = null; }
+        $maintActive = false;
+        try { app('maintenance')->activate('Mise à jour en cours…'); $maintActive = true; $steps[] = 'Mode maintenance activé'; }
+        catch (\Throwable $e) { $steps[] = 'Mode maintenance indisponible : ' . $e->getMessage(); }
+        $dbBackup = null;
+        try { $dbBackup = app('backup')->createDatabaseBackup(); $steps[] = 'Sauvegarde base : ' . basename((string) $dbBackup); }
+        catch (\Throwable $e) { $steps[] = 'Sauvegarde base indisponible : ' . $e->getMessage(); }
+
+        // Restaure base + code au commit précédent (rollback).
+        $rollback = function (string $reason) use (&$steps, $oldHead, $dbBackup): void {
+            $steps[] = '⚠️ Rollback : ' . $reason;
+            if ($dbBackup) {
+                try { app('backup')->restoreDatabase($dbBackup); $steps[] = 'Base restaurée depuis la sauvegarde'; }
+                catch (\Throwable $e) { $steps[] = 'Restauration base ÉCHOUÉE : ' . $e->getMessage(); }
+            }
+            if ($oldHead) {
+                $this->git('reset --hard ' . escapeshellarg($oldHead), $rc);
+                $steps[] = $rc === 0 ? 'Code remis à ' . substr($oldHead, 0, 8) : 'Rollback git ÉCHOUÉ';
+            }
+        };
+        $endMaintenance = function () use (&$steps, &$maintActive): void {
+            if ($maintActive) { try { app('maintenance')->deactivate(); $steps[] = 'Maintenance désactivée'; } catch (\Throwable $e) {} $maintActive = false; }
+        };
+
         // 1) git fetch
         $out = $this->git('fetch origin ' . escapeshellarg($this->branch), $c1);
         $steps[] = 'git fetch' . ($out !== '' ? ' : ' . $out : '');
         if ($c1 !== 0) {
+            $endMaintenance();
             return ['success' => false, 'error' => 'git fetch a échoué : ' . $out, 'steps' => $steps];
         }
 
@@ -108,7 +136,9 @@ class UpdateService
         $out = $this->git('reset --hard ' . escapeshellarg('origin/' . $this->branch), $c2);
         $steps[] = 'git reset --hard origin/' . $this->branch . ($out !== '' ? ' : ' . $out : '');
         if ($c2 !== 0) {
-            return ['success' => false, 'error' => 'git reset a échoué : ' . $out, 'steps' => $steps];
+            $rollback('git reset a échoué');
+            $endMaintenance();
+            return ['success' => false, 'rolled_back' => true, 'error' => 'git reset a échoué : ' . $out, 'steps' => $steps];
         }
 
         // 2b) Restaurer le .env s'il a disparu (cas où il serait suivi par erreur).
@@ -117,7 +147,7 @@ class UpdateService
             $steps[] = '.env restauré';
         }
 
-        // 3) Réconciliation du schéma SQL (déclaratif, idempotent, sans migrations).
+        // 3) Réconciliation du schéma SQL (déclaratif, idempotent ; vraies migrations via MigrationRunner).
         $schema = ['created' => [], 'altered' => [], 'errors' => [], 'checked' => 0];
         try {
             $sync = new SchemaSyncService(getPDO(), $this->basePath);
@@ -130,6 +160,32 @@ class UpdateService
         } catch (\Throwable $e) {
             $steps[] = 'Schéma SQL : échec — ' . $e->getMessage();
             $schema['errors'][] = $e->getMessage();
+        }
+
+        // 3a) Migrations versionnées (transformations que SchemaSyncService ne sait pas faire).
+        try {
+            $mig = (new MigrationRunner(getPDO(), $this->basePath))->migrate();
+            if (!empty($mig['applied'])) $steps[] = 'Migrations appliquées : ' . implode(', ', $mig['applied']);
+            if (!empty($mig['errors'])) { $schema['errors'][] = 'migration: ' . implode(' ; ', $mig['errors']); }
+        } catch (\Throwable $e) {
+            $steps[] = 'Migrations : échec — ' . $e->getMessage();
+            $schema['errors'][] = 'migration: ' . $e->getMessage();
+        }
+
+        // 3b) Schéma OU migration en erreur → on annule TOUT (base + code restaurés).
+        if (!empty($schema['errors'])) {
+            $rollback('réconciliation du schéma/migrations en erreur');
+            $endMaintenance();
+            $this->currentVersion = $this->readVersion();
+            return [
+                'success'     => false,
+                'rolled_back' => true,
+                'steps'       => $steps,
+                'schema'      => $schema,
+                'old_version' => $old,
+                'new_version' => $this->currentVersion,
+                'error'       => 'Mise à jour annulée et restaurée : ' . implode(' ; ', $schema['errors']),
+            ];
         }
 
         // 4) Re-synchroniser les manifestes des modules (permissions, widgets, routes…).
@@ -151,11 +207,12 @@ class UpdateService
         // 5) Vider le cache applicatif.
         try { app('cache')->flush(); $steps[] = 'Cache vidé'; } catch (\Throwable $e) {}
 
-        // 6) Relire la version.
+        // 6) Sortie de maintenance + relire la version.
+        $endMaintenance();
         $this->currentVersion = $this->readVersion();
 
         return [
-            'success'     => empty($schema['errors']),
+            'success'     => true,
             'steps'       => $steps,
             'schema'      => $schema,
             'old_version' => $old,

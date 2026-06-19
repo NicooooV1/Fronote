@@ -115,8 +115,11 @@ HTML;
 
     private function getEleve(int $id): ?array
     {
-        $s = $this->pdo->prepare("SELECT e.*, c.nom AS classe_nom FROM eleves e LEFT JOIN classes c ON c.nom = e.classe WHERE e.id = ?");
-        $s->execute([$id]); return $s->fetch(PDO::FETCH_ASSOC) ?: null;
+        // Scope établissement : les id élèves sont globaux ; sans ce filtre un bulletin
+        // pourrait être généré pour un élève d'un autre établissement (fuite inter-tenant).
+        $etabId = \API\Core\EstablishmentContext::id();
+        $s = $this->pdo->prepare("SELECT e.*, c.nom AS classe_nom FROM eleves e LEFT JOIN classes c ON c.nom = e.classe AND c.etablissement_id = e.etablissement_id WHERE e.id = ? AND e.etablissement_id = ?");
+        $s->execute([$id, $etabId]); return $s->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     private function getPeriode(int $id): ?array

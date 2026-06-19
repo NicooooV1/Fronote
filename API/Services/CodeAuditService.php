@@ -19,11 +19,17 @@ class CodeAuditService
 {
     private string $basePath;
 
-    /** Dossiers ignorés pendant le scan. */
+    /** Dossiers ignorés pendant le scan (relatifs à la racine). */
     private const SKIP_DIRS = [
         'vendor', 'node_modules', '.git', 'storage', 'temp', 'uploads',
         'websocket-server', 'lang', 'assets', 'tests', 'API/Legacy',
     ];
+
+    /**
+     * Dossiers vendored/générés ignorés où qu'ils soient dans l'arbre, pas
+     * seulement à la racine (ex. websocket/node_modules, modules/x/vendor).
+     */
+    private const SKIP_ANYWHERE = ['node_modules', 'vendor', '.git'];
 
     /** Tables métier devant porter etablissement_id (sous-ensemble à fort signal). */
     private const SCOPED_TABLES = [
@@ -111,9 +117,14 @@ class CodeAuditService
         // Ne pas s'auto-signaler : ce service contient littéralement les marqueurs
         // recherchés dans ses propres regex (faux positif systématique).
         if (str_contains($rel, 'CodeAuditService')) return [];
-        // Marqueurs à fort signal uniquement (éviter de matcher les attributs HTML placeholder="…").
-        if (preg_match_all('/\b(TODO|FIXME|HACK|XXX)\b|disponible prochainement|bient[oô]t disponible|coming soon/i', $content, $m)) {
-            $n = count($m[0]);
+        // Marqueurs de code incomplet : MAJUSCULES uniquement (convention TODO/FIXME/XXX/HACK).
+        // La casse compte — un « xxx »/« todo » minuscule apparaît légitimement dans la doc,
+        // les exemples (OAUTH_CLIENT_ID=xxx) ou les listes de motifs, d'où des faux positifs.
+        $nMarkers = preg_match_all('/\b(TODO|FIXME|HACK|XXX)\b/', $content);
+        // Textes « à venir » visibles en prod : insensibles à la casse (langage naturel).
+        $nPhrases = preg_match_all('/disponible prochainement|bient[oô]t disponible|coming soon/i', $content);
+        $n = (int) $nMarkers + (int) $nPhrases;
+        if ($n > 0) {
             return [$this->finding('moyenne', 'placeholder', $rel, "{$n} marqueur(s) TODO/FIXME ou texte « prochainement » détecté(s).", 'Compléter ou retirer avant la production (politique « aucune coquille vide »).')];
         }
         return [];
@@ -124,6 +135,10 @@ class CodeAuditService
         $handlesPost = str_contains($content, '$_POST')
             || preg_match('/REQUEST_METHOD.{0,12}POST/', $content);
         if (!$handlesPost) return [];
+
+        // Endpoints intentionnellement publics (pré-auth) : pas d'action authentifiée,
+        // donc CSRF non requis. Source de vérité = la liste blanche d'AccessControl.
+        if ($this->isPublicEndpoint($rel)) return [];
 
         // Reconnaît les styles de validation réellement utilisés dans le projet :
         //  - statique     : CSRF::validate() / CSRF::check()
@@ -169,10 +184,12 @@ class CodeAuditService
             $touches = preg_match('/\bFROM\s+`?' . $t . '`?\b/i', $content)
                 || preg_match('/\b(UPDATE|INTO)\s+`?' . $t . '`?\b/i', $content);
             if (!$touches) continue;
-            // Faux positif courant : un SELECT/DELETE/UPDATE sur clé primaire unique
-            //   « FROM <table> [alias] WHERE [alias.]id = … » est scopé par la PK.
-            if (preg_match('/\b(FROM|UPDATE)\s+`?' . $t . '`?\s+(?:AS\s+)?\w*\s*WHERE\s+(?:\w+\.)?`?id`?\s*(=|IN)\b/i', $content)
-                || preg_match('/\b(FROM|UPDATE)\s+`?' . $t . '`?\s*WHERE\s+(?:\w+\.)?`?id`?\s*(=|IN)\b/i', $content)) {
+            // Faux positif : lookup PK CORRÉLÉ « FROM <table> [alias] WHERE [alias.]id = autre.colonne »
+            // (résolution d'une ligne déjà liée à une ligne autorisée, ex. nom d'un signataire) ou
+            // « id IN (…) ». On N'EXEMPTE PAS « WHERE id = ? » : l'id peut provenir d'une entrée
+            // utilisateur et, les clés primaires étant globales en multi-tenant, ce n'est alors pas
+            // scopé par établissement (vrai risque d'IDOR inter-établissement).
+            if (preg_match('/\b(?:FROM|UPDATE)\s+`?' . $t . '`?(?:\s+(?:AS\s+)?\w+)?\s+WHERE\s+(?:\w+\.)?`?id`?\s*(?:=\s*\w+\.\w+|\bIN\b)/i', $content)) {
                 continue;
             }
             // Faux positif courant : la table est jointe à une table déjà scopée
@@ -190,6 +207,31 @@ class CodeAuditService
     private function finding(string $severity, string $category, string $location, string $message, string $recommendation): array
     {
         return compact('severity', 'category', 'location', 'message', 'recommendation');
+    }
+
+    /**
+     * Vrai si le fichier est un endpoint intentionnellement public selon AccessControl
+     * (lecture des constantes PUBLIC_EXACT / PUBLIC_PREFIX via réflexion, sans exécution).
+     */
+    private function isPublicEndpoint(string $rel): bool
+    {
+        static $exact = null, $prefix = null;
+        if ($exact === null) {
+            $exact = [];
+            $prefix = [];
+            try {
+                $rc = new \ReflectionClass(\API\Core\AccessControl::class);
+                $exact = (array) $rc->getConstant('PUBLIC_EXACT');
+                $prefix = (array) $rc->getConstant('PUBLIC_PREFIX');
+            } catch (\Throwable $e) {
+                // AccessControl indisponible : ne rien exempter.
+            }
+        }
+        if (in_array($rel, $exact, true)) return true;
+        foreach ($prefix as $p) {
+            if ($p !== '' && str_starts_with($rel, (string) $p)) return true;
+        }
+        return false;
     }
 
     private function relative(string $path): string
@@ -212,6 +254,12 @@ class CodeAuditService
         foreach ($it as $file) {
             if (!$file->isFile()) continue;
             $p = str_replace('\\', '/', $file->getPathname());
+
+            // Dossiers vendored/générés : ignorés à n'importe quelle profondeur
+            // (ex. websocket/node_modules), pas uniquement à la racine du dépôt.
+            foreach (self::SKIP_ANYWHERE as $d) {
+                if (str_contains($p, '/' . $d . '/')) continue 2;
+            }
 
             foreach ($skip as $s) {
                 if (str_starts_with($p, $s . '/') || $p === $s) continue 2;

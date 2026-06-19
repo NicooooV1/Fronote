@@ -90,6 +90,14 @@ http_response_code($errorCode);
             font-size: 13px;
             color: #cbd5e1;
         }
+        /* ─── Thème sombre (réplique la logique data-theme de l'application) ─── */
+        html[data-theme="dark"] body { background: #0f172a; color: #cbd5e1; }
+        html[data-theme="dark"] .error-code { color: #334155; }
+        html[data-theme="dark"] h1 { color: #f1f5f9; }
+        html[data-theme="dark"] .error-message { color: #94a3b8; }
+        html[data-theme="dark"] .btn-ghost { background: #1e293b; color: #cbd5e1; }
+        html[data-theme="dark"] .btn-ghost:hover { background: #334155; }
+        html[data-theme="dark"] .brand { color: #475569; }
         <?php if (!empty($debugTrace)): ?>
         .debug-trace {
             margin-top: 32px;
@@ -106,6 +114,19 @@ http_response_code($errorCode);
         }
         <?php endif; ?>
     </style>
+    <script>
+    // Applique le thème sombre choisi dans l'app (même clé localStorage que shared_header).
+    // Les pages d'erreur sont hors session/DB : localStorage est la source fiable.
+    (function () {
+        try {
+            var stored = localStorage.getItem('fronote_dark_mode');
+            if (stored === 'dark' ||
+                (stored === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        } catch (e) {}
+    })();
+    </script>
 </head>
 <body>
     <div class="error-card">

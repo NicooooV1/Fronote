@@ -281,20 +281,20 @@ class ImportExportService
                 continue;
             }
 
-            // Identifiant
-            $identifiant = !empty($data['identifiant'])
+            // Identifiant : auto-genere (nom.prenom) si absent du CSV, sinon celui fourni.
+            // Un identifiant auto-genere est deja garanti libre par IdentifierGenerator ;
+            // un identifiant fourni explicitement doit etre libre sur les 5 tables de
+            // l'etablissement (le login cherche partout). En cas de collision, on signale
+            // la ligne en erreur plutot que de remplacer silencieusement le choix de l'admin.
+            $suppliedIdentifiant = !empty($data['identifiant']);
+            $identifiant = $suppliedIdentifiant
                 ? $data['identifiant']
-                : $this->generateIdentifier($data['nom'], $data['prenom'], $table);
+                : IdentifierGenerator::generate($this->pdo, $data['nom'], $data['prenom'], (int) $etab);
 
-            // Verifier unicite identifiant
-            try {
-                $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM `{$table}` WHERE identifiant = ? AND etablissement_id = ?");
-                $stmt->execute([$identifiant, $etab]);
-                if ((int)$stmt->fetchColumn() > 0) {
-                    $identifiant = $this->generateIdentifier($data['nom'], $data['prenom'], $table);
-                }
-            } catch (PDOException $e) {
-                // On continue avec l'identifiant genere
+            if ($suppliedIdentifiant && !IdentifierGenerator::isAvailable($this->pdo, $identifiant, (int) $etab)) {
+                $nbDoublons++;
+                $errors[] = "Ligne {$lineNum} : identifiant '{$identifiant}' deja utilise (ligne ignoree).";
+                continue;
             }
 
             // Mot de passe
@@ -820,40 +820,6 @@ class ImportExportService
     /* ===================================================================
      *  METHODES INTERNES
      * =================================================================== */
-
-    /**
-     * Genere un identifiant unique nom.prenom[XX].
-     */
-    private function generateIdentifier(string $nom, string $prenom, string $table): string
-    {
-        $nom    = $this->normalizeString($nom);
-        $prenom = $this->normalizeString($prenom);
-        $base   = strtolower($nom . '.' . $prenom);
-
-        $stmt = $this->pdo->prepare("SELECT identifiant FROM `{$table}` WHERE identifiant LIKE ?");
-        $stmt->execute([$base . '%']);
-        $existing = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
-        if (!in_array($base, $existing)) {
-            return $base;
-        }
-
-        $i = 1;
-        do {
-            $candidate = $base . sprintf('%02d', $i++);
-        } while (in_array($candidate, $existing));
-
-        return $candidate;
-    }
-
-    /**
-     * Normalise une chaine (supprime accents et caracteres speciaux).
-     */
-    private function normalizeString(string $string): string
-    {
-        $string = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $string);
-        return preg_replace('/[^a-zA-Z0-9]/', '', $string ?: '');
-    }
 
     /**
      * Genere un mot de passe aleatoire securise.

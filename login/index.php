@@ -6,9 +6,12 @@
  */
 require_once __DIR__ . '/../API/core.php';
 
+// Nonce CSP pour les scripts inline de cette page (durcissement : script-src sans 'unsafe-inline').
+$cspNonce = base64_encode(random_bytes(16));
+
 // Security headers
 if (!headers_sent()) {
-    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' cdnjs.cloudflare.com; font-src cdnjs.cloudflare.com; img-src 'self' data:;");
+    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-{$cspNonce}'; style-src 'self' 'unsafe-inline' cdnjs.cloudflare.com; font-src cdnjs.cloudflare.com; img-src 'self' data:;");
     header("X-Frame-Options: DENY");
     header("X-Content-Type-Options: nosniff");
     header("Referrer-Policy: strict-origin-when-cross-origin");
@@ -176,7 +179,7 @@ $_loginDir = $translator->isRtl() ? 'rtl' : 'ltr';
     <title><?= htmlspecialchars(__('login.title')) ?></title>
     <link rel="stylesheet" href="assets/css/login.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <script>
+    <script nonce="<?= $cspNonce ?>">
     // Appliquer le thème système immédiatement
     (function() {
         if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
@@ -203,7 +206,7 @@ $_loginDir = $translator->isRtl() ? 'rtl' : 'ltr';
 </head>
 <body>
     <div class="lang-selector" id="langSelector">
-        <button type="button" class="lang-toggle" onclick="document.getElementById('langSelector').classList.toggle('open')">
+        <button type="button" class="lang-toggle" id="langToggle">
             <i class="fas fa-globe"></i>
             <span><?= $localeFlags[$currentLocale] ?? '' ?> <?= strtoupper($currentLocale) ?></span>
             <i class="fas fa-chevron-down" style="font-size:10px;opacity:0.7;"></i>
@@ -353,11 +356,17 @@ $_loginDir = $translator->isRtl() ? 'rtl' : 'ltr';
         <?php endif; ?>
     </div>
 
-    <script>
+    <script nonce="<?= $cspNonce ?>">
     // Close lang dropdown on outside click
     document.addEventListener('click', function(e) {
         var sel = document.getElementById('langSelector');
         if (sel && !sel.contains(e.target)) sel.classList.remove('open');
+    });
+    // Ouverture du sélecteur de langue (ex-onclick inline, retiré pour la CSP nonce).
+    var langToggle = document.getElementById('langToggle');
+    if (langToggle) langToggle.addEventListener('click', function() {
+        var sel = document.getElementById('langSelector');
+        if (sel) sel.classList.toggle('open');
     });
     document.addEventListener('DOMContentLoaded', function() {
         // Toggle password visibility

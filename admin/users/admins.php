@@ -49,6 +49,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
             $stmt = $pdo->prepare("UPDATE administrateurs SET actif = ? WHERE id = ?");
             if ($stmt->execute([$newActive, $adminId])) {
                 logAudit($newActive ? 'admin_activated' : 'admin_deactivated', 'administrateurs', $adminId);
+                if (!$newActive) {
+                    try { $pdo->prepare("UPDATE session_security SET is_active = 0, expires_at = NOW() WHERE user_id = ? AND user_type = 'administrateur'")->execute([$adminId]); } catch (\Throwable $e) {}
+                }
                 $message = $newActive ? "Compte activé." : "Compte désactivé.";
             } else { $error = "Erreur lors de la modification du statut."; }
         }

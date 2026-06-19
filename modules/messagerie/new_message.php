@@ -16,6 +16,7 @@ require_once __DIR__ . '/core/validator.php';
 require_once __DIR__ . '/models/participant.php';
 require_once __DIR__ . '/models/conversation.php';
 require_once __DIR__ . '/controllers/conversation.php';
+require_once __DIR__ . '/controllers/message.php'; // définit handleSendMessage() — sinon 500
 require_once __DIR__ . '/models/message.php';
 
 // Vérifier l'authentification

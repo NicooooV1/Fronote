@@ -270,7 +270,7 @@ try {
         }
     } catch (\Throwable $e) { $_hdr_brand_css = ''; }
     if ($_hdr_brand_css !== ''): ?>
-    <style id="establishment-branding"><?= $_hdr_brand_css ?></style>
+    <style id="establishment-branding" nonce="<?= $_hdr_nonce ?>"><?= $_hdr_brand_css ?></style>
     <?php endif; ?>
     <?php
     // Overlays de tokens du thème actif (mis en cache pour éviter une requête par page).
@@ -285,7 +285,7 @@ try {
         }
     } catch (\Throwable $e) { $_hdr_override_css = ''; }
     if ($_hdr_override_css !== ''): ?>
-    <style id="theme-token-overrides"><?= $_hdr_override_css ?></style>
+    <style id="theme-token-overrides" nonce="<?= $_hdr_nonce ?>"><?= $_hdr_override_css ?></style>
     <?php endif; ?>
     <?php if ($_hdr_dir === 'rtl'): ?>
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/rtl.css') ?>">

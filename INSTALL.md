@@ -30,7 +30,7 @@ Extensions **recommandées** (leur absence n'empêche pas l'installation mais d�
 intl  (i18n)   ·   gd  (avatars / images)   ·   curl  (marketplace, HTTP sortant)
 ```
 
-> `composer.json` exige `php >=8.0`, `ext-sodium`, `ext-json`, `ext-zip`, `ext-pdo` et la dépendance `firebase/php-jwt ^6.0`.
+> `composer.json` exige `php >=8.0`, `ext-sodium`, `ext-json`, `ext-zip`, `ext-pdo` et la dépendance `firebase/php-jwt ^7.0`.
 
 ### Apache : `mod_rewrite`
 
@@ -372,5 +372,5 @@ tar -czf uploads_$(date +%Y%m%d).tar.gz /var/www/fronote/uploads/
 
 - **Version** : `version.json` → `3.2.4` (build 2026-05-31, codename *Marketplace*).
 - **Architecture** : PHP sans framework, conteneur DI maison (`API/bootstrap.php`, services via `app('clé')`), autoload PSR‑4 (`API\ → API/`, `Pronote\ → API/`, `Modules\ → modules/`).
-- **Dépendance Composer** : `firebase/php-jwt ^6.0` ; extensions `sodium`, `json`, `zip`, `pdo`.
+- **Dépendance Composer** : `firebase/php-jwt ^7.0` ; extensions `sodium`, `json`, `zip`, `pdo`.
 - **Schéma** : déclaratif (`pronote.sql` + `modules/<m>/Database/install.sql`) — **aucune migration**.

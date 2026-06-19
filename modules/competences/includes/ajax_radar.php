@@ -56,6 +56,20 @@ try {
         }
     }
 
+    // Anti-IDOR inter-établissement — vaut AUSSI pour le staff (qui saute le bloc ci-dessus) :
+    // les id élève/classe sont globaux, donc sans ce filtre un membre du staff de
+    // l'établissement A pourrait lire les données d'une classe/d'un élève de l'établissement B.
+    $etabCourant = \API\Core\EstablishmentContext::id();
+    if ($type === 'eleve' && $eleveId > 0) {
+        $chk = $pdo->prepare("SELECT 1 FROM eleves WHERE id = ? AND etablissement_id = ? LIMIT 1");
+        $chk->execute([$eleveId, $etabCourant]);
+        if (!$chk->fetchColumn()) { http_response_code(403); echo json_encode(['error' => 'Accès refusé']); return; }
+    } elseif ($type === 'classe' && $classeId > 0) {
+        $chk = $pdo->prepare("SELECT 1 FROM classes WHERE id = ? AND etablissement_id = ? LIMIT 1");
+        $chk->execute([$classeId, $etabCourant]);
+        if (!$chk->fetchColumn()) { http_response_code(403); echo json_encode(['error' => 'Accès refusé']); return; }
+    }
+
     if ($type === 'eleve' && $eleveId > 0) {
         echo json_encode($compService->getRadarData($eleveId, $periodeId ?: null));
     } elseif ($type === 'classe' && $classeId > 0) {

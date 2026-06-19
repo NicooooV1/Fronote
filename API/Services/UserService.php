@@ -43,10 +43,19 @@ class UserService
 
         $table = $this->tableMap[$profil];
 
-        // Générer l'identifiant si absent
+        // Établissement de rattachement : périmètre d'unicité de l'identifiant nom.prenom
+        // (et colonne etablissement_id de l'INSERT plus bas).
+        $etabId = 1;
+        if (class_exists('\\API\\Core\\EstablishmentContext')) {
+            try { $etabId = (int) \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { $etabId = 1; }
+        }
+        if ($etabId <= 0) { $etabId = 1; }
+
+        // Identifiant de connexion = nom.prenom (suffixe 01, 02… en cas de collision),
+        // sauf si l'admin fournit explicitement un identifiant.
         $identifiant = !empty($userData['identifiant'])
             ? $userData['identifiant']
-            : $this->generateIdentifier($userData['nom'], $userData['prenom'], $table);
+            : IdentifierGenerator::generate($this->pdo, $userData['nom'] ?? '', $userData['prenom'] ?? '', $etabId);
 
         // Vérifier unicité
         $stmt = $this->pdo->prepare(
@@ -74,24 +83,33 @@ class UserService
             'mot_de_passe' => $hashedPassword,
         ];
 
-        // Rattachement à l'établissement courant (sinon utilisateur orphelin / hors périmètre).
-        if (class_exists('\\API\\Core\\EstablishmentContext')) {
-            try {
-                $data['etablissement_id'] = \API\Core\EstablishmentContext::id();
-            } catch (\Throwable $e) {
-                // contexte ambigu : laisser le défaut SQL plutôt que crasher la création
-            }
+        // Rattachement à l'établissement courant (déjà résolu plus haut pour la génération de l'identifiant).
+        $data['etablissement_id'] = $etabId;
+
+        // Adresse : colonne NOT NULL sur parents/professeurs (présente, nullable, sur
+        // administrateurs ; absente sur vie_scolaire) → la fournir (défaut '') sinon l'INSERT
+        // échoue en mode SQL strict (« Field 'adresse' doesn't have a default value »).
+        if (in_array($profil, ['parent', 'professeur', 'administrateur'], true)) {
+            $data['adresse'] = $userData['adresse'] ?? '';
+        }
+        // Téléphone (optionnel) là où la colonne existe (pas sur administrateurs).
+        if (isset($userData['telephone']) && $userData['telephone'] !== '' && $profil !== 'administrateur') {
+            $data['telephone'] = $userData['telephone'];
         }
 
         // Champs spécifiques par profil
         if ($profil === 'eleve') {
-            $data['date_naissance'] = $userData['date_naissance'] ?? null;
-            $data['lieu_naissance'] = $userData['lieu_naissance'] ?? null;
-            $data['classe']         = $userData['classe'] ?? null;
-            $data['adresse']        = $userData['adresse'] ?? null;
+            // Colonnes NOT NULL sans défaut sur eleves → toujours fournies (placeholder éditable).
+            $data['date_naissance'] = !empty($userData['date_naissance']) ? $userData['date_naissance'] : '2000-01-01';
+            $data['lieu_naissance'] = $userData['lieu_naissance'] ?? '';
+            $data['classe']         = $userData['classe'] ?? '';
+            $data['adresse']        = $userData['adresse'] ?? '';
         } elseif ($profil === 'professeur') {
-            $data['matiere']               = $userData['matiere'] ?? null;
-            $data['professeur_principal']   = $userData['est_pp'] ?? 0;
+            $data['matiere']               = $userData['matiere'] ?? '';
+            $data['professeur_principal']   = $userData['professeur_principal'] ?? $userData['est_pp'] ?? 'non';
+        } elseif ($profil === 'parent') {
+            $data['metier']           = $userData['metier'] ?? null;
+            $data['est_parent_eleve'] = $userData['est_parent_eleve'] ?? 'non';
         } elseif ($profil === 'vie_scolaire') {
             $data['est_CPE']        = $userData['est_CPE'] ?? 0;
             $data['est_infirmerie'] = $userData['est_infirmerie'] ?? 0;
@@ -499,41 +517,6 @@ class UserService
     /* ================================================================
      *  UTILITAIRES
      * ================================================================ */
-
-    /**
-     * Génère un identifiant unique au format nom.prenom[XX].
-     */
-    protected function generateIdentifier($nom, $prenom, $table)
-    {
-        $nom    = $this->normalizeString($nom);
-        $prenom = $this->normalizeString($prenom);
-
-        $baseIdentifier = strtolower($nom . '.' . $prenom);
-
-        $stmt = $this->pdo->prepare("SELECT identifiant FROM `{$table}` WHERE identifiant LIKE ?");
-        $stmt->execute([$baseIdentifier . '%']);
-        $existingIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
-        if (!in_array($baseIdentifier, $existingIds)) {
-            return $baseIdentifier;
-        }
-
-        $i = 1;
-        do {
-            $identifier = $baseIdentifier . sprintf('%02d', $i++);
-        } while (in_array($identifier, $existingIds));
-
-        return $identifier;
-    }
-
-    /**
-     * Normalise une chaîne (supprime accents et caractères spéciaux).
-     */
-    protected function normalizeString($string)
-    {
-        $string = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $string);
-        return preg_replace('/[^a-zA-Z0-9]/', '', $string);
-    }
 
     /**
      * Retourne le nom de la table pour un profil donné.

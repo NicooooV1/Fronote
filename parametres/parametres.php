@@ -249,6 +249,80 @@ $roleWidgets = match ($userType) {
                 </div>
             </div>
 
+            <?php
+            // ═══════ MES RÔLES ET PERMISSIONS ═══════
+            $rcc = '\\API\\Security\\RoleCatalog';
+            $catalogRoles = $rcc::roles();
+            $catalogPerms = $rcc::permissions();
+            $scopedRoles  = [];
+            try { $scopedRoles = authz()->roles(); } catch (\Throwable $e) {}
+            try { $effKeys = getEffectiveRoles(); } catch (\Throwable $e) { $effKeys = [$userType]; }
+            $isSuper  = in_array('super_admin', $effKeys, true);
+            $permKeys = $isSuper ? array_keys($catalogPerms) : $rcc::effectivePermissions($effKeys);
+            $grantedByCat = [];
+            foreach ($permKeys as $pk) {
+                $ok = $isSuper;
+                if (!$ok) { try { $ok = authz()->can($pk); } catch (\Throwable $e) { $ok = true; } }
+                if ($ok) {
+                    $cat = $catalogPerms[$pk]['category'] ?? 'autre';
+                    $grantedByCat[$cat][] = $pk;
+                }
+            }
+            ksort($grantedByCat);
+            $totalPerms = array_sum(array_map('count', $grantedByCat));
+            $scopeLabels = ['global'=>'Global','establishment'=>'Établissement','establishments'=>'Multi-établissements','self'=>'Soi-même','children'=>'Mes enfants','assigned'=>'Élèves assignés','own_classes'=>'Mes classes'];
+            $chip = 'display:inline-block;background:var(--pastel-agenda,#e0f2fe);color:var(--text-color,#1e293b);padding:4px 10px;border-radius:16px;font-size:.82em;margin:2px 4px 2px 0';
+            ?>
+            <div class="card" style="margin-top:16px">
+                <div class="card-header"><h2><i class="fas fa-user-shield"></i> Mes rôles et permissions</h2></div>
+                <div class="card-body">
+                    <?php if ($isSuper): ?>
+                    <p style="background:#fef3c7;color:#92400e;padding:8px 12px;border-radius:8px;font-size:.88em">
+                        <i class="fas fa-crown"></i> <strong>Super-administrateur</strong> — accès à <strong>l'ensemble des permissions</strong>.
+                    </p>
+                    <?php endif; ?>
+
+                    <h3 style="font-size:1em;margin:8px 0 4px;color:var(--text-muted,#64748b)">Rôle principal &amp; sous-rôles</h3>
+                    <div style="margin-bottom:12px">
+                        <?php if (empty($scopedRoles)): ?>
+                            <span style="<?= $chip ?>"><?= htmlspecialchars($catalogRoles[$rcc::baseRoleForAccount($userType)]['label'] ?? $userType) ?></span>
+                        <?php else: foreach ($scopedRoles as $i => $r):
+                            $rk = $r['role'];
+                            $meta = $catalogRoles[$rk] ?? [];
+                            $label = $meta['label'] ?? $rk;
+                            $st = $r['scope_type'] ?? ($meta['scope'] ?? '');
+                            $stLabel = $scopeLabels[$st] ?? $st;
+                            $principal = ($i === 0);
+                        ?>
+                            <span style="<?= $chip ?><?= $principal ? ';background:var(--primary-color,#667eea);color:#fff' : '' ?>" title="<?= htmlspecialchars($rk) ?>">
+                                <?= $principal ? '<i class="fas fa-star"></i> ' : '<i class="fas fa-plus"></i> ' ?><?= htmlspecialchars($label) ?>
+                                <?php if ($stLabel): ?><small style="opacity:.75">· <?= htmlspecialchars($stLabel) ?></small><?php endif; ?>
+                            </span>
+                        <?php endforeach; endif; ?>
+                    </div>
+
+                    <h3 style="font-size:1em;margin:8px 0 4px;color:var(--text-muted,#64748b)">Permissions (<?= (int) $totalPerms ?>)</h3>
+                    <?php if (empty($grantedByCat)): ?>
+                        <p style="color:var(--text-muted,#64748b);font-size:.85em">Aucune permission spécifique au-delà de l'accès de base.</p>
+                    <?php else: ?>
+                    <div style="max-height:320px;overflow-y:auto;border:1px solid var(--border-color,#e2e8f0);border-radius:8px;padding:10px">
+                        <?php foreach ($grantedByCat as $cat => $perms): ?>
+                            <div style="margin-bottom:8px">
+                                <strong style="display:block;color:var(--text-muted,#64748b);font-size:.8em;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px"><?= htmlspecialchars($cat) ?></strong>
+                                <?php foreach ($perms as $pk):
+                                    $sensitive = !empty($catalogPerms[$pk]['sensitive']) || $rcc::isSensitive($pk);
+                                ?>
+                                    <span style="<?= $chip ?><?= $sensitive ? ';background:#fee2e2;color:#991b1b' : '' ?>" title="<?= htmlspecialchars($pk) ?>">
+                                        <?= $sensitive ? '<i class="fas fa-lock"></i> ' : '' ?><?= htmlspecialchars($catalogPerms[$pk]['label'] ?? $pk) ?>
+                                    </span>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
             <?php elseif ($section === 'preferences'): ?>
             <!-- ═══════ APPARENCE ═══════ -->
             <div class="card">

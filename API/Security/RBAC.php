@@ -252,6 +252,25 @@ class RBAC
     {
         if (!$this->currentRole) return false;
 
+        // super_admin : accès total (toutes permissions, tous modules).
+        if ($this->currentRole === 'super_admin') return true;
+
+        // Moteur catalogue d'abord : multi-rôles + rôles catalogue + super_admin + périmètre.
+        // Si le catalogue (ou la matrice rbac_permissions) accorde la permission, on autorise ;
+        // sinon on retombe sur la matrice legacy module_permissions ci-dessous.
+        try {
+            if (function_exists('authz')) {
+                $authz = authz();
+                if ($authz->isSuperAdmin()
+                    || $authz->can("{$moduleKey}.{$action}")
+                    || $authz->can("{$moduleKey}.manage")) {
+                    return $this->cachedPermissions["module.{$moduleKey}.{$action}"] = true;
+                }
+            }
+        } catch (\Throwable $e) {
+            // moteur indisponible → matrice legacy ci-dessous
+        }
+
         $cacheKey = "module.{$moduleKey}.{$action}";
         if (isset($this->cachedPermissions[$cacheKey])) {
             return $this->cachedPermissions[$cacheKey];

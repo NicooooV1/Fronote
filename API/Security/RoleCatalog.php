@@ -962,4 +962,97 @@ final class RoleCatalog
         $d = explode('.', $permission)[0];
         return in_array($d, ['medical', 'psy', 'social', 'pai', 'handicap', 'rgpd', 'audit', 'backup', 'securite'], true);
     }
+
+    /**
+     * Toutes les permissions accordées par un rôle, wildcards développés :
+     * '*' → toutes les permissions ; 'domaine.*' → toutes les clés du domaine.
+     * @return string[]
+     */
+    public static function permissionsFor(string $role): array
+    {
+        $grants = self::grantsFor($role);
+        if (in_array('*', $grants, true)) {
+            return array_keys(self::PERMISSIONS);
+        }
+        $out = [];
+        $permKeys = array_keys(self::PERMISSIONS);
+        foreach ($grants as $g) {
+            if (str_ends_with($g, '.*')) {
+                $domain = substr($g, 0, -2);
+                foreach ($permKeys as $pk) {
+                    if (str_starts_with($pk, $domain . '.')) {
+                        $out[$pk] = true;
+                    }
+                }
+            } else {
+                $out[$g] = true;
+            }
+        }
+        return array_keys($out);
+    }
+
+    /**
+     * Union des permissions effectives pour un ensemble de rôles (clés).
+     * @param string[] $roleKeys
+     * @return string[]
+     */
+    public static function effectivePermissions(array $roleKeys): array
+    {
+        $out = [];
+        foreach ($roleKeys as $r) {
+            foreach (self::permissionsFor($r) as $p) {
+                $out[$p] = true;
+            }
+        }
+        return array_keys($out);
+    }
+
+    /**
+     * Rôles groupés par tier (pour les interfaces d'attribution).
+     * @return array<string, array<string, array>>
+     */
+    public static function rolesByTier(): array
+    {
+        $out = [];
+        foreach (self::ROLES as $key => $meta) {
+            $tier = $meta['tier'] ?? 'autre';
+            $out[$tier][$key] = $meta;
+        }
+        return $out;
+    }
+
+    /**
+     * Tiers de rôles attribuables à chaque type de compte de base (garde-fou métier :
+     * la vie scolaire ne reçoit PAS de rôle d'administration/direction, un élève/parent
+     * ne reçoit qu'un rôle de la sphère élève-famille, etc.). super_admin n'est pas limité.
+     */
+    const ACCOUNT_ALLOWED_TIERS = [
+        'eleve'          => ['eleve_famille'],
+        'parent'         => ['eleve_famille'],
+        'professeur'     => ['pedagogique', 'sante_social', 'organisation', 'communication', 'documents', 'stages', 'controle'],
+        'vie_scolaire'   => ['vie_scolaire', 'sante_social', 'communication', 'documents', 'controle', 'services'],
+        'administrateur' => ['plateforme', 'direction', 'administratif', 'vie_scolaire', 'pedagogique', 'sante_social', 'eleve_famille', 'organisation', 'communication', 'documents', 'services', 'stages', 'controle'],
+    ];
+
+    public static function accountAllowedTiers(): array { return self::ACCOUNT_ALLOWED_TIERS; }
+
+    /**
+     * Rôles (clé => méta) attribuables à un type de compte donné, selon ACCOUNT_ALLOWED_TIERS.
+     * @return array<string, array>
+     */
+    public static function rolesForAccount(string $accountType): array
+    {
+        $tiers = self::ACCOUNT_ALLOWED_TIERS[$accountType] ?? null;
+        if ($tiers === null) {
+            $base = self::baseRoleForAccount($accountType);
+            return isset(self::ROLES[$base]) ? [$base => self::ROLES[$base]] : [];
+        }
+        $out = [];
+        foreach (self::ROLES as $key => $meta) {
+            if (in_array($meta['tier'] ?? '', $tiers, true)) {
+                $out[$key] = $meta;
+            }
+        }
+        return $out;
+    }
 }
