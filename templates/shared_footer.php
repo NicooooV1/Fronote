@@ -33,49 +33,29 @@ $_bb_role = function_exists('getUserRole') ? (string) (getUserRole() ?? '') : ''
 if ($_bb_role !== ''):
     $_bb_active = $activePage ?? '';
     $_bb_rp = $rootPrefix ?? '';
+    // Items réutilisables [libellé, icône, href, clé $activePage] — définis une fois, composés par rôle.
+    $bi = [
+        'accueil'  => ['Accueil', 'fa-house', 'accueil/accueil.php', 'accueil'],
+        'messages' => ['Messages', 'fa-envelope', 'modules/messagerie/index.php', 'messagerie'],
+        'profil'   => ['Profil', 'fa-user', 'parametres/parametres.php', 'parametres'],
+        'notes'    => ['Notes', 'fa-chart-column', 'modules/notes/notes.php', 'notes'],
+        'absences' => ['Absences', 'fa-calendar-xmark', 'modules/absences/absences.php', 'absences'],
+        'edt'      => ['EDT', 'fa-calendar-days', 'modules/emploi_du_temps/emploi_du_temps.php', 'emploi_du_temps'],
+        'devoirs'  => ['Devoirs', 'fa-book', 'modules/cahierdetextes/cahierdetextes.php', 'cahierdetextes'],
+        'cahier'   => ['Cahier', 'fa-book', 'modules/cahierdetextes/cahierdetextes.php', 'cahierdetextes'],
+        'appel'    => ['Appel', 'fa-clipboard-check', 'modules/appel/appel.php', 'appel'],
+        'admin'    => ['Admin', 'fa-gauge-high', 'admin/dashboard.php', 'admin'],
+        'comptes'  => ['Comptes', 'fa-users', 'admin/users/index.php', 'admin_users'],
+    ];
     $_bb_map = [
-        'eleve' => [
-            ['Accueil', 'fa-house', 'accueil/accueil.php', 'accueil'],
-            ['EDT', 'fa-calendar-days', 'modules/emploi_du_temps/emploi_du_temps.php', 'emploi_du_temps'],
-            ['Notes', 'fa-chart-column', 'modules/notes/notes.php', 'notes'],
-            ['Devoirs', 'fa-book', 'modules/cahierdetextes/cahierdetextes.php', 'cahierdetextes'],
-            ['Messages', 'fa-envelope', 'modules/messagerie/index.php', 'messagerie'],
-        ],
-        'parent' => [
-            ['Accueil', 'fa-house', 'accueil/accueil.php', 'accueil'],
-            ['Notes', 'fa-chart-column', 'modules/notes/notes.php', 'notes'],
-            ['Absences', 'fa-calendar-xmark', 'modules/absences/absences.php', 'absences'],
-            ['Messages', 'fa-envelope', 'modules/messagerie/index.php', 'messagerie'],
-            ['Profil', 'fa-user', 'parametres/parametres.php', 'parametres'],
-        ],
-        'professeur' => [
-            ['Accueil', 'fa-house', 'accueil/accueil.php', 'accueil'],
-            ['Appel', 'fa-clipboard-check', 'modules/appel/appel.php', 'appel'],
-            ['Notes', 'fa-chart-column', 'modules/notes/notes.php', 'notes'],
-            ['Cahier', 'fa-book', 'modules/cahierdetextes/cahierdetextes.php', 'cahierdetextes'],
-            ['Messages', 'fa-envelope', 'modules/messagerie/index.php', 'messagerie'],
-        ],
-        'vie_scolaire' => [
-            ['Accueil', 'fa-house', 'accueil/accueil.php', 'accueil'],
-            ['Absences', 'fa-calendar-xmark', 'modules/absences/absences.php', 'absences'],
-            ['Appel', 'fa-clipboard-check', 'modules/appel/appel.php', 'appel'],
-            ['Messages', 'fa-envelope', 'modules/messagerie/index.php', 'messagerie'],
-            ['Profil', 'fa-user', 'parametres/parametres.php', 'parametres'],
-        ],
-        'administrateur' => [
-            ['Accueil', 'fa-house', 'accueil/accueil.php', 'accueil'],
-            ['Admin', 'fa-gauge-high', 'admin/dashboard.php', 'admin'],
-            ['Comptes', 'fa-users', 'admin/users/index.php', 'admin_users'],
-            ['Messages', 'fa-envelope', 'modules/messagerie/index.php', 'messagerie'],
-            ['Profil', 'fa-user', 'parametres/parametres.php', 'parametres'],
-        ],
+        'eleve'         => [$bi['accueil'], $bi['edt'], $bi['notes'], $bi['devoirs'], $bi['messages']],
+        'parent'        => [$bi['accueil'], $bi['notes'], $bi['absences'], $bi['messages'], $bi['profil']],
+        'professeur'    => [$bi['accueil'], $bi['appel'], $bi['notes'], $bi['cahier'], $bi['messages']],
+        'vie_scolaire'  => [$bi['accueil'], $bi['absences'], $bi['appel'], $bi['messages'], $bi['profil']],
+        'administrateur'=> [$bi['accueil'], $bi['admin'], $bi['comptes'], $bi['messages'], $bi['profil']],
     ];
     $_bb_map['super_admin'] = $_bb_map['administrateur'];
-    $_bb_items = $_bb_map[$_bb_role] ?? [
-        ['Accueil', 'fa-house', 'accueil/accueil.php', 'accueil'],
-        ['Messages', 'fa-envelope', 'modules/messagerie/index.php', 'messagerie'],
-        ['Profil', 'fa-user', 'parametres/parametres.php', 'parametres'],
-    ];
+    $_bb_items = $_bb_map[$_bb_role] ?? [$bi['accueil'], $bi['messages'], $bi['profil']];
 ?>
 <nav class="ds-bottom-bar" role="navigation" aria-label="Navigation mobile">
     <?php foreach ($_bb_items as [$_bbLbl, $_bbIcon, $_bbHref, $_bbKey]): $_bbOn = ($_bb_active === $_bbKey); ?>

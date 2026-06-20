@@ -42,8 +42,11 @@ $supportSessions = $count("SELECT COUNT(*) FROM support_sessions WHERE status='a
 $accessPending = $count("SELECT COUNT(*) FROM support_access_requests WHERE status IN ('sent_to_direction','waiting_direction')");
 $platAccounts = $count("SELECT COUNT(*) FROM platform_accounts WHERE status='active'");
 $invitPending = $count("SELECT COUNT(*) FROM director_invitations WHERE status='pending'");
-$dbTables = $count("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()");
-$dbSizeMb = 0; try { $dbSizeMb = (float) $pdo->query("SELECT ROUND(SUM(data_length+index_length)/1048576,1) FROM information_schema.tables WHERE table_schema=DATABASE()")->fetchColumn(); } catch (\Throwable $e) {}
+$dbTables = 0; $dbSizeMb = 0.0;  // nb de tables + taille : une seule requête information_schema
+try {
+    $r = $pdo->query("SELECT COUNT(*) AS n, ROUND(SUM(data_length+index_length)/1048576,1) AS mb FROM information_schema.tables WHERE table_schema=DATABASE()")->fetch(PDO::FETCH_ASSOC);
+    $dbTables = (int) ($r['n'] ?? 0); $dbSizeMb = (float) ($r['mb'] ?? 0);
+} catch (\Throwable $e) {}
 
 $version = '?'; try { $version = app('updates')->getCurrentVersion() ?: '?'; } catch (\Throwable $e) {}
 $backupAge = null; $backupName = null;

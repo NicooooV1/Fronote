@@ -25,6 +25,7 @@ class SettingsService {
      * Sauvegarder les paramètres
      */
     public function save(int $userId, string $userType, array $data): bool {
+        $theme = $this->validTheme($data['theme'] ?? 'light');
         $stmt = $this->pdo->prepare("
             INSERT INTO user_settings (user_id, user_type, theme, langue, notifications_email, notifications_web,
                                        taille_police, sidebar_collapsed, bio, date_modification)
@@ -39,10 +40,10 @@ class SettingsService {
                 bio = VALUES(bio),
                 date_modification = NOW()
         ");
-        return $stmt->execute([
+        $ok = $stmt->execute([
             $userId,
             $userType,
-            $data['theme'] ?? 'light',
+            $theme,
             $data['langue'] ?? 'fr',
             isset($data['notifications_email']) ? 1 : 0,
             isset($data['notifications_web']) ? 1 : 0,
@@ -50,6 +51,33 @@ class SettingsService {
             isset($data['sidebar_collapsed']) ? 1 : 0,
             $data['bio'] ?? '',
         ]);
+        $this->cacheTheme($theme);
+        return $ok;
+    }
+
+    /**
+     * Écrit la seule préférence de thème (chemin AJAX api_theme.php) + rafraîchit le cache.
+     * Source unique de validation + invalidation de cache, partagée avec save().
+     */
+    public function setTheme(int $userId, string $userType, string $theme): string {
+        $theme = $this->validTheme($theme);
+        $this->pdo->prepare("
+            INSERT INTO user_settings (user_id, user_type, theme, date_modification)
+            VALUES (?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE theme = VALUES(theme), date_modification = NOW()
+        ")->execute([$userId, $userType, $theme]);
+        $this->cacheTheme($theme);
+        return $theme;
+    }
+
+    /** Thème valide (liste blanche) ou repli 'light'. */
+    private function validTheme(string $theme): string {
+        return in_array($theme, array_keys(self::themes()), true) ? $theme : 'light';
+    }
+
+    /** Rafraîchit le cache thème SSR (sinon l'ancien thème est servi jusqu'au TTL). */
+    private function cacheTheme(string $theme): void {
+        try { (new \API\Core\ClientCache())->set('user_theme', $theme, 3600); } catch (\Throwable $e) {}
     }
 
     /**

@@ -40,11 +40,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'preferences') {
-        // Liste blanche du thème (défense en profondeur : le formulaire n'offre que ces valeurs).
-        if (!in_array($_POST['theme'] ?? '', array_keys(SettingsService::themes()), true)) { $_POST['theme'] = 'light'; }
+        // Validation du thème + rafraîchissement du cache SSR : centralisés dans SettingsService::save().
         $settingsService->save($userId, $userType, $_POST);
-        // Rafraîchir le cache thème (sinon le SSR sert l'ancien thème jusqu'à expiration du TTL).
-        try { (new \API\Core\ClientCache())->set('user_theme', $_POST['theme'], 3600); } catch (\Throwable $e) {}
         $settings = $settingsService->getSettings($userId, $userType);
         $success = 'Préférences enregistrées.';
     } elseif ($action === 'avatar') {
@@ -383,11 +380,11 @@ $roleWidgets = match ($userType) {
                             <div class="ds-stack" style="gap:12px">
                                 <div class="ds-row ds-gap-3" style="align-items:center;justify-content:space-between;max-width:440px">
                                     <span><i class="fas fa-wand-magic-sparkles" style="color:var(--primary);width:18px"></i> Animations</span>
-                                    <button type="button" class="ds-switch" role="switch" aria-checked="true" id="swAnim" title="Activer/désactiver les animations"></button>
+                                    <button type="button" class="ds-switch" role="switch" aria-checked="true" data-a11y-toggle="motion" title="Activer/désactiver les animations"></button>
                                 </div>
                                 <div class="ds-row ds-gap-3" style="align-items:center;justify-content:space-between;max-width:440px">
                                     <span><i class="fas fa-droplet" style="color:var(--primary);width:18px"></i> Transparence (thème liquide)</span>
-                                    <button type="button" class="ds-switch" role="switch" aria-checked="true" id="swTransp" title="Activer/désactiver la transparence"></button>
+                                    <button type="button" class="ds-switch" role="switch" aria-checked="true" data-a11y-toggle="transparency" title="Activer/désactiver la transparence"></button>
                                 </div>
                             </div>
                         </div>
@@ -398,17 +395,9 @@ $roleWidgets = match ($userType) {
             </div>
 
             <script>
-            // Aperçu + persistance via le moteur du design system (gère clair/sombre/LIQUIDE/auto).
+            // Aperçu + persistance via le moteur du design system (FronoteUI toujours chargé via shared_header).
             function previewTheme(theme) {
-                if (window.FronoteUI && window.FronoteUI.setTheme) {
-                    window.FronoteUI.setTheme(theme);
-                } else {
-                    var eff = theme === 'auto'
-                        ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-                        : theme;
-                    document.documentElement.setAttribute('data-theme', eff);
-                    document.documentElement.setAttribute('data-theme-pref', theme);
-                }
+                if (window.FronoteUI && window.FronoteUI.setTheme) window.FronoteUI.setTheme(theme);
                 document.querySelectorAll('.theme-option').forEach(function (o) { o.classList.remove('selected'); });
                 var input = document.querySelector('.theme-option input[value="' + theme + '"]');
                 if (input && input.closest('.theme-option')) input.closest('.theme-option').classList.add('selected');
@@ -417,16 +406,7 @@ $roleWidgets = match ($userType) {
                 var sizes = {small:'14px', normal:'16px', large:'18px', xlarge:'20px'};
                 document.documentElement.style.fontSize = sizes[size] || '16px';
             }
-            // Accessibilité : interrupteurs câblés sur FronoteUI (ON = non réduit).
-            (function () {
-                var el = document.documentElement;
-                var anim = document.getElementById('swAnim'), transp = document.getElementById('swTransp');
-                function setSwitch(sw, on) { if (!sw) return; sw.classList.toggle('is-on', on); sw.setAttribute('aria-checked', on ? 'true' : 'false'); }
-                setSwitch(anim, el.getAttribute('data-reduce-motion') !== 'true');
-                setSwitch(transp, el.getAttribute('data-reduce-transparency') !== 'true');
-                if (anim) anim.addEventListener('ds:toggle', function (e) { if (window.FronoteUI) window.FronoteUI.setReducedMotion(!e.detail.on); });
-                if (transp) transp.addEventListener('ds:toggle', function (e) { if (window.FronoteUI) window.FronoteUI.setReducedTransparency(!e.detail.on); });
-            })();
+            // Les interrupteurs d'accessibilité sont câblés automatiquement par FronoteUI.initA11ySwitches() (data-a11y-toggle).
             </script>
 
             <?php elseif ($section === 'accueil'): ?>

@@ -25,11 +25,11 @@ $dsScope = $dsScope ?? 'tenant'; // 'platform' | 'tenant'
         </div>
         <div class="ds-stack" style="gap:6px">
           <span class="ds-muted">Animations</span>
-          <button class="ds-switch is-on" role="switch" aria-checked="true" id="swMotion" title="Animations"></button>
+          <button class="ds-switch is-on" role="switch" aria-checked="true" data-a11y-toggle="motion" title="Animations"></button>
         </div>
         <div class="ds-stack" style="gap:6px">
           <span class="ds-muted">Transparence</span>
-          <button class="ds-switch is-on" role="switch" aria-checked="true" id="swTransp" title="Transparence (liquide)"></button>
+          <button class="ds-switch is-on" role="switch" aria-checked="true" data-a11y-toggle="transparency" title="Transparence (liquide)"></button>
         </div>
         <div class="ds-stack" style="gap:6px">
           <span class="ds-muted">Aperçu</span>
@@ -209,10 +209,7 @@ $dsScope = $dsScope ?? 'tenant'; // 'platform' | 'tenant'
     document.querySelectorAll('[data-ds-set-theme]').forEach(function (b) {
       b.addEventListener('click', function () { if (UI.setTheme) UI.setTheme(b.getAttribute('data-ds-set-theme')); });
     });
-    // Animations / transparence (switches dédiés)
-    var swM = document.getElementById('swMotion'), swT = document.getElementById('swTransp');
-    if (swM) swM.addEventListener('ds:toggle', function (e) { if (UI.setReducedMotion) UI.setReducedMotion(!e.detail.on); });
-    if (swT) swT.addEventListener('ds:toggle', function (e) { if (UI.setReducedTransparency) UI.setReducedTransparency(!e.detail.on); });
+    // Animations / transparence : câblées automatiquement par FronoteUI.initA11ySwitches() (data-a11y-toggle).
     // Aperçu desktop/mobile
     var frame = document.getElementById('dsPreviewFrame');
     document.querySelectorAll('[data-ds-preview]').forEach(function (b) {

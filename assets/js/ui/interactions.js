@@ -227,6 +227,21 @@
     window.addEventListener('pageshow', done);
   }
 
+  // ── Interrupteurs d'accessibilité (.ds-switch[data-a11y-toggle=motion|transparency]) ──
+  // Câblage unique réutilisé par les paramètres ET la vitrine (ON = NON réduit).
+  function initA11ySwitches() {
+    var map = { motion: setReducedMotion, transparency: setReducedTransparency };
+    document.querySelectorAll('.ds-switch[data-a11y-toggle]').forEach(function (sw) {
+      var key = sw.getAttribute('data-a11y-toggle');
+      if (!map[key]) return;
+      var attr = key === 'transparency' ? 'data-reduce-transparency' : 'data-reduce-motion';
+      var on = root.getAttribute(attr) !== 'true';
+      sw.classList.toggle('is-on', on);
+      sw.setAttribute('aria-checked', on ? 'true' : 'false');
+      sw.addEventListener('ds:toggle', function (e) { map[key](!e.detail.on); });
+    });
+  }
+
   // ── Squelettes de chargement (utilitaire AJAX) ──────────────────────────────
   function skeleton(target, rows) {
     var el = typeof target === 'string' ? document.querySelector(target) : target;
@@ -242,7 +257,7 @@
   // ── Init ────────────────────────────────────────────────────────────────────
   function init() {
     applyTheme(); applyA11y();
-    initScroll(); initSwitches(); initDropdowns(); initTabs(); initModals(); initNavProgress();
+    initScroll(); initSwitches(); initDropdowns(); initTabs(); initModals(); initNavProgress(); initA11ySwitches();
     // suivre le changement de préférence système si 'auto'
     try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () { if ((get(LS.theme) || 'light') === 'auto') applyTheme(); }); } catch (e) {}
   }
