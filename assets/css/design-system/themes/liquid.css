@@ -55,6 +55,29 @@ html[data-theme="liquid"] {
   --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.45);
   --shadow-focus: 0 0 0 3px rgba(110, 168, 255, 0.5);
 
+  /* ── Pont LEGACY : les composants historiques (theme-classic) lisent ces tokens
+   *    (assets/css/tokens.css). On les bascule en sombre pour que les pages NON migrées
+   *    restent lisibles & cohérentes en thème liquide. Opaque (pas verre) car le legacy
+   *    n'a pas de backdrop-filter. ── */
+  --primary-color:    #6ea8ff;
+  --primary-light:    #8fbcff;
+  --background-color: #0b1020;
+  --text-color:       #f4f7ff;
+  --text-light:       rgba(244, 247, 255, 0.78);
+  --white:            #141c2e;   /* fond des .card legacy */
+  --border-color:     rgba(255, 255, 255, 0.14);
+  --bg-card:          #141c2e;
+  --bg-secondary:     #1c2640;
+  --bg-tertiary:      #243049;
+  --bg-hover:         #1c2640;
+  --shadow-light:     0 2px 10px rgba(0, 0, 0, 0.25);
+  --shadow-medium:    0 8px 28px rgba(0, 0, 0, 0.35);
+  --shadow-hover:     0 18px 48px rgba(0, 0, 0, 0.45);
+  --success-color:    #4ade80;
+  --warning-color:    #fbbf24;
+  --error-color:      #fb7185;
+  --info-color:       #38bdf8;
+
   --glass-blur:   16px;
   --glass-bg:     var(--surface-card);
   --glass-border: var(--border-light);

@@ -1,0 +1,82 @@
+/* ============================================================================
+ * Fronote Design System — PONT LEGACY → DS
+ * Aligne VISUELLEMENT les primitives historiques (.btn, .ui-btn, .card,
+ * .form-control…) sur le langage du design system, SANS renommer le markup
+ * des 300+ pages et SANS casser les mises en page.
+ *
+ * Principe de sûreté : on ne touche QUE le « polish » via tokens
+ * (rayons, ombres douces, transitions, anneau de focus, retour au clic).
+ * On NE change PAS les couleurs de fond/texte ni le box-model (padding,
+ * largeurs) → les thèmes (tokens + dark-overrides.css) continuent de fonctionner
+ * et aucune page ne se décale. Chargé EN DERNIER (via design-system.css) pour
+ * primer à spécificité égale.
+ * ========================================================================== */
+
+/* ── Boutons (.btn historique + .ui-btn) ─────────────────────────────────── */
+.btn,
+.ui-btn {
+  border-radius: var(--radius-md);
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+}
+.btn:active,
+.ui-btn:active { transform: scale(var(--scale-press)); }
+
+.btn:focus-visible,
+.ui-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* Petits boutons : rayon plus serré (un radius-md sur un bouton minuscule fait « bulle »). */
+.btn-sm, .btn-xs, .btn-mini,
+.ui-btn--sm { border-radius: var(--radius-sm); }
+
+/* ── Cartes (.card historique) ───────────────────────────────────────────── */
+/* On ne fixe PAS le fond/texte (gérés par les thèmes) NI la bordure (les cartes
+ * legacy sont sans bordure → en ajouter une rognerait le contenu en border-box).
+ * Uniquement la forme + l'ombre douce + une transition fluide. */
+.card {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition:
+    box-shadow var(--motion-normal) var(--ease-standard),
+    transform var(--motion-normal) var(--ease-standard),
+    border-color var(--motion-normal) var(--ease-standard);
+}
+
+/* ── Contrôles de formulaire (classes explicites uniquement — pas les inputs nus) ── */
+.form-control,
+.form-select,
+.form-input,
+.form-textarea {
+  border-radius: var(--radius-md);
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard);
+}
+.form-control:focus,
+.form-select:focus,
+.form-input:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-focus);
+}
+
+/* ── Modale historique (.modal-box) : forme + profondeur DS (fond géré par les thèmes) ── */
+.modal-box {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+}
+
+/* ── Respect de la réduction de mouvement ────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .btn, .ui-btn, .card,
+  .form-control, .form-select, .form-input, .form-textarea { transition: none; }
+  .btn:active, .ui-btn:active { transform: none; }
+}
