@@ -250,7 +250,7 @@ class SettingsService {
     // ─── Static enums ────────────────────────────────────────────────
 
     public static function themes(): array {
-        return ['light' => 'Clair', 'dark' => 'Sombre', 'auto' => 'Automatique'];
+        return ['light' => 'Clair', 'dark' => 'Sombre', 'liquid' => 'Liquide', 'auto' => 'Automatique'];
     }
 
     public static function fontSizes(): array {

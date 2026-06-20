@@ -24,8 +24,8 @@ if ($token !== ($_SESSION['csrf_token'] ?? '')) {
 }
 
 $theme = $_POST['theme'] ?? 'light';
-$allowed = ['light', 'dark', 'auto'];
-if (!in_array($theme, $allowed)) {
+$allowed = ['light', 'dark', 'liquid', 'auto'];
+if (!in_array($theme, $allowed, true)) {
     $theme = 'light';
 }
 

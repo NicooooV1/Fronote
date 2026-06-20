@@ -40,7 +40,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'preferences') {
+        // Liste blanche du thème (défense en profondeur : le formulaire n'offre que ces valeurs).
+        if (!in_array($_POST['theme'] ?? '', array_keys(SettingsService::themes()), true)) { $_POST['theme'] = 'light'; }
         $settingsService->save($userId, $userType, $_POST);
+        // Rafraîchir le cache thème (sinon le SSR sert l'ancien thème jusqu'à expiration du TTL).
+        try { (new \API\Core\ClientCache())->set('user_theme', $_POST['theme'], 3600); } catch (\Throwable $e) {}
         $settings = $settingsService->getSettings($userId, $userType);
         $success = 'Préférences enregistrées.';
     } elseif ($action === 'avatar') {
@@ -342,7 +346,7 @@ $roleWidgets = match ($userType) {
                                 <?php foreach ($themes as $k => $v): ?>
                                     <label class="theme-option <?= $settings['theme'] === $k ? 'selected' : '' ?>" onclick="previewTheme('<?= $k ?>')">
                                         <input type="radio" name="theme" value="<?= $k ?>" <?= $settings['theme'] === $k ? 'checked' : '' ?>>
-                                        <i class="fas <?= $k === 'light' ? 'fa-sun' : ($k === 'dark' ? 'fa-moon' : 'fa-adjust') ?>"></i>
+                                        <i class="fas <?= ['light' => 'fa-sun', 'dark' => 'fa-moon', 'liquid' => 'fa-droplet', 'auto' => 'fa-circle-half-stroke'][$k] ?? 'fa-adjust' ?>"></i>
                                         <span><?= $v ?></span>
                                     </label>
                                 <?php endforeach; ?>
@@ -373,32 +377,56 @@ $roleWidgets = match ($userType) {
                             </label>
                         </div>
 
+                        <div class="form-group">
+                            <label class="form-label">Accessibilité</label>
+                            <p class="form-text" style="margin-bottom:10px">Réglages prioritaires sur le thème, appliqués immédiatement et mémorisés sur cet appareil.</p>
+                            <div class="ds-stack" style="gap:12px">
+                                <div class="ds-row ds-gap-3" style="align-items:center;justify-content:space-between;max-width:440px">
+                                    <span><i class="fas fa-wand-magic-sparkles" style="color:var(--primary);width:18px"></i> Animations</span>
+                                    <button type="button" class="ds-switch" role="switch" aria-checked="true" id="swAnim" title="Activer/désactiver les animations"></button>
+                                </div>
+                                <div class="ds-row ds-gap-3" style="align-items:center;justify-content:space-between;max-width:440px">
+                                    <span><i class="fas fa-droplet" style="color:var(--primary);width:18px"></i> Transparence (thème liquide)</span>
+                                    <button type="button" class="ds-switch" role="switch" aria-checked="true" id="swTransp" title="Activer/désactiver la transparence"></button>
+                                </div>
+                            </div>
+                        </div>
+
                         <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer les préférences</button>
                     </form>
                 </div>
             </div>
 
             <script>
+            // Aperçu + persistance via le moteur du design system (gère clair/sombre/LIQUIDE/auto).
             function previewTheme(theme) {
-                if (theme === 'auto') {
-                    var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+                if (window.FronoteUI && window.FronoteUI.setTheme) {
+                    window.FronoteUI.setTheme(theme);
                 } else {
-                    document.documentElement.setAttribute('data-theme', theme);
+                    var eff = theme === 'auto'
+                        ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+                        : theme;
+                    document.documentElement.setAttribute('data-theme', eff);
+                    document.documentElement.setAttribute('data-theme-pref', theme);
                 }
-                document.documentElement.setAttribute('data-theme-pref', theme);
-                // Update sidebar icons
-                var d = document.getElementById('themeIconDark');
-                var l = document.getElementById('themeIconLight');
-                var a = document.getElementById('themeIconAuto');
-                if(d) d.style.display = theme==='light'?'inline':'none';
-                if(l) l.style.display = theme==='dark'?'inline':'none';
-                if(a) a.style.display = theme==='auto'?'inline':'none';
+                document.querySelectorAll('.theme-option').forEach(function (o) { o.classList.remove('selected'); });
+                var input = document.querySelector('.theme-option input[value="' + theme + '"]');
+                if (input && input.closest('.theme-option')) input.closest('.theme-option').classList.add('selected');
             }
             function previewFontSize(size) {
                 var sizes = {small:'14px', normal:'16px', large:'18px', xlarge:'20px'};
                 document.documentElement.style.fontSize = sizes[size] || '16px';
             }
+            // Accessibilité : interrupteurs câblés sur FronoteUI (ON = non réduit).
+            (function () {
+                var el = document.documentElement;
+                var anim = document.getElementById('swAnim'), transp = document.getElementById('swTransp');
+                function setSwitch(sw, on) { if (!sw) return; sw.classList.toggle('is-on', on); sw.setAttribute('aria-checked', on ? 'true' : 'false'); }
+                setSwitch(anim, el.getAttribute('data-reduce-motion') !== 'true');
+                setSwitch(transp, el.getAttribute('data-reduce-transparency') !== 'true');
+                if (anim) anim.addEventListener('ds:toggle', function (e) { if (window.FronoteUI) window.FronoteUI.setReducedMotion(!e.detail.on); });
+                if (transp) transp.addEventListener('ds:toggle', function (e) { if (window.FronoteUI) window.FronoteUI.setReducedTransparency(!e.detail.on); });
+            })();
             </script>
 
             <?php elseif ($section === 'accueil'): ?>
