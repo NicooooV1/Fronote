@@ -17,6 +17,19 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
     padding: 0 1rem;
     font-size: 0.875rem;
+    transition: transform var(--motion-slow, 280ms) var(--ease-standard, cubic-bezier(0.2, 0, 0, 1)),
+                box-shadow var(--motion-fast, 120ms) ease;
+    will-change: transform;
+}
+
+/* Auto-masquage de la topbar au scroll — MOBILE uniquement, piloté par interactions.js
+   (classe isolée .is-hidden-mobile, indépendante du .ds-topbar du design system). */
+@media (max-width: 1023.98px) {
+    .topbar-nav.is-hidden-mobile { transform: translateY(-100%); }
+    .topbar-nav.is-scrolled-mobile { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .topbar-nav { transition: none; }
 }
 
 /* ── Brand ─────────────────────────────────────────────────── */

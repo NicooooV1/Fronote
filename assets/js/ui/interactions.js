@@ -49,6 +49,7 @@
     var topbar = document.querySelector('.ds-topbar');
     var bottom = document.querySelector('.ds-bottom-bar');
     if (bottom) document.body.classList.add('has-bottom-bar'); // pour le padding bas du contenu (mobile)
+    var legacyTop = document.querySelector('.topbar-nav'); // topbar historique : auto-masquage mobile (classe isolée)
     var toTop = document.querySelector('.ds-back-to-top');
     var lastY = window.scrollY, ticking = false;
     function onScroll() {
@@ -58,6 +59,16 @@
         if (y > 80 && y > lastY) topbar.classList.add('is-hidden');
         else topbar.classList.remove('is-hidden');
         if (y < 40) topbar.classList.remove('is-hidden');
+      }
+      if (legacyTop) {
+        if (window.innerWidth < 1024) {
+          legacyTop.classList.toggle('is-scrolled-mobile', y > 4);
+          if (y > 80 && y > lastY) legacyTop.classList.add('is-hidden-mobile');
+          else legacyTop.classList.remove('is-hidden-mobile');
+          if (y < 40) legacyTop.classList.remove('is-hidden-mobile');
+        } else {
+          legacyTop.classList.remove('is-hidden-mobile', 'is-scrolled-mobile');
+        }
       }
       if (bottom) bottom.classList.toggle('is-visible', y > 80 || window.innerWidth < 1024);
       if (toTop) toTop.classList.toggle('is-visible', y > 600);
