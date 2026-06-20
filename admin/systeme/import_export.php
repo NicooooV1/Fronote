@@ -10,7 +10,7 @@ require_once __DIR__ . '/../../API/Services/Import/ImportSchemas.php';
 require_once __DIR__ . '/../../API/Services/Import/BulkImporter.php';
 
 requireAuth();
-requireRole('administrateur');
+tenantGate('tenant.users.view', ['administrateur']);
 
 $pdo = getPDO();
 $service = new \API\Services\ImportExportService($pdo);

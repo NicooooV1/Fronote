@@ -3,7 +3,7 @@
  * Gestion des matières — CRUD via AdminCrudPage
  */
 require_once __DIR__ . '/../../API/module_boot.php';
-requireRole('administrateur');
+tenantGate('tenant.users.view', ['administrateur']);
 
 $page = new \API\Admin\AdminCrudPage([
     'title'       => 'Matières',
