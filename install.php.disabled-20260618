@@ -624,35 +624,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $log[] = ['ok', 'Connexion MySQL établie'];
 
-            // 5d — Créer / recréer la base (avec protection si existante)
+            // 5d — Créer / recréer la base. TOLÉRANT AUX PRIVILÈGES : on tente DROP/CREATE
+            // DATABASE ; si l'utilisateur n'a pas les droits globaux (cas hébergement mutualisé :
+            // privilèges UNIQUEMENT sur sa base), on se rabat sur la suppression de toutes les
+            // tables de la base existante (couvert par ALL PRIVILEGES ON `<base>`.*).
             $dbNameSafe = preg_replace('/[^a-zA-Z0-9_]/', '', $db['dbName']);
             $stmt = $pdo->prepare("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
             $stmt->execute([$db['dbName']]);
             $dbExists = (bool) $stmt->fetch();
 
+            $dropAllTables = static function (PDO $pdo, string $schema): void {
+                $pdo->exec("USE `{$schema}`");
+                $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
+                $objs = $pdo->query("SELECT TABLE_NAME, TABLE_TYPE FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{$schema}'")->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($objs as $o) {
+                    $kind = (($o['TABLE_TYPE'] ?? '') === 'VIEW') ? 'VIEW' : 'TABLE';
+                    try { $pdo->exec("DROP {$kind} IF EXISTS `{$o['TABLE_NAME']}`"); } catch (PDOException $e) {}
+                }
+                $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
+            };
+
             if ($dbExists) {
-                // Vérifier si l'utilisateur a confirmé l'écrasement
-                $confirmOverwrite = !empty($_POST['confirm_overwrite']);
-                if (!$confirmOverwrite) {
-                    // Compter les tables existantes pour informer l'utilisateur
-                    $pdo->exec("USE `{$dbNameSafe}`");
-                    $tableCount = $pdo->query("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{$dbNameSafe}'")->fetchColumn();
+                $pdo->exec("USE `{$dbNameSafe}`");
+                $tableCount = (int) $pdo->query("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{$dbNameSafe}'")->fetchColumn();
+                if ($tableCount > 0 && empty($_POST['confirm_overwrite'])) {
                     $inst['db_exists'] = true;
-                    $inst['db_table_count'] = (int)$tableCount;
+                    $inst['db_table_count'] = $tableCount;
                     $inst['step'] = 5; // Rester sur l'étape 5
                     throw new RuntimeException(
                         "⚠️ La base de données « {$dbNameSafe} » existe déjà et contient {$tableCount} table(s).\n\n"
                         . "Cochez la case de confirmation ci-dessous pour écraser les données existantes, ou changez le nom de la base à l'étape 2."
                     );
                 }
-                // Confirmation reçue → supprimer et recréer
-                $pdo->exec("DROP DATABASE `{$dbNameSafe}`");
-                $log[] = ['warn', 'Base existante écrasée (confirmation reçue)'];
+                if ($tableCount > 0) {
+                    try {
+                        $pdo->exec("DROP DATABASE `{$dbNameSafe}`");
+                        $pdo->exec("CREATE DATABASE `{$dbNameSafe}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                        $log[] = ['warn', 'Base existante écrasée (DROP/CREATE DATABASE)'];
+                    } catch (PDOException $e) {
+                        $dropAllTables($pdo, $dbNameSafe);
+                        $log[] = ['warn', 'Base existante écrasée (toutes les tables supprimées — privilèges limités à la base)'];
+                    }
+                }
+            } else {
+                try {
+                    $pdo->exec("CREATE DATABASE `{$dbNameSafe}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                    $log[] = ['ok', "Base de données <code>{$dbNameSafe}</code> créée"];
+                } catch (PDOException $e) {
+                    throw new RuntimeException("La base « {$dbNameSafe} » n'existe pas et n'a pas pu être créée (privilèges insuffisants).\n\nCréez la base au préalable (ou accordez les droits), puis relancez l'installation.\nDétail : " . $e->getMessage());
+                }
             }
-
-            $pdo->exec("CREATE DATABASE `{$dbNameSafe}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
             $pdo->exec("USE `{$dbNameSafe}`");
-            $log[] = ['ok', "Base de données <code>{$dbNameSafe}</code> créée"];
 
             // 5e — Importer pronote.sql
             $sqlFile = $installDir . '/pronote.sql';
