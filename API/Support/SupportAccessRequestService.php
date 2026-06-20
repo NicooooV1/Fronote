@@ -64,6 +64,27 @@ final class SupportAccessRequestService
         return $st->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
+    /** Demandes d'accès liées à un ticket. */
+    public function forTicket(int $ticketId): array
+    {
+        $st = $this->pdo->prepare("SELECT * FROM support_access_requests WHERE ticket_id = ? ORDER BY created_at DESC");
+        $st->execute([$ticketId]);
+        return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /** Demandes en attente de décision pour un établissement (vue Direction). */
+    public function pendingForEstablishment(int $establishmentId): array
+    {
+        $st = $this->pdo->prepare(
+            "SELECT ar.*, t.title AS ticket_title FROM support_access_requests ar
+               JOIN support_tickets t ON t.id = ar.ticket_id
+              WHERE ar.establishment_id = ? AND ar.status IN ('sent_to_direction','waiting_direction','more_info_requested')
+              ORDER BY ar.created_at DESC"
+        );
+        $st->execute([$establishmentId]);
+        return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
     /** Expire les demandes non traitées dépassées (à planifier). */
     public function expireStale(?string $now = null): int
     {

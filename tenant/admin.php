@@ -43,6 +43,9 @@ if (!$canAdmin) {
     <main>
         <h1>Administration — <?= htmlspecialchars($establishment['nom']) ?></h1>
         <div class="grid">
+            <?php if ($auth->can('tenant.support.ticket.view')): ?>
+                <div class="tile"><a href="<?= $base ?>/tenant/support.php?e=<?= urlencode($slug) ?>">Support &amp; demandes d'accès</a></div>
+            <?php endif; ?>
             <?php
             $tiles = [
                 ['tenant.users.view', 'Utilisateurs',           '/admin/users/index.php'],

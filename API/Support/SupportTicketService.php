@@ -65,4 +65,37 @@ final class SupportTicketService
         $st->execute([$ticketId]);
         return $st->fetch(PDO::FETCH_ASSOC) ?: null;
     }
+
+    /** Tickets d'un établissement (vue Direction). */
+    public function listForEstablishment(int $establishmentId): array
+    {
+        $st = $this->pdo->prepare("SELECT * FROM support_tickets WHERE establishment_id = ? ORDER BY created_at DESC LIMIT 200");
+        $st->execute([$establishmentId]);
+        return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /** Tous les tickets (vue Support plateforme), filtrables par statut/établissement. */
+    public function listAll(array $filters = []): array
+    {
+        $sql = "SELECT t.*, e.nom AS establishment_name FROM support_tickets t
+                JOIN etablissements e ON e.id = t.establishment_id WHERE 1=1";
+        $args = [];
+        if (!empty($filters['status']))           { $sql .= " AND t.status = ?";           $args[] = $filters['status']; }
+        if (!empty($filters['establishment_id'])) { $sql .= " AND t.establishment_id = ?"; $args[] = (int) $filters['establishment_id']; }
+        $sql .= " ORDER BY t.created_at DESC LIMIT 200";
+        $st = $this->pdo->prepare($sql);
+        $st->execute($args);
+        return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /** Fil de discussion d'un ticket. $includeInternal=false masque les notes internes (côté établissement). */
+    public function messages(int $ticketId, bool $includeInternal = true): array
+    {
+        $sql = "SELECT * FROM support_bridge_messages WHERE ticket_id = ?"
+             . ($includeInternal ? '' : ' AND is_internal_note = 0 AND visible_to_tenant = 1')
+             . " ORDER BY created_at ASC";
+        $st = $this->pdo->prepare($sql);
+        $st->execute([$ticketId]);
+        return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
 }

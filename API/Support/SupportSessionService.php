@@ -200,6 +200,38 @@ final class SupportSessionService
         } catch (\PDOException $e) { return null; }
     }
 
+    /** Sessions liées à un ticket (toutes statuts). */
+    public function forTicket(int $ticketId): array
+    {
+        try {
+            $st = $this->pdo->prepare("SELECT * FROM support_sessions WHERE ticket_id = ? ORDER BY id DESC");
+            $st->execute([$ticketId]);
+            return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (\PDOException $e) { return []; }
+    }
+
+    /** Sessions en cours ou à démarrer pour un établissement (vue Direction). */
+    public function liveForEstablishment(int $establishmentId): array
+    {
+        try {
+            $st = $this->pdo->prepare(
+                "SELECT * FROM support_sessions WHERE establishment_id = ? AND status IN ('pending_start','active','paused') ORDER BY id DESC"
+            );
+            $st->execute([$establishmentId]);
+            return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (\PDOException $e) { return []; }
+    }
+
+    /** Lignes du journal d'intervention d'une session (consultation). */
+    public function auditTrail(int $sessionId): array
+    {
+        try {
+            $st = $this->pdo->prepare("SELECT * FROM support_session_audit_logs WHERE support_session_id = ? ORDER BY created_at ASC, id ASC");
+            $st->execute([$sessionId]);
+            return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (\PDOException $e) { return []; }
+    }
+
     private function decode($json): array
     {
         if (is_array($json)) { return $json; }
