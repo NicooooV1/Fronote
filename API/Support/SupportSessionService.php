@@ -111,6 +111,30 @@ final class SupportSessionService
         return (bool) $ok;
     }
 
+    /** Arrêt de sécurité (plateforme) : coupe immédiatement une session (anomalie/incident). */
+    public function securityStop(int $sessionId, int $byPlatformAccountId, string $reason, ?string $now = null): bool
+    {
+        $now = $this->now($now);
+        $ok = $this->pdo->prepare(
+            "UPDATE support_sessions SET status='security_stopped', ended_at=?, ended_by_type='platform', ended_by_platform_account_id=?, end_reason=?
+              WHERE id=? AND status IN ('active','pending_start','paused')"
+        )->execute([$now, $byPlatformAccountId, $reason, $sessionId]);
+        if ($ok) { $this->audit($sessionId, 'session_security_stopped', ['by' => $byPlatformAccountId, 'reason' => $reason]); }
+        return (bool) $ok;
+    }
+
+    /** Toutes les sessions support actives (vue sécurité plateforme, tous établissements). */
+    public function allActive(): array
+    {
+        try {
+            return $this->pdo->query(
+                "SELECT s.*, e.nom AS establishment_name FROM support_sessions s
+                   JOIN etablissements e ON e.id = s.establishment_id
+                  WHERE s.status = 'active' ORDER BY s.id DESC"
+            )->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (\PDOException $e) { return []; }
+    }
+
     /** Le niveau de la session permet-il une action exigeant $requiredLevel ? */
     public function meetsLevel(array $session, string $requiredLevel): bool
     {

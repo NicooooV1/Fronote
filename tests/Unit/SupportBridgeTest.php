@@ -112,6 +112,19 @@ final class SupportBridgeTest extends TestCase
         $this->assertSame('revoked', $sessions->get($sessionId)['status']);
     }
 
+    public function testSecurityStopEndsSession(): void
+    {
+        $now = '2026-06-19 10:00:00';
+        [$ticketId, $reqId] = $this->ticketAndRequest($now);
+        $sessions = new SupportSessionService($this->pdo);
+        $sessionId = (new SupportAccessApprovalService($this->pdo))->approve(self::APPROVER, $reqId, ['now' => $now]);
+        $sessions->start($sessionId, self::SUPPORT, $now);
+        $this->assertTrue($sessions->securityStop($sessionId, 1, 'Incident', '2026-06-19 10:05:00'));
+        $this->assertSame('security_stopped', $sessions->get($sessionId)['status']);
+        // plus d'accès après arrêt de sécurité
+        $this->assertFalse((new SupportSessionGuard($this->pdo))->can(self::SUPPORT, 1, 'read_only', null, null, false, '2026-06-19 10:06:00'));
+    }
+
     public function testStartRefusedWithoutApproval(): void
     {
         $now = '2026-06-19 10:00:00';
