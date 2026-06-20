@@ -1,0 +1,148 @@
+/* Fronote Design System — App shell (sidebar + main layout) */
+
+/* ---------------------------------------------------------------------------
+   Shell grid — sidebar rail + flexible main column
+   --------------------------------------------------------------------------- */
+.ds-app-shell {
+  display: grid;
+  grid-template-columns: var(--layout-sidebar-w) 1fr;
+  min-height: 100vh;
+  background: var(--surface-app);
+  transition: grid-template-columns var(--motion-normal) var(--ease-emphasized);
+}
+
+/* When the rail is collapsed, the first track narrows to match. */
+.ds-app-shell.is-sidebar-collapsed {
+  grid-template-columns: var(--layout-sidebar-collapsed-w) 1fr;
+}
+
+/* ---------------------------------------------------------------------------
+   Main content column
+   --------------------------------------------------------------------------- */
+.ds-main {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ds-main-inner {
+  width: 100%;
+  max-width: var(--layout-content-max);
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-6) var(--space-12);
+}
+
+/* ---------------------------------------------------------------------------
+   Topbar — generic DS topbar for new pages (sticky, glass-ready)
+   --------------------------------------------------------------------------- */
+.ds-topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: var(--layout-topbar-h);
+  padding: 0 var(--space-6);
+
+  background: var(--surface-panel);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border-bottom: 1px solid var(--border-light);
+
+  transition:
+    transform var(--motion-normal) var(--ease-emphasized),
+    box-shadow var(--motion-fast) var(--ease-standard),
+    opacity var(--motion-normal) var(--ease-standard);
+}
+
+.ds-topbar.is-hidden {
+  transform: translateY(-100%);
+  opacity: 0;
+}
+
+.ds-topbar.is-scrolled {
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---------------------------------------------------------------------------
+   State hooks for the EXISTING legacy .topbar — additive only.
+   We intentionally do NOT restyle base .topbar; only the .is-* behaviours.
+   --------------------------------------------------------------------------- */
+.topbar.is-hidden {
+  transform: translateY(-100%);
+  opacity: 0;
+}
+
+.topbar.is-scrolled {
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+
+/* ---------------------------------------------------------------------------
+   Back-to-top FAB — fixed bottom-right, hidden until scrolled
+   --------------------------------------------------------------------------- */
+.ds-back-to-top {
+  position: fixed;
+  right: var(--space-6);
+  bottom: var(--space-6);
+  z-index: var(--z-raised);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: var(--on-primary);
+  background: var(--primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-circle);
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+
+  opacity: 0;
+  transform: translateY(var(--space-3));
+  pointer-events: none;
+  transition:
+    opacity var(--motion-normal) var(--ease-standard),
+    transform var(--motion-normal) var(--ease-emphasized),
+    background-color var(--motion-fast) var(--ease-standard);
+}
+
+.ds-back-to-top:hover {
+  background: var(--primary-hover);
+}
+
+.ds-back-to-top:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.ds-back-to-top:active {
+  transform: scale(var(--scale-press));
+}
+
+.ds-back-to-top.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-app-shell,
+  .ds-topbar,
+  .topbar,
+  .ds-back-to-top {
+    transition: none;
+  }
+  .ds-back-to-top {
+    transform: none;
+  }
+  .ds-back-to-top:active {
+    transform: none;
+  }
+}

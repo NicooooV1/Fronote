@@ -1,0 +1,131 @@
+/* Fronote Design System — Tenant admin layout (friendly establishment console) */
+
+/* ---------------------------------------------------------------------------
+   Tenant scope — comfortable spacing, welcoming establishment feel.
+   --------------------------------------------------------------------------- */
+.ds-tenant {
+  background: var(--surface-app);
+  color: var(--text-primary);
+}
+
+.ds-tenant .ds-main-inner {
+  padding: var(--space-8) var(--space-8) var(--space-16);
+}
+
+/* Roomier rail for the establishment side */
+.ds-tenant .ds-sidebar {
+  padding: var(--space-5) var(--space-4);
+  gap: var(--space-2);
+}
+
+.ds-tenant .ds-nav-item {
+  min-height: 48px;
+}
+
+/* ---------------------------------------------------------------------------
+   Page header
+   --------------------------------------------------------------------------- */
+.ds-tenant .ds-tenant-heading {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  color: var(--text-primary);
+}
+
+.ds-tenant .ds-tenant-subtitle {
+  margin: 0 0 var(--space-8);
+  font-size: var(--fs-md);
+  color: var(--text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+   Quick actions — grid of large tappable action cards
+   --------------------------------------------------------------------------- */
+.ds-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-8);
+}
+
+.ds-quick-action {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 120px;
+  padding: var(--space-5);
+  text-align: left;
+  text-decoration: none;
+  color: var(--text-primary);
+  background: var(--surface-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  cursor: pointer;
+  transition:
+    box-shadow var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
+}
+
+.ds-quick-action:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-medium);
+  transform: translateY(var(--translate-hover));
+}
+
+.ds-quick-action:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.ds-quick-action:active {
+  transform: scale(var(--scale-press));
+}
+
+.ds-quick-action-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border-radius: var(--radius-md);
+}
+
+.ds-quick-action-title {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+}
+
+.ds-quick-action-desc {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  line-height: var(--lh-normal);
+}
+
+/* ---------------------------------------------------------------------------
+   Dashboard grid — comfortable cards layout
+   --------------------------------------------------------------------------- */
+.ds-dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-6);
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-quick-action {
+    transition: none;
+  }
+  .ds-quick-action:hover,
+  .ds-quick-action:active {
+    transform: none;
+  }
+}

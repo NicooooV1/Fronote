@@ -1,0 +1,12 @@
+/* ============================================================================
+ * Fronote Design System — THÈME CLAIR
+ * Le clair est le défaut (valeurs sur :root dans tokens/). Ce fichier ne fait
+ * que réaffirmer color-scheme et garantir des surfaces 100% opaques.
+ * Ambiance : calme, lumineuse, scolaire/professionnelle.
+ * ========================================================================== */
+html[data-theme="light"] {
+  color-scheme: light;
+  --glass-blur: 0px;
+  --glass-bg: var(--surface-card);
+  --glass-border: var(--border-light);
+}

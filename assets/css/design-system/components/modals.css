@@ -1,0 +1,288 @@
+/* Fronote Design System — Modals */
+
+/* ---------------------------------------------------------------------------
+   Overlay — fixed full-viewport scrim, blurred, fades in
+   --------------------------------------------------------------------------- */
+.ds-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+
+  background: var(--surface-overlay);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+
+  /* hidden state */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--motion-normal) var(--ease-standard),
+    visibility var(--motion-normal) var(--ease-standard);
+}
+
+.ds-modal-overlay.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.ds-modal-overlay.is-closing {
+  opacity: 0;
+  visibility: visible;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Modal — centered glass-ready card, appears with fade + scale
+   --------------------------------------------------------------------------- */
+.ds-modal {
+  position: relative;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 520px;
+  max-height: calc(100vh - var(--space-12));
+
+  background: var(--surface-card);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+
+  /* hidden state */
+  opacity: 0;
+  transform: translateY(var(--space-4)) scale(0.96);
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    transform var(--motion-normal) var(--ease-emphasized);
+}
+
+.ds-modal-overlay.is-open .ds-modal {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.ds-modal-overlay.is-closing .ds-modal {
+  opacity: 0;
+  transform: translateY(var(--space-4)) scale(0.96);
+}
+
+/* Size modifiers */
+.ds-modal--sm { max-width: 400px; }
+.ds-modal--lg { max-width: 720px; }
+.ds-modal--full { max-width: var(--layout-content-max); }
+
+/* ---------------------------------------------------------------------------
+   Header
+   --------------------------------------------------------------------------- */
+.ds-modal__header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.ds-modal__title {
+  flex: 1 1 auto;
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  color: var(--text-primary);
+}
+
+.ds-modal__icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.ds-modal__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ---------------------------------------------------------------------------
+   Body — scrollable region
+   --------------------------------------------------------------------------- */
+.ds-modal__body {
+  flex: 1 1 auto;
+  padding: var(--space-6);
+  overflow-y: auto;
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  line-height: var(--lh-relaxed);
+  color: var(--text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+   Footer — action row
+   --------------------------------------------------------------------------- */
+.ds-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--border-light);
+}
+
+/* ---------------------------------------------------------------------------
+   Close button
+   --------------------------------------------------------------------------- */
+.ds-modal__close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+
+.ds-modal__close svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ds-modal__close:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.ds-modal__close:active {
+  transform: scale(var(--scale-press));
+}
+
+.ds-modal__close:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* ---------------------------------------------------------------------------
+   Danger variant — danger accent on header + icon
+   --------------------------------------------------------------------------- */
+.ds-modal--danger .ds-modal__header {
+  border-bottom-color: var(--danger-soft);
+}
+
+.ds-modal--danger .ds-modal__title {
+  color: var(--danger);
+}
+
+.ds-modal--danger .ds-modal__icon {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+/* ---------------------------------------------------------------------------
+   Mobile bottom-sheet — slides up from bottom with a drag handle
+   Applies via the --sheet modifier OR automatically under 640px.
+   --------------------------------------------------------------------------- */
+.ds-modal--sheet {
+  margin-top: auto;
+  margin-bottom: 0;
+  max-width: 100%;
+  max-height: 90vh;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  transform: translateY(100%);
+}
+
+.ds-modal--sheet::before {
+  content: "";
+  position: absolute;
+  top: var(--space-2);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--border-strong);
+}
+
+.ds-modal-overlay.is-open .ds-modal--sheet { transform: translateY(0); }
+.ds-modal-overlay.is-closing .ds-modal--sheet { transform: translateY(100%); }
+
+@media (max-width: 639.98px) {
+  .ds-modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .ds-modal {
+    margin-top: auto;
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    border-bottom: none;
+    transform: translateY(100%);
+  }
+
+  .ds-modal::before {
+    content: "";
+    position: absolute;
+    top: var(--space-2);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: var(--border-strong);
+  }
+
+  .ds-modal__header { padding-top: var(--space-6); }
+
+  .ds-modal-overlay.is-open .ds-modal { transform: translateY(0); }
+  .ds-modal-overlay.is-closing .ds-modal { transform: translateY(100%); }
+
+  .ds-modal__footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-modal-overlay,
+  .ds-modal {
+    transition: opacity var(--motion-fast) var(--ease-standard);
+    transform: none;
+  }
+  .ds-modal-overlay.is-open .ds-modal,
+  .ds-modal-overlay.is-closing .ds-modal,
+  .ds-modal--sheet,
+  .ds-modal-overlay.is-open .ds-modal--sheet,
+  .ds-modal-overlay.is-closing .ds-modal--sheet {
+    transform: none;
+  }
+  .ds-modal__close:active {
+    transform: none;
+  }
+}

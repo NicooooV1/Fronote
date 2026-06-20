@@ -1,0 +1,158 @@
+/* Fronote Design System — Alerts */
+
+/* ---------------------------------------------------------------------------
+   Alert — inline soft-background banner with colored left border + icon slot
+   --------------------------------------------------------------------------- */
+.ds-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+
+  font-family: var(--font-sans);
+  background: var(--surface-panel);
+  border: 1px solid var(--border-light);
+  border-left: 3px solid var(--border-medium);
+  border-radius: var(--radius-lg);
+}
+
+/* ---------------------------------------------------------------------------
+   Icon slot
+   --------------------------------------------------------------------------- */
+.ds-alert__icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+  color: var(--text-secondary);
+}
+
+.ds-alert__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ---------------------------------------------------------------------------
+   Content
+   --------------------------------------------------------------------------- */
+.ds-alert__content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ds-alert__title {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  color: var(--text-primary);
+}
+
+.ds-alert__body {
+  margin: var(--space-1) 0 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-normal);
+  color: var(--text-secondary);
+}
+
+/* When there is no title, the body should not have a top margin */
+.ds-alert__body:first-child {
+  margin-top: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Optional close action
+   --------------------------------------------------------------------------- */
+.ds-alert__close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: calc(var(--space-1) * -1) calc(var(--space-1) * -1) 0 0;
+  padding: 0;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+
+.ds-alert__close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ds-alert__close:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.ds-alert__close:active {
+  transform: scale(var(--scale-press));
+}
+
+.ds-alert__close:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* ---------------------------------------------------------------------------
+   Variants — soft tinted bg + colored left border + colored icon/title
+   --------------------------------------------------------------------------- */
+.ds-alert--success {
+  background: var(--success-soft);
+  border-color: var(--success-soft);
+  border-left-color: var(--success);
+}
+.ds-alert--success .ds-alert__icon,
+.ds-alert--success .ds-alert__title {
+  color: var(--success);
+}
+
+.ds-alert--warning {
+  background: var(--warning-soft);
+  border-color: var(--warning-soft);
+  border-left-color: var(--warning);
+}
+.ds-alert--warning .ds-alert__icon,
+.ds-alert--warning .ds-alert__title {
+  color: var(--warning);
+}
+
+.ds-alert--danger {
+  background: var(--danger-soft);
+  border-color: var(--danger-soft);
+  border-left-color: var(--danger);
+}
+.ds-alert--danger .ds-alert__icon,
+.ds-alert--danger .ds-alert__title {
+  color: var(--danger);
+}
+
+.ds-alert--info {
+  background: var(--info-soft);
+  border-color: var(--info-soft);
+  border-left-color: var(--info);
+}
+.ds-alert--info .ds-alert__icon,
+.ds-alert--info .ds-alert__title {
+  color: var(--info);
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-alert__close:active {
+    transform: none;
+  }
+}

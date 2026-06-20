@@ -1,0 +1,58 @@
+/* ============================================================================
+ * Fronote Design System — TOKENS / COULEURS
+ * Noms sémantiques de la refonte. ADDITIFS : ils ALIASENT la palette existante
+ * (assets/css/tokens.css) pour ne casser aucune page. Valeurs « clair » par défaut ;
+ * les thèmes (themes/dark.css, themes/liquid.css) surchargent par [data-theme].
+ * RÈGLE : aucun composant ne code une couleur en dur → uniquement ces tokens.
+ * ========================================================================== */
+:root {
+  /* ── Surfaces ── */
+  --surface-app:        var(--ds-bg, #f8fafc);     /* fond d'application */
+  --surface-card:       var(--ds-surface, #ffffff);/* carte / panneau */
+  --surface-panel:      var(--ds-surface, #ffffff);/* topbar, bottom-bar, dropdown */
+  --surface-raised:     #ffffff;                    /* éléments en surépaisseur */
+  --surface-sunken:     var(--bg-secondary, #f1f5f9);
+  --surface-hover:      var(--bg-hover, #f1f5f9);
+  --surface-overlay:    rgba(15, 23, 42, 0.45);     /* fond des modales */
+
+  /* ── Texte ── (--text-primary / --text-muted existent déjà : on les réutilise) */
+  --text-primary:       var(--ds-text, #1e293b);
+  --text-secondary:     var(--ds-text-muted, #64748b);
+  --text-muted:         var(--ds-text-muted, #64748b);
+  --text-faint:         var(--ds-text-light, #94a3b8);
+  --text-on-accent:     #ffffff;
+
+  /* ── Bordures ── */
+  --border-light:       var(--ds-border, #e2e8f0);
+  --border-medium:      #cbd5e1;
+  --border-strong:      #94a3b8;
+  --border-focus:       var(--primary, #2563eb);
+
+  /* ── Accent / marque ── */
+  --primary:            var(--ds-primary, #2563eb);
+  --primary-hover:      var(--ds-primary-hover, #1d4ed8);
+  --primary-soft:       var(--ds-primary-light, #dbeafe);
+  --on-primary:         #ffffff;
+
+  /* ── Feedback sémantique ── */
+  --success:            var(--ds-success, #16a34a);
+  --success-soft:       var(--ds-success-light, #dcfce7);
+  --warning:            var(--ds-warning, #d97706);
+  --warning-soft:       var(--ds-warning-light, #fef3c7);
+  --danger:             var(--ds-danger, #dc2626);
+  --danger-soft:        var(--ds-danger-light, #fee2e2);
+  --info:               var(--ds-info, #0891b2);
+  --info-soft:          var(--ds-info-light, #cffafe);
+
+  /* ── Switch On/Off ── */
+  --switch-bg-off:      #e5e7eb;
+  --switch-thumb:       #ffffff;
+
+  /* ── Verre (utilisé surtout par le thème liquide ; fallback opaque ailleurs) ── */
+  --glass-bg:           var(--surface-card);
+  --glass-border:       var(--border-light);
+  --glass-blur:         0px;
+}
+
+/* Thème clair explicite (= défaut ; présent pour la clarté et la bascule data-theme). */
+html[data-theme="light"] { color-scheme: light; }

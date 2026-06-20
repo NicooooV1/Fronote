@@ -1,0 +1,192 @@
+/* ============================================================================
+ * Fronote — UI interactions (design system)
+ * Moteur unique : thèmes (clair/sombre/liquide/auto), réduction mouvement/transparence,
+ * topbar hide/show au scroll, bottom-bar, retour-haut, switches, dropdowns, modales,
+ * toasts, tabs. Sans dépendance, idempotent, chargé en defer.
+ * API publique : window.FronoteUI
+ * ========================================================================== */
+(function () {
+  'use strict';
+  if (window.FronoteUI && window.FronoteUI.__ready) return;
+
+  var root = document.documentElement;
+  var LS = {
+    theme: 'fronote_dark_mode',            // light | dark | liquid | auto  (réutilise la clé existante)
+    motion: 'fronote_reduce_motion',       // 'true' | 'false'
+    transparency: 'fronote_reduce_transparency',
+  };
+  var THEMES = ['light', 'dark', 'liquid'];
+  function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+  // ── Thèmes ────────────────────────────────────────────────────────────────
+  function resolve(pref) {
+    if (pref === 'auto' || !pref) {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return THEMES.indexOf(pref) >= 0 ? pref : 'light';
+  }
+  function applyTheme() {
+    var pref = get(LS.theme) || root.getAttribute('data-theme-pref') || 'light';
+    root.setAttribute('data-theme', resolve(pref));
+    root.setAttribute('data-theme-pref', pref);
+  }
+  function setTheme(pref) { set(LS.theme, pref); applyTheme(); document.dispatchEvent(new CustomEvent('fronote:themechange', { detail: { pref: pref } })); }
+
+  function applyA11y() {
+    var rm = get(LS.motion) === 'true';
+    var rt = get(LS.transparency) === 'true';
+    root.setAttribute('data-reduce-motion', rm ? 'true' : 'false');
+    root.setAttribute('data-reduce-transparency', rt ? 'true' : 'false');
+  }
+  function setReducedMotion(on) { set(LS.motion, on ? 'true' : 'false'); applyA11y(); }
+  function setReducedTransparency(on) { set(LS.transparency, on ? 'true' : 'false'); applyA11y(); }
+
+  // ── Scroll : topbar hide/show + bottom-bar + retour-haut ───────────────────
+  function initScroll() {
+    var topbar = document.querySelector('.topbar, .ds-topbar');
+    var bottom = document.querySelector('.ds-bottom-bar');
+    var toTop = document.querySelector('.ds-back-to-top');
+    var lastY = window.scrollY, ticking = false;
+    function onScroll() {
+      var y = window.scrollY;
+      if (topbar) {
+        topbar.classList.toggle('is-scrolled', y > 4);
+        if (y > 80 && y > lastY) topbar.classList.add('is-hidden');
+        else topbar.classList.remove('is-hidden');
+        if (y < 40) topbar.classList.remove('is-hidden');
+      }
+      if (bottom) bottom.classList.toggle('is-visible', y > 80 || window.innerWidth < 1024);
+      if (toTop) toTop.classList.toggle('is-visible', y > 600);
+      lastY = y; ticking = false;
+    }
+    window.addEventListener('scroll', function () {
+      if (!ticking) { window.requestAnimationFrame(onScroll); ticking = true; }
+    }, { passive: true });
+    if (toTop) toTop.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    if (bottom && window.innerWidth < 1024) bottom.classList.add('is-visible');
+  }
+
+  // ── Switches (.ds-switch) ──────────────────────────────────────────────────
+  function initSwitches() {
+    document.addEventListener('click', function (e) {
+      var sw = e.target.closest('.ds-switch');
+      if (!sw || sw.classList.contains('is-disabled') || sw.hasAttribute('disabled')) return;
+      // si label encapsulant un checkbox, laisser le natif gérer + refléter
+      var on = sw.classList.toggle('is-on');
+      sw.setAttribute('aria-checked', on ? 'true' : 'false');
+      var cb = sw.querySelector('input[type=checkbox]');
+      if (cb) cb.checked = on;
+      sw.dispatchEvent(new CustomEvent('ds:toggle', { bubbles: true, detail: { on: on } }));
+    });
+  }
+
+  // ── Dropdowns (.ds-dropdown > [data-ds-dropdown-toggle] + .ds-dropdown-menu) ─
+  function initDropdowns() {
+    document.addEventListener('click', function (e) {
+      var toggle = e.target.closest('[data-ds-dropdown-toggle], .ds-dropdown-toggle');
+      if (toggle) {
+        var dd = toggle.closest('.ds-dropdown');
+        if (dd) {
+          var open = dd.classList.toggle('is-open');
+          toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+          document.querySelectorAll('.ds-dropdown.is-open').forEach(function (o) { if (o !== dd) o.classList.remove('is-open'); });
+          e.stopPropagation();
+          return;
+        }
+      }
+      if (!e.target.closest('.ds-dropdown-menu')) {
+        document.querySelectorAll('.ds-dropdown.is-open').forEach(function (o) { o.classList.remove('is-open'); });
+      }
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') document.querySelectorAll('.ds-dropdown.is-open').forEach(function (o) { o.classList.remove('is-open'); });
+    });
+  }
+
+  // ── Tabs (.ds-tabs [data-ds-tab=KEY] / .ds-tabpanel[data-ds-panel=KEY]) ─────
+  function initTabs() {
+    document.addEventListener('click', function (e) {
+      var tab = e.target.closest('[data-ds-tab]');
+      if (!tab) return;
+      var key = tab.getAttribute('data-ds-tab');
+      var scope = tab.closest('.ds-tabs-scope') || document;
+      scope.querySelectorAll('[data-ds-tab]').forEach(function (t) { t.classList.toggle('is-active', t === tab); t.setAttribute('aria-selected', t === tab ? 'true' : 'false'); });
+      scope.querySelectorAll('[data-ds-panel]').forEach(function (p) { p.classList.toggle('is-active', p.getAttribute('data-ds-panel') === key); });
+    });
+  }
+
+  // ── Modales ([data-ds-modal-open=ID] / .ds-modal-overlay#ID / [data-ds-modal-close]) ─
+  function openModal(id) {
+    var ov = document.getElementById(id);
+    if (!ov) return;
+    ov.classList.add('is-open');
+    root.style.overflow = 'hidden';
+    var f = ov.querySelector('input,button,select,textarea,[tabindex]'); if (f) try { f.focus(); } catch (e) {}
+  }
+  function closeModal(ov) {
+    if (!ov) return;
+    ov.classList.add('is-closing');
+    setTimeout(function () { ov.classList.remove('is-open', 'is-closing'); root.style.overflow = ''; }, 200);
+  }
+  function initModals() {
+    document.addEventListener('click', function (e) {
+      var opener = e.target.closest('[data-ds-modal-open]');
+      if (opener) { openModal(opener.getAttribute('data-ds-modal-open')); return; }
+      var closer = e.target.closest('[data-ds-modal-close]');
+      if (closer) { closeModal(closer.closest('.ds-modal-overlay')); return; }
+      if (e.target.classList && e.target.classList.contains('ds-modal-overlay')) closeModal(e.target);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { var o = document.querySelector('.ds-modal-overlay.is-open'); if (o) closeModal(o); }
+    });
+  }
+
+  // ── Toasts ─────────────────────────────────────────────────────────────────
+  function ensureToastContainer() {
+    var c = document.querySelector('.ds-toast-container');
+    if (!c) { c = document.createElement('div'); c.className = 'ds-toast-container'; document.body.appendChild(c); }
+    return c;
+  }
+  var ICONS = { success: 'fa-circle-check', error: 'fa-circle-xmark', warning: 'fa-triangle-exclamation', info: 'fa-circle-info', loading: 'fa-spinner fa-spin' };
+  function toast(message, type, opts) {
+    type = type || 'info'; opts = opts || {};
+    var c = ensureToastContainer();
+    var t = document.createElement('div');
+    t.className = 'ds-toast ds-toast--' + type;
+    t.setAttribute('role', 'status');
+    t.innerHTML = '<span class="ds-toast__icon"><i class="fas ' + (ICONS[type] || ICONS.info) + '"></i></span>' +
+      '<span class="ds-toast__msg"></span>' +
+      '<button class="ds-toast__close" aria-label="Fermer">&times;</button>' +
+      '<span class="ds-toast__progress"></span>';
+    t.querySelector('.ds-toast__msg').textContent = message;
+    c.appendChild(t);
+    requestAnimationFrame(function () { t.classList.add('is-visible'); });
+    var dur = opts.duration != null ? opts.duration : (type === 'loading' ? 0 : 4000);
+    function dismiss() { t.classList.add('is-closing'); setTimeout(function () { t.remove(); }, 220); }
+    t.querySelector('.ds-toast__close').addEventListener('click', dismiss);
+    if (dur > 0) {
+      var p = t.querySelector('.ds-toast__progress');
+      if (p) { p.style.transition = 'transform ' + dur + 'ms linear'; requestAnimationFrame(function () { p.style.transform = 'scaleX(0)'; }); }
+      setTimeout(dismiss, dur);
+    }
+    return { dismiss: dismiss, el: t };
+  }
+
+  // ── Init ────────────────────────────────────────────────────────────────────
+  function init() {
+    applyTheme(); applyA11y();
+    initScroll(); initSwitches(); initDropdowns(); initTabs(); initModals();
+    // suivre le changement de préférence système si 'auto'
+    try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () { if ((get(LS.theme) || 'light') === 'auto') applyTheme(); }); } catch (e) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+
+  window.FronoteUI = {
+    __ready: true,
+    setTheme: setTheme, applyTheme: applyTheme, getTheme: function () { return get(LS.theme) || 'light'; },
+    setReducedMotion: setReducedMotion, setReducedTransparency: setReducedTransparency,
+    toast: toast, openModal: openModal,
+    closeModal: function (id) { closeModal(typeof id === 'string' ? document.getElementById(id) : id); },
+  };
+})();

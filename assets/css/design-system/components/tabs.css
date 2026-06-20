@@ -1,0 +1,156 @@
+/* Fronote Design System — Tabs */
+
+/* ---------------------------------------------------------------------------
+   Tablist
+   --------------------------------------------------------------------------- */
+.ds-tabs {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--border-light);
+  /* Track for the sliding indicator; set via JS or inline style:
+     --ds-tab-indicator-x and --ds-tab-indicator-w */
+}
+
+/* ---------------------------------------------------------------------------
+   Tab button
+   --------------------------------------------------------------------------- */
+.ds-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-normal);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  cursor: pointer;
+  transition:
+    color var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard);
+}
+
+.ds-tab:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.ds-tab:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+  border-radius: var(--radius-sm);
+}
+
+.ds-tab:active {
+  transform: scale(var(--scale-press));
+}
+
+.ds-tab.is-active {
+  color: var(--primary);
+}
+
+.ds-tab.is-disabled,
+.ds-tab:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Per-tab underline (fallback when no shared sliding indicator is used).
+   The shared .ds-tab-indicator below takes precedence visually when present.
+   --------------------------------------------------------------------------- */
+.ds-tab::after {
+  content: "";
+  position: absolute;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: -1px;
+  height: 2px;
+  background: var(--primary);
+  border-radius: var(--radius-pill);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform var(--motion-normal) var(--ease-emphasized);
+}
+
+.ds-tab.is-active::after {
+  transform: scaleX(1);
+}
+
+/* ---------------------------------------------------------------------------
+   Shared sliding indicator (optional).
+   Place a single .ds-tab-indicator as the last child of .ds-tabs and drive
+   its position with --ds-tab-indicator-x / --ds-tab-indicator-w.
+   When present, hide the per-tab ::after underline to avoid duplicates.
+   --------------------------------------------------------------------------- */
+.ds-tabs:has(.ds-tab-indicator) .ds-tab::after {
+  display: none;
+}
+
+.ds-tab-indicator {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  width: var(--ds-tab-indicator-w, 0px);
+  background: var(--primary);
+  border-radius: var(--radius-pill);
+  transform: translateX(var(--ds-tab-indicator-x, 0px));
+  transition:
+    transform var(--motion-normal) var(--ease-emphasized),
+    width var(--motion-normal) var(--ease-emphasized);
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Tab panel — fade-in on show
+   --------------------------------------------------------------------------- */
+.ds-tabpanel {
+  display: none;
+  padding-top: var(--space-4);
+}
+
+.ds-tabpanel.is-active,
+.ds-tabpanel.is-visible {
+  display: block;
+  animation: ds-tabpanel-fade var(--motion-normal) var(--ease-standard);
+}
+
+@keyframes ds-tabpanel-fade {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-1));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-tab,
+  .ds-tab::after,
+  .ds-tab-indicator {
+    transition: none;
+  }
+  .ds-tab:active {
+    transform: none;
+  }
+  .ds-tabpanel.is-active,
+  .ds-tabpanel.is-visible {
+    animation: none;
+  }
+}

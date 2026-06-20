@@ -1,0 +1,112 @@
+/* Fronote Design System — Mobile / responsive layout rules */
+
+/* ---------------------------------------------------------------------------
+   Below the desktop breakpoint: sidebar goes off-canvas, bottom bar takes over.
+   --------------------------------------------------------------------------- */
+@media (max-width: 1023.98px) {
+
+  /* Shell collapses to a single column; rail no longer reserves space. */
+  .ds-app-shell,
+  .ds-app-shell.is-sidebar-collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  /* Sidebar becomes an off-canvas drawer (hidden until .is-mobile-open). */
+  .ds-sidebar {
+    transform: translateX(-100%);
+    box-shadow: var(--shadow-xl);
+    z-index: var(--z-modal);
+  }
+
+  .ds-sidebar.is-mobile-open {
+    transform: translateX(0);
+  }
+
+  /* Collapsed rail has no meaning on mobile: always full drawer width. */
+  .ds-sidebar.is-collapsed {
+    width: var(--layout-sidebar-w);
+    padding: var(--space-4) var(--space-3);
+  }
+
+  .ds-sidebar.is-collapsed .ds-nav-item-label,
+  .ds-sidebar.is-collapsed .ds-sidebar-brand,
+  .ds-sidebar.is-collapsed .ds-nav-section-title,
+  .ds-sidebar.is-collapsed .ds-nav-chevron {
+    opacity: 1;
+    width: auto;
+    overflow: visible;
+    pointer-events: auto;
+  }
+
+  .ds-sidebar.is-collapsed .ds-nav-item {
+    justify-content: flex-start;
+    gap: var(--space-3);
+  }
+
+  /* Main spans full width and leaves room for the floating bottom bar. */
+  .ds-main {
+    grid-column: 1;
+  }
+
+  .ds-main-inner {
+    padding: var(--space-4) var(--space-4)
+             calc(var(--layout-bottombar-h) + var(--space-8));
+  }
+
+  /* The floating bottom bar is the primary nav on mobile. */
+  .ds-bottom-bar {
+    display: flex;
+  }
+
+  /* Keep the back-to-top FAB clear of the bottom bar. */
+  .ds-back-to-top {
+    bottom: calc(var(--layout-bottombar-h) + var(--space-6));
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Table → card mode helper.
+   Add .ds-table--cards to a DS table; on mobile each row becomes a card and
+   each cell shows its column label from the data-label attribute.
+   --------------------------------------------------------------------------- */
+@media (max-width: 767.98px) {
+  .ds-table--cards thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .ds-table--cards tbody tr {
+    display: block;
+    margin-bottom: var(--space-3);
+    padding: var(--space-3);
+    background: var(--surface-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xs);
+  }
+
+  .ds-table--cards tbody td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-2) 0;
+    border: none;
+    text-align: right;
+  }
+
+  .ds-table--cards tbody td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    color: var(--text-muted);
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+}

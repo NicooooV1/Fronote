@@ -30,6 +30,7 @@ $menu = [
     ['platform.maintenance.manage',    'Maintenance',           '/platform/maintenance.php'],
     ['platform.updates.manage',        'Mises à jour',          '/platform/updates.php'],
     ['platform.system.view',           'Système',               '/platform/system.php'],
+    ['platform.dashboard.view',        'Design System',         '/platform/design-system.php'],
 ];
 ?>
 <!doctype html>

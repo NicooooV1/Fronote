@@ -1,0 +1,168 @@
+/* Fronote Design System — Dropdowns */
+
+/* ---------------------------------------------------------------------------
+   Wrapper
+   --------------------------------------------------------------------------- */
+.ds-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+/* ---------------------------------------------------------------------------
+   Menu — absolute glass panel, hidden by default
+   --------------------------------------------------------------------------- */
+.ds-dropdown-menu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  z-index: var(--z-dropdown);
+  min-width: 200px;
+  max-width: min(320px, 90vw);
+  padding: var(--space-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0);
+
+  background: var(--surface-panel);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+
+  /* hidden state */
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
+  pointer-events: none;
+  transform-origin: top left;
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    transform var(--motion-normal) var(--ease-emphasized);
+}
+
+.ds-dropdown.is-open .ds-dropdown-menu {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+/* Right-aligned variant */
+.ds-dropdown-menu--end {
+  left: auto;
+  right: 0;
+  transform-origin: top right;
+}
+
+/* ---------------------------------------------------------------------------
+   Search field inside the menu
+   --------------------------------------------------------------------------- */
+.ds-dropdown-search {
+  padding: var(--space-2);
+}
+
+.ds-dropdown-search input {
+  width: 100%;
+  min-height: 36px;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard);
+}
+
+.ds-dropdown-search input::placeholder {
+  color: var(--text-faint);
+  opacity: 1;
+}
+
+.ds-dropdown-search input:focus,
+.ds-dropdown-search input:focus-visible {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-focus);
+}
+
+/* ---------------------------------------------------------------------------
+   Item
+   --------------------------------------------------------------------------- */
+.ds-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 40px;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-normal);
+  color: var(--text-primary);
+  text-align: left;
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+
+.ds-dropdown-item:hover,
+.ds-dropdown-item:focus-visible {
+  outline: none;
+  background: var(--surface-hover);
+}
+
+.ds-dropdown-item:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+.ds-dropdown-item:active {
+  transform: scale(var(--scale-press));
+}
+
+.ds-dropdown-item.is-active {
+  color: var(--primary);
+  background: var(--primary-soft);
+  font-weight: var(--fw-medium);
+}
+
+.ds-dropdown-item.is-disabled,
+.ds-dropdown-item:disabled {
+  color: var(--text-muted);
+  background: transparent;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Divider
+   --------------------------------------------------------------------------- */
+.ds-dropdown-divider {
+  height: 1px;
+  margin: var(--space-1) var(--space-2);
+  background: var(--border-light);
+  border: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-dropdown-menu {
+    transition: opacity var(--motion-fast) var(--ease-standard);
+    transform: none;
+  }
+  .ds-dropdown.is-open .ds-dropdown-menu {
+    transform: none;
+  }
+  .ds-dropdown-item:active {
+    transform: none;
+  }
+}

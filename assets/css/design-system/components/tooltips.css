@@ -1,0 +1,164 @@
+/* Fronote Design System — Tooltips */
+
+/* ---------------------------------------------------------------------------
+   Attribute-based tooltip
+   Usage: any element with [data-ds-tooltip="text"] and class .ds-tooltip-host.
+   The bubble is rendered from the attribute via a ::after pseudo-element.
+   --------------------------------------------------------------------------- */
+.ds-tooltip-host {
+  position: relative;
+}
+
+.ds-tooltip-host[data-ds-tooltip]::after {
+  content: attr(data-ds-tooltip);
+  position: absolute;
+  bottom: calc(100% + var(--space-2));
+  left: 50%;
+
+  z-index: var(--z-tooltip);
+  max-width: 240px;
+  width: max-content;
+  padding: var(--space-1) var(--space-2);
+
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-normal);
+  color: var(--text-primary);
+  text-align: center;
+  white-space: normal;
+
+  background: var(--surface-panel);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+
+  /* hidden state */
+  opacity: 0;
+  transform: translate(-50%, var(--space-1));
+  pointer-events: none;
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-emphasized);
+}
+
+/* Optional arrow */
+.ds-tooltip-host[data-ds-tooltip]::before {
+  content: "";
+  position: absolute;
+  bottom: calc(100% + var(--space-2) - 4px);
+  left: 50%;
+
+  z-index: var(--z-tooltip);
+  width: 8px;
+  height: 8px;
+  background: var(--surface-panel);
+  border-right: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+
+  opacity: 0;
+  transform: translate(-50%, var(--space-1)) rotate(45deg);
+  pointer-events: none;
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-emphasized);
+}
+
+.ds-tooltip-host[data-ds-tooltip]:hover::after,
+.ds-tooltip-host[data-ds-tooltip]:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.ds-tooltip-host[data-ds-tooltip]:hover::before,
+.ds-tooltip-host[data-ds-tooltip]:focus-visible::before {
+  opacity: 1;
+  transform: translate(-50%, 0) rotate(45deg);
+}
+
+/* Placement modifiers on the host -------------------------------------------- */
+.ds-tooltip-host.ds-tooltip--bottom[data-ds-tooltip]::after {
+  bottom: auto;
+  top: calc(100% + var(--space-2));
+  transform: translate(-50%, calc(var(--space-1) * -1));
+}
+.ds-tooltip-host.ds-tooltip--bottom[data-ds-tooltip]::before {
+  bottom: auto;
+  top: calc(100% + var(--space-2) - 4px);
+  border-right: none;
+  border-bottom: none;
+  border-left: 1px solid var(--border-light);
+  border-top: 1px solid var(--border-light);
+  transform: translate(-50%, calc(var(--space-1) * -1)) rotate(45deg);
+}
+.ds-tooltip-host.ds-tooltip--bottom[data-ds-tooltip]:hover::after,
+.ds-tooltip-host.ds-tooltip--bottom[data-ds-tooltip]:focus-visible::after {
+  transform: translate(-50%, 0);
+}
+.ds-tooltip-host.ds-tooltip--bottom[data-ds-tooltip]:hover::before,
+.ds-tooltip-host.ds-tooltip--bottom[data-ds-tooltip]:focus-visible::before {
+  transform: translate(-50%, 0) rotate(45deg);
+}
+
+/* ---------------------------------------------------------------------------
+   Element-based tooltip
+   Usage: a .ds-tooltip element nested inside a .ds-tooltip-host, shown on
+   host hover/focus. Allows rich content beyond a plain attribute string.
+   --------------------------------------------------------------------------- */
+.ds-tooltip {
+  position: absolute;
+  bottom: calc(100% + var(--space-2));
+  left: 50%;
+
+  z-index: var(--z-tooltip);
+  max-width: 260px;
+  width: max-content;
+  padding: var(--space-2) var(--space-3);
+
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-normal);
+  color: var(--text-primary);
+  text-align: center;
+
+  background: var(--surface-panel);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+
+  /* hidden state */
+  opacity: 0;
+  transform: translate(-50%, var(--space-1));
+  pointer-events: none;
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-emphasized);
+}
+
+.ds-tooltip-host:hover > .ds-tooltip,
+.ds-tooltip-host:focus-visible > .ds-tooltip,
+.ds-tooltip.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-tooltip-host[data-ds-tooltip]::after,
+  .ds-tooltip-host[data-ds-tooltip]::before,
+  .ds-tooltip {
+    transition: opacity var(--motion-fast) var(--ease-standard);
+    transform: translate(-50%, 0);
+  }
+  .ds-tooltip-host[data-ds-tooltip]::before {
+    transform: translate(-50%, 0) rotate(45deg);
+  }
+}

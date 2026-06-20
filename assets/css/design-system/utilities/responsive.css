@@ -1,0 +1,112 @@
+/* Fronote Design System — Utilities / Responsive */
+
+/* ============================================================================
+ * Helpers de visibilité par point de rupture + motif tableau → cartes.
+ * Mobile-first : 640px (mobile), 1024px (desktop).
+ * ========================================================================== */
+
+/* --- Visibilité ----------------------------------------------------------- */
+@media (max-width: 640px) {
+  .ds-hide-mobile { display: none !important; }
+}
+
+@media (min-width: 1024px) {
+  .ds-hide-desktop { display: none !important; }
+}
+
+/* Visible uniquement sur mobile (masqué dès le seuil tablette). */
+.ds-only-mobile { display: none; }
+@media (max-width: 640px) {
+  .ds-only-mobile { display: revert; }
+}
+
+/* Visible uniquement sur desktop (masqué sous le seuil desktop). */
+.ds-only-desktop { display: none; }
+@media (min-width: 1024px) {
+  .ds-only-desktop { display: revert; }
+}
+
+/* --- Conteneurs adaptatifs (container-query-ish) -------------------------- */
+.ds-container {
+  width: 100%;
+  max-width: var(--layout-content-max);
+  margin-inline: auto;
+  padding-inline: var(--space-4);
+}
+
+@media (min-width: 1024px) {
+  .ds-container { padding-inline: var(--space-6); }
+}
+
+/* Grille fluide : autant de colonnes que la largeur le permet. */
+.ds-grid-auto {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+/* ============================================================================
+ * Motif tableau → cartes.
+ * En desktop : tableau classique. En mobile : chaque <tr> devient une carte,
+ * l'entête est masqué et chaque <td> affiche son libellé via data-label.
+ *
+ * Balisage attendu :
+ *   <table class="ds-table--cards">
+ *     <thead>…</thead>
+ *     <tbody><tr><td data-label="Nom">…</td>…</tr></tbody>
+ *   </table>
+ * ========================================================================== */
+@media (max-width: 640px) {
+  .ds-table--cards thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .ds-table--cards,
+  .ds-table--cards tbody,
+  .ds-table--cards tr,
+  .ds-table--cards td {
+    display: block;
+    width: 100%;
+  }
+
+  .ds-table--cards tr {
+    margin-bottom: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--surface-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .ds-table--cards td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-2) 0;
+    border: 0;
+    text-align: right;
+  }
+
+  .ds-table--cards td + td {
+    border-top: 1px solid var(--border-light);
+  }
+
+  .ds-table--cards td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    margin-right: var(--space-3);
+    color: var(--text-muted);
+    font-weight: var(--fw-medium);
+    text-align: left;
+  }
+}

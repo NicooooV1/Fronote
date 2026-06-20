@@ -1,0 +1,81 @@
+/* Fronote Design System — Utilities / Helpers */
+
+/* ============================================================================
+ * Petits utilitaires de mise en page et d'apparence. Tout via les tokens.
+ * Classes à faible spécificité (une seule classe) pour rester combinables.
+ * ========================================================================== */
+
+/* --- Affichage / flux ----------------------------------------------------- */
+.ds-flex   { display: flex; }
+.ds-grid   { display: grid; }
+.ds-inline-flex { display: inline-flex; }
+
+/* --- Espacement entre enfants (flex/grid gap) ----------------------------- */
+.ds-gap-1 { gap: var(--space-1); }
+.ds-gap-2 { gap: var(--space-2); }
+.ds-gap-3 { gap: var(--space-3); }
+.ds-gap-4 { gap: var(--space-4); }
+.ds-gap-5 { gap: var(--space-5); }
+.ds-gap-6 { gap: var(--space-6); }
+
+/* --- Compositions courantes ----------------------------------------------- */
+.ds-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.ds-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ds-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ds-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* --- Texte ---------------------------------------------------------------- */
+.ds-muted { color: var(--text-muted); }
+
+.ds-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Lisible par lecteurs d'écran uniquement (masqué visuellement). */
+.ds-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* --- Apparence ------------------------------------------------------------ */
+.ds-elevated { box-shadow: var(--shadow-md); }
+.ds-rounded  { border-radius: var(--radius-md); }
+.ds-pill     { border-radius: var(--radius-pill); }
+
+/* Surface en verre — flou no-op hors thème liquide (--glass-blur = 0px). */
+.ds-glass {
+  background: var(--surface-card);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border-light);
+}

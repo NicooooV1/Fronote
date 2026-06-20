@@ -1,0 +1,321 @@
+/* Fronote Design System — Navigation (sidebar) */
+
+/* ---------------------------------------------------------------------------
+   Sidebar — fixed left rail, panel surface, glass-ready
+   --------------------------------------------------------------------------- */
+.ds-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: var(--z-sticky);
+  width: var(--layout-sidebar-w);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-3);
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  background: var(--surface-panel);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border-right: 1px solid var(--border-light);
+
+  transition:
+    width var(--motion-normal) var(--ease-emphasized),
+    transform var(--motion-normal) var(--ease-emphasized);
+}
+
+/* ---------------------------------------------------------------------------
+   Sidebar header / brand
+   --------------------------------------------------------------------------- */
+.ds-sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--layout-topbar-h);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.ds-sidebar-brand {
+  font-family: var(--font-sans);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity var(--motion-fast) var(--ease-standard);
+}
+
+/* ---------------------------------------------------------------------------
+   Nav section — collapsible group
+   --------------------------------------------------------------------------- */
+.ds-nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.ds-nav-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  margin-top: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color var(--motion-fast) var(--ease-standard);
+}
+
+.ds-nav-section-title:hover {
+  color: var(--text-secondary);
+}
+
+/* Chevron rotates when section open */
+.ds-nav-section-title .ds-nav-chevron {
+  flex: 0 0 auto;
+  transition: transform var(--motion-normal) var(--ease-emphasized);
+}
+
+.ds-nav-section.is-open .ds-nav-section-title .ds-nav-chevron {
+  transform: rotate(90deg);
+}
+
+/* Body collapses by default, expands when open */
+.ds-nav-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition:
+    max-height var(--motion-slow) var(--ease-emphasized),
+    opacity var(--motion-fast) var(--ease-standard);
+}
+
+.ds-nav-section.is-open .ds-nav-section-body {
+  max-height: 1000px;
+  opacity: 1;
+}
+
+/* ---------------------------------------------------------------------------
+   Nav item — icon + label, hover slide, active soft bg + left accent
+   --------------------------------------------------------------------------- */
+.ds-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-normal);
+  color: var(--text-secondary);
+  text-align: left;
+  text-decoration: none;
+  white-space: nowrap;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+}
+
+.ds-nav-item-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.ds-nav-item-label {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity var(--motion-fast) var(--ease-standard);
+}
+
+.ds-nav-item:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+  transform: translateX(2px);
+}
+
+.ds-nav-item:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.ds-nav-item:active {
+  transform: scale(var(--scale-press));
+}
+
+/* Active — soft tint + left accent bar */
+.ds-nav-item.is-active {
+  color: var(--primary);
+  background: var(--primary-soft);
+  font-weight: var(--fw-semibold);
+}
+
+.ds-nav-item.is-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+}
+
+.ds-nav-item.is-disabled,
+.ds-nav-item:disabled {
+  color: var(--text-faint);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Badge pushed to the trailing edge */
+.ds-nav-item .ds-badge,
+.ds-nav-item .ds-badge--count {
+  margin-left: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Tooltip — surfaced only when collapsed, on hover
+   --------------------------------------------------------------------------- */
+.ds-nav-item .ds-nav-tooltip {
+  position: absolute;
+  left: calc(100% + var(--space-2));
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  z-index: var(--z-tooltip);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  color: var(--text-primary);
+  background: var(--surface-panel);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    transform var(--motion-normal) var(--ease-emphasized);
+}
+
+/* ---------------------------------------------------------------------------
+   Collapsed state — narrow rail, labels hidden, tooltips on hover
+   --------------------------------------------------------------------------- */
+.ds-sidebar.is-collapsed {
+  width: var(--layout-sidebar-collapsed-w);
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
+  align-items: stretch;
+}
+
+.ds-sidebar.is-collapsed .ds-nav-item-label,
+.ds-sidebar.is-collapsed .ds-sidebar-brand,
+.ds-sidebar.is-collapsed .ds-nav-section-title,
+.ds-sidebar.is-collapsed .ds-nav-item .ds-badge:not(.ds-badge--count),
+.ds-sidebar.is-collapsed .ds-nav-chevron {
+  opacity: 0;
+  width: 0;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ds-sidebar.is-collapsed .ds-nav-item {
+  justify-content: center;
+  gap: 0;
+}
+
+/* Keep count badge as a corner pip when collapsed */
+.ds-sidebar.is-collapsed .ds-nav-item .ds-badge--count {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  margin: 0;
+}
+
+/* Tooltips become available only on the collapsed rail */
+.ds-sidebar.is-collapsed .ds-nav-item:hover .ds-nav-tooltip,
+.ds-sidebar.is-collapsed .ds-nav-item:focus-visible .ds-nav-tooltip {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+/* ---------------------------------------------------------------------------
+   Mobile off-canvas — overlay + slide-in
+   --------------------------------------------------------------------------- */
+.ds-sidebar.is-mobile {
+  transform: translateX(-100%);
+  box-shadow: var(--shadow-xl);
+}
+
+.ds-sidebar.is-mobile.is-mobile-open {
+  transform: translateX(0);
+}
+
+.ds-sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  background: var(--surface-overlay);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-normal) var(--ease-standard);
+}
+
+.ds-sidebar-overlay.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-sidebar,
+  .ds-nav-item,
+  .ds-nav-section-body,
+  .ds-nav-tooltip,
+  .ds-sidebar.is-mobile {
+    transition: none;
+  }
+  .ds-nav-item:hover,
+  .ds-nav-item:active {
+    transform: none;
+  }
+}

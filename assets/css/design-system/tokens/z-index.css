@@ -1,0 +1,12 @@
+/* Fronote Design System — TOKENS / Z-INDEX (échelle unique pour éviter les guerres de z-index). */
+:root {
+  --z-base: 1;
+  --z-raised: 10;
+  --z-sticky: 100;       /* topbar, bottom-bar */
+  --z-dropdown: 1000;
+  --z-overlay: 1100;     /* fond modale */
+  --z-modal: 1200;
+  --z-toast: 1300;
+  --z-tooltip: 1400;
+  --z-max: 2147483000;
+}

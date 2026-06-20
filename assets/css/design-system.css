@@ -1,0 +1,50 @@
+/* ============================================================================
+ * FRONOTE — DESIGN SYSTEM (entrée)
+ * Refonte UX moderne : tokens → thèmes (clair/sombre/liquide) → composants → layouts → utilitaires.
+ * Additif et non destructif : tokens à noms NOUVEAUX (aliasent la palette existante),
+ * composants préfixés .ds-* (opt-in). N'altère pas les pages existantes.
+ * Ordre d'import = cascade : tokens, thèmes, composants, layouts, utilitaires (animations en dernier
+ * pour que la réduction de mouvement prime).
+ * ========================================================================== */
+
+/* — Tokens — */
+@import url("design-system/tokens/colors.css");
+@import url("design-system/tokens/spacing.css");
+@import url("design-system/tokens/radius.css");
+@import url("design-system/tokens/shadows.css");
+@import url("design-system/tokens/typography.css");
+@import url("design-system/tokens/motion.css");
+@import url("design-system/tokens/z-index.css");
+
+/* — Thèmes — */
+@import url("design-system/themes/light.css");
+@import url("design-system/themes/dark.css");
+@import url("design-system/themes/liquid.css");
+
+/* — Composants — */
+@import url("design-system/components/buttons.css");
+@import url("design-system/components/switches.css");
+@import url("design-system/components/badges.css");
+@import url("design-system/components/forms.css");
+@import url("design-system/components/dropdowns.css");
+@import url("design-system/components/tabs.css");
+@import url("design-system/components/cards.css");
+@import url("design-system/components/tables.css");
+@import url("design-system/components/skeletons.css");
+@import url("design-system/components/modals.css");
+@import url("design-system/components/toasts.css");
+@import url("design-system/components/alerts.css");
+@import url("design-system/components/tooltips.css");
+@import url("design-system/components/navigation.css");
+@import url("design-system/components/bottom-bar.css");
+
+/* — Layouts — */
+@import url("design-system/layouts/app-shell.css");
+@import url("design-system/layouts/platform.css");
+@import url("design-system/layouts/tenant-admin.css");
+@import url("design-system/layouts/mobile.css");
+
+/* — Utilitaires (animations en dernier : la réduction de mouvement doit primer) — */
+@import url("design-system/utilities/helpers.css");
+@import url("design-system/utilities/responsive.css");
+@import url("design-system/utilities/animations.css");

@@ -1,0 +1,108 @@
+/* Fronote Design System — Badges */
+
+/* ── Badge ─────────────────────────────────────────────────────────────────
+ * Étiquette compacte à fond doux. Variantes sémantiques via les tokens *-soft,
+ * plus un point d'état (--dot) et une pastille de comptage (--count).
+ * Aucune valeur en dur : uniquement des design tokens.
+ * ========================================================================== */
+.ds-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  white-space: nowrap;
+  vertical-align: middle;
+  animation: ds-badge-pop var(--motion-normal) var(--ease-bounce-soft);
+}
+
+/* ── Variantes sémantiques (fond doux + texte plein) ───────────────────────── */
+.ds-badge--primary {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.ds-badge--success {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.ds-badge--warning {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.ds-badge--danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.ds-badge--info {
+  background: var(--info-soft);
+  color: var(--info);
+}
+.ds-badge--neutral {
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+}
+
+/* ── Point d'état ──────────────────────────────────────────────────────────
+ * Petit disque coloré. Utilisé seul (.ds-badge--dot) ou en préfixe d'un badge
+ * via un enfant ::before. Hérite de la couleur de texte de la variante.
+ * ========================================================================== */
+.ds-badge--dot {
+  padding: 0;
+  width: 10px;
+  height: 10px;
+  min-width: 10px;
+  border-radius: var(--radius-circle);
+  background: currentColor;
+}
+/* Point d'état placé en tête d'un badge texte. */
+.ds-badge--dot.ds-badge--primary { color: var(--primary); }
+.ds-badge--dot.ds-badge--success { color: var(--success); }
+.ds-badge--dot.ds-badge--warning { color: var(--warning); }
+.ds-badge--dot.ds-badge--danger  { color: var(--danger); }
+.ds-badge--dot.ds-badge--info    { color: var(--info); }
+.ds-badge--dot.ds-badge--neutral { color: var(--text-faint); }
+
+/* ── Pastille de comptage (notifications) ──────────────────────────────────
+ * Pastille ronde min. 18px, fond plein danger par défaut.
+ * ========================================================================== */
+.ds-badge--count {
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--danger);
+  color: var(--text-on-accent);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+}
+/* Recoloration de la pastille via les variantes sémantiques. */
+.ds-badge--count.ds-badge--primary { background: var(--primary); color: var(--on-primary); }
+.ds-badge--count.ds-badge--success { background: var(--success); color: var(--text-on-accent); }
+.ds-badge--count.ds-badge--warning { background: var(--warning); color: var(--text-on-accent); }
+.ds-badge--count.ds-badge--info    { background: var(--info);    color: var(--text-on-accent); }
+.ds-badge--count.ds-badge--neutral { background: var(--border-strong); color: var(--text-on-accent); }
+
+/* ── Keyframe d'apparition ─────────────────────────────────────────────────── */
+@keyframes ds-badge-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Respect des préférences de réduction d'animation. */
+@media (prefers-reduced-motion: reduce) {
+  .ds-badge { animation: none; }
+}

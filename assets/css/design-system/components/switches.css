@@ -1,0 +1,158 @@
+/* Fronote Design System — Switches */
+
+/* ── Switch (interrupteur) ─────────────────────────────────────────────────
+ * Piste 52x30 en pilule, pouce 22px. Fonctionne de deux façons :
+ *   1) <button class="ds-switch" role="switch" aria-checked="…"> (état = .is-on)
+ *   2) <label class="ds-switch"><input type="checkbox"> …</label>
+ * Le pouce glisse de translateX(22px) avec une courbe douce et s'élargit au clic.
+ * Aucune valeur en dur : uniquement des design tokens.
+ * ========================================================================== */
+.ds-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  width: 52px;
+  height: 30px;
+  /* Zone tactile confortable (>=44px) sans agrandir la piste visible. */
+  padding: 7px 0;
+  margin: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--switch-bg-off);
+  cursor: pointer;
+  vertical-align: middle;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  background-clip: padding-box;
+  transition:
+    background-color var(--motion-normal) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard);
+}
+
+/* La piste est dessinée par le fond de l'élément ; on étend la zone tactile
+   via un pseudo invisible pour atteindre 44px de hauteur cliquable. */
+.ds-switch::before {
+  content: "";
+  position: absolute;
+  inset: -7px 0;
+}
+
+/* Pouce (variante <button> : pseudo-élément). */
+.ds-switch::after {
+  content: "";
+  position: relative;
+  z-index: var(--z-raised);
+  display: block;
+  width: 22px;
+  height: 22px;
+  margin-left: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--switch-thumb);
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform var(--motion-normal) var(--ease-bounce-soft),
+    width var(--motion-fast) var(--ease-standard),
+    margin var(--motion-fast) var(--ease-standard);
+}
+
+/* État activé (button[role=switch]). */
+.ds-switch.is-on,
+.ds-switch[aria-checked="true"] {
+  background: var(--success);
+}
+.ds-switch.is-on::after,
+.ds-switch[aria-checked="true"]::after {
+  transform: translateX(22px);
+}
+
+/* Pression : le pouce s'allonge à 26px (effet « élastique »). */
+.ds-switch:active::after {
+  width: 26px;
+}
+.ds-switch.is-on:active::after,
+.ds-switch[aria-checked="true"]:active::after {
+  /* Reste collé au bord droit en s'élargissant vers la gauche. */
+  transform: translateX(18px);
+}
+
+/* Survol / focus. */
+.ds-switch:hover { box-shadow: var(--shadow-xs); }
+.ds-switch:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* Désactivé. */
+.ds-switch.is-disabled,
+.ds-switch[disabled],
+.ds-switch[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Chargement : le pouce devient un mini-spinner. */
+.ds-switch.is-loading {
+  pointer-events: none;
+  cursor: progress;
+}
+.ds-switch.is-loading::after {
+  background: var(--switch-thumb);
+  border: 2px solid var(--text-faint);
+  border-top-color: transparent;
+  box-shadow: none;
+  animation: ds-spin var(--motion-slower) linear infinite;
+}
+.ds-switch.is-on.is-loading::after,
+.ds-switch[aria-checked="true"].is-loading::after {
+  /* On fige la translation pendant le chargement. */
+  animation: ds-spin var(--motion-slower) linear infinite;
+}
+
+/* ── Variante <label> enveloppant une checkbox ─────────────────────────────
+ * On masque la checkbox native et on rend la piste + le pouce via le pseudo
+ * de la checkbox elle-même, afin que :checked pilote l'état nativement.
+ * ========================================================================== */
+.ds-switch > input[type="checkbox"] {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: inherit;
+  /* Au-dessus pour capter le clic ; le rendu visuel reste sur ::after. */
+  z-index: var(--z-overlay);
+}
+
+/* Quand la checkbox est cochée → on active la piste et on déplace le pouce. */
+.ds-switch:has(> input[type="checkbox"]:checked) {
+  background: var(--success);
+}
+.ds-switch:has(> input[type="checkbox"]:checked)::after {
+  transform: translateX(22px);
+}
+.ds-switch:has(> input[type="checkbox"]:checked):active::after {
+  transform: translateX(18px);
+}
+
+/* Focus clavier de la checkbox interne. */
+.ds-switch:has(> input[type="checkbox"]:focus-visible) {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* Checkbox désactivée. */
+.ds-switch:has(> input[type="checkbox"]:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ds-switch:has(> input[type="checkbox"]:disabled) > input { cursor: not-allowed; }
+
+/* Respect des préférences de réduction d'animation. */
+@media (prefers-reduced-motion: reduce) {
+  .ds-switch,
+  .ds-switch::after { transition: none; }
+  .ds-switch.is-loading::after { animation-duration: 1.2s; }
+}

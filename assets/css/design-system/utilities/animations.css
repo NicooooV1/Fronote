@@ -1,0 +1,111 @@
+/* Fronote Design System — Utilities / Animations */
+
+/* ============================================================================
+ * Keyframes réutilisables. Toutes les durées/courbes passent par les tokens
+ * de mouvement (cf. tokens/motion.css). Subtilité avant tout (cahier §6).
+ * ========================================================================== */
+
+@keyframes ds-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes ds-fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ds-scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ds-slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes ds-slide-in-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ds-shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-5px); }
+  40%      { transform: translateX(4px); }
+  60%      { transform: translateX(-3px); }
+  80%      { transform: translateX(2px); }
+}
+
+@keyframes ds-pop {
+  0%   { transform: scale(0.92); }
+  55%  { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+@keyframes ds-pulse-soft {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+/* ============================================================================
+ * Classes helpers — appliquent les keyframes via les tokens de mouvement.
+ * ========================================================================== */
+
+.ds-animate-fade {
+  animation: ds-fade-in var(--motion-normal) var(--ease-standard) both;
+}
+
+.ds-animate-up {
+  animation: ds-fade-in-up var(--motion-slow) var(--ease-emphasized) both;
+}
+
+.ds-animate-scale {
+  animation: ds-scale-in var(--motion-normal) var(--ease-emphasized) both;
+}
+
+.ds-animate-slide-right {
+  animation: ds-slide-in-right var(--motion-slow) var(--ease-emphasized) both;
+}
+
+.ds-animate-slide-up {
+  animation: ds-slide-in-up var(--motion-slow) var(--ease-emphasized) both;
+}
+
+.ds-animate-shake {
+  animation: ds-shake var(--motion-slow) var(--ease-standard) both;
+}
+
+.ds-animate-pop {
+  animation: ds-pop var(--motion-normal) var(--ease-bounce-soft) both;
+}
+
+.ds-animate-pulse {
+  animation: ds-pulse-soft var(--motion-slower) var(--ease-standard) infinite;
+}
+
+/* ============================================================================
+ * Accessibilité — réduction du mouvement (système OU préférence utilisateur).
+ * On garde un retour quasi instantané plutôt qu'une suppression totale.
+ * ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  html[data-theme="liquid"] body { background-attachment: scroll; }
+}
+
+html[data-reduce-motion="true"] *,
+html[data-reduce-motion="true"] *::before,
+html[data-reduce-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+html[data-reduce-motion="true"][data-theme="liquid"] body { background-attachment: scroll; }

@@ -1,0 +1,143 @@
+/* Fronote Design System — Bottom bar (mobile floating nav, cahier §10.5) */
+
+/* ---------------------------------------------------------------------------
+   Bottom bar — floating glass dock, hidden (slid down) by default
+   --------------------------------------------------------------------------- */
+.ds-bottom-bar {
+  position: fixed;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: var(--space-3);
+  z-index: var(--z-sticky);
+  height: var(--layout-bottombar-h);
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+
+  background: var(--surface-panel);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+
+  /* hidden by default: slid below + faded */
+  opacity: 0;
+  transform: translateY(120%);
+  pointer-events: none;
+  transition:
+    transform var(--motion-slow) var(--ease-emphasized),
+    opacity var(--motion-normal) var(--ease-standard);
+}
+
+.ds-bottom-bar.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.ds-bottom-bar.is-hidden {
+  opacity: 0;
+  transform: translateY(120%);
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Item — icon over small label
+   --------------------------------------------------------------------------- */
+.ds-bottom-bar-item {
+  position: relative;
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-tight);
+  text-decoration: none;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition:
+    color var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+}
+
+.ds-bottom-bar-item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.ds-bottom-bar-item-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.ds-bottom-bar-item:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.ds-bottom-bar-item:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.ds-bottom-bar-item:active {
+  transform: scale(0.92);
+}
+
+.ds-bottom-bar-item.is-active {
+  color: var(--primary);
+}
+
+/* ---------------------------------------------------------------------------
+   Count badge anchored to the item's icon
+   --------------------------------------------------------------------------- */
+.ds-bottom-bar-item .ds-badge--count {
+  position: absolute;
+  top: var(--space-1);
+  left: 50%;
+  margin-left: var(--space-2);
+}
+
+/* ---------------------------------------------------------------------------
+   Hidden on desktop
+   --------------------------------------------------------------------------- */
+@media (min-width: 1024px) {
+  .ds-bottom-bar {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-bottom-bar {
+    transition: opacity var(--motion-normal) var(--ease-standard);
+    transform: none;
+  }
+  .ds-bottom-bar.is-visible,
+  .ds-bottom-bar.is-hidden {
+    transform: none;
+  }
+  .ds-bottom-bar-item:active {
+    transform: none;
+  }
+}

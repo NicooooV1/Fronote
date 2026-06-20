@@ -1,0 +1,234 @@
+/* Fronote Design System — Forms */
+
+/* ---------------------------------------------------------------------------
+   Field wrapper
+   --------------------------------------------------------------------------- */
+.ds-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+/* ---------------------------------------------------------------------------
+   Label
+   --------------------------------------------------------------------------- */
+.ds-label {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-normal);
+  color: var(--text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+   Text inputs / textarea / select
+   --------------------------------------------------------------------------- */
+.ds-input,
+.ds-textarea,
+.ds-select {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-normal);
+  color: var(--text-primary);
+  background: var(--surface-card);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.ds-textarea {
+  min-height: 96px;
+  resize: vertical;
+  line-height: var(--lh-relaxed);
+}
+
+/* Native select chevron */
+.ds-select {
+  padding-right: var(--space-8);
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+                    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position:
+    right calc(var(--space-4) + var(--space-1)) center,
+    right var(--space-4) center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------------------------
+   Placeholder
+   --------------------------------------------------------------------------- */
+.ds-input::placeholder,
+.ds-textarea::placeholder {
+  color: var(--text-faint);
+  opacity: 1;
+}
+
+/* ---------------------------------------------------------------------------
+   Hover
+   --------------------------------------------------------------------------- */
+.ds-input:hover:not(:disabled),
+.ds-textarea:hover:not(:disabled),
+.ds-select:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+/* ---------------------------------------------------------------------------
+   Focus — animate border to focus + focus ring
+   --------------------------------------------------------------------------- */
+.ds-input:focus,
+.ds-input:focus-visible,
+.ds-textarea:focus,
+.ds-textarea:focus-visible,
+.ds-select:focus,
+.ds-select:focus-visible {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-focus);
+}
+
+/* ---------------------------------------------------------------------------
+   States — error / success
+   --------------------------------------------------------------------------- */
+.ds-input.has-error,
+.ds-textarea.has-error,
+.ds-select.has-error,
+.ds-field.has-error .ds-input,
+.ds-field.has-error .ds-textarea,
+.ds-field.has-error .ds-select {
+  border-color: var(--danger);
+  animation: ds-field-shake var(--motion-normal) var(--ease-standard);
+}
+
+.ds-input.has-error:focus,
+.ds-textarea.has-error:focus,
+.ds-select.has-error:focus,
+.ds-field.has-error .ds-input:focus,
+.ds-field.has-error .ds-textarea:focus,
+.ds-field.has-error .ds-select:focus {
+  box-shadow: var(--shadow-focus);
+}
+
+.ds-input.has-success,
+.ds-textarea.has-success,
+.ds-select.has-success,
+.ds-field.has-success .ds-input,
+.ds-field.has-success .ds-textarea,
+.ds-field.has-success .ds-select {
+  border-color: var(--success);
+}
+
+/* ---------------------------------------------------------------------------
+   Disabled — elegant muted
+   --------------------------------------------------------------------------- */
+.ds-input:disabled,
+.ds-textarea:disabled,
+.ds-select:disabled {
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  border-color: var(--border-light);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.ds-input:disabled::placeholder,
+.ds-textarea:disabled::placeholder {
+  color: var(--text-faint);
+}
+
+/* ---------------------------------------------------------------------------
+   Help text & error text
+   --------------------------------------------------------------------------- */
+.ds-help {
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-normal);
+  color: var(--text-muted);
+}
+
+.ds-error-text {
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-normal);
+  color: var(--danger);
+}
+
+/* ---------------------------------------------------------------------------
+   Optional leading icon
+   --------------------------------------------------------------------------- */
+.ds-field--icon {
+  position: relative;
+}
+
+.ds-field--icon .ds-input,
+.ds-field--icon .ds-select {
+  padding-left: var(--space-10);
+}
+
+.ds-field--icon .ds-field-icon {
+  position: absolute;
+  left: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-5);
+  height: var(--space-5);
+  color: var(--text-muted);
+  pointer-events: none;
+  transition: color var(--motion-fast) var(--ease-standard);
+}
+
+/* When the icon sits beside a label, anchor it to the input row only. */
+.ds-field--icon:has(.ds-label) .ds-field-icon {
+  top: auto;
+  bottom: 0;
+  transform: translateY(-50%);
+  margin-bottom: 22px;
+}
+
+.ds-field--icon .ds-input:focus ~ .ds-field-icon,
+.ds-field--icon .ds-select:focus ~ .ds-field-icon {
+  color: var(--primary);
+}
+
+/* ---------------------------------------------------------------------------
+   Keyframes
+   --------------------------------------------------------------------------- */
+@keyframes ds-field-shake {
+  0%   { transform: translateX(0); }
+  25%  { transform: translateX(-3px); }
+  50%  { transform: translateX(3px); }
+  75%  { transform: translateX(-3px); }
+  100% { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-input,
+  .ds-textarea,
+  .ds-select {
+    transition: none;
+  }
+  .ds-input.has-error,
+  .ds-textarea.has-error,
+  .ds-select.has-error,
+  .ds-field.has-error .ds-input,
+  .ds-field.has-error .ds-textarea,
+  .ds-field.has-error .ds-select {
+    animation: none;
+  }
+}

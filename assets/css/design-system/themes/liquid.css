@@ -1,0 +1,72 @@
+/* ============================================================================
+ * Fronote Design System — THÈME LIQUIDE (liquid glass)
+ * Transparence + flou + profondeur, MAIS lisibilité d'abord (cahier §3.3, §25).
+ * Base sombre translucide + accents lumineux. Surfaces en verre.
+ * Respecte [data-reduce-transparency="true"] → repli opaque + sans flou.
+ * ========================================================================== */
+html[data-theme="liquid"] {
+  color-scheme: dark;
+
+  /* Surfaces en verre */
+  --surface-app:     #0b1020;
+  --surface-card:    rgba(255, 255, 255, 0.08);
+  --surface-panel:   rgba(17, 24, 42, 0.62);
+  --surface-raised:  rgba(255, 255, 255, 0.12);
+  --surface-sunken:  rgba(255, 255, 255, 0.04);
+  --surface-hover:   rgba(255, 255, 255, 0.14);
+  --surface-overlay: rgba(6, 10, 22, 0.55);
+
+  /* Texte clair, contrasté */
+  --text-primary:    #f4f7ff;
+  --text-secondary:  rgba(244, 247, 255, 0.78);
+  --text-muted:      rgba(244, 247, 255, 0.62);
+  --text-faint:      rgba(244, 247, 255, 0.45);
+
+  /* Bordures lumineuses */
+  --border-light:    rgba(255, 255, 255, 0.14);
+  --border-medium:   rgba(255, 255, 255, 0.24);
+  --border-strong:   rgba(255, 255, 255, 0.4);
+
+  /* Accents plus lumineux */
+  --primary:         #6ea8ff;
+  --primary-hover:   #8fbcff;
+  --primary-soft:    rgba(110, 168, 255, 0.18);
+  --success:         #4ade80;
+  --warning:         #fbbf24;
+  --danger:          #fb7185;
+  --info:            #38bdf8;
+
+  --switch-bg-off:   rgba(255, 255, 255, 0.18);
+  --switch-thumb:    rgba(255, 255, 255, 0.92);
+
+  --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 8px 28px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.45);
+  --shadow-focus: 0 0 0 3px rgba(110, 168, 255, 0.5);
+
+  --glass-blur:   16px;
+  --glass-bg:     var(--surface-card);
+  --glass-border: var(--border-light);
+}
+
+/* Fond animé très lent (désactivé si reduce-motion / reduce-transparency). */
+html[data-theme="liquid"] body {
+  background:
+    radial-gradient(1200px 800px at 12% -10%, rgba(110, 168, 255, 0.22), transparent 60%),
+    radial-gradient(1000px 700px at 110% 10%, rgba(139, 92, 246, 0.20), transparent 55%),
+    radial-gradient(900px 900px at 50% 120%, rgba(56, 189, 248, 0.16), transparent 60%),
+    var(--surface-app);
+  background-attachment: fixed;
+}
+
+/* Réduction de transparence : repli opaque + flou supprimé pour la lisibilité. */
+html[data-theme="liquid"][data-reduce-transparency="true"] {
+  --surface-card:  #141c2e;
+  --surface-panel: #111827;
+  --surface-raised:#1c2640;
+  --surface-hover: #1c2640;
+  --border-light:  #2b3650;
+  --border-medium: #3a4866;
+  --glass-blur:    0px;
+}
+html[data-theme="liquid"][data-reduce-transparency="true"] body { background: var(--surface-app); }

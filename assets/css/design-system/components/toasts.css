@@ -1,0 +1,234 @@
+/* Fronote Design System — Toasts */
+
+/* ---------------------------------------------------------------------------
+   Container — fixed, top-right on desktop, stacks downward
+   --------------------------------------------------------------------------- */
+.ds-toast-container {
+  position: fixed;
+  top: var(--space-4);
+  right: var(--space-4);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(380px, calc(100vw - var(--space-8)));
+  pointer-events: none;
+}
+
+.ds-toast-container > * {
+  pointer-events: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Toast — glass card, slides + fades in from the right
+   --------------------------------------------------------------------------- */
+.ds-toast {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  overflow: hidden;
+
+  background: var(--surface-panel);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border-light);
+  border-left: 3px solid var(--border-medium);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+
+  /* hidden state */
+  opacity: 0;
+  transform: translateX(calc(100% + var(--space-4)));
+  transition:
+    opacity var(--motion-normal) var(--ease-standard),
+    transform var(--motion-normal) var(--ease-emphasized);
+}
+
+.ds-toast.is-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.ds-toast.is-closing {
+  opacity: 0;
+  transform: translateX(calc(100% + var(--space-4)));
+}
+
+/* ---------------------------------------------------------------------------
+   Icon area
+   --------------------------------------------------------------------------- */
+.ds-toast__icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+  color: var(--text-secondary);
+}
+
+.ds-toast__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ---------------------------------------------------------------------------
+   Content
+   --------------------------------------------------------------------------- */
+.ds-toast__content {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--font-sans);
+}
+
+.ds-toast__title {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  color: var(--text-primary);
+}
+
+.ds-toast__message {
+  margin: var(--space-1) 0 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-normal);
+  color: var(--text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+   Close
+   --------------------------------------------------------------------------- */
+.ds-toast__close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: calc(var(--space-1) * -1) calc(var(--space-1) * -1) 0 0;
+  padding: 0;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+
+.ds-toast__close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ds-toast__close:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.ds-toast__close:active {
+  transform: scale(var(--scale-press));
+}
+
+.ds-toast__close:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* ---------------------------------------------------------------------------
+   Progress bar — shrinks left-to-right to signal auto-dismiss
+   --------------------------------------------------------------------------- */
+.ds-toast__progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  transform-origin: left center;
+  background: var(--border-medium);
+  animation: ds-toast-progress var(--motion-slower) linear forwards;
+}
+
+@keyframes ds-toast-progress {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+/* ---------------------------------------------------------------------------
+   Variants — accent bar, icon color, progress color
+   --------------------------------------------------------------------------- */
+.ds-toast--success { border-left-color: var(--success); }
+.ds-toast--success .ds-toast__icon { color: var(--success); }
+.ds-toast--success .ds-toast__progress { background: var(--success); }
+
+.ds-toast--error { border-left-color: var(--danger); }
+.ds-toast--error .ds-toast__icon { color: var(--danger); }
+.ds-toast--error .ds-toast__progress { background: var(--danger); }
+
+.ds-toast--warning { border-left-color: var(--warning); }
+.ds-toast--warning .ds-toast__icon { color: var(--warning); }
+.ds-toast--warning .ds-toast__progress { background: var(--warning); }
+
+.ds-toast--info { border-left-color: var(--info); }
+.ds-toast--info .ds-toast__icon { color: var(--info); }
+.ds-toast--info .ds-toast__progress { background: var(--info); }
+
+/* Loading — spinner icon, indeterminate accent */
+.ds-toast--loading { border-left-color: var(--primary); }
+.ds-toast--loading .ds-toast__icon { color: var(--primary); }
+
+.ds-toast--loading .ds-toast__icon svg {
+  animation: ds-toast-spin var(--motion-slow) linear infinite;
+}
+
+@keyframes ds-toast-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------------------------------------------------------------------------
+   Mobile — bottom of screen, slides up from bottom
+   --------------------------------------------------------------------------- */
+@media (max-width: 639.98px) {
+  .ds-toast-container {
+    top: auto;
+    bottom: calc(var(--layout-bottombar-h) + var(--space-4));
+    left: var(--space-4);
+    right: var(--space-4);
+    width: auto;
+  }
+
+  .ds-toast {
+    transform: translateY(calc(100% + var(--space-4)));
+  }
+
+  .ds-toast.is-visible {
+    transform: translateY(0);
+  }
+
+  .ds-toast.is-closing {
+    transform: translateY(calc(100% + var(--space-4)));
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-toast {
+    transition: opacity var(--motion-fast) var(--ease-standard);
+    transform: none;
+  }
+  .ds-toast.is-visible,
+  .ds-toast.is-closing {
+    transform: none;
+  }
+  .ds-toast__progress { animation: none; }
+  .ds-toast--loading .ds-toast__icon svg { animation: none; }
+  .ds-toast__close:active { transform: none; }
+}

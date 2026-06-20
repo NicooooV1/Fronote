@@ -1,0 +1,18 @@
+/* ============================================================================
+ * Fronote Design System — TOKENS / MOUVEMENT
+ * Durées + courbes + valeurs d'interaction. Cf. cahier des charges §6.1.
+ * Toutes les animations passent par ces tokens (désactivables, cf. utilities/animations.css).
+ * ========================================================================== */
+:root {
+  --motion-fast:   120ms;
+  --motion-normal: 180ms;
+  --motion-slow:   280ms;
+  --motion-slower: 480ms;
+
+  --ease-standard:    cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized:  cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-bounce-soft: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --scale-press:     0.97;
+  --translate-hover: -2px;
+}

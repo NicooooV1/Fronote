@@ -308,12 +308,15 @@ try {
     <?php endforeach; ?>
     <!-- Couche de cohérence du thème sombre : EN DERNIER pour primer sur le CSS des modules + les styles inline. -->
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/dark-overrides.css') ?>">
+    <!-- Design System (refonte UX) : tokens + thèmes (clair/sombre/liquide) + composants .ds-* (additif). -->
+    <link rel="stylesheet" href="<?= $_assetVersion('assets/css/design-system.css') ?>">
     <?= $extraHeadHtml ?>
     <!-- WebSocket global -->
     <script nonce="<?= $_hdr_nonce ?>">window.FRONOTE_WS = <?= $_hdr_ws_config ?>;</script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous" defer></script>
     <script src="<?= $_assetVersion('assets/js/topbar.js') ?>" defer></script>
     <script src="<?= $_assetVersion('assets/js/components.js') ?>" defer></script>
+    <script src="<?= $_assetVersion('assets/js/ui/interactions.js') ?>" defer></script>
     <script src="<?= $_assetVersion('assets/js/fronote-ajax.js') ?>" defer></script>
     <script src="<?= $_assetVersion('assets/js/ws-global.js') ?>" defer></script>
     <script src="<?= $_assetVersion('assets/js/push-manager.js') ?>" defer></script>
@@ -325,18 +328,24 @@ try {
     }
     </script>
     <script nonce="<?= $_hdr_nonce ?>">
-    // Instant dark-mode application to prevent flash of wrong theme
+    // Application instantanée du thème + accessibilité (anti-flash) — gère clair/sombre/LIQUIDE/auto.
     (function() {
-        var pref = document.documentElement.getAttribute('data-theme-pref') || 'light';
+        var el = document.documentElement;
         var stored = null;
         try { stored = localStorage.getItem('fronote_dark_mode'); } catch(e) {}
-        if (stored && pref === 'light') pref = stored;
-        if (pref === 'auto') {
-            var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-        } else if (pref === 'dark') {
-            document.documentElement.setAttribute('data-theme', 'dark');
+        var pref = stored || el.getAttribute('data-theme-pref') || 'light';
+        var theme = pref;
+        if (pref === 'auto' || !pref) {
+            theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } else if (['light','dark','liquid'].indexOf(pref) < 0) {
+            theme = 'light';
         }
+        el.setAttribute('data-theme', theme);
+        el.setAttribute('data-theme-pref', pref);
+        try {
+            el.setAttribute('data-reduce-motion', localStorage.getItem('fronote_reduce_motion') === 'true' ? 'true' : 'false');
+            el.setAttribute('data-reduce-transparency', localStorage.getItem('fronote_reduce_transparency') === 'true' ? 'true' : 'false');
+        } catch(e) {}
     })();
     </script>
 </head>

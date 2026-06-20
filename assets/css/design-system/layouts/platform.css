@@ -1,0 +1,152 @@
+/* Fronote Design System — Platform layout (techy SaaS console) */
+
+/* ---------------------------------------------------------------------------
+   Platform scope — violet-accented, compact, dark-leaning console feel.
+   Accent is declared as a token here so it can be themed/overridden.
+   --------------------------------------------------------------------------- */
+.ds-platform {
+  --platform-accent: #7c5cff;
+  background: var(--surface-app);
+  color: var(--text-primary);
+}
+
+/* Compact rail inside the platform scope */
+.ds-platform .ds-sidebar {
+  padding: var(--space-3) var(--space-2);
+  gap: var(--space-0);
+}
+
+.ds-platform .ds-sidebar-brand {
+  color: var(--platform-accent);
+  letter-spacing: -0.01em;
+}
+
+.ds-platform .ds-nav-item {
+  min-height: 40px;
+  font-size: var(--fs-sm);
+}
+
+/* Active items lean on the platform accent rather than the brand primary */
+.ds-platform .ds-nav-item.is-active {
+  color: var(--platform-accent);
+  background: var(--surface-raised);
+}
+
+.ds-platform .ds-nav-item.is-active::before {
+  background: var(--platform-accent);
+}
+
+/* ---------------------------------------------------------------------------
+   Headings — accented, tight, console-style
+   --------------------------------------------------------------------------- */
+.ds-platform .ds-platform-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.ds-platform .ds-platform-heading::before {
+  content: "";
+  width: var(--space-1);
+  height: var(--fs-xl);
+  border-radius: var(--radius-pill);
+  background: var(--platform-accent);
+}
+
+.ds-platform .ds-platform-eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--platform-accent);
+}
+
+/* ---------------------------------------------------------------------------
+   Monitoring grid — auto-fill responsive tiles
+   --------------------------------------------------------------------------- */
+.ds-monitor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+/* ---------------------------------------------------------------------------
+   Stat card — compact metric tile
+   --------------------------------------------------------------------------- */
+.ds-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--surface-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  transition:
+    box-shadow var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
+}
+
+.ds-stat-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-medium);
+  transform: translateY(var(--translate-hover));
+}
+
+.ds-stat-card-label {
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ds-stat-card-value {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  color: var(--text-primary);
+}
+
+.ds-stat-card-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+
+.ds-stat-card-delta.is-positive { color: var(--success); }
+.ds-stat-card-delta.is-negative { color: var(--danger); }
+
+/* Accent variant pins the card to the platform colour */
+.ds-stat-card.is-accent {
+  border-color: var(--platform-accent);
+}
+
+.ds-stat-card.is-accent .ds-stat-card-value {
+  color: var(--platform-accent);
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-stat-card {
+    transition: none;
+  }
+  .ds-stat-card:hover {
+    transform: none;
+  }
+}
