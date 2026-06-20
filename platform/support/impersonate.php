@@ -17,7 +17,16 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !validateCSRFToken()) {
     exit;
 }
 
-$res = SupportImpersonation::start(getPDO(), $accId, (int) ($_POST['establishment_id'] ?? 0), (int) ($_POST['tenant_account_id'] ?? 0));
+$estabId = (int) ($_POST['establishment_id'] ?? 0);
+// Le ticket_id du POST ne sert qu'à la redirection : vérifier qu'il appartient bien à
+// l'établissement ciblé, sinon revenir à la liste (pas de fuite vers un autre ticket).
+if ($ticketId > 0) {
+    $chk = getPDO()->prepare("SELECT 1 FROM support_tickets WHERE id = ? AND establishment_id = ? LIMIT 1");
+    $chk->execute([$ticketId, $estabId]);
+    if (!$chk->fetchColumn()) { $ticketId = 0; $backTicket = "{$base}/platform/support/tickets.php"; }
+}
+
+$res = SupportImpersonation::start(getPDO(), $accId, $estabId, (int) ($_POST['tenant_account_id'] ?? 0));
 if (!empty($res['ok'])) {
     header("Location: {$base}/accueil/accueil.php"); // l'agent entre dans l'app EN TANT QUE la cible
 } else {

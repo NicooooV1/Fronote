@@ -8,8 +8,20 @@ use API\Support\SupportReportService;
 $base = defined('BASE_URL') ? BASE_URL : '';
 platformAuthorize('platform.support.ticket.view');
 
+$accId = (int) ($_SESSION['platform']['account_id'] ?? 0);
 $report = (new SupportReportService(getPDO()))->build((int) ($_GET['session'] ?? 0));
 if ($report === null) { http_response_code(404); echo 'Rapport introuvable.'; exit; }
+
+// Moindre privilège : seul l'agent ayant mené la session, l'assigné du ticket, ou un
+// rôle de supervision (audit) peut lire le rapport — pas tout détenteur de ticket.view.
+$involved  = (int) ($report['session']['platform_account_id'] ?? 0) === $accId;
+$assigned  = (int) ($report['ticket']['assigned_platform_account_id'] ?? 0) === $accId;
+$oversight = platformCan('platform.audit.view');
+if (!($involved || $assigned || $oversight)) {
+    http_response_code(403);
+    echo '<!doctype html><meta charset="utf-8"><p style="font-family:system-ui;padding:40px">Accès au rapport refusé.</p>';
+    exit;
+}
 $h = fn($s) => htmlspecialchars((string) $s);
 ?>
 <!doctype html>

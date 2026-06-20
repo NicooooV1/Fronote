@@ -138,7 +138,10 @@ date_default_timezone_set(getenv('APP_TIMEZONE') ?: 'Europe/Paris');
 // Définir BASE_URL si pas défini
 if (!defined('BASE_URL')) {
 	$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
-	$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+	// HTTP_HOST est contrôlable par le client : on n'autorise que les caractères valides
+	// d'un nom d'hôte (+ port / IPv6). Neutralise toute injection HTML/attribut via BASE_URL
+	// (utilisé dans des href/action à travers l'app).
+	$host = preg_replace('/[^A-Za-z0-9.:\[\]_-]/', '', (string) ($_SERVER['HTTP_HOST'] ?? 'localhost')) ?: 'localhost';
 
 	// Calculer le chemin web du projet à partir du système de fichiers
 	// __DIR__ = <projet>/API  →  dirname(__DIR__) = racine projet
@@ -483,6 +486,11 @@ require_once API_PATH . '/Legacy/Bridge.php';
 //     (fermée par un admin via « Sessions actives ») OU si le compte a été désactivé
 //     (actif=0). Sans cela, « kill session » ne faisait que masquer la ligne en base et
 //     la désactivation n'agissait que sur les pages appelant requireAuth(). ─────────────
+// Impersonation Support : couper l'impersonation si la session support n'est plus active,
+// AVANT le bloc ci-dessous (qui met app('auth')->user() en cache) — sinon l'utilisateur
+// impersonifié resterait en cache pour la requête après une révocation.
+\API\Support\SupportImpersonation::enforce();
+
 if (php_sapi_name() !== 'cli' && !empty($_SESSION['user_id'])) {
 	$_forceLogout = false;
 	// (1) Session révoquée côté serveur (session_security). Fail-OPEN sur erreur DB :
@@ -515,7 +523,6 @@ if (php_sapi_name() !== 'cli' && !empty($_SESSION['user_id'])) {
 	unset($_forceLogout, $_ss, $_ssRow);
 }
 
-\API\Support\SupportImpersonation::enforce();
 \API\Core\ReadOnlyGuard::enforce();
 \API\Core\AccessControl::enforce(BASE_PATH);
 
