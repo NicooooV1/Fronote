@@ -129,6 +129,14 @@ DROP TABLE IF EXISTS `etablissements`;
 DROP TABLE IF EXISTS `etablissement_info`;
 DROP TABLE IF EXISTS `periodes`;
 
+-- Magasin clé-valeur de l'établissement (défaut de thème, etc.) — utilisé par ThemeService.
+CREATE TABLE IF NOT EXISTS `etablissement_info` (
+  `cle` varchar(100) NOT NULL,
+  `valeur` text DEFAULT NULL,
+  `date_modification` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`cle`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ============================================================
 -- 1. TABLES RÉFÉRENTIELLES
 -- ============================================================

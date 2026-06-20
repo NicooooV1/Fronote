@@ -34,6 +34,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === ($
 
     if ($action === 'set_default') {
         $key = $_POST['theme_key'] ?? 'classic';
+        // Liste blanche : apparences de la refonte + thèmes CSS intégrés + thème custom installé.
+        $allowedDefault = ['classic', 'glass', 'light', 'dark', 'liquid', 'auto'];
+        if (!in_array($key, $allowedDefault, true)) {
+            try { if (!$themeService->cssFileFor($key)) { $key = 'classic'; } }
+            catch (\Throwable $e) { $key = 'classic'; }
+        }
         $themeService->setDefault($key);
         $message = 'Thème par défaut mis à jour.';
         $messageType = 'success';
@@ -145,6 +151,25 @@ include __DIR__ . '/../includes/header.php';
 
 <div class="th-header">
     <h2><i class="fas fa-palette"></i> Gestion des thèmes</h2>
+</div>
+
+<!-- Apparence par défaut de l'établissement (refonte : clair/sombre/liquide/auto) -->
+<div class="th-section">
+    <h3><i class="fas fa-wand-magic-sparkles"></i> Apparence par défaut de l'établissement</h3>
+    <p style="font-size:.85em;color:#718096;margin:-6px 0 14px">Appliquée aux utilisateurs qui n'ont pas choisi de thème. Priorité : préférence de l'utilisateur, puis ce défaut, puis le défaut plateforme.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <?php foreach (['light' => ['Clair','fa-sun'], 'dark' => ['Sombre','fa-moon'], 'liquid' => ['Liquide','fa-droplet'], 'auto' => ['Automatique','fa-circle-half-stroke']] as $tk => $ti):
+            $isCur = ($defaultTheme === $tk); ?>
+        <form method="POST" style="margin:0">
+            <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+            <input type="hidden" name="action" value="set_default">
+            <input type="hidden" name="theme_key" value="<?= $tk ?>">
+            <button type="submit" class="th-btn <?= $isCur ? 'th-btn-primary' : 'th-btn-outline' ?>" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px">
+                <i class="fas <?= $ti[1] ?>"></i> <?= $ti[0] ?><?= $isCur ? ' ✓' : '' ?>
+            </button>
+        </form>
+        <?php endforeach; ?>
+    </div>
 </div>
 
 <!-- Thèmes installés -->

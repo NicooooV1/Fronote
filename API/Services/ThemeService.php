@@ -110,13 +110,17 @@ class ThemeService
      */
     public function getDefault(): string
     {
+        // Chaîne de priorité (cahier §29) : défaut établissement → défaut plateforme → défaut Fronote.
         try {
             $stmt = $this->pdo->query("SELECT valeur FROM etablissement_info WHERE cle = 'theme_default' LIMIT 1");
             $val = $stmt->fetchColumn();
-            return $val ?: 'classic';
-        } catch (\Throwable $e) {
-            return 'classic';
-        }
+            if ($val !== false && $val !== null && $val !== '') {
+                return (string) $val;                       // 1) défaut de l'établissement
+            }
+        } catch (\Throwable $e) { /* table absente → tiers suivants */ }
+        // 2) défaut plateforme (configurable via .env DEFAULT_THEME) : classic/glass/light/dark/liquid/auto.
+        $platform = function_exists('env') ? trim((string) (env('DEFAULT_THEME', '') ?? '')) : '';
+        return $platform !== '' ? $platform : 'classic';     // 3) défaut Fronote
     }
 
     /**
