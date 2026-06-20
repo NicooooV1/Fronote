@@ -48,6 +48,7 @@
 @import url("design-system/utilities/helpers.css");
 @import url("design-system/utilities/responsive.css");
 @import url("design-system/utilities/animations.css");
+@import url("design-system/utilities/transitions.css");
 
 /* — Pont legacy → DS : aligne .btn/.card/.form-control… sur le langage DS (polish via tokens,
      sans renommer le markup ni casser les layouts). EN DERNIER pour primer à spécificité égale. — */

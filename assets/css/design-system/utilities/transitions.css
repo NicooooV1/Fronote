@@ -1,0 +1,45 @@
+/* ============================================================================
+ * Fronote Design System — TRANSITIONS DE PAGE & CHARGEMENT (cahier §30)
+ * - View Transitions API : fondu fluide entre pages (navigations same-origin),
+ *   progressive enhancement (ignoré par les navigateurs non compatibles).
+ * - Barre de progression de navigation (.ds-nav-progress) : feedback perçu.
+ * Tout est désactivé en réduction de mouvement.
+ * ========================================================================== */
+
+/* Active le fondu inter-pages (Chrome/Edge ; sans effet ailleurs). */
+@view-transition { navigation: auto; }
+
+/* Respect strict de la réduction de mouvement (préférence système OU réglage Fronote). */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
+}
+html[data-reduce-motion="true"] ::view-transition-group(*),
+html[data-reduce-motion="true"] ::view-transition-old(*),
+html[data-reduce-motion="true"] ::view-transition-new(*) { animation: none !important; }
+
+/* ── Barre de progression de navigation ──────────────────────────────────── */
+.ds-nav-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 3px;
+  z-index: var(--z-toast);
+  background: transparent;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--motion-normal) var(--ease-standard);
+}
+.ds-nav-progress.is-active { opacity: 1; }
+.ds-nav-progress > span {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
+  background: linear-gradient(90deg, var(--primary), var(--primary-hover));
+  box-shadow: 0 0 8px var(--primary);
+  transition: width var(--motion-slow) var(--ease-standard);
+}
+
+@media (prefers-reduced-motion: reduce) { .ds-nav-progress { display: none; } }
+html[data-reduce-motion="true"] .ds-nav-progress { display: none; }
