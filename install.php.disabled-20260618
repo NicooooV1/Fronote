@@ -829,6 +829,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $log[] = ['warn', 'Sync modules : ' . $e->getMessage()];
                     }
 
+                    // 5g-bis — Cohérence 3-mondes (refonte) : catalogues de rôles, slug/statut de
+                    // l'établissement, miroir TENANT de l'admin, et super-admin PLATEFORME (mondes
+                    // séparés). Réutilise les services testés ; non bloquant.
+                    try {
+                        $pdo->exec("USE `{$dbNameSafe}`");
+                        (new \API\Platform\PlatformRoleSync($pdo))->sync();
+                        (new \API\Tenant\TenantRoleSync($pdo))->sync();
+                        $pdo->exec("UPDATE etablissements SET slug = COALESCE(NULLIF(slug, ''), code, 'default'), status = COALESCE(NULLIF(status, ''), 'active') WHERE id = 1");
+
+                        // Miroir TENANT de l'administrateur (compte staff + appartenance + rôle administration).
+                        $tas = new \API\Tenant\TenantAccountService($pdo);
+                        $tExist = $tas->findByLegacy('administrateur', (int) $adminId);
+                        $tId = $tExist ? (int) $tExist['id'] : $tas->createAccount([
+                            'account_type' => 'staff', 'username' => 'admin', 'email' => $adm['mail'],
+                            'password_hash' => $hash, 'first_name' => $adm['prenom'], 'last_name' => $adm['nom'],
+                            'status' => 'active', 'must_change_password' => 0,
+                            'legacy_type' => 'administrateur', 'legacy_id' => (int) $adminId,
+                        ]);
+                        $mId = (new \API\Tenant\TenantMembershipService($pdo))->ensure(1, $tId);
+                        $admRid = (int) ($pdo->query("SELECT id FROM tenant_roles WHERE role_key='administration' LIMIT 1")->fetchColumn() ?: 0);
+                        if ($admRid > 0) {
+                            $chk = $pdo->prepare("SELECT 1 FROM tenant_membership_roles WHERE membership_id=? AND tenant_role_id=? LIMIT 1");
+                            $chk->execute([$mId, $admRid]);
+                            if (!$chk->fetchColumn()) {
+                                $pdo->prepare("INSERT INTO tenant_membership_roles (membership_id, tenant_role_id, scope_type, is_active) VALUES (?, ?, 'establishment', 1)")->execute([$mId, $admRid]);
+                            }
+                        }
+
+                        // Super-admin PLATEFORME (identifiant « superadmin » ; mêmes identifiants que l'admin).
+                        $pas = new \API\Platform\PlatformAccountService($pdo);
+                        if (!$pas->findActiveByLogin('superadmin')) {
+                            $paId = $pas->createAccount([
+                                'email' => $adm['mail'], 'username' => 'superadmin', 'password_hash' => $hash,
+                                'first_name' => $adm['prenom'], 'last_name' => $adm['nom'], 'status' => 'active',
+                            ]);
+                            $srid = (int) ($pdo->query("SELECT id FROM platform_roles WHERE role_key='super_admin' LIMIT 1")->fetchColumn() ?: 0);
+                            if ($srid > 0) {
+                                $pdo->prepare("INSERT INTO platform_account_roles (platform_account_id, platform_role_id, scope_type, is_active) VALUES (?, ?, 'global', 1)")->execute([$paId, $srid]);
+                            }
+                        }
+                        $log[] = ['ok', 'Cohérence 3-mondes initialisée (rôles, établissement, miroir tenant, super-admin plateforme « superadmin »)'];
+                    } catch (Throwable $e) {
+                        $log[] = ['warn', 'Initialisation 3-mondes : ' . $e->getMessage()];
+                    }
+
                 } catch (Throwable $e) {
                     $log[] = ['warn', 'Bootstrap API : ' . $e->getMessage()];
                 }
