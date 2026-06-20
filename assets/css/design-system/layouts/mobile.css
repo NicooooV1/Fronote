@@ -53,6 +53,11 @@
              calc(var(--layout-bottombar-h) + var(--space-8));
   }
 
+  /* Pages connectées « legacy » (.main-content) : dégager le contenu de la bottom-bar flottante. */
+  body.has-bottom-bar .main-content {
+    padding-bottom: calc(var(--layout-bottombar-h) + var(--space-6) + env(safe-area-inset-bottom));
+  }
+
   /* The floating bottom bar is the primary nav on mobile. */
   .ds-bottom-bar {
     display: flex;

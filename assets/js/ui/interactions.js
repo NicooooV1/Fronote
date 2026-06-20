@@ -48,6 +48,7 @@
     // entrer en conflit avec le comportement de l'ancienne topbar (assets/js/topbar.js).
     var topbar = document.querySelector('.ds-topbar');
     var bottom = document.querySelector('.ds-bottom-bar');
+    if (bottom) document.body.classList.add('has-bottom-bar'); // pour le padding bas du contenu (mobile)
     var toTop = document.querySelector('.ds-back-to-top');
     var lastY = window.scrollY, ticking = false;
     function onScroll() {

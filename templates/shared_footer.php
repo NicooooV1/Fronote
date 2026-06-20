@@ -25,6 +25,68 @@ $extraScriptHtml = $extraScriptHtml ?? '';
     </div><!-- Fin main-content -->
 </div><!-- Fin app-container -->
 
+<?php
+/* ─── Bottom-bar mobile par rôle (design system, §10.2) ───────────────────────
+ * Affichée uniquement sur mobile (CSS .ds-bottom-bar @media <1024px) pour les
+ * utilisateurs connectés ; visibilité gérée par assets/js/ui/interactions.js. */
+$_bb_role = function_exists('getUserRole') ? (string) (getUserRole() ?? '') : '';
+if ($_bb_role !== ''):
+    $_bb_active = $activePage ?? '';
+    $_bb_rp = $rootPrefix ?? '';
+    $_bb_map = [
+        'eleve' => [
+            ['Accueil', 'fa-house', 'accueil/accueil.php', 'accueil'],
+            ['EDT', 'fa-calendar-days', 'modules/emploi_du_temps/emploi_du_temps.php', 'emploi_du_temps'],
+            ['Notes', 'fa-chart-column', 'modules/notes/notes.php', 'notes'],
+            ['Devoirs', 'fa-book', 'modules/cahierdetextes/cahierdetextes.php', 'cahierdetextes'],
+            ['Messages', 'fa-envelope', 'modules/messagerie/index.php', 'messagerie'],
+        ],
+        'parent' => [
+            ['Accueil', 'fa-house', 'accueil/accueil.php', 'accueil'],
+            ['Notes', 'fa-chart-column', 'modules/notes/notes.php', 'notes'],
+            ['Absences', 'fa-calendar-xmark', 'modules/absences/absences.php', 'absences'],
+            ['Messages', 'fa-envelope', 'modules/messagerie/index.php', 'messagerie'],
+            ['Profil', 'fa-user', 'parametres/parametres.php', 'parametres'],
+        ],
+        'professeur' => [
+            ['Accueil', 'fa-house', 'accueil/accueil.php', 'accueil'],
+            ['Appel', 'fa-clipboard-check', 'modules/appel/appel.php', 'appel'],
+            ['Notes', 'fa-chart-column', 'modules/notes/notes.php', 'notes'],
+            ['Cahier', 'fa-book', 'modules/cahierdetextes/cahierdetextes.php', 'cahierdetextes'],
+            ['Messages', 'fa-envelope', 'modules/messagerie/index.php', 'messagerie'],
+        ],
+        'vie_scolaire' => [
+            ['Accueil', 'fa-house', 'accueil/accueil.php', 'accueil'],
+            ['Absences', 'fa-calendar-xmark', 'modules/absences/absences.php', 'absences'],
+            ['Appel', 'fa-clipboard-check', 'modules/appel/appel.php', 'appel'],
+            ['Messages', 'fa-envelope', 'modules/messagerie/index.php', 'messagerie'],
+            ['Profil', 'fa-user', 'parametres/parametres.php', 'parametres'],
+        ],
+        'administrateur' => [
+            ['Accueil', 'fa-house', 'accueil/accueil.php', 'accueil'],
+            ['Admin', 'fa-gauge-high', 'admin/dashboard.php', 'admin'],
+            ['Comptes', 'fa-users', 'admin/users/index.php', 'admin_users'],
+            ['Messages', 'fa-envelope', 'modules/messagerie/index.php', 'messagerie'],
+            ['Profil', 'fa-user', 'parametres/parametres.php', 'parametres'],
+        ],
+    ];
+    $_bb_map['super_admin'] = $_bb_map['administrateur'];
+    $_bb_items = $_bb_map[$_bb_role] ?? [
+        ['Accueil', 'fa-house', 'accueil/accueil.php', 'accueil'],
+        ['Messages', 'fa-envelope', 'modules/messagerie/index.php', 'messagerie'],
+        ['Profil', 'fa-user', 'parametres/parametres.php', 'parametres'],
+    ];
+?>
+<nav class="ds-bottom-bar" role="navigation" aria-label="Navigation mobile">
+    <?php foreach ($_bb_items as [$_bbLbl, $_bbIcon, $_bbHref, $_bbKey]): $_bbOn = ($_bb_active === $_bbKey); ?>
+    <a class="ds-bottom-bar-item<?= $_bbOn ? ' is-active' : '' ?>" href="<?= htmlspecialchars($_bb_rp . $_bbHref) ?>"<?= $_bbOn ? ' aria-current="page"' : '' ?>>
+        <span class="ds-bottom-bar-item-icon"><i class="fas <?= $_bbIcon ?>"></i></span>
+        <span class="ds-bottom-bar-item-label"><?= htmlspecialchars($_bbLbl) ?></span>
+    </a>
+    <?php endforeach; ?>
+</nav>
+<?php endif; ?>
+
 <!-- Modal Mentions Légales -->
 <div id="mentions-legales-modal" class="legal-modal-overlay">
     <div class="legal-modal">
