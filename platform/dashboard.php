@@ -13,7 +13,7 @@ $username = $_SESSION['platform']['username'] ?? '';
 $pdo      = getPDO();
 $h  = fn($s) => htmlspecialchars((string) $s);
 $v  = static fn(string $p) => $base . '/' . ltrim($p, '/') . '?v=' . (is_file(__DIR__ . '/../' . $p) ? filemtime(__DIR__ . '/../' . $p) : '1');
-$count = function (string $sql, array $a = []) use ($pdo): int { try { $s = $pdo->prepare($sql); $s->execute($a); return (int) $s->fetchColumn(); } catch (\Throwable $e) { return -1; } };
+$count = function (string $sql, array $a = []) use ($pdo): int { try { $s = $pdo->prepare($sql); $s->execute($a); return max(0, (int) $s->fetchColumn()); } catch (\Throwable $e) { return 0; } };
 $statusFor = fn(float $p) => $p >= 90 ? 'crit' : ($p >= 70 ? 'warn' : 'ok');
 
 /* ── Métriques serveur (PHP pur, /proc + disk_*) ── */
@@ -47,7 +47,7 @@ $dbSizeMb = 0; try { $dbSizeMb = (float) $pdo->query("SELECT ROUND(SUM(data_leng
 
 $version = '?'; try { $version = app('updates')->getCurrentVersion() ?: '?'; } catch (\Throwable $e) {}
 $backupAge = null; $backupName = null;
-try { $bks = app('backup')->listBackups(); if (!empty($bks)) { $backupName = $bks[0]['filename']; $backupAge = (time() - strtotime((string) $bks[0]['created_at'])) / 3600; } } catch (\Throwable $e) {}
+try { $bks = app('backup')->listBackups(); if (!empty($bks)) { $backupName = $bks[0]['filename']; $bts = strtotime((string) ($bks[0]['created_at'] ?? '')); if ($bts) { $backupAge = (time() - $bts) / 3600; } } } catch (\Throwable $e) {}
 $auditRows = []; try { $auditRows = $pdo->query("SELECT l.created_at, l.action, pa.username AS actor FROM platform_audit_logs l LEFT JOIN platform_accounts pa ON pa.id=l.platform_account_id ORDER BY l.id DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC) ?: []; } catch (\Throwable $e) {}
 $activeSessions = []; try { $activeSessions = (new \API\Support\SupportSessionService($pdo))->allActive(); } catch (\Throwable $e) {}
 
@@ -105,13 +105,13 @@ $card = function (string $label, string $value, string $status = 'ok', ?string $
     <span class="pf-brand">⬢ Plateforme Fronote</span>
     <nav class="pf-nav">
       <?php foreach ($menu as [$perm, $label, $icon, $href]): if (!$auth->can($perm)) continue; ?>
-        <a href="<?= $base . $href ?>"><i class="fas <?= $h($icon) ?>"></i> <?= $h($label) ?></a>
+        <a href="<?= $h($base . $href) ?>"><i class="fas <?= $h($icon) ?>"></i> <?= $h($label) ?></a>
       <?php endforeach; ?>
     </nav>
     <span style="display:flex;align-items:center;gap:var(--space-3)">
       <button class="ds-btn ds-btn--ghost ds-btn--sm" id="pfTheme" title="Thème"><i class="fas fa-circle-half-stroke"></i></button>
       <span class="ds-muted"><?= $h($username) ?></span>
-      <a class="ds-btn ds-btn--soft ds-btn--sm" href="<?= $base ?>/platform/logout.php">Déconnexion</a>
+      <a class="ds-btn ds-btn--soft ds-btn--sm" href="<?= $h($base) ?>/platform/logout.php">Déconnexion</a>
     </span>
   </header>
 
@@ -125,7 +125,7 @@ $card = function (string $label, string $value, string $status = 'ok', ?string $
         $card('CPU (charge 1 min)', $cpuPct . ' %', $statusFor($cpuPct), 'load ' . number_format($load[0], 2) . ' · ' . $cores . ' cœurs', null, $cpuPct);
         $card('Mémoire vive', $ramPct . ' %', $statusFor($ramPct), $ramTotGb ? ($ramUsedGb . ' / ' . $ramTotGb . ' Go') : 'n/d', null, $ramPct);
         $card('Stockage', $diskPct . ' %', $statusFor($diskPct), $diskTotGb ? ($diskUsedGb . ' / ' . $diskTotGb . ' Go') : 'n/d', null, $diskPct);
-        $card('Base de données', ($dbSizeMb ?: 0) . ' Mo', 'ok', ($dbTables >= 0 ? $dbTables . ' tables' : ''), $auth->can('platform.system.view') ? '/platform/system.php' : null);
+        if ($auth->can('platform.system.view')) { $card('Base de données', ($dbSizeMb ?: 0) . ' Mo', 'ok', $dbTables . ' tables', '/platform/system.php'); }
       ?>
     </div>
 
@@ -134,13 +134,23 @@ $card = function (string $label, string $value, string $status = 'ok', ?string $
       <div class="ds-platform-eyebrow">Activité</div>
       <div class="ds-monitor-grid" style="margin-top:var(--space-3)">
         <?php
-          $card('Établissements', (string) max(0, $etabTotal), 'ok', $etabActifs . ' actifs' . ($etabSusp > 0 ? ' · ' . $etabSusp . ' suspendus' : ''), $auth->can('platform.establishments.view') ? '/platform/establishments.php' : null);
-          $card('Tickets support', (string) max(0, $ticketsOpen), $ticketsOpen > 5 ? 'warn' : 'ok', 'ouverts', $auth->can('platform.support.ticket.view') ? '/platform/support/tickets.php' : null);
-          $card('Tickets critiques', (string) max(0, $ticketsCrit), $ticketsCrit > 0 ? 'crit' : 'ok', 'priorité critique', $auth->can('platform.support.ticket.view') ? '/platform/support/tickets.php' : null);
-          $card('Sessions support', (string) max(0, $supportSessions), $supportSessions > 0 ? 'warn' : 'ok', 'actives', $auth->can('platform.security.view') ? '/platform/security.php' : null);
-          $card("Demandes d'accès", (string) max(0, $accessPending), $accessPending > 0 ? 'warn' : 'ok', 'en attente Direction');
-          $card('Invitations Directeur', (string) max(0, $invitPending), 'ok', 'en attente', $auth->can('platform.director_invites.create') ? '/platform/director-invitations.php' : null);
-          $card('Comptes plateforme', (string) max(0, $platAccounts), 'ok', 'actifs', $auth->can('platform.security.view') ? '/platform/security.php' : null);
+          // Chaque métrique n'est affichée qu'avec la permission granulaire correspondante
+          // (moindre privilège : un rôle « dashboard.view » seul ne voit pas l'intelligence opérationnelle).
+          if ($auth->can('platform.establishments.view')) {
+              $card('Établissements', (string) $etabTotal, 'ok', $etabActifs . ' actifs' . ($etabSusp > 0 ? ' · ' . $etabSusp . ' suspendus' : ''), '/platform/establishments.php');
+          }
+          if ($auth->can('platform.support.ticket.view')) {
+              $card('Tickets support', (string) $ticketsOpen, $ticketsOpen > 5 ? 'warn' : 'ok', 'ouverts', '/platform/support/tickets.php');
+              $card('Tickets critiques', (string) $ticketsCrit, $ticketsCrit > 0 ? 'crit' : 'ok', 'priorité critique', '/platform/support/tickets.php');
+              $card("Demandes d'accès", (string) $accessPending, $accessPending > 0 ? 'warn' : 'ok', 'en attente Direction', '/platform/support/tickets.php');
+          }
+          if ($auth->can('platform.security.view')) {
+              $card('Sessions support', (string) $supportSessions, $supportSessions > 0 ? 'warn' : 'ok', 'actives', '/platform/security.php');
+              $card('Comptes plateforme', (string) $platAccounts, 'ok', 'actifs', '/platform/security.php');
+          }
+          if ($auth->can('platform.director_invites.create')) {
+              $card('Invitations Directeur', (string) $invitPending, 'ok', 'en attente', '/platform/director-invitations.php');
+          }
         ?>
       </div>
     </div>
@@ -151,10 +161,12 @@ $card = function (string $label, string $value, string $status = 'ok', ?string $
       <div class="ds-monitor-grid" style="margin-top:var(--space-3)">
         <?php
           $card('Version Fronote', 'v' . $version, 'ok', 'installée', $auth->can('platform.updates.manage') ? '/platform/updates.php' : null);
-          if ($backupAge === null) {
-              $card('Dernière sauvegarde', 'aucune', 'warn', 'créer une sauvegarde', $auth->can('platform.backups.view') ? '/platform/backups.php' : null);
-          } else {
-              $card('Dernière sauvegarde', $backupAge < 1 ? "< 1 h" : round($backupAge) . ' h', $backupAge > 48 ? 'warn' : 'ok', $h((string) $backupName), $auth->can('platform.backups.view') ? '/platform/backups.php' : null);
+          if ($auth->can('platform.backups.view')) {
+              if ($backupAge === null) {
+                  $card('Dernière sauvegarde', 'aucune', 'warn', 'créer une sauvegarde', '/platform/backups.php');
+              } else {
+                  $card('Dernière sauvegarde', $backupAge < 1 ? "< 1 h" : round($backupAge) . ' h', $backupAge > 48 ? 'warn' : 'ok', $h((string) $backupName), '/platform/backups.php');
+              }
           }
           $card('Disponibilité PHP', PHP_VERSION, 'ok', 'runtime');
         ?>
@@ -163,6 +175,7 @@ $card = function (string $label, string $value, string $status = 'ok', ?string $
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:var(--space-4);margin-top:var(--space-8)">
       <!-- Sessions support actives -->
+      <?php if ($auth->can('platform.security.view')): ?>
       <section class="ds-card">
         <div class="ds-card__header"><h3 class="ds-card__title"><i class="fas fa-user-shield"></i> Sessions support actives</h3></div>
         <div class="ds-card__body">
@@ -177,8 +190,10 @@ $card = function (string $label, string $value, string $status = 'ok', ?string $
           <?php endif; ?>
         </div>
       </section>
+      <?php endif; ?>
 
       <!-- Audit récent -->
+      <?php if ($auth->can('platform.audit.view')): ?>
       <section class="ds-card">
         <div class="ds-card__header"><h3 class="ds-card__title"><i class="fas fa-clock-rotate-left"></i> Événements récents</h3></div>
         <div class="ds-card__body">
@@ -193,6 +208,7 @@ $card = function (string $label, string $value, string $status = 'ok', ?string $
           <?php endif; ?>
         </div>
       </section>
+      <?php endif; ?>
     </div>
 
     <!-- Accès rapides -->
@@ -200,7 +216,7 @@ $card = function (string $label, string $value, string $status = 'ok', ?string $
       <div class="ds-platform-eyebrow">Gestion</div>
       <div class="ds-quick-actions" style="margin-top:var(--space-3)">
         <?php foreach ($menu as [$perm, $label, $icon, $href]): if (!$auth->can($perm)) continue; ?>
-          <a class="ds-quick-action" href="<?= $base . $href ?>"><span class="ds-quick-action-icon"><i class="fas <?= $h($icon) ?>"></i></span><span class="ds-quick-action-title"><?= $h($label) ?></span></a>
+          <a class="ds-quick-action" href="<?= $h($base . $href) ?>"><span class="ds-quick-action-icon"><i class="fas <?= $h($icon) ?>"></i></span><span class="ds-quick-action-title"><?= $h($label) ?></span></a>
         <?php endforeach; ?>
       </div>
     </div>
