@@ -17,16 +17,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $res = TenantContext::attemptLogin(getPDO(), $establishment,
             trim((string) ($_POST['login'] ?? '')), (string) ($_POST['password'] ?? ''));
         if ($res['ok']) {
-            session_regenerate_id(true);
-            unset($_SESSION['platform'], $_SESSION['user']); // jamais de session plateforme/legacy en parallèle
+            $acc = $res['account'];
+            unset($_SESSION['platform']); // pas de session plateforme en parallèle
+
+            // Shim de compatibilité : établit AUSSI la session legacy à partir de l'identité
+            // d'origine du compte tenant, pour que les modules existants (qui lisent
+            // $_SESSION['user'] via app('auth')) fonctionnent sous le login établissement.
+            // loginUser() régénère l'ID de session et pose user_id/user_type/user/etablissement_id.
+            $legacyEstablished = false;
+            if (!empty($acc['legacy_type']) && !empty($acc['legacy_id'])) {
+                try {
+                    $legacy = app('auth.provider')->retrieveById((int) $acc['legacy_id'], (string) $acc['legacy_type']);
+                    if ($legacy) { app('auth')->loginUser($legacy); $legacyEstablished = true; }
+                } catch (\Throwable $e) { error_log('[tenant login shim] ' . $e->getMessage()); }
+            }
+            if (!$legacyEstablished) {
+                session_regenerate_id(true);
+                unset($_SESSION['user'], $_SESSION['user_id'], $_SESSION['user_type']);
+            }
+
             $_SESSION['tenant'] = [
                 'membership_id'    => (int) $res['membership']['id'],
                 'establishment_id' => (int) $establishment['id'],
-                'account_id'       => (int) $res['account']['id'],
-                'username'         => $res['account']['username'],
+                'account_id'       => (int) $acc['id'],
+                'username'         => $acc['username'],
                 'slug'             => $slug,
             ];
-            try { getPDO()->prepare("UPDATE tenant_accounts SET last_login_at = NOW() WHERE id = ?")->execute([(int) $res['account']['id']]); }
+            // Le contexte établissement suit l'établissement SÉLECTIONNÉ (correct en multi-établissement).
+            $_SESSION['etablissement_id'] = (int) $establishment['id'];
+            try { \API\Core\EstablishmentContext::set((int) $establishment['id']); } catch (\Throwable $e) {}
+
+            try { getPDO()->prepare("UPDATE tenant_accounts SET last_login_at = NOW() WHERE id = ?")->execute([(int) $acc['id']]); }
             catch (\Throwable $e) { error_log('[tenant login] ' . $e->getMessage()); }
             header("Location: {$base}/tenant/dashboard.php?e=" . urlencode($slug));
             exit;
