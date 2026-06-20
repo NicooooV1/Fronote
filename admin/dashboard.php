@@ -1,8 +1,8 @@
 <?php
 /**
- * Tableau de bord — Hub central de l'administration
- * Affiche des cartes cliquables organisées en sections,
- * des alertes, des compteurs et l'activité récente.
+ * Tableau de bord DIRECTION (refonte UX, cahier §21.1).
+ * Présentation via le design system (.ds-*) ; données via le service existant
+ * AdminDashboardService (scopé établissement + caché). Garde 3-mondes conservée.
  */
 require_once __DIR__ . '/../API/core.php';
 require_once __DIR__ . '/includes/admin_functions.php';
@@ -10,366 +10,115 @@ require_once __DIR__ . '/includes/admin_functions.php';
 requireAuth();
 tenantGate('tenant.users.view', ['administrateur']);
 
-$dashService = app('admin_dashboard');
+$dash   = app('admin_dashboard');
+$users  = $dash->getUserCounts();
+$kpi    = $dash->getKPIs();
+$alerts = $dash->getAlerts();
+$mods   = $dash->getModuleStats();
+$extra  = $dash->getExtraCounts();
+$logins = $dash->getRecentLogins(8);
 
-// --- Compteurs principaux (via service) ---
-$userCounts = $dashService->getUserCounts();
-$counts = [
-    'eleves'      => $userCounts['eleves'] ?? 0,
-    'professeurs' => $userCounts['professeurs'] ?? 0,
-    'parents'     => $userCounts['parents'] ?? 0,
-    'vie_scolaire'=> $userCounts['vie_scolaire'] ?? 0,
-];
-
-// --- Absences du jour ---
+$etab = \API\Core\EstablishmentContext::id();
+$supportOpen = 0;
 try {
-    $counts['absences_today'] = app('absences')->getStatsToday()['absences'];
-} catch (\Throwable $e) { $counts['absences_today'] = 0; }
+    $st = getPDO()->prepare("SELECT COUNT(*) FROM support_tickets WHERE establishment_id = ? AND status NOT IN ('resolved','closed','cancelled')");
+    $st->execute([$etab]); $supportOpen = (int) $st->fetchColumn();
+} catch (\Throwable $e) { /* table support absente : 0 */ }
 
-// --- Alertes (via service) ---
-$alerts = $dashService->getAlerts();
-$locked = $alerts['locked_accounts'] ?? [];
-$counts['reset_pending'] = $alerts['reset_pending'] ?? 0;
-$counts['justificatifs'] = $alerts['justificatifs_pending'] ?? 0;
+$lockedCount   = is_array($alerts['locked_accounts'] ?? null) ? count($alerts['locked_accounts']) : 0;
+$resetPending  = (int) ($alerts['reset_pending'] ?? 0);
+$justifPending = (int) ($alerts['justificatifs_pending'] ?? 0);
+$alertTotal    = $lockedCount + $resetPending + $justifPending + $supportOpen;
+$h = fn($s) => htmlspecialchars((string) $s);
 
-// --- Extra counts (via service) ---
-$extraCounts = $dashService->getExtraCounts();
-$counts['messages_24h'] = $extraCounts['messages_24h'] ?? 0;
-
-// --- Stats supplémentaires ---
-$totalUsers = $counts['eleves'] + $counts['professeurs'] + $counts['parents'] + $counts['vie_scolaire'];
-$totalClasses = 0;
-$totalAdmins = $userCounts['administrateurs'] ?? 0;
-try {
-    $totalClasses = count(app('classes')->getAllWithStats());
-} catch (\Throwable $e) {}
-
-// --- Sessions actives (via KPIs) ---
-$kpi = $dashService->getKPIs();
-$totalSessions = $kpi['sessions_actives'] ?? 0;
-
-// --- Modules ---
-$moduleStats = $dashService->getModuleStats();
-$modulesTotal = $moduleStats['total'] ?? 0;
-$modulesEnabled = $moduleStats['enabled'] ?? 0;
-
-// --- Dernières connexions et messages (via service) ---
-$recentLogins = $dashService->getRecentLogins(10);
-$recentMessages = $dashService->getRecentMessages(5);
-
-$pageTitle = 'Tableau de bord';
+$pageTitle   = 'Tableau de bord';
 $currentPage = 'dashboard';
-$extraCss = ['../assets/css/admin.css'];
+$extraCss    = ['../assets/css/admin.css'];
+include __DIR__ . '/includes/header.php';
+$rp = $rootPrefix ?? '../';
 
-include 'includes/header.php';
+$stat = function (string $icon, string $label, $value, string $href) use ($rp, $h) {
+    echo '<a class="ds-card ds-card--stat ds-card--interactive" href="' . $h($rp . $href) . '">'
+       . '<span class="ds-card__stat-label"><i class="fas ' . $h($icon) . '"></i> ' . $h($label) . '</span>'
+       . '<span class="ds-card__stat-value">' . $h((string) $value) . '</span></a>';
+};
+$action = function (string $icon, string $title, string $href) use ($rp, $h) {
+    echo '<a class="ds-quick-action" href="' . $h($rp . $href) . '">'
+       . '<span class="ds-quick-action-icon"><i class="fas ' . $h($icon) . '"></i></span>'
+       . '<span class="ds-quick-action-title">' . $h($title) . '</span></a>';
+};
 ?>
+<div class="ds-tenant" style="padding: var(--space-5, 20px)">
+  <p class="ds-muted" style="margin:0 0 var(--space-5)">
+    Pilotage de l'établissement — <span class="ds-badge ds-badge--success"><?= (int) $mods['enabled'] ?>/<?= (int) $mods['total'] ?> modules actifs</span>
+  </p>
 
-<div class="admin-dashboard">
-    <!-- Alertes urgentes -->
-    <?php if (!empty($locked) || $counts['reset_pending'] > 0 || $counts['justificatifs'] > 0): ?>
-    <div class="admin-alerts">
-        <?php if ($counts['reset_pending'] > 0): ?>
-        <div class="admin-alert-item">
-            <i class="fas fa-key"></i>
-            <?= $counts['reset_pending'] ?> demande(s) de réinitialisation en attente
-            <a href="users/passwords.php">Traiter <i class="fas fa-arrow-right"></i></a>
-        </div>
+  <!-- Effectifs / activité -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:var(--space-4);margin-bottom:var(--space-6)">
+    <?php
+      $stat('fa-user-graduate',   'Élèves',           $users['eleves'] ?? 0,        'admin/users/index.php');
+      $stat('fa-chalkboard-user', 'Professeurs',      $users['professeurs'] ?? 0,   'admin/users/index.php');
+      $stat('fa-people-roof',     'Parents',          $users['parents'] ?? 0,       'admin/users/index.php');
+      $stat('fa-chalkboard',      'Classes',          $extra['classes'] ?? 0,       'admin/classes/index.php');
+      $stat('fa-calendar-xmark',  'Absences du jour', $extra['absences_today'] ?? 0,'admin/scolaire/absences.php');
+      $stat('fa-life-ring',       'Tickets support',  $supportOpen,                 'modules/support/tickets.php');
+    ?>
+  </div>
+
+  <!-- Indicateurs -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--space-4);margin-bottom:var(--space-6)">
+    <div class="ds-card ds-card--stat"><span class="ds-card__stat-label">Taux d'absentéisme (30j)</span><span class="ds-card__stat-value"><?= $kpi['taux_absenteisme'] === null ? '—' : $h($kpi['taux_absenteisme']) . ' %' ?></span></div>
+    <div class="ds-card ds-card--stat"><span class="ds-card__stat-label">Moyenne générale</span><span class="ds-card__stat-value"><?= $kpi['moyenne_generale'] === null ? '—' : $h($kpi['moyenne_generale']) . '/20' ?></span></div>
+    <div class="ds-card ds-card--stat"><span class="ds-card__stat-label">Remplissage des notes</span><span class="ds-card__stat-value"><?= $kpi['taux_remplissage_notes'] === null ? '—' : $h($kpi['taux_remplissage_notes']) . ' %' ?></span></div>
+    <div class="ds-card ds-card--stat"><span class="ds-card__stat-label">Sessions actives</span><span class="ds-card__stat-value"><?= (int) ($kpi['sessions_actives'] ?? 0) ?></span></div>
+  </div>
+
+  <!-- Actions rapides -->
+  <h3 style="margin:0 0 var(--space-3)">Actions rapides</h3>
+  <div class="ds-quick-actions">
+    <?php
+      $action('fa-user-plus',      'Créer un utilisateur',      'admin/users/create.php');
+      $action('fa-file-import',    'Importer des utilisateurs', 'admin/users/import.php');
+      $action('fa-clipboard-check', "Faire l'appel",            'modules/appel/appel.php');
+      $action('fa-bullhorn',       'Publier une annonce',       'admin/messagerie/annonces.php');
+      $action('fa-chalkboard',     'Gérer les classes',         'admin/classes/index.php');
+      $action('fa-puzzle-piece',   'Modules',                   'admin/modules/index.php');
+    ?>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:var(--space-4)">
+    <!-- Alertes -->
+    <section class="ds-card">
+      <div class="ds-card__header"><h3 class="ds-card__title"><i class="fas fa-triangle-exclamation"></i> Alertes <?php if ($alertTotal): ?><span class="ds-badge ds-badge--warning"><?= $alertTotal ?></span><?php endif; ?></h3></div>
+      <div class="ds-card__body ds-stack" style="gap:var(--space-2)">
+        <?php if ($alertTotal === 0): ?>
+          <div class="ds-alert ds-alert--success"><i class="fas fa-circle-check"></i><div>Aucune alerte. Tout est en ordre.</div></div>
+        <?php else: ?>
+          <?php if ($supportOpen): ?><a class="ds-alert ds-alert--info" style="text-decoration:none" href="<?= $h($rp) ?>modules/support/tickets.php"><i class="fas fa-life-ring"></i><div><strong><?= $supportOpen ?></strong> ticket(s) support ouvert(s)</div></a><?php endif; ?>
+          <?php if ($justifPending): ?><a class="ds-alert ds-alert--warning" style="text-decoration:none" href="<?= $h($rp) ?>admin/scolaire/justificatifs.php"><i class="fas fa-file-circle-question"></i><div><strong><?= $justifPending ?></strong> justificatif(s) à traiter</div></a><?php endif; ?>
+          <?php if ($lockedCount): ?><div class="ds-alert ds-alert--danger"><i class="fas fa-lock"></i><div><strong><?= $lockedCount ?></strong> compte(s) verrouillé(s)</div></div><?php endif; ?>
+          <?php if ($resetPending): ?><div class="ds-alert ds-alert--warning"><i class="fas fa-key"></i><div><strong><?= $resetPending ?></strong> demande(s) de réinitialisation</div></div><?php endif; ?>
         <?php endif; ?>
-        <?php if ($counts['justificatifs'] > 0): ?>
-        <div class="admin-alert-item">
-            <i class="fas fa-file-medical"></i>
-            <?= $counts['justificatifs'] ?> justificatif(s) en attente de traitement
-            <a href="scolaire/justificatifs.php">Voir <i class="fas fa-arrow-right"></i></a>
-        </div>
+      </div>
+    </section>
+
+    <!-- Dernières connexions -->
+    <section class="ds-card">
+      <div class="ds-card__header"><h3 class="ds-card__title"><i class="fas fa-clock-rotate-left"></i> Dernières connexions</h3></div>
+      <div class="ds-card__body">
+        <?php if (empty($logins)): ?>
+          <p class="ds-muted">Aucune connexion récente.</p>
+        <?php else: ?>
+          <table class="ds-table ds-table--compact">
+            <tbody>
+            <?php foreach ($logins as $l): ?>
+              <tr><td><?= $h($l['identifiant'] ?? '') ?></td><td><span class="ds-badge ds-badge--neutral"><?= $h($l['type'] ?? '') ?></span></td><td class="ds-muted" style="text-align:right"><?= $h($l['last_login'] ?? '') ?></td></tr>
+            <?php endforeach; ?>
+            </tbody>
+          </table>
         <?php endif; ?>
-        <?php foreach ($locked as $l): ?>
-        <div class="admin-alert-item">
-            <i class="fas fa-lock"></i>
-            <strong><?= htmlspecialchars($l['identifiant']) ?></strong> (<?= htmlspecialchars(getProfilLabel($l['type'])) ?>) — verrouillé jusqu'à <?= date('d/m H:i', strtotime($l['locked_until'])) ?>
-            <a href="users/index.php">Gérer <i class="fas fa-arrow-right"></i></a>
-        </div>
-        <?php endforeach; ?>
-    </div>
-    <?php endif; ?>
-
-    <!-- Compteurs KPI -->
-    <div class="admin-stats-row">
-        <div class="admin-stat-card">
-            <div class="admin-stat-value" style="color:#0f4c81"><?= $counts['eleves'] ?></div>
-            <div class="admin-stat-label">Élèves actifs</div>
-        </div>
-        <div class="admin-stat-card">
-            <div class="admin-stat-value" style="color:#2d7d46"><?= $counts['professeurs'] ?></div>
-            <div class="admin-stat-label">Professeurs actifs</div>
-        </div>
-        <div class="admin-stat-card">
-            <div class="admin-stat-value" style="color:#b45309"><?= $counts['parents'] ?></div>
-            <div class="admin-stat-label">Parents actifs</div>
-        </div>
-        <div class="admin-stat-card">
-            <div class="admin-stat-value" style="color:#6b21a8"><?= $counts['vie_scolaire'] ?></div>
-            <div class="admin-stat-label">Vie scolaire</div>
-        </div>
-        <div class="admin-stat-card">
-            <div class="admin-stat-value" style="color:#dc2626"><?= $counts['absences_today'] ?></div>
-            <div class="admin-stat-label">Absences aujourd'hui</div>
-        </div>
-    </div>
-
-    <!-- KPIs avancés -->
-    <div class="admin-stats-row">
-        <?php if ($kpi['moyenne_generale'] !== null): ?>
-        <div class="admin-stat-card">
-            <div class="admin-stat-value" style="color:#059669"><?= $kpi['moyenne_generale'] ?></div>
-            <div class="admin-stat-label">Moyenne /20 (trimestre)</div>
-        </div>
-        <?php endif; ?>
-        <?php if ($kpi['taux_absenteisme'] !== null): ?>
-        <div class="admin-stat-card">
-            <div class="admin-stat-value" style="color:<?= $kpi['taux_absenteisme'] > 15 ? '#dc2626' : '#b45309' ?>"><?= $kpi['taux_absenteisme'] ?>%</div>
-            <div class="admin-stat-label">Absentéisme (30j)</div>
-        </div>
-        <?php endif; ?>
-        <?php if ($kpi['taux_remplissage_notes'] !== null): ?>
-        <div class="admin-stat-card">
-            <div class="admin-stat-value" style="color:<?= $kpi['taux_remplissage_notes'] < 50 ? '#dc2626' : '#059669' ?>"><?= $kpi['taux_remplissage_notes'] ?>%</div>
-            <div class="admin-stat-label">Notes saisies (profs)</div>
-        </div>
-        <?php endif; ?>
-        <div class="admin-stat-card">
-            <div class="admin-stat-value" style="color:<?= $kpi['ws_status'] === 'ok' ? '#059669' : ($kpi['ws_status'] === 'disabled' ? '#9ca3af' : '#dc2626') ?>">
-                <?= $kpi['ws_status'] === 'ok' ? 'En ligne' : ($kpi['ws_status'] === 'disabled' ? 'Désactivé' : 'Hors ligne') ?>
-            </div>
-            <div class="admin-stat-label">WebSocket <?= isset($kpi['ws_connections']) ? '(' . $kpi['ws_connections'] . ' conn.)' : '' ?></div>
-        </div>
-        <div class="admin-stat-card">
-            <div class="admin-stat-value" style="color:#0f4c81"><?= $totalSessions ?></div>
-            <div class="admin-stat-label">Sessions actives</div>
-        </div>
-    </div>
-
-    <!-- ══════ GESTION DES UTILISATEURS ══════ -->
-    <div class="admin-cards-section">
-        <div class="admin-cards-section-title"><i class="fas fa-users"></i> Gestion des utilisateurs</div>
-        <div class="admin-cards-grid">
-            <a href="users/index.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-users"></i></div>
-                <div class="admin-card-title">Tous les utilisateurs</div>
-                <div class="admin-card-stat"><?= $totalUsers ?> actifs</div>
-            </a>
-            <a href="users/create.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-user-plus"></i></div>
-                <div class="admin-card-title">Ajouter un utilisateur</div>
-                <div class="admin-card-stat">Créer un compte</div>
-            </a>
-            <a href="users/admins.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-user-shield"></i></div>
-                <div class="admin-card-title">Administrateurs</div>
-                <div class="admin-card-stat"><?= $totalAdmins ?> admin(s)</div>
-            </a>
-            <a href="users/passwords.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-key"></i></div>
-                <div class="admin-card-title">Mots de passe</div>
-                <?php if ($counts['reset_pending'] > 0): ?>
-                    <span class="admin-card-badge"><?= $counts['reset_pending'] ?></span>
-                <?php endif; ?>
-                <div class="admin-card-stat"><?= $counts['reset_pending'] ?> en attente</div>
-            </a>
-            <a href="users/sessions.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-desktop"></i></div>
-                <div class="admin-card-title">Sessions actives</div>
-                <div class="admin-card-stat"><?= $totalSessions ?> en ligne</div>
-            </a>
-            <a href="users/import.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-file-import"></i></div>
-                <div class="admin-card-title">Import CSV</div>
-                <div class="admin-card-stat">Importer en masse</div>
-            </a>
-        </div>
-    </div>
-
-    <!-- ══════ VIE SCOLAIRE ══════ -->
-    <div class="admin-cards-section">
-        <div class="admin-cards-section-title"><i class="fas fa-graduation-cap"></i> Vie scolaire</div>
-        <div class="admin-cards-grid">
-            <a href="scolaire/notes.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-graduation-cap"></i></div>
-                <div class="admin-card-title">Notes & Évaluations</div>
-                <div class="admin-card-stat">Consulter / modifier</div>
-            </a>
-            <a href="scolaire/absences.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-calendar-times"></i></div>
-                <div class="admin-card-title">Absences & Retards</div>
-                <div class="admin-card-stat"><?= $counts['absences_today'] ?> aujourd'hui</div>
-            </a>
-            <a href="scolaire/justificatifs.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-file-medical"></i></div>
-                <div class="admin-card-title">Justificatifs</div>
-                <?php if ($counts['justificatifs'] > 0): ?>
-                    <span class="admin-card-badge"><?= $counts['justificatifs'] ?></span>
-                <?php endif; ?>
-                <div class="admin-card-stat"><?= $counts['justificatifs'] ?> en attente</div>
-            </a>
-            <a href="scolaire/devoirs.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-book"></i></div>
-                <div class="admin-card-title">Devoirs</div>
-                <div class="admin-card-stat">Consulter / modifier</div>
-            </a>
-        </div>
-    </div>
-
-    <!-- ══════ CLASSES & ENSEIGNEMENT ══════ -->
-    <div class="admin-cards-section">
-        <div class="admin-cards-section-title"><i class="fas fa-chalkboard"></i> Classes & Enseignement</div>
-        <div class="admin-cards-grid">
-            <a href="classes/index.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-chalkboard"></i></div>
-                <div class="admin-card-title">Gestion des classes</div>
-                <div class="admin-card-stat"><?= $totalClasses ?> classes</div>
-            </a>
-            <a href="classes/affectations.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-project-diagram"></i></div>
-                <div class="admin-card-title">Affectations professeurs</div>
-                <div class="admin-card-stat">Matrice profs × classes</div>
-            </a>
-        </div>
-    </div>
-
-    <!-- ══════ MESSAGERIE ══════ -->
-    <div class="admin-cards-section">
-        <div class="admin-cards-section-title"><i class="fas fa-envelope"></i> Messagerie</div>
-        <div class="admin-cards-grid">
-            <a href="messagerie/moderation.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-shield-alt"></i></div>
-                <div class="admin-card-title">Modération</div>
-                <div class="admin-card-stat">Messages signalés</div>
-            </a>
-            <a href="messagerie/conversations.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-comments"></i></div>
-                <div class="admin-card-title">Conversations</div>
-                <div class="admin-card-stat"><?= $counts['messages_24h'] ?> msg (24h)</div>
-            </a>
-            <a href="messagerie/annonces.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-bullhorn"></i></div>
-                <div class="admin-card-title">Annonces globales</div>
-                <div class="admin-card-stat">Diffuser un message</div>
-            </a>
-        </div>
-    </div>
-
-    <!-- ══════ ÉTABLISSEMENT ══════ -->
-    <div class="admin-cards-section">
-        <div class="admin-cards-section-title"><i class="fas fa-school"></i> Établissement</div>
-        <div class="admin-cards-grid">
-            <a href="etablissement/multi.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-building"></i></div>
-                <div class="admin-card-title">Établissements</div>
-                <div class="admin-card-stat">Créer, archiver, basculer</div>
-            </a>
-            <a href="etablissement/info.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-school"></i></div>
-                <div class="admin-card-title">Informations générales</div>
-                <div class="admin-card-stat">Nom, adresse, contact</div>
-            </a>
-            <a href="etablissement/matieres.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-palette"></i></div>
-                <div class="admin-card-title">Matières & Coefficients</div>
-                <div class="admin-card-stat">Configurer les matières</div>
-            </a>
-            <a href="etablissement/periodes.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-calendar-alt"></i></div>
-                <div class="admin-card-title">Périodes scolaires</div>
-                <div class="admin-card-stat">Trimestres / semestres</div>
-            </a>
-            <a href="etablissement/evenements.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-calendar-check"></i></div>
-                <div class="admin-card-title">Événements</div>
-                <div class="admin-card-stat">Gérer les événements</div>
-            </a>
-        </div>
-    </div>
-
-    <!-- ══════ SYSTÈME ══════ -->
-    <div class="admin-cards-section">
-        <div class="admin-cards-section-title"><i class="fas fa-cog"></i> Système</div>
-        <div class="admin-cards-grid">
-            <a href="systeme/import_export.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-file-import"></i></div>
-                <div class="admin-card-title">Import / Export</div>
-                <div class="admin-card-stat">Import en masse (élèves, notes, devoirs…)</div>
-            </a>
-            <a href="../modules/support/tickets.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-life-ring"></i></div>
-                <div class="admin-card-title">Tickets de support</div>
-                <div class="admin-card-stat">Traiter les demandes des utilisateurs</div>
-            </a>
-            <a href="systeme/audit.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-history"></i></div>
-                <div class="admin-card-title">Journal d'audit</div>
-                <div class="admin-card-stat">Traçabilité complète</div>
-            </a>
-            <a href="systeme/code_audit.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-clipboard-check"></i></div>
-                <div class="admin-card-title">Audit code</div>
-                <div class="admin-card-stat">Qualité & coquilles vides</div>
-            </a>
-            <a href="systeme/stats.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-chart-bar"></i></div>
-                <div class="admin-card-title">Statistiques avancées</div>
-                <div class="admin-card-stat">Graphiques & KPI</div>
-            </a>
-            <a href="modules/index.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-puzzle-piece"></i></div>
-                <div class="admin-card-title">Modules</div>
-                <div class="admin-card-stat"><?= $modulesEnabled ?>/<?= $modulesTotal ?> activés</div>
-            </a>
-            <a href="modules/configure.php?module=smtp" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-envelope-open-text"></i></div>
-                <div class="admin-card-title">Configuration SMTP</div>
-                <div class="admin-card-stat">Emails sortants</div>
-            </a>
-            <a href="systeme/update.php" class="admin-card">
-                <div class="admin-card-icon"><i class="fas fa-sync-alt"></i></div>
-                <div class="admin-card-title">Mises à jour</div>
-                <div class="admin-card-stat">Statut &amp; configuration</div>
-            </a>
-        </div>
-    </div>
-
-    <!-- ══════ ACTIVITÉ RÉCENTE ══════ -->
-    <div class="dashboard-row">
-        <div class="admin-activity">
-            <div class="admin-activity-header"><i class="fas fa-clock"></i> Activité récente</div>
-            <?php if (empty($recentLogins)): ?>
-                <div class="admin-activity-item" style="color:#999;font-size:14px">Aucune connexion récente.</div>
-            <?php else: ?>
-                <?php foreach ($recentLogins as $login): ?>
-                <div class="admin-activity-item">
-                    <span class="admin-activity-time"><?= date('H:i', strtotime($login['last_login'])) ?></span>
-                    <span><strong><?= htmlspecialchars($login['identifiant']) ?></strong></span>
-                    <span style="margin-left:8px"><span class="activity-type"><?= htmlspecialchars(getProfilLabel($login['type'])) ?></span></span>
-                    <span style="margin-left:auto;font-size:12px;color:#999"><?= date('d/m', strtotime($login['last_login'])) ?></span>
-                </div>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </div>
-
-        <div class="admin-activity">
-            <div class="admin-activity-header"><i class="fas fa-envelope"></i> Messages récents</div>
-            <?php if (empty($recentMessages)): ?>
-                <div class="admin-activity-item" style="color:#999;font-size:14px">Aucun message récent.</div>
-            <?php else: ?>
-                <?php foreach ($recentMessages as $msg): ?>
-                <div class="admin-activity-item">
-                    <span class="admin-activity-time"><?= date('H:i', strtotime($msg['created_at'])) ?></span>
-                    <span><span class="activity-type"><?= htmlspecialchars(getProfilLabel($msg['sender_type'])) ?></span></span>
-                    <span class="msg-preview" style="margin-left:8px"><?= htmlspecialchars(mb_strimwidth(strip_tags($msg['body']), 0, 60, '', 'UTF-8')) ?>…</span>
-                    <span style="margin-left:auto;font-size:12px;color:#999"><?= date('d/m', strtotime($msg['created_at'])) ?></span>
-                </div>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </div>
-    </div>
+      </div>
+    </section>
+  </div>
 </div>
-
-<?php include 'includes/footer.php'; ?>
+<?php include __DIR__ . '/includes/footer.php'; ?>
