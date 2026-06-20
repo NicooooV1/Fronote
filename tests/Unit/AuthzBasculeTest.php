@@ -75,6 +75,24 @@ final class AuthzBasculeTest extends TestCase
         $this->assertTrue($auth->can('tenant.audit.view'),   'administration → tenant.audit.view');
     }
 
+    public function testSpecialistRolesCannotReachAdmin(): void
+    {
+        // Les rôles « responsable » opérationnels ne doivent PAS détenir la clé d'entrée
+        // de l'espace admin (tenant.users.view), ni la gestion des comptes/rôles.
+        foreach (['responsable_cantine', 'responsable_internat', 'responsable_emploi_du_temps', 'responsable_documents'] as $roleKey) {
+            $acc = (new TenantAccountService($this->pdo))->createAccount([
+                'account_type' => 'staff', 'username' => 'spec_' . $roleKey, 'status' => 'active',
+            ]);
+            $m = (new TenantMembershipService($this->pdo))->ensure(1, $acc);
+            $rid = (int) $this->pdo->query("SELECT id FROM tenant_roles WHERE role_key=" . $this->pdo->quote($roleKey))->fetchColumn();
+            $this->pdo->prepare("INSERT INTO tenant_membership_roles (membership_id, tenant_role_id, scope_type, is_active) VALUES (?, ?, 'establishment', 1)")->execute([$m, $rid]);
+            $auth = new TenantAuthorization($this->pdo, $m);
+            $this->assertFalse($auth->can('tenant.users.view'),   "{$roleKey} ne doit pas entrer dans l'admin");
+            $this->assertFalse($auth->can('tenant.users.manage'), "{$roleKey} ne doit pas gérer les comptes");
+            $this->assertFalse($auth->can('tenant.roles.view'),   "{$roleKey} ne doit pas voir les rôles");
+        }
+    }
+
     public function testUnknownLegacyIdentityResolvesToNothing(): void
     {
         $this->assertSame(0, $this->resolve('professeur', 4242, 1), 'aucune appartenance → fail-closed (gate retombera sur le repli legacy)');

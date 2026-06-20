@@ -91,6 +91,14 @@ final class TenantRoleCatalog
         'directeur'            => ['tenant.*', 'students.*', 'grades.*', 'homework.*', 'attendance.*',
                                    'documents.*', 'messages.*', 'medical.view', 'psychology.view', 'social.view'],
         'responsable_permissions' => ['tenant.dashboard.view', 'tenant.roles.*', 'tenant.users.view', 'tenant.audit.view'],
+        // Rôles « responsable » OPÉRATIONNELS : surcharges NARROW — sans elles, la catégorie
+        // 'administratif' leur accorderait tenant.users.*/tenant.roles.* (escalade : accès à
+        // l'espace admin / gestion des comptes), ce qu'un responsable cantine/internat/EDT/docs
+        // ne doit pas avoir.
+        'responsable_documents'       => ['tenant.dashboard.view', 'students.view', 'documents.view', 'documents.create', 'documents.edit'],
+        'responsable_emploi_du_temps' => ['tenant.dashboard.view', 'students.view', 'homework.view'],
+        'responsable_cantine'         => ['tenant.dashboard.view', 'students.view'],
+        'responsable_internat'        => ['tenant.dashboard.view', 'students.view', 'documents.view'],
         'professeur'           => ['tenant.dashboard.view', 'students.view', 'grades.view', 'grades.create', 'grades.edit',
                                    'homework.view', 'homework.create', 'homework.edit', 'attendance.view', 'attendance.justify', 'documents.view'],
         'coordinateur_matiere' => ['tenant.dashboard.view', 'students.view', 'grades.view', 'homework.view'],

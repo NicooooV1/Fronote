@@ -59,8 +59,13 @@ final class WorldContext
 
     // ───────────────────────── établissement ─────────────────────────
 
-    /** Mémo de requête pour le repli legacy (évite une requête par appel). */
-    private static ?int $tenantMembershipFallback = null;
+    /**
+     * Mémo de requête pour le repli legacy (évite une requête par appel). CLÉ COMPOSITE
+     * (identité + établissement) : un changement d'établissement, une impersonation ou une
+     * ré-authentification dans la même requête ne doit JAMAIS renvoyer un memo périmé.
+     * @var array<string,int>
+     */
+    private static array $tenantMembershipMemo = [];
 
     public static function tenantMembershipId(): int
     {
@@ -71,10 +76,11 @@ final class WorldContext
         // Connexion LEGACY (/login/) : on résout l'appartenance depuis l'identité héritée
         // (tenant_accounts.legacy_type/legacy_id → appartenance active de l'établissement courant),
         // pour que tenantCan/tenantAuthorize fonctionnent sous les DEUX chemins de connexion.
-        if (self::$tenantMembershipFallback !== null) {
-            return self::$tenantMembershipFallback;
+        $key = ($_SESSION['user_type'] ?? '') . ':' . ($_SESSION['user_id'] ?? '') . ':' . ($_SESSION['etablissement_id'] ?? '');
+        if (array_key_exists($key, self::$tenantMembershipMemo)) {
+            return self::$tenantMembershipMemo[$key];
         }
-        return self::$tenantMembershipFallback = self::resolveLegacyMembership();
+        return self::$tenantMembershipMemo[$key] = self::resolveLegacyMembership();
     }
 
     private static function resolveLegacyMembership(): int

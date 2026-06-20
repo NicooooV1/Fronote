@@ -161,7 +161,12 @@ final class AccessControl
      */
     private static function tenantHasAdminAccess(): bool
     {
-        return function_exists('tenantCan') && tenantCan('tenant.users.view');
+        try {
+            return function_exists('tenantCan') && tenantCan('tenant.users.view');
+        } catch (\Throwable $e) {
+            error_log('[AccessControl] tenantHasAdminAccess: ' . $e->getMessage());
+            return false; // fail-closed
+        }
     }
 
     /** Rôle courant depuis la session (posé par SessionGuard::login). */
