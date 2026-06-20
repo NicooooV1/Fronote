@@ -139,6 +139,23 @@
   color: var(--platform-accent);
 }
 
+/* État/santé d'une métrique : vert = normal, orange = attention, rouge = critique. */
+.ds-stat-card.is-ok    { border-left: 3px solid var(--success); }
+.ds-stat-card.is-warn  { border-left: 3px solid var(--warning); }
+.ds-stat-card.is-crit  { border-left: 3px solid var(--danger); }
+.ds-stat-card.is-warn .ds-stat-card-value { color: var(--warning); }
+.ds-stat-card.is-crit .ds-stat-card-value { color: var(--danger); }
+.ds-stat-card-status { display:inline-flex; align-items:center; gap: var(--space-1); font-size: var(--fs-xs); font-weight: var(--fw-semibold); color: var(--text-muted); }
+.ds-stat-card.is-ok   .ds-stat-card-status { color: var(--success); }
+.ds-stat-card.is-warn .ds-stat-card-status { color: var(--warning); }
+.ds-stat-card.is-crit .ds-stat-card-status { color: var(--danger); }
+
+/* Barre de progression fine (jauge CPU/RAM/disque). */
+.ds-gauge { height: 6px; border-radius: var(--radius-pill); background: var(--surface-sunken); overflow: hidden; }
+.ds-gauge > span { display:block; height:100%; border-radius: var(--radius-pill); background: var(--success); transition: width var(--motion-slow) var(--ease-standard); }
+.ds-stat-card.is-warn .ds-gauge > span { background: var(--warning); }
+.ds-stat-card.is-crit .ds-gauge > span { background: var(--danger); }
+
 /* ---------------------------------------------------------------------------
    Reduced motion
    --------------------------------------------------------------------------- */
