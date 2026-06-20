@@ -44,7 +44,9 @@
 
   // ── Scroll : topbar hide/show + bottom-bar + retour-haut ───────────────────
   function initScroll() {
-    var topbar = document.querySelector('.topbar, .ds-topbar');
+    // On ne pilote QUE la topbar du design system (.ds-topbar) — opt-in — pour ne pas
+    // entrer en conflit avec le comportement de l'ancienne topbar (assets/js/topbar.js).
+    var topbar = document.querySelector('.ds-topbar');
     var bottom = document.querySelector('.ds-bottom-bar');
     var toTop = document.querySelector('.ds-back-to-top');
     var lastY = window.scrollY, ticking = false;
@@ -68,16 +70,24 @@
   }
 
   // ── Switches (.ds-switch) ──────────────────────────────────────────────────
+  function toggleSwitch(sw) {
+    if (!sw || sw.classList.contains('is-disabled') || sw.hasAttribute('disabled') || sw.classList.contains('is-loading')) return;
+    var on = sw.classList.toggle('is-on');
+    sw.setAttribute('aria-checked', on ? 'true' : 'false');
+    var cb = sw.querySelector('input[type=checkbox]');
+    if (cb) cb.checked = on;
+    sw.dispatchEvent(new CustomEvent('ds:toggle', { bubbles: true, detail: { on: on } }));
+  }
   function initSwitches() {
     document.addEventListener('click', function (e) {
+      var sw = e.target.closest('.ds-switch'); if (sw) toggleSwitch(sw);
+    });
+    // Clavier : Espace/Entrée. (Sur un <button class="ds-switch"> le natif déclenche déjà
+    // un click ; on ne gère ici que les éléments non-bouton avec role="switch".)
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== ' ' && e.key !== 'Enter' && e.key !== 'Spacebar') return;
       var sw = e.target.closest('.ds-switch');
-      if (!sw || sw.classList.contains('is-disabled') || sw.hasAttribute('disabled')) return;
-      // si label encapsulant un checkbox, laisser le natif gérer + refléter
-      var on = sw.classList.toggle('is-on');
-      sw.setAttribute('aria-checked', on ? 'true' : 'false');
-      var cb = sw.querySelector('input[type=checkbox]');
-      if (cb) cb.checked = on;
-      sw.dispatchEvent(new CustomEvent('ds:toggle', { bubbles: true, detail: { on: on } }));
+      if (sw && sw.tagName !== 'BUTTON') { e.preventDefault(); toggleSwitch(sw); }
     });
   }
 
@@ -156,10 +166,10 @@
     t.className = 'ds-toast ds-toast--' + type;
     t.setAttribute('role', 'status');
     t.innerHTML = '<span class="ds-toast__icon"><i class="fas ' + (ICONS[type] || ICONS.info) + '"></i></span>' +
-      '<span class="ds-toast__msg"></span>' +
+      '<div class="ds-toast__content"><div class="ds-toast__message"></div></div>' +
       '<button class="ds-toast__close" aria-label="Fermer">&times;</button>' +
       '<span class="ds-toast__progress"></span>';
-    t.querySelector('.ds-toast__msg').textContent = message;
+    t.querySelector('.ds-toast__message').textContent = message;
     c.appendChild(t);
     requestAnimationFrame(function () { t.classList.add('is-visible'); });
     var dur = opts.duration != null ? opts.duration : (type === 'loading' ? 0 : 4000);

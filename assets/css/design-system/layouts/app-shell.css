@@ -66,20 +66,9 @@
   box-shadow: var(--shadow-sm);
 }
 
-/* ---------------------------------------------------------------------------
-   State hooks for the EXISTING legacy .topbar — additive only.
-   We intentionally do NOT restyle base .topbar; only the .is-* behaviours.
-   --------------------------------------------------------------------------- */
-.topbar.is-hidden {
-  transform: translateY(-100%);
-  opacity: 0;
-}
-
-.topbar.is-scrolled {
-  box-shadow: var(--shadow-sm);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-}
+/* L'auto-masquage de la topbar est OPT-IN via .ds-topbar (ci-dessus), pour ne PAS
+   entrer en conflit avec l'ancienne .topbar (gérée par assets/js/topbar.js).
+   interactions.js ne pilote que .ds-topbar. */
 
 /* ---------------------------------------------------------------------------
    Back-to-top FAB — fixed bottom-right, hidden until scrolled

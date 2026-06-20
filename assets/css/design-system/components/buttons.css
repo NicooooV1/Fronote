@@ -137,9 +137,9 @@
 
 /* Icon : carré ~40px, contenu centré (une icône). */
 .ds-btn--icon {
-  min-height: 40px;
-  width: 40px;
-  height: 40px;
+  min-height: 44px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border-radius: var(--radius-md);
   background: transparent;

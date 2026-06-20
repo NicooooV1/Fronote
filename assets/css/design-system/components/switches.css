@@ -106,8 +106,12 @@
 }
 .ds-switch.is-on.is-loading::after,
 .ds-switch[aria-checked="true"].is-loading::after {
-  /* On fige la translation pendant le chargement. */
-  animation: ds-spin var(--motion-slower) linear infinite;
+  /* Conserve la translation à droite pendant que le pouce tourne (sinon il revient à gauche). */
+  animation: ds-spin-on var(--motion-slower) linear infinite;
+}
+@keyframes ds-spin-on {
+  from { transform: translateX(22px) rotate(0deg); }
+  to   { transform: translateX(22px) rotate(360deg); }
 }
 
 /* ── Variante <label> enveloppant une checkbox ─────────────────────────────

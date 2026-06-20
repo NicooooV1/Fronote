@@ -86,6 +86,13 @@
   color: var(--text-secondary);
 }
 
+.ds-nav-section-title:focus-visible {
+  outline: none;
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-focus);
+  border-radius: var(--radius-sm);
+}
+
 /* Chevron rotates when section open */
 .ds-nav-section-title .ds-nav-chevron {
   flex: 0 0 auto;

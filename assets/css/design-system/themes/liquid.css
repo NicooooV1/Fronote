@@ -35,6 +35,17 @@ html[data-theme="liquid"] {
   --warning:         #fbbf24;
   --danger:          #fb7185;
   --info:            #38bdf8;
+  --text-on-accent:  #0b1020;          /* texte sombre sur accents clairs du thème liquide */
+
+  /* Fonds « soft » SOMBRES (sinon repli pastel clair illisible sur le verre). */
+  --primary-soft:    rgba(110, 168, 255, 0.18);
+  --success-soft:    rgba(74, 222, 128, 0.16);
+  --warning-soft:    rgba(251, 191, 36, 0.16);
+  --danger-soft:     rgba(251, 113, 133, 0.16);
+  --info-soft:       rgba(56, 189, 248, 0.16);
+
+  --text-faint:      rgba(244, 247, 255, 0.55);  /* relevé pour la lisibilité sur verre */
+  --shadow-xs:       0 1px 2px rgba(0, 0, 0, 0.25);
 
   --switch-bg-off:   rgba(255, 255, 255, 0.18);
   --switch-thumb:    rgba(255, 255, 255, 0.92);

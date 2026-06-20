@@ -109,7 +109,8 @@ try {
         // Support both old (light/dark/auto) and new (classic/glass/custom) theme values
         if (in_array($_hdr_raw_theme, ['classic', 'glass'], true)) {
             $_hdr_theme = $_hdr_raw_theme;
-        } elseif ($_hdr_raw_theme === 'light' || $_hdr_raw_theme === 'dark' || $_hdr_raw_theme === 'auto') {
+        } elseif (in_array($_hdr_raw_theme, ['light', 'dark', 'auto', 'liquid'], true)) {
+            // 'liquid' = thème de la refonte (design-system.css) ; piloté par data-theme.
             $_hdr_theme = 'classic';
             $_hdr_dark_mode = $_hdr_raw_theme;
         } elseif ($_hdr_raw_theme) {
