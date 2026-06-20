@@ -184,7 +184,13 @@ if (file_exists($_maintFile) && php_sapi_name() !== 'cli') {
 		}
 		// Allow admin system pages through
 		$_maintUri = $_SERVER['REQUEST_URI'] ?? '';
-		$_maintIsAdmin = strpos($_maintUri, '/admin/systeme/maintenance') !== false;
+		// Exemption évaluée sur le CHEMIN seul (pas la query) : sinon « ?x=/platform/ »
+		// suffirait à contourner la maintenance.
+		$_maintPath = parse_url($_maintUri, PHP_URL_PATH) ?: $_maintUri;
+		// La console PLATEFORME (opérateur) reste toujours accessible : la maintenance
+		// verrouille l'app établissement, jamais le poste de pilotage qui l'a déclenchée.
+		$_maintIsAdmin = strpos($_maintPath, '/admin/systeme/maintenance') !== false
+		              || strpos($_maintPath, '/platform/') !== false;
 		if (!$_maintAllowed && !$_maintIsAdmin) {
 			// API requests get JSON 503
 			if (strpos($_maintUri, '/API/') !== false || (!empty($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false)) {
@@ -197,7 +203,7 @@ if (file_exists($_maintFile) && php_sapi_name() !== 'cli') {
 			exit;
 		}
 	}
-	unset($_maintData, $_maintIp, $_maintAllowed, $_maintRule, $_s, $_b, $_maintUri, $_maintIsAdmin);
+	unset($_maintData, $_maintIp, $_maintAllowed, $_maintRule, $_s, $_b, $_maintUri, $_maintPath, $_maintIsAdmin);
 }
 unset($_maintFile);
 

@@ -27,6 +27,8 @@ $menu = [
     ['platform.audit.view',            'Audit global',          '/platform/audit.php'],
     ['platform.security.view',         'Sécurité',              '/platform/security.php'],
     ['platform.backups.view',          'Sauvegardes',           '/platform/backups.php'],
+    ['platform.maintenance.manage',    'Maintenance',           '/platform/maintenance.php'],
+    ['platform.updates.manage',        'Mises à jour',          '/platform/updates.php'],
     ['platform.system.view',           'Système',               '/platform/system.php'],
 ];
 ?>
