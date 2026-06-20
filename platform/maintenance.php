@@ -25,13 +25,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action = $_POST['action'] ?? '';
         try {
             if ($action === 'activate') {
-                // IP autorisées : on injecte TOUJOURS l'IP courante (anti-lockout de l'app établissement).
-                $ips = array_values(array_filter(array_map('trim', preg_split('/[\s,]+/', (string) ($_POST['allowed_ips'] ?? '')))));
-                if ($myIp !== '' && !in_array($myIp, $ips, true)) { $ips[] = $myIp; }
-                $eta = ($_POST['eta_minutes'] ?? '') !== '' ? max(1, (int) $_POST['eta_minutes']) : null;
-                $maint->activate(trim((string) ($_POST['message'] ?? '')), $ips, $eta);
-                $audit('platform.maintenance.activate', ['allowed_ips' => $ips, 'eta_minutes' => $eta]);
-                $msg = 'Mode maintenance ACTIVÉ.';
+                // Validation stricte AVANT stockage : une entrée malformée (« /99 ») ferait planter
+                // le filtre CIDR du bootstrap (ArithmeticError) sur CHAQUE requête → DoS du site.
+                $raw = array_values(array_filter(array_map('trim', preg_split('/[\s,]+/', (string) ($_POST['allowed_ips'] ?? '')))));
+                $isValidIp = static function (string $r): bool {
+                    if (filter_var($r, FILTER_VALIDATE_IP)) { return true; }
+                    if (strpos($r, '/') !== false) {
+                        [$s, $b] = explode('/', $r, 2);
+                        return filter_var($s, FILTER_VALIDATE_IP) !== false && ctype_digit($b) && (int) $b >= 0 && (int) $b <= 32;
+                    }
+                    return false;
+                };
+                $bad = array_values(array_filter($raw, static fn($r) => !$isValidIp($r)));
+                if ($bad) {
+                    $err = 'IP/CIDR invalide(s) : ' . implode(', ', $bad) . ' — format attendu 1.2.3.4 ou 1.2.3.0/24.';
+                } else {
+                    // On injecte TOUJOURS l'IP courante (anti-lockout de l'app établissement).
+                    $ips = $raw;
+                    if ($myIp !== '' && !in_array($myIp, $ips, true)) { $ips[] = $myIp; }
+                    $eta = ($_POST['eta_minutes'] ?? '') !== '' ? max(1, (int) $_POST['eta_minutes']) : null;
+                    $maint->activate(trim((string) ($_POST['message'] ?? '')), $ips, $eta);
+                    $audit('platform.maintenance.activate', ['allowed_ips' => $ips, 'eta_minutes' => $eta]);
+                    $msg = 'Mode maintenance ACTIVÉ.' . ($myIp === '' ? " (IP non détectée — ajoutez-en une manuellement pour garder l'accès à l'app établissement.)" : '');
+                }
             } elseif ($action === 'deactivate') {
                 $maint->deactivate();
                 $audit('platform.maintenance.deactivate', []);

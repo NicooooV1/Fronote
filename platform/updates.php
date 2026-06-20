@@ -26,13 +26,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             if ($action === 'check') {
                 $check = $upd->checkForUpdate(); // git fetch + comparaison (lecture seule)
-                $audit('platform.updates.check', ['behind' => $check['behind'] ?? 0]);
-                $msg = $check ? "Mise à jour disponible ({$check['behind']} commit(s))." : 'Application à jour.';
+                $gitOk = $upd->isGitAvailable();
+                $audit('platform.updates.check', ['git_available' => $gitOk, 'behind' => $check['behind'] ?? 0]);
+                $msg = $check ? "Mise à jour disponible ({$check['behind']} commit(s))." : ($gitOk ? 'Application à jour.' : 'Git indisponible — vérification impossible.');
             } elseif ($action === 'apply') {
                 if (!$canApply) { $err = 'Réservé à platform.system.update.'; }
-                elseif (($_POST['confirm'] ?? '') !== 'METTRE A JOUR') { $err = 'Saisissez « METTRE A JOUR » pour confirmer.'; }
+                elseif (strtoupper(trim((string) ($_POST['confirm'] ?? ''))) !== 'METTRE A JOUR') { $err = 'Saisissez « METTRE A JOUR » pour confirmer.'; }
                 else {
                     @set_time_limit(300);
+                    if (function_exists('session_write_close')) { session_write_close(); } // libère le verrou de session pendant l'opération longue
                     $apply = $upd->applyUpdate(); // sauvegarde + git reset + schéma/migrations + rollback auto si échec
                     $audit('platform.updates.apply', ['success' => $apply['success'] ?? false, 'old' => $apply['old_version'] ?? null, 'new' => $apply['new_version'] ?? null, 'rolled_back' => $apply['rolled_back'] ?? false]);
                     $msg = !empty($apply['success']) ? "Mise à jour appliquée ({$apply['old_version']} → {$apply['new_version']})." : ('Échec : ' . ($apply['error'] ?? 'inconnu') . (!empty($apply['rolled_back']) ? ' (restauré)' : ''));
@@ -46,6 +48,8 @@ $version = $upd->getCurrentVersion();
 $branch  = $upd->getBranch();
 $git     = $upd->isGitAvailable();
 $h = fn($s) => htmlspecialchars((string) $s);
+// Sortie git : on masque d'éventuels identifiants intégrés dans une URL de remote.
+$redact = static fn($s) => htmlspecialchars(preg_replace('#://[^/@\s:]+:[^/@\s]+@#', '://***:***@', (string) $s));
 ?>
 <!doctype html>
 <html lang="fr">
@@ -85,7 +89,7 @@ $h = fn($s) => htmlspecialchars((string) $s);
         <div class="card">
             <h2>Mise à jour disponible</h2>
             <p><?= (int) ($check['behind'] ?? 0) ?> commit(s) en retard sur <code><?= $h($check['branch'] ?? $branch) ?></code>.</p>
-            <?php if (!empty($check['commits'])): ?><pre><?php foreach ($check['commits'] as $c) { echo $h($c) . "\n"; } ?></pre><?php endif; ?>
+            <?php if (!empty($check['commits'])): ?><pre><?php foreach ($check['commits'] as $c) { echo $redact($c) . "\n"; } ?></pre><?php endif; ?>
             <?php if ($canApply): ?>
             <form method="post" onsubmit="return confirm('Appliquer la mise à jour ? L\'app passe en maintenance, une sauvegarde est créée, rollback automatique en cas d\'échec.')">
                 <?= csrfField() ?><input type="hidden" name="action" value="apply">
@@ -99,7 +103,7 @@ $h = fn($s) => htmlspecialchars((string) $s);
         <?php if ($apply !== null): ?>
         <div class="card">
             <h2>Résultat de l'installation — <?= !empty($apply['success']) ? 'succès' : 'échec' ?></h2>
-            <?php if (!empty($apply['steps'])): ?><pre><?php foreach ($apply['steps'] as $s) { echo $h($s) . "\n"; } ?></pre><?php endif; ?>
+            <?php if (!empty($apply['steps'])): ?><pre><?php foreach ($apply['steps'] as $s) { echo $redact($s) . "\n"; } ?></pre><?php endif; ?>
         </div>
         <?php endif; ?>
     </main>

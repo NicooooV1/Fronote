@@ -177,7 +177,11 @@ if (file_exists($_maintFile) && php_sapi_name() !== 'cli') {
 			if ($_maintRule === $_maintIp) { $_maintAllowed = true; break; }
 			if (strpos($_maintRule, '/') !== false) {
 				[$_s, $_b] = explode('/', $_maintRule);
-				if ((ip2long($_maintIp) & (-1 << (32 - (int)$_b))) === (ip2long($_s) & (-1 << (32 - (int)$_b)))) {
+				$_b = (int) $_b;
+				// Bornes OBLIGATOIRES : sans elles un « /99 » ou « /-1 » provoque « -1 << négatif »
+				// (ArithmeticError fatale à CHAQUE requête → DoS de tout le site pendant la maintenance).
+				if ($_b >= 0 && $_b <= 32 && ip2long($_maintIp) !== false && ip2long($_s) !== false
+					&& (ip2long($_maintIp) & (-1 << (32 - $_b))) === (ip2long($_s) & (-1 << (32 - $_b)))) {
 					$_maintAllowed = true; break;
 				}
 			}
@@ -186,11 +190,15 @@ if (file_exists($_maintFile) && php_sapi_name() !== 'cli') {
 		$_maintUri = $_SERVER['REQUEST_URI'] ?? '';
 		// Exemption évaluée sur le CHEMIN seul (pas la query) : sinon « ?x=/platform/ »
 		// suffirait à contourner la maintenance.
-		$_maintPath = parse_url($_maintUri, PHP_URL_PATH) ?: $_maintUri;
+		$_maintPath = strtolower(parse_url($_maintUri, PHP_URL_PATH) ?: $_maintUri);
+		// Retire le préfixe de déploiement (ex. /Pronote) pour matcher par PRÉFIXE de segment :
+		// un simple « contient /platform/ » exempterait à tort /admin/platform/… ou /x/platform/.
+		$_maintBase = strtolower(rtrim((string) (parse_url(defined('BASE_URL') ? BASE_URL : '', PHP_URL_PATH) ?: ''), '/'));
+		if ($_maintBase !== '' && strpos($_maintPath, $_maintBase) === 0) { $_maintPath = substr($_maintPath, strlen($_maintBase)); }
 		// La console PLATEFORME (opérateur) reste toujours accessible : la maintenance
 		// verrouille l'app établissement, jamais le poste de pilotage qui l'a déclenchée.
-		$_maintIsAdmin = strpos($_maintPath, '/admin/systeme/maintenance') !== false
-		              || strpos($_maintPath, '/platform/') !== false;
+		$_maintIsAdmin = strpos($_maintPath, '/admin/systeme/maintenance') === 0
+		              || strpos($_maintPath, '/platform/') === 0;
 		if (!$_maintAllowed && !$_maintIsAdmin) {
 			// API requests get JSON 503
 			if (strpos($_maintUri, '/API/') !== false || (!empty($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false)) {
@@ -203,7 +211,7 @@ if (file_exists($_maintFile) && php_sapi_name() !== 'cli') {
 			exit;
 		}
 	}
-	unset($_maintData, $_maintIp, $_maintAllowed, $_maintRule, $_s, $_b, $_maintUri, $_maintPath, $_maintIsAdmin);
+	unset($_maintData, $_maintIp, $_maintAllowed, $_maintRule, $_s, $_b, $_maintUri, $_maintPath, $_maintBase, $_maintIsAdmin);
 }
 unset($_maintFile);
 

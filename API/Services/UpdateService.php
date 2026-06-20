@@ -115,9 +115,17 @@ class UpdateService
         //     (HEAD git + sauvegarde de la base) et passer le site en maintenance.
         $oldHead = trim($this->git('rev-parse HEAD', $cHead));
         if ($cHead !== 0 || $oldHead === '') { $oldHead = null; }
+        // Sans HEAD connu, un rollback du code serait impossible → refus AVANT toute opération destructive.
+        if ($oldHead === null) {
+            return ['success' => false, 'error' => "Impossible de lire le HEAD git courant — rollback impossible, mise à jour refusée.", 'steps' => $steps];
+        }
         $maintActive = false;
         try { app('maintenance')->activate('Mise à jour en cours…'); $maintActive = true; $steps[] = 'Mode maintenance activé'; }
         catch (\Throwable $e) { $steps[] = 'Mode maintenance indisponible : ' . $e->getMessage(); }
+        // Pas de maintenance ⇒ les utilisateurs accéderaient à l'app pendant le reset → refus (rien de destructif encore fait).
+        if (!$maintActive) {
+            return ['success' => false, 'error' => "Mode maintenance indisponible — mise à jour refusée.", 'steps' => $steps];
+        }
         $dbBackup = null;
         try { $dbBackup = app('backup')->createDatabaseBackup(); $steps[] = 'Sauvegarde base : ' . basename((string) $dbBackup); }
         catch (\Throwable $e) { $steps[] = 'Sauvegarde base indisponible : ' . $e->getMessage(); }
@@ -137,6 +145,11 @@ class UpdateService
         $endMaintenance = function () use (&$steps, &$maintActive): void {
             if ($maintActive) { try { app('maintenance')->deactivate(); $steps[] = 'Maintenance désactivée'; } catch (\Throwable $e) { error_log('[UpdateService.php] ' . $e->getMessage()); } $maintActive = false; }
         };
+        // Filet anti-blocage : si un fatal/timeout interrompt la mise à jour avant la levée
+        // normale, la maintenance est tout de même désactivée (sinon le site reste verrouillé).
+        register_shutdown_function(function () use (&$maintActive) {
+            if ($maintActive) { try { app('maintenance')->deactivate(); } catch (\Throwable $e) { /* shutdown */ } }
+        });
 
         // 1) git fetch
         $out = $this->git('fetch origin ' . escapeshellarg($this->branch), $c1);

@@ -110,11 +110,13 @@ class MaintenanceService
 
     private function ipInCidr(string $ip, string $cidr): bool
     {
-        [$subnet, $bits] = explode('/', $cidr);
+        [$subnet, $bits] = array_pad(explode('/', $cidr, 2), 2, '');
+        $bits = (int) $bits;
+        if ($bits < 0 || $bits > 32) return false; // borne obligatoire : évite « -1 << négatif » (ArithmeticError)
         $ip = ip2long($ip);
         $subnet = ip2long($subnet);
         if ($ip === false || $subnet === false) return false;
-        $mask = -1 << (32 - (int)$bits);
+        $mask = -1 << (32 - $bits);
         return ($ip & $mask) === ($subnet & $mask);
     }
 }
