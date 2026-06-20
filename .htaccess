@@ -61,3 +61,11 @@ RedirectMatch 404 (?i)/(vendor|logs|storage|database|scripts|config|tests|node_m
     ExpiresByType font/woff2 "access plus 1 year"
     ExpiresByType text/html "access plus 0 seconds"
 </IfModule>
+
+# --- Portail établissement (refonte 3-mondes) : URLs propres /e/{slug}/... ---
+# /e/{slug} → tableau de bord ; /e/{slug}/{login|dashboard|admin|logout} → page tenant.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^e/([A-Za-z0-9_-]+)/?$ tenant/dashboard.php?e=$1 [L,QSA]
+    RewriteRule ^e/([A-Za-z0-9_-]+)/(login|dashboard|admin|logout)/?$ tenant/$2.php?e=$1 [L,QSA]
+</IfModule>
