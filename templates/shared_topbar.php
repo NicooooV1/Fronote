@@ -41,6 +41,19 @@ if (is_string($pageBack) && $pageBack !== '') {
 
 // Include the topbar navigation
 require __DIR__ . '/shared_topbar_nav.php';
+
+// Bandeau PERMANENT d'impersonation Support (refonte 3-mondes) — visible sur toutes les
+// pages établissement tant qu'une session d'impersonation est active.
+if (!empty($_SESSION['impersonation'])) {
+    $_imp = $_SESSION['impersonation'];
+    $_impBase = defined('BASE_URL') ? BASE_URL : '';
+    $_impName = htmlspecialchars((string) ($_imp['target_name'] ?? 'utilisateur'));
+    $_impSid = (int) ($_imp['support_session_id'] ?? 0);
+    echo '<div role="alert" style="position:sticky;top:0;z-index:9999;background:#b91c1c;color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:system-ui,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.25)">'
+       . '<span><strong>&#9888; Mode impersonation Support</strong> &mdash; vous agissez en tant que <strong>' . $_impName . '</strong> (intervention #' . $_impSid . '). Toutes vos actions sont journalis&eacute;es.</span>'
+       . '<a href="' . htmlspecialchars($_impBase) . '/impersonation/stop.php" style="background:#fff;color:#b91c1c;padding:6px 12px;border-radius:6px;text-decoration:none;font-weight:700;white-space:nowrap">Terminer l\'impersonation</a>'
+       . '</div>';
+}
 ?>
 
     <!-- Main Content -->

@@ -99,14 +99,14 @@ final class SupportSessionService
         return (bool) $ok;
     }
 
-    /** Clôture par le Support (fin normale ; NE PEUT PAS prolonger). */
-    public function endBySupport(int $sessionId, int $platformAccountId, ?string $reason = null, ?string $now = null): bool
+    /** Clôture par le Support (fin normale ; NE PEUT PAS prolonger). $summary = synthèse de fin d'intervention. */
+    public function endBySupport(int $sessionId, int $platformAccountId, ?string $reason = null, ?string $summary = null, ?string $now = null): bool
     {
         $now = $this->now($now);
         $ok = $this->pdo->prepare(
-            "UPDATE support_sessions SET status='ended', ended_at=?, ended_by_type='platform', ended_by_platform_account_id=?, end_reason=?
+            "UPDATE support_sessions SET status='ended', ended_at=?, ended_by_type='platform', ended_by_platform_account_id=?, end_reason=?, intervention_summary=?
               WHERE id=? AND platform_account_id=? AND status='active'"
-        )->execute([$now, $platformAccountId, $reason, $sessionId, $platformAccountId]);
+        )->execute([$now, $platformAccountId, $reason, $summary, $sessionId, $platformAccountId]);
         if ($ok) { $this->audit($sessionId, 'session_ended', ['reason' => $reason]); }
         return (bool) $ok;
     }
@@ -198,10 +198,11 @@ final class SupportSessionService
         try {
             $s = $this->get($sessionId);
             if (!$s) { return; }
+            // `sensitive` est un mot réservé MySQL → toutes les colonnes sont backtickées.
             $this->pdo->prepare(
                 "INSERT INTO support_session_audit_logs
-                    (support_session_id, ticket_id, establishment_id, platform_account_id, action,
-                     target_type, target_id, permission_used, access_level, sensitive, new_value, ip_address, user_agent)
+                    (`support_session_id`, `ticket_id`, `establishment_id`, `platform_account_id`, `action`,
+                     `target_type`, `target_id`, `permission_used`, `access_level`, `sensitive`, `new_value`, `ip_address`, `user_agent`)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             )->execute([
                 $sessionId, (int) $s['ticket_id'], (int) $s['establishment_id'], (int) $s['platform_account_id'], $action,
@@ -240,6 +241,20 @@ final class SupportSessionService
         try {
             $st = $this->pdo->prepare(
                 "SELECT * FROM support_sessions WHERE establishment_id = ? AND status IN ('pending_start','active','paused') ORDER BY id DESC"
+            );
+            $st->execute([$establishmentId]);
+            return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (\PDOException $e) { return []; }
+    }
+
+    /** Sessions terminées d'un établissement (historique des interventions, vue Direction). */
+    public function historyForEstablishment(int $establishmentId): array
+    {
+        try {
+            $st = $this->pdo->prepare(
+                "SELECT * FROM support_sessions
+                  WHERE establishment_id = ? AND status IN ('ended','revoked','expired','security_stopped')
+                  ORDER BY id DESC LIMIT 100"
             );
             $st->execute([$establishmentId]);
             return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];

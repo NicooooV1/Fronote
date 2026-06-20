@@ -515,6 +515,7 @@ if (php_sapi_name() !== 'cli' && !empty($_SESSION['user_id'])) {
 	unset($_forceLogout, $_ss, $_ssRow);
 }
 
+\API\Support\SupportImpersonation::enforce();
 \API\Core\ReadOnlyGuard::enforce();
 \API\Core\AccessControl::enforce(BASE_PATH);
 

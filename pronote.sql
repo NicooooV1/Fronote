@@ -1513,6 +1513,7 @@ CREATE TABLE `support_sessions` (
   `ended_by_platform_account_id` INT NULL,
   `ended_by_membership_id`       INT NULL,
   `end_reason`        VARCHAR(255) NULL,
+  `intervention_summary` TEXT NULL,
   `ip_address`        VARCHAR(45) NULL,
   `user_agent`        TEXT NULL,
   `created_at`        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -43,13 +43,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $sessions->start((int) $_POST['session_id'], $accId);
                 $msg = 'Session démarrée.';
             } elseif ($action === 'end_session' && platformCan('platform.support.session.end')) {
-                $sessions->endBySupport((int) $_POST['session_id'], $accId, 'Clôture support');
+                $sessions->endBySupport((int) $_POST['session_id'], $accId, 'Clôture support', trim((string) ($_POST['summary'] ?? '')) ?: null);
                 $msg = 'Session terminée.';
             } else { $err = 'Action non autorisée.'; }
         } catch (\Throwable $e) { $err = $e->getMessage(); }
     }
     $ticket = $tickets->get($id);
 }
+if (!empty($_GET['imp_error'])) { $err = (string) $_GET['imp_error']; }
+if (!empty($_GET['impersonation_ended'])) { $msg = 'Impersonation terminée.'; }
 
 $messages = $tickets->messages($id);
 $reqs     = $requests->forTicket($id);
@@ -135,8 +137,15 @@ $levels = SupportAccessRequestService::LEVELS;
                         <td>
                             <?php if ($s['status'] === 'pending_start' && platformCan('platform.support.session.start')): ?>
                                 <form method="post" style="display:inline"><?= csrfField() ?><input type="hidden" name="action" value="start_session"><input type="hidden" name="session_id" value="<?= (int) $s['id'] ?>"><button type="submit">Démarrer</button></form>
-                            <?php elseif ($s['status'] === 'active' && platformCan('platform.support.session.end')): ?>
-                                <form method="post" style="display:inline"><?= csrfField() ?><input type="hidden" name="action" value="end_session"><input type="hidden" name="session_id" value="<?= (int) $s['id'] ?>"><button type="submit">Terminer</button></form>
+                            <?php elseif ($s['status'] === 'active'): ?>
+                                <?php if (platformCan('platform.support.session.end')): ?>
+                                    <form method="post" style="display:inline"><?= csrfField() ?><input type="hidden" name="action" value="end_session"><input type="hidden" name="session_id" value="<?= (int) $s['id'] ?>"><input name="summary" placeholder="synthèse de fin" style="width:140px"><button type="submit">Terminer</button></form>
+                                <?php endif; ?>
+                                <?php if ((SupportSessionService::LEVELS[$s['access_level']] ?? 0) >= SupportSessionService::LEVELS['impersonation']): ?>
+                                    <form method="post" action="<?= $base ?>/platform/support/impersonate.php" style="display:inline" onsubmit="return confirm('Démarrer une impersonation ? Toutes les actions seront journalisées.')"><?= csrfField() ?><input type="hidden" name="ticket_id" value="<?= (int) $id ?>"><input type="hidden" name="establishment_id" value="<?= (int) $s['establishment_id'] ?>"><input name="tenant_account_id" type="number" placeholder="compte cible (id)" style="width:120px" required><button type="submit">Impersonifier</button></form>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <a href="<?= $base ?>/platform/support/report.php?session=<?= (int) $s['id'] ?>">Rapport</a>
                             <?php endif; ?>
                         </td>
                     </tr>

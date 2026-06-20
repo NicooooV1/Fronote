@@ -42,7 +42,8 @@ final class ReadOnlyGuard
         if (PHP_SAPI === 'cli') { return; }
         $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
         if (!in_array($method, self::WRITE_METHODS, true)) { return; }
-        if (!empty($_SESSION['platform'])) { return; } // monde plateforme exempté
+        // Monde plateforme exempté — SAUF en impersonation (où l'agent agit dans l'établissement).
+        if (!empty($_SESSION['platform']) && empty($_SESSION['impersonation'])) { return; }
         $hasEstab = !empty($_SESSION['user']) || !empty($_SESSION['tenant']);
         if (!$hasEstab) { return; }
 

@@ -61,6 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $ticketList = $tickets->listForEstablishment($estab);
 $pending    = $requests->pendingForEstablishment($estab);
 $live       = $sessions->liveForEstablishment($estab);
+$history    = $sessions->historyForEstablishment($estab);
 $canApprove = tenantCan('tenant.support.access_request.approve');
 $canRevoke  = tenantCan('tenant.support.session.revoke');
 $h = fn($s) => htmlspecialchars((string) $s);
@@ -144,6 +145,26 @@ $h = fn($s) => htmlspecialchars((string) $s);
                                 <button class="danger" type="submit">Révoquer</button>
                             </form>
                         <?php endif; ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>Historique des interventions</h2>
+            <p class="muted">Chaque intervention terminée du Support donne droit à un rapport (transparence).</p>
+            <table>
+                <thead><tr><th>#</th><th>Niveau</th><th>Statut final</th><th>Terminée</th><th></th></tr></thead>
+                <tbody>
+                <?php if (!$history): ?><tr><td colspan="5"><em>Aucune intervention passée.</em></td></tr><?php endif; ?>
+                <?php foreach ($history as $s): ?>
+                    <tr>
+                        <td><?= (int) $s['id'] ?></td>
+                        <td><span class="badge"><?= $h($s['access_level']) ?></span></td>
+                        <td><?= $h($s['status']) ?></td>
+                        <td class="muted"><?= $h($s['ended_at'] ?? '') ?></td>
+                        <td><a href="<?= $base ?>/tenant/support_report.php?e=<?= urlencode($slug) ?>&session=<?= (int) $s['id'] ?>">Rapport</a></td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
