@@ -238,7 +238,7 @@
       var on = root.getAttribute(attr) !== 'true';
       sw.classList.toggle('is-on', on);
       sw.setAttribute('aria-checked', on ? 'true' : 'false');
-      sw.addEventListener('ds:toggle', function (e) { map[key](!e.detail.on); });
+      sw.addEventListener('ds:toggle', function (e) { if (e.detail) map[key](!e.detail.on); });
     });
   }
 

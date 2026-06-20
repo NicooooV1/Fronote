@@ -400,7 +400,7 @@ $roleWidgets = match ($userType) {
                 if (window.FronoteUI && window.FronoteUI.setTheme) window.FronoteUI.setTheme(theme);
                 document.querySelectorAll('.theme-option').forEach(function (o) { o.classList.remove('selected'); });
                 var input = document.querySelector('.theme-option input[value="' + theme + '"]');
-                if (input && input.closest('.theme-option')) input.closest('.theme-option').classList.add('selected');
+                if (input) { input.checked = true; if (input.closest('.theme-option')) input.closest('.theme-option').classList.add('selected'); }
             }
             function previewFontSize(size) {
                 var sizes = {small:'14px', normal:'16px', large:'18px', xlarge:'20px'};

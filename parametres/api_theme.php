@@ -29,7 +29,8 @@ try {
     // Validation (liste blanche) + upsert + invalidation du cache : centralisés dans SettingsService.
     $theme = (new SettingsService(getPDO()))->setTheme(getUserId(), getUserRole(), $_POST['theme'] ?? 'light');
     echo json_encode(['success' => true, 'theme' => $theme]);
-} catch (PDOException $e) {
+} catch (\Throwable $e) {
+    error_log('[api_theme] ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['error' => 'Database error']);
 }

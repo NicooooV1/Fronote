@@ -77,7 +77,8 @@ class SettingsService {
 
     /** Rafraîchit le cache thème SSR (sinon l'ancien thème est servi jusqu'au TTL). */
     private function cacheTheme(string $theme): void {
-        try { (new \API\Core\ClientCache())->set('user_theme', $theme, 3600); } catch (\Throwable $e) {}
+        try { (new \API\Core\ClientCache())->set('user_theme', $theme, 3600); }
+        catch (\Throwable $e) { error_log('[SettingsService] cacheTheme: ' . $e->getMessage()); }
     }
 
     /**

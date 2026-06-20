@@ -33,11 +33,18 @@ $diskPct = ($dt && $df !== false && $dt > 0) ? (int) round((1 - $df / $dt) * 100
 $diskUsedGb = $dt ? round(($dt - $df) / 1073741824, 1) : 0; $diskTotGb = $dt ? round($dt / 1073741824, 1) : 0;
 
 /* ── Compteurs (DB + services) ── */
-$etabTotal = $count("SELECT COUNT(*) FROM etablissements WHERE status NOT IN ('deleted','purged')");
-$etabActifs = $count("SELECT COUNT(*) FROM etablissements WHERE status='active'");
-$etabSusp = $count("SELECT COUNT(*) FROM etablissements WHERE status='suspended'");
-$ticketsOpen = $count("SELECT COUNT(*) FROM support_tickets WHERE status NOT IN ('resolved','closed','cancelled')");
-$ticketsCrit = $count("SELECT COUNT(*) FROM support_tickets WHERE priority='critical' AND status NOT IN ('resolved','closed','cancelled')");
+// Établissements : total / actifs / suspendus en UNE requête (SUM de prédicats booléens).
+$etabTotal = 0; $etabActifs = 0; $etabSusp = 0;
+try {
+    $r = $pdo->query("SELECT SUM(status NOT IN ('deleted','purged')) AS total, SUM(status='active') AS actifs, SUM(status='suspended') AS susp FROM etablissements")->fetch(PDO::FETCH_ASSOC);
+    $etabTotal = (int) ($r['total'] ?? 0); $etabActifs = (int) ($r['actifs'] ?? 0); $etabSusp = (int) ($r['susp'] ?? 0);
+} catch (\Throwable $e) { error_log('[platform dashboard] etab counts: ' . $e->getMessage()); }
+// Tickets : ouverts / critiques en UNE requête.
+$ticketsOpen = 0; $ticketsCrit = 0;
+try {
+    $r = $pdo->query("SELECT SUM(status NOT IN ('resolved','closed','cancelled')) AS opn, SUM(priority='critical' AND status NOT IN ('resolved','closed','cancelled')) AS crit FROM support_tickets")->fetch(PDO::FETCH_ASSOC);
+    $ticketsOpen = (int) ($r['opn'] ?? 0); $ticketsCrit = (int) ($r['crit'] ?? 0);
+} catch (\Throwable $e) { error_log('[platform dashboard] ticket counts: ' . $e->getMessage()); }
 $supportSessions = $count("SELECT COUNT(*) FROM support_sessions WHERE status='active'");
 $accessPending = $count("SELECT COUNT(*) FROM support_access_requests WHERE status IN ('sent_to_direction','waiting_direction')");
 $platAccounts = $count("SELECT COUNT(*) FROM platform_accounts WHERE status='active'");
@@ -46,13 +53,13 @@ $dbTables = 0; $dbSizeMb = 0.0;  // nb de tables + taille : une seule requête i
 try {
     $r = $pdo->query("SELECT COUNT(*) AS n, ROUND(SUM(data_length+index_length)/1048576,1) AS mb FROM information_schema.tables WHERE table_schema=DATABASE()")->fetch(PDO::FETCH_ASSOC);
     $dbTables = (int) ($r['n'] ?? 0); $dbSizeMb = (float) ($r['mb'] ?? 0);
-} catch (\Throwable $e) {}
+} catch (\Throwable $e) { error_log('[platform dashboard] db size: ' . $e->getMessage()); }
 
-$version = '?'; try { $version = app('updates')->getCurrentVersion() ?: '?'; } catch (\Throwable $e) {}
+$version = '?'; try { $version = app('updates')->getCurrentVersion() ?: '?'; } catch (\Throwable $e) { error_log('[platform dashboard] version: ' . $e->getMessage()); }
 $backupAge = null; $backupName = null;
-try { $bks = app('backup')->listBackups(); if (!empty($bks)) { $backupName = $bks[0]['filename']; $bts = strtotime((string) ($bks[0]['created_at'] ?? '')); if ($bts) { $backupAge = (time() - $bts) / 3600; } } } catch (\Throwable $e) {}
-$auditRows = []; try { $auditRows = $pdo->query("SELECT l.created_at, l.action, pa.username AS actor FROM platform_audit_logs l LEFT JOIN platform_accounts pa ON pa.id=l.platform_account_id ORDER BY l.id DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC) ?: []; } catch (\Throwable $e) {}
-$activeSessions = []; try { $activeSessions = (new \API\Support\SupportSessionService($pdo))->allActive(); } catch (\Throwable $e) {}
+try { $bks = app('backup')->listBackups(); if (!empty($bks)) { $backupName = $bks[0]['filename']; $bts = strtotime((string) ($bks[0]['created_at'] ?? '')); if ($bts) { $backupAge = (time() - $bts) / 3600; } } } catch (\Throwable $e) { error_log('[platform dashboard] backup: ' . $e->getMessage()); }
+$auditRows = []; try { $auditRows = $pdo->query("SELECT l.created_at, l.action, pa.username AS actor FROM platform_audit_logs l LEFT JOIN platform_accounts pa ON pa.id=l.platform_account_id ORDER BY l.id DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC) ?: []; } catch (\Throwable $e) { error_log('[platform dashboard] audit: ' . $e->getMessage()); }
+$activeSessions = []; try { $activeSessions = (new \API\Support\SupportSessionService($pdo))->allActive(); } catch (\Throwable $e) { error_log('[platform dashboard] sessions: ' . $e->getMessage()); }
 
 $menu = [
     ['platform.establishments.view',    'Établissements',        'fa-school',           '/platform/establishments.php'],
