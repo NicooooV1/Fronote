@@ -1226,6 +1226,27 @@ CREATE TABLE `director_invitations` (
   CONSTRAINT `fk_dirinvite_creator` FOREIGN KEY (`created_by_platform_account_id`) REFERENCES `platform_accounts` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ── PLATEFORME : audit global (actions internes : invitations, gestion du parc,
+-- sessions support, sécurité, sauvegardes…). ──
+CREATE TABLE `platform_audit_logs` (
+  `id`                  INT AUTO_INCREMENT PRIMARY KEY,
+  `platform_account_id` INT NULL,
+  `establishment_id`    INT NULL,
+  `action`              VARCHAR(150) NOT NULL,
+  `target_type`         VARCHAR(100) NULL,
+  `target_id`           INT NULL,
+  `description`         TEXT NULL,
+  `old_value`           JSON NULL,
+  `new_value`           JSON NULL,
+  `ip_address`          VARCHAR(45) NULL,
+  `user_agent`          TEXT NULL,
+  `created_at`          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_pal_account` (`platform_account_id`),
+  KEY `idx_pal_action` (`action`),
+  KEY `idx_pal_created` (`created_at`),
+  CONSTRAINT `fk_pal_account` FOREIGN KEY (`platform_account_id`) REFERENCES `platform_accounts` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ============================================================================
 -- Monde 2 = ÉTABLISSEMENT (locataire SaaS) : tables tenant_*.
 -- L'appartenance (tenant_memberships) fournit le périmètre établissement ; les
