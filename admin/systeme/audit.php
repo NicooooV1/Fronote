@@ -6,7 +6,8 @@ require_once __DIR__ . '/../../API/core.php';
 require_once __DIR__ . '/../includes/admin_functions.php';
 
 requireAuth();
-requireRole('administrateur');
+// Bascule 3-mondes : permission établissement prioritaire, repli legacy le temps de la transition.
+tenantGate('tenant.audit.view', ['administrateur']);
 
 $pdo = getPDO();
 

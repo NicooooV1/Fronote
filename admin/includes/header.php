@@ -8,10 +8,11 @@ require_once __DIR__ . '/../../API/core.php';
 require_once __DIR__ . '/admin_functions.php';
 
 requireAuth();
-// Le super-admin (gestion multi-établissements) doit pouvoir atteindre les pages
-// d'administration (notamment admin/etablissement/*) : sans lui, requireRole le
-// renvoyait vers l'accueil avant même que la page ne s'affiche.
-requireRole('administrateur', 'super_admin');
+// Bascule 3-mondes : l'accès à l'espace d'administration est gardé par la PERMISSION
+// établissement (les rôles administration/direction/directeur/responsable_permissions la
+// détiennent), avec repli sur les rôles legacy le temps de la transition (zéro régression :
+// administrateur/super_admin passent toujours). Chokepoint unique de tout l'espace admin.
+tenantGate('tenant.users.view', ['administrateur', 'super_admin']);
 
 // Onboarding obligatoire : tant que l'établissement n'est pas configuré, on
 // redirige vers le wizard depuis n'importe quelle page admin (sauf les pages de

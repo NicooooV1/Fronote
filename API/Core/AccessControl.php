@@ -101,8 +101,11 @@ final class AccessControl
             self::deny(false, $basePath);
         }
 
-        // 5) Back-office admin/ : rôles admin uniquement.
-        if (self::startsWith($rel, 'admin/') && !in_array($role, self::ADMIN_AREA_ROLES, true)) {
+        // 5) Back-office admin/ : rôles admin legacy OU permission d'administration établissement
+        //    (bascule 3-mondes). Le contrôle fin reste assuré par les gardes de page (tenantGate).
+        if (self::startsWith($rel, 'admin/')
+            && !in_array($role, self::ADMIN_AREA_ROLES, true)
+            && !self::tenantHasAdminAccess()) {
             self::deny(false, $basePath);
         }
 
@@ -149,6 +152,16 @@ final class AccessControl
             }
         }
         return false;
+    }
+
+    /**
+     * Bascule 3-mondes : l'utilisateur détient-il une permission d'administration établissement
+     * (via son appartenance — connexion /e/{slug} OU repli legacy) ? Permet d'entrer dans /admin/
+     * sans le rôle legacy « administrateur » ; les gardes de page (tenantGate) affinent ensuite.
+     */
+    private static function tenantHasAdminAccess(): bool
+    {
+        return function_exists('tenantCan') && tenantCan('tenant.users.view');
     }
 
     /** Rôle courant depuis la session (posé par SessionGuard::login). */

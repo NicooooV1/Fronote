@@ -1117,5 +1117,20 @@ if (!function_exists('supportAuthorize')) {
 if (!function_exists('currentWorld')) {
 	function currentWorld(): ?string { return \API\Security\WorldContext::currentWorld(); }
 }
+if (!function_exists('tenantGate')) {
+	/**
+	 * Garde de bascule : la PERMISSION établissement fait autorité. Si l'utilisateur
+	 * la détient (via son appartenance — connexion /e/{slug} OU repli legacy), accès accordé.
+	 * Sinon, repli sur les rôles legacy le temps de la transition (zéro régression pour les
+	 * comptes non encore migrés). Sans repli, refus strict (tenantAuthorize → 403/redirection).
+	 *
+	 * Remplace progressivement requireRole('administrateur', ...) sur les pages établissement.
+	 */
+	function tenantGate(string $permission, array $legacyFallbackRoles = []): void {
+		if (tenantCan($permission)) { return; }
+		if (!empty($legacyFallbackRoles)) { requireRole(...$legacyFallbackRoles); return; }
+		tenantAuthorize($permission);
+	}
+}
 
 // ==================== FIN DU BRIDGE ====================

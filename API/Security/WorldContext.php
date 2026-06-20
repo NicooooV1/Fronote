@@ -59,9 +59,43 @@ final class WorldContext
 
     // ───────────────────────── établissement ─────────────────────────
 
+    /** Mémo de requête pour le repli legacy (évite une requête par appel). */
+    private static ?int $tenantMembershipFallback = null;
+
     public static function tenantMembershipId(): int
     {
-        return (int) ($_SESSION['tenant']['membership_id'] ?? 0);
+        // Connexion établissement (portail /e/{slug}) : chemin rapide.
+        if (!empty($_SESSION['tenant']['membership_id'])) {
+            return (int) $_SESSION['tenant']['membership_id'];
+        }
+        // Connexion LEGACY (/login/) : on résout l'appartenance depuis l'identité héritée
+        // (tenant_accounts.legacy_type/legacy_id → appartenance active de l'établissement courant),
+        // pour que tenantCan/tenantAuthorize fonctionnent sous les DEUX chemins de connexion.
+        if (self::$tenantMembershipFallback !== null) {
+            return self::$tenantMembershipFallback;
+        }
+        return self::$tenantMembershipFallback = self::resolveLegacyMembership();
+    }
+
+    private static function resolveLegacyMembership(): int
+    {
+        $uid   = $_SESSION['user_id'] ?? null;
+        $utype = $_SESSION['user_type'] ?? null;
+        $estab = (int) ($_SESSION['etablissement_id'] ?? 0);
+        if (!$uid || !$utype || $estab <= 0) { return 0; }
+        try {
+            $st = self::pdo()->prepare(
+                "SELECT tm.id FROM tenant_memberships tm
+                   JOIN tenant_accounts ta ON ta.id = tm.tenant_account_id
+                  WHERE ta.legacy_type = ? AND ta.legacy_id = ? AND ta.status = 'active'
+                    AND tm.establishment_id = ? AND tm.status = 'active' LIMIT 1"
+            );
+            $st->execute([(string) $utype, (int) $uid, $estab]);
+            return (int) ($st->fetchColumn() ?: 0);
+        } catch (\Throwable $e) {
+            error_log('[WorldContext] resolveLegacyMembership: ' . $e->getMessage());
+            return 0;
+        }
     }
 
     public static function tenantAuth(): TenantAuthorization
