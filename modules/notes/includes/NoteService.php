@@ -64,8 +64,8 @@ class NoteService
      */
     public function getAllNotes(int $trimestre, int $limit = 50, int $offset = 0, string $classe = '', int $matiereId = 0): array
     {
-        $where = "n.trimestre = ?";
-        $params = [$trimestre];
+        $where = "n.trimestre = ? AND e.etablissement_id = ?";
+        $params = [$trimestre, \API\Core\EstablishmentContext::id()];
 
         if ($classe !== '') {
             $where .= " AND e.classe = ?";
@@ -175,6 +175,26 @@ class NoteService
      * @param array $common     Données communes (id_matiere, id_professeur, trimestre, date_note, etc.)
      * @return int Nombre de notes insérées
      */
+    /**
+     * Vérifie qu'une matière appartient à l'établissement courant.
+     */
+    public function matiereInScope(int $matiereId): bool
+    {
+        $stmt = $this->pdo->prepare("SELECT 1 FROM matieres WHERE id = ? AND etablissement_id = ? LIMIT 1");
+        $stmt->execute([$matiereId, \API\Core\EstablishmentContext::id()]);
+        return (bool) $stmt->fetchColumn();
+    }
+
+    /**
+     * Vérifie qu'une classe (par nom) appartient à l'établissement courant.
+     */
+    public function classeInScope(string $classe): bool
+    {
+        $stmt = $this->pdo->prepare("SELECT 1 FROM classes WHERE nom = ? AND etablissement_id = ? LIMIT 1");
+        $stmt->execute([$classe, \API\Core\EstablishmentContext::id()]);
+        return (bool) $stmt->fetchColumn();
+    }
+
     public function bulkInsert(array $notesData, array $common): int
     {
         $this->pdo->beginTransaction();
@@ -185,11 +205,19 @@ class NoteService
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
             ");
 
+            // Anti-IDOR : seuls les élèves de l'établissement courant peuvent recevoir une note.
+            $scopeStmt = $this->pdo->prepare("SELECT 1 FROM eleves WHERE id = ? AND etablissement_id = ? LIMIT 1");
+            $etabId = \API\Core\EstablishmentContext::id();
+
             $count = 0;
             $insertedEleveIds = [];
             foreach ($notesData as $data) {
                 if (!isset($data['note']) || $data['note'] === '') {
                     continue;
+                }
+                $scopeStmt->execute([(int) $data['id_eleve'], $etabId]);
+                if (!$scopeStmt->fetchColumn()) {
+                    continue; // élève hors établissement → ignoré
                 }
                 $stmt->execute([
                     $data['id_eleve'],
@@ -436,10 +464,10 @@ class NoteService
             FROM notes n
             JOIN eleves e ON n.id_eleve = e.id
             LEFT JOIN matieres m ON n.id_matiere = m.id
-            WHERE e.classe = ? AND n.id_matiere = ? AND n.trimestre = ?
+            WHERE e.classe = ? AND n.id_matiere = ? AND n.trimestre = ? AND e.etablissement_id = ?
             ORDER BY e.nom, e.prenom, n.date_note DESC
         ");
-        $stmt->execute([$classe, $matiereId, $trimestre]);
+        $stmt->execute([$classe, $matiereId, $trimestre, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
@@ -460,10 +488,29 @@ class NoteService
     }
 
     /**
+     * Vérifie qu'une note appartient à un élève de l'établissement courant.
+     * Anti-IDOR inter-établissement : à appeler avant toute écriture/suppression par id.
+     */
+    private function assertNoteInScope(int $id): void
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT 1 FROM notes n JOIN eleves e ON n.id_eleve = e.id
+             WHERE n.id = ? AND e.etablissement_id = ? LIMIT 1"
+        );
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
+        if (!$stmt->fetchColumn()) {
+            throw new \RuntimeException("Note introuvable ou hors de votre établissement.");
+        }
+    }
+
+    /**
      * Met à jour une note existante (avec vérification du verrouillage + historique).
      */
     public function updateNote(int $id, array $data): bool
     {
+        // Anti-IDOR : la note doit appartenir à un élève de l'établissement courant.
+        $this->assertNoteInScope($id);
+
         // Vérifier le verrouillage
         if ($this->isNoteLocked($id)) {
             throw new \RuntimeException("Cette note est verrouillée et ne peut pas être modifiée.");
@@ -500,6 +547,9 @@ class NoteService
      */
     public function deleteNote(int $id): bool
     {
+        // Anti-IDOR : la note doit appartenir à un élève de l'établissement courant.
+        $this->assertNoteInScope($id);
+
         $stmt = $this->pdo->prepare("DELETE FROM notes WHERE id = ?");
         return $stmt->execute([$id]);
     }
@@ -511,7 +561,8 @@ class NoteService
      */
     public function getMatieres(): array
     {
-        $stmt = $this->pdo->query("SELECT id, nom, couleur, code FROM matieres WHERE actif = 1 ORDER BY nom");
+        $stmt = $this->pdo->prepare("SELECT id, nom, couleur, code FROM matieres WHERE actif = 1 AND etablissement_id = ? ORDER BY nom");
+        $stmt->execute([\API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -520,7 +571,8 @@ class NoteService
      */
     public function getClasses(): array
     {
-        $stmt = $this->pdo->query("SELECT DISTINCT nom FROM classes WHERE actif = 1 ORDER BY nom");
+        $stmt = $this->pdo->prepare("SELECT DISTINCT nom FROM classes WHERE actif = 1 AND etablissement_id = ? ORDER BY nom");
+        $stmt->execute([\API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
@@ -529,8 +581,8 @@ class NoteService
      */
     public function getElevesParClasse(string $classe): array
     {
-        $stmt = $this->pdo->prepare("SELECT id, nom, prenom FROM eleves WHERE classe = ? AND actif = 1 ORDER BY nom, prenom");
-        $stmt->execute([$classe]);
+        $stmt = $this->pdo->prepare("SELECT id, nom, prenom FROM eleves WHERE classe = ? AND actif = 1 AND etablissement_id = ? ORDER BY nom, prenom");
+        $stmt->execute([$classe, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -567,9 +619,9 @@ class NoteService
                 COUNT(*)                                  AS nb_notes
             FROM notes n
             JOIN eleves e ON n.id_eleve = e.id
-            WHERE e.classe = ? AND n.id_matiere = ? AND n.trimestre = ?
+            WHERE e.classe = ? AND n.id_matiere = ? AND n.trimestre = ? AND e.etablissement_id = ?
         ");
-        $stmt->execute([$classe, $matiereId, $trimestre]);
+        $stmt->execute([$classe, $matiereId, $trimestre, \API\Core\EstablishmentContext::id()]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         // Calcul de la médiane côté PHP
@@ -577,10 +629,10 @@ class NoteService
             SELECT ROUND(n.note / n.note_sur * 20, 2) AS note_norm
             FROM notes n
             JOIN eleves e ON n.id_eleve = e.id
-            WHERE e.classe = ? AND n.id_matiere = ? AND n.trimestre = ?
+            WHERE e.classe = ? AND n.id_matiere = ? AND n.trimestre = ? AND e.etablissement_id = ?
             ORDER BY note_norm
         ");
-        $stmtNotes->execute([$classe, $matiereId, $trimestre]);
+        $stmtNotes->execute([$classe, $matiereId, $trimestre, \API\Core\EstablishmentContext::id()]);
         $allNotes = $stmtNotes->fetchAll(PDO::FETCH_COLUMN);
         $cnt = count($allNotes);
         $mediane = 0;
@@ -606,11 +658,11 @@ class NoteService
                 ROUND(SUM(n.note / n.note_sur * 20 * n.coefficient) / SUM(n.coefficient), 2) AS moyenne
             FROM notes n
             JOIN eleves e ON n.id_eleve = e.id
-            WHERE e.classe = ? AND n.id_matiere = ? AND n.trimestre = ?
+            WHERE e.classe = ? AND n.id_matiere = ? AND n.trimestre = ? AND e.etablissement_id = ?
             GROUP BY e.id, e.nom, e.prenom
             ORDER BY e.nom, e.prenom
         ");
-        $stmt->execute([$classe, $matiereId, $trimestre]);
+        $stmt->execute([$classe, $matiereId, $trimestre, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -626,9 +678,9 @@ class NoteService
             SELECT ROUND(n.note / n.note_sur * 20, 2) AS note_norm
             FROM notes n
             JOIN eleves e ON n.id_eleve = e.id
-            WHERE e.classe = ? AND n.id_matiere = ? AND n.trimestre = ?
+            WHERE e.classe = ? AND n.id_matiere = ? AND n.trimestre = ? AND e.etablissement_id = ?
         ");
-        $stmt->execute([$classe, $matiereId, $trimestre]);
+        $stmt->execute([$classe, $matiereId, $trimestre, \API\Core\EstablishmentContext::id()]);
         $allNotes = $stmt->fetchAll(\PDO::FETCH_COLUMN);
 
         $bins = array_fill(0, 10, 0);
@@ -724,10 +776,10 @@ class NoteService
             FROM notes n
             JOIN eleves e ON n.id_eleve = e.id
             LEFT JOIN matieres m ON n.id_matiere = m.id
-            WHERE e.classe = ? AND n.trimestre = ?
+            WHERE e.classe = ? AND n.trimestre = ? AND e.etablissement_id = ?
             ORDER BY m.nom, note_norm
         ");
-        $stmt->execute([$classe, $trimestre]);
+        $stmt->execute([$classe, $trimestre, \API\Core\EstablishmentContext::id()]);
         $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         $grouped = [];

@@ -94,13 +94,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $userService->createRememberToken($userId, $userType);
                 }
 
-                // Forcer changement de mot de passe si jamais changé
+                // Forcer changement de mot de passe si jamais changé.
+                // Le garde (API/module_boot.php) ré-imposera la redirection tant que ce
+                // drapeau est armé ; change_password.php agit sur le compte authentifié.
                 if (empty($user['password_changed_at'])) {
                     $_SESSION['force_password_change'] = true;
-                    $_SESSION['reset_user_id']         = $userId;
-                    $_SESSION['reset_user_type']       = $userType;
-                    $_SESSION['reset_code']            = 'force_change';
-                    $_SESSION['reset_username']        = $user['identifiant'] ?? '';
                     redirect('login/change_password.php');
                 }
 

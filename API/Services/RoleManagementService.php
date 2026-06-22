@@ -83,7 +83,14 @@ final class RoleManagementService
             throw new \RuntimeException("Auto-attribution d'un rôle non détenu interdite.");
         }
 
-        $etabId   = isset($opts['etablissement_id']) && $opts['etablissement_id'] !== '' ? (int) $opts['etablissement_id'] : null;
+        // Securite (anti-escalade inter-etablissement) : seul super_admin peut viser un
+        // etablissement_id arbitraire ; un acteur normal est borne a SON etablissement courant,
+        // quelle que soit la valeur fournie en opts.
+        if (in_array('super_admin', $actorRoleKeys, true)) {
+            $etabId = isset($opts['etablissement_id']) && $opts['etablissement_id'] !== '' ? (int) $opts['etablissement_id'] : null;
+        } else {
+            try { $etabId = \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { $etabId = null; }
+        }
         $meta     = RoleCatalog::roles()[$roleKey];
         $catScope = $meta['scope'] ?? 'establishment';
 

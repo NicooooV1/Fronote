@@ -534,8 +534,8 @@ class ModuleSDK
                     $this->pdo->exec($stmt);
                 } catch (\Throwable $e) {
                     $code = $e instanceof \PDOException ? (int) ($e->errorInfo[1] ?? 0) : 0;
-                    // 1050 = table already exists, 1060 = duplicate column — safe to ignore on re-activation
-                    if ($code !== 1050 && $code !== 1060) {
+                    // 1050 = table exists, 1060 = duplicate column, 1061 = duplicate key name — safe to ignore on re-activation
+                    if ($code !== 1050 && $code !== 1060 && $code !== 1061) {
                         $errors[] = $e->getMessage();
                     }
                 }

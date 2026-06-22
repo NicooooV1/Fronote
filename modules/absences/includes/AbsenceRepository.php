@@ -399,12 +399,12 @@ class AbsenceRepository
 
     public function getJustificatifById(int $id): ?array
     {
-        $sql = "SELECT j.*, e.nom, e.prenom, e.classe 
-                FROM justificatifs j 
-                JOIN eleves e ON j.id_eleve = e.id 
-                WHERE j.id = ?";
+        $sql = "SELECT j.*, e.nom, e.prenom, e.classe
+                FROM justificatifs j
+                JOIN eleves e ON j.id_eleve = e.id
+                WHERE j.id = ? AND e.etablissement_id = ?";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$id]);
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         return $result ?: null;
     }
@@ -506,8 +506,14 @@ class AbsenceRepository
 
     public function getAttachmentById(int $id): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM justificatif_fichiers WHERE id = ?");
-        $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare("
+            SELECT f.*
+            FROM justificatif_fichiers f
+            JOIN justificatifs j ON f.id_justificatif = j.id
+            JOIN eleves e ON j.id_eleve = e.id
+            WHERE f.id = ? AND e.etablissement_id = ?
+        ");
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         return $result ?: null;
     }

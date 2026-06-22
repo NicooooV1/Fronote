@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../API/core.php';
 require_once __DIR__ . '/../includes/admin_functions.php';
 
 requireAuth();
-tenantGate('tenant.users.view', ['administrateur']);
+tenantGate('tenant.classes.manage', ['administrateur']); // durci: gestion des classes, exige tenant.classes.manage (exclut responsable_permissions)
 
 $pdo = getPDO();
 $admin = getCurrentUser();

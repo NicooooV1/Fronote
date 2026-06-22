@@ -7,7 +7,7 @@ require_once __DIR__ . '/../../API/core.php';
 require_once __DIR__ . '/../includes/admin_functions.php';
 
 requireAuth();
-tenantGate('tenant.users.view', ['administrateur']);
+tenantGate('tenant.users.manage', ['administrateur']); // durci: page mutante, exige *.manage (exclut le role lecture seule responsable_permissions)
 
 $pdo = getPDO();
 $moduleService = app('modules');

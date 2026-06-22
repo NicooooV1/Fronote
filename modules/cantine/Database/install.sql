@@ -58,3 +58,34 @@ CREATE TABLE IF NOT EXISTS `cantine_tarifs` (
   KEY `idx_etab` (`etablissement_id`),
   CONSTRAINT `fk_cantine_tarifs_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] cantine_evaluations
+CREATE TABLE IF NOT EXISTS `cantine_evaluations` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `etablissement_id` INT NULL DEFAULT 1,
+  `menu_id` INT NOT NULL,
+  `eleve_id` INT NOT NULL,
+  `note` TINYINT NOT NULL,
+  `commentaire` TEXT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_menu_eleve` (`menu_id`, `eleve_id`),
+  KEY `idx_menu` (`menu_id`),
+  KEY `idx_eleve` (`eleve_id`),
+  KEY `idx_etablissement` (`etablissement_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] cantine_gaspillage
+CREATE TABLE IF NOT EXISTS `cantine_gaspillage` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `etablissement_id` INT NULL DEFAULT 1,
+  `date_mesure` DATE NOT NULL,
+  `quantite_kg` DECIMAL(8,2) NOT NULL,
+  `type` VARCHAR(50) NOT NULL DEFAULT 'preparation',
+  `commentaire` TEXT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_date_mesure` (`date_mesure`),
+  KEY `idx_type` (`type`),
+  KEY `idx_etablissement` (`etablissement_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

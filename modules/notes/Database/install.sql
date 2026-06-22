@@ -31,3 +31,45 @@ CREATE TABLE IF NOT EXISTS `notes` (
   KEY `idx_etab` (`etablissement_id`),
   CONSTRAINT `fk_notes_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] notes_verrous
+CREATE TABLE IF NOT EXISTS `notes_verrous` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `etablissement_id` INT NULL,
+  `matiere_id` INT NOT NULL,
+  `trimestre` INT NOT NULL,
+  `classe` VARCHAR(50) NOT NULL,
+  `verrouille_par` INT NULL,
+  `date_verrouillage` DATETIME NULL,
+  UNIQUE KEY `uq_verrou` (`matiere_id`,`trimestre`,`classe`,`etablissement_id`),
+  KEY `idx_etab` (`etablissement_id`),
+  KEY `idx_lookup` (`matiere_id`,`classe`,`trimestre`,`etablissement_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] notes_config_ponderation
+CREATE TABLE IF NOT EXISTS `notes_config_ponderation` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `etablissement_id` INT NULL,
+  `matiere_id` INT NOT NULL,
+  `type_evaluation` VARCHAR(100) NOT NULL,
+  `poids` DECIMAL(5,2) NOT NULL DEFAULT 1.00,
+  UNIQUE KEY `uq_ponderation` (`matiere_id`,`etablissement_id`,`type_evaluation`),
+  KEY `idx_etab` (`etablissement_id`),
+  KEY `idx_matiere` (`matiere_id`,`etablissement_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] note_history
+CREATE TABLE IF NOT EXISTS `note_history` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `note_id` INT NOT NULL,
+  `note_value` DECIMAL(6,2) NULL,
+  `note_sur` DECIMAL(6,2) NULL,
+  `coefficient` DECIMAL(5,2) NULL,
+  `commentaire` TEXT NULL,
+  `modified_by` INT NULL,
+  `modified_at` DATETIME NULL,
+  `reason` VARCHAR(255) NULL,
+  KEY `idx_note` (`note_id`),
+  KEY `idx_modified_at` (`modified_at`),
+  KEY `idx_modified_by` (`modified_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

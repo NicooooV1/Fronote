@@ -9,11 +9,28 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Vérifier que l'utilisateur a passé les étapes précédentes
-if (!isset($_SESSION['reset_user_id']) || !isset($_SESSION['reset_code'])) {
-    header('Location: reset_password.php');
+// Cette page sert UNIQUEMENT le changement de mot de passe imposé au premier login :
+// l'utilisateur est authentifié et $_SESSION['force_password_change'] est armé
+// (cf. login/index.php & login/verify_2fa.php). La réinitialisation self-service par
+// code à usage unique n'est pas émise (parcours admin-validé) : on ne s'appuie donc
+// plus sur reset_user_id/reset_code côté self-service, qui était un chemin mort.
+$forcedChange = isLoggedIn() && !empty($_SESSION['force_password_change']);
+
+if (!$forcedChange) {
+    // Aucun changement imposé en cours → rien à faire ici.
+    if (isLoggedIn()) {
+        header('Location: ../accueil/accueil.php');
+    } else {
+        header('Location: index.php');
+    }
     exit;
 }
+
+// Cible du changement : l'utilisateur authentifié lui-même (jamais une valeur de
+// session arbitraire) → impossible de viser un autre compte.
+$currentUser   = getCurrentUser();
+$targetUserId  = (int) ($currentUser['id'] ?? 0);
+$targetType    = $currentUser['type'] ?? $currentUser['profil'] ?? null;
 
 $error   = '';
 $success = false;
@@ -43,16 +60,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
                 // SÉCURITÉ : transmettre le type d'utilisateur. Sans lui, UserService
                 // itère toutes les tables et écrase le mot de passe du PREMIER id trouvé
                 // (collision d'id inter-tables → prise de contrôle d'un compte tiers).
+                // La cible est toujours l'utilisateur authentifié courant.
                 $changeResult = changePassword(
-                    $_SESSION['reset_user_id'],
+                    $targetUserId,
                     $password,
-                    $_SESSION['reset_user_type'] ?? null
+                    $targetType
                 );
 
                 if ($changeResult['success']) {
                     $success = true;
-                    unset($_SESSION['reset_user_id'], $_SESSION['reset_code'], $_SESSION['reset_username']);
-                    $_SESSION['success_message'] = 'Votre mot de passe a été réinitialisé avec succès. Connectez-vous avec votre nouveau mot de passe.';
+                    // Lever le garde : le mot de passe n'est plus « jamais changé ».
+                    unset(
+                        $_SESSION['force_password_change'],
+                        $_SESSION['reset_user_id'],
+                        $_SESSION['reset_user_type'],
+                        $_SESSION['reset_code'],
+                        $_SESSION['reset_username']
+                    );
+                    $_SESSION['success_message'] = 'Votre mot de passe a été modifié avec succès.';
                 } else {
                     $error = $changeResult['message'];
                 }
@@ -62,7 +87,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
 }
 
 $csrfToken = generateCSRFToken();
-$username  = $_SESSION['reset_username'] ?? '';
+$username  = $currentUser['identifiant']
+    ?? (trim(($currentUser['prenom'] ?? '') . ' ' . ($currentUser['nom'] ?? '')) ?: 'votre compte');
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -106,7 +132,7 @@ $username  = $_SESSION['reset_username'] ?? '';
                     if (timerEl) timerEl.textContent = seconds;
                     if (seconds <= 0) {
                         clearInterval(interval);
-                        window.location.href = 'index.php';
+                        window.location.href = '../accueil/accueil.php';
                     }
                 }, 1000);
             })();
@@ -156,9 +182,6 @@ $username  = $_SESSION['reset_username'] ?? '';
                 </div>
 
                 <div class="form-actions">
-                    <a href="verify_reset_code.php" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left" aria-hidden="true"></i> Retour
-                    </a>
                     <button type="submit" name="change_password" class="btn btn-primary" id="submitBtn">
                         <span class="btn-text"><i class="fas fa-save" aria-hidden="true"></i> Changer le mot de passe</span>
                     </button>

@@ -40,3 +40,66 @@ CREATE TABLE IF NOT EXISTS `club_inscriptions` (
   KEY `idx_etab` (`etablissement_id`),
   CONSTRAINT `fk_club_insc_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] club_seances
+CREATE TABLE IF NOT EXISTS `club_seances` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `club_id` INT NOT NULL,
+  `date_seance` DATE NOT NULL,
+  `heure_debut` TIME DEFAULT NULL,
+  `heure_fin` TIME DEFAULT NULL,
+  `lieu` VARCHAR(255) DEFAULT NULL,
+  `description` TEXT DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_clubseance_club` (`club_id`),
+  KEY `idx_clubseance_date` (`date_seance`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] club_seances_presences
+CREATE TABLE IF NOT EXISTS `club_seances_presences` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `seance_id` INT NOT NULL,
+  `eleve_id` INT NOT NULL,
+  `present` TINYINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_seance_eleve` (`seance_id`, `eleve_id`),
+  KEY `idx_clubpres_eleve` (`eleve_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] club_budget
+CREATE TABLE IF NOT EXISTS `club_budget` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `club_id` INT NOT NULL,
+  `libelle` VARCHAR(255) NOT NULL,
+  `montant` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  `type` VARCHAR(20) NOT NULL DEFAULT 'depense',
+  `date_operation` DATE NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_clubbudget_club` (`club_id`),
+  KEY `idx_clubbudget_date` (`date_operation`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] club_photos
+CREATE TABLE IF NOT EXISTS `club_photos` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `club_id` INT NOT NULL,
+  `chemin` VARCHAR(512) NOT NULL,
+  `legende` VARCHAR(255) DEFAULT NULL,
+  `seance_id` INT DEFAULT NULL,
+  `uploaded_at` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_clubphoto_club` (`club_id`),
+  KEY `idx_clubphoto_seance` (`seance_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] club_waitlist
+CREATE TABLE IF NOT EXISTS `club_waitlist` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `club_id` INT NOT NULL,
+  `eleve_id` INT NOT NULL,
+  `position` INT NOT NULL DEFAULT 0,
+  `created_at` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_waitlist_club_eleve` (`club_id`, `eleve_id`),
+  KEY `idx_waitlist_club_pos` (`club_id`, `position`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

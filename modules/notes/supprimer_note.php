@@ -10,6 +10,7 @@ require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/NoteService.php';
 
 requireAuth();
+enforceModuleAccess('notes');
 if (!canManageNotes()) {
     header('Location: notes.php');
     exit;

@@ -47,3 +47,18 @@ CREATE TABLE IF NOT EXISTS `garderie_presences` (
   UNIQUE KEY `uk_insc_date` (`inscription_id`, `date_presence`),
   CONSTRAINT `fk_gardepres_insc` FOREIGN KEY (`inscription_id`) REFERENCES `garderie_inscriptions` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] garderie_activites
+CREATE TABLE IF NOT EXISTS `garderie_activites` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `etablissement_id` INT NULL DEFAULT 1,
+  `creneau_id` INT NOT NULL,
+  `titre` VARCHAR(255) NOT NULL,
+  `description` TEXT NULL,
+  `date_activite` DATE NOT NULL,
+  `animateur` VARCHAR(255) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_creneau` (`creneau_id`),
+  KEY `idx_date_activite` (`date_activite`),
+  KEY `idx_etablissement` (`etablissement_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

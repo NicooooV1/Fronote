@@ -11,7 +11,8 @@ $mesRdv = $reunionService->getReservationsParent(getUserId());
 
 // Annulation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
-    $reunionService->annulerReservation((int)$_POST['reservation_id']);
+    // Securite (IDOR) : restreindre l'annulation aux reservations DU parent connecte.
+    $reunionService->annulerReservation((int)$_POST['reservation_id'], getUserId());
     $_SESSION['success_message'] = 'Réservation annulée.';
     header('Location: mes_rdv.php');
     exit;

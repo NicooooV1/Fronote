@@ -59,3 +59,17 @@ CREATE TABLE IF NOT EXISTS `epreuve_convocations` (
   UNIQUE KEY `uk_epreuve_eleve` (`epreuve_id`, `eleve_id`),
   CONSTRAINT `fk_econvoc_epreuve` FOREIGN KEY (`epreuve_id`) REFERENCES `epreuves` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] examen_places
+CREATE TABLE IF NOT EXISTS `examen_places` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `etablissement_id` INT NULL DEFAULT 1,
+  `epreuve_id` INT NOT NULL,
+  `convocation_id` INT NOT NULL,
+  `numero_place` VARCHAR(10) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_epreuve_convocation` (`epreuve_id`, `convocation_id`),
+  KEY `idx_epreuve` (`epreuve_id`),
+  KEY `idx_convocation` (`convocation_id`),
+  KEY `idx_etablissement` (`etablissement_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

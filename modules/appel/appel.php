@@ -24,6 +24,9 @@ if (!isAdmin() && !isVieScolaire() && !isTeacher()) {
 
 $service = new AppelService($pdo);
 $date = $_GET['date'] ?? date('Y-m-d');
+// Securite (XSS) : $date est reinjecte sans echappement dans des attributs href plus bas.
+// Format strict AAAA-MM-JJ exige (sinon date du jour) pour neutraliser toute injection.
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) { $date = date('Y-m-d'); }
 $appelId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $success = '';
 $errors = [];

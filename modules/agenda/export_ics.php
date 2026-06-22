@@ -23,10 +23,13 @@ if (!empty($_GET['mois'])) {
     $end   = date('Y-m-t', strtotime($start));
 }
 
-$events = $repo->findFiltered([
-    'date_debut' => $start,
-    'date_fin'   => $end,
-]);
+// Securite : appliquer le MEME filtrage de visibilite par role que le reste du module
+// (cf. agenda.php), sinon des evenements restreints fuiteraient a tout utilisateur connecte.
+// NB : findFiltered attend les cles date_start/date_end.
+$events = $repo->findFiltered(array_merge(
+    $repo->getUserFilterOptions(),
+    ['date_start' => $start, 'date_end' => $end]
+));
 
 // Construire le iCalendar
 $prodId = '-//Fronote//Agenda//FR';

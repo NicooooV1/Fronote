@@ -149,9 +149,22 @@ class BulkImporter
         $etabId = null;
         if ($etabScoped) {
             try { $etabId = \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { $etabId = null; }
+            // Securite : pas de retombée silencieuse sur l'établissement par défaut (DEFAULT 1).
+            if ($etabId === null) {
+                $res['nb_erreurs'] = count($rows);
+                $res['erreurs'][] = "Import refusé : contexte établissement indisponible (cloisonnement requis).";
+                return $res;
+            }
         }
         $seen = [];
 
+        // Intégrité : import atomique — rollback global sur erreur non récupérable.
+        $startedTx = false;
+        if (!$this->pdo->inTransaction()) {
+            $this->pdo->beginTransaction();
+            $startedTx = true;
+        }
+        try {
         foreach ($rows as $i => $rawRow) {
             $line = $i + 2;
             [$data, $errors] = $this->buildRow($entity, $schema, $headers, $rawRow, $mapping);
@@ -193,6 +206,13 @@ class BulkImporter
                 $res['nb_erreurs']++;
                 $res['erreurs'][] = "Ligne {$line} : " . $e->getMessage();
             }
+        }
+            if ($startedTx) { $this->pdo->commit(); }
+        } catch (\Throwable $e) {
+            if ($startedTx && $this->pdo->inTransaction()) { $this->pdo->rollBack(); }
+            $res['nb_importes'] = 0;
+            $res['nb_erreurs'] = count($rows);
+            $res['erreurs'][] = "Import annulé (erreur non récupérable) : " . $e->getMessage();
         }
         return $res;
     }

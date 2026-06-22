@@ -55,8 +55,13 @@ class SessionGuard {
         $_SESSION['user_type'] = $user['type'];
         $_SESSION['user'] = $safeUser;
 
-        // Store establishment scope in session
-        $etabId = $user['etablissement_id'] ?? ($_SESSION['etablissement_id'] ?? 1);
+        // Store establishment scope in session — PAS de retombée silencieuse sur l'établissement 1.
+        $etabId = $user['etablissement_id'] ?? ($_SESSION['etablissement_id'] ?? null);
+        if ($etabId === null) {
+            // Résout l'unique établissement s'il n'y en a qu'un ; sinon lève une exception
+            // (refus de cloisonnement plutôt que rattachement implicite à l'établissement 1).
+            $etabId = \API\Core\EstablishmentContext::id();
+        }
         $_SESSION['etablissement_id'] = (int) $etabId;
 
         // Set the global context

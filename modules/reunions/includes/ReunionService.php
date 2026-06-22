@@ -138,10 +138,17 @@ class ReunionService
         return (int)$this->pdo->lastInsertId();
     }
 
-    public function annulerReservation(int $id): bool
+    public function annulerReservation(int $id, ?int $parentId = null): bool
     {
-        $stmt = $this->pdo->prepare("UPDATE reunion_reservations SET statut = 'annulee' WHERE id = ?");
-        return $stmt->execute([$id]);
+        // Securite (IDOR) : si un parentId est fourni, l'annulation est restreinte a SES reservations.
+        $sql = "UPDATE reunion_reservations SET statut = 'annulee' WHERE id = ?";
+        $params = [$id];
+        if ($parentId !== null) {
+            $sql .= " AND parent_id = ?";
+            $params[] = $parentId;
+        }
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute($params);
     }
 
     public function getReservationsParent(int $parentId): array

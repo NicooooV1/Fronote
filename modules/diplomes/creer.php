@@ -19,11 +19,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
         header('Location: diplomes.php'); exit;
     }
     $fichier = null;
-    if (!empty($_FILES['fichier']['name'])) {
+    if (!empty($_FILES['fichier']['name']) && ($_FILES['fichier']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
         $dir = __DIR__ . '/uploads/';
-        if (!is_dir($dir)) mkdir($dir, 0755, true);
-        $ext = pathinfo($_FILES['fichier']['name'], PATHINFO_EXTENSION);
-        $fichier = 'dipl_' . time() . '_' . mt_rand(1000,9999) . '.' . $ext;
+        if (!is_dir($dir)) { mkdir($dir, 0755, true); }
+        // Securite (anti-RCE) : durcir le dossier (aucune execution PHP) si le .htaccess manque.
+        if (!is_file($dir . '.htaccess')) {
+            file_put_contents($dir . '.htaccess', "Require all denied\nDeny from all\n<IfModule mod_php.c>\nphp_flag engine off\n</IfModule>\n<FilesMatch \"\\.(php|phtml|phar|cgi|pl|py|sh|htaccess)$\">\nRequire all denied\n</FilesMatch>\n");
+        }
+        // Allowlist d'extensions + verification du MIME reel (pas de confiance au nom fourni).
+        $allowedExt  = ['pdf', 'jpg', 'jpeg', 'png'];
+        $allowedMime = ['application/pdf', 'image/jpeg', 'image/png'];
+        $ext  = strtolower((string) pathinfo($_FILES['fichier']['name'], PATHINFO_EXTENSION));
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($_FILES['fichier']['tmp_name']) ?: '';
+        if (!in_array($ext, $allowedExt, true) || !in_array($mime, $allowedMime, true)) {
+            $_SESSION['error_message'] = "Fichier refusé : seuls les PDF, JPG et PNG sont autorisés.";
+            header('Location: diplomes.php'); exit;
+        }
+        // Nom de stockage aleatoire non devinable, extension bornee a l'allowlist.
+        $fichier = 'dipl_' . bin2hex(random_bytes(8)) . '.' . $ext;
         move_uploaded_file($_FILES['fichier']['tmp_name'], $dir . $fichier);
     }
     $id = $diplService->creerDiplome([

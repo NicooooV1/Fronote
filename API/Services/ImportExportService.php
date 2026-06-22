@@ -620,6 +620,21 @@ class ImportExportService
             ];
         }
 
+        // Securite : backup STRICTEMENT scope a l'etablissement courant. Les tables sans colonne
+        // etablissement_id (tables systeme/globales : sessions, audit, config RBAC...) sont exclues
+        // du dump de donnees (anti-fuite inter-etablissement) ; les colonnes de secrets (mots de
+        // passe, 2FA, jetons) sont systematiquement redigees a NULL. Echec ferme sans contexte etab.
+        try {
+            $etabId = \API\Core\EstablishmentContext::id();
+        } catch (\Throwable $e) {
+            return ['success' => false, 'message' => "Contexte etablissement indisponible : export refuse."];
+        }
+        $sensitiveCols = [
+            'mot_de_passe', 'password', 'password_hash', 'pass', 'two_factor_secret',
+            'remember_token', 'reset_token', 'reset_code', 'token', 'api_key', 'secret',
+        ];
+        $skipped = [];
+
         $tempDir   = $this->ensureTempDir();
         $timestamp = date('Ymd_His');
         $fileName  = "backup_{$timestamp}.sql";
@@ -630,9 +645,9 @@ class ImportExportService
             return ['success' => false, 'message' => "Impossible de creer le fichier d'export."];
         }
 
-        fwrite($fp, "-- Fronote SQL Backup\n");
+        fwrite($fp, "-- Fronote SQL Backup (scope etablissement #{$etabId})\n");
         fwrite($fp, "-- Date : " . date('Y-m-d H:i:s') . "\n");
-        fwrite($fp, "-- Tables : " . implode(', ', $tables) . "\n");
+        fwrite($fp, "-- Tables demandees : " . implode(', ', $tables) . "\n");
         fwrite($fp, "SET NAMES utf8mb4;\n");
         fwrite($fp, "SET FOREIGN_KEY_CHECKS = 0;\n\n");
 
@@ -658,8 +673,25 @@ class ImportExportService
                 continue;
             }
 
+            // Colonnes de la table (le nom est deja valide par la regex ci-dessus)
+            $tableCols = [];
+            try {
+                $colsStmt  = $this->pdo->query("SHOW COLUMNS FROM `{$table}`");
+                $tableCols = array_map(static fn($c) => strtolower((string) $c['Field']), $colsStmt->fetchAll(PDO::FETCH_ASSOC));
+            } catch (PDOException $e) {
+                fwrite($fp, "-- Erreur colonnes table '{$table}': " . $e->getMessage() . "\n\n");
+                continue;
+            }
+
+            // Securite : exclure du dump de donnees toute table globale/systeme (sans etablissement_id).
+            if (!in_array('etablissement_id', $tableCols, true)) {
+                fwrite($fp, "-- Table '{$table}' exclue du backup : table globale/systeme (pas de colonne etablissement_id).\n\n");
+                $skipped[] = $table;
+                continue;
+            }
+
             fwrite($fp, "-- -----------------------------------------------\n");
-            fwrite($fp, "-- Table : {$table}\n");
+            fwrite($fp, "-- Table : {$table} (scope etablissement #{$etabId})\n");
             fwrite($fp, "-- -----------------------------------------------\n\n");
 
             // Structure
@@ -676,10 +708,10 @@ class ImportExportService
                 }
             }
 
-            // Donnees
+            // Donnees — scopees a l'etablissement courant, colonnes de secrets redigees
             try {
-                $stmt = $this->pdo->prepare("SELECT * FROM `{$table}`");
-                $stmt->execute();
+                $stmt = $this->pdo->prepare("SELECT * FROM `{$table}` WHERE etablissement_id = ?");
+                $stmt->execute([$etabId]);
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                 if (!empty($rows)) {
@@ -688,8 +720,10 @@ class ImportExportService
 
                     foreach ($rows as $row) {
                         $values = [];
-                        foreach ($row as $val) {
-                            if ($val === null) {
+                        foreach ($row as $col => $val) {
+                            if (in_array(strtolower((string) $col), $sensitiveCols, true)) {
+                                $values[] = 'NULL'; // secret redige (jamais exporte)
+                            } elseif ($val === null) {
                                 $values[] = 'NULL';
                             } else {
                                 $values[] = $this->pdo->quote($val);
@@ -700,7 +734,7 @@ class ImportExportService
                     }
                     fwrite($fp, "\n");
                 } else {
-                    fwrite($fp, "-- (table vide)\n\n");
+                    fwrite($fp, "-- (aucune ligne pour cet etablissement)\n\n");
                 }
             } catch (PDOException $e) {
                 fwrite($fp, "-- Erreur lecture donnees: " . $e->getMessage() . "\n\n");
@@ -712,12 +746,17 @@ class ImportExportService
 
         $this->logImport('export', $totalRows, 'termine', $fileName, 'backup_sql');
 
+        $msg = "Backup SQL genere ({$totalRows} lignes, scope etablissement #{$etabId}).";
+        if (!empty($skipped)) {
+            $msg .= ' Tables globales/systeme exclues : ' . implode(', ', $skipped) . '.';
+        }
+
         return [
             'success'   => true,
             'file_path' => $filePath,
             'file_name' => $fileName,
             'count'     => $totalRows,
-            'message'   => "Backup SQL genere ({$totalRows} lignes, " . count($tables) . " table(s)).",
+            'message'   => $msg,
         ];
     }
 

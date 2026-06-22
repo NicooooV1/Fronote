@@ -16,40 +16,80 @@ class AuditRgpdService
 
     public function getAuditLogs(array $filtres = []): array
     {
-        $sql = "SELECT * FROM audit_log WHERE 1=1";
-        $params = [];
-        if (!empty($filtres['user_id'])) { $sql .= ' AND user_id = ?'; $params[] = $filtres['user_id']; }
-        if (!empty($filtres['action'])) { $sql .= ' AND action LIKE ?'; $params[] = '%' . $filtres['action'] . '%'; }
-        if (!empty($filtres['date_debut'])) { $sql .= ' AND created_at >= ?'; $params[] = $filtres['date_debut']; }
-        if (!empty($filtres['date_fin'])) { $sql .= ' AND created_at <= ?'; $params[] = $filtres['date_fin'] . ' 23:59:59'; }
-        // Scoper au journal de l'établissement courant pour un admin (un super_admin
-        // voit l'audit de tous les établissements). Cf. resoudreUtilisateur().
-        [$etabClause, $etabParams] = $this->etablissementScope();
-        $sql .= $etabClause;
-        $params = array_merge($params, $etabParams);
-        $sql .= ' ORDER BY created_at DESC LIMIT 500';
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Le journal d'audit ne doit JAMAIS provoquer une 500 (colonne/table
+        // manquante, scope indéterminé…) : en cas d'échec on renvoie un résultat
+        // vide et on trace l'erreur côté serveur.
+        try {
+            $sql = "SELECT * FROM audit_log WHERE 1=1";
+            $params = [];
+            if (!empty($filtres['user_id'])) { $sql .= ' AND user_id = ?'; $params[] = $filtres['user_id']; }
+            if (!empty($filtres['action'])) { $sql .= ' AND action LIKE ?'; $params[] = '%' . $filtres['action'] . '%'; }
+            if (!empty($filtres['date_debut'])) { $sql .= ' AND created_at >= ?'; $params[] = $filtres['date_debut']; }
+            if (!empty($filtres['date_fin'])) { $sql .= ' AND created_at <= ?'; $params[] = $filtres['date_fin'] . ' 23:59:59'; }
+            // Scoper au journal de l'établissement courant pour un admin (un super_admin
+            // voit l'audit de tous les établissements). Cf. resoudreUtilisateur().
+            [$etabClause, $etabParams] = $this->etablissementScope('audit_log');
+            $sql .= $etabClause;
+            $params = array_merge($params, $etabParams);
+            $sql .= ' ORDER BY created_at DESC LIMIT 500';
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            error_log('[rgpd audit] getAuditLogs: ' . $e->getMessage());
+            return [];
+        }
     }
 
     /**
-     * Construit le filtre d'établissement pour le journal d'audit.
+     * Construit le filtre d'établissement pour une table donnée.
      * - Un super_admin n'est PAS scopé (visibilité cross-établissement).
      * - Un admin (ou autre rôle) est scopé sur l'établissement courant.
+     * - Si la colonne `etablissement_id` n'existe pas sur la table (schéma non
+     *   migré), AUCUN filtre n'est appliqué : cela évite toute 500 « Unknown
+     *   column » tant que la migration (Database/install.sql) n'est pas passée.
      * Retourne [clauseSQL, paramsBind] ; clause vide si pas de scope applicable.
      */
-    private function etablissementScope(): array
+    private function etablissementScope(string $table, string $alias = ''): array
     {
         if (function_exists('isSuperAdmin') && isSuperAdmin()) {
             return ['', []];
         }
+        if (!$this->columnExists($table, 'etablissement_id')) {
+            return ['', []];
+        }
         try {
             $eid = \API\Core\EstablishmentContext::id();
-            return [' AND etablissement_id = ?', [$eid]];
+            $col = ($alias !== '' ? $alias . '.' : '') . 'etablissement_id';
+            return [' AND ' . $col . ' = ?', [$eid]];
         } catch (\Throwable $e) {
             return ['', []];
         }
+    }
+
+    /** Cache des colonnes existantes par table (évite N requêtes information_schema). */
+    private array $columnCache = [];
+
+    /**
+     * Indique si une colonne existe sur une table du schéma courant.
+     * Résilient : en cas d'erreur d'introspection, renvoie false (= pas de scope,
+     * jamais de 500).
+     */
+    private function columnExists(string $table, string $column): bool
+    {
+        if (!isset($this->columnCache[$table])) {
+            try {
+                $stmt = $this->pdo->prepare(
+                    "SELECT COLUMN_NAME FROM information_schema.COLUMNS
+                     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?"
+                );
+                $stmt->execute([$table]);
+                $this->columnCache[$table] = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+            } catch (\Throwable $e) {
+                $this->columnCache[$table] = [];
+            }
+        }
+        return in_array($column, $this->columnCache[$table], true);
     }
 
     public function getAuditStats(): array
@@ -59,30 +99,37 @@ class AuditRgpdService
 
     public function getAuditStatsProper(): array
     {
-        $today = date('Y-m-d');
-        $month = date('Y-m');
+        // Comme getAuditLogs(), ne jamais provoquer de 500 : sur erreur on rend
+        // des compteurs à zéro et on trace côté serveur.
+        try {
+            $today = date('Y-m-d');
+            $month = date('Y-m');
 
-        // Mêmes règles de scope que getAuditLogs() : un admin ne voit que son
-        // établissement, un super_admin voit tout.
-        [$etabClause, $etabParams] = $this->etablissementScope();
+            // Mêmes règles de scope que getAuditLogs() : un admin ne voit que son
+            // établissement, un super_admin voit tout.
+            [$etabClause, $etabParams] = $this->etablissementScope('audit_log');
 
-        $stmtToday = $this->pdo->prepare("SELECT COUNT(*) FROM audit_log WHERE DATE(created_at) = ?" . $etabClause);
-        $stmtToday->execute(array_merge([$today], $etabParams));
-        $todayCount = (int)$stmtToday->fetchColumn();
+            $stmtToday = $this->pdo->prepare("SELECT COUNT(*) FROM audit_log WHERE DATE(created_at) = ?" . $etabClause);
+            $stmtToday->execute(array_merge([$today], $etabParams));
+            $todayCount = (int)$stmtToday->fetchColumn();
 
-        $stmtTotal = $this->pdo->prepare("SELECT COUNT(*) FROM audit_log WHERE 1=1" . $etabClause);
-        $stmtTotal->execute($etabParams);
-        $totalCount = (int)$stmtTotal->fetchColumn();
+            $stmtTotal = $this->pdo->prepare("SELECT COUNT(*) FROM audit_log WHERE 1=1" . $etabClause);
+            $stmtTotal->execute($etabParams);
+            $totalCount = (int)$stmtTotal->fetchColumn();
 
-        $stmtMonth = $this->pdo->prepare("SELECT COUNT(*) FROM audit_log WHERE created_at LIKE ?" . $etabClause);
-        $stmtMonth->execute(array_merge([$month . '%'], $etabParams));
-        $monthCount = (int)$stmtMonth->fetchColumn();
+            $stmtMonth = $this->pdo->prepare("SELECT COUNT(*) FROM audit_log WHERE created_at LIKE ?" . $etabClause);
+            $stmtMonth->execute(array_merge([$month . '%'], $etabParams));
+            $monthCount = (int)$stmtMonth->fetchColumn();
 
-        return [
-            'total' => $totalCount,
-            'today' => $todayCount,
-            'month' => $monthCount,
-        ];
+            return [
+                'total' => $totalCount,
+                'today' => $todayCount,
+                'month' => $monthCount,
+            ];
+        } catch (\Throwable $e) {
+            error_log('[rgpd audit] getAuditStatsProper: ' . $e->getMessage());
+            return ['total' => 0, 'today' => 0, 'month' => 0];
+        }
     }
 
     /**
@@ -151,11 +198,21 @@ class AuditRgpdService
 
     public function creerDemande(int $userId, string $userType, string $type, ?string $description): int
     {
-        $stmt = $this->pdo->prepare("
-            INSERT INTO rgpd_demandes (user_id, user_type, type_demande, description)
-            VALUES (?, ?, ?, ?)
-        ");
-        $stmt->execute([$userId, $userType, $type, $description]);
+        // Renseigner etablissement_id à la création pour cloisonner la demande
+        // (quand la colonne existe). Sinon, INSERT sur les colonnes historiques.
+        if ($this->columnExists('rgpd_demandes', 'etablissement_id') && ($eid = $this->currentEtablissementId()) !== null) {
+            $stmt = $this->pdo->prepare("
+                INSERT INTO rgpd_demandes (user_id, user_type, type_demande, description, etablissement_id)
+                VALUES (?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([$userId, $userType, $type, $description, $eid]);
+        } else {
+            $stmt = $this->pdo->prepare("
+                INSERT INTO rgpd_demandes (user_id, user_type, type_demande, description)
+                VALUES (?, ?, ?, ?)
+            ");
+            $stmt->execute([$userId, $userType, $type, $description]);
+        }
         return (int)$this->pdo->lastInsertId();
     }
 
@@ -180,6 +237,11 @@ class AuditRgpdService
         $params = [];
         if (!empty($filtres['statut'])) { $sql .= ' AND d.statut = ?'; $params[] = $filtres['statut']; }
         if (!empty($filtres['type_demande'])) { $sql .= ' AND d.type_demande = ?'; $params[] = $filtres['type_demande']; }
+        // Cloisonnement : un admin ne voit que les demandes de son établissement
+        // (un super_admin voit tout). Préfixe `d.` car la table est aliasée.
+        [$etabClause, $etabParams] = $this->etablissementScope('rgpd_demandes', 'd');
+        $sql .= $etabClause;
+        $params = array_merge($params, $etabParams);
         $sql .= ' ORDER BY d.date_demande DESC';
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
@@ -188,8 +250,10 @@ class AuditRgpdService
 
     public function getDemande(int $id): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM rgpd_demandes WHERE id = ?");
-        $stmt->execute([$id]);
+        // Cloisonnement : empêche de lire la demande d'un autre établissement.
+        [$etabClause, $etabParams] = $this->etablissementScope('rgpd_demandes');
+        $stmt = $this->pdo->prepare("SELECT * FROM rgpd_demandes WHERE id = ?" . $etabClause);
+        $stmt->execute(array_merge([$id], $etabParams));
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
@@ -224,8 +288,12 @@ class AuditRgpdService
 
     public function traiterDemande(int $id, string $statut, ?string $reponse, int $traiteParId): void
     {
-        $stmt = $this->pdo->prepare("UPDATE rgpd_demandes SET statut = ?, reponse = ?, traite_par = ?, date_traitement = NOW() WHERE id = ?");
-        $stmt->execute([$statut, $reponse, $traiteParId, $id]);
+        // Cloisonnement : un admin ne peut traiter qu'une demande de son
+        // établissement (la clause AND etablissement_id = ? rend l'UPDATE inopérant
+        // sur une demande d'un autre établissement).
+        [$etabClause, $etabParams] = $this->etablissementScope('rgpd_demandes');
+        $stmt = $this->pdo->prepare("UPDATE rgpd_demandes SET statut = ?, reponse = ?, traite_par = ?, date_traitement = NOW() WHERE id = ?" . $etabClause);
+        $stmt->execute(array_merge([$statut, $reponse, $traiteParId, $id], $etabParams));
     }
 
     public function getMesDemandesUser(int $userId, string $userType): array
@@ -277,85 +345,93 @@ class AuditRgpdService
         // 4. Données spécifiques par type
         if ($userType === 'eleve') {
             // Notes
-            try {
-                $stmt = $pdo->prepare("SELECT n.*, m.nom AS matiere FROM notes n LEFT JOIN matieres m ON n.id_matiere = m.id WHERE n.id_eleve = ? ORDER BY n.date_note DESC");
-                $stmt->execute([$userId]);
-                $data['notes'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            } catch (\Exception $e) { $data['notes'] = []; }
+            $data['notes'] = $this->collecte('notes',
+                "SELECT n.*, m.nom AS matiere FROM notes n LEFT JOIN matieres m ON n.id_matiere = m.id WHERE n.id_eleve = ? ORDER BY n.date_note DESC",
+                [$userId]);
 
             // Absences
-            try {
-                $stmt = $pdo->prepare("SELECT * FROM absences WHERE id_eleve = ? ORDER BY date_debut DESC");
-                $stmt->execute([$userId]);
-                $data['absences'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            } catch (\Exception $e) { $data['absences'] = []; }
+            $data['absences'] = $this->collecte('absences',
+                "SELECT * FROM absences WHERE id_eleve = ? ORDER BY date_debut DESC",
+                [$userId]);
 
-            // Retards
-            try {
-                $stmt = $pdo->prepare("SELECT * FROM retards WHERE eleve_id = ? ORDER BY date_retard DESC");
-                $stmt->execute([$userId]);
-                $data['retards'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            } catch (\Exception $e) { $data['retards'] = []; }
+            // Retards (la colonne de liaison est `id_eleve`, pas `eleve_id`).
+            $data['retards'] = $this->collecte('retards',
+                "SELECT * FROM retards WHERE id_eleve = ? ORDER BY date_retard DESC",
+                [$userId]);
 
             // Incidents
-            try {
-                $stmt = $pdo->prepare("SELECT * FROM incidents WHERE eleve_id = ? ORDER BY date_incident DESC");
-                $stmt->execute([$userId]);
-                $data['incidents'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            } catch (\Exception $e) { $data['incidents'] = []; }
+            $data['incidents'] = $this->collecte('incidents',
+                "SELECT * FROM incidents WHERE eleve_id = ? ORDER BY date_incident DESC",
+                [$userId]);
 
             // Bulletins
-            try {
-                $stmt = $pdo->prepare("SELECT * FROM bulletins WHERE eleve_id = ? ORDER BY id DESC");
-                $stmt->execute([$userId]);
-                $data['bulletins'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            } catch (\Exception $e) { $data['bulletins'] = []; }
+            $data['bulletins'] = $this->collecte('bulletins',
+                "SELECT * FROM bulletins WHERE eleve_id = ? ORDER BY id DESC",
+                [$userId]);
 
-            // Inscriptions
-            try {
-                $stmt = $pdo->prepare("SELECT * FROM inscriptions WHERE eleve_id = ? ORDER BY id DESC");
-                $stmt->execute([$userId]);
-                $data['inscriptions'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            } catch (\Exception $e) { $data['inscriptions'] = []; }
+            // Inscriptions : la table `inscriptions` n'a pas de colonne `eleve_id` ;
+            // la liaison se fait sur l'identité (nom/prénom/date de naissance) de
+            // l'élève, qui est le sujet de l'inscription.
+            $data['inscriptions'] = $this->collecte('inscriptions',
+                "SELECT i.* FROM inscriptions i
+                 JOIN eleves e ON e.id = ?
+                 WHERE i.nom_eleve = e.nom AND i.prenom_eleve = e.prenom AND i.date_naissance = e.date_naissance
+                 ORDER BY i.id DESC",
+                [$userId]);
         }
 
         if ($userType === 'parent') {
-            // Factures
-            try {
-                $stmt = $pdo->prepare("SELECT * FROM factures WHERE parent_id = ? ORDER BY date_creation DESC");
-                $stmt->execute([$userId]);
-                $data['factures'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            } catch (\Exception $e) { $data['factures'] = []; }
+            // Factures (la colonne de tri est `created_at`, pas `date_creation`).
+            $data['factures'] = $this->collecte('factures',
+                "SELECT * FROM factures WHERE parent_id = ? ORDER BY created_at DESC",
+                [$userId]);
         }
 
         // 5. Messages (tous types)
-        try {
-            $stmt = $pdo->prepare("
-                SELECT m.id, m.body, m.created_at, c.subject 
-                FROM messages m 
-                JOIN conversations c ON m.conversation_id = c.id 
-                WHERE m.sender_id = ? AND m.sender_type = ? AND m.is_deleted = 0
-                ORDER BY m.created_at DESC
-            ");
-            $stmt->execute([$userId, $userType]);
-            $data['messages_envoyes'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (\Exception $e) { $data['messages_envoyes'] = []; }
+        $data['messages_envoyes'] = $this->collecte('messages_envoyes',
+            "SELECT m.id, m.body, m.created_at, c.subject
+             FROM messages m
+             JOIN conversations c ON m.conversation_id = c.id
+             WHERE m.sender_id = ? AND m.sender_type = ? AND m.is_deleted = 0
+             ORDER BY m.created_at DESC",
+            [$userId, $userType]);
 
         // 6. Sessions / connexions
-        try {
-            $stmt = $pdo->prepare("SELECT * FROM session_security WHERE user_id = ? AND user_type = ? ORDER BY created_at DESC LIMIT 50");
-            $stmt->execute([$userId, $userType]);
-            $data['sessions'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (\Exception $e) { $data['sessions'] = []; }
+        $data['sessions'] = $this->collecte('sessions',
+            "SELECT * FROM session_security WHERE user_id = ? AND user_type = ? ORDER BY created_at DESC LIMIT 50",
+            [$userId, $userType]);
 
         // 7. Audit logs relatifs
-        try {
-            $stmt = $pdo->prepare("SELECT action, details, ip_address, created_at FROM audit_log WHERE user_id = ? AND user_type = ? ORDER BY created_at DESC LIMIT 200");
-            $stmt->execute([$userId, $userType]);
-            $data['audit_trail'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (\Exception $e) { $data['audit_trail'] = []; }
+        $data['audit_trail'] = $this->collecte('audit_trail',
+            "SELECT action, details, ip_address, created_at FROM audit_log WHERE user_id = ? AND user_type = ? ORDER BY created_at DESC LIMIT 200",
+            [$userId, $userType]);
 
         return $data;
+    }
+
+    /**
+     * Exécute une requête de collecte pour l'export Art. 15 et renvoie ses lignes.
+     * En cas d'échec (table/colonne absente, etc.) : NE PAS échouer silencieusement
+     * — on trace via error_log ET on renvoie un marqueur visible dans l'export
+     * afin que l'amputation soit signalée à l'utilisateur / au DPO, au lieu d'un
+     * simple tableau vide indiscernable d'une absence réelle de données.
+     *
+     * @return array Liste des lignes, ou [['_erreur' => 'collecte partielle', ...]] sur échec.
+     */
+    private function collecte(string $section, string $sql, array $params): array
+    {
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            error_log("[rgpd export] section '{$section}' : " . $e->getMessage());
+            return [[
+                '_erreur'  => 'collecte partielle',
+                '_section' => $section,
+                '_detail'  => 'Donnees non collectees suite a une erreur technique (voir journaux serveur).',
+            ]];
+        }
     }
 
     /* ───────── ANONYMISATION (Droit à l'oubli) ───────── */
@@ -574,9 +650,26 @@ class AuditRgpdService
     private function logAudit(int $userId, string $userType, string $action, string $details): void
     {
         try {
-            $stmt = $this->pdo->prepare("INSERT INTO audit_log (user_id, user_type, action, details, ip_address, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
-            $stmt->execute([$userId, $userType, $action, $details, $_SERVER['REMOTE_ADDR'] ?? '']);
+            // Renseigner etablissement_id quand la colonne existe, pour que le
+            // journal reste cloisonné par établissement à la relecture.
+            if ($this->columnExists('audit_log', 'etablissement_id') && ($eid = $this->currentEtablissementId()) !== null) {
+                $stmt = $this->pdo->prepare("INSERT INTO audit_log (user_id, user_type, action, details, ip_address, etablissement_id, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
+                $stmt->execute([$userId, $userType, $action, $details, $_SERVER['REMOTE_ADDR'] ?? '', $eid]);
+            } else {
+                $stmt = $this->pdo->prepare("INSERT INTO audit_log (user_id, user_type, action, details, ip_address, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
+                $stmt->execute([$userId, $userType, $action, $details, $_SERVER['REMOTE_ADDR'] ?? '']);
+            }
         } catch (\Exception $e) { error_log('[rgpd audit] ' . $e->getMessage()); }
+    }
+
+    /** Établissement courant ou null si indéterminé (jamais d'exception remontée). */
+    private function currentEtablissementId(): ?int
+    {
+        try {
+            return \API\Core\EstablishmentContext::id();
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     /* ───────── STATIC ───────── */
@@ -615,50 +708,73 @@ class AuditRgpdService
 
     public function ajouterTraitement(array $d): int
     {
-        $stmt = $this->pdo->prepare("
-            INSERT INTO rgpd_registre_traitements (nom_traitement, finalite, base_legale, categories_donnees, destinataires, duree_conservation, mesures_securite, created_at)
-            VALUES (:n, :f, :b, :c, :d, :dur, :m, NOW())
-        ");
-        $stmt->execute([
+        $hasEtab = $this->columnExists('rgpd_registre_traitements', 'etablissement_id');
+        $eid = $hasEtab ? $this->currentEtablissementId() : null;
+        $cols = "nom_traitement, finalite, base_legale, categories_donnees, destinataires, duree_conservation, mesures_securite";
+        $vals = ":n, :f, :b, :c, :d, :dur, :m";
+        $params = [
             ':n' => $d['nom_traitement'], ':f' => $d['finalite'], ':b' => $d['base_legale'] ?? 'consentement',
             ':c' => $d['categories_donnees'] ?? '', ':d' => $d['destinataires'] ?? '',
             ':dur' => $d['duree_conservation'] ?? '', ':m' => $d['mesures_securite'] ?? '',
-        ]);
+        ];
+        if ($eid !== null) { $cols .= ", etablissement_id"; $vals .= ", :eid"; $params[':eid'] = $eid; }
+        $stmt = $this->pdo->prepare("INSERT INTO rgpd_registre_traitements ({$cols}, created_at) VALUES ({$vals}, NOW())");
+        $stmt->execute($params);
         return (int)$this->pdo->lastInsertId();
     }
 
     public function getRegistreTraitements(): array
     {
-        return $this->pdo->query("SELECT * FROM rgpd_registre_traitements ORDER BY nom_traitement")->fetchAll(\PDO::FETCH_ASSOC);
+        // Cloisonnement par établissement (sauf super_admin).
+        [$etabClause, $etabParams] = $this->etablissementScope('rgpd_registre_traitements');
+        $sql = "SELECT * FROM rgpd_registre_traitements WHERE 1=1" . $etabClause . " ORDER BY nom_traitement";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($etabParams);
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
     // ─── ANALYSE D'IMPACT (AIPD / DPIA) ───
 
     public function creerAnalyseImpact(string $titre, string $description, int $creerPar): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO rgpd_analyses_impact (titre, description, cree_par, statut, created_at) VALUES (:t, :d, :c, 'en_cours', NOW())");
-        $stmt->execute([':t' => $titre, ':d' => $description, ':c' => $creerPar]);
+        $hasEtab = $this->columnExists('rgpd_analyses_impact', 'etablissement_id');
+        $eid = $hasEtab ? $this->currentEtablissementId() : null;
+        if ($eid !== null) {
+            $stmt = $this->pdo->prepare("INSERT INTO rgpd_analyses_impact (titre, description, cree_par, statut, etablissement_id, created_at) VALUES (:t, :d, :c, 'en_cours', :eid, NOW())");
+            $stmt->execute([':t' => $titre, ':d' => $description, ':c' => $creerPar, ':eid' => $eid]);
+        } else {
+            $stmt = $this->pdo->prepare("INSERT INTO rgpd_analyses_impact (titre, description, cree_par, statut, created_at) VALUES (:t, :d, :c, 'en_cours', NOW())");
+            $stmt->execute([':t' => $titre, ':d' => $description, ':c' => $creerPar]);
+        }
         return (int)$this->pdo->lastInsertId();
     }
 
     public function getAnalysesImpact(): array
     {
-        return $this->pdo->query("SELECT * FROM rgpd_analyses_impact ORDER BY created_at DESC")->fetchAll(\PDO::FETCH_ASSOC);
+        // Cloisonnement par établissement (sauf super_admin).
+        [$etabClause, $etabParams] = $this->etablissementScope('rgpd_analyses_impact');
+        $sql = "SELECT * FROM rgpd_analyses_impact WHERE 1=1" . $etabClause . " ORDER BY created_at DESC";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($etabParams);
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
     // ─── VIOLATIONS DE DONNÉES (Art. 33/34) ───
 
     public function signalerViolation(array $d): int
     {
-        $stmt = $this->pdo->prepare("
-            INSERT INTO rgpd_violations (titre, description, date_detection, nature, donnees_concernees, nb_personnes, gravite, signale_par, statut, created_at)
-            VALUES (:t, :desc, :dd, :n, :dc, :nb, :g, :sp, 'detectee', NOW())
-        ");
-        $stmt->execute([
+        $hasEtab = $this->columnExists('rgpd_violations', 'etablissement_id');
+        $eid = $hasEtab ? $this->currentEtablissementId() : null;
+        $cols = "titre, description, date_detection, nature, donnees_concernees, nb_personnes, gravite, signale_par, statut";
+        $vals = ":t, :desc, :dd, :n, :dc, :nb, :g, :sp, 'detectee'";
+        $params = [
             ':t' => $d['titre'], ':desc' => $d['description'], ':dd' => $d['date_detection'] ?? date('Y-m-d'),
             ':n' => $d['nature'] ?? '', ':dc' => $d['donnees_concernees'] ?? '',
             ':nb' => $d['nb_personnes'] ?? 0, ':g' => $d['gravite'] ?? 'moyenne', ':sp' => $d['signale_par'],
-        ]);
+        ];
+        if ($eid !== null) { $cols .= ", etablissement_id"; $vals .= ", :eid"; $params[':eid'] = $eid; }
+        $stmt = $this->pdo->prepare("INSERT INTO rgpd_violations ({$cols}, created_at) VALUES ({$vals}, NOW())");
+        $stmt->execute($params);
         return (int)$this->pdo->lastInsertId();
     }
 
@@ -667,6 +783,10 @@ class AuditRgpdService
         $sql = "SELECT * FROM rgpd_violations WHERE 1=1";
         $params = [];
         if ($statut) { $sql .= " AND statut = :s"; $params[':s'] = $statut; }
+        // Cloisonnement par établissement (sauf super_admin).
+        [$etabClause, $etabParams] = $this->etablissementScopeNamed('rgpd_violations');
+        $sql .= $etabClause;
+        $params = array_merge($params, $etabParams);
         $sql .= " ORDER BY date_detection DESC";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
@@ -675,17 +795,51 @@ class AuditRgpdService
 
     public function traiterViolation(int $id, string $statut, ?string $actions = null): void
     {
-        $this->pdo->prepare("UPDATE rgpd_violations SET statut = :s, actions_correctives = :a, date_resolution = NOW() WHERE id = :id")
-            ->execute([':s' => $statut, ':a' => $actions, ':id' => $id]);
+        // Cloisonnement : un admin ne peut traiter qu'une violation de son
+        // établissement.
+        [$etabClause, $etabParams] = $this->etablissementScopeNamed('rgpd_violations');
+        $params = array_merge([':s' => $statut, ':a' => $actions, ':id' => $id], $etabParams);
+        $this->pdo->prepare("UPDATE rgpd_violations SET statut = :s, actions_correctives = :a, date_resolution = NOW() WHERE id = :id" . $etabClause)
+            ->execute($params);
+    }
+
+    /**
+     * Variante de etablissementScope() à placeholders NOMMÉS, pour les requêtes
+     * de ce bloc (violations) qui utilisent des paramètres `:nom`.
+     * Retourne [clauseSQL, ['param' => valeur]].
+     */
+    private function etablissementScopeNamed(string $table): array
+    {
+        if (function_exists('isSuperAdmin') && isSuperAdmin()) {
+            return ['', []];
+        }
+        if (!$this->columnExists($table, 'etablissement_id')) {
+            return ['', []];
+        }
+        try {
+            $eid = \API\Core\EstablishmentContext::id();
+            return [' AND etablissement_id = :etab_scope', [':etab_scope' => $eid]];
+        } catch (\Throwable $e) {
+            return ['', []];
+        }
     }
 
     // ─── DASHBOARD CONFORMITÉ ───
 
     public function getDashboardConformite(): array
     {
-        $demandes = $this->pdo->query("SELECT statut, COUNT(*) AS nb FROM rgpd_demandes GROUP BY statut")->fetchAll(\PDO::FETCH_KEY_PAIR);
+        // Cloisonnement par établissement (sauf super_admin) sur les compteurs.
+        [$demClause, $demParams] = $this->etablissementScope('rgpd_demandes');
+        $stmtD = $this->pdo->prepare("SELECT statut, COUNT(*) AS nb FROM rgpd_demandes WHERE 1=1" . $demClause . " GROUP BY statut");
+        $stmtD->execute($demParams);
+        $demandes = $stmtD->fetchAll(\PDO::FETCH_KEY_PAIR);
+
         $consentements = $this->pdo->query("SELECT COUNT(*) AS total, SUM(consenti) AS consented FROM rgpd_consentements")->fetch(\PDO::FETCH_ASSOC);
-        $violations = $this->pdo->query("SELECT COUNT(*) FROM rgpd_violations WHERE statut != 'resolue'")->fetchColumn();
+
+        [$vioClause, $vioParams] = $this->etablissementScope('rgpd_violations');
+        $stmtV = $this->pdo->prepare("SELECT COUNT(*) FROM rgpd_violations WHERE statut != 'resolue'" . $vioClause);
+        $stmtV->execute($vioParams);
+        $violations = $stmtV->fetchColumn();
 
         return [
             'demandes' => $demandes,

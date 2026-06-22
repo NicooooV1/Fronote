@@ -209,23 +209,32 @@ Chaque établissement a ses propres périodes et son propre découpage (un coll�
 
 ## 6. Tâches planifiées (cron)
 
-Fronote s'appuie sur des tâches de fond pour le traitement asynchrone et la maintenance.
+Fronote regroupe la maintenance dans **un seul** script : `cron/daily_maintenance.php`.
 
 ```bash
 crontab -e
 ```
 
 ```cron
-# File de jobs (emails, notifications…) — toutes les minutes
-* * * * * php /var/www/fronote/scripts/worker.php >> /var/www/fronote/API/logs/worker.log 2>&1
-
-# Maintenance quotidienne (purge audit, backups + rotation, cache, tokens, rate-limit) — 2h du matin
+# Maintenance quotidienne (backup DB + rotation, purge audit, file d'e-mails, cache, storage/tmp, quarantaine) — 2h du matin
 0 2 * * * php /var/www/fronote/cron/daily_maintenance.php >> /var/www/fronote/API/logs/cron.log 2>&1
 ```
 
-Tâches optionnelles supplémentaires disponibles dans `cron/` selon les modules activés : `hourly_maintenance.php`, `weekly_digest.php`, `formations_expirations.php`, `bourses_rappels.php`, `inventaire_maintenance.php`, `intelligence_calcul.php`.
+Ce que fait `cron/daily_maintenance.php` (chaque tâche est *best-effort* : un échec n'interrompt pas les suivantes, et la sortie est journalisée) :
 
-> Il n'existe **plus** de cron de vérification de mise à jour (`scripts/check_update.php` a été supprimé). Les mises à jour se déclenchent depuis l'interface (chapitre 7).
+1. **Backup de la base** via `app('backup')->createDatabaseBackup()` (dump SQL gzippé, chiffré at-rest si `APP_KEY` présent — voir chapitre 10) ;
+2. **Rotation des backups** : conserve les `BACKUP_RETENTION` plus récents par type (défaut **5**) ;
+3. **Purge de l'audit** : supprime les entrées de plus de `AUDIT_RETENTION_DAYS` jours (défaut **180**) ;
+4. **Purge de la file d'e-mails** traitée (`email_log` + corps `storage/email_queue/`, > 30 j) ;
+5. **GC du cache** applicatif expiré ;
+6. **Nettoyage de `storage/tmp`** (fichiers > 24h) ;
+7. **Nettoyage de `storage/quarantine`** (reliquats > 30 j).
+
+> **Pas de worker requis.** Il n'existe plus de `scripts/worker.php` : Fronote ne dépend d'aucune file de jobs asynchrone côté cron. De même, il n'y a **plus** de cron de vérification de mise à jour — les mises à jour se déclenchent depuis l'interface (chapitre 7).
+
+### Filet de sécurité sans cron
+
+Si vous **ne pouvez pas** configurer de cron (hébergement mutualisé), Fronote déclenche un *tick* de maintenance **minimal** depuis `API/bootstrap.php` : au plus **une fois par 24h** (fichier sentinelle `storage/.last_maintenance`), de façon **non bloquante et silencieuse**, il exécute la purge d'audit et le nettoyage de `storage/tmp`. Ce filet **ne remplace pas** le cron : il **ne fait ni backup ni rotation**. Pour des sauvegardes fiables, configurez le cron ci-dessus (ou la sauvegarde externe du chapitre 10).
 
 ---
 
@@ -303,7 +312,7 @@ Vérification : `curl http://localhost:3000/health`.
 - [ ] Création des comptes enseignants / élèves / parents (**Administration → Utilisateurs**) — possible aussi par **import en masse** (voir ci‑dessous)
 - [ ] Activation et **permissions des modules** souhaités (**Administration → Modules**) — rappel : *installé ≠ activé*
 - [ ] **Messagerie** activée si nécessaire (désactivée par défaut pour des raisons de sécurité)
-- [ ] Tâches cron configurées (`worker.php` + `daily_maintenance.php`)
+- [ ] Tâche cron configurée (`cron/daily_maintenance.php`)
 - [ ] `APP_DEBUG=false` et `APP_ENV=production` dans `.env`
 - [ ] **HTTPS** configuré si accès depuis Internet (`SESSION_SECURE=true`)
 - [ ] Branche de mise à jour vérifiée (**Administration → Système → Mises à jour**)
@@ -315,22 +324,42 @@ Vérification : `curl http://localhost:3000/health`.
 
 ## 10. Sauvegardes
 
-La maintenance quotidienne (chapitre 6) effectue déjà un **backup automatique de la base** avec rotation. Pour des sauvegardes manuelles ou redondantes :
+La maintenance quotidienne (chapitre 6) effectue déjà un **backup automatique de la base** dans `storage/backups/` avec rotation (`BACKUP_RETENTION`, défaut 5). Ces dumps internes sont chiffrés at-rest via `APP_KEY` (`BACKUP_ENCRYPT=true` par défaut) — ils ne sont donc **restaurables que tant que le `APP_KEY` correspondant existe** (voir la rotation de clé ci-dessous).
+
+### Sauvegarde externe (mysqldump) — recommandée
+
+Les backups internes vivent **sur le même serveur** que l'application : ils ne protègent pas d'une perte disque ni d'un effacement complet. Mettez en place une **sauvegarde externe** vers un autre support / une autre machine :
 
 ```bash
-# Base de données
-mysqldump -u utilisateur -p nom_base | gzip > fronote_$(date +%Y%m%d).sql.gz
+# Base de données (dump compressé, déposé hors du serveur applicatif idéalement)
+mysqldump --single-transaction --quick --routines --triggers \
+  -h 127.0.0.1 -u fronote_user -p nom_base | gzip > fronote_$(date +%Y%m%d).sql.gz
 
 # Fichiers uploadés
 tar -czf uploads_$(date +%Y%m%d).tar.gz /var/www/fronote/uploads/
+
+# Restauration
+gunzip < fronote_AAAAMMJJ.sql.gz | mysql -h 127.0.0.1 -u fronote_user -p nom_base
 ```
 
 ```cron
-# Sauvegarde quotidienne supplémentaire à 3h
-0 3 * * * mysqldump -u fronote_user -pMOT_DE_PASSE fronote | gzip > /sauvegardes/fronote_$(date +\%Y\%m\%d).sql.gz
+# Sauvegarde externe quotidienne à 3h (après la maintenance interne de 2h)
+0 3 * * * mysqldump --single-transaction --quick -u fronote_user -pMOT_DE_PASSE nom_base | gzip > /sauvegardes/fronote_$(date +\%Y\%m\%d).sql.gz
 ```
 
-> Les dumps SQL contiennent des données personnelles : `BACKUP_ENCRYPT=true` (défaut) chiffre les sauvegardes internes via `APP_KEY`.
+> Les dumps `mysqldump` ci-dessus sont **en clair** : ils contiennent des données personnelles (dont des mineurs) et des hashes de mots de passe. Stockez-les sur un support chiffré / à accès restreint, ou chiffrez-les (`… | gpg -c > …`).
+
+### Gestion et rotation de `APP_KEY`
+
+`APP_KEY` (généré à l'installation, 64 hex) est la **clé maître** : il dérive (HKDF) les clés de chiffrement at-rest, signe les cookies, et chiffre les **backups internes**. Sa perte rend **irrécupérables** toutes les données chiffrées (backups internes inclus).
+
+- **Copie hors-ligne obligatoire.** Conservez une copie de `APP_KEY` (et de `JWT_SECRET`) dans un coffre de secrets / hors du serveur. Sans elle, un disque mort = backups internes illisibles. Pour la générer manuellement : `php -r "echo bin2hex(random_bytes(32));"`.
+- **`KEY_VERSION`.** Chaque valeur chiffrée est préfixée d'une version de schéma de clé (`API\Core\Encryption::KEY_VERSION`, actuellement `1`, format `version:nonce:ciphertext:tag`). Elle identifie l'algorithme/format de chiffrement, **pas** la valeur de `APP_KEY` : Fronote n'effectue **aucune** ré-encryption automatique lors d'un changement de `APP_KEY`.
+- **Rotation de `APP_KEY` (procédure manuelle).** Changer `APP_KEY` invalide tout ce qui était chiffré avec l'ancienne clé. Avant de modifier la valeur :
+  1. Faites une **sauvegarde externe en clair** (mysqldump ci-dessus) ou avec `BACKUP_ENCRYPT=false`, pour disposer d'un dump indépendant de la clé ;
+  2. remplacez `APP_KEY` dans `.env` (conservez l'**ancienne** clé hors-ligne tant que d'anciens backups chiffrés doivent rester restaurables) ;
+  3. videz le cache et invalidez les sessions (les cookies signés avec l'ancienne clé deviennent invalides → reconnexion).
+- Une sauvegarde **interne chiffrée** ne se restaure qu'avec le `APP_KEY` (ou, en repli, le `JWT_SECRET`) **qui l'a produite** : archivez la clé en même temps que vos backups.
 
 ---
 

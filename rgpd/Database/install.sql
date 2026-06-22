@@ -65,3 +65,31 @@ CREATE TABLE IF NOT EXISTS `rgpd_retention_policies` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_table_name` (`table_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================================
+-- Scoping multi-établissement (cloisonnement RGPD).
+-- Ajout de la colonne `etablissement_id` aux tables RGPD qui en sont
+-- dépourvues, afin de cloisonner audit/journal/registre/violations par
+-- établissement (sauf super_admin). Les ALTER sont idempotents : le
+-- provisionneur (ModuleSDK::execSchemaSql) ignore l'erreur 1060
+-- « duplicate column », l'exécution répétée est donc sans effet.
+-- NB : audit_log et rgpd_demandes appartiennent au socle ; la colonne y
+-- est ajoutée ici par sécurité si le socle déployé ne l'a pas encore.
+-- =====================================================================
+
+-- ADD COLUMN et ADD KEY séparés : un échec 1060 (colonne déjà présente) n'empêche plus la
+-- création de l'index, et 1061 (index déjà présent) est désormais ignoré par execSchemaSql.
+ALTER TABLE `audit_log` ADD COLUMN `etablissement_id` INT(11) NOT NULL DEFAULT 1;
+ALTER TABLE `audit_log` ADD KEY `idx_etablissement` (`etablissement_id`);
+
+ALTER TABLE `rgpd_demandes` ADD COLUMN `etablissement_id` INT(11) NOT NULL DEFAULT 1;
+ALTER TABLE `rgpd_demandes` ADD KEY `idx_etablissement` (`etablissement_id`);
+
+ALTER TABLE `rgpd_registre_traitements` ADD COLUMN `etablissement_id` INT(11) NOT NULL DEFAULT 1;
+ALTER TABLE `rgpd_registre_traitements` ADD KEY `idx_etablissement` (`etablissement_id`);
+
+ALTER TABLE `rgpd_analyses_impact` ADD COLUMN `etablissement_id` INT(11) NOT NULL DEFAULT 1;
+ALTER TABLE `rgpd_analyses_impact` ADD KEY `idx_etablissement` (`etablissement_id`);
+
+ALTER TABLE `rgpd_violations` ADD COLUMN `etablissement_id` INT(11) NOT NULL DEFAULT 1;
+ALTER TABLE `rgpd_violations` ADD KEY `idx_etablissement` (`etablissement_id`);

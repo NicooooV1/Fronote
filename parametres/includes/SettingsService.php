@@ -94,10 +94,19 @@ class SettingsService {
             throw new Exception('Fichier invalide.');
         }
 
-        $uploadDir = __DIR__ . '/../uploads/avatars/';
+        // Securite : écrire dans le dossier d'uploads RACINE (périmètre protégé), pour que le
+        // chemin stocké en base ('uploads/avatars/...') corresponde réellement au fichier écrit.
+        $uploadDir = dirname(__DIR__, 2) . '/uploads/avatars/';
         // 0755 et non 0777 : pas d'écriture « monde ».
         if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
             throw new Exception('Impossible de créer le dossier de destination.');
+        }
+        // Durcissement : lecture directe des images autorisée (affichage <img>), exécution PHP interdite.
+        if (!is_file($uploadDir . '.htaccess')) {
+            file_put_contents($uploadDir . '.htaccess',
+                "<FilesMatch \"\\.(jpe?g|png|gif|webp)$\">\n  Require all granted\n  Allow from all\n</FilesMatch>\n"
+                . "<IfModule mod_php.c>\n  php_flag engine off\n</IfModule>\n"
+                . "<FilesMatch \"\\.(php|phtml|phar|cgi|pl|py|sh)$\">\n  Require all denied\n</FilesMatch>\n");
         }
 
         if ($file['size'] > 2 * 1024 * 1024) {

@@ -64,6 +64,11 @@ var FronoteAjax = (function() {
     function handleResponse(response) {
         rotateCsrfFromResponse(response);
         if (!response.ok) {
+            if (response.status === 401) {
+                // Session expirée : recharger pour laisser le serveur rediriger vers le login.
+                window.location.reload();
+                return Promise.reject({ success: false, error: 'Session expirée' });
+            }
             return response.json().catch(function() {
                 return { success: false, error: 'Erreur serveur (' + response.status + ')' };
             }).then(function(data) {

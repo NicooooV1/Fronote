@@ -47,3 +47,36 @@ CREATE TABLE IF NOT EXISTS `emprunts` (
   KEY `idx_etab` (`etablissement_id`),
   CONSTRAINT `fk_emprunts_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] bibliotheque_listes_lecture
+CREATE TABLE IF NOT EXISTS `bibliotheque_listes_lecture` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `etablissement_id` INT NULL DEFAULT 1,
+  `titre` VARCHAR(255) NOT NULL,
+  `professeur_id` INT NOT NULL,
+  `classe` VARCHAR(50) NULL,
+  `livres_ids` TEXT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_professeur` (`professeur_id`),
+  KEY `idx_classe` (`classe`),
+  KEY `idx_etablissement` (`etablissement_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] livre_reservations
+CREATE TABLE IF NOT EXISTS `livre_reservations` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `etablissement_id` INT NULL DEFAULT 1,
+  `livre_id` INT NOT NULL,
+  `user_id` INT NOT NULL,
+  `user_type` VARCHAR(20) NOT NULL,
+  `position_queue` INT NOT NULL DEFAULT 0,
+  `statut` VARCHAR(20) NOT NULL DEFAULT 'en_attente',
+  `notified_at` DATETIME NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_livre_statut` (`livre_id`, `statut`),
+  KEY `idx_user` (`user_id`, `user_type`),
+  KEY `idx_position` (`position_queue`),
+  KEY `idx_etablissement` (`etablissement_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

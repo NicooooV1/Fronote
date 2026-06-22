@@ -10,7 +10,10 @@ require_once __DIR__ . '/../../API/Services/Import/ImportSchemas.php';
 require_once __DIR__ . '/../../API/Services/Import/BulkImporter.php';
 
 requireAuth();
-tenantGate('tenant.users.view', ['administrateur']);
+// Securite : page d'export (dump SQL complet, comptes, config) et d'import (config RBAC, comptes
+// en masse). tenant.exports.manage exclut le role lecture seule responsable_permissions ; les
+// actions d'import exigent en plus tenant.imports.manage (voir bloc POST ci-dessous).
+tenantGate('tenant.exports.manage', ['administrateur']);
 
 $pdo = getPDO();
 $service = new \API\Services\ImportExportService($pdo);
@@ -38,6 +41,12 @@ $bulkPreview = null;
 // ─── Traitement des actions POST ──────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken($_POST['csrf_token'] ?? '')) {
     $action = $_POST['action'] ?? '';
+
+    // Securite : les actions d'import ecrivent en base (comptes, configuration RBAC via importConfig).
+    // Elles exigent la permission de gestion des imports, distincte de l'export.
+    if (in_array($action, ['preview_import', 'confirm_import', 'cancel_import', 'bulk_preview', 'bulk_confirm', 'bulk_cancel'], true)) {
+        tenantAuthorize('tenant.imports.manage');
+    }
 
     // --- EXPORT UTILISATEURS ---
     if ($action === 'export_users') {

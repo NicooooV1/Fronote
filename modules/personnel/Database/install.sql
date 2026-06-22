@@ -40,3 +40,32 @@ CREATE TABLE IF NOT EXISTS `remplacements` (
   KEY `idx_etab` (`etablissement_id`),
   CONSTRAINT `fk_remplacements_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] personnel_heures_sup
+CREATE TABLE IF NOT EXISTS `personnel_heures_sup` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `personnel_id` INT NOT NULL,
+  `date_heures` DATE NOT NULL,
+  `heures` DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  `motif` VARCHAR(255) DEFAULT NULL,
+  `created_at` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_heuressup_personnel` (`personnel_id`),
+  KEY `idx_heuressup_date` (`date_heures`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] personnel_evaluations
+CREATE TABLE IF NOT EXISTS `personnel_evaluations` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `personnel_id` INT NOT NULL,
+  `evaluateur_id` INT DEFAULT NULL,
+  `annee` INT NOT NULL,
+  `criteres_json` JSON DEFAULT NULL,
+  `note_globale` DECIMAL(4,1) DEFAULT NULL,
+  `commentaire` TEXT DEFAULT NULL,
+  `date_evaluation` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_perseval_personnel` (`personnel_id`),
+  KEY `idx_perseval_evaluateur` (`evaluateur_id`),
+  KEY `idx_perseval_annee` (`annee`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

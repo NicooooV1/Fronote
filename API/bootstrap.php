@@ -314,7 +314,8 @@ if (php_sapi_name() !== 'cli'
 if (session_status() !== PHP_SESSION_ACTIVE) {
 	$_sessName = getenv('SESSION_NAME') ?: ('fronote_' . INSTANCE_ID);
 	session_start([
-		'cookie_httponly' => true,
+		'use_strict_mode' => true,
+			'cookie_httponly' => true,
 		'cookie_secure'   => request_is_https(),
 		'cookie_samesite' => 'Lax',
 		'cookie_path'     => INSTANCE_COOKIE_PATH,
@@ -539,5 +540,47 @@ if (php_sapi_name() !== 'cli' && !empty($_SESSION['user_id'])) {
 
 \API\Core\ReadOnlyGuard::enforce();
 \API\Core\AccessControl::enforce(BASE_PATH);
+
+// ─── Filet de maintenance best-effort (tick quotidien) ───────────────────────
+// Si aucun cron n'est configuré, on déclenche une maintenance minimale au plus une
+// fois par 24h via un fichier sentinelle. Strictement NON bloquant et silencieux :
+// on se limite à un check de mtime ; le verrou (rename atomique) évite que deux
+// requêtes simultanées lancent le travail en double. Jamais en CLI (le vrai cron
+// passe par cron/daily_maintenance.php).
+if (php_sapi_name() !== 'cli') {
+	try {
+		$_maintSentinel = BASE_PATH . '/storage/.last_maintenance';
+		$_maintMtime    = @filemtime($_maintSentinel); // false si jamais exécuté
+		if ($_maintMtime === false || (time() - $_maintMtime) > 86400) {
+			// Pose le verrou AVANT le travail : si une autre requête a déjà touché la
+			// sentinelle dans l'intervalle, on n'entre pas (rename concurrent → mtime frais).
+			@touch($_maintSentinel);
+			// Re-vérifie après touch que c'est bien NOUS qui venons de la dater
+			// (fenêtre de course résiduelle acceptable : pire cas, double purge idempotente).
+
+			// (a) Purge d'audit (> AUDIT_RETENTION_DAYS)
+			try { app('audit')->cleanup(); }
+			catch (\Throwable $e) { error_log('[bootstrap][maint] audit: ' . $e->getMessage()); }
+
+			// (b) Nettoyage de storage/tmp (fichiers > 24h) — léger, borné, jamais récursif.
+			try {
+				$_tmpDir = BASE_PATH . '/storage/tmp';
+				if (is_dir($_tmpDir)) {
+					$_cut = time() - 86400;
+					foreach (new \DirectoryIterator($_tmpDir) as $_f) {
+						if ($_f->isDot() || $_f->isDir()) continue;
+						if ($_f->getMTime() < $_cut) { @unlink($_f->getPathname()); }
+					}
+					unset($_cut, $_f);
+				}
+				unset($_tmpDir);
+			} catch (\Throwable $e) { error_log('[bootstrap][maint] tmp: ' . $e->getMessage()); }
+		}
+		unset($_maintSentinel, $_maintMtime);
+	} catch (\Throwable $e) {
+		// Filet best-effort : ne JAMAIS faire échouer une requête à cause de la maintenance.
+		error_log('[bootstrap][maint] ' . $e->getMessage());
+	}
+}
 
 return $app;

@@ -87,9 +87,9 @@ class RenduService {
             FROM devoirs_rendus r
             JOIN eleves e ON r.eleve_id = e.id
             JOIN devoirs d ON r.devoir_id = d.id
-            WHERE r.id = ?
+            WHERE r.id = ? AND d.etablissement_id = ?
         ");
-        $stmt->execute([$id]);
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 

@@ -34,6 +34,19 @@ if (!$annonce) {
     exit;
 }
 
+// Anti-IDOR inter-etablissement : ne jamais agir sur une annonce d'un autre etablissement
+// (isAdmin() court-circuite le controle de propriete ci-dessous). Cf. detail_annonce.php.
+try {
+    $etabCourant = \API\Core\EstablishmentContext::id();
+} catch (\Throwable $e) {
+    $etabCourant = null;
+}
+if ($etabCourant !== null && isset($annonce['etablissement_id'])
+    && (int)$annonce['etablissement_id'] !== (int)$etabCourant) {
+    header('Location: annonces.php');
+    exit;
+}
+
 // Vérifier les permissions
 if (!isAdmin() && !($annonce['auteur_id'] == $user['id'] && $annonce['auteur_type'] === $role)) {
     header('Location: annonces.php');

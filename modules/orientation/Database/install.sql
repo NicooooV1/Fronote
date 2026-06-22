@@ -44,3 +44,31 @@ CREATE TABLE IF NOT EXISTS `orientation_voeux` (
   KEY `idx_etab` (`etablissement_id`),
   CONSTRAINT `fk_orient_voeux_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] orientation_rdv
+CREATE TABLE IF NOT EXISTS `orientation_rdv` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `eleve_id` INT NOT NULL,
+  `date_rdv` DATE NOT NULL,
+  `heure_rdv` TIME NULL,
+  `motif` TEXT NULL,
+  `statut` VARCHAR(30) NOT NULL DEFAULT 'planifie',
+  KEY `idx_eleve` (`eleve_id`),
+  KEY `idx_statut` (`statut`),
+  KEY `idx_date` (`date_rdv`,`heure_rdv`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] orientation_entretiens
+CREATE TABLE IF NOT EXISTS `orientation_entretiens` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `eleve_id` INT NOT NULL,
+  `pp_id` INT NOT NULL,
+  `date_entretien` DATE NOT NULL,
+  `motif` TEXT NULL,
+  `statut` VARCHAR(30) NOT NULL DEFAULT 'planifie',
+  `compte_rendu` TEXT NULL,
+  `recommandations` TEXT NULL,
+  KEY `idx_eleve` (`eleve_id`),
+  KEY `idx_pp` (`pp_id`,`date_entretien`),
+  KEY `idx_statut` (`statut`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

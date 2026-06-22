@@ -143,20 +143,17 @@ class AbsenceHelper
      */
     public static function generateCsrf(): string
     {
-        $token = bin2hex(random_bytes(32));
-        $_SESSION['csrf_token'] = $token;
-        return $token;
+        // Securite : delegue a l'implementation CSRF CANONIQUE (API\Security\CSRF) au lieu d'un
+        // second mecanisme concurrent — tokens expirables, usage unique, bucket partage.
+        return app('csrf')->generate();
     }
 
     /**
-     * Vérifie un token CSRF soumis en POST.
+     * Vérifie un token CSRF soumis en POST (implémentation canonique).
      */
     public static function verifyCsrf(): bool
     {
-        $submitted = $_POST['csrf_token'] ?? '';
-        $stored = $_SESSION['csrf_token'] ?? '';
-        if (empty($submitted) || empty($stored)) return false;
-        return hash_equals($stored, $submitted);
+        return app('csrf')->validateFromRequest();
     }
 
     /**

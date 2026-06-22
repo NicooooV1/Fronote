@@ -60,3 +60,72 @@ CREATE TABLE IF NOT EXISTS `internat_incidents` (
   PRIMARY KEY (`id`),
   KEY `idx_chambre` (`chambre_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] internat_inspections
+CREATE TABLE IF NOT EXISTS `internat_inspections` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `chambre_id` INT NOT NULL,
+  `inspecteur_id` INT DEFAULT NULL,
+  `proprete` TINYINT DEFAULT NULL,
+  `rangement` TINYINT DEFAULT NULL,
+  `equipement` TINYINT DEFAULT NULL,
+  `note_globale` DECIMAL(4,1) DEFAULT NULL,
+  `commentaire` TEXT DEFAULT NULL,
+  `date_inspection` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_inspect_chambre` (`chambre_id`),
+  KEY `idx_inspect_inspecteur` (`inspecteur_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] internat_appels_soir
+CREATE TABLE IF NOT EXISTS `internat_appels_soir` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `affectation_id` INT NOT NULL,
+  `date_appel` DATE NOT NULL,
+  `present` TINYINT NOT NULL DEFAULT 1,
+  `motif_absence` VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_affectation_date` (`affectation_id`, `date_appel`),
+  KEY `idx_appelsoir_date` (`date_appel`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] internat_autorisations_sortie
+CREATE TABLE IF NOT EXISTS `internat_autorisations_sortie` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `eleve_id` INT NOT NULL,
+  `date_debut` DATETIME NOT NULL,
+  `date_fin` DATETIME NOT NULL,
+  `motif` VARCHAR(255) DEFAULT NULL,
+  `autorise_par` INT DEFAULT NULL,
+  `statut` VARCHAR(20) NOT NULL DEFAULT 'en_attente',
+  `created_at` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_autosortie_eleve` (`eleve_id`),
+  KEY `idx_autosortie_statut` (`statut`),
+  KEY `idx_autosortie_debut` (`date_debut`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] internat_activites_weekend
+CREATE TABLE IF NOT EXISTS `internat_activites_weekend` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `titre` VARCHAR(255) NOT NULL,
+  `date_activite` DATE NOT NULL,
+  `description` TEXT DEFAULT NULL,
+  `responsable_id` INT DEFAULT NULL,
+  `places_max` INT NOT NULL DEFAULT 0,
+  `created_at` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_actwe_date` (`date_activite`),
+  KEY `idx_actwe_resp` (`responsable_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] internat_activites_inscriptions
+CREATE TABLE IF NOT EXISTS `internat_activites_inscriptions` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `activite_id` INT NOT NULL,
+  `eleve_id` INT NOT NULL,
+  `inscrit_at` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_activite_eleve` (`activite_id`, `eleve_id`),
+  KEY `idx_actinsc_eleve` (`eleve_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

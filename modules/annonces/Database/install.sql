@@ -95,3 +95,15 @@ CREATE TABLE IF NOT EXISTS `sondage_votes` (
   CONSTRAINT `fk_sv_sondage` FOREIGN KEY (`sondage_id`) REFERENCES `sondages` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_sv_option` FOREIGN KEY (`option_id`) REFERENCES `sondage_options` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] annonces_acquittements
+CREATE TABLE IF NOT EXISTS `annonces_acquittements` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `annonce_id` INT NOT NULL,
+  `user_id` INT NOT NULL,
+  `acquitte` TINYINT(1) NOT NULL DEFAULT 0,
+  `date_acquittement` DATETIME NULL,
+  UNIQUE KEY `uq_acquittement` (`annonce_id`,`user_id`),
+  KEY `idx_annonce` (`annonce_id`,`acquitte`),
+  KEY `idx_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

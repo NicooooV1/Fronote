@@ -11,6 +11,8 @@ if (!isAdmin() && !isPersonnelVS()) { redirect('/modules/periscolaire/services.p
 $services = $periService->getServices();
 $serviceId = (int)($_GET['service_id'] ?? ($services[0]['id'] ?? 0));
 $date = $_GET['date'] ?? date('Y-m-d');
+// Securite (XSS) : $date est reinjecte sans echappement (chaine JS / attribut value) plus bas.
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) { $date = date('Y-m-d'); }
 $presences = $serviceId ? $periService->getPresences($serviceId, $date) : [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {

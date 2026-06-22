@@ -80,3 +80,94 @@ CREATE TABLE IF NOT EXISTS `notifications` (
   KEY `idx_devoir` (`id_devoir`),
   CONSTRAINT `fk_notif_devoir` FOREIGN KEY (`id_devoir`) REFERENCES `devoirs` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] devoir_submissions
+CREATE TABLE IF NOT EXISTS `devoir_submissions` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `devoir_id` INT NOT NULL,
+  `eleve_id` INT NOT NULL,
+  `fichier_path` VARCHAR(512) DEFAULT NULL,
+  `fichier_nom` VARCHAR(255) DEFAULT NULL,
+  `note` DECIMAL(5,2) DEFAULT NULL,
+  `commentaire_prof` TEXT DEFAULT NULL,
+  `statut` VARCHAR(20) NOT NULL DEFAULT 'soumis',
+  `soumis_at` DATETIME DEFAULT NULL,
+  `evalue_at` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_devoir_eleve` (`devoir_id`, `eleve_id`),
+  KEY `idx_devsub_eleve` (`eleve_id`),
+  KEY `idx_devsub_statut` (`statut`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] cahier_templates
+CREATE TABLE IF NOT EXISTS `cahier_templates` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `etablissement_id` INT DEFAULT NULL,
+  `professeur_id` INT NOT NULL,
+  `matiere_id` INT DEFAULT NULL,
+  `titre` VARCHAR(255) NOT NULL,
+  `contenu` TEXT DEFAULT NULL,
+  `tags` JSON DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_cahtpl_prof` (`professeur_id`),
+  KEY `idx_cahtpl_matiere` (`matiere_id`),
+  KEY `idx_cahtpl_etab` (`etablissement_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] cahier_vues
+CREATE TABLE IF NOT EXISTS `cahier_vues` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `devoir_id` INT NOT NULL,
+  `user_id` INT NOT NULL,
+  `user_type` VARCHAR(20) NOT NULL,
+  `date_vue` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_vue` (`devoir_id`, `user_id`, `user_type`),
+  KEY `idx_cahvue_devoir` (`devoir_id`),
+  KEY `idx_cahvue_type` (`user_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] devoirs_grilles
+CREATE TABLE IF NOT EXISTS `devoirs_grilles` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `devoir_id` INT NOT NULL,
+  `titre` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_devgrille_devoir` (`devoir_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] devoirs_grille_criteres
+CREATE TABLE IF NOT EXISTS `devoirs_grille_criteres` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `grille_id` INT NOT NULL,
+  `critere` VARCHAR(255) NOT NULL,
+  `points_max` DECIMAL(5,2) NOT NULL DEFAULT 5.00,
+  `description` TEXT DEFAULT NULL,
+  `ordre` INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_devcrit_grille` (`grille_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] devoirs_grille_notes
+CREATE TABLE IF NOT EXISTS `devoirs_grille_notes` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `rendu_id` INT NOT NULL,
+  `critere_id` INT NOT NULL,
+  `note` DECIMAL(5,2) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_rendu_critere` (`rendu_id`, `critere_id`),
+  KEY `idx_devgnote_critere` (`critere_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] devoirs_peer_reviews
+CREATE TABLE IF NOT EXISTS `devoirs_peer_reviews` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `rendu_id` INT NOT NULL,
+  `reviewer_eleve_id` INT NOT NULL,
+  `note` DECIMAL(5,2) DEFAULT NULL,
+  `commentaire` TEXT DEFAULT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_rendu_reviewer` (`rendu_id`, `reviewer_eleve_id`),
+  KEY `idx_devpr_reviewer` (`reviewer_eleve_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

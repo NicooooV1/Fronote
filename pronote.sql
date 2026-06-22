@@ -4232,3 +4232,14 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+
+-- [drift-fix] view utilisateurs (jointures LEFT JOIN utilisateurs : annonces_acquittements, reunions...)
+CREATE OR REPLACE VIEW `utilisateurs` AS
+SELECT `id`, 'eleve' AS `type`, `nom`, `prenom` FROM `eleves`
+UNION ALL
+SELECT `id`, 'parent' AS `type`, `nom`, `prenom` FROM `parents`
+UNION ALL
+SELECT `id`, 'professeur' AS `type`, `nom`, `prenom` FROM `professeurs`
+UNION ALL
+SELECT `id`, 'administrateur' AS `type`, `nom`, `prenom` FROM `administrateurs`;

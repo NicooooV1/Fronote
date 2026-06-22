@@ -9,12 +9,14 @@ uploads/
 install.lock
 *.log
 *.bak
-storage/cache/*.cache
+storage/cache/*
 storage/backups/*
 storage/tmp/*
 storage/quarantine/*
 storage/maintenance.json
+storage/.last_maintenance
 !storage/backups/.gitkeep
+!storage/cache/.gitkeep
 !storage/tmp/.gitkeep
 !storage/quarantine/.gitkeep
 .phpunit.cache/

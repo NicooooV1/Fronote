@@ -7,6 +7,9 @@ require_once __DIR__ . '/includes/header.php';
 
 $salles = $smService->getSalles();
 $filtreDate = $_GET['date'] ?? date('Y-m-d');
+// Securite (XSS) : $filtreDate est reinjecte dans des attributs HTML et une chaine JS plus bas.
+// Format strict AAAA-MM-JJ exige (sinon date du jour) pour neutraliser toute injection.
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $filtreDate)) { $filtreDate = date('Y-m-d'); }
 $filtreSalle = $_GET['salle_id'] ?? '';
 $filters = ['date' => $filtreDate];
 if ($filtreSalle) $filters['salle_id'] = $filtreSalle;
@@ -27,7 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
             header('Location: reservations.php?date=' . $_POST['date_reservation']); exit;
         }
     } elseif ($action === 'annuler') {
-        $smService->annulerReservation((int)$_POST['reservation_id']);
+        // Securite (IDOR) : un usager n'annule que SES reservations ; un admin, toutes.
+        $smService->annulerReservation((int)$_POST['reservation_id'], isAdmin() ? null : getUserId());
         header('Location: reservations.php?date=' . $filtreDate); exit;
     }
 }

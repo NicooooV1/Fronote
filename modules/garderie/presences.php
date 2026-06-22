@@ -9,6 +9,8 @@ require_once __DIR__ . '/includes/header.php';
 if (!$isGestionnaire) { header('Location: creneaux.php'); exit; }
 
 $dateVue = $_GET['date'] ?? date('Y-m-d');
+// Securite (XSS) : $dateVue est reinjecte sans echappement (attribut value) plus bas.
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateVue)) { $dateVue = date('Y-m-d'); }
 $creneauId = isset($_GET['creneau']) ? (int)$_GET['creneau'] : 0;
 $message = '';
 

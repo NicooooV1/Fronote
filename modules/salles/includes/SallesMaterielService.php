@@ -50,9 +50,16 @@ class SallesMaterielService
         return $this->pdo->lastInsertId();
     }
 
-    public function annulerReservation(int $id): void
+    public function annulerReservation(int $id, ?int $ownerId = null): void
     {
-        $this->pdo->prepare("UPDATE reservations_salles SET statut = 'annulee' WHERE id = ?")->execute([$id]);
+        // Securite (IDOR) : si un proprietaire est fourni, l'annulation est restreinte a SES reservations.
+        $sql = "UPDATE reservations_salles SET statut = 'annulee' WHERE id = ?";
+        $params = [$id];
+        if ($ownerId !== null) {
+            $sql .= " AND reserveur_id = ?";
+            $params[] = $ownerId;
+        }
+        $this->pdo->prepare($sql)->execute($params);
     }
 
     public function getSalles(): array

@@ -85,3 +85,30 @@ CREATE TABLE IF NOT EXISTS `convocations` (
   KEY `idx_etab` (`etablissement_id`),
   CONSTRAINT `fk_convocations_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] reunion_presences
+CREATE TABLE IF NOT EXISTS `reunion_presences` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `etablissement_id` INT NULL DEFAULT 1,
+  `reunion_id` INT NOT NULL,
+  `user_id` INT NOT NULL,
+  `present` TINYINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_reunion_user` (`reunion_id`, `user_id`),
+  KEY `idx_reunion` (`reunion_id`),
+  KEY `idx_user` (`user_id`),
+  KEY `idx_etablissement` (`etablissement_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [drift-fix] reunion_comptes_rendus
+CREATE TABLE IF NOT EXISTS `reunion_comptes_rendus` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `etablissement_id` INT NULL DEFAULT 1,
+  `reunion_id` INT NOT NULL,
+  `contenu` TEXT NOT NULL,
+  `redacteur_id` INT NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_reunion` (`reunion_id`),
+  KEY `idx_redacteur` (`redacteur_id`),
+  KEY `idx_etablissement` (`etablissement_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

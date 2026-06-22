@@ -1,6 +1,6 @@
 # Fronote — Système de gestion scolaire
 
-![PHP 8+](https://img.shields.io/badge/PHP-8%2B-blue) ![MySQL 8+](https://img.shields.io/badge/MySQL-8%2B-orange) ![Version](https://img.shields.io/badge/version-3.2.4_Marketplace-green) ![Licence](https://img.shields.io/badge/licence-MIT-lightgrey) ![i18n](https://img.shields.io/badge/i18n-8%20locales-blueviolet) ![Modules](https://img.shields.io/badge/modules-~61-brightgreen)
+![PHP 8+](https://img.shields.io/badge/PHP-8%2B-blue) ![MySQL 8+](https://img.shields.io/badge/MySQL-8%2B-orange) ![Version](https://img.shields.io/badge/version-3.2.4_Marketplace-green) ![Licence](https://img.shields.io/badge/licence-proprietary-lightgrey) ![i18n](https://img.shields.io/badge/i18n-8%20locales-blueviolet) ![Modules](https://img.shields.io/badge/modules-~61-brightgreen)
 
 > Fronote est une application **PHP pure, sans framework**, de gestion d'établissement scolaire (notes, absences, emploi du temps, messagerie, vie scolaire, facturation, etc.). Architecture modulaire (~61 modules découverts dynamiquement), conteneur d'injection de dépendances maison, multi-établissement, design system à thèmes et internationalisation (8 langues).
 >

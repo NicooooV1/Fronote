@@ -57,7 +57,12 @@ const ALLOWED_ORIGINS = process.env.WEBSOCKET_ALLOWED_ORIGINS
     ? process.env.WEBSOCKET_ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
     : null;
 
-const corsOrigin = ALLOWED_ORIGINS || '*';
+// Securite : en production, ne JAMAIS retomber sur '*'. Sans liste d'origines explicite, on
+// verrouille (aucune origine cross-site) plutot que d'ouvrir a tous.
+const corsOrigin = ALLOWED_ORIGINS || (process.env.NODE_ENV === 'production' ? [] : '*');
+if (!ALLOWED_ORIGINS && process.env.NODE_ENV === 'production') {
+    console.warn('[ws] WEBSOCKET_ALLOWED_ORIGINS non défini en production : CORS verrouillé.');
+}
 
 /**
  * Extract the shared API secret from an inbound /notify or /metrics request.

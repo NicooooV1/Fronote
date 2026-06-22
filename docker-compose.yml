@@ -30,12 +30,12 @@ services:
       MYSQL_DATABASE: "${DB_NAME:-fronote}"
       MYSQL_USER: "${DB_USER:-fronote}"
       MYSQL_PASSWORD: "${DB_PASS:-fronote}"
-      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASS:-root}"
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASS:?DB_ROOT_PASS doit etre defini dans .env (aucune valeur par defaut)}"
     # Persistance des données dans un volume nommé.
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASS:-root}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASS}"]
       interval: 10s
       timeout: 5s
       retries: 10

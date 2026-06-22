@@ -111,16 +111,32 @@ class BibliothequeService
         return $this->pdo->lastInsertId();
     }
 
-    public function retourner(int $empruntId): void
+    public function retourner(int $empruntId, ?int $ownerId = null, ?string $ownerType = null): void
     {
-        $stmt = $this->pdo->prepare("UPDATE emprunts SET statut = 'rendu', date_retour_effective = NOW() WHERE id = ?");
-        $stmt->execute([$empruntId]);
+        // Securite (IDOR) : si un proprietaire est fourni, la mise a jour est restreinte a SES emprunts.
+        $sql = "UPDATE emprunts SET statut = 'rendu', date_retour_effective = NOW() WHERE id = ?";
+        $params = [$empruntId];
+        if ($ownerId !== null && $ownerType !== null) {
+            $sql .= " AND emprunteur_id = ? AND emprunteur_type = ?";
+            $params[] = $ownerId;
+            $params[] = $ownerType;
+        }
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
     }
 
-    public function prolonger(int $empruntId, int $jours = 14): void
+    public function prolonger(int $empruntId, int $jours = 14, ?int $ownerId = null, ?string $ownerType = null): void
     {
-        $stmt = $this->pdo->prepare("UPDATE emprunts SET date_retour_prevue = DATE_ADD(date_retour_prevue, INTERVAL ? DAY) WHERE id = ? AND statut = 'en_cours'");
-        $stmt->execute([$jours, $empruntId]);
+        // Securite (IDOR) : si un proprietaire est fourni, la prolongation est restreinte a SES emprunts.
+        $sql = "UPDATE emprunts SET date_retour_prevue = DATE_ADD(date_retour_prevue, INTERVAL ? DAY) WHERE id = ? AND statut = 'en_cours'";
+        $params = [$jours, $empruntId];
+        if ($ownerId !== null && $ownerType !== null) {
+            $sql .= " AND emprunteur_id = ? AND emprunteur_type = ?";
+            $params[] = $ownerId;
+            $params[] = $ownerType;
+        }
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
     }
 
     public function getEmpruntsActifs(int $userId = null, string $userType = null): array

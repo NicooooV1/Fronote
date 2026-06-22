@@ -12,8 +12,17 @@ $isGestionnaire = isAdmin() || isPersonnelVS();
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     $action = $_POST['action'] ?? '';
     $empruntId = (int)($_POST['emprunt_id'] ?? 0);
-    if ($action === 'retourner') $biblioService->retourner($empruntId);
-    elseif ($action === 'prolonger') $biblioService->prolonger($empruntId);
+    // Securite (IDOR) : le retour est une action de gestion (reservee aux gestionnaires) ; la
+    // prolongation est limitee a SES propres emprunts pour un usager, libre pour un gestionnaire.
+    if ($action === 'retourner') {
+        if ($isGestionnaire) $biblioService->retourner($empruntId);
+    } elseif ($action === 'prolonger') {
+        if ($isGestionnaire) {
+            $biblioService->prolonger($empruntId);
+        } else {
+            $biblioService->prolonger($empruntId, 14, getUserId(), getUserRole());
+        }
+    }
     header('Location: emprunts.php');
     exit;
 }

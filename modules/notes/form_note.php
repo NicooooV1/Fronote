@@ -13,6 +13,7 @@ require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/NoteService.php';
 
 requireAuth();
+enforceModuleAccess('notes');
 if (!canManageNotes()) {
     header('Location: notes.php');
     exit;
@@ -64,6 +65,7 @@ if ($isEdit) {
             'commentaire' => filter_input(INPUT_POST, 'commentaire', FILTER_SANITIZE_FULL_SPECIAL_CHARS),
             'date_note'   => filter_input(INPUT_POST, 'date_note', FILTER_SANITIZE_FULL_SPECIAL_CHARS),
             'trimestre'   => filter_input(INPUT_POST, 'trimestre', FILTER_VALIDATE_INT),
+            'modified_by' => getUserId(),
         ];
 
         if ($data['note'] === false || $data['note'] < 0 || $data['note'] > ($note['note_sur'] ?? 20)) {
@@ -134,6 +136,25 @@ if ($isEdit) {
             if ($val !== '' && $val !== null) { $hasNote = true; break; }
         }
         if (!$hasNote) $errors[] = "Saisissez au moins une note.";
+
+        // ── Contrôle de périmètre (établissement + droit d'écriture) ──
+        $targetClasse = trim((string) ($_POST['classe'] ?? ''));
+        if ($id_matiere && !$noteService->matiereInScope((int) $id_matiere)) {
+            $errors[] = "Matière hors de votre établissement.";
+        }
+        if ($targetClasse === '' || !$noteService->classeInScope($targetClasse)) {
+            $errors[] = "Classe invalide ou hors de votre établissement.";
+        } elseif (!isAdmin() && !isVieScolaire()) {
+            // Un enseignant ne peut saisir que pour une classe qu'il enseigne.
+            $resolver = new \API\Security\ScopeResolver($pdo, [
+                'id'               => (int) $user['id'],
+                'type'             => 'professeur',
+                'etablissement_id' => \API\Core\EstablishmentContext::id(),
+            ]);
+            if (!$resolver->teachesClass($targetClasse)) {
+                $errors[] = "Vous n'enseignez pas dans cette classe.";
+            }
+        }
 
         if (empty($errors)) {
             try {

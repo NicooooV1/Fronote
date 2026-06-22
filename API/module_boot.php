@@ -50,6 +50,18 @@ $isAdmin       = ($user_role === 'administrateur');
 // Connexion base de données
 $pdo = getPDO();
 
+// Garde « changement de mot de passe imposé » — incontournable quel que soit le
+// module : tant que $_SESSION['force_password_change'] est armé (mot de passe jamais
+// changé, cf. login/index.php & login/verify_2fa.php), on force la redirection vers
+// la page de changement. On exclut la page de changement elle-même pour éviter la
+// boucle. Le drapeau est retiré après un changePassword réussi (login/change_password.php).
+if (!empty($_SESSION['force_password_change'])) {
+    $__currentScript = basename(str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? $_SERVER['PHP_SELF'] ?? ''));
+    if ($__currentScript !== 'change_password.php') {
+        redirect('login/change_password.php');
+    }
+}
+
 // Gate d'autorisation par module (défense en profondeur — cohérent avec la nav).
 $__moduleKey = $activePage ?? '';
 if ($__moduleKey === '') {
