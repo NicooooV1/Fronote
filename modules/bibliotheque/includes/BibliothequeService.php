@@ -336,46 +336,6 @@ class BibliothequeService
         return $count;
     }
 
-    /* ───────── EXPORT ───────── */
-
-    public function getLivresForExport(array $filters = []): array
-    {
-        $livres = $this->getLivres($filters);
-        $rows = [];
-        $cats = self::categories();
-        foreach ($livres as $l) {
-            $rows[] = [
-                $l['isbn'] ?? '',
-                $l['titre'],
-                $l['auteur'] ?? '',
-                $cats[$l['categorie'] ?? ''] ?? $l['categorie'] ?? '',
-                $l['editeur'] ?? '',
-                $l['annee_publication'] ?? '',
-                $l['exemplaires_total'] ?? 0,
-                $l['exemplaires_disponibles'] ?? 0,
-            ];
-        }
-        return $rows;
-    }
-
-    public function getEmpruntsForExport(array $filters = []): array
-    {
-        $emprunts = $this->getTousEmprunts($filters);
-        $rows = [];
-        foreach ($emprunts as $e) {
-            $rows[] = [
-                $e['livre_titre'] ?? $e['titre'] ?? '',
-                $e['emprunteur_nom'] ?? '',
-                $e['emprunteur_type'] ?? '',
-                $e['date_emprunt'] ?? '',
-                $e['date_retour_prevue'] ?? '',
-                $e['date_retour_effective'] ?? '',
-                $e['statut'] ?? '',
-            ];
-        }
-        return $rows;
-    }
-
     public static function categories(): array
     {
         return [

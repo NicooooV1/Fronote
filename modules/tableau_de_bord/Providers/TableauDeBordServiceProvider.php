@@ -11,7 +11,6 @@ class TableauDeBordServiceProvider extends ServiceProvider
     {
         $pdo = fn($app) => $app->make('db')->getConnection();
         $this->app->singleton('admin_dashboard', fn($app) => new \Modules\TableauDeBord\Services\AdminDashboardService($pdo($app)));
-        $this->app->singleton('activity_feed',   fn($app) => new \API\Services\ActivityFeedService($pdo($app)));
         $this->app->singleton('classes',         fn($app) => new \Modules\TableauDeBord\Services\ClasseService($pdo($app)));
     }
 

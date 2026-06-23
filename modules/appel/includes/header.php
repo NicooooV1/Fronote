@@ -41,10 +41,6 @@ ob_start();
                     <span class="sidebar-nav-icon"><i class="fas fa-history"></i></span>
                     <span>Historique</span>
                 </a>
-                <a href="statistiques.php" class="sidebar-nav-item <?= isActiveAppelLink('stats') ?>">
-                    <span class="sidebar-nav-icon"><i class="fas fa-chart-pie"></i></span>
-                    <span>Statistiques</span>
-                </a>
                 <?php endif; ?>
             </div>
 <?php

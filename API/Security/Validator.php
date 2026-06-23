@@ -140,7 +140,7 @@ class Validator
         return $this->errors;
     }
 
-    /** Alias for errors() — used by FormRequest */
+    /** Alias for errors(). */
     public function getErrors(): array
     {
         return $this->errors;

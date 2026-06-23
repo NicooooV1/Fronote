@@ -55,21 +55,6 @@ class SettingsService {
         return $ok;
     }
 
-    /**
-     * Écrit la seule préférence de thème (chemin AJAX api_theme.php) + rafraîchit le cache.
-     * Source unique de validation + invalidation de cache, partagée avec save().
-     */
-    public function setTheme(int $userId, string $userType, string $theme): string {
-        $theme = $this->validTheme($theme);
-        $this->pdo->prepare("
-            INSERT INTO user_settings (user_id, user_type, theme, date_modification)
-            VALUES (?, ?, ?, NOW())
-            ON DUPLICATE KEY UPDATE theme = VALUES(theme), date_modification = NOW()
-        ")->execute([$userId, $userType, $theme]);
-        $this->cacheTheme($theme);
-        return $theme;
-    }
-
     /** Thème valide (liste blanche) ou repli 'light'. */
     private function validTheme(string $theme): string {
         return in_array($theme, array_keys(self::themes()), true) ? $theme : 'light';

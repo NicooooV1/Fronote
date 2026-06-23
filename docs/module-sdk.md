@@ -73,7 +73,7 @@ $pascal = implode('', array_map('ucfirst', explode('_', $key)));
 | Clé du module | Nom de classe | Fichier |
 |---------------|--------------|---------|
 | `notes` | `NotesServiceProvider` | `modules/notes/Providers/NotesServiceProvider.php` |
-| `admin_sessions` | `AdminSessionsServiceProvider` | `modules/admin_sessions/Providers/AdminSessionsServiceProvider.php` |
+| `bulletins` | `BulletinsServiceProvider` | `modules/bulletins/Providers/BulletinsServiceProvider.php` |
 | `emploi_du_temps` | `EmploiDuTempsServiceProvider` | `modules/emploi_du_temps/Providers/EmploiDuTempsServiceProvider.php` |
 | `mon_module` | `MonModuleServiceProvider` | `modules/mon_module/Providers/MonModuleServiceProvider.php` |
 

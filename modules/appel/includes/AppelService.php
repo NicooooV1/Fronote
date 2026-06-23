@@ -408,13 +408,6 @@ class AppelService
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // ─── QR BATCH PRÉSENCE ───
-
-    public function genererQrCours(int $edtId): string
-    {
-        return 'APPEL-' . $edtId . '-' . substr(md5($edtId . date('Y-m-d') . 'fronote'), 0, 12);
-    }
-
     public function enregistrerRetardPrecis(int $appelId, int $eleveId, string $heureArrivee): void
     {
         $this->pdo->prepare("UPDATE appel_eleves SET statut = 'retard', heure_arrivee = :h WHERE appel_id = :aid AND eleve_id = :eid")

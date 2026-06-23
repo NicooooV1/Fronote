@@ -46,8 +46,7 @@
         }
     },
     "routes": {
-        "main": "notes.php",
-        "api": "api/actions.php"
+        "main": "notes.php"
     },
     "widgets": [
         {

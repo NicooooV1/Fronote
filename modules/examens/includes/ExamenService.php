@@ -342,43 +342,6 @@ class ExamenService
         return $results;
     }
 
-    /* ───────── EXPORT ───────── */
-
-    public function getExamensForExport(?string $statut = null): array
-    {
-        $examens = $this->getExamens($statut);
-        $types = self::typesExamen();
-        $rows = [];
-        foreach ($examens as $e) {
-            $rows[] = [
-                $e['nom'] ?? $e['titre'] ?? '',
-                $types[$e['type'] ?? ''] ?? $e['type'] ?? '',
-                $e['date_debut'] ?? '',
-                $e['date_fin'] ?? '',
-                $e['statut'] ?? '',
-                $e['nb_epreuves'] ?? 0,
-            ];
-        }
-        return $rows;
-    }
-
-    public function getConvocationsForExport(int $epreuveId): array
-    {
-        $convocations = $this->getConvocations($epreuveId);
-        $rows = [];
-        foreach ($convocations as $c) {
-            $rows[] = [
-                $c['eleve_nom'] ?? ($c['nom'] ?? ''),
-                $c['eleve_prenom'] ?? ($c['prenom'] ?? ''),
-                $c['classe_nom'] ?? '',
-                $c['place'] ?? '',
-                isset($c['present']) ? ($c['present'] ? 'Oui' : 'Non') : '',
-                $c['note'] ?? '',
-            ];
-        }
-        return $rows;
-    }
-
     // ─── PLAN DE SALLE AUTO ───
 
     /**

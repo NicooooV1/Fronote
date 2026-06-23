@@ -10,7 +10,6 @@ use API\Tenant\TenantRoleSync;
 use API\Tenant\TenantAuthorization;
 use API\Tenant\TenantAccountService;
 use API\Tenant\TenantMembershipService;
-use API\Tenant\TenantRoleAssignmentService;
 
 /**
  * Couche ÉTABLISSEMENT (refonte 3-mondes — Phase B) : catalogue tenant, autorisation
@@ -146,49 +145,6 @@ final class TenantLayerTest extends TestCase
         $this->pdo->prepare("UPDATE tenant_memberships SET status='inactive' WHERE id=?")->execute([$m]);
         $auth = new TenantAuthorization($this->pdo, $m);
         $this->assertFalse($auth->can('tenant.users.create'));
-    }
-
-    // ── Service d'attribution ──
-    private function director(): array { return ['membership_id' => 9999, 'role_keys' => ['directeur'], 'account_id' => 1]; }
-
-    public function testAssignAndRevoke(): void
-    {
-        $svc = new TenantRoleAssignmentService($this->pdo);
-        $m = $this->mkMembership($this->mkAccount('staff'));
-        $mr = $svc->assign($this->director(), $m, 'professeur', ['scope' => ['class' => [8, 9]]]);
-        $this->assertGreaterThan(0, $mr);
-        $this->assertContains('professeur', $svc->getEffectiveRoles($m));
-        $n = (int) $this->pdo->query("SELECT COUNT(*) FROM tenant_membership_role_scope_values WHERE membership_role_id = {$mr} AND scope_type='class'")->fetchColumn();
-        $this->assertSame(2, $n);
-
-        $this->assertTrue($svc->revoke($this->director(), $mr));
-        $this->assertNotContains('professeur', $svc->getEffectiveRoles($m));
-    }
-
-    public function testAssignSensitiveRequiresReason(): void
-    {
-        $svc = new TenantRoleAssignmentService($this->pdo);
-        $m = $this->mkMembership($this->mkAccount('staff'));
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/justification/i');
-        $svc->assign($this->director(), $m, 'aesh', ['scope' => ['student' => [100]]]);
-    }
-
-    public function testAssignIncompatibleType(): void
-    {
-        $svc = new TenantRoleAssignmentService($this->pdo);
-        $m = $this->mkMembership($this->mkAccount('student'));
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/incompatible/i');
-        $svc->assign($this->director(), $m, 'professeur');
-    }
-
-    public function testNonManagerCannotAssign(): void
-    {
-        $svc = new TenantRoleAssignmentService($this->pdo);
-        $m = $this->mkMembership($this->mkAccount('staff'));
-        $this->expectException(\RuntimeException::class);
-        $svc->assign(['membership_id' => 1, 'role_keys' => ['professeur']], $m, 'professeur');
     }
 
     public function testMembershipEnsureIdempotent(): void

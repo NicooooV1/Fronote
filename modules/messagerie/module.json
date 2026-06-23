@@ -38,8 +38,7 @@
         }
     },
     "routes": {
-        "main": "index.php",
-        "api": "api/actions.php"
+        "main": "index.php"
     },
     "widgets": [
         {

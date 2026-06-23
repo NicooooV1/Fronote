@@ -23,6 +23,15 @@ $activePage = $activePage ?? 'archivage';
 $isAdmin = true;
 $extraCss = ['assets/css/archivage.css'];
 
+// Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
+$_sub = basename($_SERVER['PHP_SELF'] ?? '');
+ob_start(); ?>
+<div class="sidebar-nav">
+    <a href="archivage.php" class="sidebar-nav-item <?= $_sub === 'archivage.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-archive"></i></span><span>Archives</span></a>
+    <a href="creer.php" class="sidebar-nav-item <?= $_sub === 'creer.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-plus"></i></span><span>Nouvelle archive</span></a>
+</div>
+<?php $sidebarExtraContent = ob_get_clean();
+
 $pageTitle = $pageTitle ?? 'Archivage';
 require_once __DIR__ . '/../../../templates/shared_header.php';
 require_once __DIR__ . '/../../../templates/shared_topbar.php';

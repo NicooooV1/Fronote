@@ -394,7 +394,7 @@ HTML;
     private function renderWithDompdf(string $html, string $filename, string $orientation, string $format, bool $inline): void
     {
         // isRemoteEnabled=false : Dompdf ne récupère AUCUNE ressource distante
-        // (anti-SSRF / anti-lecture de fichiers locaux). Cohérent avec BulletinPdfService.
+        // (anti-SSRF / anti-lecture de fichiers locaux).
         $dompdf = new \Dompdf\Dompdf(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => false]);
         $dompdf->loadHtml($html);
         $dompdf->setPaper($format, $orientation);

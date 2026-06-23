@@ -42,6 +42,24 @@ if (!isset($headerExtraActions)) {
     $headerExtraActions = ob_get_clean();
 }
 
+// Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
+$isStaff = isAdmin() || isVieScolaire();
+$canExport = $isStaff || (function_exists('isTeacher') ? isTeacher() : false);
+$_sub = basename($_SERVER['PHP_SELF'] ?? '');
+ob_start(); ?>
+<div class="sidebar-nav">
+    <a href="emploi_du_temps.php" class="sidebar-nav-item <?= $_sub === 'emploi_du_temps.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-table"></i></span><span>Emploi du temps</span></a>
+<?php if ($isStaff): ?>
+    <a href="gerer_cours.php" class="sidebar-nav-item <?= $_sub === 'gerer_cours.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-pen-to-square"></i></span><span>Gérer les cours</span></a>
+    <a href="maquette.php" class="sidebar-nav-item <?= $_sub === 'maquette.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-list-check"></i></span><span>Maquette</span></a>
+    <a href="conflits.php" class="sidebar-nav-item <?= $_sub === 'conflits.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-triangle-exclamation"></i></span><span>Conflits</span></a>
+<?php endif; ?>
+<?php if ($canExport): ?>
+    <a href="export.php" class="sidebar-nav-item <?= $_sub === 'export.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-file-export"></i></span><span>Export</span></a>
+<?php endif; ?>
+</div>
+<?php $sidebarExtraContent = ob_get_clean();
+
 include __DIR__ . '/../../../templates/shared_header.php';
 include __DIR__ . '/../../../templates/shared_topbar.php';
 ?>

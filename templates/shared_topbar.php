@@ -78,3 +78,14 @@ if (!empty($_SESSION['impersonation'])) {
                 <?= $headerExtraActions ?>
             </div>
         </div>
+<?php
+// Barre de navigation secondaire du module (sous-pages), rendue sous le top-header.
+// Les modules alimentent $sidebarExtraContent (liste .sidebar-nav, héritée de l'ancienne
+// sidebar) ; on la rend ici en bandeau horizontal. Vide => rien n'est affiché.
+$_moduleSubnav = (isset($sidebarExtraContent) && is_string($sidebarExtraContent)) ? trim($sidebarExtraContent) : '';
+if ($_moduleSubnav !== ''):
+?>
+        <nav class="module-subnav" aria-label="Sections du module">
+            <?= $sidebarExtraContent ?>
+        </nav>
+<?php endif; ?>

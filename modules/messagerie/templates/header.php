@@ -72,11 +72,6 @@ ob_start();
 <?php
 $extraHeadHtml = ob_get_clean();
 
-// Contenu supplémentaire sidebar : dossiers + actions messagerie
-ob_start();
-include __DIR__ . '/sidebar_content.php';
-$sidebarExtraContent = ob_get_clean();
-
 // Actions supplémentaires dans le header : bouton de composition (rendu dans
 // .header-actions par shared_topbar.php). L'ancienne sidebar n'étant plus rendue,
 // c'est ici que doit vivre le bouton « Nouveau message ».
@@ -98,6 +93,21 @@ ob_start();
                 <?php endif; ?>
 <?php
 $headerExtraActions = ob_get_clean();
+
+// Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
+$_sub = basename($_SERVER['PHP_SELF'] ?? '');
+ob_start(); ?>
+<div class="sidebar-nav">
+    <a href="<?= $rootPrefix ?>modules/messagerie/index.php" class="sidebar-nav-item <?= $_sub === 'index.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-inbox"></i></span><span>Messages</span></a>
+    <a href="<?= $rootPrefix ?>modules/messagerie/new_message.php" class="sidebar-nav-item <?= $_sub === 'new_message.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-pen"></i></span><span>Nouveau message</span></a>
+<?php if ($_msgUserType === 'professeur'): ?>
+    <a href="<?= $rootPrefix ?>modules/messagerie/class_message.php" class="sidebar-nav-item <?= $_sub === 'class_message.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-graduation-cap"></i></span><span>Message à la classe</span></a>
+<?php endif; ?>
+<?php if (in_array($_msgUserType, ['vie_scolaire', 'administrateur'], true)): ?>
+    <a href="<?= $rootPrefix ?>modules/messagerie/new_announcement.php" class="sidebar-nav-item <?= $_sub === 'new_announcement.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-bullhorn"></i></span><span>Nouvelle annonce</span></a>
+<?php endif; ?>
+</div>
+<?php $sidebarExtraContent = ob_get_clean();
 
 // Custom page title for topbar
 if (isset($customTitle)) {

@@ -46,6 +46,20 @@ ob_start();
 <?php
 $headerExtraActions = ob_get_clean();
 
+// Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
+$_sub = basename($_SERVER['PHP_SELF'] ?? '');
+ob_start(); ?>
+<div class="sidebar-nav">
+    <a href="agenda.php" class="sidebar-nav-item <?= $_sub === 'agenda.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span><span>Calendrier</span></a>
+<?php if (canManageAgendaEvents()): ?>
+    <a href="ajouter_evenement.php" class="sidebar-nav-item <?= $_sub === 'ajouter_evenement.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-plus-circle"></i></span><span>Ajouter</span></a>
+<?php endif; ?>
+<?php if ($ffIcalExport): ?>
+    <a href="export_ical.php" class="sidebar-nav-item <?= $_sub === 'export_ical.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-file-export"></i></span><span>Export iCal</span></a>
+<?php endif; ?>
+</div>
+<?php $sidebarExtraContent = ob_get_clean();
+
 include __DIR__ . '/../../../templates/shared_header.php';
 include __DIR__ . '/../../../templates/shared_topbar.php';
 ?>

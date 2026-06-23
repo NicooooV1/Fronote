@@ -154,27 +154,6 @@ class PeriscolaireService
         }
     }
 
-    /* ───── MENUS CANTINE ───── */
-
-    public function getMenus(string $dateDebut = null, string $dateFin = null): array
-    {
-        $sql = "SELECT * FROM menus_cantine WHERE 1=1";
-        $params = [];
-        if ($dateDebut) { $sql .= ' AND date >= ?'; $params[] = $dateDebut; }
-        if ($dateFin) { $sql .= ' AND date <= ?'; $params[] = $dateFin; }
-        $sql .= ' ORDER BY date';
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    public function creerMenu(array $d): int
-    {
-        $stmt = $this->pdo->prepare("INSERT INTO menus_cantine (date, entree, plat, accompagnement, dessert, allergenes, regime) VALUES (?,?,?,?,?,?,?)");
-        $stmt->execute([$d['date'], $d['entree'] ?? null, $d['plat'] ?? null, $d['accompagnement'] ?? null, $d['dessert'] ?? null, $d['allergenes'] ?? null, $d['regime'] ?? null]);
-        return $this->pdo->lastInsertId();
-    }
-
     /* ───── HELPERS ───── */
 
     public function getEleves(): array

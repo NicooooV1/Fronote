@@ -26,7 +26,6 @@
     "agenda.week": "This week",
     "agenda.month": "This month",
     "agenda.items_count": "No events|:count event|:count events",
-    "agenda.export_ics": "Export to ICS",
     "agenda.import_ics": "Import from ICS",
     "agenda.view_month": "Month view",
     "agenda.view_week": "Week view",

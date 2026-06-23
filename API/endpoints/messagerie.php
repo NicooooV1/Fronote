@@ -7,8 +7,6 @@
  *   GET/POST  API/endpoints/messagerie.php?resource=<resource>&action=<action>
  *
  * Resources : conversations, messages, participants, notifications, search, reactions
- *
- * Déplacé depuis messagerie/api/api.php pour centralisation.
  */
 
 // Dépendances du module messagerie (chemin absolu).

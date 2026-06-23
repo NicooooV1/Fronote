@@ -17,16 +17,3 @@ if (!function_exists('validateDate')) {
         return $d && $d->format($format) === $date;
     }
 }
-
-if (!function_exists('getGradeClass')) {
-    /**
-     * Retourne la classe CSS selon la note (good / average / bad).
-     */
-    function getGradeClass(float $grade, float $maxGrade = 20): string
-    {
-        $pct = ($grade / $maxGrade) * 100;
-        if ($pct >= 75) return 'good';
-        if ($pct >= 50) return 'average';
-        return 'bad';
-    }
-}

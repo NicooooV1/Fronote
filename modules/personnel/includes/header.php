@@ -17,6 +17,16 @@ $activePage = $activePage ?? 'absences';
 $extraCss = ['assets/css/personnel.css'];
 
 $pageTitle = $pageTitle ?? 'Gestion personnel';
+
+// Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
+$_sub = basename($_SERVER['PHP_SELF'] ?? '');
+ob_start(); ?>
+<div class="sidebar-nav">
+    <a href="absences.php" class="sidebar-nav-item <?= $_sub === 'absences.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-user-clock"></i></span><span>Absences</span></a>
+    <a href="remplacements.php" class="sidebar-nav-item <?= $_sub === 'remplacements.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-people-arrows"></i></span><span>Remplacements</span></a>
+</div>
+<?php $sidebarExtraContent = ob_get_clean();
+
 require_once __DIR__ . '/../../../templates/shared_header.php';
 require_once __DIR__ . '/../../../templates/shared_topbar.php';
 ?>

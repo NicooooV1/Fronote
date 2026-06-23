@@ -9,7 +9,6 @@ class DocumentsServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->singleton('signature', fn($app) => new \API\Services\SignatureService($app->make('db')->getConnection()));
     }
 
     public function boot(): void {}

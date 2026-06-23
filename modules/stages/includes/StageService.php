@@ -261,41 +261,6 @@ class StageService
         ], $stages);
     }
 
-    // ─── CONVENTION PDF DATA ───
-
-    public function genererConventionData(int $stageId): array
-    {
-        $stmt = $this->pdo->prepare("
-            SELECT s.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, e.date_naissance,
-                   c.nom AS classe_nom, CONCAT(p.prenom, ' ', p.nom) AS prof_nom
-            FROM stages s
-            JOIN eleves e ON s.eleve_id = e.id
-            LEFT JOIN classes c ON e.classe = c.nom
-            LEFT JOIN professeurs p ON s.professeur_referent_id = p.id
-            WHERE s.id = :id
-        ");
-        $stmt->execute([':id' => $stageId]);
-        $stage = $stmt->fetch(\PDO::FETCH_ASSOC);
-        if (!$stage) throw new \RuntimeException('Stage introuvable');
-
-        return [
-            'titre' => 'Convention de stage',
-            'date_generation' => date('d/m/Y'),
-            'eleve' => $stage['eleve_nom'],
-            'date_naissance' => $stage['date_naissance'],
-            'classe' => $stage['classe_nom'],
-            'entreprise' => $stage['entreprise_nom_full'] ?? $stage['entreprise_nom'] ?? '',
-            'adresse_entreprise' => $stage['entreprise_adresse'] ?? '',
-            'tuteur' => $stage['tuteur_nom_full'] ?? $stage['tuteur_nom'] ?? '',
-            'tuteur_email' => $stage['tuteur_email'] ?? '',
-            'professeur_referent' => $stage['prof_nom'] ?? '',
-            'date_debut' => $stage['date_debut'],
-            'date_fin' => $stage['date_fin'],
-            'type' => $stage['type'],
-            'sujet' => $stage['sujet'] ?? '',
-        ];
-    }
-
     // ─── MARKETPLACE STAGES (OFFRES) ───
 
     public function getOffresStage(?string $search = null, ?string $secteur = null): array

@@ -517,33 +517,6 @@ class DevoirService
         return "{$col} {$dir}";
     }
 
-    /* ══════════ Export devoirs ══════════ */
-
-    /**
-     * Export des devoirs pour ExportService.
-     */
-    public function getDevoirsForExport(string $role, ?int $userId, ?string $userFullName, array $filters = []): array
-    {
-        $query = $this->buildQuery($role, $userId, $userFullName, $filters, 'date_rendu', 'desc', 1, 9999);
-        [$devoirs] = $this->executeQuery($query);
-
-        $result = [];
-        foreach ($devoirs as $d) {
-            $status = $this->computeStatus($d['date_rendu']);
-            $result[] = [
-                'Matière'     => $d['nom_matiere'] ?? '',
-                'Classe'      => $d['classe'] ?? '',
-                'Titre'       => $d['titre'],
-                'Description' => mb_substr(strip_tags($d['description'] ?? ''), 0, 200),
-                'Date rendu'  => date('d/m/Y', strtotime($d['date_rendu'])),
-                'Statut'      => $status['label'] ?? '',
-                'Professeur'  => $d['professeur'] ?? '',
-                'Type'        => $d['type_devoir'] ?? 'devoir',
-            ];
-        }
-        return $result;
-    }
-
     /* ══════════ Soumission de travaux (élèves) ══════════ */
 
     /**

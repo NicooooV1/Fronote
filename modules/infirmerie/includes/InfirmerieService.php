@@ -399,28 +399,6 @@ class InfirmerieService
         ")->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /* ───────── EXPORT ───────── */
-
-    public function getPassagesForExport(array $filtres = []): array
-    {
-        $passages = $this->getPassages($filtres);
-        $orientations = self::orientations();
-        $rows = [];
-        foreach ($passages as $p) {
-            $rows[] = [
-                $p['eleve_nom'] ?? '',
-                $p['classe_nom'] ?? '',
-                $p['date_passage'] ?? '',
-                $p['motif'] ?? '',
-                $p['symptomes'] ?? '',
-                $p['soins'] ?? '',
-                $orientations[$p['orientation'] ?? ''] ?? $p['orientation'] ?? '',
-                $p['observations'] ?? '',
-            ];
-        }
-        return $rows;
-    }
-
     // ─── SUIVI MÉDICAMENTS ───
 
     public function ajouterTraitement(int $eleveId, string $medicament, string $posologie, string $dateDebut, ?string $dateFin = null, bool $paiActif = false): int

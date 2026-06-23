@@ -9,7 +9,6 @@ class FacturationServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->singleton('payment', fn($app) => new \API\Services\PaymentService($app->make('db')->getConnection()));
     }
 
     public function boot(): void {}

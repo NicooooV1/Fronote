@@ -1,6 +1,6 @@
 /**
  * /assets/js/shared.js — Utilitaires partagés (Messagerie Fronote)
- * Fonctions communes utilisées par inbox.js, conversation.js, notifications.js, forms.js
+ * Fonctions communes utilisées par inbox.js, conversation.js, forms.js
  */
 
 // ═══════════════════════════════════════════════════

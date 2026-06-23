@@ -9,7 +9,6 @@ class ReunionsServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->singleton('visio', fn($app) => new \API\Services\VideoConferenceService());
     }
 
     public function boot(): void {}
