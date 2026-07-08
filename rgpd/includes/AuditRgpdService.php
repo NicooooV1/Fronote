@@ -486,6 +486,41 @@ class AuditRgpdService
         try {
             $pdo->beginTransaction();
 
+            // 0. Élève : anonymiser la table `inscriptions` (nom/prénom/date de
+            // naissance + contacts parents en clair) AVANT d'écraser le profil —
+            // la liaison se fait sur l'identité de l'élève, perdue après le UPDATE.
+            if ($userType === 'eleve') {
+                try {
+                    $idn = $pdo->prepare("SELECT nom, prenom, date_naissance FROM eleves WHERE id = ?");
+                    $idn->execute([$userId]);
+                    if ($who = $idn->fetch(\PDO::FETCH_ASSOC)) {
+                        $inscCols = $pdo->query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'inscriptions'")->fetchAll(\PDO::FETCH_COLUMN);
+                        $inscMap = [
+                            'nom_eleve' => $anonymId, 'prenom_eleve' => 'Anonyme', 'adresse' => null,
+                            'nom_parent1' => 'Anonyme', 'telephone_parent1' => null, 'email_parent1' => null,
+                            'nom_parent2' => 'Anonyme', 'telephone_parent2' => null, 'email_parent2' => null,
+                            'telephone' => null, 'email_contact' => null, 'observations' => null,
+                        ];
+                        $set = []; $vals = [];
+                        foreach ($inscMap as $col => $val) {
+                            if (!in_array($col, $inscCols, true)) continue;
+                            if ($val === null) { $set[] = "`$col` = NULL"; }
+                            else { $set[] = "`$col` = ?"; $vals[] = $val; }
+                        }
+                        if ($set) {
+                            $vals[] = $who['nom']; $vals[] = $who['prenom']; $vals[] = $who['date_naissance'];
+                            $upd = $pdo->prepare("UPDATE inscriptions SET " . implode(', ', $set)
+                                . " WHERE nom_eleve = ? AND prenom_eleve = ? AND date_naissance = ?");
+                            $upd->execute($vals);
+                            $actions[] = "Inscriptions anonymisées (" . $upd->rowCount() . ")";
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    error_log('[rgpd anonymisation] inscriptions user=' . $userId . ' : ' . $e->getMessage());
+                    $actions[] = "ÉCHEC anonymisation inscriptions : " . $e->getMessage();
+                }
+            }
+
             // 1. Anonymiser le profil.
             // Les tables utilisateurs n'ont pas toutes les mêmes colonnes (ex.
             // administrateurs n'a pas `telephone`, vie_scolaire n'a pas `adresse`,

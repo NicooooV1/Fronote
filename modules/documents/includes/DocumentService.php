@@ -102,8 +102,9 @@ class DocumentService {
      * Récupère un document par ID
      */
     public function getDocument(int $id): ?array {
-        $stmt = $this->pdo->prepare("SELECT * FROM documents WHERE id = ?");
-        $stmt->execute([$id]);
+        // Cloisonnement établissement (anti-IDOR cross-tenant).
+        $stmt = $this->pdo->prepare("SELECT * FROM documents WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
@@ -116,11 +117,12 @@ class DocumentService {
         $visibilite = !empty($data['visibilite']) ? json_encode($data['visibilite']) : '[]';
 
         $stmt = $this->pdo->prepare("
-            INSERT INTO documents (titre, description, categorie, fichier_nom, fichier_chemin, fichier_taille, fichier_type,
+            INSERT INTO documents (etablissement_id, titre, description, categorie, fichier_nom, fichier_chemin, fichier_taille, fichier_type,
                                    visibilite, auteur_id, auteur_type, date_creation)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
         $stmt->execute([
+            \API\Core\EstablishmentContext::id(),
             $data['titre'],
             $data['description'] ?? '',
             $data['categorie'] ?? 'autre',
@@ -293,8 +295,8 @@ class DocumentService {
     public function partager(int $docId, array $sharedWith): bool
     {
         $json = json_encode($sharedWith);
-        $stmt = $this->pdo->prepare("UPDATE documents SET shared_with = ? WHERE id = ?");
-        return $stmt->execute([$json, $docId]);
+        $stmt = $this->pdo->prepare("UPDATE documents SET shared_with = ? WHERE id = ? AND etablissement_id = ?");
+        return $stmt->execute([$json, $docId, \API\Core\EstablishmentContext::id()]);
     }
 
     /**

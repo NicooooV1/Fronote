@@ -47,8 +47,26 @@ try {
 	} else {
 		$log('Backup uploads: skipped (no uploads dir or ZipArchive unavailable)');
 	}
+	// Copie hors-hôte (offsite) : survivre à la perte du serveur. Configurer
+	// BACKUP_OFFSITE_DIR (montage distant/rsync/S3-fuse). Best-effort.
+	$offsite = getenv('BACKUP_OFFSITE_DIR') ?: '';
+	if ($offsite !== '' && is_dir($offsite) && is_writable($offsite)) {
+		foreach (array_filter([$dbFile, $full['uploads'] ?? null]) as $bf) {
+			if (is_file($bf) && @copy($bf, rtrim($offsite, '/') . '/' . basename($bf))) {
+				$log('Backup offsite: copied ' . basename($bf) . ' -> ' . $offsite);
+			} else {
+				$log('Backup offsite: FAILED to copy ' . basename($bf));
+				fronote_alert('Backup offsite échoué', 'Copie hors-hôte impossible: ' . $bf);
+			}
+		}
+	} elseif ($offsite !== '') {
+		$log('Backup offsite: BACKUP_OFFSITE_DIR non accessible (' . $offsite . ')');
+		fronote_alert('Backup offsite indisponible', 'BACKUP_OFFSITE_DIR inaccessible: ' . $offsite);
+	}
 } catch (\Throwable $e) {
 	$log('Backup error: ' . $e->getMessage());
+	// Alerte proactive : un échec de sauvegarde est un incident (perte de données potentielle).
+	fronote_alert('ÉCHEC de la sauvegarde quotidienne', $e->getMessage());
 }
 
 // 2. Backup rotation
@@ -159,4 +177,34 @@ function fronote_rrmdir(string $dir): bool
 		$item->isDir() ? @rmdir($item->getPathname()) : @unlink($item->getPathname());
 	}
 	return @rmdir($dir);
+}
+
+/**
+ * Alerte proactive sur incident (échec backup, disque plein, événement critique).
+ * Journalise toujours en CRITICAL ; POSTe en plus vers ALERT_WEBHOOK si configuré
+ * (Slack/Teams/webhook générique). Best-effort, ne lève jamais.
+ */
+function fronote_alert(string $subject, string $body): void
+{
+	error_log('[fronote][ALERT][CRITICAL] ' . $subject . ' — ' . $body);
+	$webhook = getenv('ALERT_WEBHOOK') ?: '';
+	if ($webhook === '' || !filter_var($webhook, FILTER_VALIDATE_URL)) {
+		return;
+	}
+	$host = gethostname() ?: 'fronote';
+	$payload = json_encode(['text' => "[Fronote:{$host}] {$subject}\n{$body}"]);
+	try {
+		$ch = curl_init($webhook);
+		curl_setopt_array($ch, [
+			CURLOPT_POST => true,
+			CURLOPT_POSTFIELDS => $payload,
+			CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+			CURLOPT_TIMEOUT => 5,
+			CURLOPT_RETURNTRANSFER => true,
+		]);
+		curl_exec($ch);
+		curl_close($ch);
+	} catch (\Throwable $e) {
+		error_log('[fronote][ALERT] webhook failed: ' . $e->getMessage());
+	}
 }

@@ -44,14 +44,15 @@ class CantineService
     public function sauvegarderMenu(array $data): int
     {
         $stmt = $this->pdo->prepare(
-            "INSERT INTO menus_cantine (date_menu, entree, plat_principal, accompagnement, dessert, allergenes, regime_special)
-             VALUES (?, ?, ?, ?, ?, ?, ?)
+            "INSERT INTO menus_cantine (etablissement_id, date_menu, entree, plat_principal, accompagnement, dessert, allergenes, regime_special)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE
                 entree = VALUES(entree), plat_principal = VALUES(plat_principal),
                 accompagnement = VALUES(accompagnement), dessert = VALUES(dessert),
                 allergenes = VALUES(allergenes)"
         );
         $stmt->execute([
+            \API\Core\EstablishmentContext::id(),
             $data['date_menu'],
             $data['entree'] ?? null,
             $data['plat_principal'] ?? null,
@@ -65,8 +66,9 @@ class CantineService
 
     public function supprimerMenu(int $id): bool
     {
-        $stmt = $this->pdo->prepare("DELETE FROM menus_cantine WHERE id = ?");
-        return $stmt->execute([$id]);
+        // Cloisonnement établissement (anti-suppression cross-tenant).
+        $stmt = $this->pdo->prepare("DELETE FROM menus_cantine WHERE id = ? AND etablissement_id = ?");
+        return $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
     }
 
     /* ==================== RÉSERVATIONS ==================== */
@@ -394,8 +396,8 @@ class CantineService
 
     public function getNutrition(int $menuId): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT nutrition FROM menus_cantine WHERE id = ?");
-        $stmt->execute([$menuId]);
+        $stmt = $this->pdo->prepare("SELECT nutrition FROM menus_cantine WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$menuId, \API\Core\EstablishmentContext::id()]);
         $json = $stmt->fetchColumn();
         return $json ? json_decode($json, true) : null;
     }

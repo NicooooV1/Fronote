@@ -31,17 +31,18 @@ class GarderieService
 
     public function getCreneau(int $id): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM garderie_creneaux WHERE id = ?");
-        $stmt->execute([$id]);
+        // Cloisonnement établissement (anti-IDOR cross-tenant).
+        $stmt = $this->pdo->prepare("SELECT * FROM garderie_creneaux WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function creerCreneau(array $data): int
     {
         $stmt = $this->pdo->prepare(
-            "INSERT INTO garderie_creneaux (nom, type, heure_debut, heure_fin, places_max, tarif) VALUES (?, ?, ?, ?, ?, ?)"
+            "INSERT INTO garderie_creneaux (etablissement_id, nom, type, heure_debut, heure_fin, places_max, tarif) VALUES (?, ?, ?, ?, ?, ?, ?)"
         );
-        $stmt->execute([$data['nom'], $data['type'], $data['heure_debut'], $data['heure_fin'],
+        $stmt->execute([\API\Core\EstablishmentContext::id(), $data['nom'], $data['type'], $data['heure_debut'], $data['heure_fin'],
             $data['places_max'] ?? null, $data['tarif'] ?? null]);
         return (int) $this->pdo->lastInsertId();
     }

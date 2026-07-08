@@ -353,10 +353,11 @@ class CompetenceService {
     public function createCompetence(array $data): int
     {
         $stmt = $this->pdo->prepare("
-            INSERT INTO competences (code, nom, description, domaine, parent_id, ordre, niveau_attendu)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO competences (etablissement_id, code, nom, description, domaine, parent_id, ordre, niveau_attendu)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
+            \API\Core\EstablishmentContext::id(),
             $data['code'],
             $data['nom'],
             $data['description'] ?? '',
@@ -417,8 +418,9 @@ class CompetenceService {
      */
     public function getCompetenceById(int $id): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM competences WHERE id = ?");
-        $stmt->execute([$id]);
+        // Cloisonnement établissement (anti-IDOR cross-tenant).
+        $stmt = $this->pdo->prepare("SELECT * FROM competences WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(\PDO::FETCH_ASSOC) ?: null;
     }
 

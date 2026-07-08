@@ -27,15 +27,31 @@ class NotificationService
         return (int)$this->pdo->lastInsertId();
     }
 
-    // ── Créer pour plusieurs destinataires ──
-    public function creerPourGroupe(array $destinataires, string $type, string $titre, ?string $contenu = null, ?string $lien = null, string $importance = 'normale', ?string $sourceType = null, ?int $sourceId = null): int
+    /**
+     * Insertion en masse : prépare l'INSERT UNE seule fois puis l'exécute pour
+     * chaque destinataire (évite un prepare() par destinataire — N+1 sur les
+     * envois de groupe/classe). $recipients = [['id'=>int,'type'=>string], ...].
+     */
+    private function insertBatch(array $recipients, string $type, string $titre, ?string $contenu, ?string $lien, string $importance, ?string $sourceType = null, ?int $sourceId = null): int
     {
+        if (!$recipients) return 0;
+        $icone = self::iconeParType($type);
+        $stmt = $this->pdo->prepare("
+            INSERT INTO notifications_globales (user_id, user_type, type, titre, contenu, lien, icone, importance, source_type, source_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
         $count = 0;
-        foreach ($destinataires as $dest) {
-            $this->creer($dest['id'], $dest['type'], $type, $titre, $contenu, $lien, $importance, $sourceType, $sourceId);
+        foreach ($recipients as $r) {
+            $stmt->execute([(int)$r['id'], $r['type'], $type, $titre, $contenu, $lien, $icone, $importance, $sourceType, $sourceId]);
             $count++;
         }
         return $count;
+    }
+
+    // ── Créer pour plusieurs destinataires ──
+    public function creerPourGroupe(array $destinataires, string $type, string $titre, ?string $contenu = null, ?string $lien = null, string $importance = 'normale', ?string $sourceType = null, ?int $sourceId = null): int
+    {
+        return $this->insertBatch($destinataires, $type, $titre, $contenu, $lien, $importance, $sourceType, $sourceId);
     }
 
     // ── Notifications d'un utilisateur ──
@@ -362,12 +378,8 @@ class NotificationService
 
         $stmt = $this->pdo->query("SELECT id FROM {$groupe} WHERE actif = 1");
         $ids = $stmt->fetchAll(\PDO::FETCH_COLUMN);
-        $count = 0;
-        foreach ($ids as $id) {
-            $this->creer((int)$id, $userType, $type, $titre, $contenu, $lien, $importance);
-            $count++;
-        }
-        return $count;
+        $recipients = array_map(static fn($id) => ['id' => (int) $id, 'type' => $userType], $ids);
+        return $this->insertBatch($recipients, $type, $titre, $contenu, $lien, $importance);
     }
 
     public function envoyerAClasse(int $classeId, string $titre, string $contenu, ?string $lien = null): int
@@ -376,12 +388,8 @@ class NotificationService
         $stmt = $this->pdo->prepare("SELECT id FROM eleves WHERE classe = (SELECT nom FROM classes WHERE id = ? AND etablissement_id = ?) AND etablissement_id = ? AND actif = 1");
         $stmt->execute([$classeId, $etabId, $etabId]);
         $ids = $stmt->fetchAll(\PDO::FETCH_COLUMN);
-        $count = 0;
-        foreach ($ids as $id) {
-            $this->creer((int)$id, 'eleve', 'annonce', $titre, $contenu, $lien, 'normale');
-            $count++;
-        }
-        return $count;
+        $recipients = array_map(static fn($id) => ['id' => (int) $id, 'type' => 'eleve'], $ids);
+        return $this->insertBatch($recipients, 'annonce', $titre, $contenu, $lien, 'normale');
     }
 
     // ─── HISTORIQUE / ANALYTICS ───
