@@ -63,15 +63,24 @@ class CompetenceService {
      * Évaluer un élève sur une compétence
      */
     public function evaluer(array $data): int {
+        $etab = \API\Core\EstablishmentContext::id();
+        // Anti-IDOR d'écriture : l'élève évalué DOIT appartenir à l'établissement
+        // courant (les eleve_id proviennent d'un POST et ne sont pas re-validés en amont).
+        $chk = $this->pdo->prepare("SELECT 1 FROM eleves WHERE id = ? AND etablissement_id = ?");
+        $chk->execute([$data['eleve_id'], $etab]);
+        if (!$chk->fetchColumn()) {
+            throw new \RuntimeException('Élève hors de l\'établissement courant : évaluation refusée.');
+        }
         $stmt = $this->pdo->prepare("
-            INSERT INTO competence_evaluations (eleve_id, competence_id, professeur_id, matiere_id, niveau_acquis, commentaire, date_evaluation, periode_id)
-            VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)
+            INSERT INTO competence_evaluations (etablissement_id, eleve_id, competence_id, professeur_id, matiere_id, niveau_acquis, commentaire, date_evaluation, periode_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)
             ON DUPLICATE KEY UPDATE
                 niveau_acquis = VALUES(niveau_acquis),
                 commentaire = VALUES(commentaire),
                 date_evaluation = NOW()
         ");
         $stmt->execute([
+            $etab,
             $data['eleve_id'],
             $data['competence_id'],
             $data['professeur_id'],
@@ -242,7 +251,8 @@ class CompetenceService {
      * Récupère les périodes
      */
     public function getPeriodes(): array {
-        return $this->pdo->query("SELECT * FROM periodes ORDER BY date_debut")->fetchAll(PDO::FETCH_ASSOC);
+        $etab = (int) \API\Core\EstablishmentContext::id();
+        return $this->pdo->query("SELECT * FROM periodes WHERE etablissement_id = {$etab} ORDER BY date_debut")->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /* ==================== HELPERS ==================== */
@@ -520,8 +530,8 @@ class CompetenceService {
      */
     public function suggestFromNotes(int $eleveId): array
     {
-        $stmt = $this->pdo->prepare("SELECT m.id AS matiere_id, m.nom AS matiere, ROUND(AVG(n.note / n.note_sur * 20),2) AS moyenne FROM notes n JOIN matieres m ON n.id_matiere = m.id WHERE n.id_eleve = :eid GROUP BY m.id ORDER BY m.nom");
-        $stmt->execute([':eid' => $eleveId]);
+        $stmt = $this->pdo->prepare("SELECT m.id AS matiere_id, m.nom AS matiere, ROUND(AVG(n.note / n.note_sur * 20),2) AS moyenne FROM notes n JOIN matieres m ON n.id_matiere = m.id WHERE n.id_eleve = :eid AND n.etablissement_id = :etab GROUP BY m.id ORDER BY m.nom");
+        $stmt->execute([':eid' => $eleveId, ':etab' => \API\Core\EstablishmentContext::id()]);
         $moyennes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $suggestions = [];
