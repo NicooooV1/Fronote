@@ -544,14 +544,22 @@ class AuditRgpdService
                 $stmt = $pdo->prepare("UPDATE messages SET body = '[Message supprimé - RGPD]', is_deleted = 1 WHERE sender_id = ? AND sender_type = ?");
                 $stmt->execute([$userId, $userType]);
                 $actions[] = "Messages anonymisés";
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) {
+                // Droit à l'oubli (Art.17) : l'échec doit être TRACÉ et remonté, jamais
+                // avalé — sinon on retourne success=true en laissant des données en clair.
+                error_log('[rgpd anonymisation] échec messages user=' . $userId . ' : ' . $e->getMessage());
+                $actions[] = "ÉCHEC anonymisation messages : " . $e->getMessage();
+            }
 
             // 4. Supprimer sessions
             try {
                 $stmt = $pdo->prepare("DELETE FROM session_security WHERE user_id = ? AND user_type = ?");
                 $stmt->execute([$userId, $userType]);
                 $actions[] = "Sessions supprimées";
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) {
+                error_log('[rgpd anonymisation] échec sessions user=' . $userId . ' : ' . $e->getMessage());
+                $actions[] = "ÉCHEC suppression sessions : " . $e->getMessage();
+            }
 
             // 5. Log l'action
             $this->logAudit($adminId, 'administrateur', 'rgpd_anonymisation', 
