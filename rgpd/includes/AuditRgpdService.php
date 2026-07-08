@@ -508,16 +508,20 @@ class AuditRgpdService
                             else { $set[] = "`$col` = ?"; $vals[] = $val; }
                         }
                         if ($set) {
+                            $scopeInsc = in_array('etablissement_id', $inscCols, true) ? ' AND etablissement_id = ?' : '';
                             $vals[] = $who['nom']; $vals[] = $who['prenom']; $vals[] = $who['date_naissance'];
+                            if ($scopeInsc !== '') { $vals[] = $this->currentEtablissementId(); }
                             $upd = $pdo->prepare("UPDATE inscriptions SET " . implode(', ', $set)
-                                . " WHERE nom_eleve = ? AND prenom_eleve = ? AND date_naissance = ?");
+                                . " WHERE nom_eleve = ? AND prenom_eleve = ? AND date_naissance = ?" . $scopeInsc);
                             $upd->execute($vals);
                             $actions[] = "Inscriptions anonymisées (" . $upd->rowCount() . ")";
                         }
                     }
                 } catch (\Throwable $e) {
+                    // Droit à l'oubli : l'échec est FATAL — on remonte pour annuler la
+                    // transaction, plutôt que de committer et prétendre au succès.
                     error_log('[rgpd anonymisation] inscriptions user=' . $userId . ' : ' . $e->getMessage());
-                    $actions[] = "ÉCHEC anonymisation inscriptions : " . $e->getMessage();
+                    throw $e;
                 }
             }
 

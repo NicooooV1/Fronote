@@ -14,7 +14,8 @@ class CompetenceService {
      * Récupère l'arborescence des compétences
      */
     public function getArbreCompetences(): array {
-        $all = $this->pdo->query("SELECT * FROM competences ORDER BY domaine, ordre, code")->fetchAll(PDO::FETCH_ASSOC);
+        $etab = (int) \API\Core\EstablishmentContext::id();
+        $all = $this->pdo->query("SELECT * FROM competences WHERE etablissement_id = {$etab} ORDER BY domaine, ordre, code")->fetchAll(PDO::FETCH_ASSOC);
         $tree = [];
         $byId = [];
         foreach ($all as $c) {
@@ -35,15 +36,16 @@ class CompetenceService {
      * Récupère les compétences racines (domaines)
      */
     public function getDomaines(): array {
-        return $this->pdo->query("SELECT * FROM competences WHERE parent_id IS NULL ORDER BY ordre, code")->fetchAll(PDO::FETCH_ASSOC);
+        $etab = (int) \API\Core\EstablishmentContext::id();
+        return $this->pdo->query("SELECT * FROM competences WHERE parent_id IS NULL AND etablissement_id = {$etab} ORDER BY ordre, code")->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
      * Récupère les sous-compétences d'un domaine
      */
     public function getSousCompetences(int $parentId): array {
-        $stmt = $this->pdo->prepare("SELECT * FROM competences WHERE parent_id = ? ORDER BY ordre, code");
-        $stmt->execute([$parentId]);
+        $stmt = $this->pdo->prepare("SELECT * FROM competences WHERE parent_id = ? AND etablissement_id = ? ORDER BY ordre, code");
+        $stmt->execute([$parentId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -51,7 +53,8 @@ class CompetenceService {
      * Récupère toutes les compétences (flat)
      */
     public function getCompetencesFlat(): array {
-        return $this->pdo->query("SELECT * FROM competences ORDER BY domaine, ordre")->fetchAll(PDO::FETCH_ASSOC);
+        $etab = (int) \API\Core\EstablishmentContext::id();
+        return $this->pdo->query("SELECT * FROM competences WHERE etablissement_id = {$etab} ORDER BY domaine, ordre")->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /* ==================== ÉVALUATIONS ==================== */
@@ -376,7 +379,7 @@ class CompetenceService {
     {
         $stmt = $this->pdo->prepare("
             UPDATE competences SET code = ?, nom = ?, description = ?, domaine = ?, parent_id = ?, ordre = ?, niveau_attendu = ?
-            WHERE id = ?
+            WHERE id = ? AND etablissement_id = ?
         ");
         return $stmt->execute([
             $data['code'],
@@ -387,6 +390,7 @@ class CompetenceService {
             $data['ordre'] ?? 0,
             $data['niveau_attendu'] ?? 'acquis',
             $id,
+            \API\Core\EstablishmentContext::id(),
         ]);
     }
 
@@ -395,16 +399,21 @@ class CompetenceService {
      */
     public function deleteCompetence(int $id): bool
     {
+        // La compétence doit appartenir à l'établissement courant (getCompetenceById est scopé).
+        if (!$this->getCompetenceById($id)) {
+            return false;
+        }
+        $etab = \API\Core\EstablishmentContext::id();
         $this->pdo->beginTransaction();
         try {
-            // Delete child evaluations
-            $this->pdo->prepare("DELETE FROM competence_evaluations WHERE competence_id IN (SELECT id FROM competences WHERE parent_id = ?)")->execute([$id]);
+            // Delete child evaluations (enfants du même établissement)
+            $this->pdo->prepare("DELETE FROM competence_evaluations WHERE competence_id IN (SELECT id FROM competences WHERE parent_id = ? AND etablissement_id = ?)")->execute([$id, $etab]);
             // Delete own evaluations
             $this->pdo->prepare("DELETE FROM competence_evaluations WHERE competence_id = ?")->execute([$id]);
-            // Delete children
-            $this->pdo->prepare("DELETE FROM competences WHERE parent_id = ?")->execute([$id]);
-            // Delete self
-            $this->pdo->prepare("DELETE FROM competences WHERE id = ?")->execute([$id]);
+            // Delete children (scopé établissement)
+            $this->pdo->prepare("DELETE FROM competences WHERE parent_id = ? AND etablissement_id = ?")->execute([$id, $etab]);
+            // Delete self (scopé établissement)
+            $this->pdo->prepare("DELETE FROM competences WHERE id = ? AND etablissement_id = ?")->execute([$id, $etab]);
             $this->pdo->commit();
             return true;
         } catch (\Exception $e) {

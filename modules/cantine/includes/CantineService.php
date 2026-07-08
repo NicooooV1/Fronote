@@ -391,7 +391,8 @@ class CantineService
     public function setNutrition(int $menuId, array $nutrition): void
     {
         $json = json_encode($nutrition, JSON_UNESCAPED_UNICODE);
-        $this->pdo->prepare("UPDATE menus_cantine SET nutrition = :n WHERE id = :id")->execute([':n' => $json, ':id' => $menuId]);
+        $this->pdo->prepare("UPDATE menus_cantine SET nutrition = :n WHERE id = :id AND etablissement_id = :e")
+            ->execute([':n' => $json, ':id' => $menuId, ':e' => \API\Core\EstablishmentContext::id()]);
     }
 
     public function getNutrition(int $menuId): ?array

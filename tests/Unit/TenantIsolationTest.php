@@ -100,4 +100,19 @@ final class TenantIsolationTest extends TestCase
         $this->assertNotNull($doc, 'Le document doit rester lisible dans son propre établissement.');
         $this->assertSame('Doc secret B', $doc['titre']);
     }
+
+    public function testCrossTenantDocumentAbsentFromList(): void
+    {
+        $svc = new \DocumentService($this->pdo);
+
+        // Liste depuis l'établissement A : le document de B ne doit PAS y figurer.
+        EstablishmentContext::set($this->etabA);
+        $idsA = array_column($svc->getDocuments('administrateur'), 'id');
+        $this->assertNotContains($this->docB, $idsA, 'Fuite cross-tenant : le document de B apparaît dans la liste de A.');
+
+        // Liste depuis l'établissement B : le document doit y figurer.
+        EstablishmentContext::set($this->etabB);
+        $idsB = array_column($svc->getDocuments('administrateur'), 'id');
+        $this->assertContains($this->docB, $idsB, 'Le document doit apparaître dans la liste de son propre établissement.');
+    }
 }

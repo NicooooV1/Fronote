@@ -75,8 +75,8 @@ class DocumentService {
                     WHEN 'vie_scolaire' THEN (SELECT CONCAT(prenom,' ',nom) FROM vie_scolaire WHERE id=d.auteur_id)
                     ELSE 'Système'
                 END AS auteur_nom
-                FROM documents d WHERE 1=1";
-        $params = [];
+                FROM documents d WHERE d.etablissement_id = ?";
+        $params = [\API\Core\EstablishmentContext::id()];
 
         // Filtrer uniquement les documents visibles pour ce rôle
         $sql .= " AND (d.visibilite IS NULL OR d.visibilite = '[]' OR JSON_CONTAINS(d.visibilite, ?))";
@@ -237,6 +237,10 @@ class DocumentService {
      */
     public function getVersions(int $docId): array
     {
+        // Le document parent doit appartenir à l'établissement courant (getDocument est scopé).
+        if (!$this->getDocument($docId)) {
+            return [];
+        }
         $stmt = $this->pdo->prepare("
             SELECT dv.*,
                 CASE dv.uploaded_by_type
@@ -312,13 +316,13 @@ class DocumentService {
                     ELSE 'Système'
                 END AS auteur_nom
             FROM documents d
-            WHERE JSON_CONTAINS(d.shared_with, ?)
-               OR JSON_CONTAINS(d.shared_with, ?)
+            WHERE d.etablissement_id = ?
+              AND (JSON_CONTAINS(d.shared_with, ?) OR JSON_CONTAINS(d.shared_with, ?))
             ORDER BY d.date_creation DESC
         ");
         $userKey = json_encode(['type' => $userType, 'id' => $userId]);
         $roleKey = json_encode($userType);
-        $stmt->execute([$userKey, $roleKey]);
+        $stmt->execute([\API\Core\EstablishmentContext::id(), $userKey, $roleKey]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
