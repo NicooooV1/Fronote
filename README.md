@@ -53,7 +53,7 @@ Tout est livré dans un seul dépôt, installé via un assistant web (`install.p
 | Autoload | PSR-4 (`composer.json`) : `API\` → `API/`, `Pronote\` → `API/`, `Modules\` → `modules/` |
 | Dépendance Composer | `firebase/php-jwt ^7.0` (JWT WebSocket) |
 | Extensions PHP requises | `ext-sodium` (signature `.fmod` marketplace), `ext-json`, `ext-zip`, `ext-pdo` |
-| Temps réel | Serveur Node.js (`websocket-server/server.js`, Socket.IO) — optionnel, fallback HTTP |
+| Temps réel | Serveur Node.js (`websocket/server.js`, Socket.IO) — optionnel, fallback HTTP |
 | Front | HTML/CSS/JS sans build — design tokens CSS + thèmes (classic / glass) |
 | i18n | 8 locales : `fr en es de ru nl ar th` (`lang/<locale>/<domaine>.json`) |
 
@@ -69,7 +69,7 @@ Navigateur ── HTTP/HTTPS ──► Pages PHP (modules + essentiels racine)
      │ WebSocket (Socket.IO)       ▼
      │                       ┌───────────────────────────────────────┐
      └────────────────────► │  Application (conteneur DI maison)     │
-       websocket-server/    │  providers → services via app('clé')  │
+       websocket/    │  providers → services via app('clé')  │
        server.js (Node)     │  facades : Auth, DB, CSRF, Log…        │
                             └────────────────┬──────────────────────┘
                                              │ PDO (utf8mb4)
@@ -158,7 +158,7 @@ Pronote/
 ├── parametres/          ← Préférences utilisateur (core)
 ├── rgpd/  securite/  tutorat/
 │
-├── login/  cron/  scripts/  websocket-server/
+├── login/  cron/  scripts/  websocket/
 ├── install.php          ← Assistant d'installation
 ├── pronote.sql          ← Schéma cœur (utilisateurs, classes, périodes, modules_config…)
 ├── version.json  composer.json  .env.example
@@ -313,7 +313,7 @@ echo __('messagerie.bonjour', ['nom' => $n]); // interpolation de {nom}
 | **Établissement** | `trombinoscope`, `inscriptions`, `clubs`, `vie_associative`, `formations`, `bourses`, `diplomes` |
 | **Logistique / Services** | `cantine`, `garderie`, `periscolaire`, `internat`, `transports`, `stages`, `salles`, `personnel`, `facturation`, `inventaire`, `mediatheque`, `bibliotheque` |
 | **Santé** | `infirmerie` |
-| **Outils / Système** | `recherche`, `reporting`, `tableau_de_bord`, `dashboard`, `documents`, `ressources`, `archivage`, `support`, `marketplace`, `admin_sessions`, `accessibilite`, `hello_world` |
+| **Outils / Système** | `reporting`, `tableau_de_bord`, `dashboard`, `documents`, `ressources`, `archivage`, `support`, `marketplace`, `accessibilite`, `hello_world` |
 | **Essentiels (racine, core)** | `accueil`, `admin`, `parametres`, `rgpd`, `securite`, `tutorat`, `onboarding`, `profil`, `notifications` |
 
 > Créer un module : ajouter un dossier `modules/<clé>/` avec son `module.json` (clé, nom multilingue, icône, `category` valide, `core`, `routes.main`, `database.install`, `permissions`), puis **Admin → Modules → Synchroniser**. Détails dans [docs/module-sdk.md](docs/module-sdk.md).

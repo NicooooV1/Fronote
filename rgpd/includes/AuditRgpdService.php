@@ -378,6 +378,34 @@ class AuditRgpdService
                  WHERE i.nom_eleve = e.nom AND i.prenom_eleve = e.prenom AND i.date_naissance = e.date_naissance
                  ORDER BY i.id DESC",
                 [$userId]);
+
+            // Fiche santé (RGPD Art. 9) — déchiffrée pour l'export du sujet lui-même.
+            $fiche = $this->collecte('fiche_sante',
+                "SELECT allergies, traitements, antecedents, medecin_traitant, telephone_urgence,
+                        contact_urgence, groupe_sanguin, pai, pai_details, observations, vaccinations,
+                        pathologies, date_modification
+                 FROM fiches_sante WHERE eleve_id = ?",
+                [$userId]);
+            if (\API\Core\Encryption::available() && $fiche) {
+                try {
+                    $enc = new \API\Core\Encryption();
+                    foreach ($fiche as &$row) {
+                        foreach (['allergies', 'traitements', 'contact_urgence', 'pai', 'observations'] as $f) {
+                            if (!empty($row[$f]) && $enc->isEncrypted($row[$f])) {
+                                try { $row[$f] = $enc->decrypt($row[$f]); } catch (\Throwable $e) {}
+                            }
+                        }
+                    }
+                    unset($row);
+                } catch (\Throwable $e) { error_log('[rgpd export] health decrypt: ' . $e->getMessage()); }
+            }
+            $data['fiche_sante'] = $fiche;
+
+            // Passages infirmerie
+            $data['passages_infirmerie'] = $this->collecte('passages_infirmerie',
+                "SELECT date_passage, motif, symptomes, soins_prodigues, orientation
+                 FROM passages_infirmerie WHERE eleve_id = ? ORDER BY date_passage DESC",
+                [$userId]);
         }
 
         if ($userType === 'parent') {
@@ -598,9 +626,16 @@ class AuditRgpdService
     }
 
     /**
-     * Exécute la purge selon les politiques de rétention
+     * Exécute la purge selon les politiques de rétention.
+     *
+     * @param int|null $etablissementId Quand fourni (appel admin depuis l'UI),
+     *   la purge est CLOISONNÉE à cet établissement : chaque DELETE reçoit
+     *   « AND etablissement_id = ? », et les tables globales sans cette colonne
+     *   (rate_limits, session_security) sont IGNORÉES. Empêche un admin
+     *   d'établissement de purger les données d'un autre établissement.
+     *   Null = purge système globale (cron CLI de maintenance).
      */
-    public function executerPurge(): array
+    public function executerPurge(?int $etablissementId = null): array
     {
         $policies = $this->getRetentionPolicies();
         $results = [];
@@ -625,9 +660,22 @@ class AuditRgpdService
             $cutoff = date('Y-m-d H:i:s', strtotime("-{$policy['duree']} days"));
 
             try {
-                $sql = "DELETE FROM {$table} WHERE {$extra} {$col} < ?";
+                $params = [$cutoff];
+                $scope  = '';
+                // Cloisonnement établissement (appel UI) : n'agir que sur les lignes
+                // de l'établissement courant. Table globale sans etablissement_id →
+                // on l'ignore plutôt que de purger tous les tenants (fail-closed).
+                if ($etablissementId !== null) {
+                    if (!$this->columnExists($table, 'etablissement_id')) {
+                        $results[$table] = ['skipped' => 'table globale sans etablissement_id (non purgée en mode cloisonné)'];
+                        continue;
+                    }
+                    $scope    = ' AND etablissement_id = ?';
+                    $params[] = $etablissementId;
+                }
+                $sql = "DELETE FROM {$table} WHERE {$extra} {$col} < ?{$scope}";
                 $stmt = $this->pdo->prepare($sql);
-                $stmt->execute([$cutoff]);
+                $stmt->execute($params);
                 $count = $stmt->rowCount();
                 $results[$table] = ['purged' => $count, 'cutoff' => $cutoff];
 
@@ -635,7 +683,9 @@ class AuditRgpdService
                 try {
                     $stmt = $this->pdo->prepare("UPDATE rgpd_retention_policies SET derniere_purge = NOW() WHERE table_name = ?");
                     $stmt->execute([$table]);
-                } catch (\Exception $e) {}
+                } catch (\Exception $e) {
+                    error_log('[AuditRgpdService] maj derniere_purge ' . $table . ' : ' . $e->getMessage());
+                }
             } catch (\Exception $e) {
                 $results[$table] = ['error' => $e->getMessage()];
             }

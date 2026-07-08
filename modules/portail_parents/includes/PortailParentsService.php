@@ -26,7 +26,7 @@ class PortailParentsService
     {
         // SÉCURITÉ : ne renvoyer l'enfant que s'il est rattaché au parent connecté
         // (sinon IDOR : ?enfant=<id> exposerait le dossier de n'importe quel élève).
-        $eleve = $this->pdo->prepare("SELECT e.id, e.nom, e.prenom, e.classe, e.date_naissance, e.photo
+        $eleve = $this->pdo->prepare("SELECT e.id, e.nom, e.prenom, e.classe, e.date_naissance
             FROM eleves e
             JOIN parent_eleve pe ON pe.id_eleve = e.id
             WHERE e.id = :eid AND pe.id_parent = :pid");
@@ -66,7 +66,7 @@ class PortailParentsService
 
     public function getEnfants(int $parentId): array
     {
-        $stmt = $this->pdo->prepare("SELECT e.id, e.nom, e.prenom, e.classe, e.photo FROM eleves e JOIN parent_eleve ep ON e.id = ep.id_eleve WHERE ep.id_parent = :pid AND e.actif = 1 ORDER BY e.prenom");
+        $stmt = $this->pdo->prepare("SELECT e.id, e.nom, e.prenom, e.classe FROM eleves e JOIN parent_eleve ep ON e.id = ep.id_eleve WHERE ep.id_parent = :pid AND e.actif = 1 ORDER BY e.prenom");
         $stmt->execute([':pid' => $parentId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

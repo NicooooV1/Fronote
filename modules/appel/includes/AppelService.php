@@ -178,32 +178,34 @@ class AppelService
 
         $etabId = $appel['etablissement_id'];
 
+        // Requêtes préparées UNE seule fois, réutilisées dans la boucle (évite un
+        // prepare() par élève — N+1). Chaque INSERT est ensuite exécuté avec ses valeurs.
+        $stmtAbs = $this->pdo->prepare(
+            "INSERT INTO absences (etablissement_id, id_eleve, date_debut, date_fin, type_absence, motif, justifie, signale_par)
+             VALUES (?, ?, ?, ?, 'absence', ?, 0, ?)"
+        );
+        $stmtRet = $this->pdo->prepare(
+            "INSERT INTO retards (etablissement_id, id_eleve, date_retard, duree_minutes, motif, justifie, signale_par)
+             VALUES (?, ?, ?, ?, ?, 0, ?)"
+        );
+        $signalePar = $appel['professeur_nom'] ?? 'Système';
+
         foreach ($eleves as $ae) {
             if ($ae['statut'] === 'absent') {
-                // Créer une absence
-                $stmt = $this->pdo->prepare(
-                    "INSERT INTO absences (etablissement_id, id_eleve, date_debut, date_fin, type_absence, motif, justifie, signale_par)
-                     VALUES (?, ?, ?, ?, 'absence', ?, 0, ?)"
-                );
                 $dateDebut = $appel['date_appel'] . ' ' . $appel['heure_debut'];
                 $dateFin   = $appel['date_appel'] . ' ' . $appel['heure_fin'];
-                $stmt->execute([
+                $stmtAbs->execute([
                     $etabId, $ae['eleve_id'], $dateDebut, $dateFin,
                     $ae['motif'] ?? null,
-                    $appel['professeur_nom'] ?? 'Système'
+                    $signalePar
                 ]);
             } elseif ($ae['statut'] === 'retard') {
-                // Créer un retard
-                $stmt = $this->pdo->prepare(
-                    "INSERT INTO retards (etablissement_id, id_eleve, date_retard, duree_minutes, motif, justifie, signale_par)
-                     VALUES (?, ?, ?, ?, ?, 0, ?)"
-                );
                 $dateRetard = $appel['date_appel'] . ' ' . ($ae['heure_arrivee'] ?? $appel['heure_debut']);
-                $stmt->execute([
+                $stmtRet->execute([
                     $etabId, $ae['eleve_id'], $dateRetard,
                     $ae['duree_retard'] ?? 0,
                     $ae['motif'] ?? null,
-                    $appel['professeur_nom'] ?? 'Système'
+                    $signalePar
                 ]);
             }
         }

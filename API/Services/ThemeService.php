@@ -179,7 +179,13 @@ class ThemeService
         $previewPath = null;
         if ($previewFile && !empty($previewFile['tmp_name']) && $previewFile['error'] === UPLOAD_ERR_OK) {
             $ext = strtolower(pathinfo($previewFile['name'], PATHINFO_EXTENSION));
-            if (in_array($ext, self::PREVIEW_EXTENSIONS, true) && $previewFile['size'] <= 2097152) {
+            // Valider le TYPE MIME RÉEL (fileinfo), pas seulement l'extension :
+            // empêche l'upload d'un fichier exécutable renommé en .png.
+            $realMime = (new \finfo(FILEINFO_MIME_TYPE))->file($previewFile['tmp_name']) ?: '';
+            $allowedMimes = ['image/png', 'image/jpeg', 'image/webp'];
+            if (in_array($ext, self::PREVIEW_EXTENSIONS, true)
+                && in_array($realMime, $allowedMimes, true)
+                && $previewFile['size'] <= 2097152) {
                 $previewPath = 'assets/css/theme-' . $key . '-preview.' . $ext;
                 move_uploaded_file($previewFile['tmp_name'], $this->basePath . '/' . $previewPath);
             }

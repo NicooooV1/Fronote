@@ -217,7 +217,7 @@ class TrombinoscopeService {
 
     public function search(string $query, array $filters = []): array
     {
-        $sql = "SELECT id, nom, prenom, classe, photo FROM eleves WHERE actif = 1 AND (nom LIKE :q OR prenom LIKE :q2)";
+        $sql = "SELECT id, nom, prenom, classe FROM eleves WHERE actif = 1 AND (nom LIKE :q OR prenom LIKE :q2)";
         $params = [':q' => "%{$query}%", ':q2' => "%{$query}%"];
         if (!empty($filters['classe'])) { $sql .= " AND classe = :c"; $params[':c'] = $filters['classe']; }
         if (!empty($filters['niveau'])) { $sql .= " AND niveau = :n"; $params[':n'] = $filters['niveau']; }
@@ -231,7 +231,7 @@ class TrombinoscopeService {
 
     public function genererTrombData(string $classe): array
     {
-        $stmt = $this->pdo->prepare("SELECT id, nom, prenom, photo FROM eleves WHERE classe = :c AND actif = 1 ORDER BY nom, prenom");
+        $stmt = $this->pdo->prepare("SELECT id, nom, prenom FROM eleves WHERE classe = :c AND actif = 1 ORDER BY nom, prenom");
         $stmt->execute([':c' => $classe]);
         return ['classe' => $classe, 'eleves' => $stmt->fetchAll(\PDO::FETCH_ASSOC), 'date' => date('Y-m-d')];
     }
@@ -240,7 +240,7 @@ class TrombinoscopeService {
 
     public function genererBadgesData(string $classe): array
     {
-        $stmt = $this->pdo->prepare("SELECT id, nom, prenom, photo, classe FROM eleves WHERE classe = :c AND actif = 1 ORDER BY nom, prenom");
+        $stmt = $this->pdo->prepare("SELECT id, nom, prenom, classe FROM eleves WHERE classe = :c AND actif = 1 ORDER BY nom, prenom");
         $stmt->execute([':c' => $classe]);
         $eleves = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 

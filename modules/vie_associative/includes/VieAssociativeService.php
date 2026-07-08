@@ -58,7 +58,7 @@ class VieAssociativeService
             "INSERT INTO associations (etablissement_id, nom, type, description, president_eleve_id, referent_adulte_id, budget_annuel, statut)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         );
-        $stmt->execute([$this->etabId() ?? 1, $d['nom'], $d['type'] ?? 'association', $d['description'] ?? null,
+        $stmt->execute([\API\Core\EstablishmentContext::id(), $d['nom'], $d['type'] ?? 'association', $d['description'] ?? null,
             $d['president_eleve_id'] ?: null, $d['referent_adulte_id'] ?: null,
             $d['budget_annuel'] ?? null, $d['statut'] ?? 'active']);
         return (int) $this->pdo->lastInsertId();

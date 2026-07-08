@@ -1,0 +1,20 @@
+# ============================================================================
+# Fronote — planification des tâches automatiques (format /etc/cron.d).
+#
+# Installation (une fois) :
+#   sudo cp cron/fronote.cron.example /etc/cron.d/fronote
+#   sudo chown root:root /etc/cron.d/fronote && sudo chmod 644 /etc/cron.d/fronote
+#   sudo systemctl reload cron    # ou: service cron reload
+#
+# Adapter le chemin (/var/www/html/Pronote) et l'utilisateur (www-data) si besoin.
+# NB : en /etc/cron.d le champ « utilisateur » (6e colonne) est OBLIGATOIRE.
+# ============================================================================
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+
+# 02:00 — maintenance quotidienne : sauvegarde complète (base + uploads) chiffrée,
+# rotation, purge audit/cache/tmp/quarantaine.
+0 2 * * * www-data php /var/www/html/Pronote/cron/daily_maintenance.php >> /var/www/html/Pronote/API/logs/cron.log 2>&1
+
+# 03:00 — purge RGPD selon les politiques de rétention (droit à l'effacement / durées légales).
+0 3 * * * www-data php /var/www/html/Pronote/rgpd/cron_purge.php >> /var/www/html/Pronote/API/logs/cron.log 2>&1

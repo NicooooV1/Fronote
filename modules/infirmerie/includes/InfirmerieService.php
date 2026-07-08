@@ -18,6 +18,53 @@ class InfirmerieService
         catch (\Throwable $e) { return null; }
     }
 
+    /* ───────── CHIFFREMENT AT-REST DES DONNÉES DE SANTÉ (RGPD Art. 9) ─────────
+       Les champs libres médicaux sont chiffrés (AES-256-GCM via APP_KEY) en base.
+       Rétro-compatible : la lecture déchiffre le format chiffré et laisse passer
+       le clair hérité ; si aucune clé n'est configurée, on reste en clair. */
+    private const HEALTH_FIELDS = ['allergies', 'traitements', 'contact_urgence', 'contacts_urgence', 'pai', 'observations', 'remarques'];
+    private ?\API\Core\Encryption $enc = null;
+    private bool $encResolved = false;
+
+    private function enc(): ?\API\Core\Encryption
+    {
+        if (!$this->encResolved) {
+            $this->encResolved = true;
+            if (\API\Core\Encryption::available()) {
+                try { $this->enc = new \API\Core\Encryption(); }
+                catch (\Throwable $e) { $this->enc = null; error_log('[InfirmerieService] encryption unavailable: ' . $e->getMessage()); }
+            }
+        }
+        return $this->enc;
+    }
+
+    private function encField(?string $v): ?string
+    {
+        if ($v === null || $v === '') return $v;
+        $e = $this->enc();
+        return $e ? $e->encryptIfPlain($v) : $v;
+    }
+
+    private function decField(?string $v): ?string
+    {
+        if ($v === null || $v === '') return $v;
+        $e = $this->enc();
+        if ($e && $e->isEncrypted($v)) {
+            try { return $e->decrypt($v); } catch (\Throwable $ex) { return $v; }
+        }
+        return $v;
+    }
+
+    /** Déchiffre les champs santé connus d'une ligne (raw + alias). */
+    private function decryptRow(?array $row): ?array
+    {
+        if ($row === null) return null;
+        foreach (self::HEALTH_FIELDS as $f) {
+            if (array_key_exists($f, $row)) $row[$f] = $this->decField($row[$f]);
+        }
+        return $row;
+    }
+
     /* ───────── FICHES SANTÉ ───────── */
 
     public function getFiche(int $eleveId): ?array
@@ -32,11 +79,17 @@ class InfirmerieService
              WHERE fs.eleve_id = ? AND e.etablissement_id = ?"
         );
         $stmt->execute([$eleveId, $etabId]);
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        return $this->decryptRow($stmt->fetch(PDO::FETCH_ASSOC) ?: null);
     }
 
     public function sauvegarderFiche(int $eleveId, array $data): void
     {
+        // Chiffrement at-rest des champs libres médicaux (RGPD Art. 9).
+        $allergies = $this->encField($data['allergies'] ?? null);
+        $traitements = $this->encField($data['traitements'] ?? null);
+        $contact = $this->encField($data['contacts_urgence'] ?? null);
+        $pai = $this->encField($data['pai'] ?? null);
+        $observations = $this->encField($data['remarques'] ?? null);
         $existing = $this->getFiche($eleveId);
         if ($existing) {
             $stmt = $this->pdo->prepare("
@@ -44,8 +97,8 @@ class InfirmerieService
                 WHERE eleve_id=?
             ");
             $stmt->execute([
-                $data['allergies'], $data['traitements'], $data['contacts_urgence'],
-                $data['pai'] ?? null, $data['groupe_sanguin'] ?? null, $data['remarques'] ?? null,
+                $allergies, $traitements, $contact,
+                $pai, $data['groupe_sanguin'] ?? null, $observations,
                 $eleveId,
             ]);
         } else {
@@ -54,8 +107,8 @@ class InfirmerieService
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
-                $eleveId, $data['allergies'], $data['traitements'], $data['contacts_urgence'],
-                $data['pai'] ?? null, $data['groupe_sanguin'] ?? null, $data['remarques'] ?? null,
+                $eleveId, $allergies, $traitements, $contact,
+                $pai, $data['groupe_sanguin'] ?? null, $observations,
             ]);
         }
     }
@@ -80,7 +133,7 @@ class InfirmerieService
         $sql .= ' ORDER BY e.nom, e.prenom';
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map([$this, 'decryptRow'], $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     /* ───────── PASSAGES INFIRMERIE ───────── */
@@ -477,7 +530,7 @@ class InfirmerieService
         $sql .= " ORDER BY e.nom";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        return array_map([$this, 'decryptRow'], $stmt->fetchAll(\PDO::FETCH_ASSOC));
     }
 
     public function getPaiResume(int $eleveId): ?array

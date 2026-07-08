@@ -31,13 +31,22 @@ $log = function (string $msg): void {
 
 $log('=== Fronote Daily Maintenance ===');
 
-// 1. Database backup
+// 1. Full backup (base de données + fichiers uploadés : documents, justificatifs,
+//    PDF — données personnelles qui doivent pouvoir être restaurées, pas seulement
+//    le schéma). createFullBackup() = createDatabaseBackup() + createUploadsBackup().
 $backup = null;
 try {
 	$backup = app('backup');
-	$file = $backup->createDatabaseBackup();
-	$size = is_file($file) ? round(filesize($file) / 1048576, 2) : 0;
-	$log("Backup: created {$file} ({$size} MB)");
+	$full = $backup->createFullBackup();
+	$dbFile = $full['db'] ?? null;
+	$dbSize = ($dbFile && is_file($dbFile)) ? round(filesize($dbFile) / 1048576, 2) : 0;
+	$log("Backup DB: created {$dbFile} ({$dbSize} MB)");
+	if (!empty($full['uploads']) && is_file($full['uploads'])) {
+		$upSize = round(filesize($full['uploads']) / 1048576, 2);
+		$log("Backup uploads: created {$full['uploads']} ({$upSize} MB)");
+	} else {
+		$log('Backup uploads: skipped (no uploads dir or ZipArchive unavailable)');
+	}
 } catch (\Throwable $e) {
 	$log('Backup error: ' . $e->getMessage());
 }

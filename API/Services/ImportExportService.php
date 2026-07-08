@@ -248,6 +248,10 @@ class ImportExportService
         $errors      = [];
         $passwords   = [];
 
+        // Détection de doublon : requête préparée UNE fois (le nom de table est fixe
+        // pour tout l'import), réutilisée à chaque ligne — évite un prepare() par ligne (N+1).
+        $dupStmt = $this->pdo->prepare("SELECT COUNT(*) FROM `{$table}` WHERE mail = ? AND etablissement_id = ?");
+
         while (($row = fgetcsv($fp, 0, ';')) !== false) {
             $lineNum++;
             $data = [];
@@ -267,11 +271,10 @@ class ImportExportService
                 continue;
             }
 
-            // Detection de doublon par email
+            // Detection de doublon par email (requête préparée hors boucle, cf. $dupStmt)
             try {
-                $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM `{$table}` WHERE mail = ? AND etablissement_id = ?");
-                $stmt->execute([$data['mail'], $etab]);
-                if ((int)$stmt->fetchColumn() > 0) {
+                $dupStmt->execute([$data['mail'], $etab]);
+                if ((int)$dupStmt->fetchColumn() > 0) {
                     $nbDoublons++;
                     $errors[] = "Ligne {$lineNum} : email '{$data['mail']}' deja existant (doublon ignore).";
                     continue;

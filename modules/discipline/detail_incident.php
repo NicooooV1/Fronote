@@ -6,7 +6,6 @@
 require_once __DIR__ . '/includes/DisciplineService.php';
 
 $pageTitle = 'Détail incident';
-$currentPage = 'incidents';
 require_once __DIR__ . '/includes/header.php';
 requireAuth();
 
@@ -31,6 +30,11 @@ if (!$incident) {
     echo '<div class="alert alert-danger">Incident introuvable.</div>';
     require_once __DIR__ . '/includes/footer.php';
     exit;
+}
+
+// RGPD : journaliser la consultation d'un incident disciplinaire (donnée sensible).
+if (function_exists('app') && ($__audit = app('audit'))) {
+    $__audit->log('discipline.incident.view', null, ['new' => ['incident_id' => $id, 'eleve_id' => $incident['eleve_id'] ?? null]], \API\Services\AuditService::WARNING);
 }
 
 // Sanctions liées

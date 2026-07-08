@@ -254,11 +254,15 @@ class FileUploadService
         $finfo = new \finfo(FILEINFO_MIME_TYPE);
         $mime  = $finfo->file($real);
         $name  = $displayName ?: basename($relativePath);
+        // Neutraliser l'injection d'en-tête via le nom de fichier (guillemets/CR/LF)
+        // et fournir un filename* RFC 5987 pour les caractères non-ASCII (UTF-8).
+        $asciiName = str_replace(['"', "\r", "\n"], '', $name);
+        $utf8Name  = rawurlencode($name);
         $inline = in_array($mime, ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']);
 
         header('Content-Type: ' . $mime);
         header('Content-Length: ' . filesize($real));
-        header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . $name . '"');
+        header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . $asciiName . '"; filename*=UTF-8\'\'' . $utf8Name);
         header('X-Content-Type-Options: nosniff');
         header('Cache-Control: no-store');
 

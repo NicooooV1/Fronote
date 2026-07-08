@@ -1,0 +1,23 @@
+# Analyse statique Fronote (advisory dans la CI le temps de figer une baseline).
+# Monter le niveau progressivement (0 → 6) puis générer la baseline :
+#   phpstan analyse --generate-baseline phpstan-baseline.neon
+parameters:
+    level: 3
+    paths:
+        - API
+        - modules
+        - admin
+        - rgpd
+        - platform
+        - tenant
+    excludePaths:
+        - vendor/*
+        - tests/*
+        - */Database/*
+        - */lang/*
+    # La couche legacy expose des fonctions globales (Bridge.php) résolues au runtime.
+    scanFiles:
+        - API/Legacy/Bridge.php
+        - API/Core/helpers.php
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: false

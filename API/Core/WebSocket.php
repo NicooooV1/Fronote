@@ -122,6 +122,15 @@ class WebSocket {
             'exp'      => time() + 86400,
         ];
 
+        // Cloisonnement multi-établissement : porter l'établissement dans le jeton
+        // pour que le serveur temps réel puisse namespacer les rooms par tenant
+        // (empêche un join cross-établissement). Best-effort : absent hors contexte.
+        try {
+            $payload['etablissement_id'] = \API\Core\EstablishmentContext::id();
+        } catch (\Throwable $e) {
+            // Pas de contexte établissement résolu : jeton sans scope tenant.
+        }
+
         if (class_exists(\Firebase\JWT\JWT::class)) {
             return \Firebase\JWT\JWT::encode($payload, $jwtSecret, 'HS256');
         }

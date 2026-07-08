@@ -264,23 +264,23 @@ if ($_topbar_is_parent && !empty($_SESSION['user_id'])) {
     <!-- Right actions -->
     <div class="topbar-actions">
         <!-- Search (Ctrl+K) -->
-        <button class="topbar-action-btn" id="topbar-search-btn" title="Recherche (Ctrl+K)" type="button">
-            <i class="fas fa-search"></i>
+        <button class="topbar-action-btn" id="topbar-search-btn" title="Recherche (Ctrl+K)" aria-label="Recherche (Ctrl+K)" type="button">
+            <i class="fas fa-search" aria-hidden="true"></i>
         </button>
 
         <!-- Notifications -->
         <a href="<?= $rootPrefix ?>modules/notifications/notifications.php" class="topbar-action-btn topbar-notif-btn"
-           title="<?= __('nav.notifications') ?>">
-            <i class="fas fa-bell"></i>
+           title="<?= __('nav.notifications') ?>" aria-label="<?= __('nav.notifications') ?>">
+            <i class="fas fa-bell" aria-hidden="true"></i>
             <?php if ($_topbar_notif_count > 0): ?>
             <span class="topbar-badge"><?= $_topbar_notif_count > 99 ? '99+' : $_topbar_notif_count ?></span>
             <?php endif; ?>
         </a>
 
         <!-- Theme toggle -->
-        <button class="topbar-action-btn" id="topbar-theme-toggle" title="Theme" type="button">
-            <i class="fas fa-sun" id="theme-icon-light"></i>
-            <i class="fas fa-moon" id="theme-icon-dark" style="display:none"></i>
+        <button class="topbar-action-btn" id="topbar-theme-toggle" title="Theme" aria-label="<?= __('nav.theme_toggle', ['default' => 'Changer de thème']) ?>" type="button">
+            <i class="fas fa-sun" id="theme-icon-light" aria-hidden="true"></i>
+            <i class="fas fa-moon" id="theme-icon-dark" style="display:none" aria-hidden="true"></i>
         </button>
 
         <!-- Parent child selector -->
@@ -305,14 +305,14 @@ if ($_topbar_is_parent && !empty($_SESSION['user_id'])) {
 
         <!-- Admin link -->
         <?php if ($isAdmin || isAdmin()): ?>
-        <a href="<?= $rootPrefix ?>admin/dashboard.php" class="topbar-action-btn" title="Administration">
-            <i class="fas fa-cogs"></i>
+        <a href="<?= $rootPrefix ?>admin/dashboard.php" class="topbar-action-btn" title="Administration" aria-label="Administration">
+            <i class="fas fa-cogs" aria-hidden="true"></i>
         </a>
         <?php endif; ?>
 
         <!-- User dropdown -->
         <div class="topbar-dropdown topbar-user-dropdown">
-            <button class="topbar-user-avatar" type="button" aria-expanded="false" title="<?= htmlspecialchars($user_fullname) ?>">
+            <button class="topbar-user-avatar" type="button" aria-expanded="false" aria-haspopup="menu" aria-label="<?= __('nav.user_menu', ['default' => 'Menu utilisateur']) ?> — <?= htmlspecialchars($user_fullname) ?>" title="<?= htmlspecialchars($user_fullname) ?>">
                 <?= htmlspecialchars($user_initials) ?>
             </button>
             <div class="topbar-dropdown__menu topbar-dropdown__menu--right">

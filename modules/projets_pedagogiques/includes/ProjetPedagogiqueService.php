@@ -52,7 +52,7 @@ class ProjetPedagogiqueService
 
     public function creerProjet(array $data): int
     {
-        $etabId = $this->etabId() ?? 1;
+        $etabId = \API\Core\EstablishmentContext::id();
         $stmt = $this->pdo->prepare(
             "INSERT INTO projets_pedagogiques (etablissement_id, titre, description, objectifs, type, responsable_id, classes, matieres, date_debut, date_fin, budget, statut)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"

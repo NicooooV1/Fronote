@@ -60,7 +60,7 @@ if (!empty($_SESSION['impersonation'])) {
 ?>
 
     <!-- Main Content -->
-    <div class="main-content">
+    <div class="main-content" id="main-content" role="main" tabindex="-1">
         <div class="top-header">
             <div class="page-title">
                 <?php if ($_pb): ?>

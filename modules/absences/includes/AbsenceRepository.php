@@ -237,12 +237,14 @@ class AbsenceRepository
 
     public function getById(int $id): ?array
     {
-        $sql = "SELECT a.*, e.nom, e.prenom, e.classe 
-                FROM absences a 
-                JOIN eleves e ON a.id_eleve = e.id 
-                WHERE a.id = ?";
+        // Cloisonnement établissement (anti-IDOR cross-tenant) : l'absence n'est
+        // renvoyée que si l'élève rattaché appartient à l'établissement courant.
+        $sql = "SELECT a.*, e.nom, e.prenom, e.classe
+                FROM absences a
+                JOIN eleves e ON a.id_eleve = e.id
+                WHERE a.id = ? AND e.etablissement_id = ?";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$id]);
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         return $result ?: null;
     }

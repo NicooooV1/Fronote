@@ -46,7 +46,7 @@ class SallesMaterielService
     public function creerReservation(array $d): int
     {
         $stmt = $this->pdo->prepare("INSERT INTO reservations_salles (etablissement_id, salle_id, reserveur_id, objet, date_reservation, heure_debut, heure_fin, statut, recurrence) VALUES (?,?,?,?,?,?,?,?,?)");
-        $stmt->execute([$this->etabId() ?? 1, $d['salle_id'], $d['reserveur_id'], $d['objet'], $d['date_reservation'], $d['heure_debut'], $d['heure_fin'], $d['statut'] ?? 'confirmee', $d['recurrence'] ?? 'aucune']);
+        $stmt->execute([\API\Core\EstablishmentContext::id(), $d['salle_id'], $d['reserveur_id'], $d['objet'], $d['date_reservation'], $d['heure_debut'], $d['heure_fin'], $d['statut'] ?? 'confirmee', $d['recurrence'] ?? 'aucune']);
         return $this->pdo->lastInsertId();
     }
 
@@ -162,7 +162,7 @@ class SallesMaterielService
     public function creerMateriel(array $d): int
     {
         $stmt = $this->pdo->prepare("INSERT INTO materiels (etablissement_id, nom, categorie, reference, etat, salle_id, quantite, valeur) VALUES (?,?,?,?,?,?,?,?)");
-        $stmt->execute([$this->etabId() ?? 1, $d['nom'], $d['categorie'], $d['reference'] ?? null, $d['etat'] ?? 'bon', $d['salle_id'] ?: null, $d['quantite'] ?? 1, $d['valeur'] ?? null]);
+        $stmt->execute([\API\Core\EstablishmentContext::id(), $d['nom'], $d['categorie'], $d['reference'] ?? null, $d['etat'] ?? 'bon', $d['salle_id'] ?: null, $d['quantite'] ?? 1, $d['valeur'] ?? null]);
         return $this->pdo->lastInsertId();
     }
 
@@ -426,7 +426,7 @@ class SallesMaterielService
                     $this->pdo->prepare("
                         INSERT INTO reservations_salles (etablissement_id, salle_id, date_reservation, heure_debut, heure_fin, objet, reserveur_id, statut, recurrence)
                         VALUES (:e, :s, :d, :hd, :hf, :m, :di, 'confirmee', 'hebdomadaire')
-                    ")->execute([':e' => $this->etabId() ?? 1, ':s' => $salleId, ':d' => $dateStr, ':hd' => $heureDebut, ':hf' => $heureFin, ':m' => $motif, ':di' => $demandeurId]);
+                    ")->execute([':e' => \API\Core\EstablishmentContext::id(), ':s' => $salleId, ':d' => $dateStr, ':hd' => $heureDebut, ':hf' => $heureFin, ':m' => $motif, ':di' => $demandeurId]);
                     $count++;
                 }
             }

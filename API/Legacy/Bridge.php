@@ -359,13 +359,16 @@ if (!function_exists('enforceModuleAccess')) {
 	function enforceModuleAccess(string $moduleKey): void {
 		$moduleKey = trim($moduleKey);
 		if ($moduleKey === '') return;
+		$roles = [];
 		try {
 			$roles   = getEffectiveRoles();
 			$allowed = app('modules')->isVisibleForRoles($moduleKey, $roles);
 		} catch (\Throwable $e) {
-			// Erreur d'infrastructure (DB/cache) : ne pas verrouiller toute l'application.
-			error_log('[enforceModuleAccess] ' . $e->getMessage());
-			return;
+			// Fail-closed : une erreur d'infrastructure (DB/cache) ne doit JAMAIS
+			// accorder l'accès par défaut. On refuse ce module — l'utilisateur est
+			// renvoyé vers l'accueil (page non gatée), pas verrouillé hors de l'app.
+			error_log('[enforceModuleAccess] infra error, denying module=' . $moduleKey . ' : ' . $e->getMessage());
+			$allowed = false;
 		}
 		if ($allowed) return;
 
@@ -1040,22 +1043,6 @@ if (!function_exists('createResetRequest')) {
 			return $userService->createResetRequest($userId, $userType);
 		} catch (\Exception $e) {
 			error_log("Reset request error: " . $e->getMessage());
-			return false;
-		}
-	}
-}
-
-if (!function_exists('validateUserData')) {
-	function validateUserData() {
-		if (!isset($_SESSION['user'])) {
-			return false;
-		}
-		try {
-			$userProvider = app('auth.provider');
-			$user = $userProvider->retrieveById($_SESSION['user']['id'], $_SESSION['user']['type']);
-			return $user !== null;
-		} catch (\Exception $e) {
-			error_log("User validation error: " . $e->getMessage());
 			return false;
 		}
 	}

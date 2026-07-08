@@ -46,7 +46,7 @@ class ReunionService
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
-            $this->etabId() ?? 1,
+            \API\Core\EstablishmentContext::id(),
             $data['titre'], $data['description'] ?? null, $data['type'],
             $data['date_debut'], $data['date_fin'], $data['lieu'] ?? null,
             $data['classe_id'] ?: null, $data['organisateur_id'], $data['organisateur_type']

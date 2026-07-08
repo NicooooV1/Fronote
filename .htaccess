@@ -33,6 +33,10 @@ RedirectMatch 404 (?i)/(vendor|logs|storage|database|scripts|config|tests|node_m
     Header always set X-Frame-Options "SAMEORIGIN"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
     Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    # Anti-fingerprinting : retirer la bannière de version PHP (expose_php n'est
+    # pas forçable au runtime ; on la supprime au niveau Apache).
+    Header always unset X-Powered-By
+    Header unset X-Powered-By
     # HSTS : sans effet en HTTP clair, actif dès que le site passe en HTTPS.
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains" "expr=%{HTTPS} == 'on'"
 </IfModule>

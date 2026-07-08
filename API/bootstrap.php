@@ -312,16 +312,18 @@ if (php_sapi_name() !== 'cli'
 // Démarrer la session si pas déjà démarrée
 // Nom et path scopés par instance pour éviter les conflits multi-installation
 if (session_status() !== PHP_SESSION_ACTIVE) {
-	$_sessName = getenv('SESSION_NAME') ?: ('fronote_' . INSTANCE_ID);
+	$_sessName     = getenv('SESSION_NAME') ?: ('fronote_' . INSTANCE_ID);
+	$_sessSameSite = getenv('SESSION_SAMESITE') ?: 'Lax';
 	session_start([
-		'use_strict_mode' => true,
-			'cookie_httponly' => true,
+		'use_strict_mode' => true,   // rejette un ID de session non émis par le serveur (anti-fixation)
+		'use_only_cookies' => true,  // jamais d'ID de session propagé dans l'URL (OWASP)
+		'cookie_httponly' => true,
 		'cookie_secure'   => request_is_https(),
-		'cookie_samesite' => 'Lax',
+		'cookie_samesite' => $_sessSameSite,
 		'cookie_path'     => INSTANCE_COOKIE_PATH,
 		'name'            => $_sessName,
 	]);
-	unset($_sessName);
+	unset($_sessName, $_sessSameSite);
 }
 
 // Expiration de session : inactivité (SESSION_LIFETIME) + plafond absolu. Sinon la durée

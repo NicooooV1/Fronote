@@ -6,7 +6,6 @@
 require_once __DIR__ . '/includes/DisciplineService.php';
 
 $pageTitle = 'Fiche discipline';
-$currentPage = 'incidents';
 require_once __DIR__ . '/includes/header.php';
 requireAuth();
 
@@ -25,6 +24,12 @@ if (!$eleveId) {
 
 $pdo = getPDO();
 $service = new DisciplineService($pdo);
+
+// RGPD : journaliser toute consultation d'un dossier disciplinaire (donnée
+// personnelle sensible : sanctions), à l'image des dossiers de santé.
+if (function_exists('app') && ($__audit = app('audit'))) {
+    $__audit->log('discipline.fiche.view', null, ['new' => ['eleve_id' => $eleveId]], \API\Services\AuditService::WARNING);
+}
 
 // Infos élève
 $stmtEleve = $pdo->prepare("SELECT * FROM eleves WHERE id = ?");

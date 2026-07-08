@@ -2,9 +2,9 @@ name: validate
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'chore/**', 'feat/**', 'release/**']
   pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   lint:
@@ -88,3 +88,35 @@ jobs:
         run: composer install --no-interaction --prefer-dist --no-progress
       - name: Run unit tests
         run: vendor/bin/phpunit --testsuite unit
+
+  websocket-audit:
+    name: WebSocket deps audit (npm)
+    runs-on: ubuntu-latest
+    continue-on-error: true   # advisory : le serveur temps réel est optionnel
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: npm audit (websocket)
+        working-directory: websocket
+        run: npm audit --omit=dev || true
+
+  static-analysis:
+    name: Static analysis (PHPStan, advisory)
+    runs-on: ubuntu-latest
+    continue-on-error: true   # advisory tant que la baseline n'est pas figée
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: sodium, zip, json, pdo, pdo_mysql, mbstring
+          coverage: none
+          tools: composer:v2, phpstan
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress --no-dev
+      - name: Provision a minimal .env for bootstrap
+        run: cp .env.ci.example .env
+      - name: PHPStan
+        run: phpstan analyse --no-progress

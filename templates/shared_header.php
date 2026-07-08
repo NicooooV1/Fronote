@@ -352,6 +352,8 @@ try {
 </head>
 <body>
 
+<a href="#main-content" class="skip-link"><?= __('a11y.skip_to_content', ['default' => 'Aller au contenu principal']) ?></a>
+
 <?php include __DIR__ . '/cookie_consent.php'; ?>
 
 <div class="app-container">

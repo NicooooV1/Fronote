@@ -1,6 +1,7 @@
 <?php
 /**
- * M32 – Transports & Internat — Service
+ * M32 – Transports — Service
+ * (Le volet internat a été retiré : voir modules/internat/includes/InternatService.php.)
  */
 class TransportInternatService
 {
@@ -28,7 +29,7 @@ class TransportInternatService
     public function getLignes(?string $type = null): array
     {
         $sql = "SELECT lt.*, (SELECT COUNT(*) FROM inscriptions_transport it WHERE it.ligne_id = lt.id) AS nb_inscrits FROM lignes_transport lt WHERE lt.etablissement_id = ?";
-        $params = [$this->etabId() ?? 1];
+        $params = [\API\Core\EstablishmentContext::id()];
         if ($type) { $sql .= ' AND lt.type = ?'; $params[] = $type; }
         $sql .= ' ORDER BY lt.nom';
         $stmt = $this->pdo->prepare($sql);
@@ -39,14 +40,14 @@ class TransportInternatService
     public function getLigne(int $id): ?array
     {
         $stmt = $this->pdo->prepare("SELECT * FROM lignes_transport WHERE id = ? AND etablissement_id = ?");
-        $stmt->execute([$id, $this->etabId() ?? 1]);
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function creerLigne(array $d): int
     {
         $stmt = $this->pdo->prepare("INSERT INTO lignes_transport (etablissement_id, nom, type, itineraire, horaire_depart, horaire_arrivee, capacite) VALUES (?,?,?,?,?,?,?)");
-        $stmt->execute([$this->etabId() ?? 1, $d['nom'], $d['type'], $d['itineraire'] ?? null, $d['horaire_depart'] ?? null, $d['horaire_arrivee'] ?? null, $d['capacite'] ?? null]);
+        $stmt->execute([\API\Core\EstablishmentContext::id(), $d['nom'], $d['type'], $d['itineraire'] ?? null, $d['horaire_depart'] ?? null, $d['horaire_arrivee'] ?? null, $d['capacite'] ?? null]);
         return $this->pdo->lastInsertId();
     }
 
@@ -55,7 +56,7 @@ class TransportInternatService
     public function inscrireTransport(int $ligneId, int $eleveId, ?string $arret): void
     {
         $stmt = $this->pdo->prepare("INSERT IGNORE INTO inscriptions_transport (etablissement_id, ligne_id, eleve_id, arret, annee_scolaire) VALUES (?,?,?,?,?)");
-        $stmt->execute([$this->etabId() ?? 1, $ligneId, $eleveId, $arret, $this->anneeScolaire()]);
+        $stmt->execute([\API\Core\EstablishmentContext::id(), $ligneId, $eleveId, $arret, $this->anneeScolaire()]);
     }
 
     public function getInscritsLigne(int $ligneId): array
@@ -70,51 +71,6 @@ class TransportInternatService
         $stmt = $this->pdo->prepare("SELECT it.*, lt.nom AS ligne_nom, lt.type FROM inscriptions_transport it JOIN lignes_transport lt ON it.ligne_id = lt.id WHERE it.eleve_id = ?");
         $stmt->execute([$eleveId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    /* ───── INTERNAT ───── */
-
-    public function getChambres(?string $batiment = null): array
-    {
-        $sql = "SELECT ic.*, (SELECT COUNT(*) FROM internat_affectations ia WHERE ia.chambre_id = ic.id AND ia.annee_scolaire = ?) AS nb_occupants FROM internat_chambres ic WHERE ic.etablissement_id = ?";
-        $params = [$this->anneeScolaire(), $this->etabId() ?? 1];
-        if ($batiment) { $sql .= ' AND ic.batiment = ?'; $params[] = $batiment; }
-        $sql .= ' ORDER BY ic.batiment, ic.etage, ic.numero';
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    public function getChambre(int $id): ?array
-    {
-        $stmt = $this->pdo->prepare("SELECT * FROM internat_chambres WHERE id = ? AND etablissement_id = ?");
-        $stmt->execute([$id, $this->etabId() ?? 1]);
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-    }
-
-    public function creerChambre(array $d): int
-    {
-        $stmt = $this->pdo->prepare("INSERT INTO internat_chambres (etablissement_id, numero, batiment, etage, capacite, type) VALUES (?,?,?,?,?,?)");
-        $stmt->execute([$this->etabId() ?? 1, $d['numero'], $d['batiment'] ?? null, $d['etage'] ?? null, $d['capacite'] ?? 1, $d['type'] ?? 'simple']);
-        return $this->pdo->lastInsertId();
-    }
-
-    public function getOccupants(int $chambreId): array
-    {
-        $stmt = $this->pdo->prepare("SELECT ia.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, cl.nom AS classe_nom FROM internat_affectations ia JOIN eleves e ON ia.eleve_id = e.id LEFT JOIN classes cl ON e.classe = cl.nom WHERE ia.chambre_id = ? AND ia.annee_scolaire = ? ORDER BY e.nom");
-        $stmt->execute([$chambreId, $this->anneeScolaire()]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    public function affecterChambre(int $chambreId, int $eleveId): void
-    {
-        $chambre = $this->getChambre($chambreId);
-        $occupants = $this->getOccupants($chambreId);
-        if ($chambre && count($occupants) >= $chambre['capacite']) {
-            throw new RuntimeException('Chambre pleine.');
-        }
-        $stmt = $this->pdo->prepare("INSERT INTO internat_affectations (etablissement_id, chambre_id, eleve_id, annee_scolaire, date_debut) VALUES (?,?,?,?,?)");
-        $stmt->execute([$this->etabId() ?? 1, $chambreId, $eleveId, $this->anneeScolaire(), date('Y-m-d')]);
     }
 
     /* ───── TRANSPORT DELAYS ───── */
@@ -148,42 +104,6 @@ class TransportInternatService
         } catch (\Exception $e) { error_log('[TransportInternatService.php] ' . $e->getMessage()); }
     }
 
-    /* ───── INTERNAT ATTENDANCE ───── */
-
-    /**
-     * Record evening/morning attendance for internat.
-     */
-    public function pointerPresenceInternat(int $affectationId, string $type): void
-    {
-        // internat_affectations has no presence_matin/presence_soir columns; presence is tracked via internat_reglement entree/sortie.
-        $stmt = $this->pdo->prepare("SELECT chambre_id, eleve_id FROM internat_affectations WHERE id = ? AND etablissement_id = ?");
-        $stmt->execute([$affectationId, $this->etabId() ?? 1]);
-        $aff = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$aff) { return; }
-        $regType = ($type === 'matin') ? 'sortie' : 'entree';
-        $this->pdo->prepare("INSERT INTO internat_reglement (eleve_id, chambre_id, type) VALUES (?,?,?)")
-                   ->execute([$aff['eleve_id'], $aff['chambre_id'], $regType]);
-    }
-
-    /**
-     * Get internat attendance for a date.
-     */
-    public function getPresenceInternat(string $date): array
-    {
-        $stmt = $this->pdo->prepare("
-            SELECT ia.*, ic.numero AS chambre_numero, ic.batiment,
-                   CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, cl.nom AS classe_nom
-            FROM internat_affectations ia
-            JOIN internat_chambres ic ON ia.chambre_id = ic.id
-            JOIN eleves e ON ia.eleve_id = e.id
-            LEFT JOIN classes cl ON e.classe = cl.nom
-            WHERE ia.annee_scolaire = ?
-            ORDER BY ic.batiment, ic.numero, e.nom
-        ");
-        $stmt->execute([$this->anneeScolaire()]);
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-    }
-
     /* ───── HELPERS ───── */
 
     public function getEleves(): array
@@ -193,19 +113,9 @@ class TransportInternatService
         return $s->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function getBatiments(): array
-    {
-        return $this->pdo->query("SELECT DISTINCT batiment FROM internat_chambres WHERE batiment IS NOT NULL ORDER BY batiment")->fetchAll(PDO::FETCH_COLUMN);
-    }
-
     public static function typesTransport(): array
     {
         return ['bus' => 'Bus', 'navette' => 'Navette', 'train' => 'Train', 'autre' => 'Autre'];
-    }
-
-    public static function typesChambre(): array
-    {
-        return ['simple' => 'Simple', 'double' => 'Double', 'triple' => 'Triple', 'dortoir' => 'Dortoir'];
     }
 
     /* ───── EXPORT ───── */

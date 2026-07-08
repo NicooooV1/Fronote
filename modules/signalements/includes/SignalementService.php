@@ -16,7 +16,7 @@ class SignalementService
         // Generate a unique tracking token for anonymous follow-up
         $trackingToken = bin2hex(random_bytes(32));
 
-        $etab = $this->etabId() ?? 1;
+        $etab = \API\Core\EstablishmentContext::id();
         $stmt = $this->pdo->prepare("
             INSERT INTO signalements (
                 etablissement_id, auteur_id, auteur_type, type, description, lieu, date_faits,

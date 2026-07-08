@@ -19,8 +19,8 @@ class DiplomeService
                 FROM diplomes d
                 JOIN eleves e ON d.eleve_id = e.id
                 LEFT JOIN classes c ON e.classe = c.nom
-                WHERE 1=1";
-        $params = [];
+                WHERE e.etablissement_id = ?";
+        $params = [\API\Core\EstablishmentContext::id()];
         if (!empty($filters['type'])) { $sql .= ' AND d.type = ?'; $params[] = $filters['type']; }
         if (!empty($filters['eleve_id'])) { $sql .= ' AND d.eleve_id = ?'; $params[] = $filters['eleve_id']; }
         if (!empty($filters['mention'])) { $sql .= ' AND d.mention = ?'; $params[] = $filters['mention']; }
@@ -33,9 +33,12 @@ class DiplomeService
 
     public function getDiplome(int $id): ?array
     {
+        // Cloisonnement établissement (anti-IDOR cross-tenant) : le diplôme n'est
+        // renvoyé que si l'élève rattaché appartient à l'établissement courant.
         $stmt = $this->pdo->prepare("SELECT d.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, c.nom AS classe_nom
-                FROM diplomes d JOIN eleves e ON d.eleve_id = e.id LEFT JOIN classes c ON e.classe = c.nom WHERE d.id = ?");
-        $stmt->execute([$id]);
+                FROM diplomes d JOIN eleves e ON d.eleve_id = e.id LEFT JOIN classes c ON e.classe = c.nom
+                WHERE d.id = ? AND e.etablissement_id = ?");
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 

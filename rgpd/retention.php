@@ -28,7 +28,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     }
 
     if ($action === 'execute_purge') {
-        $results = $rgpdService->executerPurge();
+        // Purge CLOISONNÉE à l'établissement de l'admin courant (jamais cross-tenant).
+        $results = $rgpdService->executerPurge(\API\Core\EstablishmentContext::id());
         $totalPurged = 0;
         foreach ($results as $r) {
             $totalPurged += $r['purged'] ?? 0;

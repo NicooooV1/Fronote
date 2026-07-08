@@ -3,14 +3,19 @@
  * M23 – RGPD — Export de mes données (Art. 15 Droit d'accès)
  * Permet à chaque utilisateur de télécharger toutes ses données
  */
-$pageTitle = 'Exporter mes données';
-$activePage = 'mes_donnees';
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/../API/Legacy/Bridge.php';
+requireAuth();
 
-$userId = getUserId();
+$userId   = getUserId();
 $userType = getUserRole();
 
-if (isset($_GET['download']) && $_GET['download'] === '1' && validateCSRFToken()) {
+// Téléchargement JSON — traité AVANT tout rendu HTML : (1) sinon le header
+// régénère des tokens CSRF à usage unique qui évincent (FIFO) le token soumis
+// et la validation échouerait ; (2) les en-têtes de fichier ne peuvent être posés
+// qu'avant toute sortie. POST + CSRF obligatoires (token hors URL, cf. formulaire).
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['download'] ?? '') === '1' && validateCSRFToken()) {
+    require_once __DIR__ . '/includes/AuditRgpdService.php';
+    $rgpdService = new AuditRgpdService(getPDO());
     $data = $rgpdService->exporterDonneesUtilisateur($userId, $userType);
 
     // Traçabilité RGPD (Art.15) : journaliser l'export, comme annoncé à l'utilisateur.
@@ -24,6 +29,10 @@ if (isset($_GET['download']) && $_GET['download'] === '1' && validateCSRFToken()
     echo json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     exit;
 }
+
+$pageTitle = 'Exporter mes données';
+$activePage = 'mes_donnees';
+require_once __DIR__ . '/includes/header.php';
 ?>
 
 <div class="content-wrapper">
@@ -64,10 +73,13 @@ if (isset($_GET['download']) && $_GET['download'] === '1' && validateCSRFToken()
     <div class="card">
         <div class="card-body text-center" style="padding:2rem">
             <p class="text-muted mb-3">Le fichier sera généré instantanément au format JSON.</p>
-            <a href="export_donnees.php?download=1&csrf_token=<?= htmlspecialchars(generateCSRFToken()) ?>" 
-               class="btn btn-primary btn-lg">
-                <i class="fas fa-download"></i> Télécharger mes données
-            </a>
+            <form method="post" action="export_donnees.php" style="display:inline">
+                <input type="hidden" name="download" value="1">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generateCSRFToken()) ?>">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="fas fa-download"></i> Télécharger mes données
+                </button>
+            </form>
             <p class="text-muted mt-2" style="font-size:.85rem">
                 Ce téléchargement est soumis à authentification et tracé dans le journal d'audit.
             </p>

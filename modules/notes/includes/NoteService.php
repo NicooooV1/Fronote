@@ -741,7 +741,7 @@ class NoteService
                 ) par_eleve
                 GROUP BY trimestre
             ");
-            $stmt->execute([$classe, (int) ($eleve['etablissement_id'] ?? 1)]);
+            $stmt->execute([$classe, (int) ($eleve['etablissement_id'] ?? \API\Core\EstablishmentContext::id())]);
 
             $classeTrim = [null, null, null];
             $nbEleves = 0;
@@ -753,7 +753,7 @@ class NoteService
             }
             // Combien d'élèves dans la classe ? (n'afficher la comparaison que si pertinent)
             $cnt = $this->pdo->prepare("SELECT COUNT(*) FROM eleves WHERE classe = ? AND etablissement_id = ?");
-            $cnt->execute([$classe, (int) ($eleve['etablissement_id'] ?? 1)]);
+            $cnt->execute([$classe, (int) ($eleve['etablissement_id'] ?? \API\Core\EstablishmentContext::id())]);
             $nbEleves = (int) $cnt->fetchColumn();
 
             if ($nbEleves > 1 && array_filter($classeTrim, fn($v) => $v !== null)) {

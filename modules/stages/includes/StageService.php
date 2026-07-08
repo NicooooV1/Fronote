@@ -59,7 +59,7 @@ class StageService
     {
         $stmt = $this->pdo->prepare("INSERT INTO stages (etablissement_id, eleve_id, type, entreprise_nom, entreprise_adresse, entreprise_contact, tuteur_nom, tuteur_email, professeur_referent_id, date_debut, date_fin, statut, description) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
         $stmt->execute([
-            $this->etabId() ?? 1, $d['eleve_id'], $d['type'], $d['entreprise_nom'], $d['entreprise_adresse'] ?? null,
+            \API\Core\EstablishmentContext::id(), $d['eleve_id'], $d['type'], $d['entreprise_nom'], $d['entreprise_adresse'] ?? null,
             $d['entreprise_tel'] ?? null, $d['tuteur_nom'] ?? null, $d['tuteur_email'] ?? null,
             $d['prof_referent_id'] ?: null, $d['date_debut'], $d['date_fin'],
             $d['statut'] ?? 'brouillon', $d['description'] ?? null
