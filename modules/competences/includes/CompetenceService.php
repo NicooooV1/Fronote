@@ -136,9 +136,9 @@ class CompetenceService {
             SELECT ce.*, e.nom AS eleve_nom, e.prenom AS eleve_prenom
             FROM competence_evaluations ce
             JOIN eleves e ON ce.eleve_id = e.id
-            WHERE e.classe = (SELECT nom FROM classes WHERE id = ?) AND ce.competence_id = ?
+            WHERE e.classe = (SELECT nom FROM classes WHERE id = ?) AND e.etablissement_id = ? AND ce.competence_id = ?
         ";
-        $params = [$classeId, $competenceId];
+        $params = [$classeId, \API\Core\EstablishmentContext::id(), $competenceId];
         if ($periodeId) {
             $sql .= " AND ce.periode_id = ?";
             $params[] = $periodeId;
@@ -191,9 +191,9 @@ class CompetenceService {
             FROM competence_evaluations ce
             JOIN competences c ON ce.competence_id = c.id
             JOIN eleves e ON ce.eleve_id = e.id
-            WHERE e.classe = (SELECT nom FROM classes WHERE id = ?)
+            WHERE e.classe = (SELECT nom FROM classes WHERE id = ?) AND e.etablissement_id = ?
         ";
-        $params = [$classeId];
+        $params = [$classeId, \API\Core\EstablishmentContext::id()];
         if ($periodeId) {
             $sql .= " AND ce.periode_id = ?";
             $params[] = $periodeId;
@@ -316,9 +316,9 @@ class CompetenceService {
             FROM competence_evaluations ce
             JOIN competences c ON ce.competence_id = c.id
             JOIN eleves e ON ce.eleve_id = e.id
-            WHERE e.classe = (SELECT nom FROM classes WHERE id = ?)
+            WHERE e.classe = (SELECT nom FROM classes WHERE id = ?) AND e.etablissement_id = ?
         ";
-        $params = [$classeId];
+        $params = [$classeId, \API\Core\EstablishmentContext::id()];
         if ($periodeId) {
             $sql .= " AND ce.periode_id = ?";
             $params[] = $periodeId;

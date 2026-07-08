@@ -261,6 +261,10 @@ class DocumentService {
      */
     public function restoreVersion(int $docId, int $versionNumber, int $userId, string $userType): bool
     {
+        // Le document parent doit appartenir à l'établissement courant (getDocument scopé).
+        if (!$this->getDocument($docId)) {
+            return false;
+        }
         $stmt = $this->pdo->prepare("SELECT * FROM document_versions WHERE document_id = ? AND version = ?");
         $stmt->execute([$docId, $versionNumber]);
         $version = $stmt->fetch(\PDO::FETCH_ASSOC);
