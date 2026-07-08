@@ -113,11 +113,12 @@ class CompetenceService {
                    m.nom AS matiere_nom
             FROM competence_evaluations ce
             JOIN competences c ON ce.competence_id = c.id
+            JOIN eleves el ON ce.eleve_id = el.id
             LEFT JOIN professeurs p ON ce.professeur_id = p.id
             LEFT JOIN matieres m ON ce.matiere_id = m.id
-            WHERE ce.eleve_id = ?
+            WHERE ce.eleve_id = ? AND el.etablissement_id = ?
         ";
-        $params = [$eleveId];
+        $params = [$eleveId, \API\Core\EstablishmentContext::id()];
         if ($periodeId) {
             $sql .= " AND ce.periode_id = ?";
             $params[] = $periodeId;
@@ -446,9 +447,9 @@ class CompetenceService {
             JOIN competences c ON ce.competence_id = c.id
             LEFT JOIN professeurs p ON ce.professeur_id = p.id
             LEFT JOIN matieres m ON ce.matiere_id = m.id
-            WHERE e.classe = (SELECT nom FROM classes WHERE id = ?)
+            WHERE e.classe = (SELECT nom FROM classes WHERE id = ?) AND e.etablissement_id = ?
         ";
-        $params = [$classeId];
+        $params = [$classeId, \API\Core\EstablishmentContext::id()];
         if ($periodeId) { $sql .= ' AND ce.periode_id = ?'; $params[] = $periodeId; }
         $sql .= ' ORDER BY e.nom, c.domaine, c.ordre';
         $stmt = $this->pdo->prepare($sql);
