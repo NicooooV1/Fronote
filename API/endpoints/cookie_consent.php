@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Endpoint: save cookie consent level.
  * POST /API/endpoints/cookie_consent.php

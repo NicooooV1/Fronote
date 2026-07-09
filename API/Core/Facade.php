@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Facade Pattern - Accès statique aux services du container
  */

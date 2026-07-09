@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Module Boot — Point d'entrée standardisé pour tous les modules Fronote
  *

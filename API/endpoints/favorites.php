@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * API endpoint: gestion des modules favoris (épinglés) de l'utilisateur.
  * POST /API/endpoints/favorites.php

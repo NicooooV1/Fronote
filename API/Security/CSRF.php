@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * CSRF Token Manager
  * Implémente le pattern Token Bucket avec rotation

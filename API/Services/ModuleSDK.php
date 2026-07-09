@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Module SDK — Découverte, validation et gestion des modules via module.json
  *

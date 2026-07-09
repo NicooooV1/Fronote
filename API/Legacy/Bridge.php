@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Legacy Bridge - Pont de compatibilité avec l'ancien code
  * Les fonctions sont créées uniquement si elles n'existent pas déjà.

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Interface pour les fournisseurs de données de widgets
  *

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * API REST centralisée — Messagerie Fronote
  * Point d'entrée unique pour toutes les opérations messagerie.

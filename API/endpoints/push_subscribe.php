@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * API endpoint: Push notification subscription management
  * POST /API/endpoints/push_subscribe.php

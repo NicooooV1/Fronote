@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * FmodService — Build, sign and verify Fronote module packages (.fmod).
  *

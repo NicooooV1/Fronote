@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Point d'entrée legacy — maintenu pour rétrocompatibilité des require_once existants.
  * Tous les modules devraient utiliser bootstrap.php directement.

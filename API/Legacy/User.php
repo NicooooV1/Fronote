@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Legacy User class — Façade pour le panneau d'administration
  *

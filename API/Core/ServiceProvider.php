@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Base Service Provider Class
  * All providers must extend this class

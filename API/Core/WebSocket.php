@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Gestion des notifications WebSocket
  * Permet au back-end PHP d'émettre des événements vers le serveur WS

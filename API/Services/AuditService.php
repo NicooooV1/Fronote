@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Audit Service - Event Sourcing pour traçabilité complète
  * Enregistre toutes les actions critiques dans la base de données

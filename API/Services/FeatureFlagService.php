@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Service de Feature Flags pour le système multi-établissement
  *

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * API centralisée — Agenda : récupérer les personnes par type (AJAX)
  *

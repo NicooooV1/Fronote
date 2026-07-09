@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Service d'internationalisation (i18n) pour Fronote
  *
