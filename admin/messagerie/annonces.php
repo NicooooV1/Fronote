@@ -108,16 +108,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
     }
 }
 
-// Historique des annonces
-$annonces = $pdo->query("
+// Historique des annonces — cloisonné à l'établissement courant.
+$annStmt = $pdo->prepare("
     SELECT c.id, c.subject, c.created_at, m.body,
         (SELECT COUNT(*) FROM conversation_participants cp WHERE cp.conversation_id = c.id AND cp.user_type != 'administrateur') AS dest_count
     FROM conversations c
     JOIN messages m ON m.conversation_id = c.id AND m.status = 'annonce'
-    WHERE c.type = 'broadcast'
+    WHERE c.type = 'broadcast' AND c.etablissement_id = ?
     ORDER BY c.created_at DESC
     LIMIT 30
-")->fetchAll(PDO::FETCH_ASSOC);
+");
+$annStmt->execute([$etabId]);
+$annonces = $annStmt->fetchAll(PDO::FETCH_ASSOC);
 
 $pageTitle = 'Annonces';
 $currentPage = 'msg_annonces';

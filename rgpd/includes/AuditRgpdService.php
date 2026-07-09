@@ -424,9 +424,12 @@ class AuditRgpdService
              ORDER BY m.created_at DESC",
             [$userId, $userType]);
 
-        // 6. Sessions / connexions
+        // 6. Sessions / connexions — on N'EXPORTE PAS la colonne `id` (= identifiant de
+        // session PHP actif) : un export contenant des tokens de session vivants permettrait
+        // un détournement de session. On ne fournit que les métadonnées (transparence RGPD).
         $data['sessions'] = $this->collecte('sessions',
-            "SELECT * FROM session_security WHERE user_id = ? AND user_type = ? ORDER BY created_at DESC LIMIT 50",
+            "SELECT user_id, user_type, ip_address, user_agent, is_active, created_at, last_activity, expires_at
+             FROM session_security WHERE user_id = ? AND user_type = ? ORDER BY created_at DESC LIMIT 50",
             [$userId, $userType]);
 
         // 7. Audit logs relatifs
