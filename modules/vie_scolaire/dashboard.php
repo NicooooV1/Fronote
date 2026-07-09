@@ -3,7 +3,6 @@
  * Vie scolaire — Tableau de bord consolidé
  */
 require_once __DIR__ . '/includes/VieScolaireService.php';
-$currentPage = 'dashboard';
 $pageTitle = 'Vie scolaire — Tableau de bord';
 
 require_once __DIR__ . '/../../API/core.php';

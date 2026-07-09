@@ -39,8 +39,10 @@ class SupportService
 
     public function getTicketsUser(int $userId, string $userType): array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM tickets_support WHERE user_id = ? AND user_type = ? ORDER BY date_creation DESC");
-        $stmt->execute([$userId, $userType]);
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
+        $stmt = $this->pdo->prepare("SELECT * FROM tickets_support WHERE user_id = ? AND user_type = ? AND etablissement_id = ? ORDER BY date_creation DESC");
+        $stmt->execute([$userId, $userType, $etabId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -84,8 +86,8 @@ class SupportService
         // On NE force PLUS 'resolu' : une réponse passe un ticket 'ouvert' à
         // 'en_cours' (le staff clôt explicitement via le statut). Conserve
         // `reponse` = dernière réponse (rétro-compat export/affichage legacy).
-        $this->pdo->prepare("UPDATE tickets_support SET reponse = ?, traite_par = ?, date_reponse = NOW(), statut = CASE WHEN statut = 'ouvert' THEN 'en_cours' ELSE statut END WHERE id = ?")
-            ->execute([$reponse, $adminId, $id]);
+        $this->pdo->prepare("UPDATE tickets_support SET reponse = ?, traite_par = ?, date_reponse = NOW(), statut = CASE WHEN statut = 'ouvert' THEN 'en_cours' ELSE statut END WHERE id = ? AND etablissement_id = ?")
+            ->execute([$reponse, $adminId, $id, (int)$ticket['etablissement_id']]);
         $this->notifier((int) $ticket['user_id'], $ticket['user_type'], 'Réponse à votre ticket #' . $id,
             mb_substr($reponse, 0, 140), 'modules/support/voir_ticket.php?id=' . $id);
         return true;
@@ -93,7 +95,7 @@ class SupportService
 
     public function changerStatut(int $id, string $statut): bool
     {
-        $ok = $this->pdo->prepare("UPDATE tickets_support SET statut = ? WHERE id = ?")->execute([$statut, $id]);
+        $ok = $this->pdo->prepare("UPDATE tickets_support SET statut = ? WHERE id = ? AND etablissement_id = ?")->execute([$statut, $id, $this->etabId()]);
         if ($ok) {
             $t = $this->getTicket($id);
             if ($t) {
@@ -128,7 +130,7 @@ class SupportService
         if (!$ticket) return false;
         $this->addMessage($id, $userId, $userType, $contenu, false);
         // Rouvre un ticket résolu si le demandeur relance.
-        $this->pdo->prepare("UPDATE tickets_support SET statut = CASE WHEN statut IN ('resolu','ferme') THEN 'en_cours' ELSE statut END, date_modification = NOW() WHERE id = ?")->execute([$id]);
+        $this->pdo->prepare("UPDATE tickets_support SET statut = CASE WHEN statut IN ('resolu','ferme') THEN 'en_cours' ELSE statut END, date_modification = NOW() WHERE id = ? AND etablissement_id = ?")->execute([$id, (int)$ticket['etablissement_id']]);
         $this->notifierStaff($this->etabId(), 'Réponse au ticket #' . $id . ' : ' . ($ticket['sujet'] ?? ''), $id);
         return true;
     }
@@ -196,39 +198,43 @@ class SupportService
 
     public function getFaqArticle(int $id): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM faq_articles WHERE id = ?");
-        $stmt->execute([$id]);
+        $sql = "SELECT * FROM faq_articles WHERE id = ?";
+        $params = [$id];
+        $etabId = $this->etabId();
+        if ($etabId !== null) { $sql .= " AND etablissement_id = ?"; $params[] = $etabId; }
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function incrementerVues(int $id): void
     {
-        $this->pdo->prepare("UPDATE faq_articles SET vues = vues + 1 WHERE id = ?")->execute([$id]);
+        $this->pdo->prepare("UPDATE faq_articles SET vues = vues + 1 WHERE id = ? AND etablissement_id = ?")->execute([$id, $this->etabId()]);
     }
 
     public function voterUtile(int $id, bool $utile): void
     {
         $col = $utile ? 'utile_oui' : 'utile_non';
-        $this->pdo->prepare("UPDATE faq_articles SET $col = $col + 1 WHERE id = ?")->execute([$id]);
+        $this->pdo->prepare("UPDATE faq_articles SET $col = $col + 1 WHERE id = ? AND etablissement_id = ?")->execute([$id, $this->etabId()]);
     }
 
     public function creerFaq(string $question, string $reponse, string $categorie, int $ordre = 0, ?int $auteurId = null): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO faq_articles (question, reponse, categorie, ordre, auteur_id) VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([$question, $reponse, $categorie, $ordre, $auteurId]);
+        $stmt = $this->pdo->prepare("INSERT INTO faq_articles (etablissement_id, question, reponse, categorie, ordre, auteur_id) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$this->etabId(), $question, $reponse, $categorie, $ordre, $auteurId]);
         return (int)$this->pdo->lastInsertId();
     }
 
     public function modifierFaq(int $id, string $question, string $reponse, string $categorie, int $ordre = 0): bool
     {
-        $stmt = $this->pdo->prepare("UPDATE faq_articles SET question = ?, reponse = ?, categorie = ?, ordre = ? WHERE id = ?");
-        return $stmt->execute([$question, $reponse, $categorie, $ordre, $id]);
+        $stmt = $this->pdo->prepare("UPDATE faq_articles SET question = ?, reponse = ?, categorie = ?, ordre = ? WHERE id = ? AND etablissement_id = ?");
+        return $stmt->execute([$question, $reponse, $categorie, $ordre, $id, $this->etabId()]);
     }
 
     public function supprimerFaq(int $id): bool
     {
-        $stmt = $this->pdo->prepare("DELETE FROM faq_articles WHERE id = ?");
-        return $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare("DELETE FROM faq_articles WHERE id = ? AND etablissement_id = ?");
+        return $stmt->execute([$id, $this->etabId()]);
     }
 
     // ── Helpers statiques ──
@@ -350,16 +356,16 @@ class SupportService
      */
     public function recordFirstResponse(int $ticketId): void
     {
-        $this->pdo->prepare("UPDATE tickets_support SET first_response_at = NOW() WHERE id = ? AND first_response_at IS NULL")
-                   ->execute([$ticketId]);
+        $this->pdo->prepare("UPDATE tickets_support SET first_response_at = NOW() WHERE id = ? AND first_response_at IS NULL AND etablissement_id = ?")
+                   ->execute([$ticketId, $this->etabId()]);
     }
 
     // ─── SLA PAR CATÉGORIE ───
 
     public function getSla(string $categorie, string $priorite = 'normale'): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM support_sla WHERE categorie = :c AND priorite = :p");
-        $stmt->execute([':c' => $categorie, ':p' => $priorite]);
+        $stmt = $this->pdo->prepare("SELECT * FROM support_sla WHERE categorie = :c AND priorite = :p AND etablissement_id = :etab");
+        $stmt->execute([':c' => $categorie, ':p' => $priorite, ':etab' => $this->etabId()]);
         return $stmt->fetch(\PDO::FETCH_ASSOC) ?: null;
     }
 
@@ -367,9 +373,9 @@ class SupportService
 
     public function getReponsesTypes(?string $categorie = null): array
     {
-        $sql = "SELECT * FROM support_reponses_types";
-        $params = [];
-        if ($categorie) { $sql .= " WHERE categorie = :c"; $params[':c'] = $categorie; }
+        $sql = "SELECT * FROM support_reponses_types WHERE etablissement_id = :etab";
+        $params = [':etab' => $this->etabId()];
+        if ($categorie) { $sql .= " AND categorie = :c"; $params[':c'] = $categorie; }
         $sql .= " ORDER BY titre";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
@@ -380,22 +386,23 @@ class SupportService
 
     public function noterSatisfaction(int $ticketId, int $note, string $commentaire = ''): void
     {
-        $this->pdo->prepare("UPDATE tickets_support SET satisfaction_note = :n, satisfaction_commentaire = :c WHERE id = :id")
-            ->execute([':n' => $note, ':c' => $commentaire, ':id' => $ticketId]);
+        $this->pdo->prepare("UPDATE tickets_support SET satisfaction_note = :n, satisfaction_commentaire = :c WHERE id = :id AND etablissement_id = :etab")
+            ->execute([':n' => $note, ':c' => $commentaire, ':id' => $ticketId, ':etab' => $this->etabId()]);
     }
 
     // ─── AUTO-SUGGEST FAQ ───
 
     public function suggestFaq(string $sujet): array
     {
-        $stmt = $this->pdo->prepare("SELECT id, question, reponse FROM faq_articles WHERE MATCH(question, reponse) AGAINST(:s IN NATURAL LANGUAGE MODE) LIMIT 5");
+        $etab = $this->etabId();
+        $stmt = $this->pdo->prepare("SELECT id, question, reponse FROM faq_articles WHERE MATCH(question, reponse) AGAINST(:s IN NATURAL LANGUAGE MODE) AND etablissement_id = :etab LIMIT 5");
         try {
-            $stmt->execute([':s' => $sujet]);
+            $stmt->execute([':s' => $sujet, ':etab' => $etab]);
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         } catch (\PDOException $e) {
             // Fallback LIKE search if FULLTEXT not available
-            $stmt = $this->pdo->prepare("SELECT id, question, reponse FROM faq_articles WHERE question LIKE :q OR reponse LIKE :q2 LIMIT 5");
-            $stmt->execute([':q' => "%{$sujet}%", ':q2' => "%{$sujet}%"]);
+            $stmt = $this->pdo->prepare("SELECT id, question, reponse FROM faq_articles WHERE (question LIKE :q OR reponse LIKE :q2) AND etablissement_id = :etab LIMIT 5");
+            $stmt->execute([':q' => "%{$sujet}%", ':q2' => "%{$sujet}%", ':etab' => $etab]);
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         }
     }

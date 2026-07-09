@@ -19,12 +19,13 @@ $activePage = 'reporting';
 $pageTitle = $pageTitle ?? 'Reporting';
 $extraCss = ['assets/css/reporting.css'];
 
-$sidebarExtraContent = '
-<div class="sidebar-nav">
-    <a href="reporting.php" class="sidebar-nav-item"><span class="sidebar-nav-icon"><i class="fas fa-chart-line"></i></span><span>Tableau de bord</span></a>
-    <a href="global.php" class="sidebar-nav-item"><span class="sidebar-nav-icon"><i class="fas fa-globe"></i></span><span>Vue globale</span></a>
-    <a href="exporter.php" class="sidebar-nav-item"><span class="sidebar-nav-icon"><i class="fas fa-file-csv"></i></span><span>Exporter CSV</span></a>
-</div>';
+// Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
+require_once __DIR__ . '/../../../templates/module_subnav.php';
+$sidebarExtraContent = renderModuleSubnav([
+    ['href' => 'reporting.php', 'icon' => 'fas fa-chart-line', 'label' => 'Tableau de bord'],
+    ['href' => 'global.php',    'icon' => 'fas fa-globe',      'label' => 'Vue globale'],
+    ['href' => 'exporter.php',  'icon' => 'fas fa-file-csv',   'label' => 'Exporter CSV'],
+]);
 
 require_once __DIR__ . '/../../../templates/shared_header.php';
 require_once __DIR__ . '/../../../templates/shared_topbar.php';

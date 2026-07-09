@@ -15,11 +15,12 @@ $activePage = 'notifications';
 $pageTitle = $pageTitle ?? 'Notifications';
 $extraCss = ['assets/css/notifications.css'];
 
-$sidebarExtraContent = '
-<div class="sidebar-nav">
-    <a href="notifications.php" class="sidebar-nav-item"><span class="sidebar-nav-icon"><i class="fas fa-bell"></i></span><span>Toutes</span></a>
-    <a href="preferences.php" class="sidebar-nav-item"><span class="sidebar-nav-icon"><i class="fas fa-sliders-h"></i></span><span>Préférences</span></a>
-</div>';
+// Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
+require_once __DIR__ . '/../../../templates/module_subnav.php';
+$sidebarExtraContent = renderModuleSubnav([
+    ['href' => 'notifications.php', 'icon' => 'fas fa-bell',      'label' => 'Toutes'],
+    ['href' => 'preferences.php',   'icon' => 'fas fa-sliders-h', 'label' => 'Préférences'],
+]);
 
 require_once __DIR__ . '/../../../templates/shared_header.php';
 require_once __DIR__ . '/../../../templates/shared_topbar.php';

@@ -28,16 +28,12 @@ $isGestionnaire = isAdmin() || isPersonnelVS();
 $isAdmin = isAdmin();
 
 // Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
-$_sub = basename($_SERVER['PHP_SELF'] ?? '');
-ob_start(); ?>
-<div class="sidebar-nav">
-    <a href="infirmerie.php" class="sidebar-nav-item <?= $_sub === 'infirmerie.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-house-medical"></i></span><span>Passages</span></a>
-<?php if ($isGestionnaire): ?>
-    <a href="passage.php" class="sidebar-nav-item <?= $_sub === 'passage.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-notes-medical"></i></span><span>Nouveau passage</span></a>
-    <a href="fiches.php" class="sidebar-nav-item <?= $_sub === 'fiches.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-folder-open"></i></span><span>Fiches santé</span></a>
-<?php endif; ?>
-</div>
-<?php $sidebarExtraContent = ob_get_clean();
+require_once __DIR__ . '/../../../templates/module_subnav.php';
+$sidebarExtraContent = renderModuleSubnav([
+    ['href' => 'infirmerie.php', 'icon' => 'fas fa-house-medical',  'label' => 'Passages'],
+    ['href' => 'passage.php',    'icon' => 'fas fa-notes-medical',  'label' => 'Nouveau passage', 'visible' => $isGestionnaire],
+    ['href' => 'fiches.php',     'icon' => 'fas fa-folder-open',    'label' => 'Fiches santé',    'visible' => $isGestionnaire],
+]);
 
 $pageTitle = $pageTitle ?? 'Infirmerie';
 require_once __DIR__ . '/../../../templates/shared_header.php';

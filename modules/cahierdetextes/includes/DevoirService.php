@@ -57,9 +57,9 @@ class DevoirService
         ?string $search     = null
     ): array {
         $cols     = self::COLS;
-        $sql      = "SELECT {$cols} FROM devoirs WHERE 1=1";
-        $countSql = "SELECT COUNT(*) FROM devoirs WHERE 1=1";
-        $params   = [];
+        $sql      = "SELECT {$cols} FROM devoirs WHERE etablissement_id = :etab";
+        $countSql = "SELECT COUNT(*) FROM devoirs WHERE etablissement_id = :etab";
+        $params   = [':etab' => \API\Core\EstablishmentContext::id()];
 
         // ── Filtre par rôle ──
         if ($role === 'eleve') {
@@ -138,8 +138,8 @@ class DevoirService
     public function getDevoirById(int $id): ?array
     {
         $cols = self::COLS;
-        $stmt = $this->pdo->prepare("SELECT {$cols} FROM devoirs WHERE id = :id");
-        $stmt->execute([':id' => $id]);
+        $stmt = $this->pdo->prepare("SELECT {$cols} FROM devoirs WHERE id = :id AND etablissement_id = :etab");
+        $stmt->execute([':id' => $id, ':etab' => \API\Core\EstablishmentContext::id()]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ?: null;
     }
@@ -150,8 +150,8 @@ class DevoirService
     {
         $stmt = $this->pdo->prepare(
             'INSERT INTO devoirs
-             (titre, description, classe, nom_matiere, nom_professeur, date_ajout, date_rendu)
-             VALUES (:titre, :desc, :classe, :mat, :prof, :da, :dr)'
+             (titre, description, classe, nom_matiere, nom_professeur, date_ajout, date_rendu, etablissement_id)
+             VALUES (:titre, :desc, :classe, :mat, :prof, :da, :dr, :etab)'
         );
         $stmt->execute([
             ':titre'  => trim($data['titre']),
@@ -161,6 +161,7 @@ class DevoirService
             ':prof'   => $data['nom_professeur'],
             ':da'     => $data['date_ajout'],
             ':dr'     => $data['date_rendu'],
+            ':etab'   => \API\Core\EstablishmentContext::id(),
         ]);
         return (int) $this->pdo->lastInsertId();
     }
@@ -176,7 +177,7 @@ class DevoirService
                 nom_professeur = :prof,
                 date_ajout     = :da,
                 date_rendu     = :dr
-             WHERE id = :id'
+             WHERE id = :id AND etablissement_id = :etab'
         );
         return $stmt->execute([
             ':titre'  => trim($data['titre']),
@@ -187,14 +188,15 @@ class DevoirService
             ':da'     => $data['date_ajout'],
             ':dr'     => $data['date_rendu'],
             ':id'     => $id,
+            ':etab'   => \API\Core\EstablishmentContext::id(),
         ]);
     }
 
     public function delete(int $id): bool
     {
         $this->deleteAttachedFiles($id);
-        $stmt = $this->pdo->prepare('DELETE FROM devoirs WHERE id = :id');
-        return $stmt->execute([':id' => $id]);
+        $stmt = $this->pdo->prepare('DELETE FROM devoirs WHERE id = :id AND etablissement_id = :etab');
+        return $stmt->execute([':id' => $id, ':etab' => \API\Core\EstablishmentContext::id()]);
     }
 
     /* ══════════ Validation (SEC-3, SEC-5) ══════════ */
@@ -271,8 +273,8 @@ class DevoirService
                     SUM(CASE WHEN date_rendu < CURDATE() THEN 1 ELSE 0 END) as expired,
                     SUM(CASE WHEN date_rendu BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 3 DAY) THEN 1 ELSE 0 END) as urgent,
                     SUM(CASE WHEN date_rendu BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) as soon
-                FROM devoirs WHERE 1=1";
-        $params = [];
+                FROM devoirs WHERE etablissement_id = :etab";
+        $params = [':etab' => \API\Core\EstablishmentContext::id()];
 
         if ($role === 'eleve') {
             $classe = $this->getEleveClasse($userId);
@@ -310,8 +312,8 @@ class DevoirService
 
     public function getFilterOptions(string $role, ?int $userId, ?string $userFullName): array
     {
-        $where  = '1=1';
-        $params = [];
+        $where  = 'etablissement_id = :etab';
+        $params = [':etab' => \API\Core\EstablishmentContext::id()];
 
         if ($role === 'eleve') {
             $classe = $this->getEleveClasse($userId);
@@ -362,9 +364,9 @@ class DevoirService
             'SELECT df.*, d.classe, d.nom_professeur
              FROM devoirs_fichiers df
              JOIN devoirs d ON d.id = df.devoir_id
-             WHERE df.id = :id'
+             WHERE df.id = :id AND d.etablissement_id = :etab'
         );
-        $stmt->execute([':id' => $id]);
+        $stmt->execute([':id' => $id, ':etab' => \API\Core\EstablishmentContext::id()]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ?: null;
     }
@@ -480,8 +482,8 @@ class DevoirService
 
     public function getProfesseurInfo(int $profId): ?array
     {
-        $stmt = $this->pdo->prepare('SELECT id, nom, prenom, matiere FROM professeurs WHERE id = :id');
-        $stmt->execute([':id' => $profId]);
+        $stmt = $this->pdo->prepare('SELECT id, nom, prenom, matiere FROM professeurs WHERE id = :id AND etablissement_id = :etab');
+        $stmt->execute([':id' => $profId, ':etab' => \API\Core\EstablishmentContext::id()]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ?: null;
     }
@@ -501,8 +503,8 @@ class DevoirService
     private function getEleveClasse(?int $eleveId): ?string
     {
         if (!$eleveId) return null;
-        $stmt = $this->pdo->prepare('SELECT classe FROM eleves WHERE id = :eid LIMIT 1');
-        $stmt->execute([':eid' => $eleveId]);
+        $stmt = $this->pdo->prepare('SELECT classe FROM eleves WHERE id = :eid AND etablissement_id = :etab LIMIT 1');
+        $stmt->execute([':eid' => $eleveId, ':etab' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchColumn() ?: null;
     }
 
@@ -602,15 +604,15 @@ class DevoirService
      */
     public function sauverTemplate(int $profId, int $matiereId, string $titre, string $contenu, array $tags = []): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO cahier_templates (professeur_id, matiere_id, titre, contenu, tags) VALUES (:pid, :mid, :t, :c, :tags)");
-        $stmt->execute([':pid' => $profId, ':mid' => $matiereId, ':t' => $titre, ':c' => $contenu, ':tags' => json_encode($tags)]);
+        $stmt = $this->pdo->prepare("INSERT INTO cahier_templates (etablissement_id, professeur_id, matiere_id, titre, contenu, tags) VALUES (:etab, :pid, :mid, :t, :c, :tags)");
+        $stmt->execute([':etab' => \API\Core\EstablishmentContext::id(), ':pid' => $profId, ':mid' => $matiereId, ':t' => $titre, ':c' => $contenu, ':tags' => json_encode($tags)]);
         return (int)$this->pdo->lastInsertId();
     }
 
     public function getTemplates(int $profId, ?int $matiereId = null): array
     {
-        $sql = "SELECT * FROM cahier_templates WHERE professeur_id = :pid";
-        $params = [':pid' => $profId];
+        $sql = "SELECT * FROM cahier_templates WHERE professeur_id = :pid AND etablissement_id = :etab";
+        $params = [':pid' => $profId, ':etab' => \API\Core\EstablishmentContext::id()];
         if ($matiereId) { $sql .= " AND matiere_id = :mid"; $params[':mid'] = $matiereId; }
         $sql .= " ORDER BY titre";
         $stmt = $this->pdo->prepare($sql);
@@ -657,8 +659,8 @@ class DevoirService
      */
     public function setReferenceProgramme(int $devoirId, string $reference): void
     {
-        $this->pdo->prepare("UPDATE devoirs SET reference_programme = :r WHERE id = :id")
-            ->execute([':r' => $reference, ':id' => $devoirId]);
+        $this->pdo->prepare("UPDATE devoirs SET reference_programme = :r WHERE id = :id AND etablissement_id = :etab")
+            ->execute([':r' => $reference, ':id' => $devoirId, ':etab' => \API\Core\EstablishmentContext::id()]);
     }
 
     // ─── NOTES VOCALES ───
@@ -668,7 +670,7 @@ class DevoirService
      */
     public function ajouterNoteVocale(int $devoirId, string $audioPath): void
     {
-        $this->pdo->prepare("UPDATE devoirs SET audio_path = :ap WHERE id = :id")
-            ->execute([':ap' => $audioPath, ':id' => $devoirId]);
+        $this->pdo->prepare("UPDATE devoirs SET audio_path = :ap WHERE id = :id AND etablissement_id = :etab")
+            ->execute([':ap' => $audioPath, ':id' => $devoirId, ':etab' => \API\Core\EstablishmentContext::id()]);
     }
 }

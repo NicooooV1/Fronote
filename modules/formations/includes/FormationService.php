@@ -42,7 +42,7 @@ class FormationService
 
     public function publierFormation(int $formationId): void
     {
-        $this->pdo->prepare("UPDATE formations SET statut = 'publiee' WHERE id = :id")->execute([':id' => $formationId]);
+        $this->pdo->prepare("UPDATE formations SET statut = 'publiee' WHERE id = :id AND etablissement_id = :eid")->execute([':id' => $formationId, ':eid' => \API\Core\EstablishmentContext::id()]);
     }
 
     // ─── Inscriptions ─────────────────────────────────────────────
@@ -75,8 +75,8 @@ class FormationService
 
     public function getMesInscriptions(int $personnelId): array
     {
-        $stmt = $this->pdo->prepare("SELECT fi.*, f.titre, f.date_debut, f.date_fin, f.lieu, f.type FROM formation_inscriptions fi JOIN formations f ON fi.formation_id = f.id WHERE fi.personnel_id = :pid ORDER BY f.date_debut DESC");
-        $stmt->execute([':pid' => $personnelId]);
+        $stmt = $this->pdo->prepare("SELECT fi.*, f.titre, f.date_debut, f.date_fin, f.lieu, f.type FROM formation_inscriptions fi JOIN formations f ON fi.formation_id = f.id WHERE fi.personnel_id = :pid AND f.etablissement_id = :eid ORDER BY f.date_debut DESC");
+        $stmt->execute([':pid' => $personnelId, ':eid' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -139,8 +139,8 @@ class FormationService
 
     public function genererAttestationData(int $inscriptionId): array
     {
-        $stmt = $this->pdo->prepare("SELECT fi.*, f.titre, f.description, f.date_debut, f.date_fin, f.organisme, f.lieu, CONCAT(p.prenom,' ',p.nom) AS personnel_nom, p.fonction FROM formation_inscriptions fi JOIN formations f ON fi.formation_id = f.id JOIN personnel p ON fi.personnel_id = p.id WHERE fi.id = :id AND fi.statut = 'validee'");
-        $stmt->execute([':id' => $inscriptionId]);
+        $stmt = $this->pdo->prepare("SELECT fi.*, f.titre, f.description, f.date_debut, f.date_fin, f.organisme, f.lieu, CONCAT(p.prenom,' ',p.nom) AS personnel_nom, p.fonction FROM formation_inscriptions fi JOIN formations f ON fi.formation_id = f.id JOIN personnel p ON fi.personnel_id = p.id WHERE fi.id = :id AND fi.statut = 'validee' AND f.etablissement_id = :eid");
+        $stmt->execute([':id' => $inscriptionId, ':eid' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
     }
 

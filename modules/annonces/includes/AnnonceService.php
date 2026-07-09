@@ -22,12 +22,13 @@ class AnnonceService
     public function createAnnonce(array $data): int
     {
         $stmt = $this->pdo->prepare(
-            "INSERT INTO annonces (titre, contenu, type, auteur_id, auteur_type,
+            "INSERT INTO annonces (etablissement_id, titre, contenu, type, auteur_id, auteur_type,
                 cible_roles, cible_classes, cible_niveaux, cible_matieres, publie, epingle,
                 date_publication, date_expiration)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
         $stmt->execute([
+            \API\Core\EstablishmentContext::id(),
             $data['titre'],
             $data['contenu'],
             $data['type'] ?? 'info',
@@ -59,8 +60,8 @@ class AnnonceService
      */
     public function getAnnonce(int $id): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM annonces WHERE id = ?");
-        $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare("SELECT * FROM annonces WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         $a = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($a) {
             $a['cible_roles']    = json_decode($a['cible_roles'] ?? '[]', true) ?: [];
@@ -80,7 +81,7 @@ class AnnonceService
             "UPDATE annonces SET titre = ?, contenu = ?, type = ?,
                 cible_roles = ?, cible_classes = ?, cible_niveaux = ?, cible_matieres = ?,
                 publie = ?, epingle = ?, date_expiration = ?
-             WHERE id = ?"
+             WHERE id = ? AND etablissement_id = ?"
         );
         return $stmt->execute([
             $data['titre'],
@@ -94,6 +95,7 @@ class AnnonceService
             $data['epingle'] ?? 0,
             $data['date_expiration'] ?? null,
             $id,
+            \API\Core\EstablishmentContext::id(),
         ]);
     }
 
@@ -102,8 +104,8 @@ class AnnonceService
      */
     public function deleteAnnonce(int $id): bool
     {
-        $stmt = $this->pdo->prepare("DELETE FROM annonces WHERE id = ?");
-        return $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare("DELETE FROM annonces WHERE id = ? AND etablissement_id = ?");
+        return $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
     }
 
     /**
@@ -234,10 +236,11 @@ class AnnonceService
     public function createSondage(int $annonceId, array $data): int
     {
         $stmt = $this->pdo->prepare(
-            "INSERT INTO sondages (annonce_id, question, type_reponse, anonyme, date_fin)
-             VALUES (?, ?, ?, ?, ?)"
+            "INSERT INTO sondages (etablissement_id, annonce_id, question, type_reponse, anonyme, date_fin)
+             VALUES (?, ?, ?, ?, ?, ?)"
         );
         $stmt->execute([
+            \API\Core\EstablishmentContext::id(),
             $annonceId,
             $data['question'],
             $data['type_reponse'] ?? 'choix_unique',
@@ -266,8 +269,8 @@ class AnnonceService
      */
     public function getSondage(int $annonceId): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM sondages WHERE annonce_id = ? AND actif = 1 LIMIT 1");
-        $stmt->execute([$annonceId]);
+        $stmt = $this->pdo->prepare("SELECT * FROM sondages WHERE annonce_id = ? AND actif = 1 AND etablissement_id = ? LIMIT 1");
+        $stmt->execute([$annonceId, \API\Core\EstablishmentContext::id()]);
         $sondage = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$sondage) return null;
 
@@ -295,8 +298,8 @@ class AnnonceService
     public function voter(int $sondageId, int $userId, string $userType, ?int $optionId = null, ?string $textLibre = null): bool
     {
         // Vérifier si déjà voté (pour choix_unique)
-        $sondage = $this->pdo->prepare("SELECT type_reponse FROM sondages WHERE id = ?");
-        $sondage->execute([$sondageId]);
+        $sondage = $this->pdo->prepare("SELECT type_reponse FROM sondages WHERE id = ? AND etablissement_id = ?");
+        $sondage->execute([$sondageId, \API\Core\EstablishmentContext::id()]);
         $typeReponse = $sondage->fetchColumn();
 
         if ($typeReponse === 'choix_unique') {
@@ -503,14 +506,15 @@ class AnnonceService
             WHERE publie = 0 AND date_publication <= NOW()
               AND (date_expiration IS NULL OR date_expiration > NOW())
               AND notified = 0
+              AND etablissement_id = ?
         ");
-        $stmt->execute();
+        $stmt->execute([\API\Core\EstablishmentContext::id()]);
         $pending = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         $count = 0;
         foreach ($pending as $a) {
-            $this->pdo->prepare("UPDATE annonces SET publie = 1, notified = 1 WHERE id = ?")
-                      ->execute([$a['id']]);
+            $this->pdo->prepare("UPDATE annonces SET publie = 1, notified = 1 WHERE id = ? AND etablissement_id = ?")
+                      ->execute([$a['id'], \API\Core\EstablishmentContext::id()]);
             $this->notifyRecipients($a['id'], $a['titre'], $a['type']);
             $count++;
         }
@@ -566,9 +570,9 @@ class AnnonceService
                     if ($role === 'eleve') {
                         $placeholders = implode(',', array_fill(0, count($cibleClasses), '?'));
                         $query = "SELECT id FROM eleves WHERE actif = 1 AND etablissement_id = ? AND classe IN (
-                            SELECT nom FROM classes WHERE id IN ({$placeholders})
+                            SELECT nom FROM classes WHERE id IN ({$placeholders}) AND etablissement_id = ?
                         )";
-                        $params = array_merge([$etabId], $cibleClasses);
+                        $params = array_merge([$etabId], $cibleClasses, [$etabId]);
                     }
                 }
 
@@ -599,7 +603,7 @@ class AnnonceService
         }
 
         // Marquer comme notifié
-        $this->pdo->prepare("UPDATE annonces SET notified = 1 WHERE id = ?")->execute([$annonceId]);
+        $this->pdo->prepare("UPDATE annonces SET notified = 1 WHERE id = ? AND etablissement_id = ?")->execute([$annonceId, \API\Core\EstablishmentContext::id()]);
     }
 
     /**

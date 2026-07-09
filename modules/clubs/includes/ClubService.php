@@ -19,9 +19,9 @@ class ClubService
                    (SELECT COUNT(*) FROM club_inscriptions ci WHERE ci.club_id = c.id AND ci.statut = 'accepte') AS nb_inscrits
             FROM clubs c
             LEFT JOIN professeurs p ON c.responsable_id = p.id
-            WHERE c.actif = 1
+            WHERE c.actif = 1 AND c.etablissement_id = ?
         ";
-        $params = [];
+        $params = [\API\Core\EstablishmentContext::id()];
         if ($categorie) { $sql .= ' AND c.categorie = ?'; $params[] = $categorie; }
         $sql .= ' ORDER BY c.nom';
         $stmt = $this->pdo->prepare($sql);
@@ -36,19 +36,20 @@ class ClubService
                    (SELECT COUNT(*) FROM club_inscriptions ci WHERE ci.club_id = c.id AND ci.statut = 'accepte') AS nb_inscrits
             FROM clubs c
             LEFT JOIN professeurs p ON c.responsable_id = p.id
-            WHERE c.id = ?
+            WHERE c.id = ? AND c.etablissement_id = ?
         ");
-        $stmt->execute([$id]);
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function creerClub(array $data): int
     {
         $stmt = $this->pdo->prepare("
-            INSERT INTO clubs (nom, description, categorie, responsable_id, horaires, lieu, places_max, date_debut, date_fin, actif)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+            INSERT INTO clubs (etablissement_id, nom, description, categorie, responsable_id, horaires, lieu, places_max, date_debut, date_fin, actif)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
         ");
         $stmt->execute([
+            \API\Core\EstablishmentContext::id(),
             $data['nom'], $data['description'] ?? null, $data['categorie'] ?? 'autre',
             $data['responsable_id'] ?? null, $data['horaires'] ?? null, $data['lieu'] ?? null,
             $data['places_max'] ?? null, $data['date_debut'] ?? null, $data['date_fin'] ?? null,
@@ -61,19 +62,19 @@ class ClubService
         $stmt = $this->pdo->prepare("
             UPDATE clubs SET nom=?, description=?, categorie=?, responsable_id=?,
             horaires=?, lieu=?, places_max=?, date_debut=?, date_fin=?, actif=?
-            WHERE id=?
+            WHERE id=? AND etablissement_id=?
         ");
         $stmt->execute([
             $data['nom'], $data['description'], $data['categorie'],
             $data['responsable_id'], $data['horaires'], $data['lieu'],
             $data['places_max'], $data['date_debut'], $data['date_fin'],
-            $data['actif'] ?? 1, $id
+            $data['actif'] ?? 1, $id, \API\Core\EstablishmentContext::id()
         ]);
     }
 
     public function supprimerClub(int $id): void
     {
-        $this->pdo->prepare('UPDATE clubs SET actif = 0 WHERE id = ?')->execute([$id]);
+        $this->pdo->prepare('UPDATE clubs SET actif = 0 WHERE id = ? AND etablissement_id = ?')->execute([$id, \API\Core\EstablishmentContext::id()]);
     }
 
     /* ───────── INSCRIPTIONS ───────── */
@@ -86,12 +87,12 @@ class ClubService
             throw new RuntimeException('Plus de places disponibles.');
         }
         // Vérifier doublon
-        $stmt = $this->pdo->prepare("SELECT id FROM club_inscriptions WHERE club_id = ? AND eleve_id = ? AND statut != 'refuse'");
-        $stmt->execute([$clubId, $eleveId]);
+        $stmt = $this->pdo->prepare("SELECT id FROM club_inscriptions WHERE club_id = ? AND eleve_id = ? AND statut != 'refuse' AND etablissement_id = ?");
+        $stmt->execute([$clubId, $eleveId, \API\Core\EstablishmentContext::id()]);
         if ($stmt->fetch()) throw new RuntimeException('Déjà inscrit à ce club.');
 
-        $stmt = $this->pdo->prepare("INSERT INTO club_inscriptions (club_id, eleve_id, date_inscription, statut) VALUES (?, ?, NOW(), 'en_attente')");
-        $stmt->execute([$clubId, $eleveId]);
+        $stmt = $this->pdo->prepare("INSERT INTO club_inscriptions (etablissement_id, club_id, eleve_id, date_inscription, statut) VALUES (?, ?, ?, NOW(), 'en_attente')");
+        $stmt->execute([\API\Core\EstablishmentContext::id(), $clubId, $eleveId]);
         return $this->pdo->lastInsertId();
     }
 
@@ -103,10 +104,10 @@ class ClubService
             JOIN eleves e ON ci.eleve_id = e.id
             LEFT JOIN classes cl ON e.classe = cl.nom
             LEFT JOIN classes c ON e.classe = c.nom
-            WHERE ci.club_id = ? AND ci.statut = 'accepte'
+            WHERE ci.club_id = ? AND ci.statut = 'accepte' AND ci.etablissement_id = ?
             ORDER BY e.nom
         ");
-        $stmt->execute([$clubId]);
+        $stmt->execute([$clubId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -116,22 +117,22 @@ class ClubService
             SELECT ci.*, e.prenom, e.nom AS eleve_nom
             FROM club_inscriptions ci
             JOIN eleves e ON ci.eleve_id = e.id
-            WHERE ci.club_id = ? AND ci.statut = 'en_attente'
+            WHERE ci.club_id = ? AND ci.statut = 'en_attente' AND ci.etablissement_id = ?
             ORDER BY ci.date_inscription
         ");
-        $stmt->execute([$clubId]);
+        $stmt->execute([$clubId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function traiterDemande(int $inscriptionId, string $statut): void
     {
-        $stmt = $this->pdo->prepare('UPDATE club_inscriptions SET statut = ? WHERE id = ?');
-        $stmt->execute([$statut, $inscriptionId]);
+        $stmt = $this->pdo->prepare('UPDATE club_inscriptions SET statut = ? WHERE id = ? AND etablissement_id = ?');
+        $stmt->execute([$statut, $inscriptionId, \API\Core\EstablishmentContext::id()]);
     }
 
     public function desinscrire(int $inscriptionId): void
     {
-        $this->pdo->prepare('DELETE FROM club_inscriptions WHERE id = ?')->execute([$inscriptionId]);
+        $this->pdo->prepare('DELETE FROM club_inscriptions WHERE id = ? AND etablissement_id = ?')->execute([$inscriptionId, \API\Core\EstablishmentContext::id()]);
     }
 
     public function getInscriptionsEleve(int $eleveId): array
@@ -140,10 +141,10 @@ class ClubService
             SELECT ci.*, c.nom AS club_nom, c.horaires, c.lieu
             FROM club_inscriptions ci
             JOIN clubs c ON ci.club_id = c.id
-            WHERE ci.eleve_id = ? AND c.actif = 1
+            WHERE ci.eleve_id = ? AND c.actif = 1 AND ci.etablissement_id = ?
             ORDER BY c.nom
         ");
-        $stmt->execute([$eleveId]);
+        $stmt->execute([$eleveId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -216,18 +217,19 @@ class ClubService
             FROM club_seances cs
             JOIN clubs c ON cs.club_id = c.id
             JOIN club_inscriptions ci ON ci.club_id = c.id AND ci.eleve_id = ? AND ci.statut = 'accepte'
-            WHERE cs.date_seance >= CURDATE()
+            WHERE cs.date_seance >= CURDATE() AND c.etablissement_id = ?
             ORDER BY cs.date_seance, cs.heure_debut
         ");
-        $stmt->execute([$eleveId]);
+        $stmt->execute([$eleveId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getStats(): array
     {
-        $clubs = (int)$this->pdo->query("SELECT COUNT(*) FROM clubs WHERE actif = 1")->fetchColumn();
-        $inscrits = (int)$this->pdo->query("SELECT COUNT(*) FROM club_inscriptions WHERE statut = 'accepte'")->fetchColumn();
-        $attente = (int)$this->pdo->query("SELECT COUNT(*) FROM club_inscriptions WHERE statut = 'en_attente'")->fetchColumn();
+        $etab = (int)\API\Core\EstablishmentContext::id();
+        $clubs = (int)$this->pdo->query("SELECT COUNT(*) FROM clubs WHERE actif = 1 AND etablissement_id = {$etab}")->fetchColumn();
+        $inscrits = (int)$this->pdo->query("SELECT COUNT(*) FROM club_inscriptions WHERE statut = 'accepte' AND etablissement_id = {$etab}")->fetchColumn();
+        $attente = (int)$this->pdo->query("SELECT COUNT(*) FROM club_inscriptions WHERE statut = 'en_attente' AND etablissement_id = {$etab}")->fetchColumn();
         return ['clubs_actifs' => $clubs, 'total_inscrits' => $inscrits, 'demandes_en_attente' => $attente];
     }
 

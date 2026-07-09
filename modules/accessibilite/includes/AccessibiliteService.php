@@ -31,29 +31,29 @@ class AccessibiliteService
 
     public function getAmenagements(int $eleveId): array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM accessibilite_amenagements WHERE eleve_id = :eid AND statut = 'actif' ORDER BY type_amenagement");
-        $stmt->execute([':eid' => $eleveId]);
+        $stmt = $this->pdo->prepare("SELECT * FROM accessibilite_amenagements WHERE eleve_id = :eid AND etablissement_id = :etab AND statut = 'actif' ORDER BY type_amenagement");
+        $stmt->execute([':eid' => $eleveId, ':etab' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getAmenagementsParProfesseur(int $profId): array
     {
-        $stmt = $this->pdo->prepare("SELECT a.*, CONCAT(e.prenom,' ',e.nom) AS eleve_nom, e.classe FROM accessibilite_amenagements a JOIN eleves e ON a.eleve_id = e.id WHERE e.classe IN (SELECT DISTINCT classe FROM emploi_du_temps WHERE id_professeur = :pid) AND a.statut = 'actif' AND e.actif = 1 ORDER BY e.classe, e.nom");
-        $stmt->execute([':pid' => $profId]);
+        $stmt = $this->pdo->prepare("SELECT a.*, CONCAT(e.prenom,' ',e.nom) AS eleve_nom, e.classe FROM accessibilite_amenagements a JOIN eleves e ON a.eleve_id = e.id WHERE e.classe IN (SELECT DISTINCT classe FROM emploi_du_temps WHERE id_professeur = :pid) AND a.etablissement_id = :etab AND a.statut = 'actif' AND e.actif = 1 ORDER BY e.classe, e.nom");
+        $stmt->execute([':pid' => $profId, ':etab' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getAmenagementsParClasse(string $classe): array
     {
-        $stmt = $this->pdo->prepare("SELECT a.*, CONCAT(e.prenom,' ',e.nom) AS eleve_nom FROM accessibilite_amenagements a JOIN eleves e ON a.eleve_id = e.id WHERE e.classe = :c AND a.statut = 'actif' AND e.actif = 1 ORDER BY e.nom, a.type_amenagement");
-        $stmt->execute([':c' => $classe]);
+        $stmt = $this->pdo->prepare("SELECT a.*, CONCAT(e.prenom,' ',e.nom) AS eleve_nom FROM accessibilite_amenagements a JOIN eleves e ON a.eleve_id = e.id WHERE e.classe = :c AND a.etablissement_id = :etab AND a.statut = 'actif' AND e.actif = 1 ORDER BY e.nom, a.type_amenagement");
+        $stmt->execute([':c' => $classe, ':etab' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function desactiverAmenagement(int $amenagementId): void
     {
-        $this->pdo->prepare("UPDATE accessibilite_amenagements SET statut = 'inactif' WHERE id = :id")
-            ->execute([':id' => $amenagementId]);
+        $this->pdo->prepare("UPDATE accessibilite_amenagements SET statut = 'inactif' WHERE id = :id AND etablissement_id = :etab")
+            ->execute([':id' => $amenagementId, ':etab' => \API\Core\EstablishmentContext::id()]);
     }
 
     // ─── AESH ─────────────────────────────────────────────────────
@@ -74,8 +74,8 @@ class AccessibiliteService
 
     public function getCalendrierAesh(int $aeshId, string $semaine): array
     {
-        $stmt = $this->pdo->prepare("SELECT af.eleve_id, CONCAT(e.prenom,' ',e.nom) AS eleve, e.classe, af.heures_semaine, af.type_accompagnement, edt.jour, edt.heure_debut, edt.heure_fin, m.nom AS matiere FROM accessibilite_aesh_affectations af JOIN eleves e ON af.eleve_id = e.id JOIN emploi_du_temps edt ON edt.classe = e.classe JOIN matieres m ON edt.id_matiere = m.id WHERE af.aesh_id = :aid AND af.statut = 'actif' ORDER BY FIELD(edt.jour,'lundi','mardi','mercredi','jeudi','vendredi'), edt.heure_debut");
-        $stmt->execute([':aid' => $aeshId]);
+        $stmt = $this->pdo->prepare("SELECT af.eleve_id, CONCAT(e.prenom,' ',e.nom) AS eleve, e.classe, af.heures_semaine, af.type_accompagnement, edt.jour, edt.heure_debut, edt.heure_fin, m.nom AS matiere FROM accessibilite_aesh_affectations af JOIN eleves e ON af.eleve_id = e.id JOIN emploi_du_temps edt ON edt.classe = e.classe JOIN matieres m ON edt.id_matiere = m.id WHERE af.aesh_id = :aid AND e.etablissement_id = :etab AND af.statut = 'actif' ORDER BY FIELD(edt.jour,'lundi','mardi','mercredi','jeudi','vendredi'), edt.heure_debut");
+        $stmt->execute([':aid' => $aeshId, ':etab' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -97,8 +97,8 @@ class AccessibiliteService
 
     public function getDecisionsExpirant(int $etabId, int $joursAvant = 60): array
     {
-        $stmt = $this->pdo->prepare("SELECT md.*, CONCAT(e.prenom,' ',e.nom) AS eleve_nom, e.classe FROM accessibilite_mdph md JOIN eleves e ON md.eleve_id = e.id WHERE e.actif = 1 AND md.statut = 'actif' AND md.date_expiration BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL :j DAY) ORDER BY md.date_expiration ASC");
-        $stmt->execute([':j' => $joursAvant]);
+        $stmt = $this->pdo->prepare("SELECT md.*, CONCAT(e.prenom,' ',e.nom) AS eleve_nom, e.classe FROM accessibilite_mdph md JOIN eleves e ON md.eleve_id = e.id WHERE e.actif = 1 AND e.etablissement_id = :etab AND md.statut = 'actif' AND md.date_expiration BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL :j DAY) ORDER BY md.date_expiration ASC");
+        $stmt->execute([':j' => $joursAvant, ':etab' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -106,21 +106,21 @@ class AccessibiliteService
 
     public function planifierEss(int $eleveId, string $dateEss, string $lieu, array $participantsIds, string $objectifs = ''): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO accessibilite_ess (eleve_id, date_ess, lieu, participants_ids, objectifs, statut) VALUES (:eid, :d, :l, :p, :o, 'planifie')");
-        $stmt->execute([':eid' => $eleveId, ':d' => $dateEss, ':l' => $lieu, ':p' => json_encode($participantsIds), ':o' => $objectifs]);
+        $stmt = $this->pdo->prepare("INSERT INTO accessibilite_ess (etablissement_id, eleve_id, date_ess, lieu, participants_ids, objectifs, statut) VALUES (:etab, :eid, :d, :l, :p, :o, 'planifie')");
+        $stmt->execute([':etab' => \API\Core\EstablishmentContext::id(), ':eid' => $eleveId, ':d' => $dateEss, ':l' => $lieu, ':p' => json_encode($participantsIds), ':o' => $objectifs]);
         return (int)$this->pdo->lastInsertId();
     }
 
     public function completerEss(int $essId, string $compteRendu, string $decisions, string $prochaineDateEss = ''): void
     {
-        $this->pdo->prepare("UPDATE accessibilite_ess SET statut = 'realise', compte_rendu = :cr, decisions = :d, prochaine_date = :pd WHERE id = :id")
-            ->execute([':cr' => $compteRendu, ':d' => $decisions, ':pd' => $prochaineDateEss ?: null, ':id' => $essId]);
+        $this->pdo->prepare("UPDATE accessibilite_ess SET statut = 'realise', compte_rendu = :cr, decisions = :d, prochaine_date = :pd WHERE id = :id AND etablissement_id = :etab")
+            ->execute([':cr' => $compteRendu, ':d' => $decisions, ':pd' => $prochaineDateEss ?: null, ':id' => $essId, ':etab' => \API\Core\EstablishmentContext::id()]);
     }
 
     public function getEssEleve(int $eleveId): array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM accessibilite_ess WHERE eleve_id = :eid ORDER BY date_ess DESC");
-        $stmt->execute([':eid' => $eleveId]);
+        $stmt = $this->pdo->prepare("SELECT * FROM accessibilite_ess WHERE eleve_id = :eid AND etablissement_id = :etab ORDER BY date_ess DESC");
+        $stmt->execute([':eid' => $eleveId, ':etab' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -148,15 +148,15 @@ class AccessibiliteService
 
     public function genererFicheAmenagements(int $eleveId): array
     {
-        $eleve = $this->pdo->prepare("SELECT id, nom, prenom, classe, date_naissance FROM eleves WHERE id = :id");
-        $eleve->execute([':id' => $eleveId]);
+        $eleve = $this->pdo->prepare("SELECT id, nom, prenom, classe, date_naissance FROM eleves WHERE id = :id AND etablissement_id = :etab");
+        $eleve->execute([':id' => $eleveId, ':etab' => \API\Core\EstablishmentContext::id()]);
 
         $amenagements = $this->getAmenagements($eleveId);
         $decisions = $this->getDecisionsMdph($eleveId);
         $ess = $this->getEssEleve($eleveId);
 
-        $aesh = $this->pdo->prepare("SELECT a.nom, a.prenom, af.heures_semaine, af.type_accompagnement FROM accessibilite_aesh_affectations af JOIN accessibilite_aesh a ON af.aesh_id = a.id WHERE af.eleve_id = :eid AND af.statut = 'actif'");
-        $aesh->execute([':eid' => $eleveId]);
+        $aesh = $this->pdo->prepare("SELECT a.nom, a.prenom, af.heures_semaine, af.type_accompagnement FROM accessibilite_aesh_affectations af JOIN accessibilite_aesh a ON af.aesh_id = a.id WHERE af.eleve_id = :eid AND a.etablissement_id = :etab AND af.statut = 'actif'");
+        $aesh->execute([':eid' => $eleveId, ':etab' => \API\Core\EstablishmentContext::id()]);
 
         return [
             'eleve' => $eleve->fetch(PDO::FETCH_ASSOC),

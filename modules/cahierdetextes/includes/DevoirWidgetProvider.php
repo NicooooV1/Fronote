@@ -28,11 +28,12 @@ class DevoirWidgetProvider extends AbstractWidgetProvider
                  FROM devoirs d
                  LEFT JOIN devoirs_statuts_eleve ds ON ds.devoir_id = d.id AND ds.eleve_id = ?
                  WHERE d.classe = (SELECT classe FROM eleves WHERE id = ? LIMIT 1)
+                   AND d.etablissement_id = ?
                    AND d.date_rendu >= CURDATE()
                  ORDER BY d.date_rendu ASC
                  LIMIT ?"
             );
-            $stmt->execute([$userId, $userId, $limit]);
+            $stmt->execute([$userId, $userId, \API\Core\EstablishmentContext::id(), $limit]);
             $devoirs = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
             return ['devoirs' => $devoirs, 'count' => count($devoirs)];
@@ -49,11 +50,12 @@ class DevoirWidgetProvider extends AbstractWidgetProvider
                  FROM devoirs d
                  LEFT JOIN devoirs_statuts_eleve ds ON ds.devoir_id = d.id AND ds.eleve_id = ?
                  WHERE d.classe = (SELECT classe FROM eleves WHERE id = ? LIMIT 1)
+                   AND d.etablissement_id = ?
                    AND d.date_rendu >= CURDATE()
                  ORDER BY d.date_rendu ASC
                  LIMIT ?"
             );
-            $stmt->execute([$childId, $childId, $limit]);
+            $stmt->execute([$childId, $childId, \API\Core\EstablishmentContext::id(), $limit]);
             $devoirs = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
             return ['devoirs' => $devoirs, 'count' => count($devoirs)];
@@ -64,11 +66,12 @@ class DevoirWidgetProvider extends AbstractWidgetProvider
                 "SELECT d.id, d.titre, d.nom_matiere, d.classe, d.date_rendu
                  FROM devoirs d
                  WHERE d.nom_professeur = (SELECT CONCAT(prenom, ' ', nom) FROM professeurs WHERE id = ? LIMIT 1)
+                   AND d.etablissement_id = ?
                    AND d.date_rendu >= CURDATE()
                  ORDER BY d.date_rendu ASC
                  LIMIT ?"
             );
-            $stmt->execute([$userId, $limit]);
+            $stmt->execute([$userId, \API\Core\EstablishmentContext::id(), $limit]);
             $devoirs = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
             return ['devoirs' => $devoirs, 'count' => count($devoirs)];

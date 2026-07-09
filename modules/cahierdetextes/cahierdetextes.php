@@ -87,40 +87,9 @@ $qs = http_build_query(array_filter([
     'matiere' => $filterMatiere ?: null,
 ]));
 
-// ── Sidebar ──
-ob_start();
-?>
-        <div class="sidebar-nav">
-            <a href="cahierdetextes.php" class="sidebar-nav-item">
-                <span class="sidebar-nav-icon"><i class="fas fa-list"></i></span>
-                <span>Liste des devoirs</span>
-            </a>
-            <?php if (canManageDevoirs()): ?>
-            <a href="form_devoir.php" class="sidebar-nav-item">
-                <span class="sidebar-nav-icon"><i class="fas fa-plus"></i></span>
-                <span>Ajouter un devoir</span>
-            </a>
-            <?php endif; ?>
-        </div>
-        <div class="sidebar-section">
-            <div class="sidebar-section-header">Filtres</div>
-            <div class="sidebar-nav">
-                <a href="#" class="sidebar-nav-item filter-link" data-filter="urgent">
-                    <span class="sidebar-nav-icon"><i class="fas fa-exclamation-circle"></i></span>
-                    <span>Urgents (&lt; 3 jours)</span>
-                </a>
-                <a href="#" class="sidebar-nav-item filter-link" data-filter="soon">
-                    <span class="sidebar-nav-icon"><i class="fas fa-clock"></i></span>
-                    <span>Cette semaine</span>
-                </a>
-                <a href="#" class="sidebar-nav-item filter-link" data-filter="all">
-                    <span class="sidebar-nav-icon"><i class="fas fa-list"></i></span>
-                    <span>Tous</span>
-                </a>
-            </div>
-        </div>
-<?php
-$sidebarExtraContent = ob_get_clean();
+// ── Navigation secondaire du module (rendue en bandeau par shared_topbar.php) ──
+require_once __DIR__ . '/../../templates/module_subnav.php';
+$sidebarExtraContent = renderModuleSubnav(require __DIR__ . '/includes/subnav_items.php');
 
 // Topbar actions
 ob_start();

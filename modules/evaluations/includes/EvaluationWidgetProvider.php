@@ -29,10 +29,10 @@ class EvaluationWidgetProvider extends AbstractWidgetProvider
                 $stmt = $pdo->prepare(
                     "SELECT titre, classe, date_ouverture
                      FROM evaluations_en_ligne
-                     WHERE professeur_id = ? AND statut <> 'brouillon' AND date_fermeture >= NOW()
+                     WHERE professeur_id = ? AND etablissement_id = ? AND statut <> 'brouillon' AND date_fermeture >= NOW()
                      ORDER BY date_ouverture ASC LIMIT ?"
                 );
-                $stmt->execute([$userId, $limit]);
+                $stmt->execute([$userId, \API\Core\EstablishmentContext::id(), $limit]);
                 foreach ($stmt as $r) {
                     $items[] = ['titre' => $r['titre'], 'description' => trim(($r['classe'] ?? '') . ' · ' . ($r['date_ouverture'] ?? ''), ' ·')];
                 }
@@ -42,11 +42,11 @@ class EvaluationWidgetProvider extends AbstractWidgetProvider
                     $stmt = $pdo->prepare(
                         "SELECT el.titre, el.date_ouverture
                          FROM evaluations_en_ligne el
-                         WHERE el.classe = (SELECT classe FROM eleves WHERE id = ? LIMIT 1)
-                           AND el.statut <> 'brouillon' AND el.date_fermeture >= NOW()
+                         WHERE el.classe = (SELECT classe FROM eleves WHERE id = ? AND etablissement_id = ? LIMIT 1)
+                           AND el.etablissement_id = ? AND el.statut <> 'brouillon' AND el.date_fermeture >= NOW()
                          ORDER BY el.date_ouverture ASC LIMIT ?"
                     );
-                    $stmt->execute([$cibleId, $limit]);
+                    $stmt->execute([$cibleId, \API\Core\EstablishmentContext::id(), \API\Core\EstablishmentContext::id(), $limit]);
                     foreach ($stmt as $r) {
                         $items[] = ['titre' => $r['titre'], 'description' => $r['date_ouverture'] ?? ''];
                     }

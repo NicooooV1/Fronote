@@ -16,12 +16,13 @@ class ReportingService {
      */
     public function getStatsGlobales(): array {
         $pdo = $this->pdo;
+        $eid = (int)\API\Core\EstablishmentContext::id();
         $stats = [];
 
         try {
-            $stats['total_eleves'] = (int)$pdo->query("SELECT COUNT(*) FROM eleves WHERE actif = 1")->fetchColumn();
-            $stats['total_profs'] = (int)$pdo->query("SELECT COUNT(*) FROM professeurs WHERE actif = 1")->fetchColumn();
-            $stats['total_classes'] = (int)$pdo->query("SELECT COUNT(*) FROM classes")->fetchColumn();
+            $stats['total_eleves'] = (int)$pdo->query("SELECT COUNT(*) FROM eleves WHERE actif = 1 AND etablissement_id = $eid")->fetchColumn();
+            $stats['total_profs'] = (int)$pdo->query("SELECT COUNT(*) FROM professeurs WHERE actif = 1 AND etablissement_id = $eid")->fetchColumn();
+            $stats['total_classes'] = (int)$pdo->query("SELECT COUNT(*) FROM classes WHERE etablissement_id = $eid")->fetchColumn();
         } catch (\Exception $e) {
             $stats = array_merge(['total_eleves' => 0, 'total_profs' => 0, 'total_classes' => 0], $stats);
         }
@@ -31,7 +32,7 @@ class ReportingService {
             $stats['moyenne_globale'] = (float)$pdo->query("
                 SELECT ROUND(AVG(sub.moy), 2) FROM (
                     SELECT e.id, ROUND(SUM(n.note * n.coefficient) / NULLIF(SUM(n.coefficient), 0), 2) AS moy
-                    FROM notes n JOIN eleves e ON n.id_eleve = e.id WHERE e.actif = 1 GROUP BY e.id
+                    FROM notes n JOIN eleves e ON n.id_eleve = e.id WHERE e.actif = 1 AND e.etablissement_id = $eid GROUP BY e.id
                 ) sub
             ")->fetchColumn() ?: 0;
         } catch (\Exception $e) { $stats['moyenne_globale'] = 0; }
@@ -39,7 +40,7 @@ class ReportingService {
         // Taux d'absentéisme (absences ce mois / nb élèves)
         try {
             $stats['absences_mois'] = (int)$pdo->query("
-                SELECT COUNT(*) FROM absences WHERE MONTH(date_debut) = MONTH(CURDATE()) AND YEAR(date_debut) = YEAR(CURDATE())
+                SELECT COUNT(*) FROM absences WHERE MONTH(date_debut) = MONTH(CURDATE()) AND YEAR(date_debut) = YEAR(CURDATE()) AND etablissement_id = $eid
             ")->fetchColumn();
             $stats['taux_absenteisme'] = $stats['total_eleves'] > 0
                 ? round($stats['absences_mois'] / $stats['total_eleves'] * 100, 1) : 0;
@@ -51,14 +52,14 @@ class ReportingService {
         // Incidents en cours
         try {
             $stats['incidents_ouverts'] = (int)$pdo->query("
-                SELECT COUNT(*) FROM incidents WHERE statut IN ('signale','en_cours')
+                SELECT COUNT(*) FROM incidents WHERE statut IN ('signale','en_cours') AND etablissement_id = $eid
             ")->fetchColumn();
         } catch (\Exception $e) { $stats['incidents_ouverts'] = 0; }
 
         // Taux de recouvrement facturation
         try {
             $row = $pdo->query("
-                SELECT COALESCE(SUM(montant_ttc), 0) AS total, COALESCE(SUM(montant_paye), 0) AS paye FROM factures
+                SELECT COALESCE(SUM(montant_ttc), 0) AS total, COALESCE(SUM(montant_paye), 0) AS paye FROM factures WHERE etablissement_id = $eid
             ")->fetch(PDO::FETCH_ASSOC);
             $stats['facturation_total'] = (float)$row['total'];
             $stats['facturation_paye'] = (float)$row['paye'];
@@ -86,16 +87,17 @@ class ReportingService {
                        ROUND(SUM(n.note * n.coefficient) / NULLIF(SUM(n.coefficient), 0), 2) AS moy
                 FROM notes n
                 JOIN eleves e ON n.id_eleve = e.id
-                WHERE e.actif = 1
+                WHERE e.actif = 1 AND e.etablissement_id = ?
         ";
-        $params = [];
+        $params = [\API\Core\EstablishmentContext::id()];
         if ($periodeId) { $sql .= " AND n.trimestre = ?"; $params[] = $periodeId; }
         $sql .= " GROUP BY e.id, e.classe
             ) sub
-            JOIN classes c ON sub.classe = c.nom
+            JOIN classes c ON sub.classe = c.nom AND c.etablissement_id = ?
             GROUP BY c.id, c.niveau, c.nom
             ORDER BY moyenne DESC
         ";
+        $params[] = \API\Core\EstablishmentContext::id();
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -117,14 +119,14 @@ class ReportingService {
             $absences = 0;
             $retards = 0;
             try {
-                $stmt = $pdo->prepare("SELECT COUNT(*) FROM absences WHERE DATE_FORMAT(date_debut, '%Y-%m') = ?");
-                $stmt->execute([$month]);
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM absences WHERE DATE_FORMAT(date_debut, '%Y-%m') = ? AND etablissement_id = ?");
+                $stmt->execute([$month, \API\Core\EstablishmentContext::id()]);
                 $absences = (int)$stmt->fetchColumn();
             } catch (\Exception $e) { error_log('[ReportingService.php] ' . $e->getMessage()); }
 
             try {
-                $stmt = $pdo->prepare("SELECT COUNT(*) FROM retards WHERE DATE_FORMAT(date_retard, '%Y-%m') = ?");
-                $stmt->execute([$month]);
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM retards WHERE DATE_FORMAT(date_retard, '%Y-%m') = ? AND etablissement_id = ?");
+                $stmt->execute([$month, \API\Core\EstablishmentContext::id()]);
                 $retards = (int)$stmt->fetchColumn();
             } catch (\Exception $e) { error_log('[ReportingService.php] ' . $e->getMessage()); }
 
@@ -153,8 +155,8 @@ class ReportingService {
         ];
         $result = [];
         foreach ($tranches as $label => [$min, $max]) {
-            $sql = "SELECT COUNT(*) FROM notes WHERE (note / note_sur * 20) BETWEEN ? AND ?";
-            $params = [$min, $max];
+            $sql = "SELECT COUNT(*) FROM notes WHERE (note / note_sur * 20) BETWEEN ? AND ? AND etablissement_id = ?";
+            $params = [$min, $max, \API\Core\EstablishmentContext::id()];
             if ($periodeId) { $sql .= " AND trimestre = ?"; $params[] = $periodeId; }
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
@@ -169,11 +171,11 @@ class ReportingService {
     public function getTopIncidents(int $limit = 10): array {
         try {
             $stmt = $this->pdo->prepare("
-                SELECT type, COUNT(*) AS total, 
+                SELECT type, COUNT(*) AS total,
                        SUM(CASE WHEN statut = 'resolu' THEN 1 ELSE 0 END) AS resolus
-                FROM incidents GROUP BY type ORDER BY total DESC LIMIT ?
+                FROM incidents WHERE etablissement_id = ? GROUP BY type ORDER BY total DESC LIMIT ?
             ");
-            $stmt->execute([$limit]);
+            $stmt->execute([\API\Core\EstablishmentContext::id(), $limit]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (\Exception $e) {
             return [];
@@ -185,14 +187,16 @@ class ReportingService {
      */
     public function getAbsencesParClasse(): array {
         try {
+            $eid = (int)\API\Core\EstablishmentContext::id();
             return $this->pdo->query("
                 SELECT c.id, CONCAT(c.niveau, ' – ', c.nom) AS classe,
                        COUNT(a.id) AS total_absences,
                        SUM(CASE WHEN a.justifie = 1 THEN 1 ELSE 0 END) AS justifiees,
                        COUNT(DISTINCT a.id_eleve) AS eleves_concernes
                 FROM classes c
-                LEFT JOIN eleves e ON e.classe = c.nom
+                LEFT JOIN eleves e ON e.classe = c.nom AND e.etablissement_id = $eid
                 LEFT JOIN absences a ON a.id_eleve = e.id
+                WHERE c.etablissement_id = $eid
                 GROUP BY c.id, c.niveau, c.nom
                 ORDER BY total_absences DESC
             ")->fetchAll(PDO::FETCH_ASSOC);
@@ -213,15 +217,16 @@ class ReportingService {
             FROM (
                 SELECT e.id AS eleve_id, e.classe,
                        ROUND(SUM(n.note * n.coefficient) / NULLIF(SUM(n.coefficient), 0), 2) AS moy
-                FROM notes n JOIN eleves e ON n.id_eleve = e.id WHERE e.actif = 1
+                FROM notes n JOIN eleves e ON n.id_eleve = e.id WHERE e.actif = 1 AND e.etablissement_id = ?
         ";
-        $params = [];
+        $params = [\API\Core\EstablishmentContext::id()];
         if ($periodeId) { $sql .= " AND n.trimestre = ?"; $params[] = $periodeId; }
         $sql .= " GROUP BY e.id, e.classe
             ) sub
-            JOIN classes c ON sub.classe = c.nom
+            JOIN classes c ON sub.classe = c.nom AND c.etablissement_id = ?
             GROUP BY c.id, c.niveau, c.nom ORDER BY taux DESC
         ";
+        $params[] = \API\Core\EstablishmentContext::id();
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -239,9 +244,9 @@ class ReportingService {
             FROM absences a
             JOIN eleves e ON a.id_eleve = e.id
             JOIN classes c ON e.classe = c.nom
-            WHERE e.classe = (SELECT nom FROM classes WHERE id = ?)
+            WHERE e.classe = (SELECT nom FROM classes WHERE id = ? AND etablissement_id = ?) AND e.etablissement_id = ?
         ";
-        $params = [$classeId];
+        $params = [$classeId, \API\Core\EstablishmentContext::id(), \API\Core\EstablishmentContext::id()];
         if ($dateDebut) { $sql .= " AND a.date_debut >= ?"; $params[] = $dateDebut; }
         if ($dateFin)   { $sql .= " AND a.date_debut <= ?"; $params[] = $dateFin; }
         $sql .= " ORDER BY a.date_debut DESC, e.nom";
@@ -262,9 +267,9 @@ class ReportingService {
             FROM notes n
             JOIN eleves e ON n.id_eleve = e.id
             JOIN matieres m ON n.id_matiere = m.id
-            WHERE e.classe = (SELECT nom FROM classes WHERE id = ?)
+            WHERE e.classe = (SELECT nom FROM classes WHERE id = ? AND etablissement_id = ?) AND e.etablissement_id = ?
         ";
-        $params = [$classeId];
+        $params = [$classeId, \API\Core\EstablishmentContext::id(), \API\Core\EstablishmentContext::id()];
         if ($periodeId) { $sql .= " AND n.trimestre = ?"; $params[] = $periodeId; }
         $sql .= " ORDER BY e.nom, m.nom, n.date_note DESC";
         $stmt = $this->pdo->prepare($sql);
@@ -284,9 +289,9 @@ class ReportingService {
             FROM notes n
             JOIN eleves e ON n.id_eleve = e.id
             JOIN matieres m ON n.id_matiere = m.id
-            WHERE e.classe = (SELECT nom FROM classes WHERE id = ?)
+            WHERE e.classe = (SELECT nom FROM classes WHERE id = ? AND etablissement_id = ?) AND e.etablissement_id = ?
         ";
-        $params = [$classeId];
+        $params = [$classeId, \API\Core\EstablishmentContext::id(), \API\Core\EstablishmentContext::id()];
         if ($periodeId) { $sql .= " AND n.trimestre = ?"; $params[] = $periodeId; }
         $sql .= " GROUP BY e.id, m.id ORDER BY e.nom, m.nom";
         $stmt = $this->pdo->prepare($sql);
@@ -304,8 +309,8 @@ class ReportingService {
                 FROM incidents i
                 JOIN eleves e ON i.eleve_id = e.id
                 JOIN classes c ON e.classe = c.nom
-                WHERE e.classe = (SELECT nom FROM classes WHERE id = ?)";
-        $params = [$classeId];
+                WHERE e.classe = (SELECT nom FROM classes WHERE id = ? AND etablissement_id = ?) AND e.etablissement_id = ?";
+        $params = [$classeId, \API\Core\EstablishmentContext::id(), \API\Core\EstablishmentContext::id()];
         if ($dateDebut) { $sql .= " AND i.date_incident >= ?"; $params[] = $dateDebut; }
         if ($dateFin)   { $sql .= " AND i.date_incident <= ?"; $params[] = $dateFin; }
         $sql .= " ORDER BY i.date_incident DESC";
@@ -323,8 +328,8 @@ class ReportingService {
         $pdo = $this->pdo;
 
         // Classe info
-        $stmt = $pdo->prepare("SELECT * FROM classes WHERE id = ?");
-        $stmt->execute([$classeId]);
+        $stmt = $pdo->prepare("SELECT * FROM classes WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$classeId, \API\Core\EstablishmentContext::id()]);
         $classe = $stmt->fetch(PDO::FETCH_ASSOC);
 
         // Les élèves référencent leur classe par NOM (eleves.classe varchar), pas par FK.
@@ -334,15 +339,15 @@ class ReportingService {
         // On traduit la période sélectionnée en numéro de trimestre.
         $trimestre = null;
         if ($periodeId) {
-            $pst = $pdo->prepare("SELECT numero FROM periodes WHERE id = ?");
-            $pst->execute([$periodeId]);
+            $pst = $pdo->prepare("SELECT numero FROM periodes WHERE id = ? AND etablissement_id = ?");
+            $pst->execute([$periodeId, \API\Core\EstablishmentContext::id()]);
             $num = $pst->fetchColumn();
             if ($num !== false) { $trimestre = (int)$num; }
         }
 
         // Effectif
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM eleves WHERE classe = ? AND actif = 1");
-        $stmt->execute([$classeNom]);
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM eleves WHERE classe = ? AND actif = 1 AND etablissement_id = ?");
+        $stmt->execute([$classeNom, \API\Core\EstablishmentContext::id()]);
         $effectif = (int)$stmt->fetchColumn();
 
         // Moyenne générale
@@ -350,9 +355,9 @@ class ReportingService {
             SELECT ROUND(AVG(sub.moy), 2) as moyenne_classe FROM (
                 SELECT e.id, ROUND(SUM(n.note * n.coefficient) / NULLIF(SUM(n.coefficient), 0), 2) AS moy
                 FROM notes n JOIN eleves e ON n.id_eleve = e.id
-                WHERE e.classe = ?
+                WHERE e.classe = ? AND e.etablissement_id = ?
         ";
-        $params = [$classeNom];
+        $params = [$classeNom, \API\Core\EstablishmentContext::id()];
         if ($trimestre !== null) { $sql .= " AND n.trimestre = ?"; $params[] = $trimestre; }
         $sql .= " GROUP BY e.id) sub";
         $stmt = $pdo->prepare($sql);
@@ -360,23 +365,23 @@ class ReportingService {
         $moyenneClasse = $stmt->fetchColumn() ?: 0;
 
         // Absences
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM absences a JOIN eleves e ON a.id_eleve = e.id WHERE e.classe = ?");
-        $stmt->execute([$classeNom]);
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM absences a JOIN eleves e ON a.id_eleve = e.id WHERE e.classe = ? AND e.etablissement_id = ?");
+        $stmt->execute([$classeNom, \API\Core\EstablishmentContext::id()]);
         $totalAbsences = (int)$stmt->fetchColumn();
 
         // Retards
         $totalRetards = 0;
         try {
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM retards r JOIN eleves e ON r.id_eleve = e.id WHERE e.classe = ?");
-            $stmt->execute([$classeNom]);
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM retards r JOIN eleves e ON r.id_eleve = e.id WHERE e.classe = ? AND e.etablissement_id = ?");
+            $stmt->execute([$classeNom, \API\Core\EstablishmentContext::id()]);
             $totalRetards = (int)$stmt->fetchColumn();
         } catch (\Exception $e) { error_log('[ReportingService.php] ' . $e->getMessage()); }
 
         // Incidents (incidents.eleve_id)
         $nbIncidents = 0;
         try {
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM incidents i JOIN eleves e ON i.eleve_id = e.id WHERE e.classe = ?");
-            $stmt->execute([$classeNom]);
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM incidents i JOIN eleves e ON i.eleve_id = e.id WHERE e.classe = ? AND e.etablissement_id = ?");
+            $stmt->execute([$classeNom, \API\Core\EstablishmentContext::id()]);
             $nbIncidents = (int)$stmt->fetchColumn();
         } catch (\Exception $e) { error_log('[ReportingService.php] ' . $e->getMessage()); }
 
@@ -390,9 +395,9 @@ class ReportingService {
             FROM notes n
             JOIN eleves e ON n.id_eleve = e.id
             JOIN matieres m ON n.id_matiere = m.id
-            WHERE e.classe = ?
+            WHERE e.classe = ? AND e.etablissement_id = ?
         ";
-        $paramsMat = [$classeNom];
+        $paramsMat = [$classeNom, \API\Core\EstablishmentContext::id()];
         if ($trimestre !== null) { $sqlMat .= " AND n.trimestre = ?"; $paramsMat[] = $trimestre; }
         $sqlMat .= " GROUP BY m.id, m.nom ORDER BY m.nom";
         $stmt = $pdo->prepare($sqlMat);
@@ -404,9 +409,9 @@ class ReportingService {
             SELECT e.id, e.nom, e.prenom,
                    ROUND(SUM(n.note * n.coefficient) / NULLIF(SUM(n.coefficient), 0), 2) AS moyenne
             FROM notes n JOIN eleves e ON n.id_eleve = e.id
-            WHERE e.classe = ? AND e.actif = 1
+            WHERE e.classe = ? AND e.actif = 1 AND e.etablissement_id = ?
         ";
-        $paramsEleves = [$classeNom];
+        $paramsEleves = [$classeNom, \API\Core\EstablishmentContext::id()];
         if ($trimestre !== null) { $sqlEleves .= " AND n.trimestre = ?"; $paramsEleves[] = $trimestre; }
         $sqlEleves .= " GROUP BY e.id, e.nom, e.prenom ORDER BY moyenne DESC";
         $stmt = $pdo->prepare($sqlEleves);
@@ -431,11 +436,13 @@ class ReportingService {
      * Récupère les classes
      */
     public function getClasses(): array {
-        return $this->pdo->query("SELECT * FROM classes ORDER BY niveau, nom")->fetchAll(PDO::FETCH_ASSOC);
+        $eid = (int)\API\Core\EstablishmentContext::id();
+        return $this->pdo->query("SELECT * FROM classes WHERE etablissement_id = $eid ORDER BY niveau, nom")->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getPeriodes(): array {
-        return $this->pdo->query("SELECT * FROM periodes ORDER BY date_debut")->fetchAll(PDO::FETCH_ASSOC);
+        $eid = (int)\API\Core\EstablishmentContext::id();
+        return $this->pdo->query("SELECT * FROM periodes WHERE etablissement_id = $eid ORDER BY date_debut")->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /* ==================== REPORT TEMPLATES ==================== */
@@ -454,8 +461,8 @@ class ReportingService {
         ]);
 
         $stmt = $this->pdo->prepare("
-            INSERT INTO report_templates (nom, config_json, schedule_cron, email_to, created_by)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO report_templates (nom, config_json, schedule_cron, email_to, created_by, etablissement_id)
+            VALUES (?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $data['nom'],
@@ -463,6 +470,7 @@ class ReportingService {
             $data['schedule_cron'] ?? null,
             $data['email_to'] ?? null,
             $data['created_by'] ?? null,
+            \API\Core\EstablishmentContext::id(),
         ]);
         return (int)$this->pdo->lastInsertId();
     }
@@ -472,8 +480,8 @@ class ReportingService {
      */
     public function getReportTemplates(?int $createdBy = null): array
     {
-        $sql = "SELECT * FROM report_templates WHERE 1=1";
-        $params = [];
+        $sql = "SELECT * FROM report_templates WHERE 1=1 AND etablissement_id = ?";
+        $params = [\API\Core\EstablishmentContext::id()];
         if ($createdBy) {
             $sql .= " AND created_by = ?";
             $params[] = $createdBy;
@@ -489,7 +497,7 @@ class ReportingService {
      */
     public function deleteReportTemplate(int $id): bool
     {
-        return $this->pdo->prepare("DELETE FROM report_templates WHERE id = ?")->execute([$id]);
+        return $this->pdo->prepare("DELETE FROM report_templates WHERE id = ? AND etablissement_id = ?")->execute([$id, \API\Core\EstablishmentContext::id()]);
     }
 
     /**
@@ -498,8 +506,8 @@ class ReportingService {
      */
     public function executeReport(int $templateId): array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM report_templates WHERE id = ?");
-        $stmt->execute([$templateId]);
+        $stmt = $this->pdo->prepare("SELECT * FROM report_templates WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$templateId, \API\Core\EstablishmentContext::id()]);
         $tpl = $stmt->fetch(\PDO::FETCH_ASSOC);
         if (!$tpl) return [];
 
@@ -529,9 +537,11 @@ class ReportingService {
      */
     public function getScheduledReportsDue(): array
     {
+        $eid = (int)\API\Core\EstablishmentContext::id();
         $stmt = $this->pdo->query("
             SELECT * FROM report_templates
             WHERE schedule_cron IS NOT NULL
+              AND etablissement_id = $eid
               AND (last_run IS NULL OR last_run < DATE_SUB(NOW(), INTERVAL 1 DAY))
         ");
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -542,7 +552,7 @@ class ReportingService {
      */
     public function markReportRun(int $templateId): void
     {
-        $this->pdo->prepare("UPDATE report_templates SET last_run = NOW() WHERE id = ?")->execute([$templateId]);
+        $this->pdo->prepare("UPDATE report_templates SET last_run = NOW() WHERE id = ? AND etablissement_id = ?")->execute([$templateId, \API\Core\EstablishmentContext::id()]);
     }
 
     /**

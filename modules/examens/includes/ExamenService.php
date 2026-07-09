@@ -15,8 +15,8 @@ class ExamenService
 
     public function getExamens(string $statut = null): array
     {
-        $sql = "SELECT e.*, (SELECT COUNT(*) FROM epreuves ep WHERE ep.examen_id = e.id) AS nb_epreuves FROM examens e WHERE 1=1";
-        $params = [];
+        $sql = "SELECT e.*, (SELECT COUNT(*) FROM epreuves ep WHERE ep.examen_id = e.id) AS nb_epreuves FROM examens e WHERE e.etablissement_id = ?";
+        $params = [\API\Core\EstablishmentContext::id()];
         if ($statut) { $sql .= ' AND e.statut = ?'; $params[] = $statut; }
         $sql .= ' ORDER BY e.date_debut DESC';
         $stmt = $this->pdo->prepare($sql);
@@ -26,27 +26,27 @@ class ExamenService
 
     public function getExamen(int $id): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM examens WHERE id = ?");
-        $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare("SELECT * FROM examens WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function creerExamen(array $d): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO examens (nom, type, date_debut, date_fin, description, statut, created_by) VALUES (?,?,?,?,?,?,?)");
-        $stmt->execute([$d['nom'], $d['type'], $d['date_debut'], $d['date_fin'] ?: null, $d['description'] ?? null, 'planifie', $d['created_by'] ?? null]);
+        $stmt = $this->pdo->prepare("INSERT INTO examens (etablissement_id, nom, type, date_debut, date_fin, description, statut, created_by) VALUES (?,?,?,?,?,?,?,?)");
+        $stmt->execute([\API\Core\EstablishmentContext::id(), $d['nom'], $d['type'], $d['date_debut'], $d['date_fin'] ?: null, $d['description'] ?? null, 'planifie', $d['created_by'] ?? null]);
         return $this->pdo->lastInsertId();
     }
 
     public function modifierExamen(int $id, array $d): void
     {
-        $stmt = $this->pdo->prepare("UPDATE examens SET nom=?, type=?, date_debut=?, date_fin=?, description=?, statut=? WHERE id=?");
-        $stmt->execute([$d['nom'], $d['type'], $d['date_debut'], $d['date_fin'], $d['description'], $d['statut'], $id]);
+        $stmt = $this->pdo->prepare("UPDATE examens SET nom=?, type=?, date_debut=?, date_fin=?, description=?, statut=? WHERE id=? AND etablissement_id=?");
+        $stmt->execute([$d['nom'], $d['type'], $d['date_debut'], $d['date_fin'], $d['description'], $d['statut'], $id, \API\Core\EstablishmentContext::id()]);
     }
 
     public function supprimerExamen(int $id): void
     {
-        $this->pdo->prepare("DELETE FROM examens WHERE id = ?")->execute([$id]);
+        $this->pdo->prepare("DELETE FROM examens WHERE id = ? AND etablissement_id = ?")->execute([$id, \API\Core\EstablishmentContext::id()]);
     }
 
     /* ───────── ÉPREUVES ───────── */
@@ -60,30 +60,30 @@ class ExamenService
             FROM epreuves ep
             LEFT JOIN matieres m ON ep.matiere_id = m.id
             LEFT JOIN salles s ON ep.salle_id = s.id
-            WHERE ep.examen_id = ?
+            WHERE ep.examen_id = ? AND ep.etablissement_id = ?
             ORDER BY ep.date_epreuve
         ");
-        $stmt->execute([$examenId]);
+        $stmt->execute([$examenId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getEpreuve(int $id): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT ep.*, m.nom AS matiere_nom, s.nom AS salle_nom FROM epreuves ep LEFT JOIN matieres m ON ep.matiere_id = m.id LEFT JOIN salles s ON ep.salle_id = s.id WHERE ep.id = ?");
-        $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare("SELECT ep.*, m.nom AS matiere_nom, s.nom AS salle_nom FROM epreuves ep LEFT JOIN matieres m ON ep.matiere_id = m.id LEFT JOIN salles s ON ep.salle_id = s.id WHERE ep.id = ? AND ep.etablissement_id = ?");
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function creerEpreuve(array $d): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO epreuves (examen_id, matiere_id, intitule, date_epreuve, duree_minutes, salle_id, coefficient, type, consignes) VALUES (?,?,?,?,?,?,?,?,?)");
-        $stmt->execute([$d['examen_id'], $d['matiere_id'] ?: null, $d['intitule'], $d['date_epreuve'], $d['duree_minutes'], $d['salle_id'] ?: null, $d['coefficient'] ?? 1, $d['type'], $d['consignes'] ?? null]);
+        $stmt = $this->pdo->prepare("INSERT INTO epreuves (etablissement_id, examen_id, matiere_id, intitule, date_epreuve, duree_minutes, salle_id, coefficient, type, consignes) VALUES (?,?,?,?,?,?,?,?,?,?)");
+        $stmt->execute([\API\Core\EstablishmentContext::id(), $d['examen_id'], $d['matiere_id'] ?: null, $d['intitule'], $d['date_epreuve'], $d['duree_minutes'], $d['salle_id'] ?: null, $d['coefficient'] ?? 1, $d['type'], $d['consignes'] ?? null]);
         return $this->pdo->lastInsertId();
     }
 
     public function supprimerEpreuve(int $id): void
     {
-        $this->pdo->prepare("DELETE FROM epreuves WHERE id = ?")->execute([$id]);
+        $this->pdo->prepare("DELETE FROM epreuves WHERE id = ? AND etablissement_id = ?")->execute([$id, \API\Core\EstablishmentContext::id()]);
     }
 
     /* ───────── CONVOCATIONS ───────── */
@@ -95,10 +95,10 @@ class ExamenService
             FROM epreuve_convocations ec
             JOIN eleves e ON ec.eleve_id = e.id
             LEFT JOIN classes cl ON e.classe = cl.nom
-            WHERE ec.epreuve_id = ?
+            WHERE ec.epreuve_id = ? AND e.etablissement_id = ?
             ORDER BY e.nom
         ");
-        $stmt->execute([$epreuveId]);
+        $stmt->execute([$epreuveId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -110,8 +110,8 @@ class ExamenService
 
     public function convoquerClasse(int $epreuveId, int $classeId): int
     {
-        $eleves = $this->pdo->prepare("SELECT id FROM eleves WHERE classe = (SELECT nom FROM classes WHERE id = ?) ORDER BY nom");
-        $eleves->execute([$classeId]);
+        $eleves = $this->pdo->prepare("SELECT id FROM eleves WHERE classe = (SELECT nom FROM classes WHERE id = ? AND etablissement_id = ?) AND etablissement_id = ? ORDER BY nom");
+        $eleves->execute([$classeId, \API\Core\EstablishmentContext::id(), \API\Core\EstablishmentContext::id()]);
         $count = 0;
         $place = 1;
         foreach ($eleves->fetchAll(PDO::FETCH_ASSOC) as $e) {
@@ -135,9 +135,9 @@ class ExamenService
             SELECT es.*, CONCAT(p.prenom, ' ', p.nom) AS prof_nom
             FROM epreuve_surveillants es
             JOIN professeurs p ON es.professeur_id = p.id
-            WHERE es.epreuve_id = ?
+            WHERE es.epreuve_id = ? AND p.etablissement_id = ?
         ");
-        $stmt->execute([$epreuveId]);
+        $stmt->execute([$epreuveId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -187,10 +187,10 @@ class ExamenService
             JOIN examens ex ON ep.examen_id = ex.id
             LEFT JOIN salles s ON ep.salle_id = s.id
             LEFT JOIN matieres m ON ep.matiere_id = m.id
-            WHERE ec.eleve_id = ?
+            WHERE ec.eleve_id = ? AND ep.etablissement_id = ?
             ORDER BY ep.date_epreuve
         ");
-        $stmt->execute([$eleveId]);
+        $stmt->execute([$eleveId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -226,7 +226,7 @@ class ExamenService
         if (empty($convocations)) return ['assigned' => 0, 'rooms' => []];
 
         // Get available rooms sorted by capacity
-        $salles = $this->pdo->query("SELECT * FROM salles WHERE actif = 1 ORDER BY capacite DESC")->fetchAll(\PDO::FETCH_ASSOC);
+        $salles = $this->pdo->query("SELECT * FROM salles WHERE actif = 1 AND etablissement_id = " . (int)\API\Core\EstablishmentContext::id() . " ORDER BY capacite DESC")->fetchAll(\PDO::FETCH_ASSOC);
         if (empty($salles)) throw new \Exception("Aucune salle disponible");
 
         $assigned = 0;
@@ -370,8 +370,8 @@ class ExamenService
             $place = str_pad((string)$numero, 3, '0', STR_PAD_LEFT);
             $places[] = ['convocation_id' => $e['id'], 'eleve_nom' => ($e['eleve_prenom'] ?? $e['prenom'] ?? '') . ' ' . ($e['eleve_nom'] ?? $e['nom'] ?? ''), 'place' => $place];
 
-            $this->pdo->prepare("INSERT INTO examen_places (epreuve_id, convocation_id, numero_place) VALUES (:eid, :cid, :np) ON DUPLICATE KEY UPDATE numero_place = VALUES(numero_place)")
-                ->execute([':eid' => $epreuveId, ':cid' => $e['id'], ':np' => $place]);
+            $this->pdo->prepare("INSERT INTO examen_places (etablissement_id, epreuve_id, convocation_id, numero_place) VALUES (:etab, :eid, :cid, :np) ON DUPLICATE KEY UPDATE numero_place = VALUES(numero_place)")
+                ->execute([':etab' => \API\Core\EstablishmentContext::id(), ':eid' => $epreuveId, ':cid' => $e['id'], ':np' => $place]);
 
             $numero += $increment;
         }
@@ -386,12 +386,12 @@ class ExamenService
      */
     public function genererConvocationsPdfData(int $examenId): array
     {
-        $examen = $this->pdo->prepare("SELECT * FROM examens WHERE id = :id");
-        $examen->execute([':id' => $examenId]);
+        $examen = $this->pdo->prepare("SELECT * FROM examens WHERE id = :id AND etablissement_id = :etab");
+        $examen->execute([':id' => $examenId, ':etab' => \API\Core\EstablishmentContext::id()]);
         $ex = $examen->fetch(\PDO::FETCH_ASSOC);
 
-        $epreuves = $this->pdo->prepare("SELECT * FROM epreuves WHERE examen_id = :eid ORDER BY date_epreuve, heure_debut");
-        $epreuves->execute([':eid' => $examenId]);
+        $epreuves = $this->pdo->prepare("SELECT * FROM epreuves WHERE examen_id = :eid AND etablissement_id = :etab ORDER BY date_epreuve, heure_debut");
+        $epreuves->execute([':eid' => $examenId, ':etab' => \API\Core\EstablishmentContext::id()]);
 
         $convocationsData = [];
         foreach ($epreuves as $ep) {

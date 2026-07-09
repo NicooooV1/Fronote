@@ -16,10 +16,11 @@ class OrientationService
     public function creerFiche(int $eleveId, array $data): int
     {
         $stmt = $this->pdo->prepare("
-            INSERT INTO orientation_fiches (eleve_id, annee_scolaire, projet_professionnel, centres_interet, competences_cles, avis_pp, avis_conseil, statut, date_creation)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'brouillon', NOW())
+            INSERT INTO orientation_fiches (etablissement_id, eleve_id, annee_scolaire, projet_professionnel, centres_interet, competences_cles, avis_pp, avis_conseil, statut, date_creation)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'brouillon', NOW())
         ");
         $stmt->execute([
+            \API\Core\EstablishmentContext::id(),
             $eleveId,
             $data['annee_scolaire'],
             $data['projet_professionnel'] ?? null,
@@ -37,7 +38,7 @@ class OrientationService
             UPDATE orientation_fiches
             SET projet_professionnel = ?, centres_interet = ?, competences_cles = ?,
                 avis_pp = ?, avis_conseil = ?, statut = ?, date_modification = NOW()
-            WHERE id = ?
+            WHERE id = ? AND etablissement_id = ?
         ");
         $stmt->execute([
             $data['projet_professionnel'] ?? null,
@@ -46,7 +47,8 @@ class OrientationService
             $data['avis_pp'] ?? null,
             $data['avis_conseil'] ?? null,
             $data['statut'] ?? 'brouillon',
-            $id
+            $id,
+            \API\Core\EstablishmentContext::id()
         ]);
     }
 
@@ -57,16 +59,16 @@ class OrientationService
             FROM orientation_fiches f
             JOIN eleves e ON f.eleve_id = e.id
             LEFT JOIN classes c ON e.classe = c.nom
-            WHERE f.id = ?
+            WHERE f.id = ? AND f.etablissement_id = ?
         ");
-        $stmt->execute([$id]);
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function getFicheEleve(int $eleveId, string $annee = null): ?array
     {
-        $sql = "SELECT f.*, e.prenom, e.nom AS eleve_nom FROM orientation_fiches f JOIN eleves e ON f.eleve_id = e.id WHERE f.eleve_id = ?";
-        $params = [$eleveId];
+        $sql = "SELECT f.*, e.prenom, e.nom AS eleve_nom FROM orientation_fiches f JOIN eleves e ON f.eleve_id = e.id WHERE f.eleve_id = ? AND f.etablissement_id = ?";
+        $params = [$eleveId, \API\Core\EstablishmentContext::id()];
         if ($annee) { $sql .= ' AND f.annee_scolaire = ?'; $params[] = $annee; }
         $sql .= ' ORDER BY f.date_creation DESC LIMIT 1';
         $stmt = $this->pdo->prepare($sql);
@@ -81,9 +83,9 @@ class OrientationService
             FROM orientation_fiches f
             JOIN eleves e ON f.eleve_id = e.id
             LEFT JOIN classes c ON e.classe = c.nom
-            WHERE 1=1
+            WHERE 1=1 AND f.etablissement_id = ?
         ";
-        $params = [];
+        $params = [\API\Core\EstablishmentContext::id()];
         if (!empty($filters['classe_id'])) {
             $sql .= ' AND e.classe = (SELECT nom FROM classes WHERE id = ?)';
             $params[] = $filters['classe_id'];
@@ -102,23 +104,24 @@ class OrientationService
 
     public function getVoeux(int $ficheId): array
     {
-        $stmt = $this->pdo->prepare('SELECT *, intitule AS formation FROM orientation_voeux WHERE fiche_id = ? ORDER BY rang');
-        $stmt->execute([$ficheId]);
+        $stmt = $this->pdo->prepare('SELECT *, intitule AS formation FROM orientation_voeux WHERE fiche_id = ? AND etablissement_id = ? ORDER BY rang');
+        $stmt->execute([$ficheId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function sauvegarderVoeux(int $ficheId, array $voeux): void
     {
-        $this->pdo->prepare('DELETE FROM orientation_voeux WHERE fiche_id = ?')->execute([$ficheId]);
+        $this->pdo->prepare('DELETE FROM orientation_voeux WHERE fiche_id = ? AND etablissement_id = ?')->execute([$ficheId, \API\Core\EstablishmentContext::id()]);
 
         $stmt = $this->pdo->prepare("
-            INSERT INTO orientation_voeux (fiche_id, rang, intitule, etablissement_vise, motivation, avis_pp, avis_conseil)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO orientation_voeux (etablissement_id, fiche_id, rang, intitule, etablissement_vise, motivation, avis_pp, avis_conseil)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         foreach ($voeux as $i => $v) {
             if (empty(trim($v['formation'] ?? ''))) continue;
             $stmt->execute([
+                \API\Core\EstablishmentContext::id(),
                 $ficheId,
                 $i + 1,
                 $v['formation'],
@@ -156,9 +159,9 @@ class OrientationService
             FROM parent_eleve pe
             JOIN eleves e ON pe.id_eleve = e.id
             LEFT JOIN classes c ON e.classe = c.nom
-            WHERE pe.id_parent = ?
+            WHERE pe.id_parent = ? AND e.etablissement_id = ?
         ");
-        $stmt->execute([$parentId]);
+        $stmt->execute([$parentId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -171,6 +174,7 @@ class OrientationService
                 COUNT(CASE WHEN statut = 'soumise' THEN 1 END) AS soumises,
                 COUNT(CASE WHEN statut = 'validee' THEN 1 END) AS validees
             FROM orientation_fiches
+            WHERE etablissement_id = " . (int)\API\Core\EstablishmentContext::id() . "
         ");
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
@@ -210,8 +214,8 @@ class OrientationService
                 FROM orientation_rdv r
                 JOIN eleves e ON r.eleve_id = e.id
                 LEFT JOIN classes c ON e.classe = c.nom
-                WHERE 1=1";
-        $params = [];
+                WHERE 1=1 AND e.etablissement_id = ?";
+        $params = [\API\Core\EstablishmentContext::id()];
         if (!empty($filters['eleve_id'])) { $sql .= ' AND r.eleve_id = ?'; $params[] = $filters['eleve_id']; }
         if (!empty($filters['statut'])) { $sql .= ' AND r.statut = ?'; $params[] = $filters['statut']; }
         if (!empty($filters['date_debut'])) { $sql .= ' AND r.date_rdv >= ?'; $params[] = $filters['date_debut']; }
@@ -273,10 +277,10 @@ class OrientationService
         $stmt = $this->pdo->prepare("
             SELECT f.*, (SELECT COUNT(*) FROM orientation_voeux v WHERE v.fiche_id = f.id) AS nb_voeux
             FROM orientation_fiches f
-            WHERE f.eleve_id = ?
+            WHERE f.eleve_id = ? AND f.etablissement_id = ?
             ORDER BY f.annee_scolaire DESC
         ");
-        $stmt->execute([$eleveId]);
+        $stmt->execute([$eleveId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -410,8 +414,8 @@ class OrientationService
 
     public function getEntretiens(int $ppId): array
     {
-        $stmt = $this->pdo->prepare("SELECT oe.*, CONCAT(e.prenom,' ',e.nom) AS eleve_nom, e.classe FROM orientation_entretiens oe JOIN eleves e ON oe.eleve_id = e.id WHERE oe.pp_id = :pid ORDER BY oe.date_entretien ASC");
-        $stmt->execute([':pid' => $ppId]);
+        $stmt = $this->pdo->prepare("SELECT oe.*, CONCAT(e.prenom,' ',e.nom) AS eleve_nom, e.classe FROM orientation_entretiens oe JOIN eleves e ON oe.eleve_id = e.id WHERE oe.pp_id = :pid AND e.etablissement_id = :etab ORDER BY oe.date_entretien ASC");
+        $stmt->execute([':pid' => $ppId, ':etab' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 

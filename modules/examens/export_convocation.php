@@ -29,8 +29,8 @@ $stmt = $pdo->prepare("SELECT ec.id AS convocation_id, ec.place,
                         JOIN eleves   el ON ec.eleve_id = el.id
                         LEFT JOIN matieres m ON ep.matiere_id = m.id
                         LEFT JOIN salles   s ON ep.salle_id = s.id
-                        WHERE ec.id = ?");
-$stmt->execute([$id]);
+                        WHERE ec.id = ? AND ex.etablissement_id = ?");
+$stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
 $exam = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$exam) { die('Convocation introuvable.'); }
 

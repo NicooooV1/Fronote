@@ -1,6 +1,6 @@
 <?php
 /**
- * En-tête standardisé pour le module Absences 
+ * En-tête standardisé pour le module Absences
  * Utilise les templates partagés Fronote
  */
 
@@ -12,18 +12,11 @@ enforceModuleAccess(basename(dirname(__DIR__)));
 
 // S'assurer que les variables nécessaires sont définies
 $pageTitle = $pageTitle ?? 'Absences';
-$currentPage = $currentPage ?? '';
 
 // Récupérer les informations utilisateur via l'API
 if (!isset($user_initials)) {
     $user_initials = getUserInitials();
     $user_fullname = getUserFullName();
-}
-
-// Pour l'onglet actif dans le menu
-function isActiveLink($page) {
-    global $currentPage;
-    return $currentPage === $page ? 'active' : '';
 }
 
 // canManageAbsences() est fourni par l'API (Bridge)
@@ -35,62 +28,35 @@ $user_fullname = $user_fullname ?? '';
 $extraCss = array_merge(['assets/css/absences.css'], $extraCss ?? []);
 $extraHeadHtml = ($extraHeadHtml ?? '') . '';
 
-// Contenu supplémentaire sidebar : Actions du module absences (sauf si déjà défini par la page)
-if (!isset($sidebarExtraContent)) {
-ob_start();
-?>
-            <div class="sidebar-nav">
-                <a href="absences.php" class="sidebar-nav-item <?= isActiveLink('liste') ?>">
-                    <span class="sidebar-nav-icon"><i class="fas fa-list"></i></span>
-                    <span>Liste des absences</span>
-                </a>
-                
-                <a href="absences.php?type=retards" class="sidebar-nav-item <?= isActiveLink('retards') ?>">
-                    <span class="sidebar-nav-icon"><i class="fas fa-clock"></i></span>
-                    <span>Retards</span>
-                </a>
-                
-                <?php if (canManageAbsences()): ?>
-                <a href="ajouter_absence.php" class="sidebar-nav-item <?= isActiveLink('ajouter') ?>">
-                    <span class="sidebar-nav-icon"><i class="fas fa-plus"></i></span>
-                    <span>Signaler une absence</span>
-                </a>
-                <?php endif; ?>
-
-                <?php if (isAdmin() || isVieScolaire()): ?>
-                <a href="justificatifs.php" class="sidebar-nav-item <?= isActiveLink('justificatifs') ?>">
-                    <span class="sidebar-nav-icon"><i class="fas fa-file-alt"></i></span>
-                    <span>Justificatifs</span>
-                </a>
-                <a href="valider_absence.php" class="sidebar-nav-item <?= isActiveLink('validation') ?>">
-                    <span class="sidebar-nav-icon"><i class="fas fa-clipboard-check"></i></span>
-                    <span>Validation</span>
-                </a>
-                <?php endif; ?>
-
-                <?php if (isStudent() || isParent()): ?>
-                <a href="soumettre_justificatif.php" class="sidebar-nav-item <?= isActiveLink('soumettre') ?>">
-                    <span class="sidebar-nav-icon"><i class="fas fa-file-upload"></i></span>
-                    <span>Soumettre un justificatif</span>
-                </a>
-                <?php endif; ?>
-                
-                <?php if (isAdmin() || isVieScolaire()): ?>
-                <a href="absences.php?view=stats" class="sidebar-nav-item <?= isActiveLink('statistiques') ?>">
-                    <span class="sidebar-nav-icon"><i class="fas fa-chart-pie"></i></span>
-                    <span>Statistiques</span>
-                </a>
-                <?php endif; ?>
-            </div>
-<?php
-$sidebarExtraContent = ob_get_clean();
-} // fin if (!isset($sidebarExtraContent))
+// Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
+// Liste / Retards / Statistiques pointent vers absences.php (même basename) :
+// l'état actif de ces trois entrées est donc explicite, calqué sur la logique
+// type/view de absences.php (vue stats réservée aux admin/vie scolaire).
+require_once __DIR__ . '/../../../templates/module_subnav.php';
+$_absScript    = basename($_SERVER['SCRIPT_NAME'] ?? '');
+$_absAdminVS   = isAdmin() || isVieScolaire();
+$_absOnStats   = $_absScript === 'absences.php' && ($_GET['view'] ?? '') === 'stats' && $_absAdminVS;
+$_absOnRetards = $_absScript === 'absences.php' && !$_absOnStats && ($_GET['type'] ?? '') === 'retards';
+$_absOnListe   = $_absScript === 'absences.php' && !$_absOnStats && !$_absOnRetards;
+// Les pages de détail/traitement/soumission des justificatifs restent rattachées
+// à l'onglet Justificatifs (le lien Soumettre, propre aux élèves/parents, reste
+// prioritaire pour eux via la détection par basename).
+$_absOnJustifs = in_array($_absScript, ['justificatifs.php', 'details_justificatif.php', 'traiter_justificatif.php', 'soumettre_justificatif.php'], true);
+$sidebarExtraContent = renderModuleSubnav([
+    ['href' => 'absences.php',               'icon' => 'fas fa-list',            'label' => 'Liste des absences',        'active' => $_absOnListe],
+    ['href' => 'absences.php?type=retards',  'icon' => 'fas fa-clock',           'label' => 'Retards',                   'active' => $_absOnRetards],
+    ['href' => 'ajouter_absence.php',        'icon' => 'fas fa-plus',            'label' => 'Signaler une absence',      'visible' => canManageAbsences()],
+    ['href' => 'justificatifs.php',          'icon' => 'fas fa-file-alt',        'label' => 'Justificatifs',             'visible' => $_absAdminVS, 'active' => $_absOnJustifs],
+    ['href' => 'valider_absence.php',        'icon' => 'fas fa-clipboard-check', 'label' => 'Validation',                'visible' => $_absAdminVS],
+    ['href' => 'soumettre_justificatif.php', 'icon' => 'fas fa-file-upload',     'label' => 'Soumettre un justificatif', 'visible' => isStudent() || isParent()],
+    ['href' => 'absences.php?view=stats',    'icon' => 'fas fa-chart-pie',       'label' => 'Statistiques',              'visible' => $_absAdminVS, 'active' => $_absOnStats],
+]);
 
 // Actions supplémentaires dans le header (sauf si déjà défini)
 if (!isset($headerExtraActions)) {
 ob_start();
 ?>
-                <?php if (canManageAbsences() && $currentPage !== 'ajouter'): ?>
+                <?php if (canManageAbsences() && $_absScript !== 'ajouter_absence.php'): ?>
                 <a href="ajouter_absence.php" class="btn btn-primary">
                     <i class="fas fa-plus"></i> Signaler une absence
                 </a>

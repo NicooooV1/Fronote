@@ -17,16 +17,12 @@ $extraCss = ['assets/css/bibliotheque.css'];
 $isGestionnaire = isAdmin() || isPersonnelVS();
 
 // Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
-$_sub = basename($_SERVER['PHP_SELF'] ?? '');
-ob_start(); ?>
-<div class="sidebar-nav">
-    <a href="catalogue.php" class="sidebar-nav-item <?= $_sub === 'catalogue.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-book"></i></span><span>Catalogue</span></a>
-    <a href="emprunts.php" class="sidebar-nav-item <?= $_sub === 'emprunts.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-book-reader"></i></span><span>Emprunts</span></a>
-<?php if ($isGestionnaire): ?>
-    <a href="ajouter.php" class="sidebar-nav-item <?= $_sub === 'ajouter.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-plus"></i></span><span>Ajouter</span></a>
-<?php endif; ?>
-</div>
-<?php $sidebarExtraContent = ob_get_clean();
+require_once __DIR__ . '/../../../templates/module_subnav.php';
+$sidebarExtraContent = renderModuleSubnav([
+    ['href' => 'catalogue.php', 'icon' => 'fas fa-book',        'label' => 'Catalogue'],
+    ['href' => 'emprunts.php',  'icon' => 'fas fa-book-reader', 'label' => 'Emprunts'],
+    ['href' => 'ajouter.php',   'icon' => 'fas fa-plus',        'label' => 'Ajouter', 'visible' => $isGestionnaire],
+]);
 
 $pageTitle = $pageTitle ?? 'Bibliothèque';
 require_once __DIR__ . '/../../../templates/shared_header.php';

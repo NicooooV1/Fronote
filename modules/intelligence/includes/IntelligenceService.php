@@ -71,8 +71,8 @@ class IntelligenceService
 
     private function calculerScoreAbsences(int $eleveId): float
     {
-        $stmt = $this->pdo->prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN justifie = 0 THEN 1 ELSE 0 END) AS nj FROM absences WHERE id_eleve = :eid AND date_debut >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)");
-        $stmt->execute([':eid' => $eleveId]);
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN justifie = 0 THEN 1 ELSE 0 END) AS nj FROM absences WHERE id_eleve = :eid AND etablissement_id = :etab AND date_debut >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)");
+        $stmt->execute([':eid' => $eleveId, ':etab' => \API\Core\EstablishmentContext::id()]);
         $r = $stmt->fetch(PDO::FETCH_ASSOC);
         $total = (int)$r['total'];
         $nj = (int)$r['nj'];
@@ -83,8 +83,8 @@ class IntelligenceService
 
     private function calculerScoreNotes(int $eleveId): float
     {
-        $stmt = $this->pdo->prepare("SELECT ROUND(AVG(note / note_sur * 20),2) AS moyenne FROM notes WHERE id_eleve = :eid AND date_note >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)");
-        $stmt->execute([':eid' => $eleveId]);
+        $stmt = $this->pdo->prepare("SELECT ROUND(AVG(note / note_sur * 20),2) AS moyenne FROM notes WHERE id_eleve = :eid AND etablissement_id = :etab AND date_note >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)");
+        $stmt->execute([':eid' => $eleveId, ':etab' => \API\Core\EstablishmentContext::id()]);
         $moyenne = (float)($stmt->fetchColumn() ?: 10);
 
         // Score inversé : 20/20 = 0 risque, 0/20 = 100 risque
@@ -93,8 +93,8 @@ class IntelligenceService
 
     private function calculerScoreDiscipline(int $eleveId): float
     {
-        $stmt = $this->pdo->prepare("SELECT COUNT(*) AS incidents, SUM(CASE WHEN gravite = 'grave' THEN 3 WHEN gravite = 'moyen' THEN 2 ELSE 1 END) AS poids_total FROM incidents WHERE eleve_id = :eid AND date_incident >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)");
-        $stmt->execute([':eid' => $eleveId]);
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) AS incidents, SUM(CASE WHEN gravite = 'grave' THEN 3 WHEN gravite = 'moyen' THEN 2 ELSE 1 END) AS poids_total FROM incidents WHERE eleve_id = :eid AND etablissement_id = :etab AND date_incident >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)");
+        $stmt->execute([':eid' => $eleveId, ':etab' => \API\Core\EstablishmentContext::id()]);
         $r = $stmt->fetch(PDO::FETCH_ASSOC);
         $poids = (int)($r['poids_total'] ?? 0);
 
@@ -105,8 +105,8 @@ class IntelligenceService
     private function calculerScoreEngagement(int $eleveId): float
     {
         // Mesure inverse : moins d'engagement = plus de risque
-        $devoirs = $this->pdo->prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN dr.id IS NOT NULL THEN 1 ELSE 0 END) AS rendus FROM devoirs d LEFT JOIN devoirs_rendus dr ON dr.devoir_id = d.id AND dr.eleve_id = :eid WHERE d.classe = (SELECT classe FROM eleves WHERE id = :eid2) AND d.date_rendu >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)");
-        $devoirs->execute([':eid' => $eleveId, ':eid2' => $eleveId]);
+        $devoirs = $this->pdo->prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN dr.id IS NOT NULL THEN 1 ELSE 0 END) AS rendus FROM devoirs d LEFT JOIN devoirs_rendus dr ON dr.devoir_id = d.id AND dr.eleve_id = :eid WHERE d.classe = (SELECT classe FROM eleves WHERE id = :eid2 AND etablissement_id = :etab2) AND d.etablissement_id = :etab AND d.date_rendu >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)");
+        $devoirs->execute([':eid' => $eleveId, ':eid2' => $eleveId, ':etab' => \API\Core\EstablishmentContext::id(), ':etab2' => \API\Core\EstablishmentContext::id()]);
         $r = $devoirs->fetch(PDO::FETCH_ASSOC);
 
         $total = (int)$r['total'];
@@ -153,8 +153,8 @@ class IntelligenceService
 
     public function recalculerTous(int $etabId): int
     {
-        $eleves = $this->pdo->prepare("SELECT id FROM eleves WHERE actif = 1");
-        $eleves->execute();
+        $eleves = $this->pdo->prepare("SELECT id FROM eleves WHERE actif = 1 AND etablissement_id = :etab");
+        $eleves->execute([':etab' => $etabId]);
         $count = 0;
         foreach ($eleves as $e) {
             $this->calculerScoreEleve($e['id'], $etabId);
@@ -210,8 +210,8 @@ class IntelligenceService
 
     public function traiterAlerte(int $alerteId, string $action, int $traitePar): void
     {
-        $this->pdo->prepare("UPDATE intelligence_alertes SET statut = 'traitee', action_prise = :a, traite_par = :tp, date_traitement = NOW() WHERE id = :id")
-            ->execute([':a' => $action, ':tp' => $traitePar, ':id' => $alerteId]);
+        $this->pdo->prepare("UPDATE intelligence_alertes SET statut = 'traitee', action_prise = :a, traite_par = :tp, date_traitement = NOW() WHERE id = :id AND etablissement_id = :etab")
+            ->execute([':a' => $action, ':tp' => $traitePar, ':id' => $alerteId, ':etab' => \API\Core\EstablishmentContext::id()]);
     }
 
     // ─── Patterns ─────────────────────────────────────────────────
@@ -221,8 +221,8 @@ class IntelligenceService
         $patterns = [];
 
         // Pattern : chute de notes
-        $evolution = $this->pdo->prepare("SELECT ROUND(AVG(note / note_sur * 20),2) AS moy, DATE_FORMAT(date_note, '%Y-%m') AS mois FROM notes WHERE id_eleve = :eid AND date_note >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH) GROUP BY mois ORDER BY mois");
-        $evolution->execute([':eid' => $eleveId]);
+        $evolution = $this->pdo->prepare("SELECT ROUND(AVG(note / note_sur * 20),2) AS moy, DATE_FORMAT(date_note, '%Y-%m') AS mois FROM notes WHERE id_eleve = :eid AND etablissement_id = :etab AND date_note >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH) GROUP BY mois ORDER BY mois");
+        $evolution->execute([':eid' => $eleveId, ':etab' => \API\Core\EstablishmentContext::id()]);
         $mois = $evolution->fetchAll(PDO::FETCH_ASSOC);
 
         if (count($mois) >= 3) {
@@ -233,8 +233,8 @@ class IntelligenceService
         }
 
         // Pattern : absences croissantes
-        $absEvol = $this->pdo->prepare("SELECT COUNT(*) AS nb, DATE_FORMAT(date_debut, '%Y-%m') AS mois FROM absences WHERE id_eleve = :eid AND date_debut >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH) GROUP BY mois ORDER BY mois");
-        $absEvol->execute([':eid' => $eleveId]);
+        $absEvol = $this->pdo->prepare("SELECT COUNT(*) AS nb, DATE_FORMAT(date_debut, '%Y-%m') AS mois FROM absences WHERE id_eleve = :eid AND etablissement_id = :etab AND date_debut >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH) GROUP BY mois ORDER BY mois");
+        $absEvol->execute([':eid' => $eleveId, ':etab' => \API\Core\EstablishmentContext::id()]);
         $absMois = $absEvol->fetchAll(PDO::FETCH_ASSOC);
 
         if (count($absMois) >= 3) {
@@ -248,8 +248,8 @@ class IntelligenceService
         // emploi_du_temps n'a pas de colonne date : on corrèle le jour de semaine
         // de l'absence (date_debut) au champ `jour` de l'EDT de la classe de l'élève
         // et à la matière du créneau. Best-effort : renvoie vide si aucun EDT ne correspond.
-        $absMat = $this->pdo->prepare("SELECT m.nom AS matiere, COUNT(*) AS nb FROM absences a JOIN eleves el ON el.id = a.id_eleve JOIN classes c ON c.nom = el.classe JOIN emploi_du_temps edt ON edt.classe_id = c.id AND edt.actif = 1 AND edt.jour = ELT(WEEKDAY(a.date_debut) + 1, 'lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche') JOIN matieres m ON edt.matiere_id = m.id WHERE a.id_eleve = :eid AND a.date_debut >= DATE_SUB(CURDATE(), INTERVAL 90 DAY) GROUP BY m.id HAVING nb >= 3 ORDER BY nb DESC");
-        $absMat->execute([':eid' => $eleveId]);
+        $absMat = $this->pdo->prepare("SELECT m.nom AS matiere, COUNT(*) AS nb FROM absences a JOIN eleves el ON el.id = a.id_eleve AND el.etablissement_id = a.etablissement_id JOIN classes c ON c.nom = el.classe AND c.etablissement_id = a.etablissement_id JOIN emploi_du_temps edt ON edt.classe_id = c.id AND edt.actif = 1 AND edt.etablissement_id = a.etablissement_id AND edt.jour = ELT(WEEKDAY(a.date_debut) + 1, 'lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche') JOIN matieres m ON edt.matiere_id = m.id AND m.etablissement_id = a.etablissement_id WHERE a.id_eleve = :eid AND a.etablissement_id = :etab AND a.date_debut >= DATE_SUB(CURDATE(), INTERVAL 90 DAY) GROUP BY m.id HAVING nb >= 3 ORDER BY nb DESC");
+        $absMat->execute([':eid' => $eleveId, ':etab' => \API\Core\EstablishmentContext::id()]);
         $ciblees = $absMat->fetchAll(PDO::FETCH_ASSOC);
         if (!empty($ciblees)) {
             $patterns[] = ['type' => 'absences_ciblees', 'message' => 'Absences concentrées sur certaines matières', 'data' => $ciblees];
@@ -262,8 +262,8 @@ class IntelligenceService
 
     public function getEvolutionScore(int $eleveId, int $nbMois = 6): array
     {
-        $stmt = $this->pdo->prepare("SELECT score_risque, niveau_alerte, date_calcul FROM intelligence_scores WHERE eleve_id = :eid AND date_calcul >= DATE_SUB(CURDATE(), INTERVAL :m MONTH) ORDER BY date_calcul");
-        $stmt->execute([':eid' => $eleveId, ':m' => $nbMois]);
+        $stmt = $this->pdo->prepare("SELECT score_risque, niveau_alerte, date_calcul FROM intelligence_scores WHERE eleve_id = :eid AND etablissement_id = :etab AND date_calcul >= DATE_SUB(CURDATE(), INTERVAL :m MONTH) ORDER BY date_calcul");
+        $stmt->execute([':eid' => $eleveId, ':etab' => \API\Core\EstablishmentContext::id(), ':m' => $nbMois]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

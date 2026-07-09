@@ -70,7 +70,6 @@ $csrf     = AbsenceHelper::generateCsrf();
 
 // --- Config page ---
 $pageTitle      = 'Validation des absences';
-$currentPage    = 'validation';
 $showBackButton = true;
 $backLink       = 'absences.php';
 

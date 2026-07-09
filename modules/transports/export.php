@@ -20,13 +20,16 @@ if ($type === 'inscrits' && !empty($_GET['ligne_id'])) {
     $filename = 'inscrits_transport';
 } else {
     $data = $service->getLignesForExport($_GET['type_transport'] ?? null);
-    $headers = ['Nom', 'Type', 'Itinéraire', 'Horaires', 'Capacité', 'Inscrits'];
+    $headers = ['Nom', 'Type', 'Itinéraire', 'Horaire départ', 'Horaire arrivée', 'Capacité', 'Inscrits'];
     $title = 'Lignes de transport';
     $filename = 'lignes_transport';
 }
 
+// Les lignes du service sont indexées numériquement : on les recale sur les libellés d'en-tête.
+$data = array_map(fn($row) => array_combine($headers, $row), $data);
+
 if ($format === 'pdf') {
-    $exportService->pdf($title, $headers, $data, $filename);
+    $exportService->pdf($exportService->buildTable($data, $headers, $title), $title, $filename);
 } else {
-    $exportService->csv($headers, $data, $filename);
+    $exportService->csv($data, $headers, $filename);
 }

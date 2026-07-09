@@ -110,7 +110,6 @@ $classes = $service->getClasses();
 $matieres = $service->getMatieres();
 
 $pageTitle = 'Appel / Présence';
-$currentPage = 'appel';
 $pageSubtitle = 'Date : ' . date('d/m/Y', strtotime($date));
 
 include 'includes/header.php';

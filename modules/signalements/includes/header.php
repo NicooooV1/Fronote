@@ -22,19 +22,13 @@ $isAdmin = isAdmin();
 $isStaff = isAdmin() || isPersonnelVS();
 
 // Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
-$_sub = basename($_SERVER['PHP_SELF'] ?? '');
-ob_start(); ?>
-<div class="sidebar-nav">
-<?php if ($isStaff): ?>
-    <a href="signalements.php" class="sidebar-nav-item <?= $_sub === 'signalements.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-list-ul"></i></span><span>Signalements</span></a>
-<?php endif; ?>
-    <a href="mes_signalements.php" class="sidebar-nav-item <?= $_sub === 'mes_signalements.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-folder"></i></span><span>Mes signalements</span></a>
-    <a href="signaler.php" class="sidebar-nav-item <?= $_sub === 'signaler.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-plus-circle"></i></span><span>Signaler</span></a>
-<?php if ($isStaff): ?>
-    <a href="export.php" class="sidebar-nav-item"><span class="sidebar-nav-icon"><i class="fas fa-file-export"></i></span><span>Export</span></a>
-<?php endif; ?>
-</div>
-<?php $sidebarExtraContent = ob_get_clean();
+require_once __DIR__ . '/../../../templates/module_subnav.php';
+$sidebarExtraContent = renderModuleSubnav([
+    ['href' => 'signalements.php',     'icon' => 'fas fa-list-ul',      'label' => 'Signalements', 'visible' => $isStaff],
+    ['href' => 'mes_signalements.php', 'icon' => 'fas fa-folder',       'label' => 'Mes signalements'],
+    ['href' => 'signaler.php',         'icon' => 'fas fa-plus-circle',  'label' => 'Signaler'],
+    ['href' => 'export.php',           'icon' => 'fas fa-file-export',  'label' => 'Export',       'visible' => $isStaff],
+]);
 
 require_once __DIR__ . '/../../../templates/shared_header.php';
 require_once __DIR__ . '/../../../templates/shared_topbar.php';

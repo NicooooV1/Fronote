@@ -29,8 +29,8 @@ class ConseilClasseService
         $sessionId = (int)$this->pdo->lastInsertId();
 
         // Auto-populate eleve discussions
-        $eleves = $this->pdo->prepare("SELECT id FROM eleves WHERE classe = :c AND actif = 1 ORDER BY nom, prenom");
-        $eleves->execute([':c' => $classeId]);
+        $eleves = $this->pdo->prepare("SELECT id FROM eleves WHERE classe = :c AND actif = 1 AND etablissement_id = :etab ORDER BY nom, prenom");
+        $eleves->execute([':c' => $classeId, ':etab' => \API\Core\EstablishmentContext::id()]);
         $ordre = 1;
         foreach ($eleves as $e) {
             $this->pdo->prepare("INSERT INTO conseil_classe_eleve_discussions (session_id, eleve_id, ordre) VALUES (:s, :e, :o)")
@@ -42,8 +42,8 @@ class ConseilClasseService
 
     public function getSessions(string $classeId, ?string $annee = null): array
     {
-        $sql = "SELECT * FROM conseil_classe_sessions WHERE classe_id = :c";
-        $params = [':c' => $classeId];
+        $sql = "SELECT * FROM conseil_classe_sessions WHERE classe_id = :c AND etablissement_id = :etab";
+        $params = [':c' => $classeId, ':etab' => \API\Core\EstablishmentContext::id()];
         if ($annee) { $sql .= " AND annee_scolaire = :a"; $params[':a'] = $annee; }
         $sql .= " ORDER BY date_conseil DESC";
         $stmt = $this->pdo->prepare($sql);
@@ -55,31 +55,31 @@ class ConseilClasseService
 
     public function getPreparationClasse(int $sessionId): array
     {
-        $session = $this->pdo->prepare("SELECT * FROM conseil_classe_sessions WHERE id = :id");
-        $session->execute([':id' => $sessionId]);
+        $session = $this->pdo->prepare("SELECT * FROM conseil_classe_sessions WHERE id = :id AND etablissement_id = :etab");
+        $session->execute([':id' => $sessionId, ':etab' => \API\Core\EstablishmentContext::id()]);
         $session = $session->fetch(PDO::FETCH_ASSOC);
 
         $classeId = $session['classe_id'];
-        $stats = $this->pdo->prepare("SELECT COUNT(DISTINCT e.id) AS nb_eleves, ROUND(AVG(n.note),2) AS moyenne_classe, (SELECT COUNT(*) FROM absences a JOIN eleves e2 ON a.id_eleve = e2.id WHERE e2.classe = :c AND a.justifie = 0) AS absences_nj_total FROM eleves e LEFT JOIN notes n ON n.id_eleve = e.id WHERE e.classe = :c2 AND e.actif = 1");
-        $stats->execute([':c' => $classeId, ':c2' => $classeId]);
+        $stats = $this->pdo->prepare("SELECT COUNT(DISTINCT e.id) AS nb_eleves, ROUND(AVG(n.note),2) AS moyenne_classe, (SELECT COUNT(*) FROM absences a JOIN eleves e2 ON a.id_eleve = e2.id WHERE e2.classe = :c AND e2.etablissement_id = :etab2 AND a.justifie = 0) AS absences_nj_total FROM eleves e LEFT JOIN notes n ON n.id_eleve = e.id WHERE e.classe = :c2 AND e.actif = 1 AND e.etablissement_id = :etab");
+        $stats->execute([':c' => $classeId, ':c2' => $classeId, ':etab' => \API\Core\EstablishmentContext::id(), ':etab2' => \API\Core\EstablishmentContext::id()]);
 
         return ['session' => $session, 'stats_classe' => $stats->fetch(PDO::FETCH_ASSOC)];
     }
 
     public function getResumeEleve(int $sessionId, int $eleveId): array
     {
-        $eleve = $this->pdo->prepare("SELECT id, nom, prenom, classe FROM eleves WHERE id = :id");
-        $eleve->execute([':id' => $eleveId]);
+        $eleve = $this->pdo->prepare("SELECT id, nom, prenom, classe FROM eleves WHERE id = :id AND etablissement_id = :etab");
+        $eleve->execute([':id' => $eleveId, ':etab' => \API\Core\EstablishmentContext::id()]);
         $eleve = $eleve->fetch(PDO::FETCH_ASSOC);
 
-        $moyennes = $this->pdo->prepare("SELECT m.nom AS matiere, ROUND(AVG(n.note),2) AS moyenne FROM notes n JOIN matieres m ON n.id_matiere = m.id WHERE n.id_eleve = :eid GROUP BY m.id ORDER BY m.nom");
-        $moyennes->execute([':eid' => $eleveId]);
+        $moyennes = $this->pdo->prepare("SELECT m.nom AS matiere, ROUND(AVG(n.note),2) AS moyenne FROM notes n JOIN matieres m ON n.id_matiere = m.id WHERE n.id_eleve = :eid AND n.etablissement_id = :etab GROUP BY m.id ORDER BY m.nom");
+        $moyennes->execute([':eid' => $eleveId, ':etab' => \API\Core\EstablishmentContext::id()]);
 
-        $absences = $this->pdo->prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN justifie = 0 THEN 1 ELSE 0 END) AS non_justifiees FROM absences WHERE id_eleve = :eid");
-        $absences->execute([':eid' => $eleveId]);
+        $absences = $this->pdo->prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN justifie = 0 THEN 1 ELSE 0 END) AS non_justifiees FROM absences WHERE id_eleve = :eid AND etablissement_id = :etab");
+        $absences->execute([':eid' => $eleveId, ':etab' => \API\Core\EstablishmentContext::id()]);
 
-        $incidents = $this->pdo->prepare("SELECT COUNT(*) AS total FROM incidents WHERE eleve_id = :eid");
-        $incidents->execute([':eid' => $eleveId]);
+        $incidents = $this->pdo->prepare("SELECT COUNT(*) AS total FROM incidents WHERE eleve_id = :eid AND etablissement_id = :etab");
+        $incidents->execute([':eid' => $eleveId, ':etab' => \API\Core\EstablishmentContext::id()]);
 
         $discussion = $this->pdo->prepare("SELECT * FROM conseil_classe_eleve_discussions WHERE session_id = :sid AND eleve_id = :eid");
         $discussion->execute([':sid' => $sessionId, ':eid' => $eleveId]);
@@ -91,7 +91,7 @@ class ConseilClasseService
 
     public function demarrerConseil(int $sessionId): void
     {
-        $this->pdo->prepare("UPDATE conseil_classe_sessions SET statut = 'en_cours' WHERE id = :id")->execute([':id' => $sessionId]);
+        $this->pdo->prepare("UPDATE conseil_classe_sessions SET statut = 'en_cours' WHERE id = :id AND etablissement_id = :etab")->execute([':id' => $sessionId, ':etab' => \API\Core\EstablishmentContext::id()]);
     }
 
     public function enregistrerAppreciation(int $discussionId, string $appreciation, string $avisPropose = 'aucun'): void
@@ -141,7 +141,7 @@ class ConseilClasseService
 
     public function terminerConseil(int $sessionId): void
     {
-        $this->pdo->prepare("UPDATE conseil_classe_sessions SET statut = 'termine' WHERE id = :id")->execute([':id' => $sessionId]);
+        $this->pdo->prepare("UPDATE conseil_classe_sessions SET statut = 'termine' WHERE id = :id AND etablissement_id = :etab")->execute([':id' => $sessionId, ':etab' => \API\Core\EstablishmentContext::id()]);
     }
 
     public function enregistrerSynthese(int $sessionId, string $synthese, string $pointsPositifs = '', string $pointsAmelioration = '', string $decisions = ''): void
@@ -158,13 +158,13 @@ class ConseilClasseService
         $discussions->execute([':s' => $sessionId]);
         $count = 0;
 
-        $session = $this->pdo->prepare("SELECT periode_id FROM conseil_classe_sessions WHERE id = :id");
-        $session->execute([':id' => $sessionId]);
+        $session = $this->pdo->prepare("SELECT periode_id FROM conseil_classe_sessions WHERE id = :id AND etablissement_id = :etab");
+        $session->execute([':id' => $sessionId, ':etab' => \API\Core\EstablishmentContext::id()]);
         $periodeId = $session->fetchColumn();
 
         foreach ($discussions as $d) {
-            $this->pdo->prepare("UPDATE bulletins SET appreciation_conseil = :app, avis_conseil = :avis WHERE eleve_id = :eid AND periode_id = :pid")
-                ->execute([':app' => $d['appreciation'], ':avis' => $d['avis_final'], ':eid' => $d['eleve_id'], ':pid' => $periodeId]);
+            $this->pdo->prepare("UPDATE bulletins SET appreciation_conseil = :app, avis_conseil = :avis WHERE eleve_id = :eid AND periode_id = :pid AND etablissement_id = :etab")
+                ->execute([':app' => $d['appreciation'], ':avis' => $d['avis_final'], ':eid' => $d['eleve_id'], ':pid' => $periodeId, ':etab' => \API\Core\EstablishmentContext::id()]);
             $count++;
         }
         return $count;
@@ -175,11 +175,11 @@ class ConseilClasseService
     public function genererPV(int $sessionId): array
     {
         $prep = $this->getPreparationClasse($sessionId);
-        $participants = $this->pdo->prepare("SELECT p.*, CASE WHEN p.user_type = 'professeur' THEN (SELECT CONCAT(pr.prenom,' ',pr.nom) FROM professeurs pr WHERE pr.id = p.user_id) ELSE CONCAT(p.user_type,'#',p.user_id) END AS nom_complet FROM conseil_classe_participants p WHERE p.session_id = :s");
-        $participants->execute([':s' => $sessionId]);
+        $participants = $this->pdo->prepare("SELECT p.*, CASE WHEN p.user_type = 'professeur' THEN (SELECT CONCAT(pr.prenom,' ',pr.nom) FROM professeurs pr WHERE pr.id = p.user_id AND pr.etablissement_id = :etab) ELSE CONCAT(p.user_type,'#',p.user_id) END AS nom_complet FROM conseil_classe_participants p WHERE p.session_id = :s");
+        $participants->execute([':s' => $sessionId, ':etab' => \API\Core\EstablishmentContext::id()]);
 
-        $discussions = $this->pdo->prepare("SELECT d.*, CONCAT(e.prenom,' ',e.nom) AS eleve FROM conseil_classe_eleve_discussions d JOIN eleves e ON d.eleve_id = e.id WHERE d.session_id = :s ORDER BY d.ordre");
-        $discussions->execute([':s' => $sessionId]);
+        $discussions = $this->pdo->prepare("SELECT d.*, CONCAT(e.prenom,' ',e.nom) AS eleve FROM conseil_classe_eleve_discussions d JOIN eleves e ON d.eleve_id = e.id WHERE d.session_id = :s AND e.etablissement_id = :etab ORDER BY d.ordre");
+        $discussions->execute([':s' => $sessionId, ':etab' => \API\Core\EstablishmentContext::id()]);
 
         $synthese = $this->pdo->prepare("SELECT * FROM conseil_classe_synthese WHERE session_id = :s");
         $synthese->execute([':s' => $sessionId]);

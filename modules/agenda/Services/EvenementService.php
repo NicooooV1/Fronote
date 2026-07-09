@@ -25,7 +25,7 @@ class EvenementService
         return ['data' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'total' => $total, 'pages' => $pages];
     }
 
-    public function getById(int $id): ?array { $stmt = $this->pdo->prepare('SELECT * FROM evenements WHERE id = ?'); $stmt->execute([$id]); $row = $stmt->fetch(PDO::FETCH_ASSOC); return $row !== false ? $row : null; }
+    public function getById(int $id): ?array { $stmt = $this->pdo->prepare('SELECT * FROM evenements WHERE id = ? AND etablissement_id = ?'); $stmt->execute([$id, $this->etabId()]); $row = $stmt->fetch(PDO::FETCH_ASSOC); return $row !== false ? $row : null; }
 
     public function create(array $data): int
     {
@@ -38,8 +38,8 @@ class EvenementService
 
     public function update(int $id, array $data): bool
     {
-        $stmt = $this->pdo->prepare("UPDATE evenements SET titre = :titre, description = :description, date_debut = :date_debut, date_fin = :date_fin, type_evenement = :type_evenement, lieu = :lieu, date_modification = NOW() WHERE id = :id");
-        $stmt->execute([':titre' => $data['titre'], ':description' => $data['description'] ?? null, ':date_debut' => $data['date_debut'], ':date_fin' => $data['date_fin'], ':type_evenement' => $data['type_evenement'], ':lieu' => $data['lieu'] ?? null, ':id' => $id]);
+        $stmt = $this->pdo->prepare("UPDATE evenements SET titre = :titre, description = :description, date_debut = :date_debut, date_fin = :date_fin, type_evenement = :type_evenement, lieu = :lieu, date_modification = NOW() WHERE id = :id AND etablissement_id = :etab");
+        $stmt->execute([':titre' => $data['titre'], ':description' => $data['description'] ?? null, ':date_debut' => $data['date_debut'], ':date_fin' => $data['date_fin'], ':type_evenement' => $data['type_evenement'], ':lieu' => $data['lieu'] ?? null, ':id' => $id, ':etab' => $this->etabId()]);
         $updated = $stmt->rowCount() > 0;
         if ($updated) app('hooks')?->dispatch(new \Modules\Agenda\Events\EvenementUpdated($id, $data));
         return $updated;
@@ -47,12 +47,12 @@ class EvenementService
 
     public function delete(int $id): bool
     {
-        $stmt = $this->pdo->prepare('DELETE FROM evenements WHERE id = ?'); $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare('DELETE FROM evenements WHERE id = ? AND etablissement_id = ?'); $stmt->execute([$id, $this->etabId()]);
         $deleted = $stmt->rowCount() > 0;
         if ($deleted) app('hooks')?->dispatch(new \Modules\Agenda\Events\EvenementDeleted($id));
         return $deleted;
     }
 
-    public function toggleStatus(int $id): bool { $stmt = $this->pdo->prepare("UPDATE evenements SET statut = CASE WHEN statut = 'actif' THEN 'annule' ELSE 'actif' END, date_modification = NOW() WHERE id = ?"); $stmt->execute([$id]); return $stmt->rowCount() > 0; }
+    public function toggleStatus(int $id): bool { $stmt = $this->pdo->prepare("UPDATE evenements SET statut = CASE WHEN statut = 'actif' THEN 'annule' ELSE 'actif' END, date_modification = NOW() WHERE id = ? AND etablissement_id = ?"); $stmt->execute([$id, $this->etabId()]); return $stmt->rowCount() > 0; }
     public function getDistinctTypes(): array { $stmt = $this->pdo->prepare('SELECT DISTINCT type_evenement FROM evenements WHERE etablissement_id = ? ORDER BY type_evenement'); $stmt->execute([$this->etabId()]); return $stmt->fetchAll(PDO::FETCH_COLUMN); }
 }

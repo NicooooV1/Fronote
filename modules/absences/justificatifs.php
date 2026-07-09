@@ -24,7 +24,6 @@ $user_role     = getUserRole();
 $user_initials = getUserInitials();
 
 $pageTitle   = 'Justificatifs d\'absence';
-$currentPage = 'justificatifs';
 
 // --- Filtres ---
 $date_debut = AbsenceHelper::sanitizeDate($_GET['date_debut'] ?? '') ?: date('Y-m-d', strtotime('-30 days'));

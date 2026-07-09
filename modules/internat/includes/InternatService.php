@@ -44,9 +44,9 @@ class InternatService
     public function creerChambre(array $data): int
     {
         $stmt = $this->pdo->prepare(
-            "INSERT INTO internat_chambres (numero, batiment, etage, capacite, type, equipements) VALUES (?, ?, ?, ?, ?, ?)"
+            "INSERT INTO internat_chambres (etablissement_id, numero, batiment, etage, capacite, type, equipements) VALUES (?, ?, ?, ?, ?, ?, ?)"
         );
-        $stmt->execute([$data['numero'], $data['batiment'] ?? null, $data['etage'] ?? null,
+        $stmt->execute([\API\Core\EstablishmentContext::id(), $data['numero'], $data['batiment'] ?? null, $data['etage'] ?? null,
             $data['capacite'] ?? 2, $data['type'] ?? 'double', $data['equipements'] ?? null]);
         return (int) $this->pdo->lastInsertId();
     }
@@ -54,10 +54,10 @@ class InternatService
     public function modifierChambre(int $id, array $data): bool
     {
         $stmt = $this->pdo->prepare(
-            "UPDATE internat_chambres SET numero = ?, batiment = ?, etage = ?, capacite = ?, type = ?, equipements = ? WHERE id = ?"
+            "UPDATE internat_chambres SET numero = ?, batiment = ?, etage = ?, capacite = ?, type = ?, equipements = ? WHERE id = ? AND etablissement_id = ?"
         );
         return $stmt->execute([$data['numero'], $data['batiment'] ?? null, $data['etage'] ?? null,
-            $data['capacite'] ?? 2, $data['type'] ?? 'double', $data['equipements'] ?? null, $id]);
+            $data['capacite'] ?? 2, $data['type'] ?? 'double', $data['equipements'] ?? null, $id, \API\Core\EstablishmentContext::id()]);
     }
 
     /* ==================== AFFECTATIONS ==================== */
@@ -70,10 +70,10 @@ class InternatService
              FROM internat_affectations af
              JOIN eleves e ON af.eleve_id = e.id
              JOIN internat_chambres ch ON af.chambre_id = ch.id
-             WHERE af.annee_scolaire = ?
+             WHERE af.annee_scolaire = ? AND af.etablissement_id = ?
              ORDER BY ch.batiment, ch.numero, e.nom"
         );
-        $stmt->execute([$annee]);
+        $stmt->execute([$annee, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -84,10 +84,10 @@ class InternatService
             "SELECT af.*, e.nom, e.prenom, e.classe
              FROM internat_affectations af
              JOIN eleves e ON af.eleve_id = e.id
-             WHERE af.chambre_id = ? AND af.annee_scolaire = ? AND af.statut = 'actif'
+             WHERE af.chambre_id = ? AND af.annee_scolaire = ? AND af.statut = 'actif' AND af.etablissement_id = ?
              ORDER BY e.nom"
         );
-        $stmt->execute([$chambreId, $annee]);
+        $stmt->execute([$chambreId, $annee, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -95,20 +95,20 @@ class InternatService
     {
         $annee = $this->getAnneeScolaire();
         $stmt = $this->pdo->prepare(
-            "INSERT INTO internat_affectations (chambre_id, eleve_id, annee_scolaire, date_debut)
-             VALUES (?, ?, ?, ?)
+            "INSERT INTO internat_affectations (etablissement_id, chambre_id, eleve_id, annee_scolaire, date_debut)
+             VALUES (?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE chambre_id = VALUES(chambre_id), date_debut = VALUES(date_debut), statut = 'actif'"
         );
-        $stmt->execute([$chambreId, $eleveId, $annee, $dateDebut]);
+        $stmt->execute([\API\Core\EstablishmentContext::id(), $chambreId, $eleveId, $annee, $dateDebut]);
         return (int) $this->pdo->lastInsertId();
     }
 
     public function libererPlace(int $affectationId): bool
     {
         $stmt = $this->pdo->prepare(
-            "UPDATE internat_affectations SET statut = 'termine', date_fin = CURDATE() WHERE id = ?"
+            "UPDATE internat_affectations SET statut = 'termine', date_fin = CURDATE() WHERE id = ? AND etablissement_id = ?"
         );
-        return $stmt->execute([$affectationId]);
+        return $stmt->execute([$affectationId, \API\Core\EstablishmentContext::id()]);
     }
 
     /* ==================== VIE INTERNAT (entrées/sorties) ==================== */
@@ -129,10 +129,10 @@ class InternatService
              FROM internat_reglement r
              JOIN eleves e ON r.eleve_id = e.id
              JOIN internat_chambres ch ON r.chambre_id = ch.id
-             WHERE DATE(r.date_heure) = ?
+             WHERE DATE(r.date_heure) = ? AND e.etablissement_id = ?
              ORDER BY r.date_heure DESC"
         );
-        $stmt->execute([$date]);
+        $stmt->execute([$date, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -180,11 +180,12 @@ class InternatService
     public function getStats(): array
     {
         $stats = [];
-        $stats['total_chambres'] = (int) $this->pdo->query("SELECT COUNT(*) FROM internat_chambres")->fetchColumn();
-        $stats['capacite_totale'] = (int) $this->pdo->query("SELECT COALESCE(SUM(capacite), 0) FROM internat_chambres")->fetchColumn();
+        $etabId = (int) \API\Core\EstablishmentContext::id();
+        $stats['total_chambres'] = (int) $this->pdo->query("SELECT COUNT(*) FROM internat_chambres WHERE etablissement_id = $etabId")->fetchColumn();
+        $stats['capacite_totale'] = (int) $this->pdo->query("SELECT COALESCE(SUM(capacite), 0) FROM internat_chambres WHERE etablissement_id = $etabId")->fetchColumn();
         $annee = $this->getAnneeScolaire();
-        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM internat_affectations WHERE annee_scolaire = ? AND statut = 'actif'");
-        $stmt->execute([$annee]);
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM internat_affectations WHERE annee_scolaire = ? AND statut = 'actif' AND etablissement_id = ?");
+        $stmt->execute([$annee, $etabId]);
         $stats['internes_actifs'] = (int) $stmt->fetchColumn();
         $stats['taux_occupation'] = $stats['capacite_totale'] > 0
             ? round($stats['internes_actifs'] / $stats['capacite_totale'] * 100, 1) : 0;
@@ -264,10 +265,10 @@ class InternatService
             FROM internat_affectations ia
             JOIN eleves e ON ia.eleve_id = e.id
             JOIN internat_chambres ic ON ia.chambre_id = ic.id
-            WHERE ia.annee_scolaire = :a AND ia.statut = 'actif'
+            WHERE ia.annee_scolaire = :a AND ia.statut = 'actif' AND ia.etablissement_id = :etab
             ORDER BY ic.batiment, ic.numero, e.nom
         ");
-        $stmt->execute([':d' => $date, ':a' => $annee]);
+        $stmt->execute([':d' => $date, ':a' => $annee, ':etab' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
@@ -294,8 +295,8 @@ class InternatService
 
     public function getAutorisationsSortie(?int $eleveId = null, ?string $statut = null): array
     {
-        $sql = "SELECT ias.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom FROM internat_autorisations_sortie ias JOIN eleves e ON ias.eleve_id = e.id WHERE 1=1";
-        $params = [];
+        $sql = "SELECT ias.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom FROM internat_autorisations_sortie ias JOIN eleves e ON ias.eleve_id = e.id WHERE e.etablissement_id = :etab";
+        $params = [':etab' => \API\Core\EstablishmentContext::id()];
         if ($eleveId) { $sql .= " AND ias.eleve_id = :e"; $params[':e'] = $eleveId; }
         if ($statut) { $sql .= " AND ias.statut = :s"; $params[':s'] = $statut; }
         $sql .= " ORDER BY ias.date_debut DESC";
@@ -306,8 +307,8 @@ class InternatService
 
     public function traiterAutorisationSortie(int $id, string $statut, int $traitePar): void
     {
-        $this->pdo->prepare("UPDATE internat_autorisations_sortie SET statut = :s, autorise_par = :t WHERE id = :id")
-            ->execute([':s' => $statut, ':t' => $traitePar, ':id' => $id]);
+        $this->pdo->prepare("UPDATE internat_autorisations_sortie SET statut = :s, autorise_par = :t WHERE id = :id AND eleve_id IN (SELECT id FROM eleves WHERE etablissement_id = :etab)")
+            ->execute([':s' => $statut, ':t' => $traitePar, ':id' => $id, ':etab' => \API\Core\EstablishmentContext::id()]);
     }
 
     // ─── ACTIVITÉS WEEK-END ───

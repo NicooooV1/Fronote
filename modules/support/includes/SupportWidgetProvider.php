@@ -46,16 +46,20 @@ class SupportWidgetProvider extends AbstractWidgetProvider
             $stmt->bindValue(':lim', $limit, \PDO::PARAM_INT);
             $stmt->execute();
         } else {
-            // Utilisateur : ses propres tickets
+            // Utilisateur : ses propres tickets (scopés à son établissement pour
+            // éviter toute collision d'identifiants cross-tenant).
+            $etabId = $this->etabId();
+            if ($etabId === null) return ['tickets' => [], 'count' => 0];
             $stmt = $pdo->prepare(
                 "SELECT id, sujet, categorie, priorite, statut, date_creation
                  FROM tickets_support
                  WHERE user_id = ? AND user_type = ?
                    AND statut IN ('ouvert','en_cours')
+                   AND etablissement_id = ?
                  ORDER BY date_creation DESC
                  LIMIT ?"
             );
-            $stmt->execute([$userId, $userType, $limit]);
+            $stmt->execute([$userId, $userType, $etabId, $limit]);
         }
 
         $tickets = $stmt->fetchAll(\PDO::FETCH_ASSOC);

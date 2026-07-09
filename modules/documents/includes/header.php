@@ -15,14 +15,14 @@ $activePage = 'documents';
 $pageTitle = $pageTitle ?? 'Documents';
 $extraCss = ['assets/css/documents.css'];
 
-// Sidebar extra pour admin/prof
-if (isAdmin() || isTeacher() || isVieScolaire()) {
-    $sidebarExtraContent = '
-    <div class="sidebar-nav">
-        <a href="documents.php" class="sidebar-nav-item"><span class="sidebar-nav-icon"><i class="fas fa-folder-open"></i></span><span>Tous les documents</span></a>
-        <a href="ajouter.php" class="sidebar-nav-item"><span class="sidebar-nav-icon"><i class="fas fa-upload"></i></span><span>Ajouter un document</span></a>
-    </div>';
-}
+// Navigation secondaire du module (rendue en bandeau par shared_topbar.php),
+// visible uniquement pour admin/prof/vie scolaire.
+$isGestionnaireDocs = isAdmin() || isTeacher() || isVieScolaire();
+require_once __DIR__ . '/../../../templates/module_subnav.php';
+$sidebarExtraContent = renderModuleSubnav([
+    ['href' => 'documents.php', 'icon' => 'fas fa-folder-open', 'label' => 'Tous les documents',  'visible' => $isGestionnaireDocs],
+    ['href' => 'ajouter.php',   'icon' => 'fas fa-upload',      'label' => 'Ajouter un document', 'visible' => $isGestionnaireDocs],
+]);
 
 require_once __DIR__ . '/../../../templates/shared_header.php';
 require_once __DIR__ . '/../../../templates/shared_topbar.php';

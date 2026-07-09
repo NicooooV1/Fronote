@@ -18,8 +18,8 @@ class PersonnelService
         $sql = "SELECT pa.*, CONCAT(p.prenom, ' ', p.nom) AS personnel_nom
                 FROM personnel_absences pa
                 JOIN professeurs p ON pa.personnel_id = p.id
-                WHERE 1=1";
-        $params = [];
+                WHERE pa.etablissement_id = ?";
+        $params = [\API\Core\EstablishmentContext::id()];
         if (!empty($filters['statut'])) { $sql .= ' AND pa.statut = ?'; $params[] = $filters['statut']; }
         if (!empty($filters['type'])) { $sql .= ' AND pa.type = ?'; $params[] = $filters['type']; }
         if (!empty($filters['personnel_id'])) { $sql .= ' AND pa.personnel_id = ?'; $params[] = $filters['personnel_id']; }
@@ -31,21 +31,21 @@ class PersonnelService
 
     public function getAbsence(int $id): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT pa.*, CONCAT(p.prenom, ' ', p.nom) AS personnel_nom FROM personnel_absences pa JOIN professeurs p ON pa.personnel_id = p.id WHERE pa.id = ?");
-        $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare("SELECT pa.*, CONCAT(p.prenom, ' ', p.nom) AS personnel_nom FROM personnel_absences pa JOIN professeurs p ON pa.personnel_id = p.id WHERE pa.id = ? AND pa.etablissement_id = ?");
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function creerAbsence(array $d): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO personnel_absences (personnel_id, type, date_debut, date_fin, motif, statut) VALUES (?,?,?,?,?,?)");
-        $stmt->execute([$d['personnel_id'], $d['type'], $d['date_debut'], $d['date_fin'], $d['motif'] ?? null, $d['statut'] ?? 'en_attente']);
+        $stmt = $this->pdo->prepare("INSERT INTO personnel_absences (personnel_id, type, date_debut, date_fin, motif, statut, etablissement_id) VALUES (?,?,?,?,?,?,?)");
+        $stmt->execute([$d['personnel_id'], $d['type'], $d['date_debut'], $d['date_fin'], $d['motif'] ?? null, $d['statut'] ?? 'en_attente', \API\Core\EstablishmentContext::id()]);
         return $this->pdo->lastInsertId();
     }
 
     public function modifierStatut(int $id, string $statut): void
     {
-        $this->pdo->prepare("UPDATE personnel_absences SET statut = ? WHERE id = ?")->execute([$statut, $id]);
+        $this->pdo->prepare("UPDATE personnel_absences SET statut = ? WHERE id = ? AND etablissement_id = ?")->execute([$statut, $id, \API\Core\EstablishmentContext::id()]);
     }
 
     /* ───── REMPLACEMENTS ───── */
@@ -61,8 +61,8 @@ class PersonnelService
                 LEFT JOIN professeurs pr ON r.professeur_remplacant_id = pr.id
                 LEFT JOIN matieres m ON r.matiere_id = m.id
                 LEFT JOIN classes cl ON r.classe_id = cl.id
-                WHERE 1=1";
-        $params = [];
+                WHERE r.etablissement_id = ?";
+        $params = [\API\Core\EstablishmentContext::id()];
         if (!empty($filters['statut'])) { $sql .= ' AND r.statut = ?'; $params[] = $filters['statut']; }
         $sql .= ' ORDER BY r.date_debut DESC';
         $stmt = $this->pdo->prepare($sql);
@@ -72,14 +72,14 @@ class PersonnelService
 
     public function creerRemplacement(array $d): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO remplacements (absence_id, professeur_absent_id, professeur_remplacant_id, matiere_id, classe_id, date_debut, date_fin, statut) VALUES (?,?,?,?,?,?,?,?)");
-        $stmt->execute([$d['absence_id'] ?? null, $d['professeur_absent_id'], $d['professeur_remplacant_id'] ?? null, $d['matiere_id'] ?? null, $d['classe_id'] ?? null, $d['date_debut'], $d['date_fin'], $d['statut'] ?? 'propose']);
+        $stmt = $this->pdo->prepare("INSERT INTO remplacements (absence_id, professeur_absent_id, professeur_remplacant_id, matiere_id, classe_id, date_debut, date_fin, statut, etablissement_id) VALUES (?,?,?,?,?,?,?,?,?)");
+        $stmt->execute([$d['absence_id'] ?? null, $d['professeur_absent_id'], $d['professeur_remplacant_id'] ?? null, $d['matiere_id'] ?? null, $d['classe_id'] ?? null, $d['date_debut'], $d['date_fin'], $d['statut'] ?? 'propose', \API\Core\EstablishmentContext::id()]);
         return $this->pdo->lastInsertId();
     }
 
     public function attribuerRemplacant(int $id, int $remplacantId): void
     {
-        $this->pdo->prepare("UPDATE remplacements SET professeur_remplacant_id = ?, statut = 'confirme' WHERE id = ?")->execute([$remplacantId, $id]);
+        $this->pdo->prepare("UPDATE remplacements SET professeur_remplacant_id = ?, statut = 'confirme' WHERE id = ? AND etablissement_id = ?")->execute([$remplacantId, $id, \API\Core\EstablishmentContext::id()]);
     }
 
     /* ───── LEAVE MANAGEMENT (CONGÉS) ───── */
@@ -90,12 +90,12 @@ class PersonnelService
     public function demanderConge(array $d): int
     {
         $stmt = $this->pdo->prepare("
-            INSERT INTO personnel_conges (personnel_id, type, date_debut, date_fin, motif, statut, justificatif_path)
-            VALUES (?, ?, ?, ?, ?, 'en_attente', ?)
+            INSERT INTO personnel_conges (personnel_id, type, date_debut, date_fin, motif, statut, justificatif_path, etablissement_id)
+            VALUES (?, ?, ?, ?, ?, 'en_attente', ?, ?)
         ");
         $stmt->execute([
             $d['personnel_id'], $d['type'], $d['date_debut'], $d['date_fin'],
-            $d['motif'] ?? null, $d['justificatif_path'] ?? null
+            $d['motif'] ?? null, $d['justificatif_path'] ?? null, \API\Core\EstablishmentContext::id()
         ]);
         return (int)$this->pdo->lastInsertId();
     }
@@ -106,8 +106,8 @@ class PersonnelService
     public function traiterConge(int $congeId, string $decision, int $validePar): void
     {
         $statut = ($decision === 'accepte') ? 'validee' : 'refusee';
-        $this->pdo->prepare("UPDATE personnel_conges SET statut = ?, valide_par = ?, date_decision = NOW() WHERE id = ?")
-                   ->execute([$statut, $validePar, $congeId]);
+        $this->pdo->prepare("UPDATE personnel_conges SET statut = ?, valide_par = ?, date_decision = NOW() WHERE id = ? AND etablissement_id = ?")
+                   ->execute([$statut, $validePar, $congeId, \API\Core\EstablishmentContext::id()]);
 
         // Auto-create absence if accepted
         if ($statut === 'validee') {
@@ -133,8 +133,8 @@ class PersonnelService
         $sql = "SELECT pc.*, CONCAT(p.prenom, ' ', p.nom) AS personnel_nom
                 FROM personnel_conges pc
                 JOIN professeurs p ON pc.personnel_id = p.id
-                WHERE 1=1";
-        $params = [];
+                WHERE pc.etablissement_id = ?";
+        $params = [\API\Core\EstablishmentContext::id()];
         if (!empty($filters['personnel_id'])) { $sql .= ' AND pc.personnel_id = ?'; $params[] = $filters['personnel_id']; }
         if (!empty($filters['statut'])) { $sql .= ' AND pc.statut = ?'; $params[] = $filters['statut']; }
         $sql .= ' ORDER BY pc.date_debut DESC';
@@ -161,19 +161,19 @@ class PersonnelService
                 JOIN classes cl ON edt.classe_id = cl.id
                 JOIN matieres m ON edt.matiere_id = m.id
                 JOIN creneaux_horaires ch ON edt.creneau_id = ch.id
-                WHERE edt.professeur_id = ? AND edt.actif = 1
+                WHERE edt.professeur_id = ? AND edt.actif = 1 AND edt.etablissement_id = ?
             ");
-            $stmt->execute([$abs['personnel_id']]);
+            $stmt->execute([$abs['personnel_id'], \API\Core\EstablishmentContext::id()]);
             $cours = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
             // Check if replacement exists
             $rempStmt = $this->pdo->prepare("
                 SELECT id FROM remplacements
-                WHERE professeur_absent_id = ? AND date_debut <= ? AND date_fin >= ? AND statut = 'confirme'
+                WHERE professeur_absent_id = ? AND date_debut <= ? AND date_fin >= ? AND statut = 'confirme' AND etablissement_id = ?
             ");
 
             foreach ($cours as $c) {
-                $rempStmt->execute([$abs['personnel_id'], $abs['date_fin'], $abs['date_debut']]);
+                $rempStmt->execute([$abs['personnel_id'], $abs['date_fin'], $abs['date_debut'], \API\Core\EstablishmentContext::id()]);
                 if (!$rempStmt->fetch()) {
                     $conflicts[] = [
                         'absence_id' => $abs['id'],
@@ -196,15 +196,18 @@ class PersonnelService
      */
     public function getAnnuaire(?string $search = null): array
     {
+        $etab = (int)\API\Core\EstablishmentContext::id();
         $sql = "SELECT p.id, p.prenom, p.nom, p.mail AS email, p.telephone, p.matiere,
-                       (SELECT COUNT(*) FROM emploi_du_temps edt WHERE edt.professeur_id = p.id AND edt.actif = 1) AS nb_cours,
-                       (SELECT GROUP_CONCAT(DISTINCT cl.nom) FROM emploi_du_temps edt2 JOIN classes cl ON edt2.classe_id = cl.id WHERE edt2.professeur_id = p.id AND edt2.actif = 1) AS classes
-                FROM professeurs p WHERE p.actif = 1";
-        $params = [];
+                       (SELECT COUNT(*) FROM emploi_du_temps edt WHERE edt.professeur_id = p.id AND edt.actif = 1 AND edt.etablissement_id = $etab) AS nb_cours,
+                       (SELECT GROUP_CONCAT(DISTINCT cl.nom) FROM emploi_du_temps edt2 JOIN classes cl ON edt2.classe_id = cl.id WHERE edt2.professeur_id = p.id AND edt2.actif = 1 AND edt2.etablissement_id = $etab) AS classes
+                FROM professeurs p WHERE p.actif = 1 AND p.etablissement_id = ?";
+        $params = [$etab];
         if ($search) {
             $sql .= " AND (p.nom LIKE ? OR p.prenom LIKE ? OR p.matiere LIKE ?)";
             $like = '%' . $search . '%';
-            $params = [$like, $like, $like];
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
         }
         $sql .= " ORDER BY p.nom";
         $stmt = $this->pdo->prepare($sql);
@@ -237,9 +240,10 @@ class PersonnelService
 
     public function getStats(): array
     {
-        $abs = $this->pdo->query("SELECT COUNT(*) FROM personnel_absences WHERE statut IN ('validee','en_attente')")->fetchColumn();
-        $remp = $this->pdo->query("SELECT COUNT(*) FROM remplacements WHERE statut = 'propose'")->fetchColumn();
-        $conf = $this->pdo->query("SELECT COUNT(*) FROM remplacements WHERE statut = 'confirme'")->fetchColumn();
+        $etab = (int)\API\Core\EstablishmentContext::id();
+        $abs = $this->pdo->query("SELECT COUNT(*) FROM personnel_absences WHERE statut IN ('validee','en_attente') AND etablissement_id = $etab")->fetchColumn();
+        $remp = $this->pdo->query("SELECT COUNT(*) FROM remplacements WHERE statut = 'propose' AND etablissement_id = $etab")->fetchColumn();
+        $conf = $this->pdo->query("SELECT COUNT(*) FROM remplacements WHERE statut = 'confirme' AND etablissement_id = $etab")->fetchColumn();
         return ['absences_actives' => $abs, 'remplacements_en_attente' => $remp, 'remplacements_confirmes' => $conf];
     }
 
@@ -324,10 +328,10 @@ class PersonnelService
         $stmt = $this->pdo->prepare("
             SELECT type, COUNT(*) AS nb_demandes,
                    SUM(DATEDIFF(date_fin, date_debut) + 1) AS jours_total
-            FROM personnel_conges WHERE personnel_id = :p AND statut = 'validee' AND YEAR(date_debut) = :a
+            FROM personnel_conges WHERE personnel_id = :p AND statut = 'validee' AND YEAR(date_debut) = :a AND etablissement_id = :etab
             GROUP BY type
         ");
-        $stmt->execute([':p' => $personnelId, ':a' => $annee]);
+        $stmt->execute([':p' => $personnelId, ':a' => $annee, ':etab' => \API\Core\EstablishmentContext::id()]);
         $pris = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         $droits = ['conge' => 25, 'maladie' => 365, 'formation' => 12, 'personnel' => 5];

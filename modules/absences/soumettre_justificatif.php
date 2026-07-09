@@ -32,7 +32,6 @@ $user_initials = getUserInitials();
 $user_role     = $role;
 
 $pageTitle   = 'Soumettre un justificatif';
-$currentPage = 'justificatifs';
 
 // --- CSRF ---
 $csrf_token = AbsenceHelper::generateCsrf();

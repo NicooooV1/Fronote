@@ -17,15 +17,12 @@ $isAdmin = isAdmin();
 $isGestionnaire = isAdmin() || isProfesseur();
 
 // Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
-$_sub = basename($_SERVER['PHP_SELF'] ?? '');
-ob_start(); ?>
-<div class="sidebar-nav">
-    <a href="ressources.php" class="sidebar-nav-item <?= $_sub === 'ressources.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-book-open"></i></span><span>Ressources</span></a>
-<?php if ($isGestionnaire): ?>
-    <a href="creer.php" class="sidebar-nav-item <?= $_sub === 'creer.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-plus-circle"></i></span><span>Créer</span></a>
-<?php endif; ?>
-</div>
-<?php $sidebarExtraContent = ob_get_clean();
+require_once __DIR__ . '/../../../templates/module_subnav.php';
+$sidebarExtraContent = renderModuleSubnav([
+    ['href' => 'ressources.php', 'icon' => 'fas fa-book-open', 'label' => 'Ressources'],
+    ['href' => 'mes_ressources.php', 'icon' => 'fas fa-folder', 'label' => 'Mes ressources', 'visible' => $isGestionnaire],
+    ['href' => 'creer.php', 'icon' => 'fas fa-plus-circle', 'label' => 'Créer', 'visible' => $isGestionnaire],
+]);
 
 $pageTitle = $pageTitle ?? 'Ressources pédagogiques';
 require_once __DIR__ . '/../../../templates/shared_header.php';

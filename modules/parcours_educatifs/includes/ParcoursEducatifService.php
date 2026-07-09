@@ -49,19 +49,20 @@ class ParcoursEducatifService
             "SELECT pe.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom
              FROM parcours_educatifs pe
              LEFT JOIN eleves e ON pe.eleve_id = e.id
-             WHERE pe.id = ?"
+             WHERE pe.id = ? AND pe.etablissement_id = ?"
         );
-        $stmt->execute([$id]);
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function ajouter(array $data): int
     {
         $stmt = $this->pdo->prepare(
-            "INSERT INTO parcours_educatifs (eleve_id, type_parcours, titre, description, date_activite, competences_visees, validation, annee_scolaire)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO parcours_educatifs (etablissement_id, eleve_id, type_parcours, titre, description, date_activite, competences_visees, validation, annee_scolaire)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
         $stmt->execute([
+            \API\Core\EstablishmentContext::id(),
             $data['eleve_id'], $data['type_parcours'], $data['titre'],
             $data['description'] ?? null, $data['date_activite'] ?? date('Y-m-d'),
             $data['competences_visees'] ?? null, $data['validation'] ?? 0,
@@ -75,25 +76,26 @@ class ParcoursEducatifService
         $stmt = $this->pdo->prepare(
             "UPDATE parcours_educatifs SET titre = ?, description = ?, type_parcours = ?,
              date_activite = ?, competences_visees = ?, validation = ?, annee_scolaire = ?
-             WHERE id = ?"
+             WHERE id = ? AND etablissement_id = ?"
         );
         return $stmt->execute([
             $data['titre'], $data['description'] ?? null, $data['type_parcours'],
             $data['date_activite'] ?? date('Y-m-d'), $data['competences_visees'] ?? null,
             $data['validation'] ?? 0, $data['annee_scolaire'] ?? $this->anneeScolaire(), $id,
+            \API\Core\EstablishmentContext::id(),
         ]);
     }
 
     public function valider(int $id, bool $valide = true): bool
     {
-        $stmt = $this->pdo->prepare("UPDATE parcours_educatifs SET validation = ? WHERE id = ?");
-        return $stmt->execute([$valide ? 1 : 0, $id]);
+        $stmt = $this->pdo->prepare("UPDATE parcours_educatifs SET validation = ? WHERE id = ? AND etablissement_id = ?");
+        return $stmt->execute([$valide ? 1 : 0, $id, \API\Core\EstablishmentContext::id()]);
     }
 
     public function supprimer(int $id): bool
     {
-        $stmt = $this->pdo->prepare("DELETE FROM parcours_educatifs WHERE id = ?");
-        return $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare("DELETE FROM parcours_educatifs WHERE id = ? AND etablissement_id = ?");
+        return $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
     }
 
     /* ==================== MODÈLES ==================== */
@@ -114,8 +116,8 @@ class ParcoursEducatifService
     public function getStatsByType(?int $eleveId = null): array
     {
         $sql = "SELECT type_parcours, COUNT(*) AS total, SUM(validation) AS valides
-                FROM parcours_educatifs WHERE 1=1";
-        $params = [];
+                FROM parcours_educatifs WHERE 1=1 AND etablissement_id = ?";
+        $params = [\API\Core\EstablishmentContext::id()];
         if ($eleveId) { $sql .= " AND eleve_id = ?"; $params[] = $eleveId; }
         $sql .= " GROUP BY type_parcours";
         $stmt = $this->pdo->prepare($sql);

@@ -26,10 +26,10 @@ class TrombinoscopeService {
                    c.nom AS classe_nom, c.niveau AS classe_niveau
             FROM eleves e
             JOIN classes c ON e.classe = c.nom
-            WHERE c.id = ?
+            WHERE c.id = ? AND e.etablissement_id = ?
             ORDER BY e.nom, e.prenom
         ");
-        $stmt->execute([$classeId]);
+        $stmt->execute([$classeId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -43,9 +43,10 @@ class TrombinoscopeService {
             FROM professeurs p
             LEFT JOIN matieres m ON p.matiere = m.nom
         ";
-        $params = [];
+        $sql .= " WHERE p.etablissement_id = ?";
+        $params = [\API\Core\EstablishmentContext::id()];
         if ($matiereId) {
-            $sql .= " WHERE m.id = ?";
+            $sql .= " AND m.id = ?";
             $params[] = $matiereId;
         }
         $sql .= " ORDER BY p.nom, p.prenom";
@@ -131,8 +132,8 @@ class TrombinoscopeService {
      */
     public function hasPhotoConsent(int $eleveId): bool
     {
-        $stmt = $this->pdo->prepare("SELECT photo_consent FROM eleves WHERE id = ?");
-        $stmt->execute([$eleveId]);
+        $stmt = $this->pdo->prepare("SELECT photo_consent FROM eleves WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$eleveId, \API\Core\EstablishmentContext::id()]);
         return (bool)$stmt->fetchColumn();
     }
 
@@ -141,8 +142,8 @@ class TrombinoscopeService {
      */
     public function setPhotoConsent(int $eleveId, bool $consent): void
     {
-        $this->pdo->prepare("UPDATE eleves SET photo_consent = ? WHERE id = ?")
-                   ->execute([$consent ? 1 : 0, $eleveId]);
+        $this->pdo->prepare("UPDATE eleves SET photo_consent = ? WHERE id = ? AND etablissement_id = ?")
+                   ->execute([$consent ? 1 : 0, $eleveId, \API\Core\EstablishmentContext::id()]);
     }
 
     /**
@@ -152,10 +153,10 @@ class TrombinoscopeService {
     {
         $stmt = $this->pdo->prepare("
             SELECT e.id, e.prenom, e.nom, COALESCE(e.photo_consent, 0) AS photo_consent
-            FROM eleves e JOIN classes c ON e.classe = c.nom WHERE c.id = ?
+            FROM eleves e JOIN classes c ON e.classe = c.nom WHERE c.id = ? AND e.etablissement_id = ?
             ORDER BY e.nom, e.prenom
         ");
-        $stmt->execute([$classeId]);
+        $stmt->execute([$classeId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -168,10 +169,10 @@ class TrombinoscopeService {
             SELECT e.id, e.prenom, e.nom, e.date_naissance, c.nom AS classe_nom
             FROM eleves e
             JOIN classes c ON e.classe = c.nom
-            WHERE c.id = ? AND e.photo_consent = 1
+            WHERE c.id = ? AND e.photo_consent = 1 AND e.etablissement_id = ?
             ORDER BY e.nom, e.prenom
         ");
-        $stmt->execute([$classeId]);
+        $stmt->execute([$classeId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -182,13 +183,16 @@ class TrombinoscopeService {
         if ($classeId) {
             $rows = $this->getElevesClasse($classeId);
         } else {
-            $rows = $this->pdo->query("
+            $stmt = $this->pdo->prepare("
                 SELECT e.id, e.nom, e.prenom, e.date_naissance, e.mail AS email, NULL AS genre,
                        c.nom AS classe_nom, c.niveau AS classe_niveau
                 FROM eleves e
                 LEFT JOIN classes c ON e.classe = c.nom
+                WHERE e.etablissement_id = ?
                 ORDER BY c.nom, e.nom, e.prenom
-            ")->fetchAll(PDO::FETCH_ASSOC);
+            ");
+            $stmt->execute([\API\Core\EstablishmentContext::id()]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
         return array_map(fn($e) => [
             $e['nom'],
@@ -217,8 +221,8 @@ class TrombinoscopeService {
 
     public function search(string $query, array $filters = []): array
     {
-        $sql = "SELECT id, nom, prenom, classe FROM eleves WHERE actif = 1 AND (nom LIKE :q OR prenom LIKE :q2)";
-        $params = [':q' => "%{$query}%", ':q2' => "%{$query}%"];
+        $sql = "SELECT id, nom, prenom, classe FROM eleves WHERE actif = 1 AND etablissement_id = :etab AND (nom LIKE :q OR prenom LIKE :q2)";
+        $params = [':etab' => \API\Core\EstablishmentContext::id(), ':q' => "%{$query}%", ':q2' => "%{$query}%"];
         if (!empty($filters['classe'])) { $sql .= " AND classe = :c"; $params[':c'] = $filters['classe']; }
         if (!empty($filters['niveau'])) { $sql .= " AND niveau = :n"; $params[':n'] = $filters['niveau']; }
         $sql .= " ORDER BY nom, prenom LIMIT 50";
@@ -231,8 +235,8 @@ class TrombinoscopeService {
 
     public function genererTrombData(string $classe): array
     {
-        $stmt = $this->pdo->prepare("SELECT id, nom, prenom FROM eleves WHERE classe = :c AND actif = 1 ORDER BY nom, prenom");
-        $stmt->execute([':c' => $classe]);
+        $stmt = $this->pdo->prepare("SELECT id, nom, prenom FROM eleves WHERE classe = :c AND actif = 1 AND etablissement_id = :etab ORDER BY nom, prenom");
+        $stmt->execute([':c' => $classe, ':etab' => \API\Core\EstablishmentContext::id()]);
         return ['classe' => $classe, 'eleves' => $stmt->fetchAll(\PDO::FETCH_ASSOC), 'date' => date('Y-m-d')];
     }
 
@@ -240,8 +244,8 @@ class TrombinoscopeService {
 
     public function genererBadgesData(string $classe): array
     {
-        $stmt = $this->pdo->prepare("SELECT id, nom, prenom, classe FROM eleves WHERE classe = :c AND actif = 1 ORDER BY nom, prenom");
-        $stmt->execute([':c' => $classe]);
+        $stmt = $this->pdo->prepare("SELECT id, nom, prenom, classe FROM eleves WHERE classe = :c AND actif = 1 AND etablissement_id = :etab ORDER BY nom, prenom");
+        $stmt->execute([':c' => $classe, ':etab' => \API\Core\EstablishmentContext::id()]);
         $eleves = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         foreach ($eleves as &$e) {

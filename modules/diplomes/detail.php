@@ -38,7 +38,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-award"></i> <?= htmlspecialchars($diplome['intitule']) ?></h1>
-        <a href="diplomes.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <div class="header-actions">
+            <a href="export_diplome.php?id=<?= $id ?>" class="btn btn-outline" title="Attestation PDF"><i class="fas fa-file-pdf"></i> Attestation PDF</a>
+            <a href="diplomes.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        </div>
     </div>
 
     <div class="info-grid">

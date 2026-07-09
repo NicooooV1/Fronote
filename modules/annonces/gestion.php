@@ -6,7 +6,6 @@
 require_once __DIR__ . '/includes/AnnonceService.php';
 
 $pageTitle = 'Gestion des annonces';
-$currentPage = 'gestion';
 require_once __DIR__ . '/includes/header.php';
 requireAuth();
 

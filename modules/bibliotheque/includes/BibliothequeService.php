@@ -74,22 +74,26 @@ class BibliothequeService
 
     public function modifierLivre(int $id, array $data): void
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return;
         $stmt = $this->pdo->prepare("
             UPDATE livres SET titre=?, auteur=?, isbn=?, editeur=?,
             annee_publication=?, categorie=?, description=?, exemplaires_total=?, emplacement=?
-            WHERE id=?
+            WHERE id=? AND etablissement_id=?
         ");
         $stmt->execute([
             $data['titre'], $data['auteur'], $data['isbn'],
             $data['editeur'], $data['annee_publication'],
             $data['categorie'], $data['description'],
-            $data['exemplaires_total'], $data['emplacement'], $id
+            $data['exemplaires_total'], $data['emplacement'], $id, $etabId
         ]);
     }
 
     public function supprimerLivre(int $id): void
     {
-        $this->pdo->prepare('DELETE FROM livres WHERE id = ?')->execute([$id]);
+        $etabId = $this->etabId();
+        if ($etabId === null) return;
+        $this->pdo->prepare('DELETE FROM livres WHERE id = ? AND etablissement_id = ?')->execute([$id, $etabId]);
     }
 
     /* ───────── EMPRUNTS ───────── */
@@ -102,20 +106,23 @@ class BibliothequeService
             throw new RuntimeException('Aucun exemplaire disponible.');
         }
 
+        $etabId = $this->etabId();
         $dateRetourPrevue = date('Y-m-d', strtotime('+21 days'));
         $stmt = $this->pdo->prepare("
-            INSERT INTO emprunts (livre_id, emprunteur_id, emprunteur_type, date_emprunt, date_retour_prevue, statut)
-            VALUES (?, ?, ?, NOW(), ?, 'en_cours')
+            INSERT INTO emprunts (etablissement_id, livre_id, emprunteur_id, emprunteur_type, date_emprunt, date_retour_prevue, statut)
+            VALUES (?, ?, ?, ?, NOW(), ?, 'en_cours')
         ");
-        $stmt->execute([$livreId, $emprunteurId, $emprunteurType, $dateRetourPrevue]);
+        $stmt->execute([$etabId, $livreId, $emprunteurId, $emprunteurType, $dateRetourPrevue]);
         return $this->pdo->lastInsertId();
     }
 
     public function retourner(int $empruntId, ?int $ownerId = null, ?string $ownerType = null): void
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return;
         // Securite (IDOR) : si un proprietaire est fourni, la mise a jour est restreinte a SES emprunts.
-        $sql = "UPDATE emprunts SET statut = 'rendu', date_retour_effective = NOW() WHERE id = ?";
-        $params = [$empruntId];
+        $sql = "UPDATE emprunts SET statut = 'rendu', date_retour_effective = NOW() WHERE id = ? AND etablissement_id = ?";
+        $params = [$empruntId, $etabId];
         if ($ownerId !== null && $ownerType !== null) {
             $sql .= " AND emprunteur_id = ? AND emprunteur_type = ?";
             $params[] = $ownerId;
@@ -127,9 +134,11 @@ class BibliothequeService
 
     public function prolonger(int $empruntId, int $jours = 14, ?int $ownerId = null, ?string $ownerType = null): void
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return;
         // Securite (IDOR) : si un proprietaire est fourni, la prolongation est restreinte a SES emprunts.
-        $sql = "UPDATE emprunts SET date_retour_prevue = DATE_ADD(date_retour_prevue, INTERVAL ? DAY) WHERE id = ? AND statut = 'en_cours'";
-        $params = [$jours, $empruntId];
+        $sql = "UPDATE emprunts SET date_retour_prevue = DATE_ADD(date_retour_prevue, INTERVAL ? DAY) WHERE id = ? AND etablissement_id = ? AND statut = 'en_cours'";
+        $params = [$jours, $empruntId, $etabId];
         if ($ownerId !== null && $ownerType !== null) {
             $sql .= " AND emprunteur_id = ? AND emprunteur_type = ?";
             $params[] = $ownerId;
@@ -141,15 +150,18 @@ class BibliothequeService
 
     public function getEmpruntsActifs(int $userId = null, string $userType = null): array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $sql = "
             SELECT e.*, l.titre, l.auteur
             FROM emprunts e JOIN livres l ON e.livre_id = l.id
-            WHERE e.statut = 'en_cours'
+            WHERE e.statut = 'en_cours' AND e.etablissement_id = ?
         ";
-        $params = [];
+        $params = [$etabId];
         if ($userId) {
             $sql .= ' AND e.emprunteur_id = ? AND e.emprunteur_type = ?';
-            $params = [$userId, $userType];
+            $params[] = $userId;
+            $params[] = $userType;
         }
         $sql .= ' ORDER BY e.date_retour_prevue';
         $stmt = $this->pdo->prepare($sql);
@@ -159,13 +171,15 @@ class BibliothequeService
 
     public function getHistorique(int $userId, string $userType): array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $stmt = $this->pdo->prepare("
             SELECT e.*, l.titre, l.auteur
             FROM emprunts e JOIN livres l ON e.livre_id = l.id
-            WHERE e.emprunteur_id = ? AND e.emprunteur_type = ?
+            WHERE e.emprunteur_id = ? AND e.emprunteur_type = ? AND e.etablissement_id = ?
             ORDER BY e.date_emprunt DESC
         ");
-        $stmt->execute([$userId, $userType]);
+        $stmt->execute([$userId, $userType, $etabId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -215,21 +229,23 @@ class BibliothequeService
         if (!$livre) throw new \RuntimeException('Livre introuvable.');
         if ($livre['exemplaires_disponibles'] > 0) throw new \RuntimeException('Des exemplaires sont disponibles, pas besoin de réserver.');
 
+        $etabId = $this->etabId();
+
         // Check not already reserved by this user
-        $check = $this->pdo->prepare("SELECT id FROM livre_reservations WHERE livre_id = ? AND user_id = ? AND user_type = ? AND statut = 'en_attente'");
-        $check->execute([$livreId, $userId, $userType]);
+        $check = $this->pdo->prepare("SELECT id FROM livre_reservations WHERE livre_id = ? AND user_id = ? AND user_type = ? AND statut = 'en_attente' AND etablissement_id = ?");
+        $check->execute([$livreId, $userId, $userType, $etabId]);
         if ($check->fetch()) throw new \RuntimeException('Vous avez déjà une réservation en attente.');
 
         // Get position in queue
-        $posStmt = $this->pdo->prepare("SELECT MAX(position_queue) FROM livre_reservations WHERE livre_id = ? AND statut = 'en_attente'");
-        $posStmt->execute([$livreId]);
+        $posStmt = $this->pdo->prepare("SELECT MAX(position_queue) FROM livre_reservations WHERE livre_id = ? AND statut = 'en_attente' AND etablissement_id = ?");
+        $posStmt->execute([$livreId, $etabId]);
         $pos = ((int)$posStmt->fetchColumn()) + 1;
 
         $stmt = $this->pdo->prepare("
-            INSERT INTO livre_reservations (livre_id, user_id, user_type, position_queue, statut, created_at)
-            VALUES (?, ?, ?, ?, 'en_attente', NOW())
+            INSERT INTO livre_reservations (etablissement_id, livre_id, user_id, user_type, position_queue, statut, created_at)
+            VALUES (?, ?, ?, ?, ?, 'en_attente', NOW())
         ");
-        $stmt->execute([$livreId, $userId, $userType, $pos]);
+        $stmt->execute([$etabId, $livreId, $userId, $userType, $pos]);
         return (int)$this->pdo->lastInsertId();
     }
 
@@ -238,6 +254,8 @@ class BibliothequeService
      */
     public function getReservationsLivre(int $livreId): array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $stmt = $this->pdo->prepare("
             SELECT lr.*,
                 COALESCE(
@@ -245,10 +263,10 @@ class BibliothequeService
                     (SELECT CONCAT(p.prenom, ' ', p.nom) FROM professeurs p WHERE p.id = lr.user_id AND lr.user_type = 'professeur')
                 ) AS user_nom
             FROM livre_reservations lr
-            WHERE lr.livre_id = ? AND lr.statut = 'en_attente'
+            WHERE lr.livre_id = ? AND lr.statut = 'en_attente' AND lr.etablissement_id = ?
             ORDER BY lr.position_queue
         ");
-        $stmt->execute([$livreId]);
+        $stmt->execute([$livreId, $etabId]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
@@ -257,12 +275,14 @@ class BibliothequeService
      */
     public function notifierProchainReservation(int $livreId): void
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return;
         $stmt = $this->pdo->prepare("
             SELECT * FROM livre_reservations
-            WHERE livre_id = ? AND statut = 'en_attente'
+            WHERE livre_id = ? AND statut = 'en_attente' AND etablissement_id = ?
             ORDER BY position_queue LIMIT 1
         ");
-        $stmt->execute([$livreId]);
+        $stmt->execute([$livreId, $etabId]);
         $next = $stmt->fetch(\PDO::FETCH_ASSOC);
         if (!$next) return;
 
@@ -279,8 +299,8 @@ class BibliothequeService
             );
         } catch (\Exception $e) { error_log('[BibliothequeService.php] ' . $e->getMessage()); }
 
-        $this->pdo->prepare("UPDATE livre_reservations SET statut = 'notifie', notified_at = NOW() WHERE id = ?")
-                   ->execute([$next['id']]);
+        $this->pdo->prepare("UPDATE livre_reservations SET statut = 'notifie', notified_at = NOW() WHERE id = ? AND etablissement_id = ?")
+                   ->execute([$next['id'], $etabId]);
     }
 
     /* ───────── RETARDS & RELANCES ───────── */
@@ -314,6 +334,7 @@ class BibliothequeService
      */
     public function envoyerRappelsRetard(): int
     {
+        $etabId = $this->etabId();
         $retards = $this->getEmpruntsEnRetard();
         $count = 0;
         foreach ($retards as $r) {
@@ -328,8 +349,8 @@ class BibliothequeService
                         'haute', '/bibliotheque/emprunts.php'
                     );
                 }
-                $stmt = $this->pdo->prepare("UPDATE emprunts SET rappel_envoye = 1 WHERE id = ?");
-                $stmt->execute([$r['id']]);
+                $stmt = $this->pdo->prepare("UPDATE emprunts SET rappel_envoye = 1 WHERE id = ? AND etablissement_id = ?");
+                $stmt->execute([$r['id'], $etabId]);
                 $count++;
             } catch (\Exception $e) { error_log('[BibliothequeService.php] ' . $e->getMessage()); }
         }
@@ -351,9 +372,11 @@ class BibliothequeService
 
     public function lookupIsbn(string $isbn): ?array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return null;
         $isbn = preg_replace('/[^0-9X]/', '', strtoupper($isbn));
-        $stmt = $this->pdo->prepare("SELECT * FROM livres WHERE isbn = ?");
-        $stmt->execute([$isbn]);
+        $stmt = $this->pdo->prepare("SELECT * FROM livres WHERE isbn = ? AND etablissement_id = ?");
+        $stmt->execute([$isbn, $etabId]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
@@ -361,15 +384,17 @@ class BibliothequeService
 
     public function creerListeLecture(string $titre, int $professeurId, ?string $classe = null, array $livreIds = []): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO bibliotheque_listes_lecture (titre, professeur_id, classe, livres_ids, created_at) VALUES (:t, :p, :c, :l, NOW())");
-        $stmt->execute([':t' => $titre, ':p' => $professeurId, ':c' => $classe, ':l' => json_encode($livreIds)]);
+        $stmt = $this->pdo->prepare("INSERT INTO bibliotheque_listes_lecture (etablissement_id, titre, professeur_id, classe, livres_ids, created_at) VALUES (:etab, :t, :p, :c, :l, NOW())");
+        $stmt->execute([':etab' => $this->etabId(), ':t' => $titre, ':p' => $professeurId, ':c' => $classe, ':l' => json_encode($livreIds)]);
         return (int)$this->pdo->lastInsertId();
     }
 
     public function getListesLecture(?int $professeurId = null, ?string $classe = null): array
     {
-        $sql = "SELECT ll.*, CONCAT(p.prenom, ' ', p.nom) AS professeur_nom FROM bibliotheque_listes_lecture ll LEFT JOIN professeurs p ON ll.professeur_id = p.id WHERE 1=1";
-        $params = [];
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
+        $sql = "SELECT ll.*, CONCAT(p.prenom, ' ', p.nom) AS professeur_nom FROM bibliotheque_listes_lecture ll LEFT JOIN professeurs p ON ll.professeur_id = p.id WHERE ll.etablissement_id = :etab";
+        $params = [':etab' => $etabId];
         if ($professeurId) { $sql .= " AND ll.professeur_id = :p"; $params[':p'] = $professeurId; }
         if ($classe) { $sql .= " AND ll.classe = :c"; $params[':c'] = $classe; }
         $sql .= " ORDER BY ll.created_at DESC";
@@ -380,24 +405,28 @@ class BibliothequeService
 
     public function getLivresListe(int $listeId): array
     {
-        $stmt = $this->pdo->prepare("SELECT livres_ids FROM bibliotheque_listes_lecture WHERE id = ?");
-        $stmt->execute([$listeId]);
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
+        $stmt = $this->pdo->prepare("SELECT livres_ids FROM bibliotheque_listes_lecture WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$listeId, $etabId]);
         $ids = json_decode($stmt->fetchColumn() ?: '[]', true);
         if (empty($ids)) return [];
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $stmt2 = $this->pdo->prepare("SELECT * FROM livres WHERE id IN ($placeholders) ORDER BY titre");
-        $stmt2->execute($ids);
+        $stmt2 = $this->pdo->prepare("SELECT * FROM livres WHERE id IN ($placeholders) AND etablissement_id = ? ORDER BY titre");
+        $stmt2->execute(array_merge($ids, [$etabId]));
         return $stmt2->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function ajouterLivreAListe(int $listeId, int $livreId): void
     {
-        $stmt = $this->pdo->prepare("SELECT livres_ids FROM bibliotheque_listes_lecture WHERE id = ?");
-        $stmt->execute([$listeId]);
+        $etabId = $this->etabId();
+        if ($etabId === null) return;
+        $stmt = $this->pdo->prepare("SELECT livres_ids FROM bibliotheque_listes_lecture WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$listeId, $etabId]);
         $ids = json_decode($stmt->fetchColumn() ?: '[]', true);
         if (!in_array($livreId, $ids)) {
             $ids[] = $livreId;
-            $this->pdo->prepare("UPDATE bibliotheque_listes_lecture SET livres_ids = ? WHERE id = ?")->execute([json_encode($ids), $listeId]);
+            $this->pdo->prepare("UPDATE bibliotheque_listes_lecture SET livres_ids = ? WHERE id = ? AND etablissement_id = ?")->execute([json_encode($ids), $listeId, $etabId]);
         }
     }
 
@@ -405,27 +434,31 @@ class BibliothequeService
 
     public function getHistoriqueEleve(int $eleveId): array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $stmt = $this->pdo->prepare("
             SELECT e.*, l.titre, l.auteur, l.isbn, l.categorie
             FROM emprunts e
             JOIN livres l ON e.livre_id = l.id
-            WHERE e.emprunteur_id = :eid AND e.emprunteur_type = 'eleve'
+            WHERE e.emprunteur_id = :eid AND e.emprunteur_type = 'eleve' AND e.etablissement_id = :etab
             ORDER BY e.date_emprunt DESC
         ");
-        $stmt->execute([':eid' => $eleveId]);
+        $stmt->execute([':eid' => $eleveId, ':etab' => $etabId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getStatsLecteur(int $eleveId): array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $stmt = $this->pdo->prepare("
             SELECT COUNT(*) AS total_emprunts,
                    COUNT(CASE WHEN statut = 'rendu' THEN 1 END) AS retournes,
                    COUNT(CASE WHEN statut = 'en_cours' THEN 1 END) AS en_cours,
                    COUNT(CASE WHEN statut = 'en_cours' AND date_retour_prevue < CURDATE() THEN 1 END) AS en_retard
-            FROM emprunts WHERE emprunteur_id = ? AND emprunteur_type = 'eleve'
+            FROM emprunts WHERE emprunteur_id = ? AND emprunteur_type = 'eleve' AND etablissement_id = ?
         ");
-        $stmt->execute([$eleveId]);
+        $stmt->execute([$eleveId, $etabId]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
     }
 }

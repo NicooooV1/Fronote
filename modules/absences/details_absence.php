@@ -45,7 +45,6 @@ if (!$absence) {
 $duree = AbsenceHelper::formatDurationBetween($absence['date_debut'], $absence['date_fin']);
 
 $pageTitle   = 'Détails de l\'absence';
-$currentPage = 'details';
 $showBackButton = true;
 $backLink = 'absences.php';
 

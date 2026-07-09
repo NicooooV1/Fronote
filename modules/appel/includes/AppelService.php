@@ -22,11 +22,12 @@ class AppelService
     public function createAppel(array $data): int
     {
         $stmt = $this->pdo->prepare(
-            "INSERT INTO appels (edt_id, classe_id, professeur_id, matiere_id,
+            "INSERT INTO appels (etablissement_id, edt_id, classe_id, professeur_id, matiere_id,
                 date_appel, heure_debut, heure_fin, type_appel, commentaire)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
         $stmt->execute([
+            \API\Core\EstablishmentContext::id(),
             $data['edt_id'] ?? null, $data['classe_id'], $data['professeur_id'],
             $data['matiere_id'] ?? null, $data['date_appel'],
             $data['heure_debut'], $data['heure_fin'],
@@ -46,8 +47,8 @@ class AppelService
     protected function initialiserEleves(int $appelId, int $classeId): void
     {
         // Trouver le nom de la classe
-        $stmt = $this->pdo->prepare("SELECT nom FROM classes WHERE id = ?");
-        $stmt->execute([$classeId]);
+        $stmt = $this->pdo->prepare("SELECT nom FROM classes WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$classeId, \API\Core\EstablishmentContext::id()]);
         $nomClasse = $stmt->fetchColumn();
         if (!$nomClasse) return;
 
@@ -71,9 +72,9 @@ class AppelService
                 JOIN classes cl ON a.classe_id = cl.id
                 JOIN professeurs p ON a.professeur_id = p.id
                 LEFT JOIN matieres m ON a.matiere_id = m.id
-                WHERE a.id = ?";
+                WHERE a.id = ? AND a.etablissement_id = ?";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$id]);
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
@@ -85,10 +86,10 @@ class AppelService
         $sql = "SELECT ae.*, e.nom, e.prenom, e.classe
                 FROM appel_eleves ae
                 JOIN eleves e ON ae.eleve_id = e.id
-                WHERE ae.appel_id = ?
+                WHERE ae.appel_id = ? AND e.etablissement_id = ?
                 ORDER BY e.nom, e.prenom";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$appelId]);
+        $stmt->execute([$appelId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -119,9 +120,10 @@ class AppelService
             $params[] = $extras['commentaire'];
         }
 
-        $sql .= " WHERE appel_id = ? AND eleve_id = ?";
+        $sql .= " WHERE appel_id = ? AND eleve_id = ? AND appel_id IN (SELECT id FROM appels WHERE etablissement_id = ?)";
         $params[] = $appelId;
         $params[] = $eleveId;
+        $params[] = \API\Core\EstablishmentContext::id();
 
         $stmt = $this->pdo->prepare($sql);
         return $stmt->execute($params);
@@ -154,9 +156,9 @@ class AppelService
     public function validerAppel(int $appelId): bool
     {
         $stmt = $this->pdo->prepare(
-            "UPDATE appels SET statut = 'valide', date_validation = NOW() WHERE id = ?"
+            "UPDATE appels SET statut = 'valide', date_validation = NOW() WHERE id = ? AND etablissement_id = ?"
         );
-        $ok = $stmt->execute([$appelId]);
+        $ok = $stmt->execute([$appelId, \API\Core\EstablishmentContext::id()]);
 
         // Créer automatiquement les absences/retards dans le module absences
         if ($ok) {
@@ -223,10 +225,10 @@ class AppelService
                 FROM appels a
                 JOIN classes cl ON a.classe_id = cl.id
                 LEFT JOIN matieres m ON a.matiere_id = m.id
-                WHERE a.professeur_id = ? AND a.date_appel = ?
+                WHERE a.professeur_id = ? AND a.date_appel = ? AND a.etablissement_id = ?
                 ORDER BY a.heure_debut";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$profId, $date]);
+        $stmt->execute([$profId, $date, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -282,19 +284,19 @@ class AppelService
                 JOIN classes cl ON e.classe_id = cl.id
                 JOIN matieres m ON e.matiere_id = m.id
                 JOIN creneaux_horaires c ON e.creneau_id = c.id
-                WHERE e.professeur_id = ? AND e.jour = ? AND e.actif = 1
+                WHERE e.professeur_id = ? AND e.jour = ? AND e.actif = 1 AND e.etablissement_id = ?
                 ORDER BY c.ordre";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$profId, $jour]);
+        $stmt->execute([$profId, $jour, \API\Core\EstablishmentContext::id()]);
         $coursJour = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $appelsGeneres = [];
         foreach ($coursJour as $cours) {
             // Vérifier qu'un appel n'existe pas déjà
             $stmtCheck = $this->pdo->prepare(
-                "SELECT id FROM appels WHERE edt_id = ? AND date_appel = ?"
+                "SELECT id FROM appels WHERE edt_id = ? AND date_appel = ? AND etablissement_id = ?"
             );
-            $stmtCheck->execute([$cours['id'], $date]);
+            $stmtCheck->execute([$cours['id'], $date, \API\Core\EstablishmentContext::id()]);
             if ($stmtCheck->fetch()) continue;
 
             // Créer l'appel
@@ -398,8 +400,8 @@ class AppelService
 
     public function getElevesClasse(int $classeId): array
     {
-        $stmt = $this->pdo->prepare("SELECT nom FROM classes WHERE id = ?");
-        $stmt->execute([$classeId]);
+        $stmt = $this->pdo->prepare("SELECT nom FROM classes WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$classeId, \API\Core\EstablishmentContext::id()]);
         $nomClasse = $stmt->fetchColumn();
         if (!$nomClasse) return [];
 
@@ -412,8 +414,8 @@ class AppelService
 
     public function enregistrerRetardPrecis(int $appelId, int $eleveId, string $heureArrivee): void
     {
-        $this->pdo->prepare("UPDATE appel_eleves SET statut = 'retard', heure_arrivee = :h WHERE appel_id = :aid AND eleve_id = :eid")
-            ->execute([':h' => $heureArrivee, ':aid' => $appelId, ':eid' => $eleveId]);
+        $this->pdo->prepare("UPDATE appel_eleves SET statut = 'retard', heure_arrivee = :h WHERE appel_id = :aid AND eleve_id = :eid AND appel_id IN (SELECT id FROM appels WHERE etablissement_id = :etab)")
+            ->execute([':h' => $heureArrivee, ':aid' => $appelId, ':eid' => $eleveId, ':etab' => \API\Core\EstablishmentContext::id()]);
     }
 
     public function exportPresencesPeriode(int $classeId, ?string $dateDebut = null, ?string $dateFin = null): array

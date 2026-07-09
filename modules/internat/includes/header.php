@@ -20,18 +20,15 @@ $isGestionnaire = isAdmin() || isPersonnelVS();
 $isAdmin = isAdmin();
 
 // Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
-$_sub = basename($_SERVER['PHP_SELF'] ?? '');
-ob_start(); ?>
-<div class="sidebar-nav">
-    <a href="affectations.php" class="sidebar-nav-item <?= $_sub === 'affectations.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-user-check"></i></span><span>Affectations</span></a>
-<?php if ($isGestionnaire): ?>
-    <a href="chambres.php" class="sidebar-nav-item <?= $_sub === 'chambres.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-bed"></i></span><span>Chambres</span></a>
-    <a href="mouvements.php" class="sidebar-nav-item <?= $_sub === 'mouvements.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-right-left"></i></span><span>Mouvements</span></a>
-    <a href="incidents.php" class="sidebar-nav-item <?= $_sub === 'incidents.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-triangle-exclamation"></i></span><span>Incidents</span></a>
-    <a href="export.php" class="sidebar-nav-item"><span class="sidebar-nav-icon"><i class="fas fa-file-export"></i></span><span>Export</span></a>
-<?php endif; ?>
-</div>
-<?php $sidebarExtraContent = ob_get_clean();
+require_once __DIR__ . '/../../../templates/module_subnav.php';
+$sidebarExtraContent = renderModuleSubnav([
+    ['href' => 'affectations.php', 'icon' => 'fas fa-user-check',          'label' => 'Affectations'],
+    ['href' => 'chambres.php',     'icon' => 'fas fa-bed',                 'label' => 'Chambres',   'visible' => $isGestionnaire],
+    ['href' => 'mouvements.php',   'icon' => 'fas fa-right-left',          'label' => 'Mouvements', 'visible' => $isGestionnaire],
+    ['href' => 'incidents.php',    'icon' => 'fas fa-triangle-exclamation', 'label' => 'Incidents', 'visible' => $isGestionnaire],
+    // Comportement historique préservé : ce lien n'avait pas de test d'état actif.
+    ['href' => 'export.php',       'icon' => 'fas fa-file-export',         'label' => 'Export',     'visible' => $isGestionnaire, 'active' => false],
+]);
 
 $pageTitle = $pageTitle ?? 'Internat';
 require_once __DIR__ . '/../../../templates/shared_header.php';

@@ -3,7 +3,6 @@
  * Vie scolaire — Suivi individuel d'un élève
  */
 require_once __DIR__ . '/includes/VieScolaireService.php';
-$currentPage = 'suivi';
 $pageTitle = 'Suivi élève';
 
 require_once __DIR__ . '/../../API/core.php';

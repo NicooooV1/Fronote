@@ -30,35 +30,13 @@ $ffRecurrence       = $_agFeatures ? $_agFeatures->isEnabled('agenda.recurrence'
 $ffIcalExport       = $_agFeatures ? $_agFeatures->isEnabled('agenda.ical_export') : true;
 $ffConflictDetect   = $_agFeatures ? $_agFeatures->isEnabled('agenda.conflict_detection') : true;
 
-// Actions dans le header
-ob_start();
-?>
-                <?php if (canManageAgendaEvents()): ?>
-                <a href="ajouter_evenement.php" class="btn btn-primary btn-sm">
-                    <i class="fas fa-plus"></i> Événement
-                </a>
-                <?php endif; ?>
-                <?php if ($ffIcalExport): ?>
-                <a href="export_ical.php" class="btn btn-secondary btn-sm">
-                    <i class="fas fa-calendar-alt"></i> iCal
-                </a>
-                <?php endif; ?>
-<?php
-$headerExtraActions = ob_get_clean();
-
 // Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
-$_sub = basename($_SERVER['PHP_SELF'] ?? '');
-ob_start(); ?>
-<div class="sidebar-nav">
-    <a href="agenda.php" class="sidebar-nav-item <?= $_sub === 'agenda.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span><span>Calendrier</span></a>
-<?php if (canManageAgendaEvents()): ?>
-    <a href="ajouter_evenement.php" class="sidebar-nav-item <?= $_sub === 'ajouter_evenement.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-plus-circle"></i></span><span>Ajouter</span></a>
-<?php endif; ?>
-<?php if ($ffIcalExport): ?>
-    <a href="export_ical.php" class="sidebar-nav-item <?= $_sub === 'export_ical.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-file-export"></i></span><span>Export iCal</span></a>
-<?php endif; ?>
-</div>
-<?php $sidebarExtraContent = ob_get_clean();
+require_once __DIR__ . '/../../../templates/module_subnav.php';
+$sidebarExtraContent = renderModuleSubnav([
+    ['href' => 'agenda.php',            'icon' => 'fas fa-calendar-alt', 'label' => 'Calendrier'],
+    ['href' => 'ajouter_evenement.php', 'icon' => 'fas fa-plus-circle',  'label' => 'Ajouter',     'visible' => canManageAgendaEvents()],
+    ['href' => 'export_ical.php',       'icon' => 'fas fa-file-export',  'label' => 'Export iCal', 'visible' => $ffIcalExport],
+]);
 
 include __DIR__ . '/../../../templates/shared_header.php';
 include __DIR__ . '/../../../templates/shared_topbar.php';

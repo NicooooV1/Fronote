@@ -31,8 +31,8 @@ $canEdit = isAdmin() || isPersonnelVS();
 $groupes = InfirmerieService::groupesSanguins();
 
 // Informations élève
-$stmt = getPDO()->prepare("SELECT e.*, cl.nom AS classe_nom FROM eleves e LEFT JOIN classes cl ON e.classe = cl.nom WHERE e.id = ?");
-$stmt->execute([$eleveId]);
+$stmt = getPDO()->prepare("SELECT e.*, cl.nom AS classe_nom FROM eleves e LEFT JOIN classes cl ON e.classe = cl.nom WHERE e.id = ? AND e.etablissement_id = ?");
+$stmt->execute([$eleveId, \API\Core\EstablishmentContext::id()]);
 $eleve = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$eleve) { redirect('modules/infirmerie/infirmerie.php'); }
 

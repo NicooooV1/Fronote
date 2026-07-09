@@ -27,8 +27,11 @@ if ($type === 'menus') {
     $filename = 'reservations_cantine';
 }
 
+// Le service renvoie des lignes indexées numériquement : on les recale sur les libellés.
+$data = array_map(fn($row) => array_combine($headers, $row), $data);
+
 if ($format === 'pdf') {
-    $exportService->pdf($title, $headers, $data, $filename);
+    $exportService->pdf($exportService->buildTable($data, $headers, $title), $title, $filename);
 } else {
-    $exportService->csv($headers, $data, $filename);
+    $exportService->csv($data, $headers, $filename);
 }

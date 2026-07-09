@@ -98,10 +98,10 @@ class RenduService {
             SELECT r.*, e.nom AS eleve_nom, e.prenom AS eleve_prenom, e.classe
             FROM devoirs_rendus r
             JOIN eleves e ON r.eleve_id = e.id
-            WHERE r.devoir_id = ?
+            WHERE r.devoir_id = ? AND e.etablissement_id = ?
             ORDER BY e.nom, e.prenom
         ");
-        $stmt->execute([$devoirId]);
+        $stmt->execute([$devoirId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -110,10 +110,10 @@ class RenduService {
             SELECT r.*, d.titre AS devoir_titre, d.nom_matiere, d.date_rendu AS date_echeance, d.classe
             FROM devoirs_rendus r
             JOIN devoirs d ON r.devoir_id = d.id
-            WHERE r.eleve_id = ?
+            WHERE r.eleve_id = ? AND d.etablissement_id = ?
             ORDER BY r.date_rendu DESC
         ");
-        $stmt->execute([$eleveId]);
+        $stmt->execute([$eleveId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -158,9 +158,10 @@ class RenduService {
             FROM devoirs d
             LEFT JOIN devoirs_rendus r ON d.id = r.devoir_id AND r.eleve_id = ?
             WHERE d.classe = (SELECT classe FROM eleves WHERE id = ?)
+              AND d.etablissement_id = ?
             ORDER BY d.date_rendu ASC
         ");
-        $stmt->execute([$eleveId, $eleveId]);
+        $stmt->execute([$eleveId, $eleveId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -233,9 +234,10 @@ class RenduService {
             LEFT JOIN devoirs_rendus r ON r.devoir_id = d.id
             WHERE d.date_rendu BETWEEN ? AND ?
               AND (d.reminder_sent IS NULL OR d.reminder_sent = 0)
+              AND d.etablissement_id = ?
             GROUP BY d.id
         ");
-        $stmt->execute([$now, $in24h]);
+        $stmt->execute([$now, $in24h, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
@@ -244,7 +246,7 @@ class RenduService {
      */
     public function markReminderSent(int $devoirId): void
     {
-        $this->pdo->prepare("UPDATE devoirs SET reminder_sent = 1 WHERE id = ?")->execute([$devoirId]);
+        $this->pdo->prepare("UPDATE devoirs SET reminder_sent = 1 WHERE id = ? AND etablissement_id = ?")->execute([$devoirId, \API\Core\EstablishmentContext::id()]);
     }
 
     /**

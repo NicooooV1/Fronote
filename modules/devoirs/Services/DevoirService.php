@@ -28,12 +28,12 @@ class DevoirService
         return ['data' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'total' => $total, 'pages' => $pages];
     }
 
-    public function getById(int $id): ?array { $stmt = $this->pdo->prepare('SELECT * FROM devoirs WHERE id = ?'); $stmt->execute([$id]); $row = $stmt->fetch(PDO::FETCH_ASSOC); return $row !== false ? $row : null; }
+    public function getById(int $id): ?array { $stmt = $this->pdo->prepare('SELECT * FROM devoirs WHERE id = ? AND etablissement_id = ?'); $stmt->execute([$id, $this->etabId()]); $row = $stmt->fetch(PDO::FETCH_ASSOC); return $row !== false ? $row : null; }
 
     public function create(array $data): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO devoirs (titre, description, classe, nom_matiere, nom_professeur, date_ajout, date_rendu) VALUES (:titre, :description, :classe, :nom_matiere, :nom_professeur, :date_ajout, :date_rendu)");
-        $stmt->execute([':titre' => $data['titre'], ':description' => $data['description'] ?? null, ':classe' => $data['classe'], ':nom_matiere' => $data['nom_matiere'], ':nom_professeur' => $data['nom_professeur'], ':date_ajout' => $data['date_ajout'] ?? date('Y-m-d'), ':date_rendu' => $data['date_rendu']]);
+        $stmt = $this->pdo->prepare("INSERT INTO devoirs (etablissement_id, titre, description, classe, nom_matiere, nom_professeur, date_ajout, date_rendu) VALUES (:etab, :titre, :description, :classe, :nom_matiere, :nom_professeur, :date_ajout, :date_rendu)");
+        $stmt->execute([':etab' => $this->etabId(), ':titre' => $data['titre'], ':description' => $data['description'] ?? null, ':classe' => $data['classe'], ':nom_matiere' => $data['nom_matiere'], ':nom_professeur' => $data['nom_professeur'], ':date_ajout' => $data['date_ajout'] ?? date('Y-m-d'), ':date_rendu' => $data['date_rendu']]);
         $id = (int) $this->pdo->lastInsertId();
         app('hooks')?->dispatch(new \Modules\Devoirs\Events\DevoirCreated($id, $data));
         return $id;
@@ -42,10 +42,10 @@ class DevoirService
     public function update(int $id, array $data): bool
     {
         $allowed = ['titre', 'description', 'classe', 'nom_matiere', 'nom_professeur', 'date_ajout', 'date_rendu'];
-        $sets = []; $params = [':id' => $id];
+        $sets = []; $params = [':id' => $id, ':etab' => $this->etabId()];
         foreach ($allowed as $f) { if (array_key_exists($f, $data)) { $sets[] = "{$f} = :{$f}"; $params[":{$f}"] = $data[$f]; } }
         if (!$sets) return false;
-        $stmt = $this->pdo->prepare("UPDATE devoirs SET " . implode(', ', $sets) . " WHERE id = :id"); $stmt->execute($params);
+        $stmt = $this->pdo->prepare("UPDATE devoirs SET " . implode(', ', $sets) . " WHERE id = :id AND etablissement_id = :etab"); $stmt->execute($params);
         $updated = $stmt->rowCount() > 0;
         if ($updated) app('hooks')?->dispatch(new \Modules\Devoirs\Events\DevoirUpdated($id, $data));
         return $updated;
@@ -53,7 +53,7 @@ class DevoirService
 
     public function delete(int $id): bool
     {
-        $stmt = $this->pdo->prepare('DELETE FROM devoirs WHERE id = ?'); $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare('DELETE FROM devoirs WHERE id = ? AND etablissement_id = ?'); $stmt->execute([$id, $this->etabId()]);
         $deleted = $stmt->rowCount() > 0;
         if ($deleted) app('hooks')?->dispatch(new \Modules\Devoirs\Events\DevoirDeleted($id));
         return $deleted;

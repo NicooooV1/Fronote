@@ -6,7 +6,6 @@
 require_once __DIR__ . '/includes/AnnonceService.php';
 
 $pageTitle = 'Nouvelle annonce';
-$currentPage = 'creer';
 require_once __DIR__ . '/includes/header.php';
 requireAuth();
 
@@ -95,13 +94,13 @@ $roles = [
 // Niveaux disponibles
 $niveaux = [];
 try {
-    $niveaux = $pdo->query("SELECT DISTINCT niveau FROM classes WHERE actif = 1 ORDER BY niveau")->fetchAll(PDO::FETCH_COLUMN);
+    $niveaux = $pdo->query("SELECT DISTINCT niveau FROM classes WHERE actif = 1 AND etablissement_id = " . (int)\API\Core\EstablishmentContext::id() . " ORDER BY niveau")->fetchAll(PDO::FETCH_COLUMN);
 } catch (\Throwable $e) { error_log('[creer_annonce.php] ' . $e->getMessage()); }
 
 // Matières disponibles
 $matieres = [];
 try {
-    $matieres = $pdo->query("SELECT id, nom FROM matieres WHERE actif = 1 ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
+    $matieres = $pdo->query("SELECT id, nom FROM matieres WHERE actif = 1 AND etablissement_id = " . (int)\API\Core\EstablishmentContext::id() . " ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
 } catch (\Throwable $e) { error_log('[creer_annonce.php] ' . $e->getMessage()); }
 ?>
 

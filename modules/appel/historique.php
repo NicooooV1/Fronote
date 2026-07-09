@@ -62,7 +62,6 @@ if ($etabId !== null) {
 }
 
 $pageTitle = 'Historique des appels';
-$currentPage = 'historique';
 
 include 'includes/header.php';
 ?>

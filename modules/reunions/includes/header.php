@@ -15,21 +15,15 @@ $activePage = 'reunions';
 $pageTitle = $pageTitle ?? 'Réunions';
 $extraCss = ['assets/css/reunions.css'];
 
-if (isAdmin() || isTeacher() || isVieScolaire()) {
-    $sidebarExtraContent = '
-    <div class="sidebar-nav">
-        <a href="reunions.php" class="sidebar-nav-item"><span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span><span>Réunions</span></a>
-        <a href="creer.php" class="sidebar-nav-item"><span class="sidebar-nav-icon"><i class="fas fa-plus"></i></span><span>Planifier</span></a>
-        <a href="convocations.php" class="sidebar-nav-item"><span class="sidebar-nav-icon"><i class="fas fa-file-invoice"></i></span><span>Convocations</span></a>
-    </div>';
-} else {
-    $sidebarExtraContent = '
-    <div class="sidebar-nav">
-        <a href="reunions.php" class="sidebar-nav-item"><span class="sidebar-nav-icon"><i class="fas fa-calendar-alt"></i></span><span>Réunions</span></a>
-        <a href="mes_rdv.php" class="sidebar-nav-item"><span class="sidebar-nav-icon"><i class="fas fa-handshake"></i></span><span>Mes RDV</span></a>
-        <a href="convocations.php" class="sidebar-nav-item"><span class="sidebar-nav-icon"><i class="fas fa-file-invoice"></i></span><span>Convocations</span></a>
-    </div>';
-}
+// Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
+$estOrganisateur = isAdmin() || isTeacher() || isVieScolaire();
+require_once __DIR__ . '/../../../templates/module_subnav.php';
+$sidebarExtraContent = renderModuleSubnav([
+    ['href' => 'reunions.php',      'icon' => 'fas fa-calendar-alt', 'label' => 'Réunions'],
+    ['href' => 'creer.php',         'icon' => 'fas fa-plus',         'label' => 'Planifier',    'visible' => $estOrganisateur],
+    ['href' => 'mes_rdv.php',       'icon' => 'fas fa-handshake',    'label' => 'Mes RDV',      'visible' => !$estOrganisateur],
+    ['href' => 'convocations.php',  'icon' => 'fas fa-file-invoice', 'label' => 'Convocations'],
+]);
 
 require_once __DIR__ . '/../../../templates/shared_header.php';
 require_once __DIR__ . '/../../../templates/shared_topbar.php';

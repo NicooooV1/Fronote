@@ -80,8 +80,8 @@ class MediathequeService
 
     public function getPlaylistContenus(int $playlistId): array
     {
-        $stmt = $this->pdo->prepare("SELECT c.*, pc.ordre FROM mediatheque_contenus c JOIN mediatheque_playlists_contenus pc ON c.id = pc.contenu_id WHERE pc.playlist_id = :pid ORDER BY pc.ordre");
-        $stmt->execute([':pid' => $playlistId]);
+        $stmt = $this->pdo->prepare("SELECT c.*, pc.ordre FROM mediatheque_contenus c JOIN mediatheque_playlists_contenus pc ON c.id = pc.contenu_id WHERE pc.playlist_id = :pid AND c.etablissement_id = :eid ORDER BY pc.ordre");
+        $stmt->execute([':pid' => $playlistId, ':eid' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -124,8 +124,8 @@ class MediathequeService
 
     public function getFavoris(int $userId, string $userType): array
     {
-        $stmt = $this->pdo->prepare("SELECT c.*, f.created_at AS date_favori FROM mediatheque_contenus c JOIN mediatheque_favoris f ON c.id = f.contenu_id WHERE f.user_id = :uid AND f.user_type = :ut ORDER BY f.created_at DESC");
-        $stmt->execute([':uid' => $userId, ':ut' => $userType]);
+        $stmt = $this->pdo->prepare("SELECT c.*, f.created_at AS date_favori FROM mediatheque_contenus c JOIN mediatheque_favoris f ON c.id = f.contenu_id WHERE f.user_id = :uid AND f.user_type = :ut AND c.etablissement_id = :eid ORDER BY f.created_at DESC");
+        $stmt->execute([':uid' => $userId, ':ut' => $userType, ':eid' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -134,13 +134,14 @@ class MediathequeService
     public function getRecommandations(int $userId, string $userType, int $limit = 10): array
     {
         // Recommandations basées sur les matières les plus consultées
-        $stmt = $this->pdo->prepare("SELECT c.matiere_id, COUNT(*) AS nb FROM mediatheque_vues v JOIN mediatheque_contenus c ON v.contenu_id = c.id WHERE v.user_id = :uid AND v.user_type = :ut AND c.matiere_id IS NOT NULL GROUP BY c.matiere_id ORDER BY nb DESC LIMIT 3");
-        $stmt->execute([':uid' => $userId, ':ut' => $userType]);
+        $stmt = $this->pdo->prepare("SELECT c.matiere_id, COUNT(*) AS nb FROM mediatheque_vues v JOIN mediatheque_contenus c ON v.contenu_id = c.id WHERE v.user_id = :uid AND v.user_type = :ut AND c.matiere_id IS NOT NULL AND c.etablissement_id = :eid GROUP BY c.matiere_id ORDER BY nb DESC LIMIT 3");
+        $stmt->execute([':uid' => $userId, ':ut' => $userType, ':eid' => \API\Core\EstablishmentContext::id()]);
         $topMatieres = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
         if (empty($topMatieres)) {
             // Contenus populaires
-            $stmt = $this->pdo->prepare("SELECT c.*, COUNT(v.id) AS nb_vues FROM mediatheque_contenus c LEFT JOIN mediatheque_vues v ON v.contenu_id = c.id WHERE c.statut = 'publie' GROUP BY c.id ORDER BY nb_vues DESC LIMIT :l");
+            $stmt = $this->pdo->prepare("SELECT c.*, COUNT(v.id) AS nb_vues FROM mediatheque_contenus c LEFT JOIN mediatheque_vues v ON v.contenu_id = c.id WHERE c.statut = 'publie' AND c.etablissement_id = :eid GROUP BY c.id ORDER BY nb_vues DESC LIMIT :l");
+            $stmt->bindValue(':eid', \API\Core\EstablishmentContext::id(), PDO::PARAM_INT);
             $stmt->bindValue(':l', $limit, PDO::PARAM_INT);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -148,10 +149,11 @@ class MediathequeService
 
         $placeholders = implode(',', array_fill(0, count($topMatieres), '?'));
         $params = $topMatieres;
+        $params[] = \API\Core\EstablishmentContext::id();
         $params[] = $userId;
         $params[] = $userType;
 
-        $stmt = $this->pdo->prepare("SELECT c.* FROM mediatheque_contenus c WHERE c.matiere_id IN ({$placeholders}) AND c.statut = 'publie' AND c.id NOT IN (SELECT contenu_id FROM mediatheque_vues WHERE user_id = ? AND user_type = ?) ORDER BY c.created_at DESC LIMIT {$limit}");
+        $stmt = $this->pdo->prepare("SELECT c.* FROM mediatheque_contenus c WHERE c.matiere_id IN ({$placeholders}) AND c.statut = 'publie' AND c.etablissement_id = ? AND c.id NOT IN (SELECT contenu_id FROM mediatheque_vues WHERE user_id = ? AND user_type = ?) ORDER BY c.created_at DESC LIMIT {$limit}");
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

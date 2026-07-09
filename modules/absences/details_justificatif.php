@@ -74,7 +74,6 @@ $attachments = $repo->getAttachments($id_justificatif);
 
 // --- Config page ---
 $pageTitle      = 'Détails du justificatif';
-$currentPage    = 'justificatifs';
 $showBackButton = true;
 $backLink       = 'justificatifs.php';
 

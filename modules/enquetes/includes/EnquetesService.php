@@ -55,20 +55,20 @@ class EnquetesService
 
     public function publierEnquete(int $enqueteId): void
     {
-        $this->pdo->prepare("UPDATE enquetes SET statut = 'ouverte' WHERE id = :id AND statut = 'brouillon'")
-            ->execute([':id' => $enqueteId]);
+        $this->pdo->prepare("UPDATE enquetes SET statut = 'ouverte' WHERE id = :id AND etablissement_id = :etab AND statut = 'brouillon'")
+            ->execute([':id' => $enqueteId, ':etab' => \API\Core\EstablishmentContext::id()]);
     }
 
     public function fermerEnquete(int $enqueteId): void
     {
-        $this->pdo->prepare("UPDATE enquetes SET statut = 'fermee' WHERE id = :id AND statut = 'ouverte'")
-            ->execute([':id' => $enqueteId]);
+        $this->pdo->prepare("UPDATE enquetes SET statut = 'fermee' WHERE id = :id AND etablissement_id = :etab AND statut = 'ouverte'")
+            ->execute([':id' => $enqueteId, ':etab' => \API\Core\EstablishmentContext::id()]);
     }
 
     public function getEnquete(int $enqueteId): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM enquetes WHERE id = :id");
-        $stmt->execute([':id' => $enqueteId]);
+        $stmt = $this->pdo->prepare("SELECT * FROM enquetes WHERE id = :id AND etablissement_id = :etab");
+        $stmt->execute([':id' => $enqueteId, ':etab' => \API\Core\EstablishmentContext::id()]);
         $enquete = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$enquete) return null;
 
@@ -97,8 +97,8 @@ class EnquetesService
 
     public function participerEnquete(int $enqueteId, int $userId, string $userType): int
     {
-        $enquete = $this->pdo->prepare("SELECT anonyme FROM enquetes WHERE id = :id");
-        $enquete->execute([':id' => $enqueteId]);
+        $enquete = $this->pdo->prepare("SELECT anonyme FROM enquetes WHERE id = :id AND etablissement_id = :etab");
+        $enquete->execute([':id' => $enqueteId, ':etab' => \API\Core\EstablishmentContext::id()]);
         $anonyme = (bool)$enquete->fetchColumn();
 
         $hash = hash('sha256', $enqueteId . ':' . $userId . ':' . $userType . ':' . random_bytes(8));
@@ -262,8 +262,8 @@ class EnquetesService
 
     public function getTauxReponse(int $enqueteId): array
     {
-        $enquete = $this->pdo->prepare("SELECT cible_roles, cible_classes, etablissement_id FROM enquetes WHERE id = :id");
-        $enquete->execute([':id' => $enqueteId]);
+        $enquete = $this->pdo->prepare("SELECT cible_roles, cible_classes, etablissement_id FROM enquetes WHERE id = :id AND etablissement_id = :etab");
+        $enquete->execute([':id' => $enqueteId, ':etab' => \API\Core\EstablishmentContext::id()]);
         $enq = $enquete->fetch(PDO::FETCH_ASSOC);
 
         $participations = $this->pdo->prepare("SELECT COUNT(*) FROM enquete_participations WHERE enquete_id = :eid AND completed = 1");
@@ -275,8 +275,8 @@ class EnquetesService
         $nbCible = 0;
         if (!empty($cibleClasses)) {
             $placeholders = implode(',', array_fill(0, count($cibleClasses), '?'));
-            $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM eleves WHERE classe IN ({$placeholders}) AND actif = 1");
-            $stmt->execute($cibleClasses);
+            $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM eleves WHERE classe IN ({$placeholders}) AND actif = 1 AND etablissement_id = ?");
+            $stmt->execute([...$cibleClasses, \API\Core\EstablishmentContext::id()]);
             $nbCible = (int)$stmt->fetchColumn();
         }
 

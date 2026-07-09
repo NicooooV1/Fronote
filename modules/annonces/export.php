@@ -23,7 +23,7 @@ $data = $service->getAnnoncesForExport($filters);
 $columns = ['ID', 'Titre', 'Type', 'Publie', 'Epingle', 'Date publication', 'Date expiration', 'Nb lectures', 'Rôles ciblés'];
 
 if ($format === 'pdf') {
-    $exportService->pdf($data, $columns, 'Annonces');
+    $exportService->pdf($exportService->buildTable($data, $columns, 'Annonces'), 'Annonces', 'annonces.pdf');
 } else {
     $exportService->csv($data, $columns, 'annonces');
 }

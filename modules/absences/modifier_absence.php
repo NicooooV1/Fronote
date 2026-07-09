@@ -103,7 +103,6 @@ $date_fin   = new DateTime($absence['date_fin']);
 $csrf_token = AbsenceHelper::generateCsrf();
 
 $pageTitle   = 'Modifier une absence';
-$currentPage = 'modifier';
 include 'includes/header.php';
 ?>
       

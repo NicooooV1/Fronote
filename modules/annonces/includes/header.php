@@ -9,16 +9,10 @@ requireAuth();
 enforceModuleAccess(basename(dirname(__DIR__)));
 
 $pageTitle = $pageTitle ?? 'Annonces';
-$currentPage = $currentPage ?? '';
 
 if (!isset($user_initials)) {
     $user_initials = getUserInitials();
     $user_fullname = getUserFullName();
-}
-
-function isActiveAnnonceLink($page) {
-    global $currentPage;
-    return $currentPage === $page ? 'active' : '';
 }
 
 $activePage = 'annonces';
@@ -26,30 +20,17 @@ $isAdmin = isAdmin();
 $user_fullname = $user_fullname ?? '';
 $extraCss = array_merge(['assets/css/annonces.css'], $extraCss ?? []);
 
-if (!isset($sidebarExtraContent)) {
-ob_start();
-?>
-            <div class="sidebar-nav">
-                <a href="annonces.php" class="sidebar-nav-item <?= isActiveAnnonceLink('annonces') ?>">
-                    <span class="sidebar-nav-icon"><i class="fas fa-bullhorn"></i></span>
-                    <span>Annonces</span>
-                </a>
-                <?php if (isAdmin() || isVieScolaire() || isTeacher()): ?>
-                <a href="creer_annonce.php" class="sidebar-nav-item <?= isActiveAnnonceLink('creer') ?>">
-                    <span class="sidebar-nav-icon"><i class="fas fa-plus-circle"></i></span>
-                    <span>Nouvelle annonce</span>
-                </a>
-                <?php endif; ?>
-                <?php if (isAdmin()): ?>
-                <a href="gestion.php" class="sidebar-nav-item <?= isActiveAnnonceLink('gestion') ?>">
-                    <span class="sidebar-nav-icon"><i class="fas fa-cog"></i></span>
-                    <span>Gestion</span>
-                </a>
-                <?php endif; ?>
-            </div>
-<?php
-$sidebarExtraContent = ob_get_clean();
-}
+// Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
+$peutPublier = $isAdmin || isVieScolaire() || isTeacher();
+// detail_annonce.php et modifier_annonce.php restent rattachées à l'onglet « Annonces ».
+$scriptCourant = basename($_SERVER['SCRIPT_NAME'] ?? '');
+require_once __DIR__ . '/../../../templates/module_subnav.php';
+$sidebarExtraContent = renderModuleSubnav([
+    ['href' => 'annonces.php',      'icon' => 'fas fa-bullhorn',    'label' => 'Annonces',
+     'active' => in_array($scriptCourant, ['annonces.php', 'detail_annonce.php', 'modifier_annonce.php'], true)],
+    ['href' => 'creer_annonce.php', 'icon' => 'fas fa-plus-circle', 'label' => 'Nouvelle annonce', 'visible' => $peutPublier],
+    ['href' => 'gestion.php',       'icon' => 'fas fa-cog',         'label' => 'Gestion',          'visible' => $isAdmin],
+]);
 
 if (!isset($headerExtraActions)) {
 ob_start();

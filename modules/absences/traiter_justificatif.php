@@ -47,7 +47,6 @@ if ($justificatif['traite']) {
 
 // --- Config page ---
 $pageTitle      = 'Traiter le justificatif';
-$currentPage    = 'justificatifs';
 $showBackButton = true;
 $backLink       = 'details_justificatif.php?id=' . $id_justificatif;
 

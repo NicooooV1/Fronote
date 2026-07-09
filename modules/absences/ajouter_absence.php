@@ -90,7 +90,6 @@ $heure_fin_suggere   = AbsenceHelper::sanitize($_GET['fin'] ?? '09:00');
 $id_eleve_suggere    = intval($_GET['eleve'] ?? 0);
 
 $pageTitle   = 'Signaler une absence';
-$currentPage = 'ajouter';
 include 'includes/header.php';
 ?>
       

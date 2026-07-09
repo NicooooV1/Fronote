@@ -80,8 +80,8 @@ class BoursesService
 
     public function soumettreDemande(int $demandeId): void
     {
-        $this->pdo->prepare("UPDATE bourses_demandes SET statut = 'soumise', date_soumission = NOW() WHERE id = :id AND statut = 'brouillon'")
-            ->execute([':id' => $demandeId]);
+        $this->pdo->prepare("UPDATE bourses_demandes SET statut = 'soumise', date_soumission = NOW() WHERE id = :id AND etablissement_id = :etab AND statut = 'brouillon'")
+            ->execute([':id' => $demandeId, ':etab' => \API\Core\EstablishmentContext::id()]);
     }
 
     public function ajouterDocument(int $demandeId, string $type, string $fichierPath, string $nomOriginal): int
@@ -95,8 +95,8 @@ class BoursesService
 
     public function instruireDemande(int $demandeId, int $instructeurId, string $decision, int $echelonFinal = 0, float $montantFinal = 0, string $commentaire = ''): void
     {
-        $this->pdo->prepare("UPDATE bourses_demandes SET statut = :s, instructeur_id = :iid, echelon_final = :ef, montant_final = :mf, commentaire_instruction = :c, date_instruction = NOW() WHERE id = :id")
-            ->execute([':s' => $decision, ':iid' => $instructeurId, ':ef' => $echelonFinal, ':mf' => $montantFinal, ':c' => $commentaire, ':id' => $demandeId]);
+        $this->pdo->prepare("UPDATE bourses_demandes SET statut = :s, instructeur_id = :iid, echelon_final = :ef, montant_final = :mf, commentaire_instruction = :c, date_instruction = NOW() WHERE id = :id AND etablissement_id = :etab")
+            ->execute([':s' => $decision, ':iid' => $instructeurId, ':ef' => $echelonFinal, ':mf' => $montantFinal, ':c' => $commentaire, ':id' => $demandeId, ':etab' => \API\Core\EstablishmentContext::id()]);
     }
 
     public function getDemandesAInstruire(int $etabId): array
@@ -108,8 +108,8 @@ class BoursesService
 
     public function getDemande(int $demandeId): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT bd.*, CONCAT(e.prenom,' ',e.nom) AS eleve_nom, e.classe, bt.libelle AS type_bourse FROM bourses_demandes bd JOIN eleves e ON bd.eleve_id = e.id JOIN bourses_types bt ON bd.type_id = bt.id WHERE bd.id = :id");
-        $stmt->execute([':id' => $demandeId]);
+        $stmt = $this->pdo->prepare("SELECT bd.*, CONCAT(e.prenom,' ',e.nom) AS eleve_nom, e.classe, bt.libelle AS type_bourse FROM bourses_demandes bd JOIN eleves e ON bd.eleve_id = e.id JOIN bourses_types bt ON bd.type_id = bt.id WHERE bd.id = :id AND bd.etablissement_id = :etab");
+        $stmt->execute([':id' => $demandeId, ':etab' => \API\Core\EstablishmentContext::id()]);
         $demande = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$demande) return null;
 

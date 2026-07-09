@@ -90,24 +90,25 @@ class InfirmerieService
         $contact = $this->encField($data['contacts_urgence'] ?? null);
         $pai = $this->encField($data['pai'] ?? null);
         $observations = $this->encField($data['remarques'] ?? null);
+        $etabId = $this->etabId();
         $existing = $this->getFiche($eleveId);
         if ($existing) {
             $stmt = $this->pdo->prepare("
                 UPDATE fiches_sante SET allergies=?, traitements=?, contact_urgence=?, pai=?, groupe_sanguin=?, observations=?
-                WHERE eleve_id=?
+                WHERE eleve_id=? AND etablissement_id=?
             ");
             $stmt->execute([
                 $allergies, $traitements, $contact,
                 $pai, $data['groupe_sanguin'] ?? null, $observations,
-                $eleveId,
+                $eleveId, $etabId,
             ]);
         } else {
             $stmt = $this->pdo->prepare("
-                INSERT INTO fiches_sante (eleve_id, allergies, traitements, contact_urgence, pai, groupe_sanguin, observations)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO fiches_sante (eleve_id, etablissement_id, allergies, traitements, contact_urgence, pai, groupe_sanguin, observations)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
-                $eleveId, $allergies, $traitements, $contact,
+                $eleveId, $etabId, $allergies, $traitements, $contact,
                 $pai, $data['groupe_sanguin'] ?? null, $observations,
             ]);
         }
@@ -141,11 +142,11 @@ class InfirmerieService
     public function creerPassage(array $data): int
     {
         $stmt = $this->pdo->prepare("
-            INSERT INTO passages_infirmerie (eleve_id, date_passage, motif, symptomes, soins_prodigues, orientation, parent_prevenu, observations)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO passages_infirmerie (eleve_id, etablissement_id, date_passage, motif, symptomes, soins_prodigues, orientation, parent_prevenu, observations)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
-            $data['eleve_id'], $data['date_passage'] ?? date('Y-m-d H:i:s'),
+            $data['eleve_id'], $this->etabId(), $data['date_passage'] ?? date('Y-m-d H:i:s'),
             $data['motif'], $data['symptomes'] ?? null, $data['soins'] ?? null,
             $data['orientation'] ?? 'retour_classe', $data['notifier_parents'] ?? 0,
             $data['remarques'] ?? null,
@@ -155,29 +156,33 @@ class InfirmerieService
 
     public function getPassage(int $id): ?array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return null;
         $stmt = $this->pdo->prepare("
             SELECT p.*, p.soins_prodigues AS soins, p.parent_prevenu AS notifier_parents, p.observations AS remarques,
                    e.prenom, e.nom AS eleve_nom, cl.nom AS classe_nom
             FROM passages_infirmerie p
             JOIN eleves e ON p.eleve_id = e.id
             LEFT JOIN classes cl ON e.classe = cl.nom
-            WHERE p.id = ?
+            WHERE p.id = ? AND p.etablissement_id = ?
         ");
-        $stmt->execute([$id]);
+        $stmt->execute([$id, $etabId]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function getPassages(array $filtres = []): array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $sql = "
             SELECT p.*, p.soins_prodigues AS soins, p.parent_prevenu AS notifier_parents, p.observations AS remarques,
                    e.prenom, e.nom AS eleve_nom, cl.nom AS classe_nom
             FROM passages_infirmerie p
             JOIN eleves e ON p.eleve_id = e.id
             LEFT JOIN classes cl ON e.classe = cl.nom
-            WHERE 1=1
+            WHERE p.etablissement_id = ?
         ";
-        $params = [];
+        $params = [$etabId];
         if (!empty($filtres['eleve_id'])) {
             $sql .= ' AND p.eleve_id = ?';
             $params[] = $filtres['eleve_id'];
@@ -207,9 +212,11 @@ class InfirmerieService
 
     public function getEleves(string $recherche = null): array
     {
-        $sql = "SELECT e.id, e.prenom, e.nom, cl.nom AS classe_nom FROM eleves e LEFT JOIN classes cl ON e.classe = cl.nom";
-        $params = [];
-        if ($recherche) { $sql .= ' WHERE e.nom LIKE ? OR e.prenom LIKE ?'; $params = ["%$recherche%", "%$recherche%"]; }
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
+        $sql = "SELECT e.id, e.prenom, e.nom, cl.nom AS classe_nom FROM eleves e LEFT JOIN classes cl ON e.classe = cl.nom WHERE e.etablissement_id = ?";
+        $params = [$etabId];
+        if ($recherche) { $sql .= ' AND (e.nom LIKE ? OR e.prenom LIKE ?)'; $params[] = "%$recherche%"; $params[] = "%$recherche%"; }
         $sql .= ' ORDER BY e.nom, e.prenom';
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
@@ -218,51 +225,55 @@ class InfirmerieService
 
     public function getEnfantsParent(int $parentId): array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $stmt = $this->pdo->prepare("
             SELECT e.id, e.prenom, e.nom, cl.nom AS classe_nom
             FROM eleves e
             JOIN parent_eleve pe ON e.id = pe.id_eleve
             LEFT JOIN classes cl ON e.classe = cl.nom
-            WHERE pe.id_parent = ?
+            WHERE pe.id_parent = ? AND e.etablissement_id = ?
         ");
-        $stmt->execute([$parentId]);
+        $stmt->execute([$parentId, $etabId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getStats(): array
     {
+        $etabId = (int)\API\Core\EstablishmentContext::id();
         $today = date('Y-m-d');
         $month = date('Y-m') . '%';
 
-        $stmtJour = $this->pdo->prepare("SELECT COUNT(*) FROM passages_infirmerie WHERE DATE(date_passage) = ?");
-        $stmtJour->execute([$today]);
+        $stmtJour = $this->pdo->prepare("SELECT COUNT(*) FROM passages_infirmerie WHERE DATE(date_passage) = ? AND etablissement_id = ?");
+        $stmtJour->execute([$today, $etabId]);
 
-        $stmtMois = $this->pdo->prepare("SELECT COUNT(*) FROM passages_infirmerie WHERE date_passage LIKE ?");
-        $stmtMois->execute([$month]);
+        $stmtMois = $this->pdo->prepare("SELECT COUNT(*) FROM passages_infirmerie WHERE date_passage LIKE ? AND etablissement_id = ?");
+        $stmtMois->execute([$month, $etabId]);
 
         return [
-            'fiches' => (int)$this->pdo->query("SELECT COUNT(*) FROM fiches_sante")->fetchColumn(),
+            'fiches' => (int)$this->pdo->query("SELECT COUNT(*) FROM fiches_sante WHERE etablissement_id = " . $etabId)->fetchColumn(),
             'passages_jour' => (int)$stmtJour->fetchColumn(),
             'passages_mois' => (int)$stmtMois->fetchColumn(),
-            'pai_actifs' => (int)$this->pdo->query("SELECT COUNT(*) FROM fiches_sante WHERE pai IS NOT NULL AND pai != ''")->fetchColumn(),
+            'pai_actifs' => (int)$this->pdo->query("SELECT COUNT(*) FROM fiches_sante WHERE pai IS NOT NULL AND pai != '' AND etablissement_id = " . $etabId)->fetchColumn(),
         ];
     }
 
     public function getStatsPassages(): array
     {
         // Recalculate properly
+        $etabId = (int)\API\Core\EstablishmentContext::id();
         $today = date('Y-m-d');
-        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM passages_infirmerie WHERE DATE(date_passage) = ?");
-        $stmt->execute([$today]);
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM passages_infirmerie WHERE DATE(date_passage) = ? AND etablissement_id = ?");
+        $stmt->execute([$today, $etabId]);
         $jour = $stmt->fetchColumn();
 
         $month = date('Y-m') . '%';
-        $stmtMois = $this->pdo->prepare("SELECT COUNT(*) FROM passages_infirmerie WHERE date_passage LIKE ?");
-        $stmtMois->execute([$month]);
+        $stmtMois = $this->pdo->prepare("SELECT COUNT(*) FROM passages_infirmerie WHERE date_passage LIKE ? AND etablissement_id = ?");
+        $stmtMois->execute([$month, $etabId]);
         $mois = $stmtMois->fetchColumn();
 
-        $envois = $this->pdo->query("SELECT COUNT(*) FROM passages_infirmerie WHERE orientation = 'domicile'")->fetchColumn();
-        $urgences = $this->pdo->query("SELECT COUNT(*) FROM passages_infirmerie WHERE orientation = 'urgences'")->fetchColumn();
+        $envois = $this->pdo->query("SELECT COUNT(*) FROM passages_infirmerie WHERE orientation = 'domicile' AND etablissement_id = " . $etabId)->fetchColumn();
+        $urgences = $this->pdo->query("SELECT COUNT(*) FROM passages_infirmerie WHERE orientation = 'urgences' AND etablissement_id = " . $etabId)->fetchColumn();
 
         return ['jour' => $jour, 'mois' => $mois, 'renvoyes' => $envois, 'urgences' => $urgences];
     }
@@ -314,13 +325,14 @@ class InfirmerieService
     public function saveVaccinations(int $eleveId, array $vaccinations): void
     {
         $json = json_encode($vaccinations, JSON_UNESCAPED_UNICODE);
+        $etabId = $this->etabId();
         $fiche = $this->getFiche($eleveId);
         if ($fiche) {
-            $this->pdo->prepare("UPDATE fiches_sante SET vaccinations = ? WHERE eleve_id = ?")
-                       ->execute([$json, $eleveId]);
+            $this->pdo->prepare("UPDATE fiches_sante SET vaccinations = ? WHERE eleve_id = ? AND etablissement_id = ?")
+                       ->execute([$json, $eleveId, $etabId]);
         } else {
-            $this->pdo->prepare("INSERT INTO fiches_sante (eleve_id, vaccinations) VALUES (?, ?)")
-                       ->execute([$eleveId, $json]);
+            $this->pdo->prepare("INSERT INTO fiches_sante (eleve_id, etablissement_id, vaccinations) VALUES (?, ?, ?)")
+                       ->execute([$eleveId, $etabId, $json]);
         }
     }
 
@@ -386,13 +398,16 @@ class InfirmerieService
      */
     public function getTopMotifs(int $limit = 10): array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $stmt = $this->pdo->prepare("
             SELECT motif, COUNT(*) AS total
             FROM passages_infirmerie
             WHERE date_passage >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+              AND etablissement_id = ?
             GROUP BY motif ORDER BY total DESC LIMIT ?
         ");
-        $stmt->execute([$limit]);
+        $stmt->execute([$etabId, $limit]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
@@ -401,6 +416,8 @@ class InfirmerieService
      */
     public function getVisiteursFrequents(int $limit = 10): array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $stmt = $this->pdo->prepare("
             SELECT e.id, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, cl.nom AS classe_nom,
                    COUNT(*) AS nb_passages
@@ -408,10 +425,11 @@ class InfirmerieService
             JOIN eleves e ON p.eleve_id = e.id
             LEFT JOIN classes cl ON e.classe = cl.nom
             WHERE p.date_passage >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)
+              AND p.etablissement_id = ?
             GROUP BY e.id HAVING nb_passages >= 3
             ORDER BY nb_passages DESC LIMIT ?
         ");
-        $stmt->execute([$limit]);
+        $stmt->execute([$etabId, $limit]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
@@ -427,12 +445,13 @@ class InfirmerieService
      */
     public function getStatsMensuelles(): array
     {
+        $etabId = (int)\API\Core\EstablishmentContext::id();
         $result = [];
         for ($i = 11; $i >= 0; $i--) {
             $month = date('Y-m', strtotime("-{$i} months"));
             $label = date('M Y', strtotime($month . '-01'));
-            $stmtM = $this->pdo->prepare("SELECT COUNT(*) FROM passages_infirmerie WHERE date_passage LIKE ?");
-            $stmtM->execute([$month . '%']);
+            $stmtM = $this->pdo->prepare("SELECT COUNT(*) FROM passages_infirmerie WHERE date_passage LIKE ? AND etablissement_id = ?");
+            $stmtM->execute([$month . '%', $etabId]);
             $count = (int)$stmtM->fetchColumn();
             $result[] = ['mois' => $label, 'passages' => $count];
         }
@@ -444,10 +463,12 @@ class InfirmerieService
      */
     public function getRepartitionOrientations(): array
     {
+        $etabId = (int)\API\Core\EstablishmentContext::id();
         return $this->pdo->query("
-            SELECT orientation, COUNT(*) AS total 
-            FROM passages_infirmerie 
+            SELECT orientation, COUNT(*) AS total
+            FROM passages_infirmerie
             WHERE date_passage >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+              AND etablissement_id = " . $etabId . "
             GROUP BY orientation ORDER BY total DESC
         ")->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -488,17 +509,20 @@ class InfirmerieService
 
     public function detecterEpidemie(int $joursAnalyse = 7, int $seuilAlerte = 5): array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $stmt = $this->pdo->prepare("
             SELECT motif, COUNT(*) AS nb_cas, COUNT(DISTINCT eleve_id) AS nb_eleves,
                    MIN(date_passage) AS premier_cas, MAX(date_passage) AS dernier_cas
             FROM passages_infirmerie
             WHERE date_passage >= DATE_SUB(CURDATE(), INTERVAL :j DAY)
               AND motif IS NOT NULL AND motif != ''
+              AND etablissement_id = :etab
             GROUP BY motif
             HAVING nb_cas >= :s
             ORDER BY nb_cas DESC
         ");
-        $stmt->execute([':j' => $joursAnalyse, ':s' => $seuilAlerte]);
+        $stmt->execute([':j' => $joursAnalyse, ':s' => $seuilAlerte, ':etab' => $etabId]);
         $alertes = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         foreach ($alertes as &$a) {
@@ -508,8 +532,9 @@ class InfirmerieService
                 JOIN eleves e ON p.eleve_id = e.id
                 LEFT JOIN classes cl ON e.classe = cl.nom
                 WHERE p.motif = :m AND p.date_passage >= DATE_SUB(CURDATE(), INTERVAL :j DAY)
+                  AND p.etablissement_id = :etab
             ");
-            $stmtClasses->execute([':m' => $a['motif'], ':j' => $joursAnalyse]);
+            $stmtClasses->execute([':m' => $a['motif'], ':j' => $joursAnalyse, ':etab' => $etabId]);
             $a['classes_touchees'] = $stmtClasses->fetchAll(\PDO::FETCH_COLUMN);
         }
         return $alertes;
@@ -519,13 +544,15 @@ class InfirmerieService
 
     public function getElevesPai(?string $classe = null): array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $sql = "SELECT fs.eleve_id, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, cl.nom AS classe_nom,
                        fs.pai, fs.allergies, fs.pathologies
                 FROM fiches_sante fs
                 JOIN eleves e ON fs.eleve_id = e.id
                 LEFT JOIN classes cl ON e.classe = cl.nom
-                WHERE fs.pai IS NOT NULL AND fs.pai != ''";
-        $params = [];
+                WHERE fs.pai IS NOT NULL AND fs.pai != '' AND e.etablissement_id = :etab";
+        $params = [':etab' => $etabId];
         if ($classe) { $sql .= " AND cl.nom = :c"; $params[':c'] = $classe; }
         $sql .= " ORDER BY e.nom";
         $stmt = $this->pdo->prepare($sql);
@@ -553,15 +580,16 @@ class InfirmerieService
 
     public function getStatsMensuellesWidget(): array
     {
+        $etabId = (int)\API\Core\EstablishmentContext::id();
         $moisCourant = date('Y-m');
         $moisPrec = date('Y-m', strtotime('-1 month'));
 
-        $stmtCur = $this->pdo->prepare("SELECT COUNT(*) FROM passages_infirmerie WHERE date_passage LIKE ?");
-        $stmtCur->execute([$moisCourant . '%']);
+        $stmtCur = $this->pdo->prepare("SELECT COUNT(*) FROM passages_infirmerie WHERE date_passage LIKE ? AND etablissement_id = ?");
+        $stmtCur->execute([$moisCourant . '%', $etabId]);
         $current = (int)$stmtCur->fetchColumn();
 
-        $stmtPrev = $this->pdo->prepare("SELECT COUNT(*) FROM passages_infirmerie WHERE date_passage LIKE ?");
-        $stmtPrev->execute([$moisPrec . '%']);
+        $stmtPrev = $this->pdo->prepare("SELECT COUNT(*) FROM passages_infirmerie WHERE date_passage LIKE ? AND etablissement_id = ?");
+        $stmtPrev->execute([$moisPrec . '%', $etabId]);
         $previous = (int)$stmtPrev->fetchColumn();
 
         $evolution = $previous > 0 ? round(($current - $previous) / $previous * 100, 1) : 0;
@@ -573,7 +601,7 @@ class InfirmerieService
             'passages_mois_precedent' => $previous,
             'evolution_pct' => $evolution,
             'top_motifs' => $topMotifs,
-            'pai_actifs' => (int)$this->pdo->query("SELECT COUNT(*) FROM fiches_sante WHERE pai IS NOT NULL AND pai != ''")->fetchColumn(),
+            'pai_actifs' => (int)$this->pdo->query("SELECT COUNT(*) FROM fiches_sante WHERE pai IS NOT NULL AND pai != '' AND etablissement_id = " . $etabId)->fetchColumn(),
             'epidemies_detectees' => count($this->detecterEpidemie()),
         ];
     }

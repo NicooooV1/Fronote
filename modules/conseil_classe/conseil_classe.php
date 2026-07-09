@@ -23,7 +23,7 @@ try {
     $classes = $st->fetchAll(PDO::FETCH_COLUMN);
 } catch (\Throwable $e) {
     try {
-        $classes = $pdo->query("SELECT DISTINCT classe FROM eleves WHERE actif = 1 AND classe <> '' ORDER BY classe")->fetchAll(PDO::FETCH_COLUMN);
+        $classes = $pdo->query("SELECT DISTINCT classe FROM eleves WHERE etablissement_id = " . (int)\API\Core\EstablishmentContext::id() . " AND actif = 1 AND classe <> '' ORDER BY classe")->fetchAll(PDO::FETCH_COLUMN);
     } catch (\Throwable $e2) { $classes = []; }
 }
 

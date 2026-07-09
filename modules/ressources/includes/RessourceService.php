@@ -20,8 +20,8 @@ class RessourceService
                 FROM ressources_pedagogiques r
                 LEFT JOIN matieres m ON r.matiere_id = m.id
                 LEFT JOIN professeurs pr ON r.auteur_id = pr.id
-                WHERE 1=1";
-        $params = [];
+                WHERE 1=1 AND r.etablissement_id = ?";
+        $params = [\API\Core\EstablishmentContext::id()];
         if (!empty($filters['type'])) {
             $sql .= ' AND r.type = ?'; $params[] = $filters['type'];
         }
@@ -55,17 +55,18 @@ class RessourceService
                 FROM ressources_pedagogiques r
                 LEFT JOIN matieres m ON r.matiere_id = m.id
                 LEFT JOIN professeurs pr ON r.auteur_id = pr.id
-                WHERE r.id = ?");
-        $stmt->execute([$id]);
+                WHERE r.id = ? AND r.etablissement_id = ?");
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function creerRessource(array $d): int
     {
         $stmt = $this->pdo->prepare("INSERT INTO ressources_pedagogiques
-            (titre, type, matiere_id, auteur_id, contenu, niveau, tags, publie)
-            VALUES (?,?,?,?,?,?,?,?)");
+            (etablissement_id, titre, type, matiere_id, auteur_id, contenu, niveau, tags, publie)
+            VALUES (?,?,?,?,?,?,?,?,?)");
         $stmt->execute([
+            \API\Core\EstablishmentContext::id(),
             $d['titre'], $d['type'], $d['matiere_id'] ?: null,
             $d['auteur_id'], $d['contenu'] ?? null,
             $d['niveau'] ?? null, $d['tags'] ?? null,
@@ -76,13 +77,13 @@ class RessourceService
 
     public function modifierRessource(int $id, array $d): void
     {
-        $stmt = $this->pdo->prepare("UPDATE ressources_pedagogiques SET titre=?, type=?, matiere_id=?, contenu=?, niveau=?, tags=?, publie=? WHERE id=?");
-        $stmt->execute([$d['titre'], $d['type'], $d['matiere_id'] ?: null, $d['contenu'] ?? null, $d['niveau'] ?? null, $d['tags'] ?? null, $d['publie'] ?? 1, $id]);
+        $stmt = $this->pdo->prepare("UPDATE ressources_pedagogiques SET titre=?, type=?, matiere_id=?, contenu=?, niveau=?, tags=?, publie=? WHERE id=? AND etablissement_id=?");
+        $stmt->execute([$d['titre'], $d['type'], $d['matiere_id'] ?: null, $d['contenu'] ?? null, $d['niveau'] ?? null, $d['tags'] ?? null, $d['publie'] ?? 1, $id, \API\Core\EstablishmentContext::id()]);
     }
 
     public function supprimerRessource(int $id): void
     {
-        $this->pdo->prepare("DELETE FROM ressources_pedagogiques WHERE id = ?")->execute([$id]);
+        $this->pdo->prepare("DELETE FROM ressources_pedagogiques WHERE id = ? AND etablissement_id = ?")->execute([$id, \API\Core\EstablishmentContext::id()]);
     }
 
     /* ───── HELPERS ───── */
@@ -96,8 +97,9 @@ class RessourceService
 
     public function getStats(): array
     {
-        $total = $this->pdo->query("SELECT COUNT(*) FROM ressources_pedagogiques")->fetchColumn();
-        $publiees = $this->pdo->query("SELECT COUNT(*) FROM ressources_pedagogiques WHERE publie = 1")->fetchColumn();
+        $etab = (int)\API\Core\EstablishmentContext::id();
+        $total = $this->pdo->query("SELECT COUNT(*) FROM ressources_pedagogiques WHERE etablissement_id = {$etab}")->fetchColumn();
+        $publiees = $this->pdo->query("SELECT COUNT(*) FROM ressources_pedagogiques WHERE publie = 1 AND etablissement_id = {$etab}")->fetchColumn();
         return ['total' => $total, 'publiees' => $publiees];
     }
 
@@ -109,8 +111,8 @@ class RessourceService
     public function partagerRessource(int $ressourceId, array $sharedWith): void
     {
         $json = json_encode($sharedWith, JSON_UNESCAPED_UNICODE);
-        $this->pdo->prepare("UPDATE ressources_pedagogiques SET shared_with = ? WHERE id = ?")
-                   ->execute([$json, $ressourceId]);
+        $this->pdo->prepare("UPDATE ressources_pedagogiques SET shared_with = ? WHERE id = ? AND etablissement_id = ?")
+                   ->execute([$json, $ressourceId, \API\Core\EstablishmentContext::id()]);
     }
 
     /**
@@ -118,8 +120,8 @@ class RessourceService
      */
     public function incrementerTelechargements(int $ressourceId): void
     {
-        $this->pdo->prepare("UPDATE ressources_pedagogiques SET downloads = downloads + 1 WHERE id = ?")
-                   ->execute([$ressourceId]);
+        $this->pdo->prepare("UPDATE ressources_pedagogiques SET downloads = downloads + 1 WHERE id = ? AND etablissement_id = ?")
+                   ->execute([$ressourceId, \API\Core\EstablishmentContext::id()]);
     }
 
     /**
@@ -149,11 +151,11 @@ class RessourceService
             SELECT r.*, m.nom AS matiere_nom
             FROM ressources_pedagogiques r
             LEFT JOIN matieres m ON r.matiere_id = m.id
-            WHERE r.publie = 1
+            WHERE r.publie = 1 AND r.etablissement_id = ?
             ORDER BY r.downloads DESC
             LIMIT ?
         ");
-        $stmt->execute([$limit]);
+        $stmt->execute([\API\Core\EstablishmentContext::id(), $limit]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

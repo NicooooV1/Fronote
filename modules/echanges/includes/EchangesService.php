@@ -42,7 +42,8 @@ class EchangesService
 
     public function ouvrirCandidatures(int $programmeId): void
     {
-        $this->pdo->prepare("UPDATE echanges_programmes SET statut = 'candidatures_ouvertes' WHERE id = :id")->execute([':id' => $programmeId]);
+        $this->pdo->prepare("UPDATE echanges_programmes SET statut = 'candidatures_ouvertes' WHERE id = :id AND etablissement_id = :etab")
+            ->execute([':id' => $programmeId, ':etab' => \API\Core\EstablishmentContext::id()]);
     }
 
     // ─── Candidatures ─────────────────────────────────────────────
@@ -56,14 +57,14 @@ class EchangesService
 
     public function gererCandidature(int $candidatureId, string $decision, string $commentaire = ''): void
     {
-        $this->pdo->prepare("UPDATE echanges_candidatures SET statut = :s, commentaire = :c, date_decision = NOW() WHERE id = :id")
-            ->execute([':s' => $decision, ':c' => $commentaire, ':id' => $candidatureId]);
+        $this->pdo->prepare("UPDATE echanges_candidatures c JOIN echanges_programmes p ON c.programme_id = p.id SET c.statut = :s, c.commentaire = :c, c.date_decision = NOW() WHERE c.id = :id AND p.etablissement_id = :etab")
+            ->execute([':s' => $decision, ':c' => $commentaire, ':id' => $candidatureId, ':etab' => \API\Core\EstablishmentContext::id()]);
     }
 
     public function getCandidatures(int $programmeId): array
     {
-        $stmt = $this->pdo->prepare("SELECT c.*, CONCAT(e.prenom,' ',e.nom) AS eleve_nom, e.classe FROM echanges_candidatures c JOIN eleves e ON c.eleve_id = e.id WHERE c.programme_id = :pid ORDER BY c.created_at");
-        $stmt->execute([':pid' => $programmeId]);
+        $stmt = $this->pdo->prepare("SELECT c.*, CONCAT(e.prenom,' ',e.nom) AS eleve_nom, e.classe FROM echanges_candidatures c JOIN eleves e ON c.eleve_id = e.id WHERE c.programme_id = :pid AND e.etablissement_id = :etab ORDER BY c.created_at");
+        $stmt->execute([':pid' => $programmeId, ':etab' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -92,8 +93,8 @@ class EchangesService
         $stmt = $this->pdo->prepare("INSERT INTO echanges_hebergements (candidature_id, famille_id, date_arrivee, date_depart, statut) VALUES (:cid, :fid, :da, :dd, 'confirme')");
         $stmt->execute([':cid' => $candidatureId, ':fid' => $familleId, ':da' => $dateArrivee, ':dd' => $dateDepart]);
 
-        $this->pdo->prepare("UPDATE echanges_familles SET statut = 'occupee' WHERE id = :id")
-            ->execute([':id' => $familleId]);
+        $this->pdo->prepare("UPDATE echanges_familles SET statut = 'occupee' WHERE id = :id AND etablissement_id = :etab")
+            ->execute([':id' => $familleId, ':etab' => \API\Core\EstablishmentContext::id()]);
 
         return (int)$this->pdo->lastInsertId();
     }
@@ -125,8 +126,8 @@ class EchangesService
 
     public function getProgressionLinguistique(int $eleveId, string $langue): array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM echanges_suivi_linguistique WHERE eleve_id = :eid AND langue = :l ORDER BY date_evaluation ASC");
-        $stmt->execute([':eid' => $eleveId, ':l' => $langue]);
+        $stmt = $this->pdo->prepare("SELECT s.* FROM echanges_suivi_linguistique s JOIN eleves e ON s.eleve_id = e.id WHERE s.eleve_id = :eid AND s.langue = :l AND e.etablissement_id = :etab ORDER BY s.date_evaluation ASC");
+        $stmt->execute([':eid' => $eleveId, ':l' => $langue, ':etab' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

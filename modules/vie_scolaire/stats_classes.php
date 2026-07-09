@@ -3,7 +3,6 @@
  * Vie scolaire — Statistiques par classe
  */
 require_once __DIR__ . '/includes/VieScolaireService.php';
-$currentPage = 'stats';
 $pageTitle = 'Statistiques par classe';
 
 require_once __DIR__ . '/../../API/core.php';

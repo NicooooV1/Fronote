@@ -414,8 +414,8 @@ class EventRepository
         $currentDates[] = $newDate;
         $updated = implode(',', $currentDates);
 
-        $stmt = $this->pdo->prepare("UPDATE evenements SET exdate = ? WHERE id = ?");
-        return $stmt->execute([$updated, $eventId]);
+        $stmt = $this->pdo->prepare("UPDATE evenements SET exdate = ? WHERE id = ? AND etablissement_id = ?");
+        return $stmt->execute([$updated, $eventId, \API\Core\EstablishmentContext::id()]);
     }
 
     /**
@@ -446,6 +446,15 @@ class EventRepository
     {
         $params = [];
         $where  = ["r.statut != 'annulee'"];
+
+        // ── Isolation établissement ──
+        // reunions porte etablissement_id : sans ce filtre, fuite cross-tenant.
+        try {
+            $where[]  = "r.etablissement_id = ?";
+            $params[] = \API\Core\EstablishmentContext::id();
+        } catch (\Throwable $e) {
+            return [];
+        }
 
         if (!empty($options['date_start']) && !empty($options['date_end'])) {
             $where[]  = "DATE(r.date_debut) BETWEEN ? AND ?";
@@ -570,11 +579,12 @@ class EventRepository
     {
         $stmt = $this->pdo->prepare(
             "INSERT INTO evenements
-             (titre, description, date_debut, date_fin, type_evenement, type_personnalise,
+             (etablissement_id, titre, description, date_debut, date_fin, type_evenement, type_personnalise,
               statut, createur, visibilite, personnes_concernees, lieu, classes, matieres, rrule, date_creation)
-             VALUES (?, ?, ?, ?, ?, ?, 'actif', ?, ?, ?, ?, ?, ?, ?, NOW())"
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'actif', ?, ?, ?, ?, ?, ?, ?, NOW())"
         );
         $stmt->execute([
+            \API\Core\EstablishmentContext::id(),
             $data['titre'],
             $data['description']            ?? '',
             $data['date_debut'],
@@ -600,7 +610,7 @@ class EventRepository
              type_evenement = ?, statut = ?, lieu = ?, visibilite = ?,
              classes = ?, matieres = ?, personnes_concernees = ?, rrule = ?,
              date_modification = NOW()
-             WHERE id = ?"
+             WHERE id = ? AND etablissement_id = ?"
         );
         return $stmt->execute([
             $data['titre'],
@@ -616,6 +626,7 @@ class EventRepository
             $data['personnes_concernees']   ?? '',
             $data['rrule']                  ?? null,
             $id,
+            \API\Core\EstablishmentContext::id(),
         ]);
     }
 

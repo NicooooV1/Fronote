@@ -10,16 +10,10 @@ requireAuth();
 enforceModuleAccess(basename(dirname(__DIR__)));
 
 $pageTitle = $pageTitle ?? 'Appel';
-$currentPage = $currentPage ?? '';
 
 if (!isset($user_initials)) {
     $user_initials = getUserInitials();
     $user_fullname = getUserFullName();
-}
-
-function isActiveAppelLink($page) {
-    global $currentPage;
-    return $currentPage === $page ? 'active' : '';
 }
 
 $activePage = 'appel';
@@ -27,25 +21,12 @@ $isAdmin = isAdmin();
 $user_fullname = $user_fullname ?? '';
 $extraCss = array_merge(['assets/css/appel.css'], $extraCss ?? []);
 
-if (!isset($sidebarExtraContent)) {
-ob_start();
-?>
-            <div class="sidebar-nav">
-                <a href="appel.php" class="sidebar-nav-item <?= isActiveAppelLink('appel') ?>">
-                    <span class="sidebar-nav-icon"><i class="fas fa-clipboard-check"></i></span>
-                    <span>Faire l'appel</span>
-                </a>
-
-                <?php if (isAdmin() || isVieScolaire()): ?>
-                <a href="historique.php" class="sidebar-nav-item <?= isActiveAppelLink('historique') ?>">
-                    <span class="sidebar-nav-icon"><i class="fas fa-history"></i></span>
-                    <span>Historique</span>
-                </a>
-                <?php endif; ?>
-            </div>
-<?php
-$sidebarExtraContent = ob_get_clean();
-}
+// Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
+require_once __DIR__ . '/../../../templates/module_subnav.php';
+$sidebarExtraContent = renderModuleSubnav([
+    ['href' => 'appel.php',      'icon' => 'fas fa-clipboard-check', 'label' => "Faire l'appel"],
+    ['href' => 'historique.php', 'icon' => 'fas fa-history',         'label' => 'Historique', 'visible' => isAdmin() || isVieScolaire()],
+]);
 
 if (!isset($headerExtraActions)) {
 ob_start();

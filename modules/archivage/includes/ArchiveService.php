@@ -58,8 +58,9 @@ class ArchiveService
             JOIN matieres m ON n.id_matiere = m.id
             JOIN eleves e ON n.id_eleve = e.id
             JOIN classes c ON e.classe = c.nom
+            WHERE n.etablissement_id = ?
         ");
-        $stmt->execute();
+        $stmt->execute([$this->etabId()]);
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         return $this->sauvegarderArchive($annee, 'notes', $data);
@@ -75,8 +76,9 @@ class ArchiveService
             FROM absences a
             JOIN eleves e ON a.id_eleve = e.id
             JOIN classes c ON e.classe = c.nom
+            WHERE a.etablissement_id = ?
         ");
-        $stmt->execute();
+        $stmt->execute([$this->etabId()]);
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         return $this->sauvegarderArchive($annee, 'absences', $data);
@@ -87,12 +89,17 @@ class ArchiveService
      */
     public function archiverBulletins(string $annee): int
     {
-        $allowedTables = ['bulletins', 'bulletin_matieres'];
+        $etabId = $this->etabId();
         $data = [];
-        foreach ($allowedTables as $table) {
-            $stmt = $this->pdo->query("SELECT * FROM `{$table}`");
-            $data[$table] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        }
+        // `bulletins` porte etablissement_id ; `bulletin_matieres` (sans colonne) est scopé via jointure sur bulletins.
+        $stmt = $this->pdo->prepare("SELECT * FROM `bulletins` WHERE etablissement_id = ?");
+        $stmt->execute([$etabId]);
+        $data['bulletins'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $stmt = $this->pdo->prepare("SELECT bm.* FROM `bulletin_matieres` bm JOIN `bulletins` b ON bm.bulletin_id = b.id WHERE b.etablissement_id = ?");
+        $stmt->execute([$etabId]);
+        $data['bulletin_matieres'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
         return $this->sauvegarderArchive($annee, 'bulletins', $data);
     }
 
@@ -101,7 +108,8 @@ class ArchiveService
      */
     public function archiverDevoirs(string $annee): int
     {
-        $stmt = $this->pdo->query("SELECT * FROM devoirs");
+        $stmt = $this->pdo->prepare("SELECT * FROM devoirs WHERE etablissement_id = ?");
+        $stmt->execute([$this->etabId()]);
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
         return $this->sauvegarderArchive($annee, 'devoirs', $data);
     }
@@ -111,7 +119,8 @@ class ArchiveService
      */
     public function archiverIncidents(string $annee): int
     {
-        $stmt = $this->pdo->query("SELECT * FROM incidents");
+        $stmt = $this->pdo->prepare("SELECT * FROM incidents WHERE etablissement_id = ?");
+        $stmt->execute([$this->etabId()]);
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
         return $this->sauvegarderArchive($annee, 'incidents', $data);
     }
@@ -173,8 +182,8 @@ class ArchiveService
         $path = __DIR__ . '/../' . $archive['fichier_chemin'];
         if (file_exists($path)) unlink($path);
 
-        $stmt = $this->pdo->prepare('DELETE FROM archives_annuelles WHERE id = ? AND verrouille = 0');
-        $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare('DELETE FROM archives_annuelles WHERE id = ? AND etablissement_id = ? AND verrouille = 0');
+        $stmt->execute([$id, $this->etabId()]);
         return $stmt->rowCount() > 0;
     }
 
@@ -194,7 +203,8 @@ class ArchiveService
      */
     public function getStats(): array
     {
-        $stmt = $this->pdo->query("SELECT COUNT(*) AS total, COUNT(CASE WHEN verrouille = 1 THEN 1 END) AS verrouillee, COUNT(DISTINCT annee_scolaire) AS annees FROM archives_annuelles");
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) AS total, COUNT(CASE WHEN verrouille = 1 THEN 1 END) AS verrouillee, COUNT(DISTINCT annee_scolaire) AS annees FROM archives_annuelles WHERE etablissement_id = ?");
+        $stmt->execute([$this->etabId()]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
@@ -203,7 +213,8 @@ class ArchiveService
      */
     public function getAnneesDisponibles(): array
     {
-        $stmt = $this->pdo->query('SELECT DISTINCT annee_scolaire FROM archives_annuelles ORDER BY annee_scolaire DESC');
+        $stmt = $this->pdo->prepare('SELECT DISTINCT annee_scolaire FROM archives_annuelles WHERE etablissement_id = ? ORDER BY annee_scolaire DESC');
+        $stmt->execute([$this->etabId()]);
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
@@ -215,30 +226,32 @@ class ArchiveService
     public function exporterDossierEleve(int $eleveId): array
     {
         $dossier = [];
+        // Cloisonnement établissement (anti-IDOR cross-tenant) sur tout le dossier exporté.
+        $etabId = $this->etabId();
 
         // Student info
-        $stmt = $this->pdo->prepare("SELECT e.*, c.nom AS classe_nom FROM eleves e LEFT JOIN classes c ON e.classe = c.nom WHERE e.id = ?");
-        $stmt->execute([$eleveId]);
+        $stmt = $this->pdo->prepare("SELECT e.*, c.nom AS classe_nom FROM eleves e LEFT JOIN classes c ON e.classe = c.nom WHERE e.id = ? AND e.etablissement_id = ?");
+        $stmt->execute([$eleveId, $etabId]);
         $dossier['eleve'] = $stmt->fetch(PDO::FETCH_ASSOC);
 
         // Notes
-        $stmt = $this->pdo->prepare("SELECT n.*, m.nom AS matiere_nom FROM notes n JOIN matieres m ON n.id_matiere = m.id WHERE n.id_eleve = ? ORDER BY n.date_note DESC");
-        $stmt->execute([$eleveId]);
+        $stmt = $this->pdo->prepare("SELECT n.*, m.nom AS matiere_nom FROM notes n JOIN matieres m ON n.id_matiere = m.id WHERE n.id_eleve = ? AND n.etablissement_id = ? ORDER BY n.date_note DESC");
+        $stmt->execute([$eleveId, $etabId]);
         $dossier['notes'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Absences
-        $stmt = $this->pdo->prepare("SELECT * FROM absences WHERE id_eleve = ? ORDER BY date_debut DESC");
-        $stmt->execute([$eleveId]);
+        $stmt = $this->pdo->prepare("SELECT * FROM absences WHERE id_eleve = ? AND etablissement_id = ? ORDER BY date_debut DESC");
+        $stmt->execute([$eleveId, $etabId]);
         $dossier['absences'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Bulletins
-        $stmt = $this->pdo->prepare("SELECT b.* FROM bulletins b WHERE b.eleve_id = ? ORDER BY b.periode_id");
-        $stmt->execute([$eleveId]);
+        $stmt = $this->pdo->prepare("SELECT b.* FROM bulletins b WHERE b.eleve_id = ? AND b.etablissement_id = ? ORDER BY b.periode_id");
+        $stmt->execute([$eleveId, $etabId]);
         $dossier['bulletins'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Fiche santé
-        $stmt = $this->pdo->prepare("SELECT * FROM fiches_sante WHERE eleve_id = ?");
-        $stmt->execute([$eleveId]);
+        $stmt = $this->pdo->prepare("SELECT * FROM fiches_sante WHERE eleve_id = ? AND etablissement_id = ?");
+        $stmt->execute([$eleveId, $etabId]);
         $dossier['fiche_sante'] = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
 
         // Save as file

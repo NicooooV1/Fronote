@@ -23,17 +23,13 @@ $extraCss = ['assets/css/transports.css'];
 $isExport = isAdmin() || isVieScolaire();
 
 // Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
-$_sub = basename($_SERVER['PHP_SELF'] ?? '');
-ob_start(); ?>
-<div class="sidebar-nav">
-    <a href="lignes.php" class="sidebar-nav-item <?= $_sub === 'lignes.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-bus"></i></span><span>Lignes</span></a>
-<?php if ($isExport): ?>
-    <a href="export.php" class="sidebar-nav-item <?= $_sub === 'export.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-file-export"></i></span><span>Export</span></a>
-<?php endif; ?>
-</div>
-<?php $sidebarExtraContent = ob_get_clean();
+require_once __DIR__ . '/../../../templates/module_subnav.php';
+$sidebarExtraContent = renderModuleSubnav([
+    ['href' => 'lignes.php', 'icon' => 'fas fa-bus',         'label' => 'Lignes'],
+    ['href' => 'export.php', 'icon' => 'fas fa-file-export', 'label' => 'Export', 'visible' => $isExport],
+]);
 
-$pageTitle = $pageTitle ?? 'Transports & Internat';
+$pageTitle = $pageTitle ?? 'Transports';
 require_once __DIR__ . '/../../../templates/shared_header.php';
 require_once __DIR__ . '/../../../templates/shared_topbar.php';
 ?>

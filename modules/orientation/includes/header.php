@@ -20,15 +20,12 @@ $extraCss = ['assets/css/orientation.css'];
 $isStaff = isAdmin() || isProfesseur() || isVieScolaire();
 
 // Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
-$_sub = basename($_SERVER['PHP_SELF'] ?? '');
-ob_start(); ?>
-<div class="sidebar-nav">
-    <a href="orientation.php" class="sidebar-nav-item <?= $_sub === 'orientation.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-compass"></i></span><span>Orientation</span></a>
-<?php if (isEleve()): ?>
-    <a href="fiche.php" class="sidebar-nav-item <?= $_sub === 'fiche.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-id-card"></i></span><span>Ma fiche</span></a>
-<?php endif; ?>
-</div>
-<?php $sidebarExtraContent = ob_get_clean();
+require_once __DIR__ . '/../../../templates/module_subnav.php';
+$sidebarExtraContent = renderModuleSubnav([
+    ['href' => 'orientation.php', 'icon' => 'fas fa-compass',     'label' => 'Orientation'],
+    ['href' => 'fiche.php',       'icon' => 'fas fa-id-card',     'label' => 'Ma fiche', 'visible' => isEleve()],
+    ['href' => 'export.php',      'icon' => 'fas fa-file-export', 'label' => 'Export',   'visible' => $isStaff],
+]);
 
 $pageTitle = $pageTitle ?? 'Orientation';
 require_once __DIR__ . '/../../../templates/shared_header.php';

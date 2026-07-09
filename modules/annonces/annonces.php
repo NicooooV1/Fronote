@@ -6,7 +6,6 @@
 require_once __DIR__ . '/includes/AnnonceService.php';
 
 $pageTitle = 'Annonces';
-$currentPage = 'annonces';
 require_once __DIR__ . '/includes/header.php';
 requireAuth();
 
@@ -39,8 +38,8 @@ if (isAdmin()) {
         $classeNom = $user['classe'] ?? null;
         // Récupérer l'ID de classe
         if ($classeNom) {
-            $stmtC = $pdo->prepare("SELECT id FROM classes WHERE nom = ? LIMIT 1");
-            $stmtC->execute([$classeNom]);
+            $stmtC = $pdo->prepare("SELECT id FROM classes WHERE nom = ? AND etablissement_id = ? LIMIT 1");
+            $stmtC->execute([$classeNom, \API\Core\EstablishmentContext::id()]);
             $classeId = $stmtC->fetchColumn() ?: null;
         }
     }

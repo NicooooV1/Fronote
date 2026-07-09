@@ -18,21 +18,14 @@ $isGestionnaire = isAdmin() || isPersonnelVS() || isProfesseur();
 $isExport = isAdmin() || isVieScolaire();
 
 // Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
-$_sub = basename($_SERVER['PHP_SELF'] ?? '');
-ob_start(); ?>
-<div class="sidebar-nav">
-    <a href="clubs.php" class="sidebar-nav-item <?= $_sub === 'clubs.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-users"></i></span><span>Clubs</span></a>
-<?php if (isEleve()): ?>
-    <a href="mes_clubs.php" class="sidebar-nav-item <?= $_sub === 'mes_clubs.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-id-card"></i></span><span>Mes clubs</span></a>
-<?php endif; ?>
-<?php if ($isGestionnaire): ?>
-    <a href="creer.php" class="sidebar-nav-item <?= $_sub === 'creer.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-plus-circle"></i></span><span>Créer un club</span></a>
-<?php endif; ?>
-<?php if ($isExport): ?>
-    <a href="export.php" class="sidebar-nav-item"><span class="sidebar-nav-icon"><i class="fas fa-file-export"></i></span><span>Export</span></a>
-<?php endif; ?>
-</div>
-<?php $sidebarExtraContent = ob_get_clean();
+require_once __DIR__ . '/../../../templates/module_subnav.php';
+$sidebarExtraContent = renderModuleSubnav([
+    ['href' => 'clubs.php',     'icon' => 'fas fa-users',       'label' => 'Clubs'],
+    ['href' => 'mes_clubs.php', 'icon' => 'fas fa-id-card',     'label' => 'Mes clubs',     'visible' => isEleve()],
+    ['href' => 'creer.php',     'icon' => 'fas fa-plus-circle', 'label' => 'Créer un club', 'visible' => $isGestionnaire],
+    // 'active' => false : le bloc d'origine ne marquait jamais ce lien actif.
+    ['href' => 'export.php',    'icon' => 'fas fa-file-export', 'label' => 'Export',        'visible' => $isExport, 'active' => false],
+]);
 
 $pageTitle = $pageTitle ?? 'Clubs';
 require_once __DIR__ . '/../../../templates/shared_header.php';

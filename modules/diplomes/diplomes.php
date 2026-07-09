@@ -71,6 +71,11 @@ $stats = $isGestionnaire ? $diplService->getStats() : null;
             <?php if ($d['fichier_path']): ?>
             <a href="telecharger.php?id=<?= $d['id'] ?>" class="btn btn-sm btn-primary"><i class="fas fa-download"></i></a>
             <?php endif; ?>
+            <?php // Attestation PDF : mêmes règles d'accès qu'export_diplome.php (gestionnaire toujours ;
+                  // élève/parent : la liste est déjà restreinte à leurs propres diplômes). ?>
+            <?php if ($isGestionnaire || isEleve() || isParent()): ?>
+            <a href="export_diplome.php?id=<?= $d['id'] ?>" class="btn btn-sm btn-outline" title="Attestation PDF"><i class="fas fa-file-pdf"></i></a>
+            <?php endif; ?>
         </div>
         <?php endforeach; ?>
     </div>

@@ -15,12 +15,13 @@ $activePage = 'support';
 $pageTitle = $pageTitle ?? 'Support & Aide';
 $extraCss = ['assets/css/support.css'];
 
-$sidebarExtraContent = '
-<div class="sidebar-nav">
-    <a href="aide.php" class="sidebar-nav-item"><span class="sidebar-nav-icon"><i class="fas fa-question-circle"></i></span><span>FAQ</span></a>
-    <a href="tickets.php" class="sidebar-nav-item"><span class="sidebar-nav-icon"><i class="fas fa-ticket-alt"></i></span><span>Mes tickets</span></a>
-    <a href="nouveau_ticket.php" class="sidebar-nav-item"><span class="sidebar-nav-icon"><i class="fas fa-plus"></i></span><span>Nouveau ticket</span></a>
-</div>';
+// Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
+require_once __DIR__ . '/../../../templates/module_subnav.php';
+$sidebarExtraContent = renderModuleSubnav([
+    ['href' => 'aide.php',           'icon' => 'fas fa-question-circle', 'label' => 'FAQ'],
+    ['href' => 'tickets.php',        'icon' => 'fas fa-ticket-alt',      'label' => 'Mes tickets'],
+    ['href' => 'nouveau_ticket.php', 'icon' => 'fas fa-plus',            'label' => 'Nouveau ticket'],
+]);
 
 require_once __DIR__ . '/../../../templates/shared_header.php';
 require_once __DIR__ . '/../../../templates/shared_topbar.php';

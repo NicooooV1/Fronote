@@ -15,41 +15,43 @@ class VieScolaireService {
         $date = $date ?? date('Y-m-d');
         $stats = [];
 
+        $etab = (int)\API\Core\EstablishmentContext::id();
+
         // Absences du jour
-        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM absences WHERE DATE(date_debut) <= ? AND DATE(date_fin) >= ?");
-        $stmt->execute([$date, $date]);
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM absences WHERE DATE(date_debut) <= ? AND DATE(date_fin) >= ? AND etablissement_id = ?");
+        $stmt->execute([$date, $date, $etab]);
         $stats['absences_jour'] = (int)$stmt->fetchColumn();
 
         // Retards du jour
-        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM retards WHERE DATE(date_retard) = ?");
-        $stmt->execute([$date]);
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM retards WHERE DATE(date_retard) = ? AND etablissement_id = ?");
+        $stmt->execute([$date, $etab]);
         $stats['retards_jour'] = (int)$stmt->fetchColumn();
 
         // Incidents non traités
-        $stmt = $this->pdo->query("SELECT COUNT(*) FROM incidents WHERE statut IN ('signale','en_traitement')");
+        $stmt = $this->pdo->query("SELECT COUNT(*) FROM incidents WHERE statut IN ('signale','en_traitement') AND etablissement_id = " . $etab);
         $stats['incidents_ouverts'] = (int)$stmt->fetchColumn();
 
         // Justificatifs en attente
-        $stmt = $this->pdo->query("SELECT COUNT(*) FROM justificatifs WHERE traite = 0");
+        $stmt = $this->pdo->query("SELECT COUNT(*) FROM justificatifs WHERE traite = 0 AND etablissement_id = " . $etab);
         $stats['justificatifs_attente'] = (int)$stmt->fetchColumn();
 
         // Appels non validés aujourd'hui
         if ($this->tableExists('appels')) {
-            $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM appels WHERE date_appel = ? AND statut = 'en_cours'");
-            $stmt->execute([$date]);
+            $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM appels WHERE date_appel = ? AND statut = 'en_cours' AND etablissement_id = ?");
+            $stmt->execute([$date, $etab]);
             $stats['appels_en_cours'] = (int)$stmt->fetchColumn();
         }
 
         // Sanctions en cours
         if ($this->tableExists('sanctions')) {
-            $stmt = $this->pdo->query("SELECT COUNT(*) FROM sanctions WHERE statut = 'prononcee'");
+            $stmt = $this->pdo->query("SELECT COUNT(*) FROM sanctions WHERE statut = 'prononcee' AND etablissement_id = " . $etab);
             $stats['sanctions_actives'] = (int)$stmt->fetchColumn();
         }
 
         // Retenues planifiées
         if ($this->tableExists('retenues')) {
-            $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM retenues WHERE date_retenue >= ? AND statut = 'planifiee'");
-            $stmt->execute([$date]);
+            $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM retenues WHERE date_retenue >= ? AND statut = 'planifiee' AND etablissement_id = ?");
+            $stmt->execute([$date, $etab]);
             $stats['retenues_planifiees'] = (int)$stmt->fetchColumn();
         }
 
@@ -64,12 +66,12 @@ class VieScolaireService {
                 (SELECT COUNT(*) FROM retards WHERE id_eleve = e.id) AS nb_retards,
                 (SELECT COUNT(*) FROM incidents WHERE eleve_id = e.id) AS nb_incidents
             FROM eleves e
-            WHERE e.actif = 1
+            WHERE e.actif = 1 AND e.etablissement_id = ?
             HAVING abs_injustifiees > 3 OR nb_retards > 5 OR nb_incidents > 2
             ORDER BY (abs_injustifiees * 3 + nb_retards + nb_incidents * 2) DESC
             LIMIT ?
         ");
-        $stmt->execute([$limit]);
+        $stmt->execute([\API\Core\EstablishmentContext::id(), $limit]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -79,10 +81,11 @@ class VieScolaireService {
             SELECT a.*, e.nom, e.prenom, e.classe
             FROM absences a
             JOIN eleves e ON a.id_eleve = e.id
+            WHERE a.etablissement_id = ?
             ORDER BY a.date_signalement DESC
             LIMIT ?
         ");
-        $stmt->execute([$limit]);
+        $stmt->execute([\API\Core\EstablishmentContext::id(), $limit]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -93,22 +96,24 @@ class VieScolaireService {
             SELECT i.*, e.nom, e.prenom, e.classe
             FROM incidents i
             JOIN eleves e ON i.eleve_id = e.id
+            WHERE i.etablissement_id = ?
             ORDER BY i.date_creation DESC
             LIMIT ?
         ");
-        $stmt->execute([$limit]);
+        $stmt->execute([\API\Core\EstablishmentContext::id(), $limit]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     // ─── STATS PAR CLASSE ───
     public function getStatsParClasse(): array {
+        $etab = (int)\API\Core\EstablishmentContext::id();
         $stmt = $this->pdo->query("
             SELECT e.classe,
                 COUNT(DISTINCT e.id) AS nb_eleves,
-                (SELECT COUNT(*) FROM absences a WHERE a.id_eleve IN (SELECT id FROM eleves WHERE classe = e.classe)) AS nb_absences,
-                (SELECT COUNT(*) FROM retards r WHERE r.id_eleve IN (SELECT id FROM eleves WHERE classe = e.classe)) AS nb_retards
+                (SELECT COUNT(*) FROM absences a WHERE a.id_eleve IN (SELECT id FROM eleves WHERE classe = e.classe AND etablissement_id = {$etab})) AS nb_absences,
+                (SELECT COUNT(*) FROM retards r WHERE r.id_eleve IN (SELECT id FROM eleves WHERE classe = e.classe AND etablissement_id = {$etab})) AS nb_retards
             FROM eleves e
-            WHERE e.actif = 1
+            WHERE e.actif = 1 AND e.etablissement_id = {$etab}
             GROUP BY e.classe
             ORDER BY e.classe
         ");
@@ -119,32 +124,34 @@ class VieScolaireService {
     public function getFicheEleve(int $eleveId): array {
         $fiche = [];
 
+        $etab = \API\Core\EstablishmentContext::id();
+
         // Info élève
-        $stmt = $this->pdo->prepare("SELECT * FROM eleves WHERE id = ?");
-        $stmt->execute([$eleveId]);
+        $stmt = $this->pdo->prepare("SELECT * FROM eleves WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$eleveId, $etab]);
         $fiche['eleve'] = $stmt->fetch(PDO::FETCH_ASSOC);
 
         // Absences
-        $stmt = $this->pdo->prepare("SELECT * FROM absences WHERE id_eleve = ? ORDER BY date_debut DESC");
-        $stmt->execute([$eleveId]);
+        $stmt = $this->pdo->prepare("SELECT * FROM absences WHERE id_eleve = ? AND etablissement_id = ? ORDER BY date_debut DESC");
+        $stmt->execute([$eleveId, $etab]);
         $fiche['absences'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Retards
-        $stmt = $this->pdo->prepare("SELECT * FROM retards WHERE id_eleve = ? ORDER BY date_retard DESC");
-        $stmt->execute([$eleveId]);
+        $stmt = $this->pdo->prepare("SELECT * FROM retards WHERE id_eleve = ? AND etablissement_id = ? ORDER BY date_retard DESC");
+        $stmt->execute([$eleveId, $etab]);
         $fiche['retards'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Incidents
         if ($this->tableExists('incidents')) {
-            $stmt = $this->pdo->prepare("SELECT * FROM incidents WHERE eleve_id = ? ORDER BY date_incident DESC");
-            $stmt->execute([$eleveId]);
+            $stmt = $this->pdo->prepare("SELECT * FROM incidents WHERE eleve_id = ? AND etablissement_id = ? ORDER BY date_incident DESC");
+            $stmt->execute([$eleveId, $etab]);
             $fiche['incidents'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
         // Sanctions
         if ($this->tableExists('sanctions')) {
-            $stmt = $this->pdo->prepare("SELECT * FROM sanctions WHERE eleve_id = ? ORDER BY date_sanction DESC");
-            $stmt->execute([$eleveId]);
+            $stmt = $this->pdo->prepare("SELECT * FROM sanctions WHERE eleve_id = ? AND etablissement_id = ? ORDER BY date_sanction DESC");
+            $stmt->execute([$eleveId, $etab]);
             $fiche['sanctions'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
@@ -165,10 +172,10 @@ class VieScolaireService {
         $like = "%{$q}%";
         $stmt = $this->pdo->prepare("
             SELECT id, nom, prenom, classe FROM eleves
-            WHERE actif = 1 AND (nom LIKE ? OR prenom LIKE ? OR classe LIKE ?)
+            WHERE actif = 1 AND etablissement_id = ? AND (nom LIKE ? OR prenom LIKE ? OR classe LIKE ?)
             ORDER BY nom LIMIT 20
         ");
-        $stmt->execute([$like, $like, $like]);
+        $stmt->execute([\API\Core\EstablishmentContext::id(), $like, $like, $like]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -176,20 +183,22 @@ class VieScolaireService {
     public function getTimeline(int $limit = 30): array {
         $events = [];
 
+        $etab = \API\Core\EstablishmentContext::id();
+
         // Absences récentes
-        $stmt = $this->pdo->prepare("SELECT a.id, 'absence' AS type, a.date_signalement AS date_event, CONCAT(e.prenom, ' ', e.nom) AS eleve, e.classe, a.type_absence AS detail FROM absences a JOIN eleves e ON a.id_eleve = e.id ORDER BY a.date_signalement DESC LIMIT ?");
-        $stmt->execute([$limit]);
+        $stmt = $this->pdo->prepare("SELECT a.id, 'absence' AS type, a.date_signalement AS date_event, CONCAT(e.prenom, ' ', e.nom) AS eleve, e.classe, a.type_absence AS detail FROM absences a JOIN eleves e ON a.id_eleve = e.id WHERE a.etablissement_id = ? ORDER BY a.date_signalement DESC LIMIT ?");
+        $stmt->execute([$etab, $limit]);
         $events = array_merge($events, $stmt->fetchAll(PDO::FETCH_ASSOC));
 
         // Retards
-        $stmt = $this->pdo->prepare("SELECT r.id, 'retard' AS type, r.date_signalement AS date_event, CONCAT(e.prenom, ' ', e.nom) AS eleve, e.classe, CONCAT(r.duree_minutes, ' min') AS detail FROM retards r JOIN eleves e ON r.id_eleve = e.id ORDER BY r.date_signalement DESC LIMIT ?");
-        $stmt->execute([$limit]);
+        $stmt = $this->pdo->prepare("SELECT r.id, 'retard' AS type, r.date_signalement AS date_event, CONCAT(e.prenom, ' ', e.nom) AS eleve, e.classe, CONCAT(r.duree_minutes, ' min') AS detail FROM retards r JOIN eleves e ON r.id_eleve = e.id WHERE r.etablissement_id = ? ORDER BY r.date_signalement DESC LIMIT ?");
+        $stmt->execute([$etab, $limit]);
         $events = array_merge($events, $stmt->fetchAll(PDO::FETCH_ASSOC));
 
         // Incidents
         if ($this->tableExists('incidents')) {
-            $stmt = $this->pdo->prepare("SELECT i.id, 'incident' AS type, i.date_creation AS date_event, CONCAT(e.prenom, ' ', e.nom) AS eleve, e.classe, i.type_incident AS detail FROM incidents i JOIN eleves e ON i.eleve_id = e.id ORDER BY i.date_creation DESC LIMIT ?");
-            $stmt->execute([$limit]);
+            $stmt = $this->pdo->prepare("SELECT i.id, 'incident' AS type, i.date_creation AS date_event, CONCAT(e.prenom, ' ', e.nom) AS eleve, e.classe, i.type_incident AS detail FROM incidents i JOIN eleves e ON i.eleve_id = e.id WHERE i.etablissement_id = ? ORDER BY i.date_creation DESC LIMIT ?");
+            $stmt->execute([$etab, $limit]);
             $events = array_merge($events, $stmt->fetchAll(PDO::FETCH_ASSOC));
         }
 
@@ -210,7 +219,9 @@ class VieScolaireService {
         $now = date('Y-m-d');
         $debutTrimestre = date('Y-m-d', strtotime('-3 months'));
 
-        $stmt = $this->pdo->query("SELECT id, nom, prenom, classe FROM eleves WHERE actif = 1");
+        $etab = \API\Core\EstablishmentContext::id();
+
+        $stmt = $this->pdo->query("SELECT id, nom, prenom, classe FROM eleves WHERE actif = 1 AND etablissement_id = " . (int)$etab);
         $eleves = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         foreach ($eleves as $e) {
@@ -218,8 +229,8 @@ class VieScolaireService {
             $indicators = [];
 
             // 1. Absenteeism rate
-            $absStmt = $this->pdo->prepare("SELECT COUNT(*) FROM absences WHERE id_eleve = ? AND date_debut >= ?");
-            $absStmt->execute([$e['id'], $debutTrimestre]);
+            $absStmt = $this->pdo->prepare("SELECT COUNT(*) FROM absences WHERE id_eleve = ? AND date_debut >= ? AND etablissement_id = ?");
+            $absStmt->execute([$e['id'], $debutTrimestre, $etab]);
             $nbAbsences = (int)$absStmt->fetchColumn();
 
             // Estimate total school days (~60 per trimester)
@@ -233,8 +244,8 @@ class VieScolaireService {
 
             // 2. Incidents
             if ($this->tableExists('incidents')) {
-                $incStmt = $this->pdo->prepare("SELECT COUNT(*) FROM incidents WHERE eleve_id = ? AND date_incident >= ?");
-                $incStmt->execute([$e['id'], $debutTrimestre]);
+                $incStmt = $this->pdo->prepare("SELECT COUNT(*) FROM incidents WHERE eleve_id = ? AND date_incident >= ? AND etablissement_id = ?");
+                $incStmt->execute([$e['id'], $debutTrimestre, $etab]);
                 $nbIncidents = (int)$incStmt->fetchColumn();
                 if ($nbIncidents >= 3) {
                     $score += 2;
@@ -249,12 +260,12 @@ class VieScolaireService {
                            ROUND(SUM(n.note * n.coefficient) / NULLIF(SUM(n.coefficient), 0), 2) AS moy
                     FROM notes n
                     JOIN periodes p ON n.trimestre = p.id
-                    WHERE n.id_eleve = ?
+                    WHERE n.id_eleve = ? AND n.etablissement_id = ?
                     GROUP BY p.id
                     ORDER BY p.date_debut DESC
                     LIMIT 2
                 ");
-                $gradeStmt->execute([$e['id']]);
+                $gradeStmt->execute([$e['id'], $etab]);
                 $periodes = $gradeStmt->fetchAll(\PDO::FETCH_ASSOC);
                 if (count($periodes) >= 2) {
                     $current = (float)$periodes[0]['moy'];
@@ -271,8 +282,8 @@ class VieScolaireService {
             } catch (\Exception $e2) { error_log('[VieScolaireService.php] ' . $e2->getMessage()); }
 
             // 4. Unjustified absences
-            $injStmt = $this->pdo->prepare("SELECT COUNT(*) FROM absences WHERE id_eleve = ? AND justifie = 0 AND date_debut >= ?");
-            $injStmt->execute([$e['id'], $debutTrimestre]);
+            $injStmt = $this->pdo->prepare("SELECT COUNT(*) FROM absences WHERE id_eleve = ? AND justifie = 0 AND date_debut >= ? AND etablissement_id = ?");
+            $injStmt->execute([$e['id'], $debutTrimestre, $etab]);
             $nbInjustifiees = (int)$injStmt->fetchColumn();
             if ($nbInjustifiees > 5) {
                 $score += 2;
@@ -304,14 +315,15 @@ class VieScolaireService {
     {
         $count = 0;
         $stmt = $this->pdo->prepare("
-            INSERT INTO suivi_eleves (eleve_id, risque_decrochage, derniere_analyse, notes_json)
-            VALUES (?, ?, CURDATE(), ?)
+            INSERT INTO suivi_eleves (eleve_id, etablissement_id, risque_decrochage, derniere_analyse, notes_json)
+            VALUES (?, ?, ?, CURDATE(), ?)
             ON DUPLICATE KEY UPDATE risque_decrochage = VALUES(risque_decrochage),
                 derniere_analyse = VALUES(derniere_analyse), notes_json = VALUES(notes_json)
         ");
         foreach ($alertes as $a) {
             $stmt->execute([
                 $a['eleve_id'],
+                \API\Core\EstablishmentContext::id(),
                 $a['score_risque'] / 10,
                 json_encode($a['indicateurs'])
             ]);
@@ -333,8 +345,8 @@ class VieScolaireService {
 
     public function getBriefingQuotidien(int $etabId): array
     {
-        $absJour = $this->pdo->prepare("SELECT COUNT(*) FROM absences WHERE date_debut = CURDATE()");
-        $absJour->execute();
+        $absJour = $this->pdo->prepare("SELECT COUNT(*) FROM absences WHERE date_debut = CURDATE() AND etablissement_id = :eid");
+        $absJour->execute([':eid' => \API\Core\EstablishmentContext::id()]);
 
         $retards = $this->pdo->prepare("SELECT COUNT(*) FROM appel_eleves ae JOIN appels a ON ae.appel_id = a.id WHERE ae.statut = 'retard' AND a.date_appel = CURDATE() AND a.etablissement_id = :eid");
         $retards->execute([':eid' => $etabId]);
@@ -360,16 +372,18 @@ class VieScolaireService {
     {
         $events = [];
 
-        $abs = $this->pdo->prepare("SELECT 'absence' AS type, date_debut AS date, motif AS detail FROM absences WHERE id_eleve = :eid ORDER BY date_debut DESC LIMIT 20");
-        $abs->execute([':eid' => $eleveId]);
+        $etab = \API\Core\EstablishmentContext::id();
+
+        $abs = $this->pdo->prepare("SELECT 'absence' AS type, date_debut AS date, motif AS detail FROM absences WHERE id_eleve = :eid AND etablissement_id = :etab ORDER BY date_debut DESC LIMIT 20");
+        $abs->execute([':eid' => $eleveId, ':etab' => $etab]);
         foreach ($abs as $a) $events[] = $a;
 
-        $inc = $this->pdo->prepare("SELECT 'incident' AS type, date_incident AS date, description AS detail FROM incidents WHERE eleve_id = :eid ORDER BY date_incident DESC LIMIT 20");
-        $inc->execute([':eid' => $eleveId]);
+        $inc = $this->pdo->prepare("SELECT 'incident' AS type, date_incident AS date, description AS detail FROM incidents WHERE eleve_id = :eid AND etablissement_id = :etab ORDER BY date_incident DESC LIMIT 20");
+        $inc->execute([':eid' => $eleveId, ':etab' => $etab]);
         foreach ($inc as $i) $events[] = $i;
 
-        $notes = $this->pdo->prepare("SELECT 'note' AS type, date_note AS date, CONCAT(note,'/',note_sur) AS detail FROM notes WHERE id_eleve = :eid ORDER BY date_note DESC LIMIT 20");
-        $notes->execute([':eid' => $eleveId]);
+        $notes = $this->pdo->prepare("SELECT 'note' AS type, date_note AS date, CONCAT(note,'/',note_sur) AS detail FROM notes WHERE id_eleve = :eid AND etablissement_id = :etab ORDER BY date_note DESC LIMIT 20");
+        $notes->execute([':eid' => $eleveId, ':etab' => $etab]);
         foreach ($notes as $n) $events[] = $n;
 
         usort($events, fn($a, $b) => strtotime($b['date']) - strtotime($a['date']));
@@ -383,8 +397,8 @@ class VieScolaireService {
         $alertes = [];
 
         // Absences non justifiées > 3 jours
-        $abs = $this->pdo->prepare("SELECT a.id_eleve, CONCAT(e.prenom,' ',e.nom) AS eleve, e.classe, COUNT(*) AS nb FROM absences a JOIN eleves e ON a.id_eleve = e.id WHERE a.justifie = 0 AND a.date_debut >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND e.actif = 1 GROUP BY a.id_eleve HAVING nb >= 3 ORDER BY nb DESC");
-        $abs->execute();
+        $abs = $this->pdo->prepare("SELECT a.id_eleve, CONCAT(e.prenom,' ',e.nom) AS eleve, e.classe, COUNT(*) AS nb FROM absences a JOIN eleves e ON a.id_eleve = e.id WHERE a.justifie = 0 AND a.date_debut >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND e.actif = 1 AND a.etablissement_id = ? GROUP BY a.id_eleve HAVING nb >= 3 ORDER BY nb DESC");
+        $abs->execute([\API\Core\EstablishmentContext::id()]);
         foreach ($abs as $a) $alertes[] = ['type' => 'absences_repetees', 'eleve' => $a['eleve'], 'classe' => $a['classe'], 'detail' => $a['nb'] . ' absences non justifiées'];
 
         // Incidents graves récents

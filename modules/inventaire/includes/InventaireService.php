@@ -44,8 +44,8 @@ class InventaireService
     public function generateQrCode(int $assetId): string
     {
         $token = 'ASSET-' . str_pad((string)$assetId, 6, '0', STR_PAD_LEFT) . '-' . substr(md5((string)$assetId . 'fronote'), 0, 8);
-        $this->pdo->prepare("UPDATE inventaire_assets SET qr_token = :t WHERE id = :id")
-            ->execute([':t' => $token, ':id' => $assetId]);
+        $this->pdo->prepare("UPDATE inventaire_assets SET qr_token = :t WHERE id = :id AND etablissement_id = :eid")
+            ->execute([':t' => $token, ':id' => $assetId, ':eid' => \API\Core\EstablishmentContext::id()]);
         return $token;
     }
 
@@ -75,8 +75,8 @@ class InventaireService
 
     public function preterAsset(int $assetId, int $emprunteurId, string $emprunteurType, string $dateRetourPrevue, string $motif = ''): int
     {
-        $this->pdo->prepare("UPDATE inventaire_assets SET statut = 'prete' WHERE id = :id AND statut = 'actif'")
-            ->execute([':id' => $assetId]);
+        $this->pdo->prepare("UPDATE inventaire_assets SET statut = 'prete' WHERE id = :id AND etablissement_id = :eid AND statut = 'actif'")
+            ->execute([':id' => $assetId, ':eid' => \API\Core\EstablishmentContext::id()]);
 
         $stmt = $this->pdo->prepare("INSERT INTO inventaire_prets (asset_id, emprunteur_id, emprunteur_type, date_pret, date_retour_prevue, motif, statut) VALUES (:aid, :eid, :et, NOW(), :drp, :m, 'en_cours')");
         $stmt->execute([':aid' => $assetId, ':eid' => $emprunteurId, ':et' => $emprunteurType, ':drp' => $dateRetourPrevue, ':m' => $motif]);
@@ -92,8 +92,8 @@ class InventaireService
         $this->pdo->prepare("UPDATE inventaire_prets SET statut = 'retourne', date_retour_effectif = NOW(), etat_retour = :e WHERE id = :id")
             ->execute([':e' => $etat, ':id' => $pretId]);
 
-        $this->pdo->prepare("UPDATE inventaire_assets SET statut = 'actif' WHERE id = :id")
-            ->execute([':id' => $assetId]);
+        $this->pdo->prepare("UPDATE inventaire_assets SET statut = 'actif' WHERE id = :id AND etablissement_id = :eid")
+            ->execute([':id' => $assetId, ':eid' => \API\Core\EstablishmentContext::id()]);
     }
 
     public function getPretsEnCours(int $etabId): array
@@ -114,8 +114,8 @@ class InventaireService
 
     public function signalerPanne(int $assetId, int $signalePar, string $signaleParType, string $description, string $urgence = 'normal'): int
     {
-        $this->pdo->prepare("UPDATE inventaire_assets SET statut = 'en_panne' WHERE id = :id")
-            ->execute([':id' => $assetId]);
+        $this->pdo->prepare("UPDATE inventaire_assets SET statut = 'en_panne' WHERE id = :id AND etablissement_id = :eid")
+            ->execute([':id' => $assetId, ':eid' => \API\Core\EstablishmentContext::id()]);
 
         $stmt = $this->pdo->prepare("INSERT INTO inventaire_incidents_tech (asset_id, signale_par, signale_par_type, description, urgence, statut) VALUES (:aid, :sp, :spt, :d, :u, 'ouvert')");
         $stmt->execute([':aid' => $assetId, ':sp' => $signalePar, ':spt' => $signaleParType, ':d' => $description, ':u' => $urgence]);
@@ -131,16 +131,16 @@ class InventaireService
         $this->pdo->prepare("UPDATE inventaire_incidents_tech SET statut = 'resolu', resolution = :r, cout_reparation = :c, date_resolution = NOW() WHERE id = :id")
             ->execute([':r' => $resolution, ':c' => $cout, ':id' => $incidentId]);
 
-        $this->pdo->prepare("UPDATE inventaire_assets SET statut = 'actif' WHERE id = :id")
-            ->execute([':id' => $assetId]);
+        $this->pdo->prepare("UPDATE inventaire_assets SET statut = 'actif' WHERE id = :id AND etablissement_id = :eid")
+            ->execute([':id' => $assetId, ':eid' => \API\Core\EstablishmentContext::id()]);
     }
 
     // ─── Amortissement ────────────────────────────────────────────
 
     public function calculerAmortissement(int $assetId, string $methode = 'lineaire', int $dureeAnnees = 5): array
     {
-        $asset = $this->pdo->prepare("SELECT prix_achat, date_achat FROM inventaire_assets WHERE id = :id");
-        $asset->execute([':id' => $assetId]);
+        $asset = $this->pdo->prepare("SELECT prix_achat, date_achat FROM inventaire_assets WHERE id = :id AND etablissement_id = :eid");
+        $asset->execute([':id' => $assetId, ':eid' => \API\Core\EstablishmentContext::id()]);
         $a = $asset->fetch(PDO::FETCH_ASSOC);
 
         $prix = (float)$a['prix_achat'];

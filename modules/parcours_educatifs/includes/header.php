@@ -16,15 +16,11 @@ $extraCss = ['assets/css/parcours.css'];
 $isGestionnaire = isAdmin() || isProfesseur();
 
 // Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
-$_sub = basename($_SERVER['PHP_SELF'] ?? '');
-ob_start(); ?>
-<div class="sidebar-nav">
-    <a href="parcours.php" class="sidebar-nav-item <?= $_sub === 'parcours.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-route"></i></span><span>Parcours</span></a>
-<?php if ($isGestionnaire): ?>
-    <a href="ajouter.php" class="sidebar-nav-item <?= $_sub === 'ajouter.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-plus-circle"></i></span><span>Ajouter</span></a>
-<?php endif; ?>
-</div>
-<?php $sidebarExtraContent = ob_get_clean();
+require_once __DIR__ . '/../../../templates/module_subnav.php';
+$sidebarExtraContent = renderModuleSubnav([
+    ['href' => 'parcours.php', 'icon' => 'fas fa-route',       'label' => 'Parcours'],
+    ['href' => 'ajouter.php',  'icon' => 'fas fa-plus-circle', 'label' => 'Ajouter', 'visible' => $isGestionnaire],
+]);
 
 require_once __DIR__ . '/../../../templates/shared_header.php';
 require_once __DIR__ . '/../../../templates/shared_topbar.php';

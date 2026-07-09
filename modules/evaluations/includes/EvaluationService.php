@@ -31,8 +31,8 @@ class EvaluationService
 
     public function getBanques(int $profId): array
     {
-        $stmt = $this->pdo->prepare("SELECT b.*, COUNT(q.id) AS nb_questions FROM evaluation_banques b LEFT JOIN evaluation_questions q ON q.banque_id = b.id WHERE b.professeur_id = :p GROUP BY b.id ORDER BY b.created_at DESC");
-        $stmt->execute([':p' => $profId]);
+        $stmt = $this->pdo->prepare("SELECT b.*, COUNT(q.id) AS nb_questions FROM evaluation_banques b LEFT JOIN evaluation_questions q ON q.banque_id = b.id WHERE b.professeur_id = :p AND b.etablissement_id = :etab GROUP BY b.id ORDER BY b.created_at DESC");
+        $stmt->execute([':p' => $profId, ':etab' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -61,15 +61,15 @@ class EvaluationService
 
     public function getEvaluationsClasse(string $classe): array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM evaluations_en_ligne WHERE classe = :c AND statut != 'brouillon' ORDER BY date_ouverture DESC");
-        $stmt->execute([':c' => $classe]);
+        $stmt = $this->pdo->prepare("SELECT * FROM evaluations_en_ligne WHERE classe = :c AND etablissement_id = :etab AND statut != 'brouillon' ORDER BY date_ouverture DESC");
+        $stmt->execute([':c' => $classe, ':etab' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getEvaluationsProf(int $profId): array
     {
-        $stmt = $this->pdo->prepare("SELECT el.*, (SELECT COUNT(*) FROM evaluation_sessions es WHERE es.evaluation_id = el.id AND es.statut = 'soumis') AS nb_soumis, (SELECT COUNT(*) FROM evaluation_sessions es2 WHERE es2.evaluation_id = el.id AND es2.statut = 'corrige') AS nb_corriges FROM evaluations_en_ligne el WHERE el.professeur_id = :p ORDER BY el.created_at DESC");
-        $stmt->execute([':p' => $profId]);
+        $stmt = $this->pdo->prepare("SELECT el.*, (SELECT COUNT(*) FROM evaluation_sessions es WHERE es.evaluation_id = el.id AND es.statut = 'soumis') AS nb_soumis, (SELECT COUNT(*) FROM evaluation_sessions es2 WHERE es2.evaluation_id = el.id AND es2.statut = 'corrige') AS nb_corriges FROM evaluations_en_ligne el WHERE el.professeur_id = :p AND el.etablissement_id = :etab ORDER BY el.created_at DESC");
+        $stmt->execute([':p' => $profId, ':etab' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -139,7 +139,7 @@ class EvaluationService
 
     public function calculateStats(int $evaluationId): void
     {
-        $questions = $this->pdo->prepare("SELECT DISTINCT eq.id FROM evaluation_questions eq JOIN evaluations_en_ligne el ON JSON_CONTAINS(el.questions_config, CAST(eq.id AS CHAR)) WHERE el.id = :eid");
+        $questions = $this->pdo->prepare("SELECT DISTINCT eq.id FROM evaluation_questions eq JOIN evaluations_en_ligne el ON JSON_CONTAINS(el.questions_config, CAST(eq.id AS CHAR)) WHERE el.id = :eid AND el.etablissement_id = " . (int)\API\Core\EstablishmentContext::id());
         // Simplified: compute from existing responses
         $stmt = $this->pdo->prepare("SELECT er.question_id, COUNT(*) AS nb_reponses, SUM(er.correct) AS nb_correct, ROUND(AVG(er.correct)*100,2) AS taux_reussite FROM evaluation_reponses er JOIN evaluation_sessions es ON er.session_id = es.id WHERE es.evaluation_id = :eid AND es.statut = 'corrige' GROUP BY er.question_id");
         $stmt->execute([':eid' => $evaluationId]);
@@ -151,8 +151,8 @@ class EvaluationService
 
     public function getResultsForClasse(int $evaluationId): array
     {
-        $stmt = $this->pdo->prepare("SELECT es.eleve_id, CONCAT(e.prenom,' ',e.nom) AS eleve, es.score, es.note_sur, es.statut, es.date_debut, es.date_fin FROM evaluation_sessions es JOIN eleves e ON es.eleve_id = e.id WHERE es.evaluation_id = :eid ORDER BY e.nom, e.prenom");
-        $stmt->execute([':eid' => $evaluationId]);
+        $stmt = $this->pdo->prepare("SELECT es.eleve_id, CONCAT(e.prenom,' ',e.nom) AS eleve, es.score, es.note_sur, es.statut, es.date_debut, es.date_fin FROM evaluation_sessions es JOIN eleves e ON es.eleve_id = e.id WHERE es.evaluation_id = :eid AND e.etablissement_id = :etab ORDER BY e.nom, e.prenom");
+        $stmt->execute([':eid' => $evaluationId, ':etab' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -160,8 +160,8 @@ class EvaluationService
 
     public function pushToNotes(int $evaluationId, float $noteSur = 20.0): int
     {
-        $eval = $this->pdo->prepare("SELECT * FROM evaluations_en_ligne WHERE id = :id");
-        $eval->execute([':id' => $evaluationId]);
+        $eval = $this->pdo->prepare("SELECT * FROM evaluations_en_ligne WHERE id = :id AND etablissement_id = :etab");
+        $eval->execute([':id' => $evaluationId, ':etab' => \API\Core\EstablishmentContext::id()]);
         $eval = $eval->fetch(PDO::FETCH_ASSOC);
         if (!$eval) return 0;
 
@@ -171,8 +171,8 @@ class EvaluationService
 
         foreach ($sessions as $session) {
             $note = ($session['note_sur'] > 0) ? round(($session['score'] / $session['note_sur']) * $noteSur, 2) : 0;
-            $this->pdo->prepare("INSERT INTO notes (id_eleve, id_matiere, note, note_sur, date_note, type_evaluation, commentaire) VALUES (:eid, :mid, :note, :sur, CURDATE(), 'evaluation_en_ligne', :com)")
-                ->execute([':eid' => $session['eleve_id'], ':mid' => $eval['matiere_id'], ':note' => $note, ':sur' => $noteSur, ':com' => 'Évaluation: ' . $eval['titre']]);
+            $this->pdo->prepare("INSERT INTO notes (etablissement_id, id_eleve, id_matiere, note, note_sur, date_note, type_evaluation, commentaire) VALUES (:etab, :eid, :mid, :note, :sur, CURDATE(), 'evaluation_en_ligne', :com)")
+                ->execute([':etab' => \API\Core\EstablishmentContext::id(), ':eid' => $session['eleve_id'], ':mid' => $eval['matiere_id'], ':note' => $note, ':sur' => $noteSur, ':com' => 'Évaluation: ' . $eval['titre']]);
             $count++;
         }
         return $count;

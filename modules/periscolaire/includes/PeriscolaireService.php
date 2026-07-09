@@ -15,8 +15,8 @@ class PeriscolaireService
 
     public function getServices(?string $type = null): array
     {
-        $sql = "SELECT sp.*, (SELECT COUNT(*) FROM inscriptions_periscolaire ip WHERE ip.service_id = sp.id AND ip.statut = 'active') AS nb_inscrits FROM services_periscolaires sp WHERE 1=1";
-        $params = [];
+        $sql = "SELECT sp.*, (SELECT COUNT(*) FROM inscriptions_periscolaire ip WHERE ip.service_id = sp.id AND ip.statut = 'active') AS nb_inscrits FROM services_periscolaires sp WHERE sp.etablissement_id = ?";
+        $params = [\API\Core\EstablishmentContext::id()];
         if ($type) { $sql .= ' AND sp.type = ?'; $params[] = $type; }
         $sql .= ' ORDER BY sp.nom';
         $stmt = $this->pdo->prepare($sql);
@@ -26,15 +26,15 @@ class PeriscolaireService
 
     public function getService(int $id): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM services_periscolaires WHERE id = ?");
-        $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare("SELECT * FROM services_periscolaires WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function creerService(array $d): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO services_periscolaires (nom, type, description, tarif, places_max, horaires) VALUES (?,?,?,?,?,?)");
-        $stmt->execute([$d['nom'], $d['type'], $d['description'] ?? null, $d['tarif'] ?? 0, $d['places_max'] ?? null, $d['horaires'] ?? null]);
+        $stmt = $this->pdo->prepare("INSERT INTO services_periscolaires (nom, type, description, tarif, places_max, horaires, etablissement_id) VALUES (?,?,?,?,?,?,?)");
+        $stmt->execute([$d['nom'], $d['type'], $d['description'] ?? null, $d['tarif'] ?? 0, $d['places_max'] ?? null, $d['horaires'] ?? null, \API\Core\EstablishmentContext::id()]);
         return $this->pdo->lastInsertId();
     }
 
@@ -62,22 +62,22 @@ class PeriscolaireService
 
     public function getInscriptions(int $serviceId): array
     {
-        $stmt = $this->pdo->prepare("SELECT ip.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, cl.nom AS classe_nom FROM inscriptions_periscolaire ip JOIN eleves e ON ip.eleve_id = e.id LEFT JOIN classes cl ON e.classe = cl.nom WHERE ip.service_id = ? AND ip.statut = 'active' ORDER BY e.nom");
-        $stmt->execute([$serviceId]);
+        $stmt = $this->pdo->prepare("SELECT ip.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, cl.nom AS classe_nom FROM inscriptions_periscolaire ip JOIN eleves e ON ip.eleve_id = e.id LEFT JOIN classes cl ON e.classe = cl.nom WHERE ip.service_id = ? AND ip.statut = 'active' AND e.etablissement_id = ? ORDER BY e.nom");
+        $stmt->execute([$serviceId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getInscriptionsEleve(int $eleveId): array
     {
-        $stmt = $this->pdo->prepare("SELECT ip.*, sp.nom AS service_nom, sp.type AS service_type FROM inscriptions_periscolaire ip JOIN services_periscolaires sp ON ip.service_id = sp.id WHERE ip.eleve_id = ? ORDER BY ip.created_at DESC");
-        $stmt->execute([$eleveId]);
+        $stmt = $this->pdo->prepare("SELECT ip.*, sp.nom AS service_nom, sp.type AS service_type FROM inscriptions_periscolaire ip JOIN services_periscolaires sp ON ip.service_id = sp.id WHERE ip.eleve_id = ? AND sp.etablissement_id = ? ORDER BY ip.created_at DESC");
+        $stmt->execute([$eleveId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getInscriptionsParent(int $parentId): array
     {
-        $stmt = $this->pdo->prepare("SELECT ip.*, sp.nom AS service_nom, sp.type AS service_type, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom FROM inscriptions_periscolaire ip JOIN services_periscolaires sp ON ip.service_id = sp.id JOIN eleves e ON ip.eleve_id = e.id JOIN parent_eleve pe ON pe.id_eleve = e.id WHERE pe.id_parent = ? ORDER BY ip.created_at DESC");
-        $stmt->execute([$parentId]);
+        $stmt = $this->pdo->prepare("SELECT ip.*, sp.nom AS service_nom, sp.type AS service_type, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom FROM inscriptions_periscolaire ip JOIN services_periscolaires sp ON ip.service_id = sp.id JOIN eleves e ON ip.eleve_id = e.id JOIN parent_eleve pe ON pe.id_eleve = e.id WHERE pe.id_parent = ? AND sp.etablissement_id = ? ORDER BY ip.created_at DESC");
+        $stmt->execute([$parentId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -96,10 +96,10 @@ class PeriscolaireService
             FROM inscriptions_periscolaire ip
             JOIN eleves e ON ip.eleve_id = e.id
             LEFT JOIN presences_periscolaire pp ON pp.inscription_id = ip.id AND pp.date = ?
-            WHERE ip.service_id = ? AND ip.statut = 'active'
+            WHERE ip.service_id = ? AND ip.statut = 'active' AND e.etablissement_id = ?
             ORDER BY e.nom
         ");
-        $stmt->execute([$date, $serviceId]);
+        $stmt->execute([$date, $serviceId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -165,8 +165,8 @@ class PeriscolaireService
 
     public function getEnfantsParent(int $parentId): array
     {
-        $stmt = $this->pdo->prepare("SELECT e.id, e.prenom, e.nom FROM eleves e JOIN parent_eleve pe ON pe.id_eleve = e.id WHERE pe.id_parent = ?");
-        $stmt->execute([$parentId]);
+        $stmt = $this->pdo->prepare("SELECT e.id, e.prenom, e.nom FROM eleves e JOIN parent_eleve pe ON pe.id_eleve = e.id WHERE pe.id_parent = ? AND e.etablissement_id = ?");
+        $stmt->execute([$parentId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -193,16 +193,17 @@ class PeriscolaireService
         if ($serviceId) {
             $rows = $this->getInscriptions($serviceId);
         } else {
-            $stmt = $this->pdo->query("
+            $stmt = $this->pdo->prepare("
                 SELECT ip.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, cl.nom AS classe_nom,
                        sp.nom AS service_nom, sp.type AS service_type
                 FROM inscriptions_periscolaire ip
                 JOIN eleves e ON ip.eleve_id = e.id
                 LEFT JOIN classes cl ON e.classe = cl.nom
                 JOIN services_periscolaires sp ON ip.service_id = sp.id
-                WHERE ip.statut = 'active'
+                WHERE ip.statut = 'active' AND sp.etablissement_id = ?
                 ORDER BY sp.nom, e.nom
             ");
+            $stmt->execute([\API\Core\EstablishmentContext::id()]);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
         $types = self::typesService();
@@ -267,12 +268,12 @@ class PeriscolaireService
             LEFT JOIN presences_periscolaire pp ON pp.inscription_id = ip.id
                   AND pp.present = 1
                   AND DATE_FORMAT(pp.date, '%Y-%m') = :m
-            WHERE ip.statut = 'active'
+            WHERE ip.statut = 'active' AND sp.etablissement_id = :etab
             GROUP BY ip.eleve_id, sp.id
             HAVING nb_presences > 0
             ORDER BY e.nom
         ");
-        $stmt->execute([':m' => $mois]);
+        $stmt->execute([':m' => $mois, ':etab' => \API\Core\EstablishmentContext::id()]);
         $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         $factures = [];
@@ -303,10 +304,11 @@ class PeriscolaireService
             FROM services_periscolaires sp
             LEFT JOIN inscriptions_periscolaire ip ON ip.service_id = sp.id AND ip.statut = 'active'
             LEFT JOIN presences_periscolaire pp ON pp.inscription_id = ip.id AND DATE_FORMAT(pp.date, '%Y-%m') = :m
+            WHERE sp.etablissement_id = :etab
             GROUP BY sp.id
             ORDER BY sp.nom
         ");
-        $stmt->execute([':m' => $mois]);
+        $stmt->execute([':m' => $mois, ':etab' => \API\Core\EstablishmentContext::id()]);
         $services = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         $totalInscrits = array_sum(array_column($services, 'nb_inscrits'));

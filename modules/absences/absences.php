@@ -60,8 +60,7 @@ $date_debut_formattee = date('d/m/Y', strtotime($date_debut));
 $date_fin_formattee   = date('d/m/Y', strtotime($date_fin));
 
 // Configuration de la page
-$pageTitle   = $type === 'retards' ? 'Gestion des retards' : 'Absences';
-$currentPage = $type === 'retards' ? 'retards' : 'liste';
+$pageTitle = $type === 'retards' ? 'Gestion des retards' : 'Absences';
 
 include 'includes/header.php';
 ?>
