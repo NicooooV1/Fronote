@@ -450,8 +450,18 @@ class AbsenceRepository
             $stmt->execute([$approuve ? 1 : 0, $idAbsence, $commentaire, $traitePar, $id]);
 
             if ($approuve && $idAbsence) {
-                $stmt = $this->pdo->prepare("UPDATE absences SET justifie = 1 WHERE id = ?");
-                $stmt->execute([$idAbsence]);
+                // Cloisonnement multi-tenant : l'absence liée doit appartenir à l'établissement courant
+                $stmt = $this->pdo->prepare("UPDATE absences SET justifie = 1 WHERE id = ? AND etablissement_id = ?");
+                $stmt->execute([$idAbsence, \API\Core\EstablishmentContext::id()]);
+                if ($stmt->rowCount() === 0) {
+                    // 0 ligne modifiée : soit déjà justifiée (légitime), soit hors établissement → on vérifie
+                    $check = $this->pdo->prepare("SELECT 1 FROM absences WHERE id = ? AND etablissement_id = ?");
+                    $check->execute([$idAbsence, \API\Core\EstablishmentContext::id()]);
+                    if (!$check->fetchColumn()) {
+                        $this->pdo->rollBack();
+                        return false;
+                    }
+                }
             }
 
             $this->pdo->commit();
@@ -661,11 +671,12 @@ class AbsenceRepository
      */
     public function validateAbsence(int $id, int $validatorId, string $comment = ''): bool
     {
+        // Cloisonnement multi-tenant : seule une absence de l'établissement courant peut être validée
         $stmt = $this->pdo->prepare(
             "UPDATE absences SET statut = 'validee', validated_by = ?, validated_at = NOW(), validation_comment = ?
-             WHERE id = ? AND (statut IS NULL OR statut IN ('signalee', 'en_attente'))"
+             WHERE id = ? AND etablissement_id = ? AND (statut IS NULL OR statut IN ('signalee', 'en_attente'))"
         );
-        $success = $stmt->execute([$validatorId, $comment, $id]);
+        $success = $stmt->execute([$validatorId, $comment, $id, \API\Core\EstablishmentContext::id()]);
         if ($success && $stmt->rowCount() > 0) {
             $this->logValidation($id, $validatorId, 'validee', $comment);
             return true;
@@ -678,11 +689,12 @@ class AbsenceRepository
      */
     public function rejectAbsence(int $id, int $validatorId, string $comment = ''): bool
     {
+        // Cloisonnement multi-tenant : seule une absence de l'établissement courant peut être refusée
         $stmt = $this->pdo->prepare(
             "UPDATE absences SET statut = 'refusee', validated_by = ?, validated_at = NOW(), validation_comment = ?
-             WHERE id = ? AND (statut IS NULL OR statut IN ('signalee', 'en_attente'))"
+             WHERE id = ? AND etablissement_id = ? AND (statut IS NULL OR statut IN ('signalee', 'en_attente'))"
         );
-        $success = $stmt->execute([$validatorId, $comment, $id]);
+        $success = $stmt->execute([$validatorId, $comment, $id, \API\Core\EstablishmentContext::id()]);
         if ($success && $stmt->rowCount() > 0) {
             $this->logValidation($id, $validatorId, 'refusee', $comment);
             return true;
@@ -695,11 +707,12 @@ class AbsenceRepository
      */
     public function resetAbsenceStatus(int $id): bool
     {
+        // Cloisonnement multi-tenant : seule une absence de l'établissement courant peut être remise en attente
         $stmt = $this->pdo->prepare(
             "UPDATE absences SET statut = 'en_attente', validated_by = NULL, validated_at = NULL, validation_comment = NULL
-             WHERE id = ?"
+             WHERE id = ? AND etablissement_id = ?"
         );
-        return $stmt->execute([$id]) && $stmt->rowCount() > 0;
+        return $stmt->execute([$id, \API\Core\EstablishmentContext::id()]) && $stmt->rowCount() > 0;
     }
 
     /**

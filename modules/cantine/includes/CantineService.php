@@ -120,15 +120,25 @@ class CantineService
     {
         $this->pdo->beginTransaction();
         try {
+            // Cloisonnement multi-tenant : la réservation doit appartenir à l'établissement courant
+            $stmt = $this->pdo->prepare(
+                "SELECT 1 FROM cantine_reservations WHERE id = ? AND etablissement_id = ?"
+            );
+            $stmt->execute([$reservationId, \API\Core\EstablishmentContext::id()]);
+            if ($stmt->fetchColumn() === false) {
+                $this->pdo->rollBack();
+                return false;
+            }
+
             $stmt = $this->pdo->prepare(
                 "INSERT IGNORE INTO cantine_pointage (reservation_id, pointe_par) VALUES (?, ?)"
             );
             $stmt->execute([$reservationId, $pointePar]);
 
             $stmt = $this->pdo->prepare(
-                "UPDATE cantine_reservations SET statut = 'consomme' WHERE id = ?"
+                "UPDATE cantine_reservations SET statut = 'consomme' WHERE id = ? AND etablissement_id = ?"
             );
-            $stmt->execute([$reservationId]);
+            $stmt->execute([$reservationId, \API\Core\EstablishmentContext::id()]);
 
             $this->pdo->commit();
             return true;

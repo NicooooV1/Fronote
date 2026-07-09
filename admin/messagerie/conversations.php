@@ -43,6 +43,9 @@ $perPage = 30;
 $offset = ($page - 1) * $perPage;
 
 $where = []; $params = [];
+// Cloisonnement multi-tenant : liste + COUNT limités à l'établissement courant.
+$where[] = "c.etablissement_id = ?";
+$params[] = \API\Core\EstablishmentContext::id();
 if (!empty($search)) {
     $where[] = "MATCH(c.subject) AGAINST(? IN BOOLEAN MODE)";
     $params[] = $search;
@@ -65,9 +68,14 @@ $stmt = $pdo->prepare($sql); $stmt->execute($params);
 $conversations = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Stats
-$totalConvsAll = $pdo->query("SELECT COUNT(*) FROM conversations")->fetchColumn();
-$totalMsgsAll = $pdo->query("SELECT COUNT(*) FROM messages WHERE is_deleted = 0")->fetchColumn();
-$msgsToday = $pdo->query("SELECT COUNT(*) FROM messages WHERE DATE(created_at) = CURDATE() AND is_deleted = 0")->fetchColumn();
+// Cloisonnement multi-tenant : stats limitées à l'établissement courant (messages via conversations.etablissement_id).
+$etabId = \API\Core\EstablishmentContext::id();
+$stmtStat = $pdo->prepare("SELECT COUNT(*) FROM conversations WHERE etablissement_id = ?");
+$stmtStat->execute([$etabId]); $totalConvsAll = $stmtStat->fetchColumn();
+$stmtStat = $pdo->prepare("SELECT COUNT(*) FROM messages m JOIN conversations c ON c.id = m.conversation_id WHERE m.is_deleted = 0 AND c.etablissement_id = ?");
+$stmtStat->execute([$etabId]); $totalMsgsAll = $stmtStat->fetchColumn();
+$stmtStat = $pdo->prepare("SELECT COUNT(*) FROM messages m JOIN conversations c ON c.id = m.conversation_id WHERE DATE(m.created_at) = CURDATE() AND m.is_deleted = 0 AND c.etablissement_id = ?");
+$stmtStat->execute([$etabId]); $msgsToday = $stmtStat->fetchColumn();
 
 $pageTitle = 'Conversations';
 $currentPage = 'msg_conversations';

@@ -184,8 +184,26 @@ class InscriptionService
 
     public function validerDocument(int $docId, bool $valide): void
     {
-        $stmt = $this->pdo->prepare('UPDATE inscription_documents SET valide = ? WHERE id = ?');
-        $stmt->execute([$valide ? 1 : 0, $docId]);
+        // Cloisonnement multi-tenant : le document doit appartenir à une inscription de l'établissement courant.
+        $stmt = $this->pdo->prepare(
+            'UPDATE inscription_documents d
+             JOIN inscriptions i ON i.id = d.inscription_id
+             SET d.valide = ?
+             WHERE d.id = ? AND i.etablissement_id = ?'
+        );
+        $stmt->execute([$valide ? 1 : 0, $docId, \API\Core\EstablishmentContext::id()]);
+        if ($stmt->rowCount() === 0) {
+            // rowCount = lignes modifiées : un no-op (valeur inchangée) sur un document légitime rend 0 aussi.
+            $check = $this->pdo->prepare(
+                'SELECT 1 FROM inscription_documents d
+                 JOIN inscriptions i ON i.id = d.inscription_id
+                 WHERE d.id = ? AND i.etablissement_id = ?'
+            );
+            $check->execute([$docId, \API\Core\EstablishmentContext::id()]);
+            if (!$check->fetchColumn()) {
+                throw new \RuntimeException('Document introuvable pour cet établissement.');
+            }
+        }
     }
 
     /* ───────── HELPERS ───────── */

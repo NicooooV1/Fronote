@@ -267,6 +267,8 @@ document.getElementById('type_sanction')?.addEventListener('change', function() 
     let debounce = null;
     if (!input) return;
 
+    // Échappement HTML des noms d'élèves (BDD) avant injection dans innerHTML → anti-XSS stocké.
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     input.addEventListener('input', function() {
         clearTimeout(debounce);
         const q = this.value.trim();
@@ -276,8 +278,8 @@ document.getElementById('type_sanction')?.addEventListener('change', function() 
                 .then(r => r.json())
                 .then(data => {
                     results.innerHTML = data.map(e =>
-                        `<div class="search-item" data-id="${e.id}" data-name="${e.prenom} ${e.nom} (${e.classe || '?'})">`
-                        + `<strong>${e.prenom} ${e.nom}</strong> <span class="search-classe">${e.classe || ''}</span></div>`
+                        `<div class="search-item" data-id="${esc(e.id)}" data-name="${esc(e.prenom + ' ' + e.nom + ' (' + (e.classe || '?') + ')')}">`
+                        + `<strong>${esc(e.prenom)} ${esc(e.nom)}</strong> <span class="search-classe">${esc(e.classe || '')}</span></div>`
                     ).join('') || '<div class="search-item search-empty">Aucun résultat</div>';
                     results.style.display = 'block';
                 });

@@ -187,6 +187,9 @@ $activeTab = $_GET['tab'] ?? 'resume';
     const input = document.getElementById('searchEleve');
     const results = document.getElementById('searchResults');
     let timeout;
+    // Échappement HTML : les noms d'élèves viennent de la BDD et peuvent contenir des
+    // métacaractères → sans escape, injection dans innerHTML = XSS stocké.
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     input.addEventListener('input', function() {
         clearTimeout(timeout);
         const q = this.value.trim();
@@ -196,7 +199,7 @@ $activeTab = $_GET['tab'] ?? 'resume';
                 .then(r => r.json())
                 .then(data => {
                     if (!data.length) { results.innerHTML = '<div class="search-item text-muted">Aucun résultat</div>'; }
-                    else { results.innerHTML = data.map(e => `<a href="suivi_eleve.php?id=${e.id}" class="search-item"><strong>${e.prenom} ${e.nom}</strong> <span class="text-muted">${e.classe}</span></a>`).join(''); }
+                    else { results.innerHTML = data.map(e => `<a href="suivi_eleve.php?id=${encodeURIComponent(e.id)}" class="search-item"><strong>${esc(e.prenom)} ${esc(e.nom)}</strong> <span class="text-muted">${esc(e.classe)}</span></a>`).join(''); }
                     results.style.display = 'block';
                 });
         }, 300);

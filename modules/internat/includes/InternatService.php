@@ -169,10 +169,18 @@ class InternatService
 
     public function traiterIncident(int $id, int $traitePar, string $suite): bool
     {
+        // Cloisonnement multi-tenant : internat_incidents n'a pas d'etablissement_id,
+        // on scope via ses parents (internat_chambres / eleves).
+        $etabId = \API\Core\EstablishmentContext::id();
         $stmt = $this->pdo->prepare(
-            "UPDATE internat_incidents SET traite = 1, traite_par = ?, suite_donnee = ? WHERE id = ?"
+            "UPDATE internat_incidents i
+             LEFT JOIN internat_chambres ch ON i.chambre_id = ch.id
+             LEFT JOIN eleves e ON i.eleve_id = e.id
+             SET i.traite = 1, i.traite_par = ?, i.suite_donnee = ?
+             WHERE i.id = ? AND (ch.etablissement_id = ? OR e.etablissement_id = ?)"
         );
-        return $stmt->execute([$traitePar, $suite, $id]);
+        $stmt->execute([$traitePar, $suite, $id, $etabId, $etabId]);
+        return $stmt->rowCount() > 0;
     }
 
     /* ==================== STATS ==================== */

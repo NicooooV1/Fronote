@@ -44,18 +44,21 @@ let __warnedNoAuthz = false;
 /** Vérifie côté PHP que le socket a le droit de rejoindre (room_type, id). */
 async function authorizeRoom(socket, type, id) {
     if (!AUTHORIZE_URL) {
-        // Fail-CLOSED en production : sans endpoint d'autorisation configuré, on
-        // refuse la jonction (anti-IDOR non contournable). En dev seulement, on
-        // laisse passer avec un avertissement pour ne pas bloquer le développement.
-        if (process.env.NODE_ENV === 'production') {
+        // Fail-CLOSED par DÉFAUT : sans endpoint d'autorisation, on REFUSE la jonction
+        // (anti-IDOR cross-tenant non contournable). L'ancienne logique laissait passer
+        // dès que NODE_ENV !== 'production' — or NODE_ENV est trivialement absent/mal
+        // défini (cf. process PM2), ce qui rendait le contrôle fail-OPEN en pratique.
+        // Le contournement de dev exige désormais un opt-in EXPLICITE et bruyant.
+        const devBypass = process.env.WS_ALLOW_UNVERIFIED_JOINS === 'true';
+        if (!devBypass) {
             if (!__warnedNoAuthz) {
-                console.error('[FATAL-ISH] WS_PHP_AUTHORIZE_URL non défini en production — jonctions de rooms REFUSÉES.');
+                console.error('[SECURITY] WS_PHP_AUTHORIZE_URL non défini — jonctions de rooms REFUSÉES (fail-closed).');
                 __warnedNoAuthz = true;
             }
             return false;
         }
         if (!__warnedNoAuthz) {
-            console.warn('[WARN] WS_PHP_AUTHORIZE_URL non défini (dev) — jonctions de rooms non vérifiées.');
+            console.warn('[WARN] WS_ALLOW_UNVERIFIED_JOINS=true — jonctions de rooms NON vérifiées (dev uniquement, JAMAIS en prod).');
             __warnedNoAuthz = true;
         }
         return true;

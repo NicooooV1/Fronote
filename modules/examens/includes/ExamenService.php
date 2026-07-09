@@ -121,10 +121,12 @@ class ExamenService
         return $count;
     }
 
-    public function saisirPresenceNote(int $convocationId, ?bool $present, ?float $note): void
+    public function saisirPresenceNote(int $convocationId, ?bool $present, ?float $note): bool
     {
-        $stmt = $this->pdo->prepare("UPDATE epreuve_convocations SET present = ?, note = ? WHERE id = ?");
-        $stmt->execute([$present !== null ? ($present ? 1 : 0) : null, $note, $convocationId]);
+        // Cloisonnement multi-tenant : la convocation doit appartenir à une épreuve de l'établissement courant
+        $stmt = $this->pdo->prepare("UPDATE epreuve_convocations SET present = ?, note = ? WHERE id = ? AND epreuve_id IN (SELECT id FROM epreuves WHERE etablissement_id = ?)");
+        $stmt->execute([$present !== null ? ($present ? 1 : 0) : null, $note, $convocationId, \API\Core\EstablishmentContext::id()]);
+        return $stmt->rowCount() > 0;
     }
 
     /* ───────── SURVEILLANTS ───────── */

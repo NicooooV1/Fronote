@@ -11,13 +11,14 @@ $pdo = getPDO();
 $id = (int) ($_GET['id'] ?? 0);
 if (!$id) { die('ID diplôme manquant.'); }
 
+// Cloisonnement multi-tenant : le diplôme doit appartenir à l'établissement courant.
 $stmt = $pdo->prepare(
     "SELECT d.*, CONCAT(el.prenom, ' ', el.nom) AS eleve_nom, el.date_naissance, el.classe
      FROM diplomes d
      LEFT JOIN eleves el ON d.eleve_id = el.id
-     WHERE d.id = ?"
+     WHERE d.id = ? AND d.etablissement_id = ?"
 );
-$stmt->execute([$id]);
+$stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
 $diplome = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$diplome) { die('Diplôme introuvable.'); }
 

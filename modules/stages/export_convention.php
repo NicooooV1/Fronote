@@ -11,15 +11,16 @@ $pdo = getPDO();
 $id = (int) ($_GET['id'] ?? 0);
 if (!$id) { die('ID stage manquant.'); }
 
+// Cloisonnement multi-tenant : le stage doit appartenir à l'établissement courant.
 $stmt = $pdo->prepare(
     "SELECT s.*, CONCAT(el.prenom, ' ', el.nom) AS eleve_nom, el.date_naissance, el.classe,
             CONCAT(p.prenom, ' ', p.nom) AS prof_nom
      FROM stages s
      LEFT JOIN eleves el ON s.eleve_id = el.id
      LEFT JOIN professeurs p ON s.professeur_referent_id = p.id
-     WHERE s.id = ?"
+     WHERE s.id = ? AND s.etablissement_id = ?"
 );
-$stmt->execute([$id]);
+$stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
 $stage = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$stage) { die('Stage introuvable.'); }
 

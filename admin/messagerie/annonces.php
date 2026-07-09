@@ -10,6 +10,7 @@ tenantGate('tenant.users.manage', ['administrateur']); // durci: page mutante, e
 
 $pdo = getPDO();
 $admin = getCurrentUser();
+$etabId = \API\Core\EstablishmentContext::id(); // Cloisonnement multi-tenant : établissement courant
 $message = '';
 $error = '';
 
@@ -18,7 +19,10 @@ if (!isset($_SESSION['csrf_token'])) {
 }
 $csrf_token = $_SESSION['csrf_token'];
 
-$classes = $pdo->query("SELECT id, nom FROM classes WHERE actif = 1 ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
+// Cloisonnement multi-tenant : classes de l'établissement courant uniquement
+$stmtClasses = $pdo->prepare("SELECT id, nom FROM classes WHERE actif = 1 AND etablissement_id = ? ORDER BY nom");
+$stmtClasses->execute([$etabId]);
+$classes = $stmtClasses->fetchAll(PDO::FETCH_ASSOC);
 
 // POST : Envoyer une annonce
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $csrf_token) {
@@ -35,8 +39,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
         } else {
             try {
                 $pdo->beginTransaction();
-                // Créer une conversation broadcast
-                $pdo->prepare("INSERT INTO conversations (subject, type) VALUES (?, 'broadcast')")->execute([$subject]);
+                // Créer une conversation broadcast — Cloisonnement multi-tenant : rattachée à l'établissement courant
+                $pdo->prepare("INSERT INTO conversations (subject, type, etablissement_id) VALUES (?, 'broadcast', ?)")->execute([$subject, $etabId]);
                 $convId = $pdo->lastInsertId();
 
                 // Ajouter le message
@@ -52,30 +56,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
                 $tables = ['eleve' => 'eleves', 'professeur' => 'professeurs', 'parent' => 'parents', 'vie_scolaire' => 'vie_scolaire'];
 
                 $allowedTables = ['eleve' => 'eleves', 'professeur' => 'professeurs', 'parent' => 'parents', 'vie_scolaire' => 'vie_scolaire'];
+                // Cloisonnement multi-tenant : destinataires limités à l'établissement courant
                 if ($target === 'all') {
                     foreach ($allowedTables as $type => $tbl) {
-                        $stmt = $pdo->query("SELECT id FROM `{$tbl}` WHERE actif = 1");
+                        $stmt = $pdo->prepare("SELECT id FROM `{$tbl}` WHERE actif = 1 AND etablissement_id = ?");
+                        $stmt->execute([$etabId]);
                         while ($r = $stmt->fetch(PDO::FETCH_ASSOC)) {
                             $recipients[] = ['id' => $r['id'], 'type' => $type];
                         }
                     }
                 } elseif ($target === 'eleves') {
                     if (!empty($targetClasse)) {
-                        $stmt = $pdo->prepare("SELECT id FROM eleves WHERE actif = 1 AND classe = ?");
-                        $stmt->execute([$targetClasse]);
+                        $stmt = $pdo->prepare("SELECT id FROM eleves WHERE actif = 1 AND etablissement_id = ? AND classe = ?");
+                        $stmt->execute([$etabId, $targetClasse]);
                     } else {
-                        $stmt = $pdo->query("SELECT id FROM eleves WHERE actif = 1");
+                        $stmt = $pdo->prepare("SELECT id FROM eleves WHERE actif = 1 AND etablissement_id = ?");
+                        $stmt->execute([$etabId]);
                     }
                     while ($r = $stmt->fetch(PDO::FETCH_ASSOC)) {
                         $recipients[] = ['id' => $r['id'], 'type' => 'eleve'];
                     }
                 } elseif ($target === 'professeurs') {
-                    $stmt = $pdo->query("SELECT id FROM professeurs WHERE actif = 1");
+                    $stmt = $pdo->prepare("SELECT id FROM professeurs WHERE actif = 1 AND etablissement_id = ?");
+                    $stmt->execute([$etabId]);
                     while ($r = $stmt->fetch(PDO::FETCH_ASSOC)) {
                         $recipients[] = ['id' => $r['id'], 'type' => 'professeur'];
                     }
                 } elseif ($target === 'parents') {
-                    $stmt = $pdo->query("SELECT id FROM parents WHERE actif = 1");
+                    $stmt = $pdo->prepare("SELECT id FROM parents WHERE actif = 1 AND etablissement_id = ?");
+                    $stmt->execute([$etabId]);
                     while ($r = $stmt->fetch(PDO::FETCH_ASSOC)) {
                         $recipients[] = ['id' => $r['id'], 'type' => 'parent'];
                     }

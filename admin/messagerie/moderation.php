@@ -137,7 +137,8 @@ $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // Signalements en attente
 $reports = [];
 try {
-    $rStmt = $pdo->query("SELECT mr.*, m.body AS msg_body,
+    // Cloisonnement multi-tenant : signalements limités aux messages des conversations de l'établissement courant.
+    $rStmt = $pdo->prepare("SELECT mr.*, m.body AS msg_body,
         CASE
             WHEN mr.reporter_type = 'eleve' THEN (SELECT CONCAT(prenom,' ',nom) FROM eleves WHERE id = mr.reporter_id)
             WHEN mr.reporter_type = 'professeur' THEN (SELECT CONCAT(prenom,' ',nom) FROM professeurs WHERE id = mr.reporter_id)
@@ -145,8 +146,10 @@ try {
         END AS reporter_name
         FROM message_reports mr
         JOIN messages m ON mr.message_id = m.id
+        JOIN conversations c ON m.conversation_id = c.id AND c.etablissement_id = ?
         WHERE mr.status = 'pending'
         ORDER BY mr.created_at DESC LIMIT 20");
+    $rStmt->execute([\API\Core\EstablishmentContext::id()]);
     $reports = $rStmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {}
 
