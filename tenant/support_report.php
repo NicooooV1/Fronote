@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /** Portail ÉTABLISSEMENT — rapport de fin d'intervention Support (vue Direction, transparence). */
 require __DIR__ . '/_bootstrap.php';
 tenantRequireAuth($establishment, $base, $slug);

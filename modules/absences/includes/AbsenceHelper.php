@@ -105,8 +105,8 @@ class AbsenceHelper
     {
         if ($minutes <= 0) return '0 min';
         
-        $jours = floor($minutes / (24 * 60));
-        $heures = floor(($minutes % (24 * 60)) / 60);
+        $jours = floor((float) ($minutes / (24 * 60)));
+        $heures = floor((float) (($minutes % (24 * 60)) / 60));
         $mins = $minutes % 60;
 
         $parts = [];
@@ -164,7 +164,7 @@ class AbsenceHelper
     public static function paginate(array $items, int $page = 1, int $perPage = 20): array
     {
         $total = count($items);
-        $totalPages = max(1, (int) ceil($total / $perPage));
+        $totalPages = max(1, (int) ceil((float) ($total / $perPage)));
         $page = max(1, min($totalPages, $page));
         $offset = ($page - 1) * $perPage;
 

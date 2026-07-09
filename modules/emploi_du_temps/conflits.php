@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Emploi du temps — Détection et gestion des conflits
  * Accessible uniquement par admin et vie scolaire.

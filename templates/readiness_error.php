@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Page 503 affichée quand ProductionReadinessChecker refuse le démarrage en production.
  *

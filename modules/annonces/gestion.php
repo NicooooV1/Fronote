@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M11 – Annonces : Gestion (admin — vue d'ensemble)
  */

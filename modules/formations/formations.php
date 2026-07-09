@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Module Formation continue du personnel.
  * Vue d'ensemble : stats annuelles + catalogue publié + certifications expirant.

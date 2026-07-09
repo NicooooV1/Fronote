@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /** Portail ÉTABLISSEMENT — connexion (authentifie contre tenant_accounts + appartenance). */
 require __DIR__ . '/_bootstrap.php';
 

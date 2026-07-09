@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M23 – RGPD — Politiques de rétention (admin)
  * Configuration des durées de conservation et purge automatique

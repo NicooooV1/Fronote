@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M23 – Journal d'audit (admin)
  */
@@ -23,7 +24,7 @@ $stats = $rgpdService->getAuditStatsProper();
     </div>
 
     <div class="stats-grid">
-        <div class="stat-card"><i class="fas fa-database"></i><div class="stat-value"><?= number_format($stats['total']) ?></div><div class="stat-label">Total entrées</div></div>
+        <div class="stat-card"><i class="fas fa-database"></i><div class="stat-value"><?= number_format((float) ($stats['total'])) ?></div><div class="stat-label">Total entrées</div></div>
         <div class="stat-card"><i class="fas fa-calendar-day"></i><div class="stat-value"><?= $stats['today'] ?></div><div class="stat-label">Aujourd'hui</div></div>
         <div class="stat-card"><i class="fas fa-calendar-alt"></i><div class="stat-value"><?= $stats['month'] ?></div><div class="stat-label">Ce mois</div></div>
     </div>

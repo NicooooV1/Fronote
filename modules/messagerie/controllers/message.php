@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Contrôleur pour la gestion des messages
  * Intègre CSRF, validation, rate limiting

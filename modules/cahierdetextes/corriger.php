@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Devoirs en ligne — Correction par le professeur
  */
@@ -84,7 +85,7 @@ if ($devoirId) {
         <div class="stat-card"><span class="stat-value"><?= $stats['total_eleves'] ?? 0 ?></span><span class="stat-label">Élèves</span></div>
         <div class="stat-card primary"><span class="stat-value"><?= $stats['total_rendus'] ?? 0 ?></span><span class="stat-label">Rendus</span></div>
         <div class="stat-card success"><span class="stat-value"><?= $stats['corriges'] ?? 0 ?></span><span class="stat-label">Corrigés</span></div>
-        <div class="stat-card info"><span class="stat-value"><?= $stats['moyenne_notes'] ? number_format($stats['moyenne_notes'], 1) : '-' ?></span><span class="stat-label">Moyenne</span></div>
+        <div class="stat-card info"><span class="stat-value"><?= $stats['moyenne_notes'] ? number_format((float) ($stats['moyenne_notes']), 1) : '-' ?></span><span class="stat-label">Moyenne</span></div>
     </div>
 
     <!-- Liste des rendus -->

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M27 – Épreuve — Gestion (convocations, surveillants, notes)
  */

@@ -302,7 +302,7 @@ class CantineService
 
         return [
             'date' => $date,
-            'prevision' => $avg ? round($avg) : null,
+            'prevision' => $avg ? round((float) ($avg)) : null,
             'reservations_actuelles' => $actual,
         ];
     }

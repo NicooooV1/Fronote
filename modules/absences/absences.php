@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * absences.php — Page principale unifiée du module Absences.
  * 

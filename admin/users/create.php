@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Ajouter un utilisateur — Formulaire dynamique selon le type
  */

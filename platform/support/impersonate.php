@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /** Portail PLATEFORME — démarre une impersonation Support (puis redirige vers l'app établissement). */
 require_once __DIR__ . '/../../API/core.php';
 if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }

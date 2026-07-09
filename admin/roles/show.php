@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Détail d'un rôle du catalogue : périmètre, permissions accordées (catalogue +
  * surcharges DB rbac_permissions), et titulaires. Lecture seule.

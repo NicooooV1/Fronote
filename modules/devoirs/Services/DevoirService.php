@@ -21,7 +21,7 @@ class DevoirService
         if (!empty($filters['date_to']))   { $where[] = 'd.date_rendu <= :date_to';        $params[':date_to']     = $filters['date_to']; }
         $w = 'WHERE ' . implode(' AND ', $where);
         $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM devoirs d {$w}"); $stmt->execute($params);
-        $total = (int) $stmt->fetchColumn(); $pages = $total > 0 ? (int) ceil($total / $perPage) : 1; $offset = ($page - 1) * $perPage;
+        $total = (int) $stmt->fetchColumn(); $pages = $total > 0 ? (int) ceil((float) ($total / $perPage)) : 1; $offset = ($page - 1) * $perPage;
         $stmt = $this->pdo->prepare("SELECT d.* FROM devoirs d {$w} ORDER BY d.date_rendu DESC LIMIT :limit OFFSET :offset");
         foreach ($params as $k => $v) $stmt->bindValue($k, $v);
         $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT); $stmt->bindValue(':offset', $offset, PDO::PARAM_INT); $stmt->execute();

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M33 – Factures — Liste
  */
@@ -37,8 +38,8 @@ $stats = $isGestionnaire ? $factService->getStats() : null;
 
     <?php if ($stats): ?>
     <div class="stats-row">
-        <div class="stat-card"><div class="stat-value"><?= number_format($stats['total_facture'], 0, ',', ' ') ?> €</div><div class="stat-label">Total facturé</div></div>
-        <div class="stat-card"><div class="stat-value"><?= number_format($stats['total_paye'], 0, ',', ' ') ?> €</div><div class="stat-label">Total payé</div></div>
+        <div class="stat-card"><div class="stat-value"><?= number_format((float) $stats['total_facture'], 0, ',', ' ') ?> €</div><div class="stat-label">Total facturé</div></div>
+        <div class="stat-card"><div class="stat-value"><?= number_format((float) $stats['total_paye'], 0, ',', ' ') ?> €</div><div class="stat-label">Total payé</div></div>
         <div class="stat-card"><div class="stat-value"><?= $stats['impayees'] ?></div><div class="stat-label">Impayées</div></div>
     </div>
     <?php endif; ?>
@@ -73,9 +74,9 @@ $stats = $isGestionnaire ? $factService->getStats() : null;
                 <span><i class="fas fa-calendar"></i> Éch. <?= formatDate($f['date_echeance']) ?></span>
             </div>
             <div class="facture-amounts">
-                <span>TTC: <strong><?= number_format($f['montant_ttc'], 2, ',', ' ') ?> €</strong></span>
-                <span>Payé: <?= number_format($f['montant_paye'] ?? 0, 2, ',', ' ') ?> €</span>
-                <?php if ($reste > 0): ?><span class="reste">Reste: <?= number_format($reste, 2, ',', ' ') ?> €</span><?php endif; ?>
+                <span>TTC: <strong><?= number_format((float) $f['montant_ttc'], 2, ',', ' ') ?> €</strong></span>
+                <span>Payé: <?= number_format((float) ($f['montant_paye'] ?? 0), 2, ',', ' ') ?> €</span>
+                <?php if ($reste > 0): ?><span class="reste">Reste: <?= number_format((float) $reste, 2, ',', ' ') ?> €</span><?php endif; ?>
             </div>
             <a href="detail.php?id=<?= $f['id'] ?>" class="btn btn-sm btn-outline">Détails</a>
         </div>

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Changement de mot de passe — Version refactorisée.
  * +CSRF, +password-strength.js externe, +countdown JS, -header("refresh").

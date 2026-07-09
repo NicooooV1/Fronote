@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Administration — Gestion des modules
  * Active/désactive les modules, configure individuellement chacun.

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 $evaluations = $data['evaluations'] ?? [];
 $niveauLabels = ['non_atteint' => 'Non atteint', 'en_cours' => 'En cours', 'atteint' => 'Atteint', 'depasse' => 'Dépassé'];
 $niveauColors = ['non_atteint' => '#e53e3e', 'en_cours' => '#ed8936', 'atteint' => '#48bb78', 'depasse' => '#667eea'];

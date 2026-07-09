@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /** Portail PLATEFORME — mises à jour applicatives (git) via UpdateService (sauvegarde + rollback intégrés). */
 require_once __DIR__ . '/../API/core.php';
 if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }

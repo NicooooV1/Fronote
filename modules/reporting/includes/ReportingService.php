@@ -44,7 +44,7 @@ class ReportingService {
                 SELECT COUNT(*) FROM absences WHERE MONTH(date_debut) = MONTH(CURDATE()) AND YEAR(date_debut) = YEAR(CURDATE()) AND etablissement_id = $eid
             ")->fetchColumn();
             $stats['taux_absenteisme'] = $stats['total_eleves'] > 0
-                ? round($stats['absences_mois'] / $stats['total_eleves'] * 100, 1) : 0;
+                ? round((float) ($stats['absences_mois'] / $stats['total_eleves'] * 100), 1) : 0;
         } catch (\Exception $e) {
             $stats['absences_mois'] = 0;
             $stats['taux_absenteisme'] = 0;
@@ -65,7 +65,7 @@ class ReportingService {
             $stats['facturation_total'] = (float)$row['total'];
             $stats['facturation_paye'] = (float)$row['paye'];
             $stats['taux_recouvrement'] = $stats['facturation_total'] > 0
-                ? round($stats['facturation_paye'] / $stats['facturation_total'] * 100, 1) : 100;
+                ? round((float) ($stats['facturation_paye'] / $stats['facturation_total'] * 100), 1) : 100;
         } catch (\Exception $e) {
             $stats['facturation_total'] = 0;
             $stats['facturation_paye'] = 0;

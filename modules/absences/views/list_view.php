@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * views/list_view.php — Vue liste des absences
  * Refactorisé : utilise AbsenceHelper::paginate(), inline CSS supprimé → absences.css.

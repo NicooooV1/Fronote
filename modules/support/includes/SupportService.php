@@ -348,7 +348,7 @@ class SupportService
             if ($sla['resolution_overdue']) $metrics['resolution_breached']++;
         }
 
-        $metrics['response_rate'] = $metrics['total'] > 0 ? round($metrics['response_met'] / $metrics['total'] * 100, 1) : 100;
+        $metrics['response_rate'] = $metrics['total'] > 0 ? round((float) ($metrics['response_met'] / $metrics['total'] * 100), 1) : 100;
         return $metrics;
     }
 

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Détails d'un événement — Module Agenda
  * Nettoyé : EventRepository, canViewEvent/canEditEvent/canDeleteEvent, CSRF centralisé,

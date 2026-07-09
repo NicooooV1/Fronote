@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M16 – Services périscolaires — Liste
  */
@@ -63,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
                 <span class="badge badge-secondary"><?= $types[$s['type']] ?? $s['type'] ?></span>
                 <div class="service-meta">
                     <span><i class="fas fa-users"></i> <?= $s['nb_inscrits'] ?><?= $s['places_max'] ? '/' . $s['places_max'] : '' ?></span>
-                    <?php if ($s['tarif'] > 0): ?><span><i class="fas fa-euro-sign"></i> <?= number_format($s['tarif'], 2, ',', ' ') ?></span><?php endif; ?>
+                    <?php if ($s['tarif'] > 0): ?><span><i class="fas fa-euro-sign"></i> <?= number_format((float) ($s['tarif']), 2, ',', ' ') ?></span><?php endif; ?>
                     <?php if ($s['horaires']): ?><span><i class="fas fa-clock"></i> <?= htmlspecialchars($s['horaires']) ?></span><?php endif; ?>
                 </div>
             </div>

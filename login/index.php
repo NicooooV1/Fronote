@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Page de connexion Fronote.
  * Login unifié : aucun sélecteur de profil requis.

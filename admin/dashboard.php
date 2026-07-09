@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Tableau de bord DIRECTION (refonte UX, cahier §21.1).
  * Présentation via le design system (.ds-*) ; données via le service existant

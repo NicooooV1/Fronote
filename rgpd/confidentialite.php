@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M23 – RGPD — Politique de confidentialité (Art. 12-14 Information)
  * Page statique. Les coordonnées concrètes appartiennent à l'établissement :

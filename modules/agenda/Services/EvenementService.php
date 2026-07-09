@@ -18,7 +18,7 @@ class EvenementService
         if (!empty($filters['status'])) { $where[] = 'statut = :status';          $params[':status'] = $filters['status']; }
         $w = $where ? 'WHERE ' . implode(' AND ', $where) : '';
         $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM evenements {$w}"); $stmt->execute($params);
-        $total = (int) $stmt->fetchColumn(); $pages = (int) ceil($total / $perPage); $offset = ($page - 1) * $perPage;
+        $total = (int) $stmt->fetchColumn(); $pages = (int) ceil((float) ($total / $perPage)); $offset = ($page - 1) * $perPage;
         $stmt = $this->pdo->prepare("SELECT * FROM evenements {$w} ORDER BY date_debut DESC LIMIT :limit OFFSET :offset");
         foreach ($params as $k => $v) $stmt->bindValue($k, $v);
         $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT); $stmt->bindValue(':offset', $offset, PDO::PARAM_INT); $stmt->execute();

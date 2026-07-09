@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Gestion des mots de passe — Fusion demandes + réinitialisation manuelle
  */

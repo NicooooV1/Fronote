@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Gestion des classes — CRUD, effectifs, prof principal, affectation rapide
  */
@@ -139,7 +140,7 @@ $classes = $pdo->query("
 // Stats
 $totalClasses = count($classes);
 $totalEleves = $pdo->query("SELECT COUNT(*) FROM eleves WHERE actif = 1")->fetchColumn();
-$avgEffectif = $totalClasses > 0 ? round($totalEleves / $totalClasses, 1) : 0;
+$avgEffectif = $totalClasses > 0 ? round((float) ($totalEleves / $totalClasses), 1) : 0;
 
 $pageTitle = 'Gestion des classes';
 $currentPage = 'classes';

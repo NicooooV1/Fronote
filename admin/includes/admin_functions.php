@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Fonctions utilitaires partagées pour le panneau d'administration
  */

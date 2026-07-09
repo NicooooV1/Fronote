@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * telecharger_rendu.php — Téléchargement sécurisé d'un fichier de rendu d'élève.
  *

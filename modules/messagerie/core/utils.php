@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Fonctions utilitaires
  */
@@ -55,10 +56,10 @@ function formatTimeAgo($timestamp) {
     if ($diff < 60) {
         return "à l'instant";
     } elseif ($diff < 3600) {
-        $minutes = floor($diff / 60);
+        $minutes = floor((float) ($diff / 60));
         return "il y a $minutes min" . ($minutes > 1 ? 's' : '');
     } elseif ($diff < 86400) {
-        $hours = floor($diff / 3600);
+        $hours = floor((float) ($diff / 3600));
         return "il y a $hours h" . ($hours > 1 ? '' : '');
     } elseif ($diff < 172800) {
         return 'hier à ' . date('H:i', $timestamp);

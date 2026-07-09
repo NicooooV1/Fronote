@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * maquette.php — Gestion de la maquette horaire (besoins de cours).
  * Alimente le moteur de génération automatique (ajax_generate.php, CDC §6).

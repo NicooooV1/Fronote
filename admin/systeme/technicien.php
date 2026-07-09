@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Administration — Gestion des acces technicien temporaires
  * Creation, suivi, revocation et audit des comptes technicien.
@@ -227,7 +228,7 @@ $auditWhereSQL = !empty($auditWhere) ? 'WHERE ' . implode(' AND ', $auditWhere) 
 $auditTotalStmt = $pdo->prepare("SELECT COUNT(*) FROM technicien_audit_log tal $auditWhereSQL");
 $auditTotalStmt->execute($auditParams);
 $auditTotal = $auditTotalStmt->fetchColumn();
-$auditTotalPages = max(1, ceil($auditTotal / $auditPerPage));
+$auditTotalPages = max(1, ceil((float) ($auditTotal / $auditPerPage)));
 
 $auditStmt = $pdo->prepare("
     SELECT tal.*, CONCAT(ta.prenom, ' ', ta.nom) as tech_name, ta.identifiant as tech_login
@@ -743,7 +744,7 @@ function switchTab(name, btn) {
 function updateCountdowns() {
     document.querySelectorAll('.countdown').forEach(el => {
         const expires = parseInt(el.dataset.expires, 10);
-        const now = Math.floor(Date.now() / 1000);
+        const now = Math.floor((float) (Date.now() / 1000));
         let remaining = expires - now;
 
         if (remaining <= 0) {
@@ -753,11 +754,11 @@ function updateCountdowns() {
             return;
         }
 
-        const days = Math.floor(remaining / 86400);
+        const days = Math.floor((float) (remaining / 86400));
         remaining %= 86400;
-        const hours = Math.floor(remaining / 3600);
+        const hours = Math.floor((float) (remaining / 3600));
         remaining %= 3600;
-        const minutes = Math.floor(remaining / 60);
+        const minutes = Math.floor((float) (remaining / 60));
         const seconds = remaining % 60;
 
         let text = '';
@@ -769,7 +770,7 @@ function updateCountdowns() {
         el.textContent = text;
 
         // Couleur selon le temps restant
-        const totalSeconds = expires - Math.floor(Date.now() / 1000);
+        const totalSeconds = expires - Math.floor((float) (Date.now() / 1000));
         if (totalSeconds < 3600) {
             el.style.background = '#fee2e2';
             el.style.color = '#991b1b';

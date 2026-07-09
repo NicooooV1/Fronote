@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Administration — Permissions CRUD par module et par role
  * Gere une matrice module x role avec des checkboxes pour chaque permission.

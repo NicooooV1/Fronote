@@ -56,7 +56,7 @@ class MaintenanceService
         $remaining = $end - time();
         if ($remaining <= 0) return 'bientot';
         if ($remaining < 60) return $remaining . 's';
-        return ceil($remaining / 60) . 'min';
+        return ceil((float) ($remaining / 60)) . 'min';
     }
 
     public function isIpAllowed(string $ip): bool

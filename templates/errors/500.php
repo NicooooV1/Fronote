@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 $errorCode = 500;
 $errorTitle = 'Erreur interne';
 $errorMessage = 'Une erreur inattendue est survenue. L\'equipe technique a ete notifiee.';

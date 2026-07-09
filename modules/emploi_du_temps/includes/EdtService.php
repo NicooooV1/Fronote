@@ -1298,7 +1298,7 @@ class EdtService
         }
         if (!empty($dayPositions)) {
             $minDist = PHP_INT_MAX;
-            foreach ($dayPositions as $dp) $minDist = min($minDist, abs($dp - $pos));
+            foreach ($dayPositions as $dp) $minDist = min($minDist, abs((float) ($dp - $pos)));
             if ($minDist > 1) $penalty += 2; // crée un trou
         }
 

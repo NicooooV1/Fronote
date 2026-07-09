@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * appel.php — Page principale du module Appel / Présence (M04).
  *

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Simulateur de permissions — « qu'est-ce que X peut faire, et sur quoi ? »
  *

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * En-tête unifié pour toutes les pages admin.
  * Détecte automatiquement la profondeur (root ou sous-dossier) pour calculer $rootPrefix.

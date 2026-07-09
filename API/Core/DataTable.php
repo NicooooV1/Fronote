@@ -153,7 +153,7 @@ class DataTable
         $stmt->execute($bind);
         $total = (int) $stmt->fetchColumn();
 
-        $totalPages = max(1, (int) ceil($total / $perPage));
+        $totalPages = max(1, (int) ceil((float) ($total / $perPage)));
         $page = min($page, $totalPages);
         $offset = ($page - 1) * $perPage;
 
@@ -322,8 +322,8 @@ class DataTable
         }
 
         $pages = [1];
-        $start = max(2, $current - (int)floor($window / 2));
-        $end   = min($total - 1, $current + (int)floor($window / 2));
+        $start = max(2, $current - (int)floor((float) ($window / 2)));
+        $end   = min($total - 1, $current + (int)floor((float) ($window / 2)));
 
         if ($start > 2) $pages[] = '...';
         for ($i = $start; $i <= $end; $i++) $pages[] = $i;

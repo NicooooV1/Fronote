@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Module Enquêtes & satisfaction.
  * Admin : pilotage des enquêtes (statut + participations). Autres : enquêtes ouvertes à répondre.

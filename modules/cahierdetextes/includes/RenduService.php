@@ -312,7 +312,7 @@ class RenduService {
                     $suspects[] = [
                         'rendu_a' => ['id' => $ids[$i], 'eleve' => ($rI['eleve_prenom'] ?? '') . ' ' . ($rI['eleve_nom'] ?? '')],
                         'rendu_b' => ['id' => $ids[$j], 'eleve' => ($rJ['eleve_prenom'] ?? '') . ' ' . ($rJ['eleve_nom'] ?? '')],
-                        'similarite' => round($sim * 100, 1)
+                        'similarite' => round((float) ($sim * 100), 1)
                     ];
                 }
             }
@@ -420,6 +420,6 @@ class RenduService {
         $criteres->execute([':gid' => $grilleId]);
         $maxTotal = (float)$criteres->fetchColumn();
 
-        return $maxTotal > 0 ? round(($total / $maxTotal) * 20, 2) : 0;
+        return $maxTotal > 0 ? round((float) (($total / $maxTotal) * 20), 2) : 0;
     }
 }

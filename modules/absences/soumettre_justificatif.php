@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * soumettre_justificatif.php — Formulaire de soumission d'un justificatif
  * Accessible aux parents et élèves pour justifier une absence.

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Corps du rapport de fin d'intervention Support (refonte 3-mondes).
  * Inclus par platform/support/report.php (Support) et tenant/support_report.php (Direction).

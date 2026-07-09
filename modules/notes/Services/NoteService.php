@@ -37,7 +37,7 @@ class NoteService
         $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM notes n JOIN eleves e ON n.id_eleve = e.id JOIN matieres m ON n.id_matiere = m.id JOIN professeurs p ON n.id_professeur = p.id {$whereClause}");
         $stmt->execute($params);
         $total = (int) $stmt->fetchColumn();
-        $pages  = $total > 0 ? (int) ceil($total / $perPage) : 1;
+        $pages  = $total > 0 ? (int) ceil((float) ($total / $perPage)) : 1;
         $offset = ($page - 1) * $perPage;
 
         $stmt = $this->pdo->prepare("SELECT n.*, e.nom AS eleve_nom, e.prenom AS eleve_prenom, e.classe, m.nom AS matiere_nom, m.code AS matiere_code, CONCAT(p.nom, ' ', p.prenom) AS professeur_nom FROM notes n JOIN eleves e ON n.id_eleve = e.id JOIN matieres m ON n.id_matiere = m.id JOIN professeurs p ON n.id_professeur = p.id {$whereClause} ORDER BY n.date_note DESC LIMIT :limit OFFSET :offset");

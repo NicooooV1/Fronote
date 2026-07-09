@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Interface principale de messagerie
  */
@@ -84,7 +85,7 @@ if ($isSearch) {
     $hasMore = $result['has_more'];
 }
 
-$totalPages = max(1, ceil($totalConversations / $limit));
+$totalPages = max(1, ceil((float) ($totalConversations / $limit)));
 
 // Si requête AJAX
 if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {

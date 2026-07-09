@@ -80,7 +80,7 @@ class AdminDashboardService
             $s = $this->pdo->prepare("SELECT COUNT(*) FROM eleves WHERE actif = 1 AND etablissement_id = ?"); $s->execute([$etab]);
             $totalEleves = max((int) $s->fetchColumn(), 1);
             $s = $this->pdo->prepare("SELECT COUNT(DISTINCT id_eleve) FROM absences WHERE date_debut >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND etablissement_id = ?"); $s->execute([$etab]);
-            $kpi['taux_absenteisme'] = round(((int) $s->fetchColumn() / $totalEleves) * 100, 1);
+            $kpi['taux_absenteisme'] = round((float) (((int) $s->fetchColumn() / $totalEleves) * 100), 1);
         } catch (\Throwable $e) { error_log('[AdminDashboardService.php] ' . $e->getMessage()); }
         try {
             $stmt = $this->pdo->prepare("SELECT ROUND(AVG(note / note_sur * 20), 2) FROM notes WHERE trimestre = ? AND etablissement_id = ?"); $stmt->execute([$trimestre, $etab]);
@@ -90,7 +90,7 @@ class AdminDashboardService
             $stmtProfs = $this->pdo->prepare("SELECT COUNT(DISTINCT id_professeur) FROM notes WHERE trimestre = ? AND etablissement_id = ?"); $stmtProfs->execute([$trimestre, $etab]);
             $profsAvecNotes = (int) $stmtProfs->fetchColumn();
             $sp = $this->pdo->prepare("SELECT COUNT(*) FROM professeurs WHERE actif = 1 AND etablissement_id = ?"); $sp->execute([$etab]);
-            $kpi['taux_remplissage_notes'] = round(($profsAvecNotes / max((int) $sp->fetchColumn(), 1)) * 100, 1);
+            $kpi['taux_remplissage_notes'] = round((float) (($profsAvecNotes / max((int) $sp->fetchColumn(), 1)) * 100), 1);
         } catch (\Throwable $e) { error_log('[AdminDashboardService.php] ' . $e->getMessage()); }
         try {
             $wsUrl = function_exists('env') ? env('WEBSOCKET_CLIENT_URL', '') : '';
@@ -120,7 +120,7 @@ class AdminDashboardService
                 ORDER BY last_login DESC LIMIT :total
             ");
             $etab = $this->etabId();
-            $per  = (int) ceil($limit / 2);
+            $per  = (int) ceil((float) ($limit / 2));
             foreach (['1', '2', '3', '4'] as $i) {
                 $stmt->bindValue(":e{$i}", $etab, PDO::PARAM_INT);
                 $stmt->bindValue(":lim{$i}", $per, PDO::PARAM_INT);

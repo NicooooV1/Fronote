@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * views/stats_view.php — Vue statistiques des absences
  * Refactorisé : variables undefined corrigées, CSS externalisé → absences.css,
@@ -83,15 +84,15 @@ foreach ($absences_par_mois as $m => $count) {
 }
 
 // Pourcentages
-$pct_justifiees   = $total_absences > 0 ? round(($total_justifiees / $total_absences) * 100) : 0;
-$pct_cours        = $total_absences > 0 ? round(($total_cours / $total_absences) * 100) : 0;
-$pct_demi_journee = $total_absences > 0 ? round(($total_demi_journee / $total_absences) * 100) : 0;
-$pct_journee      = $total_absences > 0 ? round(($total_journee / $total_absences) * 100) : 0;
+$pct_justifiees   = $total_absences > 0 ? round((float) (($total_justifiees / $total_absences) * 100)) : 0;
+$pct_cours        = $total_absences > 0 ? round((float) (($total_cours / $total_absences) * 100)) : 0;
+$pct_demi_journee = $total_absences > 0 ? round((float) (($total_demi_journee / $total_absences) * 100)) : 0;
+$pct_journee      = $total_absences > 0 ? round((float) (($total_journee / $total_absences) * 100)) : 0;
 
 // Durée formatée
-$duree_heures  = floor($duree_totale_minutes / 60);
+$duree_heures  = floor((float) ($duree_totale_minutes / 60));
 $duree_minutes = $duree_totale_minutes % 60;
-$jours_perdus  = round($duree_totale_minutes / (60 * 7), 1); // ~7h de cours/jour
+$jours_perdus  = round((float) ($duree_totale_minutes / (60 * 7)), 1); // ~7h de cours/jour
 
 // Stats par type (pour les cards)
 $statsByType = [];
@@ -164,7 +165,7 @@ arsort($absences_par_classe);
                 <div class="stats-info">
                     <div class="stats-label"><?= AbsenceHelper::typeLabel($type) ?></div>
                     <div class="stats-value"><?= $count ?></div>
-                    <div class="stats-percent"><?= $total_absences > 0 ? round(($count / $total_absences) * 100) : 0 ?>%</div>
+                    <div class="stats-percent"><?= $total_absences > 0 ? round((float) (($count / $total_absences) * 100)) : 0 ?>%</div>
                 </div>
             </div>
             <?php endforeach; ?>
@@ -207,7 +208,7 @@ arsort($absences_par_classe);
                 <div class="stats-info">
                     <div class="stats-label"><?= htmlspecialchars($c) ?></div>
                     <div class="stats-value"><?= $count ?></div>
-                    <div class="stats-percent"><?= $total_absences > 0 ? round(($count / $total_absences) * 100) : 0 ?>%</div>
+                    <div class="stats-percent"><?= $total_absences > 0 ? round((float) (($count / $total_absences) * 100)) : 0 ?>%</div>
                 </div>
             </div>
             <?php endforeach; ?>

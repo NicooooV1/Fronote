@@ -285,7 +285,7 @@ class ExamenService
         foreach ($epreuves as $ep) {
             // Need at least 1 surveillant per 30 students
             $nbConvocations = $ep['nb_convocations'] ?? 0;
-            $nbSurveillants = max(1, (int) ceil($nbConvocations / 30));
+            $nbSurveillants = max(1, (int) ceil((float) ($nbConvocations / 30)));
 
             $epPlanRow = [
                 'epreuve_id' => $ep['id'],
@@ -337,7 +337,7 @@ class ExamenService
             $results[] = array_merge($ep, [
                 'total_convoques' => (int)$data['total'],
                 'presents' => (int)$data['presents'],
-                'moyenne' => $data['moyenne'] ? round($data['moyenne'], 2) : null,
+                'moyenne' => $data['moyenne'] ? round((float) ($data['moyenne']), 2) : null,
                 'note_min' => $data['note_min'],
                 'note_max' => $data['note_max'],
             ]);

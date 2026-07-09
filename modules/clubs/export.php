@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M30 – Clubs & Associations — Export CSV/PDF
  */

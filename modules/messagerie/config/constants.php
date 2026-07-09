@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Constantes pour le module de messagerie
  */

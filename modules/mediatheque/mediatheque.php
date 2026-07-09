@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Module Médiathèque numérique.
  * Recherche + recommandations + favoris. Prof : suivi quota de stockage.

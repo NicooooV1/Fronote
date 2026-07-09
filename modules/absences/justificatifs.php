@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * justificatifs.php — Liste des justificatifs d'absences
  * Refactorisé : AbsenceRepository + AbsenceHelper, suppression FILTER_SANITIZE_STRING,

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M40 – Inventaire matériels
  */
@@ -78,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && (isAdmin() |
                 <?php if ($m['reference']): ?><span><i class="fas fa-barcode"></i> <?= htmlspecialchars($m['reference']) ?></span><?php endif; ?>
                 <span><i class="fas fa-cubes"></i> Qté: <?= $m['quantite'] ?></span>
                 <?php if ($m['salle_nom']): ?><span><i class="fas fa-door-open"></i> <?= htmlspecialchars($m['salle_nom']) ?></span><?php endif; ?>
-                <?php if ($m['valeur']): ?><span><i class="fas fa-euro-sign"></i> <?= number_format($m['valeur'], 2, ',', ' ') ?></span><?php endif; ?>
+                <?php if ($m['valeur']): ?><span><i class="fas fa-euro-sign"></i> <?= number_format((float) ($m['valeur']), 2, ',', ' ') ?></span><?php endif; ?>
             </div>
         </div>
         <?php endforeach; ?>

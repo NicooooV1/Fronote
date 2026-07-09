@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Bulletins — Page principale
  * Vue différente selon le rôle : élève voit ses bulletins, prof/admin gère par classe
@@ -45,7 +46,7 @@ if (!$selectedPeriode && !empty($periodes)) {
                 <span class="text-muted"><?= htmlspecialchars($periodes[array_search($selectedPeriode, array_column($periodes, 'id'))]['nom'] ?? '') ?></span>
             </div>
             <div class="bulletin-summary">
-                <div class="summary-item primary"><span class="value"><?= $bulletin['moyenne_generale'] !== null ? number_format($bulletin['moyenne_generale'], 2) : '-' ?></span><span class="label">Moyenne générale</span></div>
+                <div class="summary-item primary"><span class="value"><?= $bulletin['moyenne_generale'] !== null ? number_format((float) ($bulletin['moyenne_generale']), 2) : '-' ?></span><span class="label">Moyenne générale</span></div>
                 <div class="summary-item info"><span class="value"><?= $bulletin['rang'] ?? '-' ?></span><span class="label">Rang</span></div>
                 <div class="summary-item warning"><span class="value"><?= $bulletin['nb_absences'] ?></span><span class="label">Absences</span></div>
                 <div class="summary-item danger"><span class="value"><?= $bulletin['nb_retards'] ?></span><span class="label">Retards</span></div>
@@ -76,10 +77,10 @@ if (!$selectedPeriode && !empty($periodes)) {
                 <tr>
                     <td><span class="matiere-dot" style="background:<?= htmlspecialchars($l['couleur'] ?? '#3498db') ?>"></span><?= htmlspecialchars($l['matiere_nom']) ?></td>
                     <td class="text-muted"><?= htmlspecialchars($l['professeur_nom']) ?></td>
-                    <td class="text-center fw-bold"><?= $l['moyenne_eleve'] !== null ? number_format($l['moyenne_eleve'], 2) : '-' ?></td>
-                    <td class="text-center"><?= $l['moyenne_classe'] !== null ? number_format($l['moyenne_classe'], 2) : '-' ?></td>
-                    <td class="text-center text-muted"><?= $l['moyenne_min'] !== null ? number_format($l['moyenne_min'], 2) : '-' ?></td>
-                    <td class="text-center text-muted"><?= $l['moyenne_max'] !== null ? number_format($l['moyenne_max'], 2) : '-' ?></td>
+                    <td class="text-center fw-bold"><?= $l['moyenne_eleve'] !== null ? number_format((float) ($l['moyenne_eleve']), 2) : '-' ?></td>
+                    <td class="text-center"><?= $l['moyenne_classe'] !== null ? number_format((float) ($l['moyenne_classe']), 2) : '-' ?></td>
+                    <td class="text-center text-muted"><?= $l['moyenne_min'] !== null ? number_format((float) ($l['moyenne_min']), 2) : '-' ?></td>
+                    <td class="text-center text-muted"><?= $l['moyenne_max'] !== null ? number_format((float) ($l['moyenne_max']), 2) : '-' ?></td>
                     <td class="appreciation-cell"><?= htmlspecialchars($l['appreciation'] ?? '') ?></td>
                 </tr>
                 <?php endforeach; ?>
@@ -136,8 +137,8 @@ if (!$selectedPeriode && !empty($periodes)) {
                 <tr>
                     <td><span class="matiere-dot" style="background:<?= htmlspecialchars($l['couleur'] ?? '#3498db') ?>"></span><?= htmlspecialchars($l['matiere_nom']) ?></td>
                     <td class="text-muted"><?= htmlspecialchars($l['professeur_nom']) ?></td>
-                    <td class="text-center fw-bold"><?= $l['moyenne_eleve'] !== null ? number_format($l['moyenne_eleve'], 2) : '-' ?></td>
-                    <td class="text-center"><?= $l['moyenne_classe'] !== null ? number_format($l['moyenne_classe'], 2) : '-' ?></td>
+                    <td class="text-center fw-bold"><?= $l['moyenne_eleve'] !== null ? number_format((float) ($l['moyenne_eleve']), 2) : '-' ?></td>
+                    <td class="text-center"><?= $l['moyenne_classe'] !== null ? number_format((float) ($l['moyenne_classe']), 2) : '-' ?></td>
                     <td><?= htmlspecialchars($l['appreciation'] ?? '') ?></td>
                 </tr>
                 <?php endforeach; ?>
@@ -202,7 +203,7 @@ if (!$selectedPeriode && !empty($periodes)) {
     <?php if (!empty($stats) && $stats['total'] > 0): ?>
     <div class="stats-row">
         <div class="stat-card"><span class="stat-value"><?= $stats['total'] ?></span><span class="stat-label">Bulletins</span></div>
-        <div class="stat-card primary"><span class="stat-value"><?= $stats['moy_classe'] ? number_format($stats['moy_classe'], 2) : '-' ?></span><span class="stat-label">Moyenne classe</span></div>
+        <div class="stat-card primary"><span class="stat-value"><?= $stats['moy_classe'] ? number_format((float) ($stats['moy_classe']), 2) : '-' ?></span><span class="stat-label">Moyenne classe</span></div>
         <div class="stat-card success"><span class="stat-value"><?= $stats['publies'] ?></span><span class="stat-label">Publiés</span></div>
         <div class="stat-card warning"><span class="stat-value"><?= $stats['brouillons'] ?></span><span class="stat-label">Brouillons</span></div>
     </div>
@@ -232,7 +233,7 @@ if (!$selectedPeriode && !empty($periodes)) {
                     <?php foreach ($bulletins as $b): ?>
                     <tr>
                         <td class="fw-500"><?= htmlspecialchars($b['eleve_prenom'] . ' ' . $b['eleve_nom']) ?></td>
-                        <td class="text-center fw-bold"><?= $b['moyenne_generale'] !== null ? number_format($b['moyenne_generale'], 2) : '-' ?></td>
+                        <td class="text-center fw-bold"><?= $b['moyenne_generale'] !== null ? number_format((float) ($b['moyenne_generale']), 2) : '-' ?></td>
                         <td class="text-center"><?= $b['rang'] ?? '-' ?></td>
                         <td class="text-center"><?= $b['nb_absences'] ?></td>
                         <td class="text-center"><?= $b['avis_conseil'] !== 'aucun' ? htmlspecialchars(BulletinService::avisLabels()[$b['avis_conseil']] ?? '') : '-' ?></td>

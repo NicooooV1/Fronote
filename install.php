@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Installation de Fronote — Assistant étape par étape
  * Chaque étape doit être validée avant de passer à la suivante.

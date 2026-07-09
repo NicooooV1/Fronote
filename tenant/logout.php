@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /** Portail ÉTABLISSEMENT — déconnexion (ne touche que la session établissement). */
 require_once __DIR__ . '/../API/core.php';
 if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }

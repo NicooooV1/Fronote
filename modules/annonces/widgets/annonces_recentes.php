@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Widget : Annonces récentes
  * Variables disponibles : $data (tableau retourné par AnnonceWidgetProvider::getData)

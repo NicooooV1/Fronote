@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 $reunions = $data['reunions'] ?? [];
 ?>
 <?php if (empty($reunions)): ?>

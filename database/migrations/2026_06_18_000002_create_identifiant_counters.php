@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @deprecated Table ORPHELINE. Elle servait aux anciens « matricules numériques »
  * (1 séquence atomique par établissement). Depuis le passage des identifiants de

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * traiter_justificatif.php — Formulaire de traitement d'un justificatif
  * Refactorisé : AbsenceRepository + AbsenceHelper, suppression FILTER_SANITIZE_STRING,

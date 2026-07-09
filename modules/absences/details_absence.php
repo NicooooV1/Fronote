@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * details_absence.php — Détails d'une absence.
  * CSS externalisé dans absences.css, utilise AbsenceRepository + AbsenceHelper.

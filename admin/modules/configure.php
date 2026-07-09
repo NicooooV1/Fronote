@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Administration — Configuration d'un module
  * Permet de modifier le label, la description, l'icône,

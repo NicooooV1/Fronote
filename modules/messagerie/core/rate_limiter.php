@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Rate Limiting — Messagerie Fronote
  * Limite le nombre d'actions par utilisateur par fenêtre de temps.

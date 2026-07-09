@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /** Espace ÉTABLISSEMENT — vitrine du Design System (cahier §31). Utilise l'en-tête partagé
  *  (le design-system.css + interactions.js sont chargés app-wide via shared_header). */
 require_once __DIR__ . '/../API/core.php';

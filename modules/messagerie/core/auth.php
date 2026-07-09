@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Module d'authentification pour la messagerie
  * Charge l'API centralisée (Bridge fournit : requireAuth, getCurrentUser, checkAuth, etc.)

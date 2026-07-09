@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Portail PLATEFORME — connexion (réservé à l'équipe interne Fronote).
  * Garde : authentifie contre platform_accounts (jamais les comptes établissement).

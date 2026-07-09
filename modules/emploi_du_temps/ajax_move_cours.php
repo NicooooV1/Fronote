@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * AJAX endpoint for drag-and-drop EDT operations.
  * POST (JSON) { cours_id, new_jour, new_creneau_id, csrf_token }

@@ -100,7 +100,7 @@ class SecuriteService
             'exercice' => $ex,
             'zones' => $zones->fetchAll(PDO::FETCH_ASSOC),
             'temps_total_secondes' => $tempsTotal,
-            'temps_total_minutes' => $tempsTotal ? round($tempsTotal / 60, 1) : null
+            'temps_total_minutes' => $tempsTotal ? round((float) ($tempsTotal / 60), 1) : null
         ];
     }
 

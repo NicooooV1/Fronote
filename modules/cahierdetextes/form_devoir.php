@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * form_devoir.php — Formulaire unifié ajout/modification de devoir (REF-2)
  *

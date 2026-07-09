@@ -47,8 +47,8 @@ class BoursesService
             'eligible' => $echelon > 0,
             'echelon' => $echelon,
             'montant_annuel' => $montant,
-            'montant_trimestriel' => round($montant / 3, 2),
-            'quotient_familial' => round($quotient, 2)
+            'montant_trimestriel' => round((float) ($montant / 3), 2),
+            'quotient_familial' => round((float) ($quotient), 2)
         ];
     }
 

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Vie scolaire — Statistiques par classe
  */
@@ -37,7 +38,7 @@ $statsClasses = $service->getStatsParClasse();
         </thead>
         <tbody>
             <?php foreach ($statsClasses as $sc):
-                $absParEleve = $sc['nb_eleves'] > 0 ? round($sc['nb_absences'] / $sc['nb_eleves'], 1) : 0;
+                $absParEleve = $sc['nb_eleves'] > 0 ? round((float) ($sc['nb_absences'] / $sc['nb_eleves']), 1) : 0;
                 $barWidth = min(100, $absParEleve * 10);
             ?>
             <tr>

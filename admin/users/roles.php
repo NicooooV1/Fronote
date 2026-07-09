@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Attribution des rôles applicatifs (RBAC) — assigne/révoque des rôles scopés et
  * temporisés (table user_roles) à un utilisateur. Réservé administration / direction /

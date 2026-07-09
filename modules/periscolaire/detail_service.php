@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M16 – Détail service + inscriptions
  */
@@ -72,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     <div class="info-grid">
         <div class="info-item"><span class="badge badge-secondary"><?= $types[$service['type']] ?? $service['type'] ?></span></div>
         <div class="info-item"><i class="fas fa-users"></i><span><?= count($inscriptions) ?><?= $service['places_max'] ? '/' . $service['places_max'] : '' ?> inscrits</span></div>
-        <?php if ($service['tarif'] > 0): ?><div class="info-item"><i class="fas fa-euro-sign"></i><span><?= number_format($service['tarif'], 2, ',', ' ') ?> €</span></div><?php endif; ?>
+        <?php if ($service['tarif'] > 0): ?><div class="info-item"><i class="fas fa-euro-sign"></i><span><?= number_format((float) ($service['tarif']), 2, ',', ' ') ?> €</span></div><?php endif; ?>
         <?php if ($service['horaires']): ?><div class="info-item"><i class="fas fa-clock"></i><span><?= htmlspecialchars($service['horaires']) ?></span></div><?php endif; ?>
     </div>
 

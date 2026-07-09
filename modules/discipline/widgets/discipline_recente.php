@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 $incidents = $data['incidents'] ?? [];
 $stats = $data['stats'] ?? [];
 $graviteColors = ['mineur' => '#48bb78', 'moyen' => '#ed8936', 'grave' => '#e53e3e', 'tres_grave' => '#9b2c2c'];

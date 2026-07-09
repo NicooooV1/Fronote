@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 $activePage = 'associations';
 require_once __DIR__ . '/includes/header.php';
 
@@ -123,7 +124,7 @@ $types = VieAssociativeService::typesLabels();
     <div class="card mt-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="fas fa-wallet me-2"></i>Trésorerie</h5>
-            <span class="badge bg-<?= $solde >= 0 ? 'success' : 'danger' ?> fs-6">Solde : <?= number_format($solde, 2, ',', ' ') ?> €</span>
+            <span class="badge bg-<?= $solde >= 0 ? 'success' : 'danger' ?> fs-6">Solde : <?= number_format((float) ($solde), 2, ',', ' ') ?> €</span>
         </div>
         <div class="card-body">
             <?php if (empty($tresorerie)): ?>

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Gestion des événements — vue admin, CRUD
  * Converti en AdminCrudPage déclaratif.

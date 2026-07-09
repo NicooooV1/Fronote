@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Protection du fichier d'installation
  * Ce script vérifie si l'installation est terminée

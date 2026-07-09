@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Layout partage pour les pages d'erreur.
  * Variables attendues : $errorCode, $errorTitle, $errorMessage, $errorIcon

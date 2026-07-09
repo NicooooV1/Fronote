@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Module Échanges & mobilité internationale.
  * Vue d'ensemble : stats + programmes + partenariats actifs.

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Composant pour afficher un message dans une conversation
  * Supporte : édition, suppression douce, épinglage, réactions, threading

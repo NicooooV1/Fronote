@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * /class_message.php - Envoi de messages à une classe
  */

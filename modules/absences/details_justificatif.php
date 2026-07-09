@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * details_justificatif.php — Détails d'un justificatif
  * Refactorisé : AbsenceRepository + AbsenceHelper, support pièces jointes,
@@ -206,7 +207,7 @@ include 'includes/header.php';
                             <?php foreach ($attachments as $att): ?>
                             <a href="download_fichier.php?id=<?= $att['id'] ?>" class="btn btn-outline attachment-link">
                                 <i class="fas fa-file-download"></i> <?= htmlspecialchars($att['nom_original']) ?>
-                                <span class="text-small text-muted">(<?= round($att['taille'] / 1024) ?> Ko)</span>
+                                <span class="text-small text-muted">(<?= round((float) ($att['taille'] / 1024)) ?> Ko)</span>
                             </a>
                             <?php endforeach; ?>
                         </div>

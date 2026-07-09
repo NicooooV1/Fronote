@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Module Conseils de classe.
  * Sélection d'une classe → liste des conseils planifiés/tenus + statut.

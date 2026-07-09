@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 $conversations = $data['conversations'] ?? [];
 $unreadTotal = $data['unread_total'] ?? 0;
 ?>

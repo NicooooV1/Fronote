@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Bootstrap partagé du portail ÉTABLISSEMENT (/e/{slug} → tenant/*.php?e={slug}).
  * Résout l'établissement par slug, expose $establishment/$slug/$base et le garde

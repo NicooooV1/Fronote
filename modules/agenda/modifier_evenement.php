@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Modifier un événement — Module Agenda
  * Nettoyé : EventRepository, pas d'établissement.json, matières centralisées,

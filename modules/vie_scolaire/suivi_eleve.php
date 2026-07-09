@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Vie scolaire — Suivi individuel d'un élève
  */

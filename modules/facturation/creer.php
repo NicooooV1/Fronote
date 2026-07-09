@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M33 – Créer facture
  */
@@ -13,7 +14,7 @@ $types = FacturationService::typesFacture();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     $ttc = (float)$_POST['montant_ttc'];
-    $ht = round($ttc / 1.20, 2);
+    $ht = round((float) ($ttc / 1.20), 2);
     $tva = $ttc - $ht;
     $id = $factService->creerFacture([
         'parent_id' => (int)$_POST['parent_id'], 'montant_ht' => $ht,

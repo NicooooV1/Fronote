@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 $stats = $data['stats'] ?? [];
 ?>
 <?php if (empty($stats)): ?>

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /** Portail ÉTABLISSEMENT — tableau de bord utilisateur. */
 require __DIR__ . '/_bootstrap.php';
 tenantRequireAuth($establishment, $base, $slug);

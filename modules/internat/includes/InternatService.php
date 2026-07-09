@@ -197,7 +197,7 @@ class InternatService
         $stmt->execute([$annee, $etabId]);
         $stats['internes_actifs'] = (int) $stmt->fetchColumn();
         $stats['taux_occupation'] = $stats['capacite_totale'] > 0
-            ? round($stats['internes_actifs'] / $stats['capacite_totale'] * 100, 1) : 0;
+            ? round((float) ($stats['internes_actifs'] / $stats['capacite_totale'] * 100), 1) : 0;
         $stats['incidents_non_traites'] = (int) $this->pdo->query("SELECT COUNT(*) FROM internat_incidents WHERE traite = 0")->fetchColumn();
         return $stats;
     }
@@ -244,7 +244,7 @@ class InternatService
 
     public function creerInspection(int $chambreId, int $inspecteurId, int $proprete, int $rangement, int $equipement, ?string $commentaire = null): int
     {
-        $note = round(($proprete + $rangement + $equipement) / 3, 1);
+        $note = round((float) (($proprete + $rangement + $equipement) / 3), 1);
         $stmt = $this->pdo->prepare("
             INSERT INTO internat_inspections (chambre_id, inspecteur_id, proprete, rangement, equipement, note_globale, commentaire, date_inspection)
             VALUES (:ch, :ins, :p, :r, :eq, :n, :c, NOW())

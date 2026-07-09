@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * /new_message.php - Création d'un nouveau message
  */

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Export iCal (.ics) — Emploi du temps.
  * Generates a .ics file for calendar sync.

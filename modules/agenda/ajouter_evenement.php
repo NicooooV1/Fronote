@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Ajouter un événement — Module Agenda
  * Nettoyé : CSRF centralisé, EventRepository, pas d'inline JS/CSS, pas d'établissement.json.

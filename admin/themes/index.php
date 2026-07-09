@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Administration — Gestionnaire de thèmes
  * Installer, prévisualiser, activer et supprimer des thèmes CSS.

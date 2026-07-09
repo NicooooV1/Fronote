@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Assistant de mise en route (onboarding).
  *

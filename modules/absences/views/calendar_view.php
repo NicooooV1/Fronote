@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * views/calendar_view.php — Vue calendrier des absences
  * Refactorisé : inline CSS (~120 lignes) externalisé vers absences.css.

@@ -421,7 +421,7 @@ class AdminCrudPage
 
     private function renderPagination(): void
     {
-        $totalPages = max(1, (int) ceil($this->totalItems / $this->perPage));
+        $totalPages = max(1, (int) ceil((float) ($this->totalItems / $this->perPage)));
         if ($totalPages <= 1) return;
 
         $params = $_GET;

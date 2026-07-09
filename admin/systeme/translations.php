@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Administration — Gestion des traductions
  * Vue, modification, ajout de langues.
@@ -87,7 +88,7 @@ foreach ($domains as $domain) {
         $file = $langPath . '/' . $locale . '/' . $domain . '.json';
         $keys = file_exists($file) ? array_keys(json_decode(file_get_contents($file), true) ?: []) : [];
         $translated = count(array_intersect($keys, $frKeys));
-        $pct = $frCount > 0 ? round($translated / $frCount * 100) : 0;
+        $pct = $frCount > 0 ? round((float) ($translated / $frCount * 100)) : 0;
         $coverage[$domain]['locales'][$locale] = ['count' => $translated, 'pct' => $pct];
     }
 }

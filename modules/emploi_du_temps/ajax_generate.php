@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * AJAX endpoint : génération automatique d'emploi du temps (moteur glouton, CDC §6).
  * POST (JSON) {

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Helper : rendu centralisé de la navigation secondaire de module.
  *

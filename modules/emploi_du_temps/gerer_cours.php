@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * gerer_cours.php — Ajouter / Modifier un cours dans l'emploi du temps (M03).
  *

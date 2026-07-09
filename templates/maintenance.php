@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Page de maintenance — affichee quand le mode maintenance est actif.
  * Fonctionne sans bootstrap (independant de la BDD).
@@ -10,7 +11,7 @@ $_mEta = null;
 if (isset($_mData['started_at'], $_mData['eta_minutes'])) {
     $remaining = (strtotime($_mData['started_at']) + $_mData['eta_minutes'] * 60) - time();
     if ($remaining > 0) {
-        $_mEta = $remaining < 60 ? $remaining . 's' : ceil($remaining / 60) . ' min';
+        $_mEta = $remaining < 60 ? $remaining . 's' : ceil((float) ($remaining / 60)) . ' min';
     }
 }
 http_response_code(503);

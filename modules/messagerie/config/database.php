@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Fallback de connexion BDD pour la messagerie.
  *

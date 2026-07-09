@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 $menu = $data['menu'] ?? null;
 $date = $data['date'] ?? null;
 ?>

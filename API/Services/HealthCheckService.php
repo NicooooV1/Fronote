@@ -53,7 +53,7 @@ class HealthCheckService
         $start = microtime(true);
         try {
             $this->pdo->query('SELECT 1');
-            $latency = round((microtime(true) - $start) * 1000, 2);
+            $latency = round((float) ((microtime(true) - $start) * 1000), 2);
             return ['status' => 'ok', 'latency_ms' => $latency];
         } catch (\Throwable $e) {
             return ['status' => 'error', 'message' => $e->getMessage()];
@@ -70,9 +70,9 @@ class HealthCheckService
             return ['status' => 'error', 'message' => 'Cannot read disk info'];
         }
 
-        $freeGb = round($free / 1024 / 1024 / 1024, 2);
-        $totalGb = round($total / 1024 / 1024 / 1024, 2);
-        $usedPercent = round((1 - $free / $total) * 100, 1);
+        $freeGb = round((float) ($free / 1024 / 1024 / 1024), 2);
+        $totalGb = round((float) ($total / 1024 / 1024 / 1024), 2);
+        $usedPercent = round((float) ((1 - $free / $total) * 100), 1);
 
         $status = $usedPercent > 95 ? 'error' : ($usedPercent > 85 ? 'warning' : 'ok');
 
@@ -111,7 +111,7 @@ class HealthCheckService
         $errno = 0;
         $errstr = '';
         $fp = @fsockopen($host, $port, $errno, $errstr, $this->timeout / 1000);
-        $latency = round((microtime(true) - $start) * 1000, 2);
+        $latency = round((float) ((microtime(true) - $start) * 1000), 2);
 
         if ($fp) {
             fclose($fp);
@@ -138,7 +138,7 @@ class HealthCheckService
         ]]);
 
         $response = @file_get_contents($healthUrl, false, $ctx);
-        $latency = round((microtime(true) - $start) * 1000, 2);
+        $latency = round((float) ((microtime(true) - $start) * 1000), 2);
 
         if ($response !== false) {
             return ['status' => 'ok', 'latency_ms' => $latency];
@@ -192,7 +192,7 @@ class HealthCheckService
         }
         $installed = filemtime($lockFile);
         $diff = time() - $installed;
-        $days = floor($diff / 86400);
+        $days = floor((float) ($diff / 86400));
         return $days . 'd';
     }
 }

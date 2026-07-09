@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * AJAX — Récupère le profil complet d'un utilisateur pour la modale
  */

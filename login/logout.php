@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Script de déconnexion pour Fronote — Version intégrée
  */

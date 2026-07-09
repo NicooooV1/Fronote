@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * valider_absence.php — Page de validation des absences
  * Workflow: signalée → en_attente → validée / refusée

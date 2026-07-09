@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Module Portail Parents.
  * Vue consolidée par enfant : moyenne, notes/absences récentes, EDT du jour,

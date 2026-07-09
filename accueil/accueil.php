@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 // Boot standardisé — fournit $user, $user_role, $user_fullname, $user_initials, $pdo, $isAdmin, $rootPrefix
 $pageTitle  = 'Accueil';
 $activePage = 'accueil';
@@ -213,7 +214,7 @@ function renderStatWidget(array $data): void
     if ($trend !== null) {
         $trendClass = $trend > 0 ? 'trend-up' : ($trend < 0 ? 'trend-down' : 'trend-neutral');
         $trendIcon  = $trend > 0 ? 'fa-arrow-up' : ($trend < 0 ? 'fa-arrow-down' : 'fa-minus');
-        echo '  <div class="widget-stat-trend ' . $trendClass . '"><i class="fas ' . $trendIcon . '"></i> ' . abs($trend) . '%</div>';
+        echo '  <div class="widget-stat-trend ' . $trendClass . '"><i class="fas ' . $trendIcon . '"></i> ' . abs((float) ($trend)) . '%</div>';
     }
     echo '</div>';
 }
@@ -241,8 +242,8 @@ function renderChartWidget(array $data, string $widgetKey): void
 
     echo '<div class="widget-chart-bars" data-widget="' . htmlspecialchars($widgetKey) . '">';
     foreach ($rows as $r) {
-        $pct = max(2, (int) round($r['value'] / $max * 100));
-        $val = rtrim(rtrim(number_format($r['value'], 1, '.', ' '), '0'), '.');
+        $pct = max(2, (int) round((float) ($r['value'] / $max * 100)));
+        $val = rtrim(rtrim(number_format((float) ($r['value']), 1, '.', ' '), '0'), '.');
         echo '<div class="chart-bar-row">';
         echo '  <span class="chart-bar-label">' . htmlspecialchars($r['label']) . '</span>';
         echo '  <span class="chart-bar-track"><span class="chart-bar-fill" style="width:' . $pct . '%"></span></span>';

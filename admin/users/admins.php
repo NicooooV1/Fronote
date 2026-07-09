@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Gestion des administrateurs — Édition info, MDP, 2FA, déverrouillage
  */

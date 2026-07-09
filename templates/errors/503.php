@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 $errorCode = 503;
 $errorTitle = 'Service indisponible';
 $errorMessage = 'Le service est temporairement indisponible. Veuillez reessayer dans quelques instants.';

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Module Bourses & aides financières.
  * Admin : campagne (stats) + demandes à instruire. Tous : simulateur d'éligibilité.

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M23 – RGPD — Cron de purge automatique
  * Usage: php /var/www/html/Pronote/rgpd/cron_purge.php

@@ -319,7 +319,7 @@ class CompetenceService {
         $values = [];
         foreach ($bilan as $domaine => $data) {
             $labels[] = $domaine;
-            $values[] = $data['count'] > 0 ? round($data['total'] / $data['count'], 2) : 0;
+            $values[] = $data['count'] > 0 ? round((float) ($data['total'] / $data['count']), 2) : 0;
         }
 
         return ['labels' => $labels, 'values' => $values, 'max' => 4];
@@ -361,7 +361,7 @@ class CompetenceService {
         $values = [];
         foreach ($domaines as $d => $data) {
             $labels[] = $d;
-            $values[] = $data['count'] > 0 ? round($data['total'] / $data['count'], 2) : 0;
+            $values[] = $data['count'] > 0 ? round((float) ($data['total'] / $data['count']), 2) : 0;
         }
 
         return ['labels' => $labels, 'values' => $values, 'max' => 4];

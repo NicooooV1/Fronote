@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M22 – Reporting — Vue globale établissement
  * Dashboard avec KPI, comparaisons inter-classes, tendances mensuelles

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /** Fin manuelle d'une impersonation Support (depuis le bandeau). POST + CSRF requis. Conserve la session plateforme. */
 require_once __DIR__ . '/../API/core.php';
 if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Cookie consent banner (RGPD).
  * Included by shared_header.php.

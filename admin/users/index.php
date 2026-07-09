@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Gestion de tous les utilisateurs — Recherche avancée, consultation, édition, actions
  */
@@ -205,7 +206,7 @@ try {
     $error = "Erreur lors du chargement des utilisateurs.";
 }
 
-$totalPages = max(1, ceil($totalUsers / $perPage));
+$totalPages = max(1, ceil((float) ($totalUsers / $perPage)));
 
 // Classes disponibles pour le filtre — scopées à l'établissement courant (super_admin :
 // global). ORDER BY sur les seules colonnes du SELECT DISTINCT (niveau retiré) : sinon

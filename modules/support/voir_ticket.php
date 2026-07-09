@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M34 – Support — Voir un ticket (fil de discussion)
  */

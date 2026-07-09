@@ -192,7 +192,7 @@ class BulletinService {
         ");
         $stmt->execute([$eleveId, $trimestre]);
         $moy = $stmt->fetch(PDO::FETCH_ASSOC);
-        $moyenne = $moy['moyenne'] ? round($moy['moyenne'], 2) : null;
+        $moyenne = $moy['moyenne'] ? round((float) ($moy['moyenne']), 2) : null;
 
         // Compter absences/retards sur la période
         $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM absences WHERE id_eleve = ? AND date_debut >= (SELECT date_debut FROM periodes WHERE id = ?) AND date_fin <= (SELECT date_fin FROM periodes WHERE id = ?)");

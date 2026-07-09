@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Module Accessibilité — aménagements, AESH, MDPH/ESS.
  * Vue d'ensemble établissement (stats + liste AESH).

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Journal d'audit — navigation, filtres, export
  */
@@ -31,7 +32,7 @@ $whereSQL = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
 
 $total = $pdo->prepare("SELECT COUNT(*) FROM audit_log a $whereSQL"); $total->execute($params);
 $totalLogs = $total->fetchColumn();
-$totalPages = max(1, ceil($totalLogs / $perPage));
+$totalPages = max(1, ceil((float) ($totalLogs / $perPage)));
 
 $perPage = (int)$perPage;
 $offset = (int)$offset;

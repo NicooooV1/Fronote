@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * emploi_du_temps.php — Page principale du module Emploi du Temps (M03).
  *

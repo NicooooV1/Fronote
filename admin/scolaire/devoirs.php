@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Administration des devoirs — liste, filtres, modifier, supprimer
  * Converti en AdminCrudPage déclaratif.

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Gestion des relations entre comptes (account_relationships) : parent ↔ élève,
  * prof ↔ classe, AESH/psy/médical/social ↔ élève, tuteur entreprise ↔ élève.

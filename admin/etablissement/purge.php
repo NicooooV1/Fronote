@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Purge d'un établissement — opération DESTRUCTIVE réservée au SUPER-ADMIN.
  *

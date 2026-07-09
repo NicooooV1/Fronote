@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Devoirs en ligne — Voir son rendu (élève)
  */

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Téléchargement sécurisé des pièces jointes
  * Vérifie que l'utilisateur est participant à la conversation avant de servir le fichier.

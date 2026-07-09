@@ -26,7 +26,7 @@ class AbsenceService
         if (!empty($filters['date_to']))          { $where[] = 'a.date_fin <= :date_to';     $params[':date_to']   = $filters['date_to']; }
         $w = 'WHERE ' . implode(' AND ', $where);
         $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM absences a JOIN eleves e ON a.id_eleve = e.id {$w}");
-        $stmt->execute($params); $total = (int) $stmt->fetchColumn(); $pages = (int) ceil($total / $perPage); $offset = ($page - 1) * $perPage;
+        $stmt->execute($params); $total = (int) $stmt->fetchColumn(); $pages = (int) ceil((float) ($total / $perPage)); $offset = ($page - 1) * $perPage;
         $stmt = $this->pdo->prepare("SELECT a.*, e.nom AS eleve_nom, e.prenom AS eleve_prenom, e.classe FROM absences a JOIN eleves e ON a.id_eleve = e.id {$w} ORDER BY a.date_debut DESC LIMIT :limit OFFSET :offset");
         foreach ($params as $k => $v) $stmt->bindValue($k, $v);
         $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT); $stmt->bindValue(':offset', $offset, PDO::PARAM_INT); $stmt->execute();
@@ -42,7 +42,7 @@ class AbsenceService
         if (!empty($filters['date_to']))  { $where[] = 'r.date_retard <= :date_to';   $params[':date_to']   = $filters['date_to']; }
         $w = 'WHERE ' . implode(' AND ', $where);
         $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM retards r JOIN eleves e ON r.id_eleve = e.id {$w}"); $stmt->execute($params);
-        $total = (int) $stmt->fetchColumn(); $pages = (int) ceil($total / $perPage); $offset = ($page - 1) * $perPage;
+        $total = (int) $stmt->fetchColumn(); $pages = (int) ceil((float) ($total / $perPage)); $offset = ($page - 1) * $perPage;
         $stmt = $this->pdo->prepare("SELECT r.*, e.nom AS eleve_nom, e.prenom AS eleve_prenom, e.classe FROM retards r JOIN eleves e ON r.id_eleve = e.id {$w} ORDER BY r.date_retard DESC LIMIT :limit OFFSET :offset");
         foreach ($params as $k => $v) $stmt->bindValue($k, $v);
         $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT); $stmt->bindValue(':offset', $offset, PDO::PARAM_INT); $stmt->execute();
@@ -141,7 +141,7 @@ class AbsenceService
         $wc = match($status) { 'approved' => 'WHERE j.traite = 1 AND j.approuve = 1', 'rejected' => 'WHERE j.traite = 1 AND j.approuve = 0', default => 'WHERE j.traite = 0' };
         $wc .= ' AND j.etablissement_id = :etab';
         $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM justificatifs j JOIN eleves e ON j.id_eleve = e.id {$wc}"); $stmt->execute([':etab' => $etab]);
-        $total = (int) $stmt->fetchColumn(); $pages = (int) ceil($total / $perPage); $offset = ($page - 1) * $perPage;
+        $total = (int) $stmt->fetchColumn(); $pages = (int) ceil((float) ($total / $perPage)); $offset = ($page - 1) * $perPage;
         $stmt = $this->pdo->prepare("SELECT j.*, e.nom AS eleve_nom, e.prenom AS eleve_prenom, e.classe FROM justificatifs j JOIN eleves e ON j.id_eleve = e.id {$wc} ORDER BY j.date_soumission DESC LIMIT :limit OFFSET :offset");
         $stmt->bindValue(':etab', $etab, PDO::PARAM_INT); $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT); $stmt->bindValue(':offset', $offset, PDO::PARAM_INT); $stmt->execute();
         return ['data' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'total' => $total, 'pages' => $pages];

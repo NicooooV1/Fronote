@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 $devoirs = $data['devoirs'] ?? [];
 $count = $data['count'] ?? 0;
 ?>

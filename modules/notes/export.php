@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * export.php — Export CSV/PDF du module Notes.
  */

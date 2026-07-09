@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /** Portail PLATEFORME — rapport de fin d'intervention Support. */
 require_once __DIR__ . '/../../API/core.php';
 if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }

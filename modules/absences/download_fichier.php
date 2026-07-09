@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * download_fichier.php — Téléchargement sécurisé des pièces jointes de justificatifs
  * Vérifie les droits d'accès avant de servir le fichier.

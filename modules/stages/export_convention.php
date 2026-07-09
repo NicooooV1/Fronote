@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Export PDF convention de stage
  * GET ?id=XX

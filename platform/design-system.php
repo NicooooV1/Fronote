@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /** Portail PLATEFORME — vitrine du Design System (cahier §31). */
 require_once __DIR__ . '/../API/core.php';
 if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }

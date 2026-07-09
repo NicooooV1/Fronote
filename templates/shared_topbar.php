@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Template: Topbar + main content opening.
  * Replaces the old sidebar + topbar combo.

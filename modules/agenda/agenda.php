@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * agenda.php — Contrôleur principal du module Agenda.
  *

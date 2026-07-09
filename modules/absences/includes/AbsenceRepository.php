@@ -953,7 +953,7 @@ class AbsenceRepository
         if ($absenceRate > 0.2) {
             $patterns[] = [
                 'type'     => 'high_rate',
-                'detail'   => 'Taux d\'absentéisme élevé: ' . round($absenceRate * 100, 1) . '%',
+                'detail'   => 'Taux d\'absentéisme élevé: ' . round((float) ($absenceRate * 100), 1) . '%',
                 'count'    => $totalAbsences,
                 'severity' => $absenceRate > 0.3 ? 'high' : 'medium',
             ];

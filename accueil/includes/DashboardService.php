@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * DashboardService — Service metier pour le tableau de bord accueil.
  *

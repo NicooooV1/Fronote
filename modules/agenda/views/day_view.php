@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Vue journalière — pure affichage.
  * Reçoit $events et $date du contrôleur (agenda.php).

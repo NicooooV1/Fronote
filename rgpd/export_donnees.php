@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M23 – RGPD — Export de mes données (Art. 15 Droit d'accès)
  * Permet à chaque utilisateur de télécharger toutes ses données

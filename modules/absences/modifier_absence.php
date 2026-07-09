@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * modifier_absence.php — Formulaire de modification d'absence.
  * Corrections: remplacement FILTER_SANITIZE_STRING par AbsenceHelper::sanitize(),

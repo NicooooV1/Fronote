@@ -296,8 +296,8 @@ class FileUploadService
     public static function formatBytes(int $bytes): string
     {
         if ($bytes < 1024) return $bytes . ' o';
-        if ($bytes < 1048576) return round($bytes / 1024) . ' Ko';
-        return round($bytes / 1048576, 1) . ' Mo';
+        if ($bytes < 1048576) return round((float) ($bytes / 1024)) . ' Ko';
+        return round((float) ($bytes / 1048576), 1) . ' Mo';
     }
 
     /**

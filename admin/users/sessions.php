@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Gestion des sessions actives — vue admin des sessions utilisateurs
  */

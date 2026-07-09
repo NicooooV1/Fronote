@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Module Évaluations en ligne (QCM).
  * Prof : ses banques + ses évaluations (soumis/corrigés). Élève : évals de sa classe.

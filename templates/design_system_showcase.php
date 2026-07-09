@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Fronote — Vitrine du Design System (corps réutilisable).
  * Inclus par platform/design-system.php (monde plateforme) et admin/design-system.php

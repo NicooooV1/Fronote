@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Administration — Marketplace de modules
  * Catalogue, installation et désinstallation de modules depuis le registre distant.

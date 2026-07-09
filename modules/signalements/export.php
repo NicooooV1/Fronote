@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M45 – Signalements / Anti-harcèlement — Export CSV/PDF
  * Note: Les données sensibles (description tronquée, pas de noms de victimes)

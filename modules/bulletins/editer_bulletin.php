@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Bulletins — Édition d'un bulletin (appréciations, avis conseil)
  */
@@ -85,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                     <div class="appreciation-matiere">
                         <span class="matiere-dot" style="background:<?= htmlspecialchars($l['couleur'] ?? '#3498db') ?>"></span>
                         <strong><?= htmlspecialchars($l['matiere_nom']) ?></strong>
-                        <span class="text-muted">(<?= $l['moyenne_eleve'] !== null ? number_format($l['moyenne_eleve'], 2) : '-' ?>/20)</span>
+                        <span class="text-muted">(<?= $l['moyenne_eleve'] !== null ? number_format((float) ($l['moyenne_eleve']), 2) : '-' ?>/20)</span>
                     </div>
                     <div class="appreciation-input">
                         <textarea name="appreciation" rows="2" placeholder="Appréciation du professeur..."><?= htmlspecialchars($l['appreciation'] ?? '') ?></textarea>

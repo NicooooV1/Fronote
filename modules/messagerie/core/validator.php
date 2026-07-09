@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Validation centralisée des entrées utilisateur — Messagerie Fronote
  *

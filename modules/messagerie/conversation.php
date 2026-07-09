@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Affichage et gestion d'une conversation
  */

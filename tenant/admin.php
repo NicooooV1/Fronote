@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /** Portail ÉTABLISSEMENT — administration locale. Exige une permission de gestion. */
 require __DIR__ . '/_bootstrap.php';
 tenantRequireAuth($establishment, $base, $slug);

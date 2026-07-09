@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Portail PLATEFORME — console de supervision (monitoring SaaS, cahier §20/§34).
  * Design system (.ds-platform) ; métriques serveur en PHP pur + compteurs DB/services.
@@ -21,16 +22,16 @@ $cores = 1;
 $ci = @file('/proc/cpuinfo');
 if ($ci) { $n = count(array_filter($ci, fn($l) => stripos($l, 'processor') === 0)); if ($n > 0) $cores = $n; }
 $load = function_exists('sys_getloadavg') ? sys_getloadavg() : [0, 0, 0];
-$cpuPct = (int) min(100, round(($load[0] / $cores) * 100));
+$cpuPct = (int) min(100, round((float) (($load[0] / $cores) * 100)));
 $ramPct = 0; $ramTotGb = 0; $ramUsedGb = 0;
 $mi = @file_get_contents('/proc/meminfo');
 if ($mi && preg_match('/MemTotal:\s+(\d+)/', $mi, $mt) && preg_match('/MemAvailable:\s+(\d+)/', $mi, $ma)) {
     $tot = (int) $mt[1]; $avail = (int) $ma[1];
-    if ($tot > 0) { $ramPct = (int) round((1 - $avail / $tot) * 100); $ramTotGb = round($tot / 1048576, 1); $ramUsedGb = round(($tot - $avail) / 1048576, 1); }
+    if ($tot > 0) { $ramPct = (int) round((float) ((1 - $avail / $tot) * 100)); $ramTotGb = round((float) ($tot / 1048576), 1); $ramUsedGb = round((float) (($tot - $avail) / 1048576), 1); }
 }
 $dt = @disk_total_space(__DIR__); $df = @disk_free_space(__DIR__);
-$diskPct = ($dt && $df !== false && $dt > 0) ? (int) round((1 - $df / $dt) * 100) : 0;
-$diskUsedGb = $dt ? round(($dt - $df) / 1073741824, 1) : 0; $diskTotGb = $dt ? round($dt / 1073741824, 1) : 0;
+$diskPct = ($dt && $df !== false && $dt > 0) ? (int) round((float) ((1 - $df / $dt) * 100)) : 0;
+$diskUsedGb = $dt ? round((float) (($dt - $df) / 1073741824), 1) : 0; $diskTotGb = $dt ? round((float) ($dt / 1073741824), 1) : 0;
 
 /* ── Compteurs (DB + services) ── */
 // Établissements : total / actifs / suspendus en UNE requête (SUM de prédicats booléens).
@@ -132,7 +133,7 @@ $card = function (string $label, string $value, string $status = 'ok', ?string $
     <!-- Santé serveur -->
     <div class="ds-monitor-grid">
       <?php
-        $card('CPU (charge 1 min)', $cpuPct . ' %', $statusFor($cpuPct), 'load ' . number_format($load[0], 2) . ' · ' . $cores . ' cœurs', null, $cpuPct);
+        $card('CPU (charge 1 min)', $cpuPct . ' %', $statusFor($cpuPct), 'load ' . number_format((float) ($load[0]), 2) . ' · ' . $cores . ' cœurs', null, $cpuPct);
         $card('Mémoire vive', $ramPct . ' %', $statusFor($ramPct), $ramTotGb ? ($ramUsedGb . ' / ' . $ramTotGb . ' Go') : 'n/d', null, $ramPct);
         $card('Stockage', $diskPct . ' %', $statusFor($diskPct), $diskTotGb ? ($diskUsedGb . ' / ' . $diskTotGb . ' Go') : 'n/d', null, $diskPct);
         if ($auth->can('platform.system.view')) { $card('Base de données', ($dbSizeMb ?: 0) . ' Mo', 'ok', $dbTables . ' tables', '/platform/system.php'); }
@@ -175,7 +176,7 @@ $card = function (string $label, string $value, string $status = 'ok', ?string $
               if ($backupAge === null) {
                   $card('Dernière sauvegarde', 'aucune', 'warn', 'créer une sauvegarde', '/platform/backups.php');
               } else {
-                  $card('Dernière sauvegarde', $backupAge < 1 ? "< 1 h" : round($backupAge) . ' h', $backupAge > 48 ? 'warn' : 'ok', $h((string) $backupName), '/platform/backups.php');
+                  $card('Dernière sauvegarde', $backupAge < 1 ? "< 1 h" : round((float) ($backupAge)) . ' h', $backupAge > 48 ? 'warn' : 'ok', $h((string) $backupName), '/platform/backups.php');
               }
           }
           $card('Disponibilité PHP', PHP_VERSION, 'ok', 'runtime');

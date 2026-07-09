@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M45 – Anti-harcèlement — Formulaire de signalement
  */

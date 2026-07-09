@@ -137,7 +137,7 @@ class NoteService
         foreach ($moyennes as $m) {
             $total += $m['moyenne'];
         }
-        return round($total / count($moyennes), 2);
+        return round((float) ($total / count($moyennes)), 2);
     }
 
     // ─── CRUD ────────────────────────────────────────────────────────
@@ -605,7 +605,7 @@ class NoteService
             $noteSur = $n['note_sur'] ?: 20;
             $sum += ($n['note'] / $noteSur * 20);
         }
-        return round($sum / count($notes), 1);
+        return round((float) ($sum / count($notes)), 1);
     }
 
     /**
@@ -643,8 +643,8 @@ class NoteService
         if ($cnt > 0) {
             $mid = intdiv($cnt, 2);
             $mediane = ($cnt % 2 === 0)
-                ? round(($allNotes[$mid - 1] + $allNotes[$mid]) / 2, 2)
-                : round($allNotes[$mid], 2);
+                ? round((float) (($allNotes[$mid - 1] + $allNotes[$mid]) / 2), 2)
+                : round((float) ($allNotes[$mid]), 2);
         }
         $row['mediane'] = $mediane;
 
@@ -694,7 +694,7 @@ class NoteService
         }
 
         foreach ($allNotes as $note) {
-            $bin = min(9, (int) floor($note / 2));
+            $bin = min(9, (int) floor((float) ($note / 2)));
             $bins[$bin]++;
         }
 
@@ -805,11 +805,11 @@ class NoteService
                 'matiere'  => $matiere,
                 'couleur'  => $data['couleur'],
                 'min'      => $notes[0],
-                'q1'       => $notes[(int) floor($cnt * 0.25)],
+                'q1'       => $notes[(int) floor((float) ($cnt * 0.25))],
                 'median'   => $cnt % 2 === 0
                     ? ($notes[$cnt / 2 - 1] + $notes[$cnt / 2]) / 2
-                    : $notes[(int) floor($cnt / 2)],
-                'q3'       => $notes[(int) floor($cnt * 0.75)],
+                    : $notes[(int) floor((float) ($cnt / 2))],
+                'q3'       => $notes[(int) floor((float) ($cnt * 0.75))],
                 'max'      => $notes[$cnt - 1],
                 'count'    => $cnt,
             ];
@@ -1073,7 +1073,7 @@ class NoteService
             $totalCoeff += $coeff * $poids;
         }
 
-        return $totalCoeff > 0 ? round($totalPondere / $totalCoeff, 2) : null;
+        return $totalCoeff > 0 ? round((float) ($totalPondere / $totalCoeff), 2) : null;
     }
 
     // ─── Verrouillage par matière ───────────────────────────────────

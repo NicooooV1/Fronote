@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Acceptation d'une invitation Directeur (page publique, jeton requis).
  * Le Directeur crée son tenant_account (jamais platform) et, selon le type

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Composant pour afficher un élément de conversation dans la liste
  */

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M14 – Réunions — Réserver un créneau (parent)
  */

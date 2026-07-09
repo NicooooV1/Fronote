@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Pied de page HTML commun - Messagerie
  * Utilise le template partagé Fronote

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M23 – RGPD — Mentions légales (Art. 12-14 Information)
  * Page statique. Les informations concrètes (éditeur, hébergeur, DPO)

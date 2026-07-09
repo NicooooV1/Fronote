@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Administration — Dashboard de monitoring
  * Sante systeme, performances, connexions, erreurs.
@@ -59,9 +60,9 @@ if ($env->isDev()) $envName = 'development';
 elseif ($env->isStaging()) $envName = 'staging';
 
 // Disk
-$diskFree = round(disk_free_space(BASE_PATH) / 1024 / 1024 / 1024, 2);
-$diskTotal = round(disk_total_space(BASE_PATH) / 1024 / 1024 / 1024, 2);
-$diskPct = $diskTotal > 0 ? round(($diskTotal - $diskFree) / $diskTotal * 100) : 0;
+$diskFree = round((float) (disk_free_space(BASE_PATH) / 1024 / 1024 / 1024), 2);
+$diskTotal = round((float) (disk_total_space(BASE_PATH) / 1024 / 1024 / 1024), 2);
+$diskPct = $diskTotal > 0 ? round((float) (($diskTotal - $diskFree) / $diskTotal * 100)) : 0;
 
 $csrfToken = app('csrf')->generate();
 $pageTitle = 'Monitoring';
@@ -145,7 +146,7 @@ include __DIR__ . '/../includes/header.php';
             <div class="d-flex gap-md mb-md" style="align-items:center;">
                 <div style="flex:1;">
                     <div style="background:var(--bg-light);border-radius:8px;height:20px;overflow:hidden;">
-                        <div style="width:' . ($flagsTotal > 0 ? round($flagsEnabled / $flagsTotal * 100) : 0) . '%;height:100%;background:var(--success);border-radius:8px;"></div>
+                        <div style="width:' . ($flagsTotal > 0 ? round((float) ($flagsEnabled / $flagsTotal * 100)) : 0) . '%;height:100%;background:var(--success);border-radius:8px;"></div>
                     </div>
                 </div>
                 <span class="fw-bold">' . $flagsEnabled . '/' . $flagsTotal . '</span>

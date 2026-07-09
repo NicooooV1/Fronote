@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Import / Export — Interface d'administration
  * Onglets : Export, Import, Historique

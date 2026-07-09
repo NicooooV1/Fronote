@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Supprimer un événement — Module Agenda
  * Nettoyé : EventRepository::delete(), canDeleteEvent(), POST uniquement,

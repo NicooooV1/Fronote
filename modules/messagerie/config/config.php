@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Configuration du module messagerie - Utilise l'API centralisée
  */

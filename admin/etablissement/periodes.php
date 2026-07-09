@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Gestion des périodes scolaires (trimestres/semestres)
  * Converti en AdminCrudPage déclaratif.

@@ -125,7 +125,7 @@ $page      = max(1, (int) ($_GET['page'] ?? 1));
 $perPage   = 20;
 $total     = count($allInstalled);
 $installed = array_slice($allInstalled, ($page - 1) * $perPage, $perPage);
-$pages     = max(1, (int) ceil($total / $perPage));
+$pages     = max(1, (int) ceil((float) ($total / $perPage)));
 
 $rootsDir  = BASE_PATH . '/config/marketplace/roots';
 $rootFiles = is_dir($rootsDir) ? array_values(array_filter(scandir($rootsDir) ?: [], fn($f) => str_ends_with($f, '.pub'))) : [];

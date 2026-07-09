@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Export iCal (.ics) — Agenda événements.
  * Generates a personal .ics file with all user's events.

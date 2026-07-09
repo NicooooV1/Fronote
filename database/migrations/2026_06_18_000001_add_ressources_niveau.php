@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Migration : ajoute la colonne `niveau` (niveau scolaire) à ressources_pedagogiques.
  *

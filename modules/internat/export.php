@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M19 – Internat — Export CSV/PDF
  */

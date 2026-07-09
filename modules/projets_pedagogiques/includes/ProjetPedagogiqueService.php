@@ -194,7 +194,7 @@ class ProjetPedagogiqueService
             'budget_prevu' => $budget,
             'total_depense' => $totalDepense,
             'reste' => $budget - $totalDepense,
-            'pourcentage_utilise' => $budget > 0 ? round($totalDepense / $budget * 100, 1) : 0,
+            'pourcentage_utilise' => $budget > 0 ? round((float) ($totalDepense / $budget * 100), 1) : 0,
             'nb_depenses' => count($depenses),
         ];
     }

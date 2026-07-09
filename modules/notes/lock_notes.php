@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * lock_notes.php — Verrouillage en lot des notes d'une classe/matière/trimestre.
  */

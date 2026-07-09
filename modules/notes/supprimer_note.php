@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Module Notes — Suppression d'une note avec confirmation.
  * Utilise NoteService pour les opérations SQL.

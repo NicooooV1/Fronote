@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Administration des notes — filtres, vue par élève/classe/matière, CRUD, stats
  */

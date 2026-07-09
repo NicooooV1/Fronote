@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Portail ÉTABLISSEMENT — centre de Support (côté Direction).
  * Voir/ouvrir des tickets, DÉCIDER des demandes d'accès du Support Fronote

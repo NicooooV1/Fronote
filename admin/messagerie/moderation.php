@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Modération des messages — recherche FULLTEXT, suppression, édition, pin
  */
@@ -115,7 +116,7 @@ $whereSQL = 'WHERE ' . implode(' AND ', $where);
 
 $total = $pdo->prepare("SELECT COUNT(*) FROM messages m $whereSQL");
 $total->execute($params); $totalMessages = $total->fetchColumn();
-$totalPages = max(1, ceil($totalMessages / $perPage));
+$totalPages = max(1, ceil((float) ($totalMessages / $perPage)));
 
 $sql = "SELECT m.*, c.subject AS conv_subject,
         CASE

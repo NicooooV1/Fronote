@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 $errorCode = 404;
 $errorTitle = 'Page introuvable';
 $errorMessage = 'La page que vous recherchez n\'existe pas ou a ete deplacee.';

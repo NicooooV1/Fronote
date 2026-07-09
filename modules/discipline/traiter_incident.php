@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M06 – Discipline : Traiter / Modifier un incident
  */

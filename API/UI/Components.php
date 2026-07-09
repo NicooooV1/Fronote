@@ -270,7 +270,7 @@ function ui_alert(string $message, string $type = 'info', array $options = []): 
 
 function ui_pagination(int $current, int $total, int $perPage, string $baseUrl = '?'): string
 {
-    $totalPages = max(1, (int) ceil($total / $perPage));
+    $totalPages = max(1, (int) ceil((float) ($total / $perPage)));
     if ($totalPages <= 1) return '';
 
     $separator = strpos($baseUrl, '?') !== false ? '&' : '?';

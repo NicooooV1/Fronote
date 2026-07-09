@@ -165,15 +165,15 @@ class InventaireService
 
         // Persist
         $this->pdo->prepare("INSERT INTO inventaire_amortissements (asset_id, methode, duree_annees, amortissement_cumule, valeur_residuelle, date_calcul) VALUES (:aid, :m, :d, :ac, :vr, NOW()) ON DUPLICATE KEY UPDATE amortissement_cumule=VALUES(amortissement_cumule), valeur_residuelle=VALUES(valeur_residuelle), date_calcul=NOW()")
-            ->execute([':aid' => $assetId, ':m' => $methode, ':d' => $dureeAnnees, ':ac' => round($amortissementCumule, 2), ':vr' => round($valeurResiduelle, 2)]);
+            ->execute([':aid' => $assetId, ':m' => $methode, ':d' => $dureeAnnees, ':ac' => round((float) ($amortissementCumule), 2), ':vr' => round((float) ($valeurResiduelle), 2)]);
 
         return [
             'prix_achat' => $prix,
             'methode' => $methode,
             'duree_annees' => $dureeAnnees,
-            'annees_ecoulees' => round($anneesEcoulees, 1),
-            'amortissement_cumule' => round($amortissementCumule, 2),
-            'valeur_residuelle' => round($valeurResiduelle, 2)
+            'annees_ecoulees' => round((float) ($anneesEcoulees), 1),
+            'amortissement_cumule' => round((float) ($amortissementCumule), 2),
+            'valeur_residuelle' => round((float) ($valeurResiduelle), 2)
         ];
     }
 

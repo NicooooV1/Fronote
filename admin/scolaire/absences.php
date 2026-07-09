@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Administration des absences et retards — deux onglets, CRUD, justifier, stats
  */

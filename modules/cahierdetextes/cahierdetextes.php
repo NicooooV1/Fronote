@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * cahierdetextes.php — Page principale du cahier de textes
  *
@@ -53,7 +54,7 @@ try {
     $filterOpts   = $service->getFilterOptions($user_role, $user['id'], $user_fullname);
     $query        = $service->buildQuery($user_role, $user['id'], $user_fullname, $filters, $orderField, $orderDir, $page, $perPage, $search);
     [$devoirs, $totalDevoirs] = $service->executeQuery($query);
-    $totalPages   = max(1, (int) ceil($totalDevoirs / $perPage));
+    $totalPages   = max(1, (int) ceil((float) ($totalDevoirs / $perPage)));
 
     // Pour le calendrier, on charge TOUS les devoirs du mois (pas paginé)
     if ($displayMode === 'calendar') {

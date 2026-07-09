@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * ajouter_absence.php — Formulaire d'ajout d'absence.
  * Utilise AbsenceRepository + AbsenceHelper.

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Module Notes — Page principale.
  * Affiche les notes par rôle : élève, professeur, admin/vie scolaire.
@@ -102,7 +103,7 @@ try {
     error_log("Erreur notes: " . $e->getMessage());
 }
 
-$totalPages = max(1, (int) ceil($totalNotes / $perPage));
+$totalPages = max(1, (int) ceil((float) ($totalNotes / $perPage)));
 
 // Données de référence pour les filtres prof/admin
 $availableClasses  = [];

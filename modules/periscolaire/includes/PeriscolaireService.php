@@ -228,7 +228,7 @@ class PeriscolaireService
             $types[$s['type']] ?? $s['type'],
             $s['description'] ?? '-',
             $s['horaires'] ?? '-',
-            number_format($s['tarif'] ?? 0, 2, ',', ' ') . ' €',
+            number_format((float) ($s['tarif'] ?? 0), 2, ',', ' ') . ' €',
             $s['places_max'] ?? 'Illimité',
             $s['nb_inscrits'] ?? 0,
         ], $services);
@@ -286,7 +286,7 @@ class PeriscolaireService
                 'service' => $r['service_nom'],
                 'tarif_unitaire' => (float)$r['tarif'],
                 'nb_presences' => (int)$r['nb_presences'],
-                'montant_total' => round($montant, 2),
+                'montant_total' => round((float) ($montant), 2),
             ];
         }
         return $factures;
@@ -321,7 +321,7 @@ class PeriscolaireService
             'total_inscrits' => $totalInscrits,
             'total_presences' => $totalPresences,
             'taux_presence_global' => $totalPresences > 0 && array_sum(array_column($services, 'nb_presences_total')) > 0
-                ? round($totalPresences / array_sum(array_column($services, 'nb_presences_total')) * 100, 1) : 0,
+                ? round((float) ($totalPresences / array_sum(array_column($services, 'nb_presences_total')) * 100), 1) : 0,
         ];
     }
 }

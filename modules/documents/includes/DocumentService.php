@@ -190,8 +190,8 @@ class DocumentService {
      * Taille formatée
      */
     public static function formatSize(int $bytes): string {
-        if ($bytes >= 1048576) return round($bytes / 1048576, 1) . ' Mo';
-        if ($bytes >= 1024) return round($bytes / 1024, 1) . ' Ko';
+        if ($bytes >= 1048576) return round((float) ($bytes / 1048576), 1) . ' Mo';
+        if ($bytes >= 1024) return round((float) ($bytes / 1024), 1) . ' Ko';
         return $bytes . ' o';
     }
 

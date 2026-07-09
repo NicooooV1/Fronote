@@ -32,7 +32,7 @@ class TutoratService
         if (count($eleves) < 4) return [];
 
         $total = count($eleves);
-        $q1 = (int)ceil($total * 0.25);
+        $q1 = (int)ceil((float) ($total * 0.25));
         $topQuartile = array_slice($eleves, 0, $q1);
         $bottomQuartile = array_slice($eleves, -$q1);
 
@@ -144,7 +144,7 @@ class TutoratService
         return [
             'moyenne_avant' => $moyAvant,
             'moyenne_apres' => $moyApres,
-            'progression' => round($moyApres - $moyAvant, 2),
+            'progression' => round((float) ($moyApres - $moyAvant), 2),
             'nb_sessions' => (int)$nbSessions->fetchColumn()
         ];
     }

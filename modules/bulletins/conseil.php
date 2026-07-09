@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Bulletins — Conseil de classe (vue d'ensemble pour saisie rapide)
  */
@@ -70,9 +71,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 <?php if (!empty($stats) && $stats['total'] > 0): ?>
 <div class="stats-row">
     <div class="stat-card"><span class="stat-value"><?= $stats['total'] ?></span><span class="stat-label">Élèves</span></div>
-    <div class="stat-card primary"><span class="stat-value"><?= $stats['moy_classe'] ? number_format($stats['moy_classe'], 2) : '-' ?></span><span class="stat-label">Moyenne</span></div>
-    <div class="stat-card success"><span class="stat-value"><?= $stats['moy_max'] ? number_format($stats['moy_max'], 2) : '-' ?></span><span class="stat-label">Max</span></div>
-    <div class="stat-card danger"><span class="stat-value"><?= $stats['moy_min'] ? number_format($stats['moy_min'], 2) : '-' ?></span><span class="stat-label">Min</span></div>
+    <div class="stat-card primary"><span class="stat-value"><?= $stats['moy_classe'] ? number_format((float) ($stats['moy_classe']), 2) : '-' ?></span><span class="stat-label">Moyenne</span></div>
+    <div class="stat-card success"><span class="stat-value"><?= $stats['moy_max'] ? number_format((float) ($stats['moy_max']), 2) : '-' ?></span><span class="stat-label">Max</span></div>
+    <div class="stat-card danger"><span class="stat-value"><?= $stats['moy_min'] ? number_format((float) ($stats['moy_min']), 2) : '-' ?></span><span class="stat-label">Min</span></div>
 </div>
 <?php endif; ?>
 
@@ -94,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                 <?php foreach ($bulletins as $b): ?>
                 <tr>
                     <td class="fw-500"><?= htmlspecialchars($b['eleve_prenom'] . ' ' . $b['eleve_nom']) ?></td>
-                    <td class="text-center fw-bold <?= ($b['moyenne_generale'] ?? 0) < 10 ? 'text-danger' : '' ?>"><?= $b['moyenne_generale'] !== null ? number_format($b['moyenne_generale'], 2) : '-' ?></td>
+                    <td class="text-center fw-bold <?= ($b['moyenne_generale'] ?? 0) < 10 ? 'text-danger' : '' ?>"><?= $b['moyenne_generale'] !== null ? number_format((float) ($b['moyenne_generale']), 2) : '-' ?></td>
                     <td class="text-center"><?= $b['rang'] ?? '-' ?></td>
                     <td>
                         <select name="avis[<?= $b['id'] ?>]" class="form-select form-select-sm">

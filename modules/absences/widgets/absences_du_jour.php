@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Widget : Absences du jour
  * Variables disponibles : $data (tableau retourné par AbsenceWidgetProvider::getData)

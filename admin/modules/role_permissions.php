@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Administration — Permissions par RÔLE (RBAC/ABAC).
  *

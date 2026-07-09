@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Catalogue des rôles (RBAC) — vue LECTURE SEULE, groupée par tier.
  * Source de vérité = RoleCatalog (code). Réservé administration / super-admin.

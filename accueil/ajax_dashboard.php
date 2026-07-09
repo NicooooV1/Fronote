@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * AJAX endpoint for dashboard widget management (M104).
  * Handles: save_layout, toggle_widget, get_widgets, get_widget_data

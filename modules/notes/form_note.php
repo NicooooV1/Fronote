@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Module Notes — Formulaire unifié ajout / modification d'une note.
  *

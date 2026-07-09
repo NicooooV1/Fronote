@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M32 – Salles & Matériel — Export CSV/PDF
  */

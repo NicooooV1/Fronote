@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Import CSV — Import en masse d'élèves ou de professeurs via fichier CSV.
  *

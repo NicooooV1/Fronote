@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Profil utilisateur — Alias vers le module Paramètres
  *

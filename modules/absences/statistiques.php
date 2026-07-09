@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * statistiques.php — Redirection vers la page unifiée
  * Les statistiques sont maintenant gérées par absences.php?view=stats

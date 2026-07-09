@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M37 – Créer plan d'accompagnement
  */

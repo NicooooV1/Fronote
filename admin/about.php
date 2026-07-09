@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Administration — A propos de Fronote
  * Affiche version, credits, informations systeme.

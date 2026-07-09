@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Widget : Prochains événements
  * Variables disponibles : $data (tableau retourné par AgendaWidgetProvider::getData)

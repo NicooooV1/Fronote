@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M33 – Détail facture
  */
@@ -43,7 +44,7 @@ $reste = $facture['montant_ttc'] - $totalPaye;
         <div class="info-item"><?= FacturationService::badgeStatut($facture['statut']) ?></div>
         <div class="info-item"><i class="fas fa-user"></i><span><?= htmlspecialchars($facture['parent_nom']) ?></span></div>
         <div class="info-item"><i class="fas fa-calendar"></i><span>Éch. <?= formatDate($facture['date_echeance']) ?></span></div>
-        <div class="info-item"><strong><?= number_format($facture['montant_ttc'], 2, ',', ' ') ?> € TTC</strong></div>
+        <div class="info-item"><strong><?= number_format((float) ($facture['montant_ttc']), 2, ',', ' ') ?> € TTC</strong></div>
     </div>
 
     <!-- Lignes -->
@@ -54,11 +55,11 @@ $reste = $facture['montant_ttc'] - $totalPaye;
                 <thead><tr><th>Description</th><th>Qté</th><th>P.U.</th><th>Total</th></tr></thead>
                 <tbody>
                     <?php foreach ($lignes as $l): ?>
-                    <tr><td><?= htmlspecialchars($l['description']) ?></td><td><?= $l['quantite'] ?></td><td><?= number_format($l['prix_unitaire'], 2, ',', ' ') ?> €</td><td><?= number_format($l['quantite'] * $l['prix_unitaire'], 2, ',', ' ') ?> €</td></tr>
+                    <tr><td><?= htmlspecialchars($l['description']) ?></td><td><?= $l['quantite'] ?></td><td><?= number_format((float) ($l['prix_unitaire']), 2, ',', ' ') ?> €</td><td><?= number_format((float) ($l['quantite'] * $l['prix_unitaire']), 2, ',', ' ') ?> €</td></tr>
                     <?php endforeach; ?>
-                    <tr class="total-row"><td colspan="3"><strong>HT</strong></td><td><strong><?= number_format($facture['montant_ht'], 2, ',', ' ') ?> €</strong></td></tr>
-                    <tr><td colspan="3">TVA</td><td><?= number_format($facture['montant_tva'], 2, ',', ' ') ?> €</td></tr>
-                    <tr class="total-row"><td colspan="3"><strong>TTC</strong></td><td><strong><?= number_format($facture['montant_ttc'], 2, ',', ' ') ?> €</strong></td></tr>
+                    <tr class="total-row"><td colspan="3"><strong>HT</strong></td><td><strong><?= number_format((float) ($facture['montant_ht']), 2, ',', ' ') ?> €</strong></td></tr>
+                    <tr><td colspan="3">TVA</td><td><?= number_format((float) ($facture['montant_tva']), 2, ',', ' ') ?> €</td></tr>
+                    <tr class="total-row"><td colspan="3"><strong>TTC</strong></td><td><strong><?= number_format((float) ($facture['montant_ttc']), 2, ',', ' ') ?> €</strong></td></tr>
                 </tbody>
             </table>
             <?php if ($isGestionnaire): ?>
@@ -75,13 +76,13 @@ $reste = $facture['montant_ttc'] - $totalPaye;
 
     <!-- Paiements -->
     <div class="card">
-        <div class="card-header"><h2>Paiements (reste: <?= number_format(max($reste, 0), 2, ',', ' ') ?> €)</h2></div>
+        <div class="card-header"><h2>Paiements (reste: <?= number_format((float) (max($reste, 0)), 2, ',', ' ') ?> €)</h2></div>
         <div class="card-body">
             <?php foreach ($paiements as $p): ?>
             <div class="paiement-item">
                 <span><?= formatDateTime($p['date_paiement']) ?></span>
                 <span class="badge badge-secondary"><?= $modes[$p['mode_paiement']] ?? $p['mode_paiement'] ?></span>
-                <strong><?= number_format($p['montant'], 2, ',', ' ') ?> €</strong>
+                <strong><?= number_format((float) ($p['montant']), 2, ',', ' ') ?> €</strong>
             </div>
             <?php endforeach; ?>
             <?php if ($isGestionnaire && $reste > 0): ?>

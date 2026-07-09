@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * retards.php — Redirection vers la page unifiée
  * Les retards sont maintenant gérés par absences.php?type=retards

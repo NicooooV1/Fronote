@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Vérification du code TOTP (étape 2FA du login).
  * Prérequis : $_SESSION['pending_2fa'] doit être défini.

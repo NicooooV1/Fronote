@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Vue liste des retards — incluse depuis absences.php?type=retards.
  * Variable disponible: $retards (tableau de retards).

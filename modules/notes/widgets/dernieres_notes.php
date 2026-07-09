@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Widget : Dernières notes
  * Variables disponibles : $data (tableau retourné par NoteWidgetProvider::getData)

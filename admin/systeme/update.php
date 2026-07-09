@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Mises à jour — un seul bouton : git pull du dépôt + réconciliation du schéma SQL.
  * Aucune migration, aucun reset manuel : les changements de schéma sont appliqués

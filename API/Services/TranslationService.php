@@ -431,10 +431,10 @@ class TranslationService
         if (class_exists('NumberFormatter')) {
             $fmt = new \NumberFormatter($this->locale, \NumberFormatter::DECIMAL);
             $fmt->setAttribute(\NumberFormatter::MAX_FRACTION_DIGITS, $decimals);
-            return $fmt->format($number) ?: number_format($number, $decimals);
+            return $fmt->format($number) ?: number_format((float) ($number), $decimals);
         }
 
-        return number_format($number, $decimals, ',', ' ');
+        return number_format((float) ($number), $decimals, ',', ' ');
     }
 
     /**
@@ -444,10 +444,10 @@ class TranslationService
     {
         if (class_exists('NumberFormatter')) {
             $fmt = new \NumberFormatter($this->locale, \NumberFormatter::CURRENCY);
-            return $fmt->formatCurrency($amount, $currency) ?: number_format($amount, 2) . ' ' . $currency;
+            return $fmt->formatCurrency($amount, $currency) ?: number_format((float) ($amount), 2) . ' ' . $currency;
         }
 
-        return number_format($amount, 2, ',', ' ') . ' ' . $currency;
+        return number_format((float) ($amount), 2, ',', ' ') . ' ' . $currency;
     }
 
     /**

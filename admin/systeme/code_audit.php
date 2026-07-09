@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Administration — Audit code (CDC §20)
  * Détecte coquilles vides, placeholders, endpoints sans CSRF et requêtes

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Module Inventaire & patrimoine IT.
  * Vue d'ensemble parc : stats + maintenances à venir + prêts en retard.
@@ -25,11 +26,11 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:28px">
         <div style="background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:16px">
-            <div style="font-size:1.7em;font-weight:700;color:var(--primary,#0f4c81)"><?= number_format($stats['valeur_achat_totale'], 0, ',', ' ') ?> €</div>
+            <div style="font-size:1.7em;font-weight:700;color:var(--primary,#0f4c81)"><?= number_format((float) ($stats['valeur_achat_totale']), 0, ',', ' ') ?> €</div>
             <div style="font-size:.85em;color:var(--text-muted,#64748b)">Valeur d'achat totale</div>
         </div>
         <div style="background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:16px">
-            <div style="font-size:1.7em;font-weight:700;color:var(--primary,#0f4c81)"><?= number_format($stats['valeur_residuelle_totale'], 0, ',', ' ') ?> €</div>
+            <div style="font-size:1.7em;font-weight:700;color:var(--primary,#0f4c81)"><?= number_format((float) ($stats['valeur_residuelle_totale']), 0, ',', ' ') ?> €</div>
             <div style="font-size:.85em;color:var(--text-muted,#64748b)">Valeur résiduelle</div>
         </div>
         <div style="background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:16px">

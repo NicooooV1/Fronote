@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Module Intelligence — Analyse prédictive du risque de décrochage.
  * Dashboard RAG (vert/jaune/orange/rouge), top élèves à risque, alertes actives.

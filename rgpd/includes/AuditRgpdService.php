@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M23 – RGPD & Audit — Service
  * Enhanced: data export, anonymization, retention policies
@@ -995,7 +996,7 @@ class AuditRgpdService
         return [
             'demandes' => $demandes,
             'demandes_en_attente' => (int)($demandes['en_attente'] ?? 0),
-            'taux_consentement' => $consentements['total'] > 0 ? round($consentements['consented'] / $consentements['total'] * 100, 1) : 0,
+            'taux_consentement' => $consentements['total'] > 0 ? round((float) ($consentements['consented'] / $consentements['total'] * 100), 1) : 0,
             'violations_ouvertes' => (int)$violations,
             'derniere_purge' => $this->pdo->query("SELECT MAX(derniere_purge) FROM rgpd_retention_policies")->fetchColumn() ?: 'Jamais',
         ];

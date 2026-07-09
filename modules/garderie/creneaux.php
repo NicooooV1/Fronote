@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M20 – Garderie — Créneaux d'accueil
  */
@@ -77,7 +78,7 @@ $typeColors = ['matin' => '#f59e0b', 'soir' => '#6366f1', 'mercredi' => '#10b981
             <div class="creneau-info">
                 <span><i class="fas fa-clock"></i> <?= substr($cr['heure_debut'], 0, 5) ?> — <?= substr($cr['heure_fin'], 0, 5) ?></span>
                 <?php if ($cr['places_max']): ?><span><i class="fas fa-users"></i> <?= $cr['places_max'] ?> places</span><?php endif; ?>
-                <?php if ($cr['tarif']): ?><span><i class="fas fa-euro-sign"></i> <?= number_format($cr['tarif'], 2, ',', '') ?> €</span><?php endif; ?>
+                <?php if ($cr['tarif']): ?><span><i class="fas fa-euro-sign"></i> <?= number_format((float) ($cr['tarif']), 2, ',', '') ?> €</span><?php endif; ?>
             </div>
             <a href="inscriptions.php?creneau=<?= $cr['id'] ?>" class="btn btn-sm btn-outline">Voir inscriptions</a>
         </div>

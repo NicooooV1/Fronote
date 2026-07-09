@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * supprimer_devoir.php — Confirmation + suppression d'un devoir
  *

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Gestion des justificatifs — approuver / rejeter avec commentaire admin
  */
@@ -75,7 +76,7 @@ $whereSQL = 'WHERE ' . implode(' AND ', $where);
 $totalStmt = $pdo->prepare("SELECT COUNT(*) FROM justificatifs j $whereSQL");
 $totalStmt->execute($params);
 $total = $totalStmt->fetchColumn();
-$totalPages = max(1, ceil($total / $perPage));
+$totalPages = max(1, ceil((float) ($total / $perPage)));
 
 $sql = "SELECT j.*, e.nom AS eleve_nom, e.prenom AS eleve_prenom, e.classe
         FROM justificatifs j

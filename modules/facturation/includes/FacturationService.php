@@ -70,7 +70,7 @@ class FacturationService
     public function ajouterLigne(int $factureId, string $description, int $quantite, float $prix): void
     {
         $stmt = $this->pdo->prepare("INSERT INTO facture_lignes (facture_id, description, quantite, prix_unitaire, montant) VALUES (?,?,?,?,?)");
-        $stmt->execute([$factureId, $description, $quantite, $prix, round($quantite * $prix, 2)]);
+        $stmt->execute([$factureId, $description, $quantite, $prix, round((float) ($quantite * $prix), 2)]);
         $this->recalculerMontants($factureId);
     }
 
@@ -79,7 +79,7 @@ class FacturationService
         $stmt = $this->pdo->prepare("SELECT SUM(quantite * prix_unitaire) FROM facture_lignes WHERE facture_id = ?");
         $stmt->execute([$factureId]);
         $ht = (float)$stmt->fetchColumn();
-        $tva = round($ht * 0.20, 2);
+        $tva = round((float) ($ht * 0.20), 2);
         $ttc = $ht + $tva;
         $this->pdo->prepare("UPDATE factures SET montant_ht = ?, tva = ?, montant_ttc = ? WHERE id = ? AND etablissement_id = ?")->execute([$ht, $tva, $ttc, $factureId, $this->etabId()]);
     }
@@ -376,11 +376,11 @@ class FacturationService
                 'Numéro'       => $f['numero'],
                 'Parent'       => $f['parent_nom'],
                 'Type'         => self::typesFacture()[$f['type']] ?? $f['type'],
-                'Montant HT'   => number_format($f['montant_ht'], 2, ',', ' '),
-                'TVA'          => number_format($f['montant_tva'], 2, ',', ' '),
-                'Montant TTC'  => number_format($f['montant_ttc'], 2, ',', ' '),
-                'Payé'         => number_format($f['montant_paye'] ?? 0, 2, ',', ' '),
-                'Reste'        => number_format($f['montant_ttc'] - ($f['montant_paye'] ?? 0), 2, ',', ' '),
+                'Montant HT'   => number_format((float) ($f['montant_ht']), 2, ',', ' '),
+                'TVA'          => number_format((float) ($f['montant_tva']), 2, ',', ' '),
+                'Montant TTC'  => number_format((float) ($f['montant_ttc']), 2, ',', ' '),
+                'Payé'         => number_format((float) ($f['montant_paye'] ?? 0), 2, ',', ' '),
+                'Reste'        => number_format((float) ($f['montant_ttc'] - ($f['montant_paye'] ?? 0)), 2, ',', ' '),
                 'Statut'       => ucfirst(str_replace('_', ' ', $f['statut'])),
                 'Échéance'     => $f['date_echeance'] ? date('d/m/Y', strtotime($f['date_echeance'])) : '',
                 'Date création'=> $f['created_at'] ? date('d/m/Y', strtotime($f['created_at'])) : '',
@@ -441,7 +441,7 @@ class FacturationService
         $facture = $this->getFacture($factureId);
         if (!$facture) throw new \RuntimeException('Facture introuvable');
 
-        $montantParEcheance = round($facture['montant_ttc'] / $nbEcheances, 2);
+        $montantParEcheance = round((float) ($facture['montant_ttc'] / $nbEcheances), 2);
         $echeances = [];
 
         for ($i = 0; $i < $nbEcheances; $i++) {

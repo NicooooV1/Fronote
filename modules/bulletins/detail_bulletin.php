@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Bulletins — Détail d'un bulletin
  */
@@ -56,7 +57,7 @@ $avisLabels = BulletinService::avisLabels();
             <span class="text-muted"><?= htmlspecialchars($bulletin['periode_nom']) ?></span>
         </div>
         <div class="bulletin-summary">
-            <div class="summary-item primary"><span class="value"><?= $bulletin['moyenne_generale'] !== null ? number_format($bulletin['moyenne_generale'], 2) : '-' ?>/20</span><span class="label">Moyenne</span></div>
+            <div class="summary-item primary"><span class="value"><?= $bulletin['moyenne_generale'] !== null ? number_format((float) ($bulletin['moyenne_generale']), 2) : '-' ?>/20</span><span class="label">Moyenne</span></div>
             <div class="summary-item info"><span class="value"><?= $bulletin['rang'] ?? '-' ?></span><span class="label">Rang</span></div>
             <div class="summary-item warning"><span class="value"><?= $bulletin['nb_absences'] ?></span><span class="label">Absences</span></div>
             <div class="summary-item danger"><span class="value"><?= $bulletin['nb_retards'] ?></span><span class="label">Retards</span></div>
@@ -93,10 +94,10 @@ $avisLabels = BulletinService::avisLabels();
                             <?= htmlspecialchars($l['matiere_nom']) ?>
                         </td>
                         <td class="text-muted"><?= htmlspecialchars($l['professeur_nom']) ?></td>
-                        <td class="text-center fw-bold <?= ($l['moyenne_eleve'] ?? 0) < 10 ? 'text-danger' : 'text-success' ?>"><?= $l['moyenne_eleve'] !== null ? number_format($l['moyenne_eleve'], 2) : '-' ?></td>
-                        <td class="text-center"><?= $l['moyenne_classe'] !== null ? number_format($l['moyenne_classe'], 2) : '-' ?></td>
-                        <td class="text-center text-muted"><?= $l['moyenne_min'] !== null ? number_format($l['moyenne_min'], 2) : '-' ?></td>
-                        <td class="text-center text-muted"><?= $l['moyenne_max'] !== null ? number_format($l['moyenne_max'], 2) : '-' ?></td>
+                        <td class="text-center fw-bold <?= ($l['moyenne_eleve'] ?? 0) < 10 ? 'text-danger' : 'text-success' ?>"><?= $l['moyenne_eleve'] !== null ? number_format((float) ($l['moyenne_eleve']), 2) : '-' ?></td>
+                        <td class="text-center"><?= $l['moyenne_classe'] !== null ? number_format((float) ($l['moyenne_classe']), 2) : '-' ?></td>
+                        <td class="text-center text-muted"><?= $l['moyenne_min'] !== null ? number_format((float) ($l['moyenne_min']), 2) : '-' ?></td>
+                        <td class="text-center text-muted"><?= $l['moyenne_max'] !== null ? number_format((float) ($l['moyenne_max']), 2) : '-' ?></td>
                         <td class="text-center"><?= $l['coefficient'] ?></td>
                         <td class="appreciation-cell"><?= htmlspecialchars($l['appreciation'] ?? '-') ?></td>
                     </tr>

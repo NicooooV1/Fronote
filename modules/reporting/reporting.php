@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M22 – Reporting — Tableau de bord par classe
  */

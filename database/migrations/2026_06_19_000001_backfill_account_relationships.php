@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Backfill de la table `account_relationships` (modèle de relations unifié) à partir
  * des liens hérités, de façon IDEMPOTENTE (INSERT IGNORE sur la clé unique uk_rel) :

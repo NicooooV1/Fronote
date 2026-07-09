@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M23 – RGPD — Anonymisation d'un utilisateur (admin)
  * Implémente le droit à l'oubli (Art. 17 RGPD)

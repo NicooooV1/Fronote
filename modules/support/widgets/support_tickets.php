@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 $tickets = $data['tickets'] ?? [];
 $count = $data['count'] ?? 0;
 $prioColors = ['urgente' => '#e53e3e', 'haute' => '#ed8936', 'normale' => '#667eea', 'basse' => '#a0aec0'];

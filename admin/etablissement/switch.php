@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Switch active establishment (super-admin or multi-etab admin).
  * POST /admin/etablissement/switch.php  (champs: id, CSRF token)

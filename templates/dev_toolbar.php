@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Toolbar developpeur — visible uniquement en env non-production.
  * Inclus automatiquement par shared_footer.php.

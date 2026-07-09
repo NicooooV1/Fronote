@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Vue admin des conversations — navigation, participants, statistiques
  */
@@ -54,7 +55,7 @@ $whereSQL = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
 
 $total = $pdo->prepare("SELECT COUNT(*) FROM conversations c $whereSQL");
 $total->execute($params); $totalConvs = $total->fetchColumn();
-$totalPages = max(1, ceil($totalConvs / $perPage));
+$totalPages = max(1, ceil((float) ($totalConvs / $perPage)));
 
 $sql = "SELECT c.*,
         (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id AND m.is_deleted = 0) AS msg_count,

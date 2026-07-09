@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Annonces admin — diffusion de messages à tous les utilisateurs ou par profil/classe
  */

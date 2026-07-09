@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M15 – Trombinoscope — Export CSV/PDF
  */
