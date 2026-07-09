@@ -21,7 +21,7 @@ $dateFin   = date('Y-m-d', strtotime('+3 months'));
 // Fetch events visible to the user
 $sql = "
     SELECT e.* FROM evenements e
-    WHERE e.date_debut >= ? AND e.date_debut <= ?
+    WHERE e.etablissement_id = ? AND e.date_debut >= ? AND e.date_debut <= ?
     AND (
         e.visibilite = 'global'
         OR (e.visibilite = 'classe' AND e.classe_id IN (
@@ -33,7 +33,7 @@ $sql = "
     ORDER BY e.date_debut
 ";
 $stmt = $pdo->prepare($sql);
-$stmt->execute([$dateDebut, $dateFin, $userId, $role, $userId, $role, $userId]);
+$stmt->execute([\API\Core\EstablishmentContext::id(), $dateDebut, $dateFin, $userId, $role, $userId, $role, $userId]);
 $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 header('Content-Type: text/calendar; charset=utf-8');

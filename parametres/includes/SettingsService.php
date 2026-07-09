@@ -89,9 +89,14 @@ class SettingsService {
         // Durcissement : lecture directe des images autorisée (affichage <img>), exécution PHP interdite.
         if (!is_file($uploadDir . '.htaccess')) {
             file_put_contents($uploadDir . '.htaccess',
-                "<FilesMatch \"\\.(jpe?g|png|gif|webp)$\">\n  Require all granted\n  Allow from all\n</FilesMatch>\n"
+                "Options -ExecCGI -Indexes\n"
+                . "<FilesMatch \"(?i)\\.(jpe?g|png|gif|webp)$\">\n  Require all granted\n</FilesMatch>\n"
+                . "<FilesMatch \"(?i)\\.(php|phtml|php3|php4|php5|php7|phps|phar|cgi|pl|py|sh|bash|htaccess)$\">\n"
+                . "  <IfModule mod_authz_core.c>\n    Require all denied\n  </IfModule>\n"
+                . "  <IfModule !mod_authz_core.c>\n    Order allow,deny\n    Deny from all\n  </IfModule>\n</FilesMatch>\n"
                 . "<IfModule mod_php.c>\n  php_flag engine off\n</IfModule>\n"
-                . "<FilesMatch \"\\.(php|phtml|phar|cgi|pl|py|sh)$\">\n  Require all denied\n</FilesMatch>\n");
+                . "<IfModule mod_php7.c>\n  php_flag engine off\n</IfModule>\n"
+                . "<IfModule mod_php8.c>\n  php_flag engine off\n</IfModule>\n");
         }
 
         if ($file['size'] > 2 * 1024 * 1024) {

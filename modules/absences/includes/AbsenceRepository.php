@@ -353,10 +353,11 @@ class AbsenceRepository
             if (empty($data[$field])) return false;
         }
 
-        $sql = "INSERT INTO retards (id_eleve, date_retard, duree_minutes, motif, justifie, commentaire, signale_par)
-                VALUES (?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO retards (etablissement_id, id_eleve, date_retard, duree_minutes, motif, justifie, commentaire, signale_par)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->pdo->prepare($sql);
         $success = $stmt->execute([
+            \API\Core\EstablishmentContext::id(),
             $data['id_eleve'],
             $data['date_retard'],
             $data['duree_minutes'],
@@ -419,10 +420,11 @@ class AbsenceRepository
             if (empty($data[$field])) return false;
         }
 
-        $sql = "INSERT INTO justificatifs (id_eleve, date_soumission, date_debut_absence, date_fin_absence, type, fichier, motif, commentaire)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO justificatifs (etablissement_id, id_eleve, date_soumission, date_debut_absence, date_fin_absence, type, fichier, motif, commentaire)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->pdo->prepare($sql);
         $success = $stmt->execute([
+            \API\Core\EstablishmentContext::id(),
             $data['id_eleve'],
             $data['date_soumission'],
             $data['date_debut_absence'],
