@@ -179,6 +179,8 @@ $_loginDir = $translator->isRtl() ? 'rtl' : 'ltr';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars(__('login.title')) ?></title>
+    <link rel="icon" href="../favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" href="../assets/icons/icon-192.png">
     <link rel="stylesheet" href="assets/css/login.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script nonce="<?= $cspNonce ?>">

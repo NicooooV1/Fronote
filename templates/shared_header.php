@@ -227,6 +227,8 @@ try {
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <link rel="manifest" href="<?= $rootPrefix ?>manifest.webmanifest">
+    <link rel="icon" href="<?= $rootPrefix ?>favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" href="<?= $rootPrefix ?>assets/icons/icon-192.png">
     <link rel="apple-touch-icon" href="<?= $rootPrefix ?>assets/icons/icon-192.png">
     <title><?= htmlspecialchars($pageTitle) ?> - FRONOTE</title>
     <?php
