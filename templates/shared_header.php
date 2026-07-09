@@ -148,7 +148,7 @@ if (empty($_SESSION['csrf_token'])) {
 }
 
 // ─── Nonce CSP ───────────────────────────────────────────────────────────────
-$_hdr_nonce = base64_encode(random_bytes(16));
+$_hdr_nonce = csp_nonce() ?: base64_encode(random_bytes(16));
 
 // ─── WebSocket global config ─────────────────────────────────────────────────
 // Génère le JWT pour le client WS et injecte window.FRONOTE_WS dans le <head>.

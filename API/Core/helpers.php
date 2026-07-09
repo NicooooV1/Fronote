@@ -92,3 +92,13 @@ if (!function_exists('env')) {
         return $value;
     }
 }
+if (!function_exists('csp_nonce')) {
+    /**
+     * Nonce CSP de la requête courante (pour les attributs nonce="" des <script>/<style>).
+     * Retourne '' si le bootstrap n'a pas encore défini CSP_NONCE.
+     */
+    function csp_nonce(): string
+    {
+        return defined('CSP_NONCE') ? CSP_NONCE : '';
+    }
+}

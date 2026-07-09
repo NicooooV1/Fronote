@@ -244,6 +244,13 @@ if (!function_exists('request_is_https')) {
 	}
 }
 
+// Nonce CSP unique par requête, exposé globalement (constante + helper csp_nonce())
+// pour que TOUTE page/template puisse noncer ses <script> — condition du retrait de
+// 'unsafe-inline' de script-src.
+if (!defined('CSP_NONCE')) {
+	define('CSP_NONCE', base64_encode(random_bytes(16)));
+}
+
 // En-têtes de sécurité de base émis sur TOUS les points d'entrée (et pas seulement les
 // pages HTML incluant shared_header). La CSP dynamique à nonce reste gérée par shared_header.
 if (!headers_sent()) {
