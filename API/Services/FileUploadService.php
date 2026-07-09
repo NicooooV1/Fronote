@@ -213,7 +213,7 @@ class FileUploadService
         $realPath = realpath($fullPath);
         $realBase = realpath($this->baseDir);
 
-        if (!$realPath || !$realBase || strpos($realPath, $realBase) !== 0) {
+        if (!$realPath || !$realBase || strpos($realPath, $realBase . DIRECTORY_SEPARATOR) !== 0) {
             return false;
         }
 
@@ -246,7 +246,7 @@ class FileUploadService
         $real = realpath($full);
         $base = realpath($this->baseDir);
 
-        if (!$real || !$base || strpos($real, $base) !== 0 || !is_file($real)) {
+        if (!$real || !$base || strpos($real, $base . DIRECTORY_SEPARATOR) !== 0 || !is_file($real)) {
             http_response_code(404);
             exit('Fichier introuvable');
         }

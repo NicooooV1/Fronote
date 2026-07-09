@@ -186,25 +186,11 @@ function fronote_rrmdir(string $dir): bool
  */
 function fronote_alert(string $subject, string $body): void
 {
-	error_log('[fronote][ALERT][CRITICAL] ' . $subject . ' — ' . $body);
-	$webhook = getenv('ALERT_WEBHOOK') ?: '';
-	if ($webhook === '' || !filter_var($webhook, FILTER_VALIDATE_URL)) {
+	// Délègue à la brique unique d'alerting (log CRITICAL + webhook + anti-flood).
+	if (class_exists(\API\Core\Alerting::class)) {
+		\API\Core\Alerting::notify($subject, $body);
 		return;
 	}
-	$host = gethostname() ?: 'fronote';
-	$payload = json_encode(['text' => "[Fronote:{$host}] {$subject}\n{$body}"]);
-	try {
-		$ch = curl_init($webhook);
-		curl_setopt_array($ch, [
-			CURLOPT_POST => true,
-			CURLOPT_POSTFIELDS => $payload,
-			CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-			CURLOPT_TIMEOUT => 5,
-			CURLOPT_RETURNTRANSFER => true,
-		]);
-		curl_exec($ch);
-		curl_close($ch);
-	} catch (\Throwable $e) {
-		error_log('[fronote][ALERT] webhook failed: ' . $e->getMessage());
-	}
+	// Repli si l'autoloader n'est pas chargé (ne devrait pas arriver via bootstrap).
+	error_log('[fronote][ALERT][CRITICAL] ' . $subject . ' — ' . $body);
 }

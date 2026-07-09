@@ -44,11 +44,21 @@ let __warnedNoAuthz = false;
 /** Vérifie côté PHP que le socket a le droit de rejoindre (room_type, id). */
 async function authorizeRoom(socket, type, id) {
     if (!AUTHORIZE_URL) {
+        // Fail-CLOSED en production : sans endpoint d'autorisation configuré, on
+        // refuse la jonction (anti-IDOR non contournable). En dev seulement, on
+        // laisse passer avec un avertissement pour ne pas bloquer le développement.
+        if (process.env.NODE_ENV === 'production') {
+            if (!__warnedNoAuthz) {
+                console.error('[FATAL-ISH] WS_PHP_AUTHORIZE_URL non défini en production — jonctions de rooms REFUSÉES.');
+                __warnedNoAuthz = true;
+            }
+            return false;
+        }
         if (!__warnedNoAuthz) {
-            console.warn('[WARN] WS_PHP_AUTHORIZE_URL non défini — jonctions de rooms non vérifiées (à configurer en production).');
+            console.warn('[WARN] WS_PHP_AUTHORIZE_URL non défini (dev) — jonctions de rooms non vérifiées.');
             __warnedNoAuthz = true;
         }
-        return true; // compat : pas d'autorisation configurée
+        return true;
     }
     try {
         const controller = new AbortController();

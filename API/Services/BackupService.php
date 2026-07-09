@@ -84,6 +84,21 @@ class BackupService
 			}
 		}
 
+		// Vues — exportées APRÈS les tables de base dont elles dépendent. On retire
+		// la clause DEFINER (non portable entre serveurs/users) et on force
+		// CREATE OR REPLACE pour une restauration idempotente.
+		foreach ($this->getViews() as $view) {
+			$row = $this->pdo->query("SHOW CREATE VIEW `{$view}`")->fetch(\PDO::FETCH_ASSOC);
+			$createView = $row['Create View'] ?? '';
+			if ($createView === '') {
+				continue;
+			}
+			$createView = preg_replace('/\sDEFINER=`[^`]*`@`[^`]*`/i', '', $createView);
+			$createView = preg_replace('/^CREATE /i', 'CREATE OR REPLACE ', $createView, 1);
+			$sql .= "DROP VIEW IF EXISTS `{$view}`;\n";
+			$sql .= $createView . ";\n\n";
+		}
+
 		$sql .= "SET FOREIGN_KEY_CHECKS = 1;\n";
 
 		// Compression gzip si disponible.
@@ -277,8 +292,18 @@ class BackupService
 
 	private function getTables(): array
 	{
-		$stmt = $this->pdo->query('SHOW TABLES');
-		return $stmt->fetchAll(\PDO::FETCH_COLUMN);
+		// UNIQUEMENT les tables de base : les vues sont exportées séparément APRÈS
+		// (elles dépendent des tables et n'ont pas de données propres). Sinon un
+		// SHOW CREATE TABLE sur une vue renvoie une clé « Create View » → CREATE vide
+		// à l'export → « table doesn't exist » à la restauration.
+		$stmt = $this->pdo->query("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'");
+		return array_map(static fn($r) => array_values($r)[0], $stmt->fetchAll(\PDO::FETCH_ASSOC));
+	}
+
+	private function getViews(): array
+	{
+		$stmt = $this->pdo->query("SHOW FULL TABLES WHERE Table_type = 'VIEW'");
+		return array_map(static fn($r) => array_values($r)[0], $stmt->fetchAll(\PDO::FETCH_ASSOC));
 	}
 
 	private function addDirectoryToZip(\ZipArchive $zip, string $dir, string $prefix): void
