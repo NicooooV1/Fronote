@@ -410,6 +410,26 @@ class AuditRgpdService
                 "SELECT date_passage, motif, symptomes, soins_prodigues, orientation
                  FROM passages_infirmerie WHERE eleve_id = ? ORDER BY date_passage DESC",
                 [$userId]);
+
+            // Traitements infirmerie (Art.9)
+            $data['traitements_infirmerie'] = $this->collecte('traitements_infirmerie',
+                "SELECT * FROM infirmerie_traitements WHERE eleve_id = ? ORDER BY id DESC", [$userId]);
+
+            // Diplômes obtenus
+            $data['diplomes'] = $this->collecte('diplomes',
+                "SELECT * FROM diplomes WHERE eleve_id = ? ORDER BY date_obtention DESC", [$userId]);
+
+            // Accessibilité / handicap (Art.9) : aménagements, dossier MDPH, réunions ESS
+            $data['accessibilite_amenagements'] = $this->collecte('accessibilite_amenagements',
+                "SELECT * FROM accessibilite_amenagements WHERE eleve_id = ?", [$userId]);
+            $data['accessibilite_mdph'] = $this->collecte('accessibilite_mdph',
+                "SELECT * FROM accessibilite_mdph WHERE eleve_id = ?", [$userId]);
+            $data['accessibilite_ess'] = $this->collecte('accessibilite_ess',
+                "SELECT * FROM accessibilite_ess WHERE eleve_id = ?", [$userId]);
+
+            // Garderie / périscolaire
+            $data['garderie_inscriptions'] = $this->collecte('garderie_inscriptions',
+                "SELECT * FROM garderie_inscriptions WHERE eleve_id = ? ORDER BY id DESC", [$userId]);
         }
 
         if ($userType === 'parent') {
@@ -595,6 +615,33 @@ class AuditRgpdService
                 // avalé — sinon on retourne success=true en laissant des données en clair.
                 error_log('[rgpd anonymisation] échec messages user=' . $userId . ' : ' . $e->getMessage());
                 $actions[] = "ÉCHEC anonymisation messages : " . $e->getMessage();
+            }
+
+            // 3b. Effacement du DOSSIER MÉDICAL / MDPH (Art.9 + Art.17) pour un élève :
+            // le droit à l'oubli doit SUPPRIMER les données de santé, pas seulement
+            // anonymiser l'identité (l'ancienne version les laissait intactes). Ordre
+            // FK-safe (enfants d'abord). Chaque échec est tracé et remonté (fail-safe).
+            if ($userType === 'eleve') {
+                $healthDeletes = [
+                    "DELETE FROM infirmerie_prises WHERE traitement_id IN (SELECT id FROM infirmerie_traitements WHERE eleve_id = ?)",
+                    "DELETE FROM infirmerie_traitements WHERE eleve_id = ?",
+                    "DELETE FROM passages_infirmerie WHERE eleve_id = ?",
+                    "DELETE FROM fiches_sante WHERE eleve_id = ?",
+                    "DELETE FROM accessibilite_amenagements WHERE eleve_id = ?",
+                    "DELETE FROM accessibilite_mdph WHERE eleve_id = ?",
+                    "DELETE FROM accessibilite_ess WHERE eleve_id = ?",
+                ];
+                $healthOk = true;
+                foreach ($healthDeletes as $sql) {
+                    try {
+                        $pdo->prepare($sql)->execute([$userId]);
+                    } catch (\Throwable $e) {
+                        $healthOk = false;
+                        error_log('[rgpd anonymisation] échec effacement santé user=' . $userId . ' : ' . $e->getMessage());
+                        $actions[] = "ÉCHEC effacement santé : " . $e->getMessage();
+                    }
+                }
+                $actions[] = $healthOk ? "Dossier médical / MDPH supprimé (Art.9/Art.17)" : "Effacement santé PARTIEL — voir échecs";
             }
 
             // 4. Supprimer sessions
