@@ -29,8 +29,12 @@ if (isset($doc['etablissement_id'])) {
     }
 }
 
-$filepath = __DIR__ . '/' . $doc['fichier_chemin'];
-if (!file_exists($filepath)) {
+// Confinement anti path-traversal : le chemin (issu de la BDD) doit rester sous le module.
+$baseDir  = realpath(__DIR__);
+$filepath = realpath(__DIR__ . '/' . $doc['fichier_chemin']);
+if ($filepath === false || $baseDir === false
+    || strpos($filepath, $baseDir . DIRECTORY_SEPARATOR) !== 0
+    || !is_file($filepath)) {
     http_response_code(404);
     die('Fichier introuvable sur le serveur.');
 }

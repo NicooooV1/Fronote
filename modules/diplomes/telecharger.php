@@ -18,11 +18,19 @@ if (!isAdmin() && !isPersonnelVS()) {
     }
 }
 
-$file = __DIR__ . '/uploads/' . $diplome['fichier_path'];
-if (!file_exists($file)) { redirect('/modules/diplomes/diplomes.php'); }
+// Confinement anti path-traversal : le fichier doit se résoudre SOUS uploads/.
+$baseDir = realpath(__DIR__ . '/uploads');
+$real    = realpath(__DIR__ . '/uploads/' . $diplome['fichier_path']);
+if ($real === false || $baseDir === false
+    || strpos($real, $baseDir . DIRECTORY_SEPARATOR) !== 0
+    || !is_file($real)) {
+    redirect('/modules/diplomes/diplomes.php');
+}
 
+$downloadName = str_replace(['"', "\r", "\n"], '', basename($diplome['fichier_path']));
 header('Content-Type: application/octet-stream');
-header('Content-Disposition: attachment; filename="' . basename($diplome['fichier_path']) . '"');
-header('Content-Length: ' . filesize($file));
-readfile($file);
+header('X-Content-Type-Options: nosniff');
+header('Content-Disposition: attachment; filename="' . $downloadName . '"');
+header('Content-Length: ' . filesize($real));
+readfile($real);
 exit;
