@@ -33,7 +33,7 @@ $options_visibilite = EventRepository::getVisibilityForRole($user_role);
 // Classes depuis la BDD (remplace parsing établissement.json ~55 lignes)
 $classes = [];
 try {
-    $stmt = $pdo->query("SELECT DISTINCT classe FROM eleves WHERE classe IS NOT NULL AND classe != '' ORDER BY classe");
+    $stmt = $pdo->query("SELECT DISTINCT classe FROM eleves WHERE classe IS NOT NULL AND classe != '' AND etablissement_id = " . (int)\API\Core\EstablishmentContext::id() . " ORDER BY classe");
     $classes = $stmt->fetchAll(PDO::FETCH_COLUMN);
 } catch (PDOException $e) {
     error_log("Erreur chargement classes: " . $e->getMessage());

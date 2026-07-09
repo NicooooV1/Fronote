@@ -1,1 +1,36 @@
-Deny from all
+# Répertoire d'uploads — AUCUN accès web direct. Les fichiers sont servis
+# uniquement via les endpoints PHP contrôlés (auth + permission + confinement).
+
+# Apache 2.4
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+# Repli Apache 2.2
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>
+
+# Interdire l'exécution de tout script uploadé (défense en profondeur : les noms
+# de fichiers sont déjà aléatoires et l'extension allowlistée, mais on verrouille).
+<FilesMatch "(?i)\.(php|phtml|php3|php4|php5|php7|phps|phar|cgi|pl|py|sh|bash|htaccess)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Désactiver le moteur PHP dans ce répertoire.
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>
+Options -ExecCGI -Indexes

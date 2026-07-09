@@ -34,7 +34,7 @@ $chambres = $internatService->getChambres();
 // Charger élèves pour le formulaire
 $eleves = [];
 if ($isGestionnaire) {
-    $eleves = $pdo->query("SELECT id, nom, prenom, classe FROM eleves WHERE actif = 1 ORDER BY nom, prenom")->fetchAll(PDO::FETCH_ASSOC);
+    $eleves = $pdo->query("SELECT id, nom, prenom, classe FROM eleves WHERE actif = 1 AND etablissement_id = " . (int)\API\Core\EstablishmentContext::id() . " ORDER BY nom, prenom")->fetchAll(PDO::FETCH_ASSOC);
 }
 ?>
 

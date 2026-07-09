@@ -36,7 +36,7 @@ function getClassesList() {
     
     // Méthode 1: Utiliser directement la BDD
     global $pdo;
-    $query = $pdo->query("SELECT DISTINCT classe FROM eleves ORDER BY classe");
+    $query = $pdo->query("SELECT DISTINCT classe FROM eleves WHERE etablissement_id = " . (int)\API\Core\EstablishmentContext::id() . " ORDER BY classe");
     if ($query) {
         $classes = $query->fetchAll(PDO::FETCH_COLUMN);
     }

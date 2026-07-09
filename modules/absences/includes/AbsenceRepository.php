@@ -256,10 +256,11 @@ class AbsenceRepository
             if (empty($data[$field])) return false;
         }
 
-        $sql = "INSERT INTO absences (id_eleve, date_debut, date_fin, type_absence, motif, justifie, commentaire, signale_par)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO absences (etablissement_id, id_eleve, date_debut, date_fin, type_absence, motif, justifie, commentaire, signale_par)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->pdo->prepare($sql);
         $success = $stmt->execute([
+            \API\Core\EstablishmentContext::id(),
             $data['id_eleve'],
             $data['date_debut'],
             $data['date_fin'],

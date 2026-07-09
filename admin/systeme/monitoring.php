@@ -96,8 +96,9 @@ include __DIR__ . '/../includes/header.php';
     <!-- Health checks detail -->
     <?php
     $healthRows = [];
-    foreach ($checks as $name => $check) {
-        if ($name === 'healthy') continue;
+    // runAll() renvoie ['healthy'=>bool, 'checks'=>[service=>...], 'checked_at'=>str] :
+    // on itère la sous-clé 'checks' (une ligne par service), pas le wrapper.
+    foreach (($checks['checks'] ?? []) as $name => $check) {
         if (!is_array($check)) continue;
         $statusKey = $check['status'] ?? 'error';
         $status = match ($statusKey) {

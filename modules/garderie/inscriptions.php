@@ -50,7 +50,7 @@ $inscriptions = $garderieService->getInscriptions($creneauId ?: null);
 // Élèves pour formulaire
 $eleves = [];
 if ($isGestionnaire) {
-    $eleves = $pdo->query("SELECT id, nom, prenom, classe FROM eleves WHERE actif = 1 ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
+    $eleves = $pdo->query("SELECT id, nom, prenom, classe FROM eleves WHERE actif = 1 AND etablissement_id = " . (int)\API\Core\EstablishmentContext::id() . " ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
 } elseif (isParent()) {
     $stmtE = $pdo->prepare("SELECT e.id, e.nom, e.prenom, e.classe FROM parent_eleve pe JOIN eleves e ON pe.id_eleve = e.id WHERE pe.id_parent = ?");
     $stmtE->execute([$user['id']]);

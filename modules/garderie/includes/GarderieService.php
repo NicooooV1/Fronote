@@ -52,11 +52,11 @@ class GarderieService
     public function inscrire(int $creneauId, int $eleveId, string $jour, string $dateDebut, ?string $par = null): int
     {
         $stmt = $this->pdo->prepare(
-            "INSERT INTO garderie_inscriptions (creneau_id, eleve_id, jour, date_debut, inscrit_par)
-             VALUES (?, ?, ?, ?, ?)
+            "INSERT INTO garderie_inscriptions (etablissement_id, creneau_id, eleve_id, jour, date_debut, inscrit_par)
+             VALUES (?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE statut = 'actif', date_debut = VALUES(date_debut)"
         );
-        $stmt->execute([$creneauId, $eleveId, $jour, $dateDebut, $par]);
+        $stmt->execute([\API\Core\EstablishmentContext::id(), $creneauId, $eleveId, $jour, $dateDebut, $par]);
         return (int) $this->pdo->lastInsertId();
     }
 
