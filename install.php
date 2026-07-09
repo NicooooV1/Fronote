@@ -19,6 +19,38 @@ ini_set('display_errors', $installDebug ? '1' : '0');
 error_reporting($installDebug ? E_ALL : 0);
 set_time_limit(300);
 
+// ─── i18n de l'installeur (autonome : AVANT tout écran, y compris les gardes) ──
+// iT(clé, défaut) renvoie la traduction de la locale courante, sinon le DÉFAUT
+// FRANÇAIS fourni : une clé manquante ne casse jamais l'installeur.
+$installLangs  = ['fr', 'en', 'es', 'de', 'nl', 'ar', 'ru', 'th'];
+$installLocale = 'fr';
+if (isset($_GET['lang']) && in_array($_GET['lang'], $installLangs, true)) {
+    $installLocale = $_GET['lang'];
+    if (!headers_sent()) {
+        setcookie('install_lang', $installLocale, ['expires' => time() + 3600, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax']);
+    }
+} elseif (isset($_COOKIE['install_lang']) && in_array($_COOKIE['install_lang'], $installLangs, true)) {
+    $installLocale = $_COOKIE['install_lang'];
+} else {
+    $al = strtolower($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '');
+    foreach ($installLangs as $lg) { if ($lg !== 'fr' && str_starts_with($al, $lg)) { $installLocale = $lg; break; } }
+}
+$installDir_rtl = ($installLocale === 'ar') ? 'rtl' : 'ltr';
+$GLOBALS['__installT'] = [];
+$GLOBALS['__installTfr'] = [];
+$__itFile = __DIR__ . '/lang/' . $installLocale . '/install.json';
+if (is_file($__itFile)) { $GLOBALS['__installT'] = json_decode((string) file_get_contents($__itFile), true) ?: []; }
+if ($installLocale !== 'fr') {
+    $__frFile = __DIR__ . '/lang/fr/install.json';
+    if (is_file($__frFile)) { $GLOBALS['__installTfr'] = json_decode((string) file_get_contents($__frFile), true) ?: []; }
+}
+if (!function_exists('iT')) {
+    /** Traduction installeur : clé → texte localisé, repli sur le défaut français fourni. */
+    function iT(string $key, string $default = ''): string {
+        return $GLOBALS['__installT'][$key] ?? $GLOBALS['__installTfr'][$key] ?? $default;
+    }
+}
+
 // ─── Protection : déjà installé ? ───────────────────────────────────────────
 $installDir = __DIR__;
 $lockFile   = $installDir . '/install.lock';
@@ -29,18 +61,18 @@ $recoveryWarning = '';
 if (file_exists($lockFile) && $envIsUsable) {
     http_response_code(403);
     die('<div style="font-family:Arial;max-width:600px;margin:80px auto;background:#f8d7da;color:#721c24;padding:30px;border-radius:8px;text-align:center;">
-        <h2>🔒 Installation déjà effectuée</h2>
-        <p>Supprimez <code>install.lock</code> pour relancer l\'installateur.</p>
+        <h2>🔒 ' . htmlspecialchars(iT('guard.already_installed', 'Installation déjà effectuée')) . '</h2>
+        <p>' . iT('guard.remove_lock', 'Supprimez <code>install.lock</code> pour relancer l\'installateur.') . '</p>
     </div>');
 }
 
 if (file_exists($lockFile) && !$envIsUsable) {
-    $recoveryWarning = 'Le fichier install.lock existe, mais .env est introuvable ou illisible. L\'installateur reste accessible pour reparer la configuration.';
+    $recoveryWarning = iT('guard.recovery_warning', 'Le fichier install.lock existe, mais .env est introuvable ou illisible. L\'installateur reste accessible pour reparer la configuration.');
 }
 
 // ─── Vérification version PHP ────────────────────────────────────────────────
 if (version_compare(PHP_VERSION, '8.0.0', '<')) {
-    die('PHP 8.0+ requis. Version actuelle : ' . PHP_VERSION);
+    die(htmlspecialchars(iT('guard.php_required', 'PHP 8.0+ requis. Version actuelle : ')) . PHP_VERSION);
 }
 
 // ─── Session ─────────────────────────────────────────────────────────────────
@@ -83,7 +115,7 @@ if (file_exists($envFilePath) && is_readable($envFilePath)) {
 
 if (!in_array($clientIP, $allowedIPs, true) && !isLocalIP($clientIP)) {
     http_response_code(403);
-    die('Accès refusé depuis : ' . htmlspecialchars($clientIP));
+    die(iT('error.access_denied', 'Accès refusé depuis : ') . htmlspecialchars($clientIP));
 }
 
 // ─── CSRF ────────────────────────────────────────────────────────────────────
@@ -95,7 +127,7 @@ $csrfToken = $_SESSION['_csrf'];
 
 function checkCsrf(): void {
     if (($_POST['_csrf'] ?? '') !== ($_SESSION['_csrf'] ?? '')) {
-        throw new RuntimeException('Jeton CSRF invalide — rechargez la page.');
+        throw new RuntimeException(iT('error.csrf', 'Jeton CSRF invalide — rechargez la page.'));
     }
 }
 
@@ -155,11 +187,11 @@ $success = '';
 
 function validatePasswordStrength(string $pw): array {
     $e = [];
-    if (strlen($pw) < 12)                  $e[] = 'Au moins 12 caractères';
-    if (!preg_match('/[A-Z]/', $pw))        $e[] = 'Au moins une majuscule';
-    if (!preg_match('/[a-z]/', $pw))        $e[] = 'Au moins une minuscule';
-    if (!preg_match('/[0-9]/', $pw))        $e[] = 'Au moins un chiffre';
-    if (!preg_match('/[^A-Za-z0-9]/', $pw)) $e[] = 'Au moins un caractère spécial';
+    if (strlen($pw) < 12)                  $e[] = iT('admin.pw_req_length', 'Au moins 12 caractères');
+    if (!preg_match('/[A-Z]/', $pw))        $e[] = iT('admin.pw_req_uppercase', 'Au moins une majuscule');
+    if (!preg_match('/[a-z]/', $pw))        $e[] = iT('admin.pw_req_lowercase', 'Au moins une minuscule');
+    if (!preg_match('/[0-9]/', $pw))        $e[] = iT('admin.pw_req_digit', 'Au moins un chiffre');
+    if (!preg_match('/[^A-Za-z0-9]/', $pw)) $e[] = iT('admin.pw_req_special', 'Au moins un caractère spécial');
     return $e;
 }
 
@@ -256,11 +288,11 @@ function splitSqlStatements(string $sql): array {
 
 function ensureDir(string $path): array {
     if (!is_dir($path) && !@mkdir($path, 0755, true)) {
-        return ['ok' => false, 'msg' => 'Impossible de créer'];
+        return ['ok' => false, 'msg' => iT('prereq.dir_cannot_create', 'Impossible de créer')];
     }
     $t = $path . '/.probe_' . uniqid();
     if (@file_put_contents($t, 'x') === false) {
-        return ['ok' => false, 'msg' => 'Non inscriptible'];
+        return ['ok' => false, 'msg' => iT('prereq.dir_not_writable', 'Non inscriptible')];
     }
     @unlink($t);
     return ['ok' => true, 'msg' => 'OK'];
@@ -361,18 +393,18 @@ function writeEnvFile(string $dir, array $c): bool {
     if (!is_resource($fh)) {
         $err = error_get_last();
         $detail = is_array($err) && !empty($err['message']) ? $err['message'] : 'cause inconnue';
-        throw new RuntimeException("Impossible d'ouvrir {$tmpPath} en écriture : {$detail}. Vérifiez que le répertoire est accessible en écriture par l'utilisateur du serveur web.");
+        throw new RuntimeException(strtr(iT('error.env_open', "Impossible d'ouvrir :path en écriture : :detail. Vérifiez que le répertoire est accessible en écriture par l'utilisateur du serveur web."), [':path' => $tmpPath, ':detail' => $detail]));
     }
     $written = fwrite($fh, $content);
     if ($written === false) {
         fclose($fh);
         @unlink($tmpPath);
-        throw new RuntimeException("Échec d'écriture sur {$tmpPath}.");
+        throw new RuntimeException(iT('error.write_fail_on', "Échec d'écriture sur ") . $tmpPath . ".");
     }
     if ($written < 10) {
         fclose($fh);
         @unlink($tmpPath);
-        throw new RuntimeException("Le fichier .env est tronqué après écriture ({$written} octets).");
+        throw new RuntimeException(strtr(iT('error.env_truncated', "Le fichier .env est tronqué après écriture (:n octets)."), [':n' => $written]));
     }
     @fflush($fh);
     if (function_exists('fdatasync')) { @fdatasync($fh); } else { @fsync($fh); }
@@ -382,7 +414,7 @@ function writeEnvFile(string $dir, array $c): bool {
         $err = error_get_last();
         $detail = is_array($err) && !empty($err['message']) ? $err['message'] : 'cause inconnue';
         @unlink($tmpPath);
-        throw new RuntimeException("Impossible de renommer {$tmpPath} en {$path} : {$detail}.");
+        throw new RuntimeException(strtr(iT('error.env_rename', "Impossible de renommer :tmp en :path : :detail."), [':tmp' => $tmpPath, ':path' => $path, ':detail' => $detail]));
     }
     return true;
 }
@@ -400,7 +432,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Extensions strictement requises (échec dur si absentes).
             $exts = ['pdo', 'pdo_mysql', 'json', 'mbstring', 'session', 'sodium', 'zip', 'fileinfo'];
             foreach ($exts as $e) {
-                if (!extension_loaded($e)) throw new RuntimeException("Extension PHP manquante : {$e}");
+                if (!extension_loaded($e)) throw new RuntimeException(iT('prereq.ext_missing', "Extension PHP manquante : ") . $e);
             }
             // Extensions recommandées (i18n, traitement image, HTTP sortant) — l'absence
             // dégrade certaines fonctionnalités (marketplace, avatars, traductions).
@@ -420,12 +452,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ];
             foreach ($dirs as $d) {
                 $r = ensureDir($installDir . '/' . $d);
-                if (!$r['ok']) throw new RuntimeException("Répertoire {$d} : {$r['msg']}");
+                if (!$r['ok']) throw new RuntimeException(strtr(iT('prereq.dir_error', "Répertoire :dir : :msg"), [':dir' => $d, ':msg' => $r['msg']]));
             }
             $files = ['API/bootstrap.php', 'API/core.php', 'pronote.sql'];
             foreach ($files as $f) {
                 if (!file_exists($installDir . '/' . $f)) {
-                    throw new RuntimeException("Fichier requis manquant : {$f}");
+                    throw new RuntimeException(iT('prereq.file_missing', "Fichier requis manquant : ") . $f);
                 }
             }
             $inst['step'] = 2;
@@ -441,8 +473,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $dbName    = trim($_POST['db_name'] ?? '');
             $dbCharset = trim($_POST['db_charset'] ?? 'utf8mb4');
 
-            if ($dbUser === '') throw new RuntimeException("L'utilisateur MySQL est requis.");
-            if ($dbName === '') throw new RuntimeException("Le nom de la base de données est requis.");
+            if ($dbUser === '') throw new RuntimeException(iT('db.user_required', "L'utilisateur MySQL est requis."));
+            if ($dbName === '') throw new RuntimeException(iT('db.name_required', "Le nom de la base de données est requis."));
 
             // Forcer TCP/IP (localhost → 127.0.0.1)
             $dbHostTcp = (strtolower($dbHost) === 'localhost') ? '127.0.0.1' : $dbHost;
@@ -462,24 +494,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (strpos($msg, '1045') !== false || stripos($msg, 'Access denied') !== false) {
                     $seen = $serverIP;
                     if (preg_match("/'[^']*'@'([^']+)'/", $msg, $m)) $seen = $m[1];
-                    $hint = "\n\nL'utilisateur MySQL n'a pas le droit de se connecter depuis le serveur web ({$seen})."
-                          . "\n→ Sur le serveur MySQL, exécutez :"
+                    $hint = "\n\n" . strtr(iT('error.db_access_denied', "L'utilisateur MySQL n'a pas le droit de se connecter depuis le serveur web (:host)."), [':host' => $seen])
+                          . "\n" . iT('error.db_run_on_server', "→ Sur le serveur MySQL, exécutez :")
                           . "\n  CREATE USER IF NOT EXISTS '{$dbUser}'@'{$seen}' IDENTIFIED BY 'votre_mot_de_passe';"
                           . "\n  GRANT ALL PRIVILEGES ON *.* TO '{$dbUser}'@'{$seen}';"
                           . "\n  FLUSH PRIVILEGES;"
-                          . "\n\nℹ️ Navigateur : {$clientIP} — Serveur web : {$serverIP}";
+                          . "\n\n" . strtr(iT('error.db_client_server', "ℹ️ Navigateur : :client — Serveur web : :server"), [':client' => $clientIP, ':server' => $serverIP]);
                 } elseif (strpos($msg, '2002') !== false || strpos($msg, '2006') !== false) {
-                    $hint = "\n\nServeur MySQL injoignable sur {$dbHost}:{$dbPort}."
-                          . "\nVérifiez que le service est démarré et que le pare-feu autorise le port {$dbPort}.";
+                    $hint = "\n\n" . iT('error.db_unreachable', "Serveur MySQL injoignable sur ") . "{$dbHost}:{$dbPort}."
+                          . "\n" . strtr(iT('error.db_check_firewall', "Vérifiez que le service est démarré et que le pare-feu autorise le port :port."), [':port' => $dbPort]);
                 }
-                throw new RuntimeException("Connexion MySQL échouée : {$msg}{$hint}");
+                throw new RuntimeException(iT('error.db_connection_failed', "Connexion MySQL échouée : ") . $msg . $hint);
             }
             $pdo = null; // fermer la connexion de test
 
             $inst['db'] = compact('dbHost', 'dbPort', 'dbUser', 'dbPass', 'dbName', 'dbCharset');
             $inst['step'] = 3;
             $currentStep  = 3;
-            $success = '✅ Connexion MySQL vérifiée avec succès';
+            $success = '✅ ' . iT('db.connection_ok', 'Connexion MySQL vérifiée avec succès');
         }
 
         // ── Étape 3 : configuration application + SMTP ─────────────────────
@@ -497,12 +529,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $rateLimitDecay    = max(1,  (int)($_POST['rate_limit_decay'] ?? 1));
 
             if (!in_array($appEnv, ['production', 'development', 'test'], true)) {
-                throw new RuntimeException('Environnement invalide.');
+                throw new RuntimeException(iT('app.env_invalid', 'Environnement invalide.'));
             }
             // Sécurité : le mode debug expose des traces et désactive certaines
             // protections — interdit en production.
             if ($appEnv === 'production' && $appDebug) {
-                throw new RuntimeException('Le mode debug (APP_DEBUG) ne peut pas être activé en environnement « production ».');
+                throw new RuntimeException(iT('app.debug_prod_forbidden', 'Le mode debug (APP_DEBUG) ne peut pas être activé en environnement « production ».'));
             }
 
             $inst['app'] = compact(
@@ -536,14 +568,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pw     = $_POST['admin_password'] ?? '';
 
             if ($nom === '' || $prenom === '' || $mail === '' || $pw === '') {
-                throw new RuntimeException('Tous les champs sont requis.');
+                throw new RuntimeException(iT('admin.all_fields_required', 'Tous les champs sont requis.'));
             }
             if (!filter_var($mail, FILTER_VALIDATE_EMAIL)) {
-                throw new RuntimeException('Adresse email invalide.');
+                throw new RuntimeException(iT('admin.email_invalid', 'Adresse email invalide.'));
             }
             $pwErrors = validatePasswordStrength($pw);
             if (!empty($pwErrors)) {
-                throw new RuntimeException("Mot de passe non conforme :\n• " . implode("\n• ", $pwErrors));
+                throw new RuntimeException(iT('admin.pw_invalid', "Mot de passe non conforme :") . "\n• " . implode("\n• ", $pwErrors));
             }
 
             $inst['admin'] = compact('nom', 'prenom', 'mail', 'pw');
@@ -555,7 +587,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         elseif ($postStep === 5) {
             if (empty($inst['db']) || empty($inst['app']) || empty($inst['admin'])) {
                 $inst['step'] = 1;
-                throw new RuntimeException("Données d'installation incomplètes — la session a expiré.\nL'installateur a été réinitialisé, veuillez recommencer depuis l'étape 1.");
+                throw new RuntimeException(iT('error.incomplete_expired', "Données d'installation incomplètes — la session a expiré.") . "\n" . iT('error.installer_reset', "L'installateur a été réinitialisé, veuillez recommencer depuis l'étape 1."));
             }
             $db  = $inst['db'];
             $ap  = $inst['app'];
@@ -579,8 +611,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'admin_mail' => $adm['mail'], 'protocol' => $protocol,
                 'client_ip'  => $clientIP,
             ]);
-            if (!$envOk) throw new RuntimeException("Impossible d'écrire le fichier .env — vérifiez les permissions du répertoire.");
-            $log[] = ['ok', 'Fichier .env créé'];
+            if (!$envOk) throw new RuntimeException(iT('error.env_write_perms', "Impossible d'écrire le fichier .env — vérifiez les permissions du répertoire."));
+            $log[] = ['ok', iT('result.env_created', 'Fichier .env créé')];
 
             // 5b — Fichiers de protection
             $protections = [
@@ -600,14 +632,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!is_dir($dir)) @mkdir($dir, 0755, true);
                 @file_put_contents($installDir . '/' . $file, $content, LOCK_EX);
             }
-            $log[] = ['ok', 'Fichiers de protection créés (.htaccess)'];
+            $log[] = ['ok', iT('result.protection_created', 'Fichiers de protection créés (.htaccess)')];
 
             // 5b-bis — Répertoires uploads par contexte
             foreach (['messagerie', 'devoirs', 'justificatifs'] as $ctx) {
                 $ctxDir = $installDir . '/uploads/' . $ctx;
                 if (!is_dir($ctxDir)) @mkdir($ctxDir, 0755, true);
             }
-            $log[] = ['ok', 'Répertoires uploads créés (messagerie, devoirs, justificatifs)'];
+            $log[] = ['ok', iT('result.uploads_created', 'Répertoires uploads créés (messagerie, devoirs, justificatifs)')];
 
             // 5c — Connexion MySQL
             $dbHostTcp = (strtolower($db['dbHost']) === 'localhost') ? '127.0.0.1' : $db['dbHost'];
@@ -619,10 +651,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     PDO::ATTR_TIMEOUT             => 10,
                 ]);
             } catch (PDOException $e) {
-                throw new RuntimeException("Connexion MySQL échouée à l'exécution : " . $e->getMessage()
-                    . "\n\nRetournez à l'étape 2 pour vérifier vos identifiants.");
+                throw new RuntimeException(iT('error.db_exec_failed', "Connexion MySQL échouée à l'exécution : ") . $e->getMessage()
+                    . "\n\n" . iT('error.db_back_to_step2', "Retournez à l'étape 2 pour vérifier vos identifiants."));
             }
-            $log[] = ['ok', 'Connexion MySQL établie'];
+            $log[] = ['ok', iT('result.db_connected', 'Connexion MySQL établie')];
 
             // 5d — Créer / recréer la base. TOLÉRANT AUX PRIVILÈGES : on tente DROP/CREATE
             // DATABASE ; si l'utilisateur n'a pas les droits globaux (cas hébergement mutualisé :
@@ -652,35 +684,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $inst['db_table_count'] = $tableCount;
                     $inst['step'] = 5; // Rester sur l'étape 5
                     throw new RuntimeException(
-                        "⚠️ La base de données « {$dbNameSafe} » existe déjà et contient {$tableCount} table(s).\n\n"
-                        . "Cochez la case de confirmation ci-dessous pour écraser les données existantes, ou changez le nom de la base à l'étape 2."
+                        strtr(iT('error.db_exists', "⚠️ La base de données « :name » existe déjà et contient :count table(s)."), [':name' => $dbNameSafe, ':count' => $tableCount]) . "\n\n"
+                        . iT('error.db_confirm_overwrite', "Cochez la case de confirmation ci-dessous pour écraser les données existantes, ou changez le nom de la base à l'étape 2.")
                     );
                 }
                 if ($tableCount > 0) {
                     try {
                         $pdo->exec("DROP DATABASE `{$dbNameSafe}`");
                         $pdo->exec("CREATE DATABASE `{$dbNameSafe}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-                        $log[] = ['warn', 'Base existante écrasée (DROP/CREATE DATABASE)'];
+                        $log[] = ['warn', iT('result.db_overwritten', 'Base existante écrasée (DROP/CREATE DATABASE)')];
                     } catch (PDOException $e) {
                         $dropAllTables($pdo, $dbNameSafe);
-                        $log[] = ['warn', 'Base existante écrasée (toutes les tables supprimées — privilèges limités à la base)'];
+                        $log[] = ['warn', iT('result.db_overwritten_tables', 'Base existante écrasée (toutes les tables supprimées — privilèges limités à la base)')];
                     }
                 }
             } else {
                 try {
                     $pdo->exec("CREATE DATABASE `{$dbNameSafe}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-                    $log[] = ['ok', "Base de données <code>{$dbNameSafe}</code> créée"];
+                    $log[] = ['ok', strtr(iT('result.db_created', "Base de données <code>:name</code> créée"), [':name' => $dbNameSafe])];
                 } catch (PDOException $e) {
-                    throw new RuntimeException("La base « {$dbNameSafe} » n'existe pas et n'a pas pu être créée (privilèges insuffisants).\n\nCréez la base au préalable (ou accordez les droits), puis relancez l'installation.\nDétail : " . $e->getMessage());
+                    throw new RuntimeException(strtr(iT('error.db_create_failed', "La base « :name » n'existe pas et n'a pas pu être créée (privilèges insuffisants)."), [':name' => $dbNameSafe]) . "\n\n" . iT('error.db_create_hint', "Créez la base au préalable (ou accordez les droits), puis relancez l'installation.") . "\n" . iT('error.detail', "Détail : ") . $e->getMessage());
                 }
             }
             $pdo->exec("USE `{$dbNameSafe}`");
 
             // 5e — Importer pronote.sql
             $sqlFile = $installDir . '/pronote.sql';
-            if (!file_exists($sqlFile)) throw new RuntimeException('Fichier pronote.sql introuvable.');
+            if (!file_exists($sqlFile)) throw new RuntimeException(iT('error.sql_missing', 'Fichier pronote.sql introuvable.'));
             $sql = file_get_contents($sqlFile);
-            if ($sql === false) throw new RuntimeException('Impossible de lire pronote.sql.');
+            if ($sql === false) throw new RuntimeException(iT('error.sql_unreadable', 'Impossible de lire pronote.sql.'));
 
             $tableCount = 0;
             $benignWarnings = [];
@@ -721,14 +753,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!empty($fatalErrors)) {
                 $shown = array_slice($fatalErrors, 0, 5);
                 throw new RuntimeException(
-                    count($fatalErrors) . " erreur(s) SQL bloquante(s) pendant l'import du schéma :\n• "
+                    count($fatalErrors) . iT('error.sql_fatal', " erreur(s) SQL bloquante(s) pendant l'import du schéma :") . "\n• "
                     . implode("\n• ", $shown)
-                    . (count($fatalErrors) > 5 ? "\n• … (+" . (count($fatalErrors) - 5) . " autres)" : '')
+                    . (count($fatalErrors) > 5 ? strtr(iT('error.sql_more', "\n• … (+:n autres)"), [':n' => count($fatalErrors) - 5]) : '')
                 );
             }
-            $log[] = ['ok', "Structure importée ({$tableCount} tables créées)"];
+            $log[] = ['ok', strtr(iT('result.schema_imported', "Structure importée (:count tables créées)"), [':count' => $tableCount])];
             if (!empty($benignWarnings)) {
-                $log[] = ['warn', count($benignWarnings) . " instruction(s) déjà appliquée(s) (ignorées, idempotent)"];
+                $log[] = ['warn', count($benignWarnings) . iT('result.stmts_skipped', " instruction(s) déjà appliquée(s) (ignorées, idempotent)")];
             }
 
             // 5e-bis — Validation du schéma (tables critiques)
@@ -743,9 +775,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             if (!empty($missingTables)) {
-                $log[] = ['warn', 'Tables critiques manquantes : ' . implode(', ', $missingTables)];
+                $log[] = ['warn', iT('result.critical_tables_missing', 'Tables critiques manquantes : ') . implode(', ', $missingTables)];
             } else {
-                $log[] = ['ok', 'Toutes les tables critiques vérifiées'];
+                $log[] = ['ok', iT('result.critical_tables_ok', 'Toutes les tables critiques vérifiées')];
             }
 
             // 5f — Compte administrateur
@@ -756,7 +788,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
             $stmt->execute([$adm['nom'], $adm['prenom'], $adm['mail'], $hash]);
             $adminId = $pdo->lastInsertId();
-            $log[] = ['ok', "Administrateur créé (ID {$adminId}) — identifiant : <strong>admin</strong>"];
+            $log[] = ['ok', strtr(iT('result.admin_created', "Administrateur créé (ID :id) — identifiant : <strong>admin</strong>"), [':id' => $adminId])];
 
             // La configuration de l'établissement (identité, périodes, classes,
             // matières) est désormais réalisée au premier login admin via le
@@ -777,12 +809,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $smtp['host'], (int)$smtp['port'], $smtp['username'], $smtp['password'],
                         $smtp['encryption'], $smtp['from_address'], $smtp['from_name'],
                     ]);
-                    $log[] = ['ok', 'Configuration SMTP enregistrée — <strong>' . htmlspecialchars($smtp['host']) . ':' . $smtp['port'] . '</strong>'];
+                    $log[] = ['ok', iT('result.smtp_saved', 'Configuration SMTP enregistrée — ') . '<strong>' . htmlspecialchars($smtp['host']) . ':' . $smtp['port'] . '</strong>'];
                 } catch (PDOException $e) {
-                    $log[] = ['warn', 'SMTP : ' . $e->getMessage()];
+                    $log[] = ['warn', iT('label.smtp', 'SMTP : ') . $e->getMessage()];
                 }
             } else {
-                $log[] = ['warn', 'SMTP non configuré — les emails ne seront pas envoyés (configurable depuis l\'administration)'];
+                $log[] = ['warn', iT('result.smtp_not_configured_log', 'SMTP non configuré — les emails ne seront pas envoyés (configurable depuis l\'administration)')];
             }
 
             // 5g — Bootstrap API
@@ -792,19 +824,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 try {
                     $appInstance = require $bootstrapFile;
                     $apiOk = true;
-                    $log[] = ['ok', 'API bootstrap chargée'];
+                    $log[] = ['ok', iT('result.api_bootstrap_loaded', 'API bootstrap chargée')];
 
                     // Test authentification
                     try {
                         $auth = $appInstance->make('auth');
                         if ($auth->attempt(['login' => 'admin', 'password' => $adm['pw'], 'type' => 'administrateur'])) {
                             $auth->logout();
-                            $log[] = ['ok', 'Test d\'authentification réussi'];
+                            $log[] = ['ok', iT('result.auth_test_ok', 'Test d\'authentification réussi')];
                         } else {
-                            $log[] = ['warn', 'Test auth échoué (non bloquant)'];
+                            $log[] = ['warn', iT('result.auth_test_failed', 'Test auth échoué (non bloquant)')];
                         }
                     } catch (Throwable $e) {
-                        $log[] = ['warn', 'Test auth : ' . $e->getMessage()];
+                        $log[] = ['warn', iT('label.auth_test', 'Test auth : ') . $e->getMessage()];
                     }
 
                     // Test rate limiter
@@ -812,18 +844,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $lim = $appInstance->make('rate_limiter');
                         $k = 'install_probe_' . uniqid();
                         $lim->hit($k); $lim->clear($k);
-                        $log[] = ['ok', 'RateLimiter opérationnel'];
+                        $log[] = ['ok', iT('result.ratelimiter_ok', 'RateLimiter opérationnel')];
                     } catch (Throwable $e) {
-                        $log[] = ['warn', 'RateLimiter : ' . $e->getMessage()];
+                        $log[] = ['warn', iT('label.ratelimiter', 'RateLimiter : ') . $e->getMessage()];
                     }
 
                     // Test CSRF
                     try {
                         $csrf = $appInstance->make('csrf');
                         $tok  = $csrf->generate();
-                        if ($csrf->validate($tok)) $log[] = ['ok', 'Protection CSRF opérationnelle'];
+                        if ($csrf->validate($tok)) $log[] = ['ok', iT('result.csrf_ok', 'Protection CSRF opérationnelle')];
                     } catch (Throwable $e) {
-                        $log[] = ['warn', 'CSRF : ' . $e->getMessage()];
+                        $log[] = ['warn', iT('label.csrf', 'CSRF : ') . $e->getMessage()];
                     }
 
                     // Synchronisation des modules + migrations SQL par module (non bloquant)
@@ -843,12 +875,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $migErrs = array_merge($migErrs, $r['errors']);
                         }
                         if (empty($migErrs)) {
-                            $log[] = ['ok', "Modules synchronisés ({$sync['synced']}), schémas provisionnés ({$provDone})"];
+                            $log[] = ['ok', strtr(iT('result.modules_synced', "Modules synchronisés (:synced), schémas provisionnés (:prov)"), [':synced' => $sync['synced'], ':prov' => $provDone])];
                         } else {
-                            $log[] = ['warn', 'Sync modules : ' . count($migErrs) . ' erreur(s) non bloquante(s)'];
+                            $log[] = ['warn', iT('label.sync_modules', 'Sync modules : ') . count($migErrs) . iT('result.non_blocking_errors', ' erreur(s) non bloquante(s)')];
                         }
                     } catch (Throwable $e) {
-                        $log[] = ['warn', 'Sync modules : ' . $e->getMessage()];
+                        $log[] = ['warn', iT('label.sync_modules', 'Sync modules : ') . $e->getMessage()];
                     }
 
                     // 5g-bis — Cohérence 3-mondes (refonte) : catalogues de rôles, slug/statut de
@@ -891,16 +923,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $pdo->prepare("INSERT INTO platform_account_roles (platform_account_id, platform_role_id, scope_type, is_active) VALUES (?, ?, 'global', 1)")->execute([$paId, $srid]);
                             }
                         }
-                        $log[] = ['ok', 'Cohérence 3-mondes initialisée (rôles, établissement, miroir tenant, super-admin plateforme « superadmin »)'];
+                        $log[] = ['ok', iT('result.three_worlds_ok', 'Cohérence 3-mondes initialisée (rôles, établissement, miroir tenant, super-admin plateforme « superadmin »)')];
                     } catch (Throwable $e) {
-                        $log[] = ['warn', 'Initialisation 3-mondes : ' . $e->getMessage()];
+                        $log[] = ['warn', iT('label.three_worlds', 'Initialisation 3-mondes : ') . $e->getMessage()];
                     }
 
                 } catch (Throwable $e) {
-                    $log[] = ['warn', 'Bootstrap API : ' . $e->getMessage()];
+                    $log[] = ['warn', iT('label.bootstrap_api', 'Bootstrap API : ') . $e->getMessage()];
                 }
             } else {
-                $log[] = ['warn', 'API/bootstrap.php introuvable'];
+                $log[] = ['warn', iT('result.bootstrap_missing', 'API/bootstrap.php introuvable')];
             }
 
             // 5h — Audit log
@@ -916,9 +948,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $clientIP,
                     $_SERVER['HTTP_USER_AGENT'] ?? '',
                 ]);
-                $log[] = ['ok', 'Événement d\'installation enregistré dans l\'audit'];
+                $log[] = ['ok', iT('result.audit_logged', 'Événement d\'installation enregistré dans l\'audit')];
             } catch (Throwable $e) {
-                $log[] = ['warn', 'Audit : ' . $e->getMessage()];
+                $log[] = ['warn', iT('label.audit', 'Audit : ') . $e->getMessage()];
             }
 
             // 5i — Sécuriser puis vérifier .env avant de verrouiller l'installation.
@@ -933,12 +965,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $owner = function_exists('posix_getpwuid') && file_exists($envFilePath)
                     ? (posix_getpwuid(fileowner($envFilePath))['name'] ?? '?') : '?';
                 throw new RuntimeException(
-                    "Le fichier .env est introuvable ou illisible après écriture (taille={$size}, owner={$owner}). " .
-                    "Cause habituelle : l'utilisateur du serveur web n'a pas les droits sur {$installDir}. " .
-                    "Vérifiez les permissions du dossier (775) et son propriétaire."
+                    strtr(iT('error.env_unreadable', "Le fichier .env est introuvable ou illisible après écriture (taille=:size, owner=:owner). "), [':size' => $size, ':owner' => $owner]) .
+                    strtr(iT('error.env_owner_hint', "Cause habituelle : l'utilisateur du serveur web n'a pas les droits sur :dir. "), [':dir' => $installDir]) .
+                    iT('error.env_perms_hint', "Vérifiez les permissions du dossier (775) et son propriétaire.")
                 );
             }
-            $log[] = ['ok', 'Fichier .env verifie'];
+            $log[] = ['ok', iT('result.env_verified', 'Fichier .env verifie')];
 
             // 5j — Fichier install.lock (écriture atomique : tmp + fsync + rename).
             // Garantit que install.lock n'existe sur disque que si .env a été flushé,
@@ -951,12 +983,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ], JSON_PRETTY_PRINT);
             $lh = fopen($tmpLock, 'wb');
             if (!is_resource($lh)) {
-                throw new RuntimeException("Impossible de créer {$tmpLock}");
+                throw new RuntimeException(iT('error.lock_create', "Impossible de créer ") . $tmpLock);
             }
             if (fwrite($lh, $lockPayload) === false) {
                 fclose($lh);
                 @unlink($tmpLock);
-                throw new RuntimeException("Échec d'écriture sur {$tmpLock}");
+                throw new RuntimeException(iT('error.write_fail_on', "Échec d'écriture sur ") . $tmpLock);
             }
             // Force le flush kernel→disque avant le rename.
             @fflush($lh);
@@ -972,13 +1004,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             clearstatcache(true, $envFilePath);
             if (!is_file($envFilePath) || filesize($envFilePath) <= 10) {
                 @unlink($tmpLock);
-                throw new RuntimeException(".env disparu entre la vérification et la création de install.lock — refus de verrouiller.");
+                throw new RuntimeException(iT('error.env_vanished', ".env disparu entre la vérification et la création de install.lock — refus de verrouiller."));
             }
             if (!@rename($tmpLock, $lockFile)) {
                 @unlink($tmpLock);
-                throw new RuntimeException("Impossible de renommer {$tmpLock} en {$lockFile}");
+                throw new RuntimeException(strtr(iT('error.lock_rename', "Impossible de renommer :tmp en :lock"), [':tmp' => $tmpLock, ':lock' => $lockFile]));
             }
-            $log[] = ['ok', 'Fichier install.lock créé'];
+            $log[] = ['ok', iT('result.lock_created', 'Fichier install.lock créé')];
 
             // 5k — Purge des secrets en clair conservés en session pendant le flux
             // multi-étapes (mots de passe admin / DB / SMTP). Ils ne doivent pas
@@ -992,10 +1024,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // verrouillé — sous Windows notamment ; l'échec n'interrompt pas l'install).
             $disabledName = $installDir . '/install.php.disabled-' . date('Ymd');
             if (@rename(__FILE__, $disabledName)) {
-                $log[] = ['ok', 'Installateur neutralisé (renommé en ' . basename($disabledName) . ')'];
+                $log[] = ['ok', iT('result.installer_disabled', 'Installateur neutralisé (renommé en ') . basename($disabledName) . ')'];
             } else {
                 @chmod(__FILE__, 0400);
-                $log[] = ['warn', 'Installateur non renommé automatiquement — supprimez ou renommez install.php manuellement.'];
+                $log[] = ['warn', iT('result.installer_not_renamed', 'Installateur non renommé automatiquement — supprimez ou renommez install.php manuellement.')];
             }
 
             $inst['log']       = $log;
@@ -1014,19 +1046,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $installed = !empty($inst['installed']);
 $stepMax   = $inst['step'];
 $steps     = [
-    1 => 'Pré-requis',
-    2 => 'Base de données',
-    3 => 'Application',
-    4 => 'Administrateur',
-    5 => 'Installation',
+    1 => iT('step.prereq', 'Pré-requis'),
+    2 => iT('step.database', 'Base de données'),
+    3 => iT('step.application', 'Application'),
+    4 => iT('step.admin', 'Administrateur'),
+    5 => iT('step.install', 'Installation'),
 ];
 ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="<?= htmlspecialchars($installLocale) ?>" dir="<?= $installDir_rtl ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Installation Fronote</title>
+<title><?= iT('app.page_title', 'Installation Fronote') ?></title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--primary:#667eea;--primary-dark:#5a67d8;--success:#48bb78;--warning:#ed8936;--danger:#e53e3e;--bg:#f7fafc;--text:#2d3748;--border:#e2e8f0;--card:#fff;--radius:8px}
@@ -1118,10 +1150,24 @@ code{background:#edf2f7;padding:1px 6px;border-radius:3px;font-size:.88em;font-f
 <div class="container">
 <div class="card">
 
+<!-- Sélecteur de langue -->
+<div class="lang-bar" style="text-align:<?= $installDir_rtl === 'rtl' ? 'left' : 'right' ?>;margin-bottom:8px;font-size:14px;">
+<?php
+    $__flags = ['fr'=>'🇫🇷','en'=>'🇬🇧','es'=>'🇪🇸','de'=>'🇩🇪','nl'=>'🇳🇱','ar'=>'🇸🇦','ru'=>'🇷🇺','th'=>'🇹🇭'];
+    // Conserver l'étape courante en changeant de langue.
+    $__qs = $_GET; unset($__qs['lang']);
+    foreach ($installLangs as $__lg):
+        $__q = http_build_query(array_merge($__qs, ['lang' => $__lg]));
+        $__on = $__lg === $installLocale ? 'font-weight:700;text-decoration:underline;' : 'opacity:.7;';
+?>
+    <a href="?<?= htmlspecialchars($__q) ?>" style="margin:0 4px;text-decoration:none;<?= $__on ?>" title="<?= htmlspecialchars($__lg) ?>"><?= $__flags[$__lg] ?></a>
+<?php endforeach; ?>
+</div>
+
 <!-- Header -->
 <div class="header">
-    <h1>🎓 Installation de Fronote</h1>
-    <p>Assistant de configuration — étape par étape</p>
+    <h1>🎓 <?= iT('app.install_title', 'Installation de Fronote') ?></h1>
+    <p><?= iT('app.install_subtitle', 'Assistant de configuration — étape par étape') ?></p>
 </div>
 
 <!-- Stepper -->
@@ -1159,8 +1205,8 @@ code{background:#edf2f7;padding:1px 6px;border-radius:3px;font-size:.88em;font-f
       // ÉTAPE 1 : PRÉ-REQUIS
       // ═══════════════════════════════════════════════════════════════════════ ?>
 <?php if ($currentStep === 1 && !$installed): ?>
-<h2 class="section-title">Vérification des pré-requis</h2>
-<p class="section-sub">PHP, extensions, répertoires et fichiers nécessaires.</p>
+<h2 class="section-title"><?= iT('prereq.title', 'Vérification des pré-requis') ?></h2>
+<p class="section-sub"><?= iT('prereq.subtitle', 'PHP, extensions, répertoires et fichiers nécessaires.') ?></p>
 
 <?php
     $phpOk = version_compare(PHP_VERSION, '8.0.0', '>=');
@@ -1185,26 +1231,26 @@ code{background:#edf2f7;padding:1px 6px;border-radius:3px;font-size:.88em;font-f
 
 <ul class="check-list">
     <li>
-        <span class="badge <?= $phpOk ? 'badge-ok' : 'badge-fail' ?>"><?= $phpOk ? 'OK' : 'FAIL' ?></span>
-        PHP <?= PHP_VERSION ?> (≥ 8.0 requis)
+        <span class="badge <?= $phpOk ? 'badge-ok' : 'badge-fail' ?>"><?= $phpOk ? iT('badge.ok', 'OK') : iT('badge.fail', 'FAIL') ?></span>
+        PHP <?= PHP_VERSION ?> <?= iT('prereq.php_min', '(≥ 8.0 requis)') ?>
     </li>
     <?php foreach ($extResults as $ext => $ok): ?>
     <li>
-        <span class="badge <?= $ok ? 'badge-ok' : 'badge-fail' ?>"><?= $ok ? 'OK' : 'ABSENT' ?></span>
-        Extension <code><?= $ext ?></code>
+        <span class="badge <?= $ok ? 'badge-ok' : 'badge-fail' ?>"><?= $ok ? iT('badge.ok', 'OK') : iT('badge.absent', 'ABSENT') ?></span>
+        <?= iT('prereq.extension', 'Extension') ?> <code><?= $ext ?></code>
     </li>
     <?php endforeach; ?>
     <?php foreach ($dirResults as $dir => $r): ?>
     <li>
-        <span class="badge <?= $r['ok'] ? 'badge-ok' : 'badge-fail' ?>"><?= $r['ok'] ? 'OK' : 'ERREUR' ?></span>
-        Répertoire <code><?= $dir ?></code>
+        <span class="badge <?= $r['ok'] ? 'badge-ok' : 'badge-fail' ?>"><?= $r['ok'] ? iT('badge.ok', 'OK') : iT('badge.error', 'ERREUR') ?></span>
+        <?= iT('prereq.directory', 'Répertoire') ?> <code><?= $dir ?></code>
         <?php if (!$r['ok']): ?><small style="color:var(--danger);margin-left:6px">— <?= htmlspecialchars($r['msg']) ?></small><?php endif; ?>
     </li>
     <?php endforeach; ?>
     <?php foreach ($fileResults as $file => $ok): ?>
     <li>
-        <span class="badge <?= $ok ? 'badge-ok' : 'badge-fail' ?>"><?= $ok ? 'OK' : 'ABSENT' ?></span>
-        Fichier <code><?= $file ?></code>
+        <span class="badge <?= $ok ? 'badge-ok' : 'badge-fail' ?>"><?= $ok ? iT('badge.ok', 'OK') : iT('badge.absent', 'ABSENT') ?></span>
+        <?= iT('prereq.file', 'Fichier') ?> <code><?= $file ?></code>
     </li>
     <?php endforeach; ?>
 </ul>
@@ -1228,17 +1274,17 @@ code{background:#edf2f7;padding:1px 6px;border-radius:3px;font-size:.88em;font-f
 ?>
 <?php if ($hasFixableDirs): ?>
 <div class="info-box" style="border-color:#feb2b2;background:#fff5f5;margin-bottom:16px">
-    <h4 style="color:#c53030">🛠️ Commandes correctives à exécuter sur le serveur</h4>
-    <p style="font-size:.88em;color:#718096;margin-bottom:10px">Connectez-vous en SSH au serveur et exécutez :</p>
+    <h4 style="color:#c53030">🛠️ <?= iT('prereq.fix_commands_title', 'Commandes correctives à exécuter sur le serveur') ?></h4>
+    <p style="font-size:.88em;color:#718096;margin-bottom:10px"><?= iT('prereq.fix_ssh', 'Connectez-vous en SSH au serveur et exécutez :') ?></p>
     <pre style="background:#2d3748;color:#e2e8f0;padding:14px 16px;border-radius:6px;font-size:.85em;overflow-x:auto;line-height:1.7"><code><?php
         if (!empty($fixDirs)) {
-            echo "# Créer les répertoires manquants\n";
+            echo "# " . iT('prereq.cmd_create_dirs', 'Créer les répertoires manquants') . "\n";
             echo "mkdir -p";
             foreach ($fixDirs as $d) echo " " . htmlspecialchars($installDir . '/' . $d);
             echo "\n\n";
         }
         if (!empty($fixPerms)) {
-            echo "# Rendre les répertoires inscriptibles\n";
+            echo "# " . iT('prereq.cmd_make_writable', 'Rendre les répertoires inscriptibles') . "\n";
             foreach ($fixPerms as $d) {
                 echo "chmod 755 " . htmlspecialchars($installDir . '/' . $d) . "\n";
             }
@@ -1246,18 +1292,18 @@ code{background:#edf2f7;padding:1px 6px;border-radius:3px;font-size:.88em;font-f
         }
         // Toujours proposer un chown global
         $allBroken = array_merge($fixDirs, $fixPerms);
-        echo "# Donner la propriété au serveur web\n";
+        echo "# " . iT('prereq.cmd_chown', 'Donner la propriété au serveur web') . "\n";
         echo "chown -R www-data:www-data " . htmlspecialchars($installDir) . "\n";
     ?></code></pre>
 </div>
 <?php endif; ?>
-<div class="msg msg-error">Certains pré-requis ne sont pas remplis. Corrigez-les puis <strong>rechargez cette page</strong>.</div>
+<div class="msg msg-error"><?= iT('prereq.not_met', 'Certains pré-requis ne sont pas remplis. Corrigez-les puis <strong>rechargez cette page</strong>.') ?></div>
 <?php else: ?>
 <form method="post">
     <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
     <input type="hidden" name="step" value="1">
     <div class="actions" style="justify-content:flex-end">
-        <button type="submit" class="btn btn-primary">Continuer →</button>
+        <button type="submit" class="btn btn-primary"><?= iT('btn.continue', 'Continuer') ?> →</button>
     </div>
 </form>
 <?php endif; ?>
@@ -1268,47 +1314,47 @@ code{background:#edf2f7;padding:1px 6px;border-radius:3px;font-size:.88em;font-f
       // ÉTAPE 2 : BASE DE DONNÉES
       // ═══════════════════════════════════════════════════════════════════════ ?>
 <?php if ($currentStep === 2 && !$installed): ?>
-<h2 class="section-title">Base de données MySQL</h2>
-<p class="section-sub">La connexion sera <strong>testée</strong> avant de passer à la suite. Aucune base ne sera créée ici.</p>
+<h2 class="section-title"><?= iT('db.title', 'Base de données MySQL') ?></h2>
+<p class="section-sub"><?= iT('db.subtitle', 'La connexion sera <strong>testée</strong> avant de passer à la suite. Aucune base ne sera créée ici.') ?></p>
 
 <form method="post">
     <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
     <input type="hidden" name="step" value="2">
     <div class="grid">
         <div class="form-group">
-            <label>Hôte MySQL</label>
+            <label><?= iT('db.host', 'Hôte MySQL') ?></label>
             <input type="text" name="db_host" value="<?= htmlspecialchars($inst['db']['dbHost'] ?? 'localhost') ?>" required>
-            <div class="help"><code>localhost</code> sera converti en <code>127.0.0.1</code> (TCP obligatoire)</div>
+            <div class="help"><?= iT('db.host_help', '<code>localhost</code> sera converti en <code>127.0.0.1</code> (TCP obligatoire)') ?></div>
         </div>
         <div class="form-group">
-            <label>Port</label>
+            <label><?= iT('label.port', 'Port') ?></label>
             <input type="number" name="db_port" value="<?= (int)($inst['db']['dbPort'] ?? 3306) ?>" required>
         </div>
         <div class="form-group">
-            <label>Utilisateur</label>
+            <label><?= iT('db.user', 'Utilisateur') ?></label>
             <input type="text" name="db_user" value="<?= htmlspecialchars($inst['db']['dbUser'] ?? '') ?>" required>
         </div>
         <div class="form-group">
-            <label>Mot de passe</label>
+            <label><?= iT('label.password', 'Mot de passe') ?></label>
             <input type="password" name="db_pass" value="<?= htmlspecialchars($inst['db']['dbPass'] ?? '') ?>">
-            <div class="help">Laisser vide si pas de mot de passe</div>
+            <div class="help"><?= iT('db.pass_help', 'Laisser vide si pas de mot de passe') ?></div>
         </div>
         <div class="form-group">
-            <label>Nom de la base à créer</label>
+            <label><?= iT('db.name', 'Nom de la base à créer') ?></label>
             <input type="text" name="db_name" value="<?= htmlspecialchars($inst['db']['dbName'] ?? '') ?>" placeholder="pronote" required>
-            <div class="help">Sera créée à l'étape 5 (recréée si elle existe déjà)</div>
+            <div class="help"><?= iT('db.name_help', 'Sera créée à l\'étape 5 (recréée si elle existe déjà)') ?></div>
         </div>
         <div class="form-group">
-            <label>Charset</label>
+            <label><?= iT('db.charset', 'Charset') ?></label>
             <select name="db_charset">
-                <option value="utf8mb4" <?= ($inst['db']['dbCharset'] ?? 'utf8mb4') === 'utf8mb4' ? 'selected' : '' ?>>utf8mb4 (recommandé)</option>
+                <option value="utf8mb4" <?= ($inst['db']['dbCharset'] ?? 'utf8mb4') === 'utf8mb4' ? 'selected' : '' ?>>utf8mb4 <?= iT('db.charset_recommended', '(recommandé)') ?></option>
                 <option value="utf8" <?= ($inst['db']['dbCharset'] ?? '') === 'utf8' ? 'selected' : '' ?>>utf8</option>
             </select>
         </div>
     </div>
     <div class="actions">
-        <a href="?step=1" class="btn btn-secondary">← Retour</a>
-        <button type="submit" class="btn btn-primary">🔌 Tester la connexion →</button>
+        <a href="?step=1" class="btn btn-secondary">← <?= iT('btn.back', 'Retour') ?></a>
+        <button type="submit" class="btn btn-primary">🔌 <?= iT('db.test_connection', 'Tester la connexion') ?> →</button>
     </div>
 </form>
 <?php endif; ?>
@@ -1318,77 +1364,76 @@ code{background:#edf2f7;padding:1px 6px;border-radius:3px;font-size:.88em;font-f
       // ÉTAPE 3 : APPLICATION
       // ═══════════════════════════════════════════════════════════════════════ ?>
 <?php if ($currentStep === 3 && !$installed): ?>
-<h2 class="section-title">Configuration de l'application</h2>
-<p class="section-sub">Paramètres généraux et sécurité.</p>
+<h2 class="section-title"><?= iT('app.title', 'Configuration de l\'application') ?></h2>
+<p class="section-sub"><?= iT('app.subtitle', 'Paramètres généraux et sécurité.') ?></p>
 
 <form method="post">
     <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
     <input type="hidden" name="step" value="3">
     <div class="grid">
         <div class="form-group">
-            <label>Nom de l'application</label>
+            <label><?= iT('app.name_label', 'Nom de l\'application') ?></label>
             <input type="text" name="app_name" value="<?= htmlspecialchars($inst['app']['appName'] ?? 'Fronote') ?>" required>
         </div>
         <div class="form-group">
-            <label>Environnement</label>
+            <label><?= iT('app.env', 'Environnement') ?></label>
             <select name="app_env">
                 <?php $env = $inst['app']['appEnv'] ?? 'production'; ?>
-                <option value="production" <?= $env === 'production' ? 'selected' : '' ?>>Production</option>
-                <option value="development" <?= $env === 'development' ? 'selected' : '' ?>>Développement</option>
-                <option value="test" <?= $env === 'test' ? 'selected' : '' ?>>Test</option>
+                <option value="production" <?= $env === 'production' ? 'selected' : '' ?>><?= iT('app.env_production', 'Production') ?></option>
+                <option value="development" <?= $env === 'development' ? 'selected' : '' ?>><?= iT('app.env_development', 'Développement') ?></option>
+                <option value="test" <?= $env === 'test' ? 'selected' : '' ?>><?= iT('app.env_test', 'Test') ?></option>
             </select>
         </div>
         <div class="form-group">
-            <label>Mode debug</label>
+            <label><?= iT('app.debug', 'Mode debug') ?></label>
             <select name="app_debug">
-                <option value="0" <?= empty($inst['app']['appDebug']) ? 'selected' : '' ?>>Désactivé</option>
-                <option value="1" <?= !empty($inst['app']['appDebug']) ? 'selected' : '' ?>>Activé</option>
+                <option value="0" <?= empty($inst['app']['appDebug']) ? 'selected' : '' ?>><?= iT('app.disabled', 'Désactivé') ?></option>
+                <option value="1" <?= !empty($inst['app']['appDebug']) ? 'selected' : '' ?>><?= iT('app.enabled', 'Activé') ?></option>
             </select>
-            <div class="help">Désactiver en production</div>
+            <div class="help"><?= iT('app.debug_help', 'Désactiver en production') ?></div>
         </div>
         <div class="form-group">
-            <label>URL complète</label>
+            <label><?= iT('app.url', 'URL complète') ?></label>
             <input type="url" name="app_url" value="<?= htmlspecialchars($inst['app']['appUrl'] ?? $fullUrl) ?>" required>
         </div>
     </div>
     <div class="form-group">
-        <label>Chemin de base (relatif)</label>
+        <label><?= iT('app.base_path', 'Chemin de base (relatif)') ?></label>
         <input type="text" name="base_url" value="<?= htmlspecialchars($inst['app']['baseUrlIn'] ?? $basePath) ?>">
-        <div class="help">Laisser vide si Fronote est à la racine du domaine</div>
+        <div class="help"><?= iT('app.base_path_help', 'Laisser vide si Fronote est à la racine du domaine') ?></div>
     </div>
 
-    <h3 style="margin:24px 0 14px;font-size:1em;color:#4a5568">🔒 Sécurité & sessions</h3>
+    <h3 style="margin:24px 0 14px;font-size:1em;color:#4a5568">🔒 <?= iT('app.security_sessions', 'Sécurité & sessions') ?></h3>
     <div class="grid">
         <div class="form-group">
-            <label>Nom de session</label>
+            <label><?= iT('app.session_name', 'Nom de session') ?></label>
             <input type="text" name="session_name" value="<?= htmlspecialchars($inst['app']['sessionName'] ?? 'pronote_session') ?>" required>
         </div>
         <div class="form-group">
-            <label>Durée de session (sec)</label>
+            <label><?= iT('app.session_lifetime', 'Durée de session (sec)') ?></label>
             <input type="number" name="session_lifetime" value="<?= (int)($inst['app']['sessionLifetime'] ?? 7200) ?>" min="600" required>
-            <div class="help">7200 = 2 heures</div>
+            <div class="help"><?= iT('app.session_lifetime_help', '7200 = 2 heures') ?></div>
         </div>
         <div class="form-group">
-            <label>Durée token CSRF (sec)</label>
+            <label><?= iT('app.csrf_lifetime', 'Durée token CSRF (sec)') ?></label>
             <input type="number" name="csrf_lifetime" value="<?= (int)($inst['app']['csrfLifetime'] ?? 3600) ?>" min="300" required>
         </div>
         <div class="form-group">
-            <label>Tentatives de login max</label>
+            <label><?= iT('app.max_login', 'Tentatives de login max') ?></label>
             <input type="number" name="max_login_attempts" value="<?= (int)($inst['app']['maxLoginAttempts'] ?? 5) ?>" min="3" max="10" required>
         </div>
         <div class="form-group">
-            <label>Rate limit (requêtes)</label>
+            <label><?= iT('app.rate_limit_req', 'Rate limit (requêtes)') ?></label>
             <input type="number" name="rate_limit_attempts" value="<?= (int)($inst['app']['rateLimitAttempts'] ?? 5) ?>" min="3" required>
         </div>
         <div class="form-group">
-            <label>Rate limit (période, min)</label>
+            <label><?= iT('app.rate_limit_period', 'Rate limit (période, min)') ?></label>
             <input type="number" name="rate_limit_decay" value="<?= (int)($inst['app']['rateLimitDecay'] ?? 1) ?>" min="1" required>
         </div>
     </div>
 
     <p class="section-sub" style="margin:24px 0 14px;background:#f0f7ff;border:1px solid #cfe3ff;border-radius:8px;padding:12px;color:#2b6cb0">
-        🏫 L'établissement (identité, périodes, classes, matières) se configure
-        au premier login administrateur, via l'assistant de mise en route.
+        🏫 <?= iT('app.establishment_note', 'L\'établissement (identité, périodes, classes, matières) se configure au premier login administrateur, via l\'assistant de mise en route.') ?>
     </p>
 
     <script>
@@ -1398,58 +1443,58 @@ code{background:#edf2f7;padding:1px 6px;border-radius:3px;font-size:.88em;font-f
     }
     </script>
 
-    <h3 style="margin:24px 0 14px;font-size:1em;color:#4a5568">📧 Serveur SMTP (optionnel)</h3>
+    <h3 style="margin:24px 0 14px;font-size:1em;color:#4a5568">📧 <?= iT('app.smtp_title', 'Serveur SMTP (optionnel)') ?></h3>
     <div class="form-group">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
             <input type="checkbox" name="smtp_enabled" id="smtpEnabled" value="1"
                    onchange="toggleSmtp()"
                    <?= !empty($inst['smtp']['enabled']) ? 'checked' : '' ?>>
-            Configurer un serveur SMTP pour l'envoi d'emails
+            <?= iT('app.smtp_enable', 'Configurer un serveur SMTP pour l\'envoi d\'emails') ?>
         </label>
-        <div class="help">Si désactivé, les emails seront envoyés via la fonction mail() de PHP (souvent bloquée par les hébergeurs).</div>
+        <div class="help"><?= iT('app.smtp_help', 'Si désactivé, les emails seront envoyés via la fonction mail() de PHP (souvent bloquée par les hébergeurs).') ?></div>
     </div>
     <div id="smtp-fields" style="<?= empty($inst['smtp']['enabled']) ? 'display:none' : '' ?>">
         <div class="grid">
             <div class="form-group">
-                <label>Serveur SMTP</label>
+                <label><?= iT('app.smtp_host', 'Serveur SMTP') ?></label>
                 <input type="text" name="smtp_host" value="<?= htmlspecialchars($inst['smtp']['host'] ?? '') ?>" placeholder="smtp.gmail.com">
             </div>
             <div class="form-group">
-                <label>Port</label>
+                <label><?= iT('label.port', 'Port') ?></label>
                 <input type="number" name="smtp_port" value="<?= (int)($inst['smtp']['port'] ?? 587) ?>" placeholder="587">
-                <div class="help">587 (TLS) ou 465 (SSL) ou 25 (non chiffré)</div>
+                <div class="help"><?= iT('app.smtp_port_help', '587 (TLS) ou 465 (SSL) ou 25 (non chiffré)') ?></div>
             </div>
             <div class="form-group">
-                <label>Utilisateur SMTP</label>
+                <label><?= iT('app.smtp_user', 'Utilisateur SMTP') ?></label>
                 <input type="text" name="smtp_username" value="<?= htmlspecialchars($inst['smtp']['username'] ?? '') ?>" placeholder="contact@etablissement.fr">
             </div>
             <div class="form-group">
-                <label>Mot de passe SMTP</label>
+                <label><?= iT('app.smtp_password', 'Mot de passe SMTP') ?></label>
                 <input type="password" name="smtp_password" value="<?= htmlspecialchars($inst['smtp']['password'] ?? '') ?>">
             </div>
             <div class="form-group">
-                <label>Chiffrement</label>
+                <label><?= iT('app.smtp_encryption', 'Chiffrement') ?></label>
                 <?php $smtpEnc = $inst['smtp']['encryption'] ?? 'tls'; ?>
                 <select name="smtp_encryption">
-                    <option value="tls" <?= $smtpEnc === 'tls' ? 'selected' : '' ?>>STARTTLS (port 587)</option>
-                    <option value="ssl" <?= $smtpEnc === 'ssl' ? 'selected' : '' ?>>SSL/TLS (port 465)</option>
-                    <option value="none" <?= $smtpEnc === 'none' ? 'selected' : '' ?>>Aucun (non recommandé)</option>
+                    <option value="tls" <?= $smtpEnc === 'tls' ? 'selected' : '' ?>><?= iT('app.smtp_starttls', 'STARTTLS (port 587)') ?></option>
+                    <option value="ssl" <?= $smtpEnc === 'ssl' ? 'selected' : '' ?>><?= iT('app.smtp_ssl', 'SSL/TLS (port 465)') ?></option>
+                    <option value="none" <?= $smtpEnc === 'none' ? 'selected' : '' ?>><?= iT('app.smtp_none', 'Aucun (non recommandé)') ?></option>
                 </select>
             </div>
             <div class="form-group">
-                <label>Adresse d'expédition</label>
+                <label><?= iT('app.smtp_from_address', 'Adresse d\'expédition') ?></label>
                 <input type="email" name="smtp_from_address" value="<?= htmlspecialchars($inst['smtp']['from_address'] ?? '') ?>" placeholder="noreply@etablissement.fr">
             </div>
             <div class="form-group" style="grid-column:1/-1">
-                <label>Nom de l'expéditeur</label>
+                <label><?= iT('app.smtp_from_name', 'Nom de l\'expéditeur') ?></label>
                 <input type="text" name="smtp_from_name" value="<?= htmlspecialchars($inst['smtp']['from_name'] ?? ($inst['app']['appName'] ?? 'Fronote')) ?>" placeholder="Fronote">
             </div>
         </div>
     </div>
 
     <div class="actions">
-        <a href="?step=2" class="btn btn-secondary">← Retour</a>
-        <button type="submit" class="btn btn-primary">Continuer →</button>
+        <a href="?step=2" class="btn btn-secondary">← <?= iT('btn.back', 'Retour') ?></a>
+        <button type="submit" class="btn btn-primary"><?= iT('btn.continue', 'Continuer') ?> →</button>
     </div>
 </form>
 <?php endif; ?>
@@ -1459,44 +1504,44 @@ code{background:#edf2f7;padding:1px 6px;border-radius:3px;font-size:.88em;font-f
       // ÉTAPE 4 : ADMINISTRATEUR
       // ═══════════════════════════════════════════════════════════════════════ ?>
 <?php if ($currentStep === 4 && !$installed): ?>
-<h2 class="section-title">Compte administrateur</h2>
-<p class="section-sub">Ce sera le compte principal. L'identifiant sera <strong><code>admin</code></strong>.</p>
+<h2 class="section-title"><?= iT('admin.title', 'Compte administrateur') ?></h2>
+<p class="section-sub"><?= iT('admin.subtitle', 'Ce sera le compte principal. L\'identifiant sera <strong><code>admin</code></strong>.') ?></p>
 
 <form method="post" id="adminForm">
     <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
     <input type="hidden" name="step" value="4">
     <div class="grid">
         <div class="form-group">
-            <label>Nom</label>
+            <label><?= iT('admin.lastname', 'Nom') ?></label>
             <input type="text" name="admin_nom" value="<?= htmlspecialchars($inst['admin']['nom'] ?? '') ?>" required>
         </div>
         <div class="form-group">
-            <label>Prénom</label>
+            <label><?= iT('admin.firstname', 'Prénom') ?></label>
             <input type="text" name="admin_prenom" value="<?= htmlspecialchars($inst['admin']['prenom'] ?? '') ?>" required>
         </div>
     </div>
     <div class="form-group">
-        <label>Email</label>
+        <label><?= iT('admin.email', 'Email') ?></label>
         <input type="email" name="admin_mail" value="<?= htmlspecialchars($inst['admin']['mail'] ?? '') ?>" required>
     </div>
     <div class="form-group pw-wrap">
-        <label>Mot de passe</label>
+        <label><?= iT('label.password', 'Mot de passe') ?></label>
         <input type="password" name="admin_password" id="pw" required minlength="12">
         <button type="button" class="pw-toggle" onclick="let f=document.getElementById('pw');f.type=f.type==='password'?'text':'password'">👁️</button>
         <div class="pw-bar-track"><div class="pw-bar" id="pwBar"></div></div>
-        <button type="button" class="pw-gen" onclick="genPw()">🎲 Générer un mot de passe sécurisé</button>
+        <button type="button" class="pw-gen" onclick="genPw()">🎲 <?= iT('admin.generate_pw', 'Générer un mot de passe sécurisé') ?></button>
         <div class="pw-reqs">
-            <strong>Exigences :</strong>
-            <div class="pw-req fail" id="r-len">✗ Au moins 12 caractères</div>
-            <div class="pw-req fail" id="r-up">✗ Au moins une majuscule</div>
-            <div class="pw-req fail" id="r-lo">✗ Au moins une minuscule</div>
-            <div class="pw-req fail" id="r-num">✗ Au moins un chiffre</div>
-            <div class="pw-req fail" id="r-sp">✗ Au moins un caractère spécial</div>
+            <strong><?= iT('admin.requirements', 'Exigences :') ?></strong>
+            <div class="pw-req fail" id="r-len">✗ <?= iT('admin.pw_req_length', 'Au moins 12 caractères') ?></div>
+            <div class="pw-req fail" id="r-up">✗ <?= iT('admin.pw_req_uppercase', 'Au moins une majuscule') ?></div>
+            <div class="pw-req fail" id="r-lo">✗ <?= iT('admin.pw_req_lowercase', 'Au moins une minuscule') ?></div>
+            <div class="pw-req fail" id="r-num">✗ <?= iT('admin.pw_req_digit', 'Au moins un chiffre') ?></div>
+            <div class="pw-req fail" id="r-sp">✗ <?= iT('admin.pw_req_special', 'Au moins un caractère spécial') ?></div>
         </div>
     </div>
     <div class="actions">
-        <a href="?step=3" class="btn btn-secondary">← Retour</a>
-        <button type="submit" class="btn btn-primary" id="btnNext" disabled>Continuer →</button>
+        <a href="?step=3" class="btn btn-secondary">← <?= iT('btn.back', 'Retour') ?></a>
+        <button type="submit" class="btn btn-primary" id="btnNext" disabled><?= iT('btn.continue', 'Continuer') ?> →</button>
     </div>
 </form>
 
@@ -1537,11 +1582,11 @@ document.getElementById('pw').addEventListener('input',function(){checkPw(this.v
     <?php if ($installed): ?>
         <?php $log = $inst['log'] ?? []; ?>
         <div class="result-card">
-            <h2>🎉 Installation terminée !</h2>
-            <p>Fronote est prêt à être utilisé.</p>
+            <h2>🎉 <?= iT('result.title', 'Installation terminée !') ?></h2>
+            <p><?= iT('result.ready', 'Fronote est prêt à être utilisé.') ?></p>
         </div>
 
-        <h3 style="font-size:1em;margin-bottom:8px">Journal d'installation</h3>
+        <h3 style="font-size:1em;margin-bottom:8px"><?= iT('result.log_title', 'Journal d\'installation') ?></h3>
         <ul class="log-list">
         <?php foreach ($log as [$type, $msg]): ?>
             <li class="log-<?= $type === 'ok' ? 'ok' : 'warn' ?>"><?= $type === 'ok' ? '✅' : '⚠️' ?> <?= $msg ?></li>
@@ -1549,55 +1594,55 @@ document.getElementById('pw').addEventListener('input',function(){checkPw(this.v
         </ul>
 
         <div class="info-box">
-            <h4>📋 Informations de connexion</h4>
-            <p style="margin:8px 0"><strong>Identifiant :</strong> <code>admin</code></p>
-            <p style="margin:8px 0"><strong>Mot de passe :</strong> celui que vous avez défini à l'étape 4</p>
-            <p style="margin:8px 0"><strong>Type :</strong> <code>administrateur</code></p>
+            <h4>📋 <?= iT('result.login_info', 'Informations de connexion') ?></h4>
+            <p style="margin:8px 0"><strong><?= iT('result.identifier', 'Identifiant :') ?></strong> <code>admin</code></p>
+            <p style="margin:8px 0"><strong><?= iT('result.password_label', 'Mot de passe :') ?></strong> <?= iT('result.password_value', 'celui que vous avez défini à l\'étape 4') ?></p>
+            <p style="margin:8px 0"><strong><?= iT('result.type', 'Type :') ?></strong> <code>administrateur</code></p>
         </div>
 
         <div class="info-box">
-            <h4>🔒 Fonctionnalités de sécurité installées</h4>
+            <h4>🔒 <?= iT('result.security_features', 'Fonctionnalités de sécurité installées') ?></h4>
             <ul style="padding-left:20px;font-size:.9em;line-height:1.8;margin:8px 0">
-                <li>AuthManager unifié (API\Auth\AuthManager)</li>
-                <li>SessionGuard avec session_regenerate_id()</li>
-                <li>RateLimiter IP-based en base de données</li>
-                <li>Protection CSRF avec rotation de tokens</li>
-                <li>Mots de passe hashés BCRYPT (cost 12)</li>
-                <li>Audit log (Event Sourcing)</li>
-                <li>Connexion centralisée via getPDO()</li>
+                <li><?= iT('result.feature_auth', 'AuthManager unifié (API\Auth\AuthManager)') ?></li>
+                <li><?= iT('result.feature_session', 'SessionGuard avec session_regenerate_id()') ?></li>
+                <li><?= iT('result.feature_ratelimiter', 'RateLimiter IP-based en base de données') ?></li>
+                <li><?= iT('result.feature_csrf', 'Protection CSRF avec rotation de tokens') ?></li>
+                <li><?= iT('result.feature_bcrypt', 'Mots de passe hashés BCRYPT (cost 12)') ?></li>
+                <li><?= iT('result.feature_audit', 'Audit log (Event Sourcing)') ?></li>
+                <li><?= iT('result.feature_pdo', 'Connexion centralisée via getPDO()') ?></li>
             </ul>
         </div>
 
         <div style="text-align:center;margin-top:24px">
             <a href="login/index.php" class="btn btn-success" style="font-size:1.05em;padding:14px 32px;width:100%;justify-content:center">
-                🔐 Se connecter maintenant
+                🔐 <?= iT('result.login_now', 'Se connecter maintenant') ?>
             </a>
         </div>
 
     <?php else: ?>
         <?php /* RÉCAPITULATIF avant exécution */ ?>
         <?php if (empty($inst['db']) || empty($inst['app']) || empty($inst['admin'])): ?>
-            <div class="msg msg-error">❌ Données d'installation incomplètes — la session a expiré ou a été corrompue.</div>
+            <div class="msg msg-error">❌ <?= iT('error.incomplete_session', 'Données d\'installation incomplètes — la session a expiré ou a été corrompue.') ?></div>
             <div class="actions" style="justify-content:center">
-                <a href="?reset" class="btn btn-primary">🔄 Recommencer l'installation</a>
+                <a href="?reset" class="btn btn-primary">🔄 <?= iT('error.restart_install', 'Recommencer l\'installation') ?></a>
             </div>
         <?php else: ?>
-        <h2 class="section-title">Récapitulatif</h2>
-        <p class="section-sub">Vérifiez les informations puis lancez l'installation.</p>
+        <h2 class="section-title"><?= iT('summary.title', 'Récapitulatif') ?></h2>
+        <p class="section-sub"><?= iT('summary.subtitle', 'Vérifiez les informations puis lancez l\'installation.') ?></p>
 
         <?php $db = $inst['db']; $ap = $inst['app']; $ad = $inst['admin']; ?>
 
         <div class="info-box">
-            <h4>🗄️ Base de données</h4>
-            <p style="margin:4px 0"><code><?= htmlspecialchars($db['dbUser']) ?>@<?= htmlspecialchars($db['dbHost']) ?>:<?= $db['dbPort'] ?></code> → base : <code><?= htmlspecialchars($db['dbName']) ?></code></p>
+            <h4>🗄️ <?= iT('step.database', 'Base de données') ?></h4>
+            <p style="margin:4px 0"><code><?= htmlspecialchars($db['dbUser']) ?>@<?= htmlspecialchars($db['dbHost']) ?>:<?= $db['dbPort'] ?></code> → <?= iT('summary.base_label', 'base :') ?> <code><?= htmlspecialchars($db['dbName']) ?></code></p>
         </div>
         <div class="info-box">
-            <h4>⚙️ Application</h4>
+            <h4>⚙️ <?= iT('step.application', 'Application') ?></h4>
             <p style="margin:4px 0"><strong><?= htmlspecialchars($ap['appName']) ?></strong> — <?= htmlspecialchars($ap['appEnv']) ?> — <?= htmlspecialchars($ap['appUrl']) ?></p>
         </div>
         <div class="info-box">
-            <h4>👤 Administrateur</h4>
-            <p style="margin:4px 0"><?= htmlspecialchars($ad['prenom']) ?> <?= htmlspecialchars($ad['nom']) ?> — <?= htmlspecialchars($ad['mail']) ?> — identifiant : <code>admin</code></p>
+            <h4>👤 <?= iT('step.admin', 'Administrateur') ?></h4>
+            <p style="margin:4px 0"><?= htmlspecialchars($ad['prenom']) ?> <?= htmlspecialchars($ad['nom']) ?> — <?= htmlspecialchars($ad['mail']) ?> — <?= iT('summary.identifier_label', 'identifiant :') ?> <code>admin</code></p>
         </div>
         <?php $sm = $inst['smtp'] ?? []; ?>
         <div class="info-box">
@@ -1605,19 +1650,19 @@ document.getElementById('pw').addEventListener('input',function(){checkPw(this.v
             <?php if (!empty($sm['enabled']) && !empty($sm['host'])): ?>
             <p style="margin:4px 0"><code><?= htmlspecialchars($sm['host']) ?>:<?= $sm['port'] ?></code> (<?= htmlspecialchars($sm['encryption']) ?>) — <?= htmlspecialchars($sm['from_address']) ?></p>
             <?php else: ?>
-            <p style="margin:4px 0;color:#999">Non configuré — configurable depuis l'administration</p>
+            <p style="margin:4px 0;color:#999"><?= iT('summary.smtp_not_configured', 'Non configuré — configurable depuis l\'administration') ?></p>
             <?php endif; ?>
         </div>
 
         <?php if (!empty($inst['db_exists'])): ?>
         <div class="msg msg-error" style="background:#fff3cd;border-color:#ffc107;color:#856404">
-            ⚠️ <strong>Base de données existante détectée !</strong><br>
-            La base <code><?= htmlspecialchars($db['dbName']) ?></code> existe déjà et contient <strong><?= (int)($inst['db_table_count'] ?? 0) ?> table(s)</strong>.<br>
-            L'installation va <strong>supprimer toutes les données existantes</strong>. Cette action est irréversible.
+            ⚠️ <strong><?= iT('summary.db_exists_title', 'Base de données existante détectée !') ?></strong><br>
+            <?= iT('summary.db_exists_p1', 'La base') ?> <code><?= htmlspecialchars($db['dbName']) ?></code> <?= iT('summary.db_exists_p2', 'existe déjà et contient') ?> <strong><?= (int)($inst['db_table_count'] ?? 0) ?> <?= iT('summary.tables', 'table(s)') ?></strong>.<br>
+            <?= iT('summary.db_exists_warn', 'L\'installation va <strong>supprimer toutes les données existantes</strong>. Cette action est irréversible.') ?>
         </div>
         <?php else: ?>
         <div class="msg msg-warn">
-            ⚠️ L'installation va créer la base <code><?= htmlspecialchars($db['dbName']) ?></code>. Si elle existe déjà, une confirmation sera demandée.
+            ⚠️ <?= iT('summary.db_create_1', 'L\'installation va créer la base') ?> <code><?= htmlspecialchars($db['dbName']) ?></code>. <?= iT('summary.db_create_2', 'Si elle existe déjà, une confirmation sera demandée.') ?>
         </div>
         <?php endif; ?>
 
@@ -1628,14 +1673,14 @@ document.getElementById('pw').addEventListener('input',function(){checkPw(this.v
             <div style="background:#fff3cd;border:2px solid #ffc107;border-radius:8px;padding:16px;margin-bottom:16px">
                 <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-weight:600;color:#856404">
                     <input type="checkbox" name="confirm_overwrite" value="1" id="confirmOverwrite" style="margin-top:3px;width:18px;height:18px" required>
-                    <span>Je confirme vouloir écraser la base de données existante <code><?= htmlspecialchars($db['dbName']) ?></code> et toutes ses données. Je comprends que cette action est irréversible.</span>
+                    <span><?= iT('summary.confirm_overwrite_1', 'Je confirme vouloir écraser la base de données existante') ?> <code><?= htmlspecialchars($db['dbName']) ?></code> <?= iT('summary.confirm_overwrite_2', 'et toutes ses données. Je comprends que cette action est irréversible.') ?></span>
                 </label>
             </div>
             <?php endif; ?>
             <div class="actions">
-                <a href="?step=4" class="btn btn-secondary">← Retour</a>
-                <a href="?step=2" class="btn btn-secondary">← Changer la base</a>
-                <button type="submit" class="btn btn-primary" id="btnInstall" <?= !empty($inst['db_exists']) ? 'disabled' : '' ?>>🚀 Lancer l'installation</button>
+                <a href="?step=4" class="btn btn-secondary">← <?= iT('btn.back', 'Retour') ?></a>
+                <a href="?step=2" class="btn btn-secondary">← <?= iT('summary.change_db', 'Changer la base') ?></a>
+                <button type="submit" class="btn btn-primary" id="btnInstall" <?= !empty($inst['db_exists']) ? 'disabled' : '' ?>>🚀 <?= iT('summary.launch', 'Lancer l\'installation') ?></button>
             </div>
         </form>
         <?php if (!empty($inst['db_exists'])): ?>
@@ -1660,7 +1705,7 @@ document.getElementById('pw').addEventListener('input',function(){checkPw(this.v
 </div><!-- .card -->
 
 <p style="text-align:center;color:rgba(255,255,255,.5);margin-top:16px;font-size:.8em">
-    IP client : <?= htmlspecialchars($clientIP) ?> — PHP <?= PHP_VERSION ?>
+    <?= iT('footer.client_ip', 'IP client :') ?> <?= htmlspecialchars($clientIP) ?> — PHP <?= PHP_VERSION ?>
 </p>
 
 </div><!-- .container -->
