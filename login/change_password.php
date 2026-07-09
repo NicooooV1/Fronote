@@ -9,6 +9,16 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// En-têtes de sécurité (page de credentials) — CSP à nonce comme login/index.php
+// (le script externe password-strength.js est autorisé par 'self').
+$cspNonce = base64_encode(random_bytes(16));
+if (!headers_sent()) {
+    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-{$cspNonce}'; style-src 'self' 'unsafe-inline' cdnjs.cloudflare.com; font-src cdnjs.cloudflare.com; img-src 'self' data:;");
+    header("X-Frame-Options: DENY");
+    header("X-Content-Type-Options: nosniff");
+    header("Referrer-Policy: strict-origin-when-cross-origin");
+}
+
 // Cette page sert UNIQUEMENT le changement de mot de passe imposé au premier login :
 // l'utilisateur est authentifié et $_SESSION['force_password_change'] est armé
 // (cf. login/index.php & login/verify_2fa.php). La réinitialisation self-service par
@@ -123,7 +133,7 @@ $username  = $currentUser['identifiant']
                 </div>
             </div>
 
-            <script>
+            <script nonce="<?= $cspNonce ?>">
             (function() {
                 var seconds = 5;
                 var timerEl = document.getElementById('timer');

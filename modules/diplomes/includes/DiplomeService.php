@@ -93,8 +93,14 @@ class DiplomeService
 
     public function getStats(): array
     {
-        $total = $this->pdo->query("SELECT COUNT(*) FROM diplomes")->fetchColumn();
-        $annee = $this->pdo->query("SELECT COUNT(*) FROM diplomes WHERE YEAR(date_obtention) = YEAR(CURDATE())")->fetchColumn();
+        // Cloisonnement multi-tenant : les compteurs ne portent que sur l'établissement courant.
+        $etab = \API\Core\EstablishmentContext::id();
+        $t = $this->pdo->prepare("SELECT COUNT(*) FROM diplomes WHERE etablissement_id = ?");
+        $t->execute([$etab]);
+        $total = $t->fetchColumn();
+        $a = $this->pdo->prepare("SELECT COUNT(*) FROM diplomes WHERE etablissement_id = ? AND YEAR(date_obtention) = YEAR(CURDATE())");
+        $a->execute([$etab]);
+        $annee = $a->fetchColumn();
         return ['total' => $total, 'annee_courante' => $annee];
     }
 
@@ -109,8 +115,9 @@ class DiplomeService
                        COUNT(*) AS total,
                        SUM(CASE WHEN mention IS NOT NULL AND mention != 'sans' THEN 1 ELSE 0 END) AS avec_mention,
                        YEAR(date_obtention) AS annee
-                FROM diplomes WHERE 1=1";
-        $params = [];
+                FROM diplomes WHERE etablissement_id = ?";
+        // Cloisonnement multi-tenant : agrégats limités à l'établissement courant.
+        $params = [\API\Core\EstablishmentContext::id()];
         if ($annee) { $sql .= ' AND YEAR(date_obtention) = ?'; $params[] = $annee; }
         $sql .= ' GROUP BY type, YEAR(date_obtention) ORDER BY annee DESC, type';
         $stmt = $this->pdo->prepare($sql);
@@ -123,8 +130,9 @@ class DiplomeService
      */
     public function getRepartitionMentions(string $type, ?int $annee = null): array
     {
-        $sql = "SELECT mention, COUNT(*) AS total FROM diplomes WHERE type = ?";
-        $params = [$type];
+        // Cloisonnement multi-tenant : répartition limitée à l'établissement courant.
+        $sql = "SELECT mention, COUNT(*) AS total FROM diplomes WHERE etablissement_id = ? AND type = ?";
+        $params = [\API\Core\EstablishmentContext::id(), $type];
         if ($annee) { $sql .= ' AND YEAR(date_obtention) = ?'; $params[] = $annee; }
         $sql .= ' GROUP BY mention ORDER BY total DESC';
         $stmt = $this->pdo->prepare($sql);

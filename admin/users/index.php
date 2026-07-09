@@ -154,9 +154,21 @@ try {
         $tables = [$filterType => $tables[$filterType]];
     }
 
+    // Cloisonnement multi-tenant : la liste ne doit charger que les comptes de
+    // l'établissement courant (super_admin : portée globale légitime). Sans ce scope,
+    // un admin voyait tous les comptes de tous les établissements (fuite) et l'appli
+    // chargeait toutes les tables en RAM avant pagination (perf).
+    $scopeEtab = !(function_exists('isSuperAdmin') && isSuperAdmin());
+    $etabId = $scopeEtab ? \API\Core\EstablishmentContext::id() : null;
+
     $allResults = [];
     foreach ($tables as $profil => $table) {
         $where = []; $params = [];
+
+        if ($scopeEtab) {
+            $where[] = "etablissement_id = ?";
+            $params[] = $etabId;
+        }
 
         if (!empty($searchTerm)) {
             $where[] = "(nom LIKE ? OR prenom LIKE ? OR identifiant LIKE ? OR mail LIKE ?)";
@@ -195,10 +207,18 @@ try {
 
 $totalPages = max(1, ceil($totalUsers / $perPage));
 
-// Classes disponibles pour le filtre
+// Classes disponibles pour le filtre — scopées à l'établissement courant (super_admin :
+// global). ORDER BY sur les seules colonnes du SELECT DISTINCT (niveau retiré) : sinon
+// MySQL en mode ONLY_FULL_GROUP_BY rejette « ORDER BY niveau incompatible avec DISTINCT ».
 $classesList = [];
 try {
-    $classesList = $pdo->query("SELECT DISTINCT nom FROM classes WHERE actif = 1 ORDER BY niveau, nom")->fetchAll(PDO::FETCH_COLUMN);
+    if ($scopeEtab) {
+        $cs = $pdo->prepare("SELECT DISTINCT nom FROM classes WHERE actif = 1 AND etablissement_id = ? ORDER BY nom");
+        $cs->execute([$etabId]);
+    } else {
+        $cs = $pdo->query("SELECT DISTINCT nom FROM classes WHERE actif = 1 ORDER BY nom");
+    }
+    $classesList = $cs->fetchAll(PDO::FETCH_COLUMN);
 } catch (Exception $e) {
     error_log('[' . basename(__FILE__) . '] ' . $e->getMessage());
 }

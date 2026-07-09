@@ -113,6 +113,13 @@ try {
 } catch (\InvalidArgumentException $e) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+} catch (\PDOException $e) {
+    // Ne pas divulguer les détails SQL au client : \PDOException hérite de
+    // \RuntimeException et serait sinon attrapée plus bas en laissant fuiter
+    // getMessage() (requête/erreur SQL en clair). On logge le détail côté serveur.
+    error_log("API messagerie DB error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Erreur interne du serveur']);
 } catch (\RuntimeException $e) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);

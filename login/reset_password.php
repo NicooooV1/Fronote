@@ -10,6 +10,16 @@ if (isset($_SESSION['user'])) {
     exit;
 }
 
+// En-têtes de sécurité (page de credentials) — CSP à nonce comme login/index.php,
+// afin que cette page sensible ne soit pas servie sans CSP.
+$cspNonce = base64_encode(random_bytes(16));
+if (!headers_sent()) {
+    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-{$cspNonce}'; style-src 'self' 'unsafe-inline' cdnjs.cloudflare.com; font-src cdnjs.cloudflare.com; img-src 'self' data:;");
+    header("X-Frame-Options: DENY");
+    header("X-Content-Type-Options: nosniff");
+    header("Referrer-Policy: strict-origin-when-cross-origin");
+}
+
 $error = '';
 $success = '';
 $userType = isset($_POST['user_type']) ? $_POST['user_type'] : '';
@@ -183,7 +193,7 @@ function formatPhoneNumber($phone) {
         </form>
     </div>
 
-    <script>
+    <script nonce="<?= $cspNonce ?>">
         document.addEventListener('DOMContentLoaded', function() {
             const radioButtons = document.querySelectorAll('input[name="user_type"]');
 

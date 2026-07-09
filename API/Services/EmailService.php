@@ -263,12 +263,27 @@ class EmailService
      */
     private function sendViaMail($to, string $subject, string $bodyHtml, string $bodyText): array
     {
-        $recipients = is_array($to) ? implode(', ', $to) : $to;
-        $headers = "MIME-Version: 1.0\r\n";
+        $cfg = $this->getConfig();
+        // Anti-injection d'en-têtes (CRLF) + validation des adresses.
+        $hdr  = static fn($v): string => str_replace(["\r", "\n", "\0"], '', (string) $v);
+        $addr = static fn($v): string => filter_var($hdr($v), FILTER_VALIDATE_EMAIL) ? $hdr($v) : '';
+        $recipients = implode(', ', array_filter(array_map($addr, is_array($to) ? $to : [$to])));
+        if ($recipients === '') {
+            return ['success' => false, 'message' => 'Aucun destinataire valide'];
+        }
+        $fromAddr = $addr($cfg['from_address'] ?? '') ?: 'noreply@fronote.local';
+        $fromName = $hdr($cfg['from_name'] ?? '') ?: 'Fronote';
+        $replyTo  = $addr($cfg['reply_to'] ?? '') ?: $fromAddr;
+
+        $headers  = "From: {$fromName} <{$fromAddr}>\r\n";
+        $headers .= "Reply-To: {$replyTo}\r\n";
+        $headers .= "Date: " . date('r') . "\r\n";
+        $headers .= "MIME-Version: 1.0\r\n";
         $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
         $headers .= "X-Mailer: Fronote/1.0\r\n";
 
-        $result = @mail($recipients, $subject, $bodyHtml, $headers);
+        // -f fixe l'expéditeur d'enveloppe (Return-Path) → meilleure délivrabilité/SPF.
+        $result = @mail($recipients, $hdr($subject), $bodyHtml, $headers, '-f' . $fromAddr);
         return [
             'success' => $result,
             'message' => $result ? 'Email envoyé via mail()' : 'Échec mail() — vérifiez la configuration PHP sendmail',

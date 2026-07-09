@@ -102,16 +102,25 @@ class User
         $results = [];
         $term = '%' . trim($term) . '%';
 
+        // Cloisonnement multi-tenant : un admin ne voit que les comptes de son
+        // établissement ; le super-admin recherche sur l'ensemble des tenants.
+        $superAdmin = function_exists('isSuperAdmin') && isSuperAdmin();
+        $etablissementId = $superAdmin ? null : \API\Core\EstablishmentContext::id();
+
         foreach (self::$tableMap as $profil => $table) {
             try {
-                $stmt = $this->pdo->prepare(
+                $sql =
                     "SELECT id, identifiant, nom, prenom, mail, '{$profil}' AS type
                      FROM `{$table}`
-                     WHERE actif = 1
-                       AND (identifiant LIKE ? OR nom LIKE ? OR prenom LIKE ? OR mail LIKE ?)
-                     LIMIT 20"
-                );
-                $stmt->execute([$term, $term, $term, $term]);
+                     WHERE actif = 1"
+                    . ($superAdmin ? '' : ' AND etablissement_id = ?')
+                    . " AND (identifiant LIKE ? OR nom LIKE ? OR prenom LIKE ? OR mail LIKE ?)
+                     LIMIT 20";
+                $params = $superAdmin
+                    ? [$term, $term, $term, $term]
+                    : [$etablissementId, $term, $term, $term, $term];
+                $stmt = $this->pdo->prepare($sql);
+                $stmt->execute($params);
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 foreach ($rows as $row) {
                     $results[] = $row;

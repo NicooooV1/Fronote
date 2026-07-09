@@ -80,7 +80,17 @@ try {
 
     $ok = $edtService->updateCours($coursId, $data);
     echo json_encode(['success' => $ok, 'message' => $ok ? 'Cours déplacé' : 'Échec']);
+} catch (\PDOException $e) {
+    // Ne jamais exposer le détail SQL au client : logge côté serveur, message générique.
+    error_log('ajax_move_cours PDOException: ' . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Erreur lors du déplacement du cours']);
 } catch (\RuntimeException $e) {
-    // Conflit détecté par EdtService::detecterConflits
+    // Conflit métier détecté par EdtService::detecterConflits (message contrôlé, sûr à afficher).
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+} catch (\Throwable $e) {
+    // Toute autre erreur inattendue : ne pas fuiter le détail au client.
+    error_log('ajax_move_cours error: ' . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Erreur lors du déplacement du cours']);
 }

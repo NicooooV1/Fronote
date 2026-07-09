@@ -269,7 +269,7 @@ class NotificationService
                 $emailPath = __DIR__ . '/../../../API/Services/EmailService.php';
                 if (file_exists($emailPath)) {
                     require_once $emailPath;
-                    $emailService = new \API\Services\EmailService();
+                    $emailService = new \API\Services\EmailService($this->pdo);
                     $emailService->send(
                         $user['mail'],
                         'Résumé de vos notifications — FRONOTE',

@@ -17,7 +17,7 @@ RedirectMatch 404 (?i)/install\.php(\.[a-z0-9.-]+)?$
 RedirectMatch 404 (?i)/(vendor|logs|storage|database|scripts|config|tests|node_modules|websocket|\.github)(/|$)
 
 # --- Repli par motif de nom de fichier (si RedirectMatch indisponible) ---
-<FilesMatch "(?i)^(\.env.*|.*\.(sql|sqlite|db|bak|ini|conf|log|lock|yml|yaml|sh|dist|example)|composer\.(json|lock)|package(-lock)?\.json)$">
+<FilesMatch "(?i)^(\.env.*|.*\.(sql|sqlite|db|bak|ini|conf|log|lock|yml|yaml|sh|dist|example|md|neon)|composer\.(json|lock)|package(-lock)?\.json|install\.php|Dockerfile|docker-compose\.yml|version\.json)$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>

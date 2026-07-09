@@ -813,7 +813,7 @@ $roleWidgets = match ($userType) {
                                     <p>Téléchargez une copie de vos données personnelles (RGPD)</p>
                                 </div>
                             </div>
-                            <a href="../rgpd/export.php" class="btn btn-primary btn-sm"><i class="fas fa-download"></i> Exporter</a>
+                            <a href="../rgpd/export_donnees.php" class="btn btn-primary btn-sm"><i class="fas fa-download"></i> Exporter</a>
                         </div>
 
                         <div class="notif-option">

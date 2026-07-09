@@ -176,6 +176,9 @@ class SallesMaterielService
 
     public function getPrets(array $filters = []): array
     {
+        // Cloisonnement multi-tenant : prets_materiels n'a pas d'etablissement_id, on scope via materiels.etablissement_id
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $sql = "SELECT pm.*, mat.nom AS materiel_nom,
                        COALESCE(
                            (SELECT CONCAT(prenom, ' ', nom) FROM professeurs WHERE id = pm.emprunteur_id),
@@ -183,9 +186,9 @@ class SallesMaterielService
                            CONCAT('User #', pm.emprunteur_id)
                        ) AS emprunteur_nom
                 FROM prets_materiels pm
-                JOIN materiels mat ON pm.materiel_id = mat.id
+                JOIN materiels mat ON pm.materiel_id = mat.id AND mat.etablissement_id = ?
                 WHERE 1=1";
-        $params = [];
+        $params = [$etabId];
         if (!empty($filters['statut'])) { $sql .= ' AND pm.statut = ?'; $params[] = $filters['statut']; }
         $sql .= ' ORDER BY pm.date_pret DESC';
         $stmt = $this->pdo->prepare($sql);
@@ -209,9 +212,18 @@ class SallesMaterielService
 
     public function getStatsMateriels(): array
     {
-        $total = $this->pdo->query("SELECT COUNT(*) FROM materiels")->fetchColumn();
-        $prets_en_cours = $this->pdo->query("SELECT COUNT(*) FROM prets_materiels WHERE statut = 'en_cours'")->fetchColumn();
-        $hs = $this->pdo->query("SELECT COUNT(*) FROM materiels WHERE etat = 'en_panne'")->fetchColumn();
+        // Cloisonnement multi-tenant : on scope sur materiels.etablissement_id (prets_materiels n'a pas cette colonne, on le rattache via un JOIN)
+        $etabId = $this->etabId();
+        if ($etabId === null) return ['total' => 0, 'prets_en_cours' => 0, 'hors_service' => 0];
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM materiels WHERE etablissement_id = ?");
+        $stmt->execute([$etabId]);
+        $total = $stmt->fetchColumn();
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM prets_materiels pm JOIN materiels mat ON pm.materiel_id = mat.id AND mat.etablissement_id = ? WHERE pm.statut = 'en_cours'");
+        $stmt->execute([$etabId]);
+        $prets_en_cours = $stmt->fetchColumn();
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM materiels WHERE etat = 'en_panne' AND etablissement_id = ?");
+        $stmt->execute([$etabId]);
+        $hs = $stmt->fetchColumn();
         return ['total' => $total, 'prets_en_cours' => $prets_en_cours, 'hors_service' => $hs];
     }
 

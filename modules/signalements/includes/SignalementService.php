@@ -168,7 +168,13 @@ class SignalementService
 
     public function getStats(): array
     {
-        $stmt = $this->pdo->query("
+        // Cloisonnement multi-tenant : les compteurs ne doivent agréger que
+        // les signalements de l'établissement courant (données très sensibles).
+        $etab = $this->etabId();
+        if ($etab === null) {
+            return ['total' => 0, 'nouveaux' => 0, 'en_cours' => 0, 'urgents' => 0, 'anonymes' => 0];
+        }
+        $stmt = $this->pdo->prepare("
             SELECT
                 COUNT(*) AS total,
                 COUNT(CASE WHEN statut = 'nouveau' THEN 1 END) AS nouveaux,
@@ -176,7 +182,9 @@ class SignalementService
                 COUNT(CASE WHEN urgence IN ('haute', 'critique') THEN 1 END) AS urgents,
                 COUNT(CASE WHEN anonyme = 1 THEN 1 END) AS anonymes
             FROM signalements
+            WHERE etablissement_id = ?
         ");
+        $stmt->execute([$etab]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
@@ -262,12 +270,18 @@ class SignalementService
 
     public function detecterRecurrence(int $signalementId): array
     {
-        $sig = $this->pdo->prepare("SELECT type, lieu FROM signalements WHERE id = :id");
-        $sig->execute([':id' => $signalementId]);
-        $s = $sig->fetch(\PDO::FETCH_ASSOC);
+        // Cloisonnement multi-tenant : la recherche de récurrence ne doit
+        // remonter que des signalements du même établissement.
+        $etab = $this->etabId();
+        if ($etab === null) return [];
 
-        $similaires = $this->pdo->prepare("SELECT id, type, lieu, description, date_creation FROM signalements WHERE id != :id AND (type = :t OR lieu = :l) AND date_creation >= DATE_SUB(CURDATE(), INTERVAL 90 DAY) ORDER BY date_creation DESC LIMIT 10");
-        $similaires->execute([':id' => $signalementId, ':t' => $s['type'], ':l' => $s['lieu']]);
+        $sig = $this->pdo->prepare("SELECT type, lieu FROM signalements WHERE id = :id AND etablissement_id = :etab");
+        $sig->execute([':id' => $signalementId, ':etab' => $etab]);
+        $s = $sig->fetch(\PDO::FETCH_ASSOC);
+        if (!$s) return [];
+
+        $similaires = $this->pdo->prepare("SELECT id, type, lieu, description, date_creation FROM signalements WHERE etablissement_id = :etab AND id != :id AND (type = :t OR lieu = :l) AND date_creation >= DATE_SUB(CURDATE(), INTERVAL 90 DAY) ORDER BY date_creation DESC LIMIT 10");
+        $similaires->execute([':etab' => $etab, ':id' => $signalementId, ':t' => $s['type'], ':l' => $s['lieu']]);
         return $similaires->fetchAll(\PDO::FETCH_ASSOC);
     }
 }
