@@ -26,6 +26,7 @@ final class ProductionReadinessCheckerTest extends TestCase
             'WEBSOCKET_ENABLED'         => 'true',
             'WEBSOCKET_API_SECRET'      => str_repeat('c', 64),
             'WEBSOCKET_ALLOWED_ORIGINS' => 'https://ecole.example.fr',
+            'WS_PHP_AUTHORIZE_URL'      => 'https://ecole.example.fr/API/endpoints/ws_authorize.php',
             'SESSION_SECURE'            => 'true',
             'HEALTH_TOKEN'              => str_repeat('d', 32),
             'DB_PASS'                   => 'a-real-db-password',
