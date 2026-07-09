@@ -43,6 +43,17 @@ class ErrorHandler
             return false;
         }
 
+        // En PRODUCTION : les avertissements/notices/dépréciations sont LOGGÉS mais ne font
+        // PAS planter la page (dégradation gracieuse). Convertir CHAQUE E_WARNING/E_NOTICE en
+        // exception fatale (→ HTTP 500) était trop agressif : une clé de tableau indéfinie
+        // dans un cas limite suffisait à casser une page entière. Seules les erreurs réelles
+        // (récupérables / déclenchées explicitement) sont propagées. En debug : tout throw.
+        $realError = ($severity & (E_RECOVERABLE_ERROR | E_USER_ERROR)) !== 0;
+        if (!$this->debug && !$realError) {
+            error_log(sprintf('[php:%d] %s in %s:%d', $severity, $message, $file, $line));
+            return true; // erreur gérée, ne pas propager
+        }
+
         throw new \ErrorException($message, 0, $severity, $file, $line);
     }
 

@@ -167,8 +167,10 @@ class EmailQueueService
                 continue;
             }
 
-            // Tenter l'envoi
-            $ok = $this->emailService->send($email['to_address'], $email['subject'], $body);
+            // Tenter l'envoi — send() renvoie ['success'=>bool, ...], PAS un booléen :
+            // tester le tableau brut marquait tout échec comme « envoyé » (perte silencieuse).
+            $res = $this->emailService->send($email['to_address'], $email['subject'], $body);
+            $ok  = is_array($res) ? (bool) ($res['success'] ?? false) : (bool) $res;
 
             if ($ok) {
                 $this->markSent($email['id']);
