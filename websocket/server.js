@@ -36,6 +36,38 @@ const jwt = require('jsonwebtoken');
 
 const PORT = parseInt(process.env.WEBSOCKET_PORT || '3000', 10);
 const API_SECRET = process.env.WEBSOCKET_API_SECRET;
+// Endpoint PHP d'autorisation d'appartenance aux rooms (anti-IDOR). Si défini, une
+// jonction join:class/join:conversation n'est acceptée qu'après validation par PHP.
+const AUTHORIZE_URL = process.env.WS_PHP_AUTHORIZE_URL || '';
+let __warnedNoAuthz = false;
+
+/** Vérifie côté PHP que le socket a le droit de rejoindre (room_type, id). */
+async function authorizeRoom(socket, type, id) {
+    if (!AUTHORIZE_URL) {
+        if (!__warnedNoAuthz) {
+            console.warn('[WARN] WS_PHP_AUTHORIZE_URL non défini — jonctions de rooms non vérifiées (à configurer en production).');
+            __warnedNoAuthz = true;
+        }
+        return true; // compat : pas d'autorisation configurée
+    }
+    try {
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), 4000);
+        const resp = await fetch(AUTHORIZE_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-WS-Secret': API_SECRET },
+            body: JSON.stringify({ token: socket.rawToken, type, id }),
+            signal: controller.signal,
+        });
+        clearTimeout(t);
+        if (!resp.ok) return false;
+        const data = await resp.json();
+        return data && data.allow === true;
+    } catch (e) {
+        console.error('[ws authorize] failed:', e.message);
+        return false; // fail-closed : en cas d'erreur, on refuse la jonction
+    }
+}
 const JWT_SECRET = process.env.JWT_SECRET || process.env.APP_KEY;
 
 // Fail closed: never run with a guessable secret. No hard-coded fallbacks.
@@ -267,6 +299,8 @@ io.use((socket, next) => {
         socket.userType = decoded.userType || decoded.role || decoded.user_type || '';
         socket.userName = decoded.name || '';
         socket.tokenExp = decoded.exp || 0;
+        socket.etab = decoded.etablissement_id || 0;   // cloisonnement tenant des rooms
+        socket.rawToken = token;                        // pour l'autorisation d'appartenance PHP
         next();
     } catch (e) {
         next(new Error('Invalid token'));
@@ -318,16 +352,26 @@ io.on('connection', (socket) => {
         }
     });
 
-    // ─── Join class (with rate limit) ───────────────────────
-    socket.on('join:class', (classeId) => {
+    // ─── Join class (rate limit + autorisation d'appartenance) ───
+    socket.on('join:class', async (classeId) => {
         if (!checkRateLimit(socket.id)) return;
-        if (classeId) socket.join(`class:${classeId}`);
+        if (!classeId) return;
+        if (!(await authorizeRoom(socket, 'class', classeId))) {
+            socket.emit('join:denied', { room: 'class', id: classeId });
+            return;
+        }
+        socket.join(`class:${classeId}`);
     });
 
-    // ─── Join conversation ──────────────────────────────────
-    socket.on('join:conversation', (convId) => {
+    // ─── Join conversation (rate limit + autorisation d'appartenance) ───
+    socket.on('join:conversation', async (convId) => {
         if (!checkRateLimit(socket.id)) return;
-        if (convId) socket.join(`conversation:${convId}`);
+        if (!convId) return;
+        if (!(await authorizeRoom(socket, 'conversation', convId))) {
+            socket.emit('join:denied', { room: 'conversation', id: convId });
+            return;
+        }
+        socket.join(`conversation:${convId}`);
     });
 
     // ─── Typing indicator ───────────────────────────────────
