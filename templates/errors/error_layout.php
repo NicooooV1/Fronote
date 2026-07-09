@@ -114,7 +114,7 @@ http_response_code($errorCode);
         }
         <?php endif; ?>
     </style>
-    <script>
+    <script nonce="<?= function_exists('csp_nonce') ? csp_nonce() : '' ?>">
     // Applique le thème sombre choisi dans l'app (même clé localStorage que shared_header).
     // Les pages d'erreur sont hors session/DB : localStorage est la source fiable.
     (function () {

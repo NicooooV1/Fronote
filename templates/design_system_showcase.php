@@ -200,7 +200,7 @@ $dsScope = $dsScope ?? 'tenant'; // 'platform' | 'tenant'
   <button class="ds-back-to-top" aria-label="Retour en haut"><i class="fas fa-arrow-up"></i></button>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 (function () {
   function ready(fn){ if(document.readyState!=='loading') fn(); else document.addEventListener('DOMContentLoaded',fn); }
   ready(function () {

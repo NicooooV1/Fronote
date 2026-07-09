@@ -155,7 +155,7 @@ $service->publishScheduled();
 </div>
 <?php endif; ?>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 // Marquer comme lue au clic
 document.querySelectorAll('.annonce-card.annonce-non-lue').forEach(card => {
     card.addEventListener('click', function() {

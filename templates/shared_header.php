@@ -180,8 +180,13 @@ if (!headers_sent()) {
     // durcir dans un second temps (nonce + refactor des handlers inline).
     // upgrade-insecure-requests désactivé sur HTTP-only (sinon ERR_CONNECTION_REFUSED).
     $_hdr_isHttps = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+    // CSP ENFORCE stricte : plus de 'unsafe-inline' sur script-src (tous les <script>
+    // portent un nonce, tous les handlers inline ont été convertis en data-fr-* via le
+    // dispatcher délégué). 'strict-dynamic' : seuls les scripts noncés (et ceux qu'ils
+    // chargent) s'exécutent ; l'allowlist d'hôtes est ignorée → un CDN nonce-é passe.
+    // style-src garde 'unsafe-inline' (les nombreux style= inline restent, faible risque).
     $_hdr_csp = "default-src 'self'; "
-        . "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.socket.io; "
+        . "script-src 'self' 'nonce-{$_hdr_nonce}' 'strict-dynamic' https:; "
         . "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
         . "font-src 'self' https://cdnjs.cloudflare.com data:; "
         . "img-src 'self' data: blob: https:; "
