@@ -2,6 +2,10 @@
 namespace API\Services;
 
 use PDO;
+// Sans cet import, dans un fichier namespacé « catch (PDOException) » réfère à
+// API\Services\PDOException (inexistant) → les ~15 blocs catch ne rattrapaient JAMAIS
+// une vraie \PDOException (elle se propageait non gérée). Import = tous réparés d'un coup.
+use PDOException;
 
 /**
  * Service d'import/export de donnees (utilisateurs, configuration, sauvegarde SQL).

@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS `conversation_participants` (
   PRIMARY KEY (`id`),
   KEY `idx_cp_conv_user` (`conversation_id`, `user_id`, `user_type`),
   KEY `idx_cp_deleted_archived` (`is_deleted`, `is_archived`),
+  KEY `idx_cp_user` (`user_id`, `user_type`, `is_deleted`, `is_archived`),
   CONSTRAINT `fk_cp_conversation` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

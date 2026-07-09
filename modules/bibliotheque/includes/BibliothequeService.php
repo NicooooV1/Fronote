@@ -340,15 +340,17 @@ class BibliothequeService
         foreach ($retards as $r) {
             if (!empty($r['rappel_envoye'])) continue;
             try {
-                if (class_exists('NotificationService')) {
-                    $notifService = new NotificationService($this->pdo);
-                    $notifService->creerNotification(
-                        $r['emprunteur_id'], $r['emprunteur_type'],
-                        "Emprunt en retard : {$r['titre']}",
-                        "Votre emprunt de « {$r['titre']} » devait être retourné le " . date('d/m/Y', strtotime($r['date_retour_prevue'])) . ". Merci de le rapporter.",
-                        'haute', '/bibliotheque/emprunts.php'
-                    );
-                }
+                require_once __DIR__ . '/../../notifications/includes/NotificationService.php';
+                $notifService = new \NotificationService($this->pdo);
+                // Signature réelle : creer(userId, userType, type, titre, contenu, lien, importance).
+                // L'ancien appel visait « creerNotification » (méthode inexistante → jamais exécuté)
+                // avec un ordre d'arguments erroné.
+                $notifService->creer(
+                    $r['emprunteur_id'], $r['emprunteur_type'], 'bibliotheque',
+                    "Emprunt en retard : {$r['titre']}",
+                    "Votre emprunt de « {$r['titre']} » devait être retourné le " . date('d/m/Y', strtotime($r['date_retour_prevue'])) . ". Merci de le rapporter.",
+                    '/bibliotheque/emprunts.php', 'haute'
+                );
                 $stmt = $this->pdo->prepare("UPDATE emprunts SET rappel_envoye = 1 WHERE id = ? AND etablissement_id = ?");
                 $stmt->execute([$r['id'], $etabId]);
                 $count++;
