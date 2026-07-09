@@ -38,6 +38,22 @@ class TwoFactorService
         $this->pdo = $pdo;
     }
 
+    /** Chiffre le secret TOTP at-rest (AES-256-GCM). Rétro-compatible : ne re-chiffre pas. */
+    private function encSecret(?string $v): ?string
+    {
+        if ($v === null || $v === '' || !\API\Core\Encryption::available()) return $v;
+        try { return (new \API\Core\Encryption())->encryptIfPlain($v); }
+        catch (\Throwable $e) { return $v; }
+    }
+
+    /** Déchiffre un secret TOTP (laisse passer les secrets encore en clair). */
+    private function decSecret(?string $v): ?string
+    {
+        if ($v === null || $v === '' || !\API\Core\Encryption::available()) return $v;
+        try { return (new \API\Core\Encryption())->decrypt($v); }
+        catch (\Throwable $e) { return $v; }
+    }
+
     // ─── Secret management ───────────────────────────────────────
 
     /**
@@ -159,7 +175,8 @@ class TwoFactorService
         try {
             $stmt = $this->pdo->prepare("SELECT two_factor_secret FROM {$table} WHERE id = ?");
             $stmt->execute([$userId]);
-            return $stmt->fetchColumn() ?: null;
+            $raw = $stmt->fetchColumn();
+            return $raw ? $this->decSecret($raw) : null;
         } catch (\PDOException $e) {
             return null;
         }
@@ -180,7 +197,7 @@ class TwoFactorService
 
         try {
             $stmt = $this->pdo->prepare("UPDATE {$table} SET two_factor_enabled = 1, two_factor_secret = ? WHERE id = ?");
-            return $stmt->execute([$secret, $userId]);
+            return $stmt->execute([$this->encSecret($secret), $userId]);
         } catch (\PDOException $e) {
             error_log("TwoFactorService::enable error: " . $e->getMessage());
             return false;

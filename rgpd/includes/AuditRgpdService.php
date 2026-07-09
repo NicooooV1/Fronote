@@ -330,8 +330,12 @@ class AuditRgpdService
             $stmt->execute([$userId]);
             $profil = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($profil) {
-                // Masquer hash mot de passe
-                unset($profil['mot_de_passe'], $profil['password'], $profil['password_hash']);
+                // Masquer les secrets d'authentification : hash mot de passe ET secret TOTP
+                // (un export contenant le secret 2FA permettrait de générer des codes valides).
+                unset(
+                    $profil['mot_de_passe'], $profil['password'], $profil['password_hash'],
+                    $profil['two_factor_secret'], $profil['two_factor_recovery_codes']
+                );
                 $data['profil'] = $profil;
             }
         }

@@ -43,11 +43,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         unset($_SESSION['pending_2fa']);
         redirect('login/index.php');
     } else {
-        // Anti-brute-force du 2e facteur. Le compteur vit dans la session qui porte
-        // pending_2fa : impossible à contourner sans repasser par l'étape mot de passe.
-        if ((int) ($_SESSION['twofa_fails'] ?? 0) >= 5) {
+        // Anti-brute-force du 2e facteur — PERSISTANT (côté serveur), pas seulement en
+        // session : sinon un attaquant détenant le mot de passe rejoue les identifiants
+        // pour obtenir un pending_2fa neuf (twofa_fails=0) et brute-force le TOTP sans
+        // limite. On compte les échecs 2FA dans login_attempts sous une clé propre au
+        // compte (2fa:type:id) + par IP, réutilisant le lockout progressif existant.
+        $twofaKey = '2fa:' . $userType . ':' . $userId;
+        if ($userService->checkLoginRateLimit($ip, $twofaKey) > 0
+            || (int) ($_SESSION['twofa_fails'] ?? 0) >= 5) {
             unset($_SESSION['pending_2fa'], $_SESSION['twofa_fails']);
-            $_SESSION['login_error'] = 'Trop de tentatives. Veuillez vous reconnecter.';
+            $_SESSION['login_error'] = 'Trop de tentatives. Veuillez vous reconnecter plus tard.';
             redirect('login/index.php');
         }
         $backupCode  = trim($_POST['backup_code'] ?? '');
@@ -75,12 +80,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = __('2fa.error.invalid_code');
         }
         if (!$valid) {
-            // Compteur anti-brute-force (plafond vérifié en tête du bloc POST).
+            // Échec 2FA : persister (login_attempts) ET incrémenter le compteur de session.
+            $userService->recordFailedAttempt($ip, $twofaKey);
             $_SESSION['twofa_fails'] = ((int) ($_SESSION['twofa_fails'] ?? 0)) + 1;
+            // Journaliser l'échec du second facteur (traçabilité anti-bruteforce).
+            try { app('audit')->logAuth('2fa_failed', (string) $userId, false, ['user_type' => $userType]); } catch (\Throwable $e) {}
         }
 
         if ($valid) {
-            // Code valide → créer la session
+            // Code valide → créer la session. Les échecs 2FA persistés décaient d'eux-mêmes
+            // (même mécanisme que login_attempts du mot de passe : fenêtre glissante).
             unset($_SESSION['pending_2fa'], $_SESSION['twofa_fails']);
 
             $user = $userService->findById($userId, $userType);
