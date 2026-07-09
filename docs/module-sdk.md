@@ -73,7 +73,7 @@ $pascal = implode('', array_map('ucfirst', explode('_', $key)));
 | Clé du module | Nom de classe | Fichier |
 |---------------|--------------|---------|
 | `notes` | `NotesServiceProvider` | `modules/notes/Providers/NotesServiceProvider.php` |
-| `bulletins` | `BulletinsServiceProvider` | `modules/bulletins/Providers/BulletinsServiceProvider.php` |
+| `agenda` | `AgendaServiceProvider` | `modules/agenda/Providers/AgendaServiceProvider.php` |
 | `emploi_du_temps` | `EmploiDuTempsServiceProvider` | `modules/emploi_du_temps/Providers/EmploiDuTempsServiceProvider.php` |
 | `mon_module` | `MonModuleServiceProvider` | `modules/mon_module/Providers/MonModuleServiceProvider.php` |
 
@@ -608,34 +608,45 @@ Les paramètres sont édités dans `admin/modules/configure.php` et stockés dan
 
 ## API REST d'un module
 
+Convention en vigueur (cf. `API/endpoints/messagerie.php`) : réponse JSON construite
+à la main — `header('Content-Type: application/json')`, `http_response_code()` posé
+avant l'`echo`, corps `json_encode(['success' => bool, ...])` avec la clé `error`
+pour les messages d'erreur.
+
 ```php
 <?php
 // modules/mon_module/api/actions.php
-require_once __DIR__ . '/../../../API/module_boot.php';
+require_once __DIR__ . '/../../../API/module_boot.php'; // auth + $pdo + $user
 
-use API\Core\AjaxResponse;
-
-// Valide la requête AJAX + le CSRF (sur mutations)
-AjaxResponse::guard();
+header('Content-Type: application/json');
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 switch ($action) {
     case 'list':
-        AjaxResponse::success('OK', ['items' => getItems($pdo)]);
+        echo json_encode(['success' => true, 'items' => getItems($pdo)]);
         break;
 
     case 'create':
-        csrf_verify(); // ou app('csrf')->validate()
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'error' => 'Méthode POST requise']);
+            break;
+        }
+        csrf_verify(); // mutation → CSRF obligatoire (403 + exit si invalide)
+
         $title = trim($_POST['title'] ?? '');
         if ($title === '') {
-            AjaxResponse::error('Le titre est requis', ['title' => 'Champ obligatoire'], 422);
+            http_response_code(422);
+            echo json_encode(['success' => false, 'error' => 'Le titre est requis']);
+            break;
         }
-        AjaxResponse::success('Élément créé', ['id' => createItem($pdo, $title)]);
+        echo json_encode(['success' => true, 'id' => createItem($pdo, $title)]);
         break;
 
     default:
-        AjaxResponse::error('Action inconnue', [], 404);
+        http_response_code(404);
+        echo json_encode(['success' => false, 'error' => 'Action inconnue']);
 }
 ```
 

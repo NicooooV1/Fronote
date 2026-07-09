@@ -133,9 +133,11 @@ class ModuleSDK
 
     /**
      * Synchronise tous les manifestes découverts avec la base de données.
-     * Met à jour modules_config, dashboard_widgets et module_permissions.
+     * Met à jour modules_config, dashboard_widgets et module_permissions,
+     * puis purge les modules « fantômes » dont le dossier a disparu du disque
+     * (cf. pruneGhostModules()).
      *
-     * @return array ['synced' => int, 'errors' => string[]]
+     * @return array ['synced' => int, 'pruned' => string[], 'errors' => string[]]
      */
     public function syncAll(): array
     {
@@ -158,7 +160,87 @@ class ModuleSDK
             }
         }
 
-        return ['synced' => $synced, 'errors' => $errors];
+        $pruned = $this->pruneGhostModules($manifests, $errors);
+
+        return ['synced' => $synced, 'pruned' => $pruned, 'errors' => $errors];
+    }
+
+    /**
+     * Purge les modules « fantômes » : lignes de modules_config dont le dossier
+     * (et donc son module.json) n'existe plus sur le disque — typiquement après
+     * suppression d'un dossier modules/<key>/. Sans cette purge, la ligne et ses
+     * permissions resteraient indéfiniment en base : syncAll() ne fait
+     * qu'upserter les manifestes présents.
+     *
+     * Garde-fous (volontairement conservateur) :
+     *  - aucune purge si la découverte n'a trouvé AUCUN manifeste (disque
+     *    illisible ⇒ on ne vide pas la table) ;
+     *  - une ligne n'est purgée que si modules/<key>/module.json ET
+     *    <key>/module.json sont absents — un module.json présent mais
+     *    invalide (JSON cassé) n'est donc jamais purgé ;
+     *  - les modules core (is_core = 1) ne sont jamais purgés automatiquement :
+     *    leur absence du disque est signalée dans $errors.
+     *
+     * Supprime les lignes des tables alimentées par syncModule() :
+     * module_permissions (aussi couverte par le FK fk_modperm_module
+     * ON DELETE CASCADE — suppression explicite pour les bases legacy sans la
+     * contrainte), module_settings_schema, dashboard_widgets, puis
+     * modules_config. Les données métier du module (install.sql) ne sont pas
+     * touchées.
+     *
+     * @param array<string, array> $manifests Manifestes découverts sur disque
+     * @param string[] $errors Collecteur d'erreurs de syncAll() (par référence)
+     * @return string[] Clés des modules purgés
+     */
+    private function pruneGhostModules(array $manifests, array &$errors): array
+    {
+        if (empty($manifests)) {
+            return []; // découverte vide = anomalie disque : on ne purge rien
+        }
+
+        try {
+            $rows = $this->pdo->query("SELECT module_key, is_core FROM modules_config")
+                              ->fetchAll(\PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            // Table absente (installation incomplète) : rien à purger.
+            return [];
+        }
+
+        $pruned = [];
+        foreach ($rows as $row) {
+            $key = (string) $row['module_key'];
+            if (isset($manifests[$key])) {
+                continue; // module toujours présent sur le disque
+            }
+            // Garde-fou : ne purger que si le module.json attendu est réellement
+            // absent (un manifeste illisible ne doit pas déclencher la purge).
+            if (is_file($this->basePath . '/modules/' . $key . '/module.json')
+                || is_file($this->basePath . '/' . $key . '/module.json')) {
+                continue;
+            }
+            if (!empty($row['is_core'])) {
+                $errors[] = "Module core '{$key}' introuvable sur le disque — ligne conservée (purge manuelle requise).";
+                continue;
+            }
+
+            try {
+                // Enfants d'abord (bases legacy sans FK ON DELETE CASCADE).
+                foreach (['module_permissions', 'module_settings_schema', 'dashboard_widgets'] as $table) {
+                    try {
+                        $this->pdo->prepare("DELETE FROM `{$table}` WHERE module_key = ?")->execute([$key]);
+                    } catch (\Throwable $e) {
+                        // Table absente sur les vieilles bases : non bloquant.
+                    }
+                }
+                $this->pdo->prepare("DELETE FROM modules_config WHERE module_key = ?")->execute([$key]);
+                $pruned[] = $key;
+                error_log("ModuleSDK: module fantôme '{$key}' purgé (module.json absent du disque)");
+            } catch (\Throwable $e) {
+                $errors[] = "Purge du module fantôme '{$key}' : " . $e->getMessage();
+            }
+        }
+
+        return $pruned;
     }
 
     /**

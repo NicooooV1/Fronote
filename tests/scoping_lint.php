@@ -26,8 +26,6 @@ $whitelist = [
     // Sous-classes vides déléguant à un parent DÉJÀ scopé (API\Services\Scolaire\*) :
     'modules/tableau_de_bord/Services/AdminDashboardService.php',
     'modules/tableau_de_bord/Services/ClasseService.php',
-    // Gestion des sessions admin = infrastructure transverse (table session_security globale) :
-    'modules/admin_sessions/Services/SessionManagementService.php',
 ];
 
 $markers = ['etablissement_id', 'EstablishmentContext', '@global-scope'];

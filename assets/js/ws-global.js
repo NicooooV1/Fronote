@@ -261,7 +261,7 @@
         var csrf     = csrfMeta ? csrfMeta.getAttribute('content') : '';
         var baseUrl  = window.FRONOTE_BASE_URL || '/';
 
-        fetch(baseUrl + 'API/endpoints/messagerie.php?action=notifications&sub=count', {
+        fetch(baseUrl + 'API/endpoints/messagerie.php?resource=notifications&action=count', {
             credentials: 'same-origin',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',

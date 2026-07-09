@@ -10,7 +10,7 @@ Ce document décrit les mécanismes **réellement implémentés** (chemins de fi
 cités) et les exigences pour les développeurs de modules.
 
 Code de référence :
-- `API/Auth/` — `SessionGuard`, `AuthManager`, `UserProvider`, `OAuthGuard`, `TokenGuard`
+- `API/Auth/` — `SessionGuard`, `AuthManager`, `UserProvider`, `OAuthGuard`
 - `API/Security/` — `CSRF`, `RBAC`, `RateLimiter`, `PasswordPolicy`, `ModuleScanner`, `IpFirewall`, `Validator`
 - `API/Core/Encryption.php`, `API/Core/EstablishmentContext.php`
 - `templates/shared_header.php` (en-têtes + CSP)
@@ -317,31 +317,14 @@ code `default`.
 
 ---
 
-## Token API (intégrations externes) — `TokenGuard`
+## Token API (intégrations externes)
 
-Pour les apps mobiles / services tiers : `API\Auth\TokenGuard`, Bearer token.
-
-```
-Authorization: Bearer <64-char-hex-token>
-```
-
-Les tokens sont stockés **hashés SHA-256** ; le token en clair n'est visible qu'à la
-création.
-
-```php
-$guard = new \API\Auth\TokenGuard($pdo);
-
-[$plainToken, $record] = $guard->createToken(
-    userId: 1,
-    userType: 'administrateur',
-    name: 'Mon application',
-    abilities: ['notes.view', 'absences.view'], // null = toutes
-    expiresInDays: 365                           // null = jamais
-);
-
-$user = $guard->authenticate();          // null si invalide
-$guard->can($user, 'notes.view');        // true/false
-```
+> **Fonctionnalité retirée de la baseline v4.** Le guard `API\Auth\TokenGuard`
+> (Bearer token pour apps mobiles / services tiers) a été supprimé. Il n'existe plus
+> d'authentification par token applicatif : seules l'authentification par session et
+> le SSO OAuth2 (ci-dessus) sont supportés. Seule exception, indépendante des comptes
+> utilisateurs : le endpoint de santé peut exiger un `Authorization: Bearer
+> <HEALTH_TOKEN>` (cf. [docs/api-reference.md](api-reference.md)).
 
 ---
 

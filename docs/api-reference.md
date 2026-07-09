@@ -287,20 +287,18 @@ PATH).
 
 ## 7. Modèle de réponse côté serveur
 
-Deux conventions cohabitent ; choisir selon le contexte :
+Convention unique (référence : `API/endpoints/messagerie.php`) — la réponse JSON est
+construite à la main :
 
-- **Endpoints / handlers manuels** : `echo json_encode([...])` avec les codes HTTP
-  posés à la main (`http_response_code(403)`, etc.).
-- **Helper standardisé** `\API\Core\AjaxResponse` (méthodes statiques, terminent la
-  requête par `exit`) :
+- `header('Content-Type: application/json')` en tête de script ;
+- corps `echo json_encode(['success' => true|false, ...])`, avec la clé `error` pour
+  le message d'erreur lisible ;
+- code HTTP posé à la main via `http_response_code()` **avant** l'`echo`
+  (200 implicite en succès) ;
+- `exit` après une garde (auth, CSRF, méthode) pour ne pas poursuivre le script.
 
-| Méthode | Effet |
-|---|---|
-| `AjaxResponse::success($message, $data, $http=200)` | `{ success:true, message, data }`. |
-| `AjaxResponse::error($message, $errors, $http=400)` | `{ success:false, message, errors }`. |
-| `AjaxResponse::redirect($url, $message)` | Demande une redirection côté client. |
-| `AjaxResponse::paginated($items, $total, $page, $perPage)` | Réponse paginée. |
-| `AjaxResponse::requireAjax()` / `requireCsrf()` / `guard()` | Gardes (AJAX only, CSRF, les deux). |
+> L'ancien helper `\API\Core\AjaxResponse` a été retiré de la baseline v4 : ne plus
+> l'utiliser dans le nouveau code.
 
 ### Codes HTTP usuels
 

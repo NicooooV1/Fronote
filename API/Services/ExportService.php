@@ -31,6 +31,15 @@ class ExportService
      */
     public function csv(array $data, array $columns, string $filename = 'export.csv'): void
     {
+        // Compatibilité : certains appelants passent une liste de labels
+        // (['Numéro', 'Élève', ...]) avec des lignes indexées par ces mêmes labels.
+        if (array_is_list($columns)) {
+            $columns = array_combine($columns, $columns);
+        }
+        if (!str_ends_with(strtolower($filename), '.csv')) {
+            $filename .= '.csv';
+        }
+
         $this->logExport('csv', $filename);
 
         header('Content-Type: text/csv; charset=utf-8');
@@ -88,6 +97,10 @@ class ExportService
      */
     public function pdf(string $htmlContent, string $title = 'Export', string $filename = 'export.pdf'): void
     {
+        if (!str_ends_with(strtolower($filename), '.pdf')) {
+            $filename .= '.pdf';
+        }
+
         $this->logExport('pdf', $filename);
 
         $printCss = $this->getPrintCss();
@@ -120,6 +133,11 @@ class ExportService
      */
     public function buildTable(array $data, array $columns, string $title = ''): string
     {
+        // Compatibilité : liste de labels → colonnes clé = label (cf. csv()).
+        if (array_is_list($columns)) {
+            $columns = array_combine($columns, $columns);
+        }
+
         $html = '';
         if ($title) {
             $html .= '<h2>' . htmlspecialchars($title) . '</h2>';
