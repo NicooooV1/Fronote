@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
 
     // 1) Vérification CSRF
     if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
-        $error = 'Jeton de sécurité invalide. Veuillez recharger la page.';
+        $error = __('login.error.csrf');
     } else {
         $username   = trim($_POST['username'] ?? '');
         $password   = $_POST['password'] ?? '';
@@ -71,12 +71,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
         $ip         = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
         if (empty($username) || empty($password)) {
-            $error = 'Veuillez remplir votre identifiant et votre mot de passe.';
+            $error = __('login.error.empty_fields');
         } else {
             // 2) Rate limiting progressif (par IP et par identifiant)
             $waitMinutes = $userService->checkLoginRateLimit($ip, $username);
             if ($waitMinutes > 0) {
-                $error = "Trop de tentatives. Réessayez dans {$waitMinutes} minute(s).";
+                $error = __('login.error.rate_limit', ['minutes' => $waitMinutes]);
                 // Journaliser + alerter le verrouillage (anti-bruteforce). CRITICAL → alerte temps réel.
                 try { app('audit')->logAuth('lockout', $username, false, ['ip' => $ip, 'wait_minutes' => $waitMinutes]); }
                 catch (\Throwable $e) { error_log('[login] audit lockout failed: ' . $e->getMessage()); }
@@ -98,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
                 if ($result === null) {
                     // Aucun compte trouvé
                     $userService->recordFailedAttempt($ip, $username);
-                    $error = 'Identifiant ou mot de passe incorrect.';
+                    $error = __('login.error.invalid_credentials');
                     $_SESSION['last_username'] = $username;
                     try { app('audit')->logAuth('login_failed', (string) $username, false, []); } catch (\Throwable $e) {}
 
@@ -164,11 +164,11 @@ $localeFlags = [
 ];
 
 $profilLabels = [
-    'administrateur' => ['label' => 'Administrateur', 'icon' => 'fa-user-shield'],
-    'vie_scolaire'   => ['label' => 'Vie scolaire',   'icon' => 'fa-user-tie'],
-    'professeur'     => ['label' => 'Professeur',     'icon' => 'fa-chalkboard-teacher'],
-    'eleve'          => ['label' => 'Élève',           'icon' => 'fa-user-graduate'],
-    'parent'         => ['label' => 'Parent',          'icon' => 'fa-users'],
+    'administrateur' => ['label' => __('role.administrateur'), 'icon' => 'fa-user-shield'],
+    'vie_scolaire'   => ['label' => __('role.vie_scolaire'),   'icon' => 'fa-user-tie'],
+    'professeur'     => ['label' => __('role.professeur'),     'icon' => 'fa-chalkboard-teacher'],
+    'eleve'          => ['label' => __('role.eleve'),           'icon' => 'fa-user-graduate'],
+    'parent'         => ['label' => __('role.parent'),          'icon' => 'fa-users'],
 ];
 
 $_loginDir = $translator->isRtl() ? 'rtl' : 'ltr';
