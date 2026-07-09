@@ -38,7 +38,7 @@ $ip      = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
-        $error = 'Jeton de sécurité invalide. Veuillez recharger la page.';
+        $error = __('login.error.csrf');
     } elseif (isset($_POST['cancel'])) {
         unset($_SESSION['pending_2fa']);
         redirect('login/index.php');
@@ -57,22 +57,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($usingBackup) {
             $valid = $twoFactor->verifyBackupCode($userId, $userType, $backupCode);
             if (!$valid) {
-                $error = 'Code de secours invalide ou déjà utilisé.';
+                $error = __('2fa.error.backup_invalid');
             }
         } else {
             $code = preg_replace('/\D/', '', $_POST['code'] ?? '');
             if (strlen($code) !== 6) {
-                $error = 'Le code doit contenir exactement 6 chiffres.';
+                $error = __('2fa.error.wrong_length');
             } else {
                 $valid = $twoFactor->validateLogin($userId, $userType, $code);
                 if (!$valid) {
-                    $error = 'Code incorrect. Vérifiez votre application d\'authentification et réessayez.';
+                    $error = __('2fa.error.wrong_code');
                 }
             }
         }
 
         if (!$valid && empty($error)) {
-            $error = 'Code incorrect.';
+            $error = __('2fa.error.invalid_code');
         }
         if (!$valid) {
             // Compteur anti-brute-force (plafond vérifié en tête du bloc POST).
@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $user = $userService->findById($userId, $userType);
             if (!$user) {
-                $error = 'Utilisateur introuvable.';
+                $error = __('2fa.error.user_not_found');
             } else {
                 $auth->loginUser($user);
                 try { app('audit')->logAuth('login', $userType . ':' . $userId, true, ['2fa' => true]); } catch (\Throwable $e) {}

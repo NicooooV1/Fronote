@@ -18,7 +18,7 @@ $userType = isset($_POST['user_type']) ? $_POST['user_type'] : '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_reset'])) {
     // Vérification CSRF
     if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
-        $error = 'Jeton de sécurité invalide. Veuillez recharger la page.';
+        $error = __('login.error.csrf');
     } else {
         $username = isset($_POST['username']) ? trim($_POST['username']) : '';
         $email = isset($_POST['email']) ? trim($_POST['email']) : '';

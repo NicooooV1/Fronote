@@ -42,15 +42,15 @@ $passwordRules  = $passwordPolicy->getRules();
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
     // Vérification CSRF
     if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
-        $error = 'Jeton de sécurité invalide. Veuillez recharger la page.';
+        $error = __('login.error.csrf');
     } else {
         $password        = $_POST['password'] ?? '';
         $confirmPassword = $_POST['confirm_password'] ?? '';
 
         if (empty($password) || empty($confirmPassword)) {
-            $error = 'Veuillez remplir tous les champs.';
+            $error = __('password.error.empty_fields');
         } elseif ($password !== $confirmPassword) {
-            $error = 'Les mots de passe ne correspondent pas.';
+            $error = __('password.error.mismatch');
         } else {
             // Validation via PasswordPolicy centralisée
             $policyResult = $passwordPolicy->validate($password);
