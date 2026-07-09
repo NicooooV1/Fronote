@@ -11,19 +11,21 @@ class BulletinService {
 
     // ─── PÉRIODES ───
     public function getPeriodes(): array {
-        return $this->pdo->query("SELECT * FROM periodes ORDER BY numero")->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $this->pdo->prepare("SELECT * FROM periodes WHERE etablissement_id = ? ORDER BY numero");
+        $stmt->execute([\API\Core\EstablishmentContext::id()]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getPeriode(int $id): ?array {
-        $stmt = $this->pdo->prepare("SELECT * FROM periodes WHERE id = ?");
-        $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare("SELECT * FROM periodes WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function getPeriodeCourante(): ?array {
         $today = date('Y-m-d');
-        $stmt = $this->pdo->prepare("SELECT * FROM periodes WHERE date_debut <= ? AND date_fin >= ? LIMIT 1");
-        $stmt->execute([$today, $today]);
+        $stmt = $this->pdo->prepare("SELECT * FROM periodes WHERE date_debut <= ? AND date_fin >= ? AND etablissement_id = ? LIMIT 1");
+        $stmt->execute([$today, $today, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
@@ -47,9 +49,9 @@ class BulletinService {
             SELECT b.*, p.nom AS periode_nom
             FROM bulletins b
             JOIN periodes p ON b.periode_id = p.id
-            WHERE b.eleve_id = ? AND b.periode_id = ?
+            WHERE b.eleve_id = ? AND b.periode_id = ? AND b.etablissement_id = ?
         ");
-        $stmt->execute([$eleveId, $periodeId]);
+        $stmt->execute([$eleveId, $periodeId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
@@ -58,10 +60,10 @@ class BulletinService {
             SELECT b.*, e.nom AS eleve_nom, e.prenom AS eleve_prenom
             FROM bulletins b
             JOIN eleves e ON b.eleve_id = e.id
-            WHERE b.classe_id = ? AND b.periode_id = ?
+            WHERE b.classe_id = ? AND b.periode_id = ? AND b.etablissement_id = ?
             ORDER BY e.nom, e.prenom
         ");
-        $stmt->execute([$classeId, $periodeId]);
+        $stmt->execute([$classeId, $periodeId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -70,10 +72,10 @@ class BulletinService {
             SELECT b.*, p.nom AS periode_nom, p.numero AS periode_numero
             FROM bulletins b
             JOIN periodes p ON b.periode_id = p.id
-            WHERE b.eleve_id = ?
+            WHERE b.eleve_id = ? AND b.etablissement_id = ?
             ORDER BY p.numero
         ");
-        $stmt->execute([$eleveId]);
+        $stmt->execute([$eleveId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -111,8 +113,8 @@ class BulletinService {
      * Réutilisé pour tous les élèves de la classe lors de la génération de masse.
      */
     private function computeStatsMatieresClasse(int $classeId, int $trimestre): array {
-        $nomClasse = $this->pdo->prepare("SELECT nom FROM classes WHERE id = ?");
-        $nomClasse->execute([$classeId]);
+        $nomClasse = $this->pdo->prepare("SELECT nom FROM classes WHERE id = ? AND etablissement_id = ?");
+        $nomClasse->execute([$classeId, \API\Core\EstablishmentContext::id()]);
         $classe = $nomClasse->fetchColumn();
         if ($classe === false) {
             return [];
@@ -131,12 +133,12 @@ class BulletinService {
                        AVG(n.note * 20 / n.note_sur) AS avg_note
                 FROM notes n
                 JOIN eleves e ON n.id_eleve = e.id
-                WHERE e.classe = ? AND n.trimestre = ?
+                WHERE e.classe = ? AND n.trimestre = ? AND e.etablissement_id = ?
                 GROUP BY n.id_matiere, n.id_eleve
             ) sub
             GROUP BY sub.id_matiere
         ");
-        $s->execute([$classe, $trimestre]);
+        $s->execute([$classe, $trimestre, \API\Core\EstablishmentContext::id()]);
         $stats = [];
         foreach ($s->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $stats[(int) $row['id_matiere']] = [
@@ -151,10 +153,10 @@ class BulletinService {
             SELECT n.id_matiere, AVG(n.note * 20 / n.note_sur) AS moy_classe
             FROM notes n
             JOIN eleves e ON n.id_eleve = e.id
-            WHERE e.classe = ? AND n.trimestre = ?
+            WHERE e.classe = ? AND n.trimestre = ? AND e.etablissement_id = ?
             GROUP BY n.id_matiere
         ");
-        $sm->execute([$classe, $trimestre]);
+        $sm->execute([$classe, $trimestre, \API\Core\EstablishmentContext::id()]);
         foreach ($sm->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $matId = (int) $row['id_matiere'];
             if (!isset($stats[$matId])) {
@@ -204,10 +206,10 @@ class BulletinService {
             $bulletinId = $existing['id'];
         } else {
             $stmt = $this->pdo->prepare("
-                INSERT INTO bulletins (eleve_id, classe_id, periode_id, annee_scolaire, moyenne_generale, nb_absences, nb_retards)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO bulletins (etablissement_id, eleve_id, classe_id, periode_id, annee_scolaire, moyenne_generale, nb_absences, nb_retards)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            $stmt->execute([$eleveId, $classeId, $periodeId, '2025-2026', $moyenne, $nbAbsences, $nbRetards]);
+            $stmt->execute([\API\Core\EstablishmentContext::id(), $eleveId, $classeId, $periodeId, '2025-2026', $moyenne, $nbAbsences, $nbRetards]);
             $bulletinId = (int)$this->pdo->lastInsertId();
         }
 
@@ -324,34 +326,34 @@ class BulletinService {
      */
     public function getCompetencesBulletin(int $bulletinId): array
     {
-        $stmt = $this->pdo->prepare("SELECT competences_bilan FROM bulletins WHERE id = ?");
-        $stmt->execute([$bulletinId]);
+        $stmt = $this->pdo->prepare("SELECT competences_bilan FROM bulletins WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$bulletinId, \API\Core\EstablishmentContext::id()]);
         $json = $stmt->fetchColumn();
         return $json ? json_decode($json, true) : [];
     }
 
     // ─── APPRÉCIATIONS ───
     public function sauvegarderAppreciation(int $bulletinId, string $appreciation): void {
-        $stmt = $this->pdo->prepare("UPDATE bulletins SET appreciation_generale = ? WHERE id = ?");
-        $stmt->execute([$appreciation, $bulletinId]);
+        $stmt = $this->pdo->prepare("UPDATE bulletins SET appreciation_generale = ? WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$appreciation, $bulletinId, \API\Core\EstablishmentContext::id()]);
     }
 
     public function sauvegarderAppreciationMatiere(int $bulletinMatiereId, string $appreciation): void {
-        $stmt = $this->pdo->prepare("UPDATE bulletin_matieres SET appreciation = ? WHERE id = ?");
-        $stmt->execute([$appreciation, $bulletinMatiereId]);
+        $stmt = $this->pdo->prepare("UPDATE bulletin_matieres bm JOIN bulletins b ON b.id = bm.bulletin_id SET bm.appreciation = ? WHERE bm.id = ? AND b.etablissement_id = ?");
+        $stmt->execute([$appreciation, $bulletinMatiereId, \API\Core\EstablishmentContext::id()]);
     }
 
     public function sauvegarderAvisConseil(int $bulletinId, string $avis): void {
-        $stmt = $this->pdo->prepare("UPDATE bulletins SET avis_conseil = ? WHERE id = ?");
-        $stmt->execute([$avis, $bulletinId]);
+        $stmt = $this->pdo->prepare("UPDATE bulletins SET avis_conseil = ? WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$avis, $bulletinId, \API\Core\EstablishmentContext::id()]);
     }
 
     // ─── VALIDATION / PUBLICATION ───
     public function validerBulletin(int $bulletinId, int $adminId): void {
         $stmt = $this->pdo->prepare("
-            UPDATE bulletins SET statut = 'valide', valide_par = ?, date_validation = NOW() WHERE id = ?
+            UPDATE bulletins SET statut = 'valide', valide_par = ?, date_validation = NOW() WHERE id = ? AND etablissement_id = ?
         ");
-        $stmt->execute([$adminId, $bulletinId]);
+        $stmt->execute([$adminId, $bulletinId, \API\Core\EstablishmentContext::id()]);
     }
 
     public function publierBulletins(int $classeId, int $periodeId): int {
@@ -388,9 +390,9 @@ class BulletinService {
                    SUM(CASE WHEN statut = 'publie' THEN 1 ELSE 0 END) AS publies,
                    SUM(CASE WHEN statut = 'valide' THEN 1 ELSE 0 END) AS valides,
                    SUM(CASE WHEN statut = 'brouillon' THEN 1 ELSE 0 END) AS brouillons
-            FROM bulletins WHERE classe_id = ? AND periode_id = ?
+            FROM bulletins WHERE classe_id = ? AND periode_id = ? AND etablissement_id = ?
         ");
-        $stmt->execute([$classeId, $periodeId]);
+        $stmt->execute([$classeId, $periodeId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
     }
 
@@ -472,10 +474,10 @@ class BulletinService {
         $stmt = $this->pdo->prepare("
             SELECT bs.*
             FROM bulletin_signatures bs
-            WHERE bs.bulletin_id = :bulletin_id
+            WHERE bs.bulletin_id = :bulletin_id AND bs.etablissement_id = :etab
             ORDER BY bs.date_signature DESC
         ");
-        $stmt->execute([':bulletin_id' => $bulletinId]);
+        $stmt->execute([':bulletin_id' => $bulletinId, ':etab' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -497,8 +499,8 @@ class BulletinService {
             return null;
         }
 
-        $stmt = $this->pdo->prepare("SELECT CONCAT(prenom, ' ', nom) FROM `{$table}` WHERE id = ? LIMIT 1");
-        $stmt->execute([$signataireId]);
+        $stmt = $this->pdo->prepare("SELECT CONCAT(prenom, ' ', nom) FROM `{$table}` WHERE id = ? AND etablissement_id = ? LIMIT 1");
+        $stmt->execute([$signataireId, \API\Core\EstablishmentContext::id()]);
         $nom = $stmt->fetchColumn();
         return $nom !== false ? (string) $nom : null;
     }

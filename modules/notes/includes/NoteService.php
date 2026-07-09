@@ -154,8 +154,8 @@ class NoteService
                 LEFT JOIN eleves e ON n.id_eleve = e.id
                 LEFT JOIN matieres m ON n.id_matiere = m.id
                 LEFT JOIN professeurs p ON n.id_professeur = p.id
-                WHERE n.id = ?";
-        $params = [$id];
+                WHERE n.id = ? AND e.etablissement_id = ?";
+        $params = [$id, \API\Core\EstablishmentContext::id()];
 
         if ($profId !== null) {
             $sql .= " AND n.id_professeur = ?";
@@ -201,8 +201,8 @@ class NoteService
         try {
             $stmt = $this->pdo->prepare("
                 INSERT INTO notes (id_eleve, id_matiere, id_professeur, note, note_sur,
-                                   coefficient, type_evaluation, commentaire, trimestre, date_note, date_creation)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                                   coefficient, type_evaluation, commentaire, trimestre, date_note, date_creation, etablissement_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
             ");
 
             // Anti-IDOR : seuls les élèves de l'établissement courant peuvent recevoir une note.
@@ -230,6 +230,7 @@ class NoteService
                     $data['commentaire'] ?? null,
                     $common['trimestre'],
                     $common['date_note'] ?? date('Y-m-d'),
+                    $etabId,
                 ]);
                 $insertedEleveIds[] = (int) $data['id_eleve'];
                 $count++;
@@ -348,9 +349,9 @@ class NoteService
             "UPDATE notes n
              JOIN eleves e ON n.id_eleve = e.id
              SET n.locked = 1, n.locked_by = ?, n.locked_at = NOW()
-             WHERE n.id_matiere = ? AND e.classe = ? AND n.trimestre = ? AND (n.locked IS NULL OR n.locked = 0)"
+             WHERE n.id_matiere = ? AND e.classe = ? AND n.trimestre = ? AND e.etablissement_id = ? AND (n.locked IS NULL OR n.locked = 0)"
         );
-        $stmt->execute([$lockedBy, $matiereId, $classe, $trimestre]);
+        $stmt->execute([$lockedBy, $matiereId, $classe, $trimestre, \API\Core\EstablishmentContext::id()]);
         $count = $stmt->rowCount();
         if ($count > 0) {
             $this->logNoteAction('note.bulk_locked', 0, $lockedBy, "matiere=$matiereId, classe=$classe, trimestre=$trimestre, count=$count");
@@ -827,10 +828,15 @@ class NoteService
 
         $this->pdo->beginTransaction();
         try {
-            // Check existing notes for this evaluation
+            // Anti-IDOR : seuls les élèves de l'établissement courant peuvent recevoir une note.
+            $scopeStmt = $this->pdo->prepare("SELECT 1 FROM eleves WHERE id = ? AND etablissement_id = ? LIMIT 1");
+            $etabId = \API\Core\EstablishmentContext::id();
+
+            // Check existing notes for this evaluation (scopé à l'établissement via jointure élève)
             $checkStmt = $this->pdo->prepare("
-                SELECT id FROM notes
-                WHERE id_eleve = ? AND id_matiere = ? AND id_professeur = ? AND trimestre = ? AND date_note = ?
+                SELECT n.id FROM notes n
+                JOIN eleves e ON n.id_eleve = e.id AND e.etablissement_id = ?
+                WHERE n.id_eleve = ? AND n.id_matiere = ? AND n.id_professeur = ? AND n.trimestre = ? AND n.date_note = ?
                 LIMIT 1
             ");
 
@@ -841,14 +847,20 @@ class NoteService
 
             $insertStmt = $this->pdo->prepare("
                 INSERT INTO notes (id_eleve, id_matiere, id_professeur, note, note_sur,
-                                   coefficient, type_evaluation, commentaire, trimestre, date_note, date_creation)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                                   coefficient, type_evaluation, commentaire, trimestre, date_note, date_creation, etablissement_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
             ");
 
             foreach ($notesData as $data) {
                 if (!isset($data['note']) || $data['note'] === '') continue;
 
+                $scopeStmt->execute([(int) $data['id_eleve'], $etabId]);
+                if (!$scopeStmt->fetchColumn()) {
+                    continue; // élève hors établissement → ignoré
+                }
+
                 $checkStmt->execute([
+                    $etabId,
                     $data['id_eleve'],
                     $common['id_matiere'],
                     $common['id_professeur'],
@@ -877,6 +889,7 @@ class NoteService
                         $data['commentaire'] ?? null,
                         $common['trimestre'],
                         $common['date_note'] ?? date('Y-m-d'),
+                        $etabId,
                     ]);
                     $inserted++;
                 }

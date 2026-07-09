@@ -21,12 +21,12 @@ class MatiereService
         });
     }
 
-    public function getById(int $id): ?array { $stmt = $this->pdo->prepare('SELECT * FROM matieres WHERE id = ?'); $stmt->execute([$id]); $row = $stmt->fetch(PDO::FETCH_ASSOC); return $row !== false ? $row : null; }
+    public function getById(int $id): ?array { $stmt = $this->pdo->prepare('SELECT * FROM matieres WHERE id = ? AND etablissement_id = ?'); $stmt->execute([$id, $this->etabId()]); $row = $stmt->fetch(PDO::FETCH_ASSOC); return $row !== false ? $row : null; }
 
     public function create(array $data): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO matieres (nom, code, coefficient, couleur) VALUES (:nom, :code, :coefficient, :couleur)");
-        $stmt->execute([':nom' => $data['nom'], ':code' => strtoupper($data['code']), ':coefficient' => $data['coefficient'], ':couleur' => $data['couleur']]);
+        $stmt = $this->pdo->prepare("INSERT INTO matieres (nom, code, coefficient, couleur, etablissement_id) VALUES (:nom, :code, :coefficient, :couleur, :etab)");
+        $stmt->execute([':nom' => $data['nom'], ':code' => strtoupper($data['code']), ':coefficient' => $data['coefficient'], ':couleur' => $data['couleur'], ':etab' => $this->etabId()]);
         $id = (int) $this->pdo->lastInsertId();
         app('cache')->forget('matieres:all:' . $this->etabId()); app('cache')->forget('dashboard:counts');
         app('hooks')?->dispatch(new \Modules\EmploiDuTemps\Events\MatiereCreated($id, $data));
@@ -35,8 +35,8 @@ class MatiereService
 
     public function update(int $id, array $data): bool
     {
-        $stmt = $this->pdo->prepare("UPDATE matieres SET nom = :nom, code = :code, coefficient = :coefficient, couleur = :couleur, actif = :actif WHERE id = :id");
-        $stmt->execute([':nom' => $data['nom'], ':code' => strtoupper($data['code']), ':coefficient' => $data['coefficient'], ':couleur' => $data['couleur'], ':actif' => $data['actif'], ':id' => $id]);
+        $stmt = $this->pdo->prepare("UPDATE matieres SET nom = :nom, code = :code, coefficient = :coefficient, couleur = :couleur, actif = :actif WHERE id = :id AND etablissement_id = :etab");
+        $stmt->execute([':nom' => $data['nom'], ':code' => strtoupper($data['code']), ':coefficient' => $data['coefficient'], ':couleur' => $data['couleur'], ':actif' => $data['actif'], ':id' => $id, ':etab' => $this->etabId()]);
         $updated = $stmt->rowCount() > 0;
         if ($updated) { app('cache')->forget('matieres:all:' . $this->etabId()); app('cache')->forget('dashboard:counts'); app('hooks')?->dispatch(new \Modules\EmploiDuTemps\Events\MatiereUpdated($id, $data)); }
         return $updated;
@@ -44,13 +44,13 @@ class MatiereService
 
     public function delete(int $id): bool
     {
-        $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM notes WHERE id_matiere = ?'); $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM notes WHERE id_matiere = ? AND etablissement_id = ?'); $stmt->execute([$id, $this->etabId()]);
         if ((int) $stmt->fetchColumn() > 0) throw new RuntimeException("Impossible de supprimer la matiere #{$id} : notes associées.");
-        $stmt = $this->pdo->prepare('DELETE FROM matieres WHERE id = ?'); $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare('DELETE FROM matieres WHERE id = ? AND etablissement_id = ?'); $stmt->execute([$id, $this->etabId()]);
         $deleted = $stmt->rowCount() > 0;
         if ($deleted) { app('cache')->forget('matieres:all:' . $this->etabId()); app('cache')->forget('dashboard:counts'); app('hooks')?->dispatch(new \Modules\EmploiDuTemps\Events\MatiereDeleted($id)); }
         return $deleted;
     }
 
-    public function toggleActive(int $id): bool { $stmt = $this->pdo->prepare('UPDATE matieres SET actif = NOT actif WHERE id = ?'); $stmt->execute([$id]); return $stmt->rowCount() > 0; }
+    public function toggleActive(int $id): bool { $stmt = $this->pdo->prepare('UPDATE matieres SET actif = NOT actif WHERE id = ? AND etablissement_id = ?'); $stmt->execute([$id, $this->etabId()]); return $stmt->rowCount() > 0; }
 }

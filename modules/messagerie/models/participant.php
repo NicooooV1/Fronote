@@ -310,8 +310,11 @@ function getAvailableParticipants($convId, $type, $search = '', $limit = 50) {
     $base = $selectMap[$type] ?? null;
     if (!$base) return [];
     
-    $sql = "$base WHERE 1=1 $excludeClause $searchClause ORDER BY nom, prenom LIMIT " . (int) $limit;
-    
+    $sql = "$base WHERE etablissement_id = ? $excludeClause $searchClause ORDER BY nom, prenom LIMIT " . (int) $limit;
+
+    // Scope multi-établissement : le param etablissement_id est le PREMIER placeholder du WHERE.
+    array_unshift($params, \API\Core\EstablishmentContext::id());
+
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     return $stmt->fetchAll();

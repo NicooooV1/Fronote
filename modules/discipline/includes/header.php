@@ -9,16 +9,10 @@ requireAuth();
 enforceModuleAccess(basename(dirname(__DIR__)));
 
 $pageTitle = $pageTitle ?? 'Discipline';
-$currentPage = $currentPage ?? '';
 
 if (!isset($user_initials)) {
     $user_initials = getUserInitials();
     $user_fullname = getUserFullName();
-}
-
-function isActiveDisciplineLink($page) {
-    global $currentPage;
-    return $currentPage === $page ? 'active' : '';
 }
 
 $activePage = 'discipline';
@@ -26,30 +20,21 @@ $isAdmin = isAdmin();
 $user_fullname = $user_fullname ?? '';
 $extraCss = array_merge(['assets/css/discipline.css'], $extraCss ?? []);
 
-if (!isset($sidebarExtraContent)) {
-ob_start();
-?>
-            <div class="sidebar-nav">
-                <a href="incidents.php" class="sidebar-nav-item <?= isActiveDisciplineLink('incidents') ?>">
-                    <span class="sidebar-nav-icon"><i class="fas fa-exclamation-triangle"></i></span>
-                    <span>Incidents</span>
-                </a>
-                <a href="sanctions.php" class="sidebar-nav-item <?= isActiveDisciplineLink('sanctions') ?>">
-                    <span class="sidebar-nav-icon"><i class="fas fa-gavel"></i></span>
-                    <span>Sanctions</span>
-                </a>
-                <a href="retenues.php" class="sidebar-nav-item <?= isActiveDisciplineLink('retenues') ?>">
-                    <span class="sidebar-nav-icon"><i class="fas fa-user-clock"></i></span>
-                    <span>Retenues</span>
-                </a>
-                <a href="signaler.php" class="sidebar-nav-item <?= isActiveDisciplineLink('signaler') ?>">
-                    <span class="sidebar-nav-icon"><i class="fas fa-plus-circle"></i></span>
-                    <span>Signaler un incident</span>
-                </a>
-            </div>
-<?php
-$sidebarExtraContent = ob_get_clean();
-}
+// Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
+// Les pages de détail/traitement d'incident et la fiche élève restent rattachées
+// à l'onglet Incidents (état actif explicite, elles n'ont pas d'entrée propre).
+require_once __DIR__ . '/../../../templates/module_subnav.php';
+$_discOnIncidents = in_array(
+    basename($_SERVER['SCRIPT_NAME'] ?? ''),
+    ['incidents.php', 'detail_incident.php', 'traiter_incident.php', 'fiche_eleve.php'],
+    true
+);
+$sidebarExtraContent = renderModuleSubnav([
+    ['href' => 'incidents.php', 'icon' => 'fas fa-exclamation-triangle', 'label' => 'Incidents', 'active' => $_discOnIncidents],
+    ['href' => 'sanctions.php', 'icon' => 'fas fa-gavel',                'label' => 'Sanctions'],
+    ['href' => 'retenues.php',  'icon' => 'fas fa-user-clock',           'label' => 'Retenues'],
+    ['href' => 'signaler.php',  'icon' => 'fas fa-plus-circle',          'label' => 'Signaler un incident'],
+]);
 
 if (!isset($headerExtraActions)) {
 ob_start();

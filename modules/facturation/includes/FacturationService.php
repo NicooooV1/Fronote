@@ -49,10 +49,11 @@ class FacturationService
 
     public function creerFacture(array $d): int
     {
+        $etab = \API\Core\EstablishmentContext::id();
         $numero = 'FAC-' . date('Ym') . '-' . str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
         $intitule = $d['intitule'] ?? ($d['description'] ?? ('Facture ' . ($d['type'] ?? 'scolarite')));
-        $stmt = $this->pdo->prepare("INSERT INTO factures (numero, parent_id, montant_ht, tva, montant_ttc, intitule, date_emission, date_echeance, statut, type, notes) VALUES (?,?,?,?,?,?,CURDATE(),?,?,?,?)");
-        $stmt->execute([$numero, $d['parent_id'], $d['montant_ht'], $d['montant_tva'] ?? 0, $d['montant_ttc'], $intitule, $d['date_echeance'], 'en_attente', $d['type'] ?? 'scolarite', $d['description'] ?? null]);
+        $stmt = $this->pdo->prepare("INSERT INTO factures (etablissement_id, numero, parent_id, montant_ht, tva, montant_ttc, intitule, date_emission, date_echeance, statut, type, notes) VALUES (?,?,?,?,?,?,?,CURDATE(),?,?,?,?)");
+        $stmt->execute([$etab, $numero, $d['parent_id'], $d['montant_ht'], $d['montant_tva'] ?? 0, $d['montant_ttc'], $intitule, $d['date_echeance'], 'en_attente', $d['type'] ?? 'scolarite', $d['description'] ?? null]);
         return $this->pdo->lastInsertId();
     }
 
@@ -79,28 +80,31 @@ class FacturationService
         $ht = (float)$stmt->fetchColumn();
         $tva = round($ht * 0.20, 2);
         $ttc = $ht + $tva;
-        $this->pdo->prepare("UPDATE factures SET montant_ht = ?, tva = ?, montant_ttc = ? WHERE id = ?")->execute([$ht, $tva, $ttc, $factureId]);
+        $this->pdo->prepare("UPDATE factures SET montant_ht = ?, tva = ?, montant_ttc = ? WHERE id = ? AND etablissement_id = ?")->execute([$ht, $tva, $ttc, $factureId, $this->etabId()]);
     }
 
     /* ───── PAIEMENTS ───── */
 
     public function getPaiements(int $factureId): array
     {
-        $stmt = $this->pdo->prepare("SELECT *, mode AS mode_paiement FROM paiements WHERE facture_id = ? ORDER BY date_paiement DESC");
-        $stmt->execute([$factureId]);
+        $stmt = $this->pdo->prepare("SELECT *, mode AS mode_paiement FROM paiements WHERE facture_id = ? AND etablissement_id = ? ORDER BY date_paiement DESC");
+        $stmt->execute([$factureId, $this->etabId()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function enregistrerPaiement(int $factureId, float $montant, string $mode): void
     {
-        $this->pdo->prepare("INSERT INTO paiements (facture_id, montant, date_paiement, mode) VALUES (?,?,NOW(),?)")->execute([$factureId, $montant, $mode]);
-        // Mettre à jour statut
+        $etab = \API\Core\EstablishmentContext::id();
+        // Vérifier l'appartenance de la facture à l'établissement courant
         $facture = $this->getFacture($factureId);
+        if (!$facture) return;
+        $this->pdo->prepare("INSERT INTO paiements (etablissement_id, facture_id, montant, date_paiement, mode) VALUES (?,?,?,NOW(),?)")->execute([$etab, $factureId, $montant, $mode]);
+        // Mettre à jour statut
         $stmt = $this->pdo->prepare("SELECT COALESCE(SUM(montant), 0) FROM paiements WHERE facture_id = ?");
         $stmt->execute([$factureId]);
         $paye = (float)$stmt->fetchColumn();
         $newStatut = $paye >= $facture['montant_ttc'] ? 'payee' : 'partielle';
-        $this->pdo->prepare("UPDATE factures SET statut = ? WHERE id = ?")->execute([$newStatut, $factureId]);
+        $this->pdo->prepare("UPDATE factures SET statut = ? WHERE id = ? AND etablissement_id = ?")->execute([$newStatut, $factureId, $etab]);
     }
 
     /* ───── HELPERS ───── */
@@ -162,11 +166,13 @@ class FacturationService
      */
     public function detecterRetards(): int
     {
+        $etab = $this->etabId();
+        if ($etab === null) return 0;
         $stmt = $this->pdo->prepare("
             UPDATE factures SET statut = 'en_retard'
-            WHERE statut = 'en_attente' AND date_echeance < CURDATE()
+            WHERE statut = 'en_attente' AND date_echeance < CURDATE() AND etablissement_id = ?
         ");
-        $stmt->execute();
+        $stmt->execute([$etab]);
         return $stmt->rowCount();
     }
 
@@ -176,13 +182,16 @@ class FacturationService
      */
     public function envoyerRappels(): int
     {
-        $stmt = $this->pdo->query("
+        $etab = $this->etabId();
+        if ($etab === null) return 0;
+        $stmt = $this->pdo->prepare("
             SELECT f.id, f.numero, f.montant_ttc, f.date_echeance,
                    p.id AS parent_id, CONCAT(p.prenom, ' ', p.nom) AS parent_nom
             FROM factures f
             JOIN parents p ON f.parent_id = p.id
-            WHERE f.statut = 'en_retard' AND f.rappel_envoye = 0
+            WHERE f.statut = 'en_retard' AND f.rappel_envoye = 0 AND f.etablissement_id = ?
         ");
+        $stmt->execute([$etab]);
         $retards = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         $count = 0;
@@ -200,8 +209,8 @@ class FacturationService
                         'priorite'  => 'haute',
                     ]);
                 }
-                $this->pdo->prepare("UPDATE factures SET rappel_envoye = 1, rappel_date = NOW() WHERE id = ?")
-                           ->execute([$f['id']]);
+                $this->pdo->prepare("UPDATE factures SET rappel_envoye = 1, rappel_date = NOW() WHERE id = ? AND etablissement_id = ?")
+                           ->execute([$f['id'], $etab]);
                 $count++;
             } catch (\Throwable $e) {
                 error_log("Facturation::envoyerRappels error for facture {$f['id']}: " . $e->getMessage());
@@ -218,6 +227,8 @@ class FacturationService
      */
     public function genererFacturesAuto(string $type, string $mois, float $tarif, ?string $description = null): int
     {
+        $etab = $this->etabId();
+        if ($etab === null) return 0;
         $count = 0;
         $desc = $description ?? ucfirst($type) . ' — ' . $mois;
 
@@ -229,9 +240,9 @@ class FacturationService
                     SELECT DISTINCT pe.id_parent
                     FROM cantine_reservations cr
                     JOIN parent_eleve pe ON pe.id_eleve = cr.eleve_id
-                    WHERE DATE_FORMAT(cr.date_reservation, '%Y-%m') = ?
+                    WHERE DATE_FORMAT(cr.date_reservation, '%Y-%m') = ? AND cr.etablissement_id = ?
                 ");
-                $stmt->execute([$mois]);
+                $stmt->execute([$mois, $etab]);
                 $parentIds = $stmt->fetchAll(\PDO::FETCH_COLUMN);
                 break;
             case 'garderie':
@@ -239,20 +250,22 @@ class FacturationService
                     SELECT DISTINCT pe.id_parent
                     FROM garderie_inscriptions gi
                     JOIN parent_eleve pe ON pe.id_eleve = gi.eleve_id
-                    WHERE DATE_FORMAT(gi.date_inscription, '%Y-%m') = ?
+                    WHERE DATE_FORMAT(gi.date_inscription, '%Y-%m') = ? AND gi.etablissement_id = ?
                 ");
-                $stmt->execute([$mois]);
+                $stmt->execute([$mois, $etab]);
                 $parentIds = $stmt->fetchAll(\PDO::FETCH_COLUMN);
                 break;
             default:
                 // All active parents
-                $parentIds = $this->pdo->query("SELECT id FROM parents WHERE actif = 1")->fetchAll(\PDO::FETCH_COLUMN);
+                $stmt = $this->pdo->prepare("SELECT id FROM parents WHERE actif = 1 AND etablissement_id = ?");
+                $stmt->execute([$etab]);
+                $parentIds = $stmt->fetchAll(\PDO::FETCH_COLUMN);
         }
 
         foreach ($parentIds as $pid) {
             // Check if invoice already exists for this parent/type/month
-            $check = $this->pdo->prepare("SELECT id FROM factures WHERE parent_id = ? AND type = ? AND notes LIKE ?");
-            $check->execute([$pid, $type, "%$mois%"]);
+            $check = $this->pdo->prepare("SELECT id FROM factures WHERE parent_id = ? AND type = ? AND notes LIKE ? AND etablissement_id = ?");
+            $check->execute([$pid, $type, "%$mois%", $etab]);
             if ($check->fetch()) continue;
 
             $this->creerFacture([
@@ -274,17 +287,21 @@ class FacturationService
      */
     public function envoyerRelancesEscaladees(): int
     {
+        $etab = $this->etabId();
+        if ($etab === null) return 0;
         $count = 0;
         $today = date('Y-m-d');
 
-        $stmt = $this->pdo->query("
+        $stmt = $this->pdo->prepare("
             SELECT f.*, CONCAT(p.prenom, ' ', p.nom) AS parent_nom, p.mail AS parent_email
             FROM factures f
             JOIN parents p ON f.parent_id = p.id
             WHERE f.statut IN ('en_retard', 'en_attente')
               AND f.date_echeance < CURDATE()
+              AND f.etablissement_id = ?
             ORDER BY f.date_echeance ASC
         ");
+        $stmt->execute([$etab]);
         $factures = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         foreach ($factures as $f) {
@@ -313,8 +330,8 @@ class FacturationService
                     }
                 } catch (\Exception $e) { error_log('[FacturationService.php] ' . $e->getMessage()); }
 
-                $this->pdo->prepare("UPDATE factures SET relance_count = relance_count + 1, derniere_relance = CURDATE(), statut = 'en_retard' WHERE id = ?")
-                           ->execute([$f['id']]);
+                $this->pdo->prepare("UPDATE factures SET relance_count = relance_count + 1, derniere_relance = CURDATE(), statut = 'en_retard' WHERE id = ? AND etablissement_id = ?")
+                           ->execute([$f['id'], $etab]);
                 $count++;
             }
         }
@@ -328,6 +345,8 @@ class FacturationService
      */
     public function getExportComptable(string $dateDebut, string $dateFin): array
     {
+        $etab = $this->etabId();
+        if ($etab === null) return [];
         $stmt = $this->pdo->prepare("
             SELECT f.numero, f.created_at AS date_facture, f.montant_ht, f.tva AS montant_tva, f.montant_ttc,
                    f.type, f.statut, f.notes AS description,
@@ -335,10 +354,10 @@ class FacturationService
                    (SELECT COALESCE(SUM(pa.montant), 0) FROM paiements pa WHERE pa.facture_id = f.id) AS total_paye
             FROM factures f
             JOIN parents p ON f.parent_id = p.id
-            WHERE f.created_at BETWEEN ? AND ?
+            WHERE f.created_at BETWEEN ? AND ? AND f.etablissement_id = ?
             ORDER BY f.created_at
         ");
-        $stmt->execute([$dateDebut, $dateFin . ' 23:59:59']);
+        $stmt->execute([$dateDebut, $dateFin . ' 23:59:59', $etab]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
@@ -408,9 +427,9 @@ class FacturationService
                 SUM(CASE WHEN statut IN ('en_attente','en_retard') THEN montant_ttc ELSE 0 END) AS total_impaye,
                 COUNT(CASE WHEN statut = 'en_retard' THEN 1 END) AS nb_retards,
                 COUNT(CASE WHEN statut = 'payee' THEN 1 END) AS nb_payees
-            FROM factures WHERE created_at BETWEEN :d AND :f
+            FROM factures WHERE created_at BETWEEN :d AND :f AND etablissement_id = :e
         ");
-        $stmt->execute([':d' => $dateDebut, ':f' => $dateFin . ' 23:59:59']);
+        $stmt->execute([':d' => $dateDebut, ':f' => $dateFin . ' 23:59:59', ':e' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(\PDO::FETCH_ASSOC) ?: [];
     }
 

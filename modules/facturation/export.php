@@ -18,7 +18,7 @@ $data = $factService->getFacturesForExport($filters);
 $columns = ['Numéro', 'Parent', 'Type', 'Montant HT', 'TVA', 'Montant TTC', 'Payé', 'Reste', 'Statut', 'Échéance', 'Date création'];
 
 if ($format === 'pdf') {
-    $exportService->pdf($data, $columns, 'Facturation');
+    $exportService->pdf($exportService->buildTable($data, $columns, 'Facturation'), 'Facturation', 'facturation.pdf');
 } else {
     $exportService->csv($data, $columns, 'facturation');
 }

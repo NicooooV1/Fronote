@@ -207,9 +207,9 @@ function createConversation($titre, $type, $createurId, $createurType, $particip
     try {
         $validTypes = ['individuelle', 'groupe', 'annonce', 'classe', 'information'];
         $type = in_array($type, $validTypes) ? $type : 'individuelle';
-        $sql = "INSERT INTO conversations (subject, type, created_at, updated_at) VALUES (?, ?, NOW(), NOW())";
+        $sql = "INSERT INTO conversations (etablissement_id, subject, type, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$titre, $type]);
+        $stmt->execute([\API\Core\EstablishmentContext::id(), $titre, $type]);
         $convId = $pdo->lastInsertId();
         
         $sql = "INSERT INTO conversation_participants 
@@ -249,9 +249,9 @@ function getConversationInfo($convId) {
     $stmt = $pdo->prepare("
         SELECT c.id, c.subject as titre, c.type, c.allow_replies
         FROM conversations c
-        WHERE c.id = ?
+        WHERE c.id = ? AND c.etablissement_id = ?
     ");
-    $stmt->execute([$convId]);
+    $stmt->execute([$convId, \API\Core\EstablishmentContext::id()]);
     return $stmt->fetch();
 }
 

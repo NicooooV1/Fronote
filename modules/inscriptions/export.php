@@ -18,7 +18,7 @@ $data = $inscriptionService->getInscriptionsForExport($filters);
 $columns = ['ID', 'Nom', 'Prénom', 'Date naissance', 'Sexe', 'Classe demandée', 'Statut', 'Date soumission', 'Email contact', 'Téléphone'];
 
 if ($format === 'pdf') {
-    $exportService->pdf($data, $columns, 'Inscriptions');
+    $exportService->pdf($exportService->buildTable($data, $columns, 'Inscriptions'), 'Inscriptions', 'inscriptions.pdf');
 } else {
     $exportService->csv($data, $columns, 'inscriptions');
 }

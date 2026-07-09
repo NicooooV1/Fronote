@@ -69,13 +69,13 @@ class StageService
 
     public function modifierStage(int $id, array $d): void
     {
-        $stmt = $this->pdo->prepare("UPDATE stages SET type=?, entreprise_nom=?, entreprise_adresse=?, entreprise_contact=?, tuteur_nom=?, tuteur_email=?, professeur_referent_id=?, date_debut=?, date_fin=?, statut=?, description=?, evaluation_entreprise=?, evaluation_note=?, rapport_path=? WHERE id=?");
+        $stmt = $this->pdo->prepare("UPDATE stages SET type=?, entreprise_nom=?, entreprise_adresse=?, entreprise_contact=?, tuteur_nom=?, tuteur_email=?, professeur_referent_id=?, date_debut=?, date_fin=?, statut=?, description=?, evaluation_entreprise=?, evaluation_note=?, rapport_path=? WHERE id=? AND etablissement_id=?");
         $stmt->execute([
             $d['type'], $d['entreprise_nom'], $d['entreprise_adresse'], $d['entreprise_tel'],
             $d['tuteur_nom'], $d['tuteur_email'], $d['prof_referent_id'] ?: null,
             $d['date_debut'], $d['date_fin'], $d['statut'], $d['description'],
             $d['evaluation_entreprise'] ?? null, $d['evaluation_note'] ?? null,
-            $d['rapport_path'] ?? null, $id
+            $d['rapport_path'] ?? null, $id, \API\Core\EstablishmentContext::id()
         ]);
     }
 
@@ -94,10 +94,10 @@ class StageService
             LEFT JOIN classes cl ON e.classe = cl.nom
             LEFT JOIN professeurs p ON s.professeur_referent_id = p.id
             JOIN parent_eleve pe ON pe.id_eleve = e.id
-            WHERE pe.id_parent = ?
+            WHERE pe.id_parent = ? AND s.etablissement_id = ?
             ORDER BY s.date_debut DESC
         ");
-        $stmt->execute([$parentId]);
+        $stmt->execute([$parentId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -177,8 +177,8 @@ class StageService
      */
     public function getEntreprises(?string $search = null): array
     {
-        $sql = "SELECT * FROM entreprises WHERE 1=1";
-        $params = [];
+        $sql = "SELECT * FROM entreprises WHERE 1=1 AND etablissement_id = ?";
+        $params = [\API\Core\EstablishmentContext::id()];
         if ($search) {
             $sql .= " AND (nom LIKE ? OR secteur LIKE ?)";
             $like = '%' . $search . '%';
@@ -194,10 +194,10 @@ class StageService
     public function creerEntreprise(array $d): int
     {
         $stmt = $this->pdo->prepare("
-            INSERT INTO entreprises (nom, adresse, contact_nom, contact_email, secteur)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO entreprises (nom, adresse, contact_nom, contact_email, secteur, etablissement_id)
+            VALUES (?, ?, ?, ?, ?, ?)
         ");
-        $stmt->execute([$d['nom'], $d['adresse'] ?? null, $d['contact_nom'] ?? null, $d['contact_email'] ?? null, $d['secteur'] ?? null]);
+        $stmt->execute([$d['nom'], $d['adresse'] ?? null, $d['contact_nom'] ?? null, $d['contact_email'] ?? null, $d['secteur'] ?? null, \API\Core\EstablishmentContext::id()]);
         return (int)$this->pdo->lastInsertId();
     }
 
@@ -219,9 +219,16 @@ class StageService
 
     public function getStats(): array
     {
-        $total = $this->pdo->query("SELECT COUNT(*) FROM stages")->fetchColumn();
-        $enCours = $this->pdo->query("SELECT COUNT(*) FROM stages WHERE statut = 'en_cours'")->fetchColumn();
-        $recherche = $this->pdo->query("SELECT COUNT(*) FROM stages WHERE statut = 'brouillon'")->fetchColumn();
+        $etab = \API\Core\EstablishmentContext::id();
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM stages WHERE etablissement_id = ?");
+        $stmt->execute([$etab]);
+        $total = $stmt->fetchColumn();
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM stages WHERE statut = 'en_cours' AND etablissement_id = ?");
+        $stmt->execute([$etab]);
+        $enCours = $stmt->fetchColumn();
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM stages WHERE statut = 'brouillon' AND etablissement_id = ?");
+        $stmt->execute([$etab]);
+        $recherche = $stmt->fetchColumn();
         return ['total' => $total, 'en_cours' => $enCours, 'en_recherche' => $recherche];
     }
 
@@ -313,16 +320,17 @@ class StageService
 
     public function getVisitesAPlanifier(): array
     {
-        $stmt = $this->pdo->query("
+        $stmt = $this->pdo->prepare("
             SELECT s.id, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, s.entreprise_nom,
                    s.date_debut, s.date_fin, CONCAT(p.prenom, ' ', p.nom) AS prof_nom,
                    (SELECT COUNT(*) FROM stages_visites sv WHERE sv.stage_id = s.id) AS nb_visites
             FROM stages s
             JOIN eleves e ON s.eleve_id = e.id
             LEFT JOIN professeurs p ON s.prof_referent_id = p.id
-            WHERE s.statut = 'en_cours'
+            WHERE s.statut = 'en_cours' AND s.etablissement_id = ?
             ORDER BY nb_visites ASC, s.date_debut ASC
         ");
+        $stmt->execute([\API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 }

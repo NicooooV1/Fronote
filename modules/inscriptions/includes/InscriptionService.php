@@ -29,12 +29,13 @@ class InscriptionService
     {
         $stmt = $this->pdo->prepare("
             INSERT INTO inscriptions (
-                parent_id, nom_eleve, prenom_eleve, date_naissance, sexe,
+                etablissement_id, parent_id, nom_eleve, prenom_eleve, date_naissance, sexe,
                 classe_demandee, adresse, telephone, email_contact,
                 etablissement_precedent, observations, statut, date_soumission
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'soumise', NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'soumise', NOW())
         ");
         $stmt->execute([
+            \API\Core\EstablishmentContext::id(),
             $data['parent_id'], $data['nom_eleve'], $data['prenom_eleve'],
             $data['date_naissance'], $data['sexe'], $data['classe_demandee'],
             $data['adresse'], $data['telephone'], $data['email_contact'],
@@ -61,10 +62,10 @@ class InscriptionService
             SELECT i.*, c.nom AS classe_nom
             FROM inscriptions i
             LEFT JOIN classes c ON i.classe_demandee = c.id
-            WHERE i.parent_id = ?
+            WHERE i.parent_id = ? AND i.etablissement_id = ?
             ORDER BY i.date_soumission DESC
         ");
-        $stmt->execute([$parentId]);
+        $stmt->execute([$parentId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -74,9 +75,9 @@ class InscriptionService
             SELECT i.*, c.nom AS classe_nom
             FROM inscriptions i
             LEFT JOIN classes c ON i.classe_demandee = c.id
-            WHERE 1=1
+            WHERE i.etablissement_id = ?
         ";
-        $params = [];
+        $params = [\API\Core\EstablishmentContext::id()];
         if (!empty($filters['statut'])) {
             $sql .= ' AND i.statut = ?';
             $params[] = $filters['statut'];
@@ -97,8 +98,8 @@ class InscriptionService
     public function changerStatut(int $id, string $newStatut, int $traitePar = null, ?string $commentaire = null): void
     {
         // Récupérer le statut actuel
-        $stmt = $this->pdo->prepare('SELECT statut FROM inscriptions WHERE id = ?');
-        $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare('SELECT statut FROM inscriptions WHERE id = ? AND etablissement_id = ?');
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         $currentStatut = $stmt->fetchColumn();
 
         if (!$currentStatut) {
@@ -122,8 +123,9 @@ class InscriptionService
             $sql .= ', commentaire_traitement = ?';
             $params[] = $commentaire;
         }
-        $sql .= ' WHERE id = ?';
+        $sql .= ' WHERE id = ? AND etablissement_id = ?';
         $params[] = $id;
+        $params[] = \API\Core\EstablishmentContext::id();
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
 
@@ -235,8 +237,8 @@ class InscriptionService
     {
         $sql = "SELECT i.*, c.nom AS classe_nom FROM inscriptions i
                 LEFT JOIN classes c ON i.classe_demandee = c.id
-                WHERE i.statut = 'liste_attente'";
-        $params = [];
+                WHERE i.etablissement_id = ? AND i.statut = 'liste_attente'";
+        $params = [\API\Core\EstablishmentContext::id()];
         if ($classeId) {
             $sql .= " AND i.classe_demandee = ?";
             $params[] = $classeId;
@@ -252,8 +254,8 @@ class InscriptionService
      */
     public function setWaitlistPosition(int $inscriptionId, int $position): void
     {
-        $this->pdo->prepare("UPDATE inscriptions SET waitlist_position = ? WHERE id = ?")
-                   ->execute([$position, $inscriptionId]);
+        $this->pdo->prepare("UPDATE inscriptions SET waitlist_position = ? WHERE id = ? AND etablissement_id = ?")
+                   ->execute([$position, $inscriptionId, \API\Core\EstablishmentContext::id()]);
     }
 
     /**
@@ -276,8 +278,8 @@ class InscriptionService
      */
     public function saveStep(int $inscriptionId, int $step, array $data): void
     {
-        $this->pdo->prepare("UPDATE inscriptions SET step_current = ?, step_data = ? WHERE id = ?")
-                   ->execute([$step, json_encode($data, JSON_UNESCAPED_UNICODE), $inscriptionId]);
+        $this->pdo->prepare("UPDATE inscriptions SET step_current = ?, step_data = ? WHERE id = ? AND etablissement_id = ?")
+                   ->execute([$step, json_encode($data, JSON_UNESCAPED_UNICODE), $inscriptionId, \API\Core\EstablishmentContext::id()]);
     }
 
     /**
@@ -285,8 +287,8 @@ class InscriptionService
      */
     public function getStepData(int $inscriptionId): array
     {
-        $stmt = $this->pdo->prepare("SELECT step_current, step_data FROM inscriptions WHERE id = ?");
-        $stmt->execute([$inscriptionId]);
+        $stmt = $this->pdo->prepare("SELECT step_current, step_data FROM inscriptions WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$inscriptionId, \API\Core\EstablishmentContext::id()]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
         return [
             'step' => (int)($row['step_current'] ?? 1),
@@ -404,8 +406,8 @@ class InscriptionService
 
     public function suggestClasse(int $inscriptionId): ?string
     {
-        $stmt = $this->pdo->prepare("SELECT date_naissance, classe_demandee FROM inscriptions WHERE id = ?");
-        $stmt->execute([$inscriptionId]);
+        $stmt = $this->pdo->prepare("SELECT date_naissance, classe_demandee FROM inscriptions WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$inscriptionId, \API\Core\EstablishmentContext::id()]);
         $insc = $stmt->fetch(\PDO::FETCH_ASSOC);
         if (!$insc) return null;
 
@@ -441,9 +443,9 @@ class InscriptionService
         $stmt = $this->pdo->prepare("
             SELECT i.*, c.nom AS classe_nom FROM inscriptions i
             LEFT JOIN classes c ON i.classe_demandee = c.id
-            WHERE i.id = ?
+            WHERE i.id = ? AND i.etablissement_id = ?
         ");
-        $stmt->execute([$inscriptionId]);
+        $stmt->execute([$inscriptionId, \API\Core\EstablishmentContext::id()]);
         $insc = $stmt->fetch(\PDO::FETCH_ASSOC);
         if (!$insc || $insc['statut'] !== 'acceptee') {
             throw new \RuntimeException('Inscription non acceptée');
@@ -476,14 +478,14 @@ class InscriptionService
 
         $count = 0;
         foreach ($eleves as $el) {
-            $exists = $this->pdo->prepare("SELECT id FROM inscriptions WHERE nom_eleve = ? AND prenom_eleve = ? AND annee_scolaire = ?");
-            $exists->execute([$el['nom'], $el['prenom'], $anneeCible]);
+            $exists = $this->pdo->prepare("SELECT id FROM inscriptions WHERE nom_eleve = ? AND prenom_eleve = ? AND annee_scolaire = ? AND etablissement_id = ?");
+            $exists->execute([$el['nom'], $el['prenom'], $anneeCible, \API\Core\EstablishmentContext::id()]);
             if ($exists->fetch()) continue;
 
             $this->pdo->prepare("
-                INSERT INTO inscriptions (nom_eleve, prenom_eleve, date_naissance, classe_demandee, statut, annee_scolaire, date_soumission, type)
-                VALUES (?, ?, ?, ?, 'brouillon', ?, NOW(), 'reinscription')
-            ")->execute([$el['nom'], $el['prenom'], $el['date_naissance'], $el['classe_id'], $anneeCible]);
+                INSERT INTO inscriptions (etablissement_id, nom_eleve, prenom_eleve, date_naissance, classe_demandee, statut, annee_scolaire, date_soumission, type)
+                VALUES (?, ?, ?, ?, ?, 'brouillon', ?, NOW(), 'reinscription')
+            ")->execute([\API\Core\EstablishmentContext::id(), $el['nom'], $el['prenom'], $el['date_naissance'], $el['classe_id'], $anneeCible]);
             $count++;
         }
         return $count;

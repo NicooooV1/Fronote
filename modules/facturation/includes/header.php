@@ -17,16 +17,12 @@ $extraCss = ['assets/css/facturation.css'];
 $isGestionnaire = isAdmin() || isPersonnelVS();
 
 // Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
-$_sub = basename($_SERVER['PHP_SELF'] ?? '');
-ob_start(); ?>
-<div class="sidebar-nav">
-    <a href="factures.php" class="sidebar-nav-item <?= $_sub === 'factures.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-file-invoice-dollar"></i></span><span>Factures</span></a>
-<?php if ($isGestionnaire): ?>
-    <a href="creer.php" class="sidebar-nav-item <?= $_sub === 'creer.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-plus-circle"></i></span><span>Nouvelle facture</span></a>
-    <a href="export.php" class="sidebar-nav-item"><span class="sidebar-nav-icon"><i class="fas fa-file-export"></i></span><span>Export</span></a>
-<?php endif; ?>
-</div>
-<?php $sidebarExtraContent = ob_get_clean();
+require_once __DIR__ . '/../../../templates/module_subnav.php';
+$sidebarExtraContent = renderModuleSubnav([
+    ['href' => 'factures.php', 'icon' => 'fas fa-file-invoice-dollar', 'label' => 'Factures'],
+    ['href' => 'creer.php',    'icon' => 'fas fa-plus-circle',         'label' => 'Nouvelle facture', 'visible' => $isGestionnaire],
+    ['href' => 'export.php',   'icon' => 'fas fa-file-export',         'label' => 'Export',           'visible' => $isGestionnaire],
+]);
 
 $pageTitle = $pageTitle ?? 'Facturation';
 require_once __DIR__ . '/../../../templates/shared_header.php';

@@ -22,8 +22,11 @@ $headers = ['Élève', 'Classe', 'Type', 'Entreprise', 'Tuteur', 'Prof référen
 $title = 'Liste des stages';
 $filename = 'stages';
 
+// Le service renvoie des lignes indexées numériquement : on les recale sur les labels.
+$data = array_map(fn($row) => array_combine($headers, $row), $data);
+
 if ($format === 'pdf') {
-    $exportService->pdf($title, $headers, $data, $filename);
+    $exportService->pdf($exportService->buildTable($data, $headers, $title), $title, $filename);
 } else {
-    $exportService->csv($headers, $data, $filename);
+    $exportService->csv($data, $headers, $filename);
 }

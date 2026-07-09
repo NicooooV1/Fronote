@@ -28,8 +28,8 @@ $resolveClasseIdForEleve = static function (int $eleveId) use ($pdo): int {
     $stmt->execute([$eleveId]);
     $nom = $stmt->fetchColumn();
     if (!$nom) return 0;
-    $stmt = $pdo->prepare("SELECT id FROM classes WHERE nom = ? AND actif = 1 LIMIT 1");
-    $stmt->execute([$nom]);
+    $stmt = $pdo->prepare("SELECT id FROM classes WHERE nom = ? AND actif = 1 AND etablissement_id = ? LIMIT 1");
+    $stmt->execute([$nom, \API\Core\EstablishmentContext::id()]);
     return (int) $stmt->fetchColumn();
 };
 
@@ -97,9 +97,9 @@ $sql = "
     LEFT JOIN professeurs p ON edt.professeur_id = p.id
     LEFT JOIN salles s ON edt.salle_id = s.id
     LEFT JOIN creneaux_horaires ch ON edt.creneau_id = ch.id
-    WHERE edt.jour BETWEEN ? AND ?
+    WHERE edt.jour BETWEEN ? AND ? AND edt.etablissement_id = ?
 ";
-$params = [$mondayDate, $sundayDate];
+$params = [$mondayDate, $sundayDate, \API\Core\EstablishmentContext::id()];
 
 if ($classeId) {
     $sql .= " AND edt.classe_id = ?";

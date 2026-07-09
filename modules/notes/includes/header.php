@@ -29,19 +29,9 @@ $activePage = 'notes';
 $isAdmin = ($user_role ?? '') === 'administrateur';
 $extraCss = $extraCss ?? ['assets/css/notes.css'];
 
-// Rôles pour la navigation secondaire.
-$isStaffNotes = isAdmin() || isVieScolaire() || isTeacher();
-
 // Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
-$_sub = basename($_SERVER['PHP_SELF'] ?? '');
-ob_start(); ?>
-<div class="sidebar-nav">
-    <a href="notes.php" class="sidebar-nav-item <?= $_sub === 'notes.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-list-ol"></i></span><span>Notes</span></a>
-<?php if ($isStaffNotes): ?>
-    <a href="export.php" class="sidebar-nav-item <?= $_sub === 'export.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-file-export"></i></span><span>Export</span></a>
-<?php endif; ?>
-</div>
-<?php $sidebarExtraContent = ob_get_clean();
+require_once __DIR__ . '/subnav_items.php';
+$sidebarExtraContent = renderNotesSubnav();
 
 // Inclure les templates partagés
 include __DIR__ . '/../../../templates/shared_header.php';

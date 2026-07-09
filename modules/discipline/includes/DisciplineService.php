@@ -19,15 +19,15 @@ class DisciplineService
     {
         $stmt = $this->pdo->prepare(
             "INSERT INTO incidents (eleve_id, date_incident, lieu, type_incident, gravite,
-                description, temoins, signale_par_id, signale_par_type, classe_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                description, temoins, signale_par_id, signale_par_type, classe_id, etablissement_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
         $stmt->execute([
             $data['eleve_id'], $data['date_incident'], $data['lieu'] ?? null,
             $data['type_incident'], $data['gravite'] ?? 'moyen',
             $data['description'], $data['temoins'] ?? null,
             $data['signale_par_id'], $data['signale_par_type'],
-            $data['classe_id'] ?? null
+            $data['classe_id'] ?? null, \API\Core\EstablishmentContext::id()
         ]);
         return (int)$this->pdo->lastInsertId();
     }
@@ -40,9 +40,9 @@ class DisciplineService
                 FROM incidents i
                 JOIN eleves e ON i.eleve_id = e.id
                 LEFT JOIN classes cl ON i.classe_id = cl.id
-                WHERE i.id = ?";
+                WHERE i.id = ? AND i.etablissement_id = ?";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$id]);
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
@@ -51,12 +51,12 @@ class DisciplineService
         $stmt = $this->pdo->prepare(
             "UPDATE incidents SET type_incident = ?, gravite = ?, description = ?,
                 lieu = ?, temoins = ?, statut = ?
-             WHERE id = ?"
+             WHERE id = ? AND etablissement_id = ?"
         );
         return $stmt->execute([
             $data['type_incident'], $data['gravite'], $data['description'],
             $data['lieu'] ?? null, $data['temoins'] ?? null,
-            $data['statut'] ?? 'signale', $id
+            $data['statut'] ?? 'signale', $id, \API\Core\EstablishmentContext::id()
         ]);
     }
 
@@ -66,8 +66,8 @@ class DisciplineService
                        e.nom AS eleve_nom, e.prenom AS eleve_prenom, e.classe AS eleve_classe
                 FROM incidents i
                 JOIN eleves e ON i.eleve_id = e.id
-                WHERE 1=1";
-        $params = [];
+                WHERE 1=1 AND i.etablissement_id = ?";
+        $params = [\API\Core\EstablishmentContext::id()];
 
         if (!empty($filters['eleve_id'])) {
             $sql .= " AND i.eleve_id = ?";
@@ -128,9 +128,9 @@ class DisciplineService
 
         $stmt = $this->pdo->prepare(
             "UPDATE incidents SET statut = ?, traite_par_id = ?, traite_at = NOW(), commentaire_traitement = ?
-             WHERE id = ?"
+             WHERE id = ? AND etablissement_id = ?"
         );
-        $success = $stmt->execute([$newStatut, $userId, $comment, $id]);
+        $success = $stmt->execute([$newStatut, $userId, $comment, $id, \API\Core\EstablishmentContext::id()]);
         
         if ($success) {
             $this->logAction("incident.$newStatut", $id, $userId, $comment);
@@ -233,8 +233,8 @@ class DisciplineService
         $stmt = $this->pdo->prepare(
             "INSERT INTO sanctions (incident_id, eleve_id, type_sanction, motif, date_sanction,
                 date_debut, date_fin, duree, lieu_retenue, convocation_parent,
-                decide_par_id, decide_par_type, commentaire)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                decide_par_id, decide_par_type, commentaire, etablissement_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
         $stmt->execute([
             $data['incident_id'] ?? null, $data['eleve_id'],
@@ -243,7 +243,7 @@ class DisciplineService
             $data['duree'] ?? null, $data['lieu_retenue'] ?? null,
             $data['convocation_parent'] ?? 0,
             $data['decide_par_id'], $data['decide_par_type'],
-            $data['commentaire'] ?? null
+            $data['commentaire'] ?? null, \API\Core\EstablishmentContext::id()
         ]);
         return (int)$this->pdo->lastInsertId();
     }
@@ -254,9 +254,9 @@ class DisciplineService
                        e.nom AS eleve_nom, e.prenom AS eleve_prenom, e.classe AS eleve_classe
                 FROM sanctions s
                 JOIN eleves e ON s.eleve_id = e.id
-                WHERE s.id = ?";
+                WHERE s.id = ? AND s.etablissement_id = ?";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$id]);
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
@@ -268,8 +268,8 @@ class DisciplineService
                 FROM sanctions s
                 JOIN eleves e ON s.eleve_id = e.id
                 LEFT JOIN incidents i ON s.incident_id = i.id
-                WHERE 1=1";
-        $params = [];
+                WHERE 1=1 AND s.etablissement_id = ?";
+        $params = [\API\Core\EstablishmentContext::id()];
 
         if (!empty($filters['eleve_id'])) {
             $sql .= " AND s.eleve_id = ?";
@@ -312,14 +312,14 @@ class DisciplineService
     {
         $stmt = $this->pdo->prepare(
             "INSERT INTO retenues (date_retenue, heure_debut, heure_fin, lieu,
-                surveillant_id, surveillant_type, capacite_max, commentaire)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+                surveillant_id, surveillant_type, capacite_max, commentaire, etablissement_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
         $stmt->execute([
             $data['date_retenue'], $data['heure_debut'], $data['heure_fin'],
             $data['lieu'] ?? null, $data['surveillant_id'] ?? null,
             $data['surveillant_type'] ?? null, $data['capacite_max'] ?? 30,
-            $data['commentaire'] ?? null
+            $data['commentaire'] ?? null, \API\Core\EstablishmentContext::id()
         ]);
         return (int)$this->pdo->lastInsertId();
     }
@@ -337,8 +337,8 @@ class DisciplineService
     {
         $sql = "SELECT r.*,
                        (SELECT COUNT(*) FROM retenue_eleves re WHERE re.retenue_id = r.id) AS nb_eleves
-                FROM retenues r WHERE 1=1";
-        $params = [];
+                FROM retenues r WHERE 1=1 AND r.etablissement_id = ?";
+        $params = [\API\Core\EstablishmentContext::id()];
 
         if (!empty($filters['date_debut'])) {
             $sql .= " AND r.date_retenue >= ?";
@@ -360,10 +360,10 @@ class DisciplineService
         $sql = "SELECT r.*, re.present, re.commentaire AS commentaire_eleve
                 FROM retenue_eleves re
                 JOIN retenues r ON re.retenue_id = r.id
-                WHERE re.eleve_id = ?
+                WHERE re.eleve_id = ? AND r.etablissement_id = ?
                 ORDER BY r.date_retenue DESC";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$eleveId]);
+        $stmt->execute([$eleveId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -379,47 +379,47 @@ class DisciplineService
         // Par type d'incident
         $stmt = $this->pdo->prepare(
             "SELECT type_incident, COUNT(*) AS nb
-             FROM incidents WHERE date_incident BETWEEN ? AND ?
+             FROM incidents WHERE date_incident BETWEEN ? AND ? AND etablissement_id = ?
              GROUP BY type_incident ORDER BY nb DESC"
         );
-        $stmt->execute([$dateDebut, $dateFin . ' 23:59:59']);
+        $stmt->execute([$dateDebut, $dateFin . ' 23:59:59', \API\Core\EstablishmentContext::id()]);
         $stats['par_type'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Par gravité
         $stmt = $this->pdo->prepare(
             "SELECT gravite, COUNT(*) AS nb
-             FROM incidents WHERE date_incident BETWEEN ? AND ?
+             FROM incidents WHERE date_incident BETWEEN ? AND ? AND etablissement_id = ?
              GROUP BY gravite"
         );
-        $stmt->execute([$dateDebut, $dateFin . ' 23:59:59']);
+        $stmt->execute([$dateDebut, $dateFin . ' 23:59:59', \API\Core\EstablishmentContext::id()]);
         $stats['par_gravite'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Par mois
         $stmt = $this->pdo->prepare(
             "SELECT DATE_FORMAT(date_incident, '%Y-%m') AS mois, COUNT(*) AS nb
-             FROM incidents WHERE date_incident BETWEEN ? AND ?
+             FROM incidents WHERE date_incident BETWEEN ? AND ? AND etablissement_id = ?
              GROUP BY mois ORDER BY mois"
         );
-        $stmt->execute([$dateDebut, $dateFin . ' 23:59:59']);
+        $stmt->execute([$dateDebut, $dateFin . ' 23:59:59', \API\Core\EstablishmentContext::id()]);
         $stats['par_mois'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Top élèves
         $stmt = $this->pdo->prepare(
             "SELECT e.nom, e.prenom, e.classe, COUNT(*) AS nb
              FROM incidents i JOIN eleves e ON i.eleve_id = e.id
-             WHERE date_incident BETWEEN ? AND ?
+             WHERE date_incident BETWEEN ? AND ? AND i.etablissement_id = ?
              GROUP BY i.eleve_id ORDER BY nb DESC LIMIT 10"
         );
-        $stmt->execute([$dateDebut, $dateFin . ' 23:59:59']);
+        $stmt->execute([$dateDebut, $dateFin . ' 23:59:59', \API\Core\EstablishmentContext::id()]);
         $stats['top_eleves'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Totaux
-        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM incidents WHERE date_incident BETWEEN ? AND ?");
-        $stmt->execute([$dateDebut, $dateFin . ' 23:59:59']);
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM incidents WHERE date_incident BETWEEN ? AND ? AND etablissement_id = ?");
+        $stmt->execute([$dateDebut, $dateFin . ' 23:59:59', \API\Core\EstablishmentContext::id()]);
         $stats['total_incidents'] = (int)$stmt->fetchColumn();
 
-        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM sanctions WHERE date_sanction BETWEEN ? AND ?");
-        $stmt->execute([$dateDebut, $dateFin]);
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM sanctions WHERE date_sanction BETWEEN ? AND ? AND etablissement_id = ?");
+        $stmt->execute([$dateDebut, $dateFin, \API\Core\EstablishmentContext::id()]);
         $stats['total_sanctions'] = (int)$stmt->fetchColumn();
 
         return $stats;
@@ -473,15 +473,15 @@ class DisciplineService
     public function ajouterPoints(int $eleveId, int $valeur, string $motif, int $profId): int
     {
         $stmt = $this->pdo->prepare(
-            "INSERT INTO discipline_points (eleve_id, valeur, motif, prof_id, date_creation)
-             VALUES (?, ?, ?, ?, NOW())"
+            "INSERT INTO discipline_points (eleve_id, valeur, motif, prof_id, date_creation, etablissement_id)
+             VALUES (?, ?, ?, ?, NOW(), ?)"
         );
-        $stmt->execute([$eleveId, $valeur, $motif, $profId]);
+        $stmt->execute([$eleveId, $valeur, $motif, $profId, \API\Core\EstablishmentContext::id()]);
 
         // Update cached total on élève
         $this->pdo->prepare(
-            "UPDATE eleves SET points_discipline = COALESCE(points_discipline, 0) + ? WHERE id = ?"
-        )->execute([$valeur, $eleveId]);
+            "UPDATE eleves SET points_discipline = COALESCE(points_discipline, 0) + ? WHERE id = ? AND etablissement_id = ?"
+        )->execute([$valeur, $eleveId, \API\Core\EstablishmentContext::id()]);
 
         // Check auto-sanction thresholds
         $this->checkAutoSanctions($eleveId, $profId);
@@ -498,10 +498,10 @@ class DisciplineService
             SELECT dp.*, CONCAT(p.prenom, ' ', p.nom) AS prof_nom
             FROM discipline_points dp
             LEFT JOIN professeurs p ON dp.prof_id = p.id
-            WHERE dp.eleve_id = ?
+            WHERE dp.eleve_id = ? AND dp.etablissement_id = ?
             ORDER BY dp.date_creation DESC
         ");
-        $stmt->execute([$eleveId]);
+        $stmt->execute([$eleveId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
@@ -510,8 +510,8 @@ class DisciplineService
      */
     public function getTotalPoints(int $eleveId): int
     {
-        $stmt = $this->pdo->prepare("SELECT COALESCE(SUM(valeur), 0) FROM discipline_points WHERE eleve_id = ?");
-        $stmt->execute([$eleveId]);
+        $stmt = $this->pdo->prepare("SELECT COALESCE(SUM(valeur), 0) FROM discipline_points WHERE eleve_id = ? AND etablissement_id = ?");
+        $stmt->execute([$eleveId, \API\Core\EstablishmentContext::id()]);
         return (int)$stmt->fetchColumn();
     }
 
@@ -522,18 +522,20 @@ class DisciplineService
     {
         $total = $this->getTotalPoints($eleveId);
 
-        $seuils = $this->pdo->query(
-            "SELECT * FROM discipline_seuils ORDER BY points_min DESC"
-        )->fetchAll(\PDO::FETCH_ASSOC);
+        $seuilsStmt = $this->pdo->prepare(
+            "SELECT * FROM discipline_seuils WHERE etablissement_id = ? ORDER BY points_min DESC"
+        );
+        $seuilsStmt->execute([\API\Core\EstablishmentContext::id()]);
+        $seuils = $seuilsStmt->fetchAll(\PDO::FETCH_ASSOC);
 
         foreach ($seuils as $seuil) {
             if ($total <= $seuil['points_min']) {
                 // Check if sanction already applied for this threshold
                 $check = $this->pdo->prepare("
                     SELECT id FROM sanctions
-                    WHERE eleve_id = ? AND type_sanction = ? AND auto_seuil_id = ?
+                    WHERE eleve_id = ? AND type_sanction = ? AND auto_seuil_id = ? AND etablissement_id = ?
                 ");
-                $check->execute([$eleveId, $seuil['sanction_type'], $seuil['id']]);
+                $check->execute([$eleveId, $seuil['sanction_type'], $seuil['id'], \API\Core\EstablishmentContext::id()]);
                 if ($check->fetch()) continue;
 
                 $this->createSanction([
@@ -578,7 +580,9 @@ class DisciplineService
 
     public function getClasses(): array
     {
-        return $this->pdo->query("SELECT * FROM classes WHERE actif = 1 ORDER BY niveau, nom")->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $this->pdo->prepare("SELECT * FROM classes WHERE actif = 1 AND etablissement_id = ? ORDER BY niveau, nom");
+        $stmt->execute([\API\Core\EstablishmentContext::id()]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
@@ -588,11 +592,11 @@ class DisciplineService
     {
         $stmt = $this->pdo->prepare(
             "SELECT id, nom, prenom, classe FROM eleves
-             WHERE actif = 1 AND (nom LIKE ? OR prenom LIKE ?)
+             WHERE actif = 1 AND (nom LIKE ? OR prenom LIKE ?) AND etablissement_id = ?
              ORDER BY nom, prenom LIMIT 20"
         );
         $q = '%' . $query . '%';
-        $stmt->execute([$q, $q]);
+        $stmt->execute([$q, $q, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -600,8 +604,8 @@ class DisciplineService
 
     public function escalerIncident(int $incidentId): void
     {
-        $incident = $this->pdo->prepare("SELECT gravite, eleve_id FROM incidents WHERE id = :id");
-        $incident->execute([':id' => $incidentId]);
+        $incident = $this->pdo->prepare("SELECT gravite, eleve_id FROM incidents WHERE id = :id AND etablissement_id = :eid");
+        $incident->execute([':id' => $incidentId, ':eid' => \API\Core\EstablishmentContext::id()]);
         $inc = $incident->fetch(PDO::FETCH_ASSOC);
 
         $regle = $this->pdo->prepare("SELECT action_suivante FROM discipline_regles_escalade WHERE gravite = :g ORDER BY seuil_incidents ASC LIMIT 1");
@@ -609,8 +613,8 @@ class DisciplineService
         $action = $regle->fetchColumn();
 
         if ($action) {
-            $this->pdo->prepare("UPDATE incidents SET escalade = 1, action_escalade = :a WHERE id = :id")
-                ->execute([':a' => $action, ':id' => $incidentId]);
+            $this->pdo->prepare("UPDATE incidents SET escalade = 1, action_escalade = :a WHERE id = :id AND etablissement_id = :eid")
+                ->execute([':a' => $action, ':id' => $incidentId, ':eid' => \API\Core\EstablishmentContext::id()]);
         }
     }
 
@@ -634,6 +638,8 @@ class DisciplineService
 
     public function exportStatistiquesAcademie(int $etabId, string $annee): array
     {
+        // Anti cross-tenant : ne pas faire confiance au paramètre, forcer l'établissement courant.
+        $etabId = \API\Core\EstablishmentContext::id();
         $stmt = $this->pdo->prepare("SELECT type, gravite, COUNT(*) AS nb FROM incidents WHERE etablissement_id = :eid AND YEAR(date_incident) = :a GROUP BY type, gravite ORDER BY type, gravite");
         $stmt->execute([':eid' => $etabId, ':a' => $annee]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

@@ -55,10 +55,11 @@ class DisciplineWidgetProvider implements WidgetDataProvider
                  FROM incidents i
                  JOIN eleves e ON e.id = i.eleve_id
                  WHERE i.signale_par_id = ? AND i.signale_par_type = 'professeur'
+                   AND i.etablissement_id = ?
                  ORDER BY i.date_incident DESC
                  LIMIT ?"
             );
-            $stmt->execute([$userId, $limit]);
+            $stmt->execute([$userId, \API\Core\EstablishmentContext::id(), $limit]);
             return ['incidents' => $stmt->fetchAll(\PDO::FETCH_ASSOC), 'stats' => []];
         }
 

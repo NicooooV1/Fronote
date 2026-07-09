@@ -4,15 +4,15 @@
  * Utilise les templates partagés Fronote
  */
 
-// Inclure le modèle de notification
-require_once __DIR__ . '/../models/notification.php';
+// Constantes du module ($folders) + protection CSRF
+require_once __DIR__ . '/../config/constants.php';
 require_once __DIR__ . '/../core/csrf.php';
 
 // Titre par défaut
 $pageTitle = $pageTitle ?? 'Messagerie';
 
 // Obtenir la page courante pour activer le menu correspondant
-$currentPage = basename($_SERVER['PHP_SELF'], '.php');
+$currentPage = basename($_SERVER['SCRIPT_NAME'] ?? '', '.php');
 
 // Récupérer le dossier courant pour les menus
 $currentFolder = isset($_GET['folder']) ? $_GET['folder'] : 'reception';
@@ -26,9 +26,7 @@ if (isset($user)) {
     }
     $user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
     $user_fullname = ($user['prenom'] ?? '') . ' ' . ($user['nom'] ?? '');
-    $unreadNotifications = countUnreadNotifications($user['id'], $user['type']);
 } else {
-    $unreadNotifications = 0;
     $user_initials = '';
     $user_fullname = '';
 }
@@ -94,20 +92,33 @@ ob_start();
 <?php
 $headerExtraActions = ob_get_clean();
 
-// Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
-$_sub = basename($_SERVER['PHP_SELF'] ?? '');
-ob_start(); ?>
-<div class="sidebar-nav">
-    <a href="<?= $rootPrefix ?>modules/messagerie/index.php" class="sidebar-nav-item <?= $_sub === 'index.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-inbox"></i></span><span>Messages</span></a>
-    <a href="<?= $rootPrefix ?>modules/messagerie/new_message.php" class="sidebar-nav-item <?= $_sub === 'new_message.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-pen"></i></span><span>Nouveau message</span></a>
-<?php if ($_msgUserType === 'professeur'): ?>
-    <a href="<?= $rootPrefix ?>modules/messagerie/class_message.php" class="sidebar-nav-item <?= $_sub === 'class_message.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-graduation-cap"></i></span><span>Message à la classe</span></a>
-<?php endif; ?>
-<?php if (in_array($_msgUserType, ['vie_scolaire', 'administrateur'], true)): ?>
-    <a href="<?= $rootPrefix ?>modules/messagerie/new_announcement.php" class="sidebar-nav-item <?= $_sub === 'new_announcement.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-bullhorn"></i></span><span>Nouvelle annonce</span></a>
-<?php endif; ?>
-</div>
-<?php $sidebarExtraContent = ob_get_clean();
+// Navigation secondaire du module : dossiers de la messagerie (rendue en bandeau
+// par shared_topbar.php). Les 5 liens pointent vers index.php (même basename) :
+// l'état actif doit donc être explicite, basé sur le dossier courant.
+// Les clés et libellés viennent de $folders (config/constants.php) — source
+// unique ; la map locale ci-dessous ne fixe que l'icône et l'ordre d'affichage.
+require_once __DIR__ . '/../../../templates/module_subnav.php';
+$_msgOnIndex = basename($_SERVER['SCRIPT_NAME'] ?? '') === 'index.php';
+$_msgFolderIcons = [
+    'information' => 'fas fa-info-circle',
+    'reception'   => 'fas fa-inbox',
+    'envoyes'     => 'fas fa-paper-plane',
+    'archives'    => 'fas fa-archive',
+    'corbeille'   => 'fas fa-trash',
+];
+$_msgSubnavItems = [];
+foreach ($_msgFolderIcons as $_msgFolderKey => $_msgFolderIcon) {
+    if (!isset($folders[$_msgFolderKey])) {
+        continue; // dossier retiré de la config → pas de lien
+    }
+    $_msgSubnavItems[] = [
+        'href'   => $rootPrefix . 'modules/messagerie/index.php?folder=' . $_msgFolderKey,
+        'icon'   => $_msgFolderIcon,
+        'label'  => $folders[$_msgFolderKey],
+        'active' => $_msgOnIndex && $currentFolder === $_msgFolderKey,
+    ];
+}
+$sidebarExtraContent = renderModuleSubnav($_msgSubnavItems);
 
 // Custom page title for topbar
 if (isset($customTitle)) {

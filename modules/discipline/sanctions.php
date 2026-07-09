@@ -6,7 +6,6 @@
 require_once __DIR__ . '/includes/DisciplineService.php';
 
 $pageTitle = 'Sanctions';
-$currentPage = 'sanctions';
 require_once __DIR__ . '/includes/header.php';
 requireAuth();
 

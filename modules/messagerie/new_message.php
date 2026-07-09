@@ -152,51 +152,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $destinataires_disponibles = [];
 
 // Élèves (en excluant l'utilisateur actuel)
-$query = $pdo->prepare("SELECT id, CONCAT(prenom, ' ', nom, ' (', classe, ')') as nom_complet 
-                        FROM eleves 
+$query = $pdo->prepare("SELECT id, CONCAT(prenom, ' ', nom, ' (', classe, ')') as nom_complet
+                        FROM eleves
                         WHERE NOT (id = ? AND ? = 'eleve')
+                        AND etablissement_id = ?
                         ORDER BY nom");
-$query->execute([$user['id'], $user['type']]);
+$query->execute([$user['id'], $user['type'], \API\Core\EstablishmentContext::id()]);
 if ($query) {
     $destinataires_disponibles['eleve'] = $query->fetchAll();
 }
 
 // Parents (en excluant l'utilisateur actuel)
-$query = $pdo->prepare("SELECT id, CONCAT(prenom, ' ', nom) as nom_complet 
-                        FROM parents 
+$query = $pdo->prepare("SELECT id, CONCAT(prenom, ' ', nom) as nom_complet
+                        FROM parents
                         WHERE NOT (id = ? AND ? = 'parent')
+                        AND etablissement_id = ?
                         ORDER BY nom");
-$query->execute([$user['id'], $user['type']]);
+$query->execute([$user['id'], $user['type'], \API\Core\EstablishmentContext::id()]);
 if ($query) {
     $destinataires_disponibles['parent'] = $query->fetchAll();
 }
 
 // Professeurs (en excluant l'utilisateur actuel)
-$query = $pdo->prepare("SELECT id, CONCAT(prenom, ' ', nom, ' (', matiere, ')') as nom_complet 
-                        FROM professeurs 
+$query = $pdo->prepare("SELECT id, CONCAT(prenom, ' ', nom, ' (', matiere, ')') as nom_complet
+                        FROM professeurs
                         WHERE NOT (id = ? AND ? = 'professeur')
+                        AND etablissement_id = ?
                         ORDER BY nom");
-$query->execute([$user['id'], $user['type']]);
+$query->execute([$user['id'], $user['type'], \API\Core\EstablishmentContext::id()]);
 if ($query) {
     $destinataires_disponibles['professeur'] = $query->fetchAll();
 }
 
 // Vie scolaire (en excluant l'utilisateur actuel)
-$query = $pdo->prepare("SELECT id, CONCAT(prenom, ' ', nom) as nom_complet 
-                        FROM vie_scolaire 
+$query = $pdo->prepare("SELECT id, CONCAT(prenom, ' ', nom) as nom_complet
+                        FROM vie_scolaire
                         WHERE NOT (id = ? AND ? = 'vie_scolaire')
+                        AND etablissement_id = ?
                         ORDER BY nom");
-$query->execute([$user['id'], $user['type']]);
+$query->execute([$user['id'], $user['type'], \API\Core\EstablishmentContext::id()]);
 if ($query) {
     $destinataires_disponibles['vie_scolaire'] = $query->fetchAll();
 }
 
 // Administrateurs (en excluant l'utilisateur actuel)
-$query = $pdo->prepare("SELECT id, CONCAT(prenom, ' ', nom) as nom_complet 
-                        FROM administrateurs 
+$query = $pdo->prepare("SELECT id, CONCAT(prenom, ' ', nom) as nom_complet
+                        FROM administrateurs
                         WHERE NOT (id = ? AND ? = 'administrateur')
+                        AND etablissement_id = ?
                         ORDER BY nom");
-$query->execute([$user['id'], $user['type']]);
+$query->execute([$user['id'], $user['type'], \API\Core\EstablishmentContext::id()]);
 if ($query) {
     $destinataires_disponibles['administrateur'] = $query->fetchAll();
 }

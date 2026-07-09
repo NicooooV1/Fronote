@@ -42,11 +42,11 @@ class CompetenceWidgetProvider extends AbstractWidgetProvider
                         c.nom AS competence, c.domaine
                  FROM competence_evaluations ce
                  JOIN competences c ON c.id = ce.competence_id
-                 WHERE ce.eleve_id = ?
+                 WHERE ce.eleve_id = ? AND ce.etablissement_id = ?
                  ORDER BY ce.date_evaluation DESC
                  LIMIT ?"
             );
-            $stmt->execute([$childId, $limit]);
+            $stmt->execute([$childId, \API\Core\EstablishmentContext::id(), $limit]);
         } elseif ($userType === 'professeur') {
             $stmt = $pdo->prepare(
                 "SELECT ce.niveau, ce.date_evaluation,

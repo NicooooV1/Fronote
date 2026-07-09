@@ -59,7 +59,7 @@ $stats = $isGestionnaire ? $stageService->getStats() : null;
                 <span class="badge badge-secondary"><?= $types[$s['type']] ?? $s['type'] ?></span>
                 <?= StageService::badgeStatut($s['statut']) ?>
             </div>
-            <h3><a href="detail.php?id=<?= $s['id'] ?>"><?= htmlspecialchars($s['entreprise_nom']) ?></a></h3>
+            <h3><a href="detail.php?id=<?= $s['id'] ?>"><?= htmlspecialchars($s['entreprise_nom']) ?></a> <a href="export_convention.php?id=<?= $s['id'] ?>" style="font-size:.8rem;font-weight:400;color:var(--text-muted,#9ca3af)" title="Exporter la convention PDF"><i class="fas fa-file-pdf"></i> Convention</a></h3>
             <p class="stage-eleve"><?= htmlspecialchars($s['eleve_nom']) ?> — <?= htmlspecialchars($s['classe_nom'] ?? '') ?></p>
             <div class="stage-meta">
                 <span><i class="fas fa-calendar"></i> <?= formatDate($s['date_debut']) ?> → <?= formatDate($s['date_fin']) ?></span>

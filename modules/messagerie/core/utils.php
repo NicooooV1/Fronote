@@ -70,23 +70,6 @@ function formatTimeAgo($timestamp) {
 }
 
 /**
- * Renvoie l'icône correspondant à un dossier
- * @param string $folder Identifiant du dossier
- * @return string Nom de l'icône Font Awesome
- */
-function getFolderIcon($folder) {
-    $icons = [
-        'information' => 'info-circle',
-        'reception' => 'inbox',
-        'envoyes' => 'paper-plane',
-        'archives' => 'archive',
-        'corbeille' => 'trash'
-    ];
-    
-    return $icons[$folder] ?? 'folder';
-}
-
-/**
  * Retourne l'icône pour une conversation
  * @param string $type
  * @return string

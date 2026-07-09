@@ -32,8 +32,8 @@ if (function_exists('app') && ($__audit = app('audit'))) {
 }
 
 // Infos élève
-$stmtEleve = $pdo->prepare("SELECT * FROM eleves WHERE id = ?");
-$stmtEleve->execute([$eleveId]);
+$stmtEleve = $pdo->prepare("SELECT * FROM eleves WHERE id = ? AND etablissement_id = ?");
+$stmtEleve->execute([$eleveId, \API\Core\EstablishmentContext::id()]);
 $eleve = $stmtEleve->fetch(PDO::FETCH_ASSOC);
 
 if (!$eleve) {

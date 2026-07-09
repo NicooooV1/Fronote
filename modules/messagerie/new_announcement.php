@@ -35,7 +35,8 @@ $success = '';
 function getAvailableClasses() {
     global $pdo;
     $allClasses = [];
-    $query = $pdo->query("SELECT DISTINCT classe FROM eleves WHERE classe IS NOT NULL AND classe != '' ORDER BY classe");
+    $query = $pdo->prepare("SELECT DISTINCT classe FROM eleves WHERE etablissement_id = ? AND classe IS NOT NULL AND classe != '' ORDER BY classe");
+    $query->execute([\API\Core\EstablishmentContext::id()]);
     if ($query) {
         $allClasses = $query->fetchAll(PDO::FETCH_COLUMN);
     }
@@ -78,7 +79,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 foreach ($allowedTables as $table) {
                     $type = rtrim($table, 's');
 
-                    $query = $pdo->query("SELECT id FROM `" . $table . "`");
+                    $query = $pdo->prepare("SELECT id FROM `" . $table . "` WHERE etablissement_id = ?");
+                    $query->execute([\API\Core\EstablishmentContext::id()]);
                     $users = $query->fetchAll(PDO::FETCH_COLUMN);
 
                     foreach ($users as $userId) {
@@ -93,7 +95,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 foreach ($allowedTables as $table) {
                     $type = rtrim($table, 's');
 
-                    $query = $pdo->query("SELECT id FROM `" . $table . "`");
+                    $query = $pdo->prepare("SELECT id FROM `" . $table . "` WHERE etablissement_id = ?");
+                    $query->execute([\API\Core\EstablishmentContext::id()]);
                     $users = $query->fetchAll(PDO::FETCH_COLUMN);
                     
                     foreach ($users as $userId) {
@@ -104,7 +107,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
             case 'parents':
                 // Tous les parents
-                $query = $pdo->query("SELECT id FROM parents");
+                $query = $pdo->prepare("SELECT id FROM parents WHERE etablissement_id = ?");
+                $query->execute([\API\Core\EstablishmentContext::id()]);
                 $parents = $query->fetchAll(PDO::FETCH_COLUMN);
                 
                 foreach ($parents as $parentId) {
@@ -114,7 +118,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
             case 'eleves':
                 // Tous les élèves
-                $query = $pdo->query("SELECT id FROM eleves");
+                $query = $pdo->prepare("SELECT id FROM eleves WHERE etablissement_id = ?");
+                $query->execute([\API\Core\EstablishmentContext::id()]);
                 $eleves = $query->fetchAll(PDO::FETCH_COLUMN);
                 
                 foreach ($eleves as $eleveId) {
@@ -133,8 +138,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 foreach ($classes as $classe) {
                     // Élèves de la classe
-                    $stmt = $pdo->prepare("SELECT id FROM eleves WHERE classe = ?");
-                    $stmt->execute([$classe]);
+                    $stmt = $pdo->prepare("SELECT id FROM eleves WHERE classe = ? AND etablissement_id = ?");
+                    $stmt->execute([$classe, \API\Core\EstablishmentContext::id()]);
                     $eleves = $stmt->fetchAll(PDO::FETCH_COLUMN);
                     
                     foreach ($eleves as $eleveId) {
@@ -148,9 +153,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             FROM parents p
                             JOIN parent_eleve pe ON pe.id_parent = p.id
                             JOIN eleves e ON e.id = pe.id_eleve
-                            WHERE e.classe = ? AND p.est_parent_eleve = 'oui'
+                            WHERE e.classe = ? AND e.etablissement_id = ? AND p.est_parent_eleve = 'oui'
                         ");
-                        $stmt->execute([$classe]);
+                        $stmt->execute([$classe, \API\Core\EstablishmentContext::id()]);
                         $parents = $stmt->fetchAll(PDO::FETCH_COLUMN);
                         
                         foreach ($parents as $parentId) {

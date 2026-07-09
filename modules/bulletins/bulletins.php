@@ -165,6 +165,7 @@ if (!$selectedPeriode && !empty($periodes)) {
     $dt->setSearchable(['e.nom', 'e.prenom']);
     $dt->setSortable(['eleve_nom', 'moyenne_generale', 'rang', 'nb_absences', 'statut']);
     $dt->setJoins('JOIN eleves e ON bulletins.eleve_id = e.id');
+    $dt->addWhere('bulletins.etablissement_id = ?', [\API\Core\EstablishmentContext::id()]);
     if ($filterClasse) {
         $dt->addWhere('bulletins.classe_id = ?', [$filterClasse]);
     }

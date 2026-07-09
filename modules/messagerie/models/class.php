@@ -23,9 +23,9 @@ function getClassMembers($classeId, $includeEleves = true, $includeParents = fal
     if ($includeEleves) {
         $eleves = $pdo->prepare("
             SELECT id, 'eleve' as type, CONCAT(prenom, ' ', nom) as nom_complet 
-            FROM eleves WHERE classe = ?
+            FROM eleves WHERE classe = ? AND etablissement_id = ?
         ");
-        $eleves->execute([$classeId]);
+        $eleves->execute([$classeId, \API\Core\EstablishmentContext::id()]);
         $members = array_merge($members, $eleves->fetchAll());
     }
     
@@ -37,9 +37,9 @@ function getClassMembers($classeId, $includeEleves = true, $includeParents = fal
             FROM parents p
             JOIN parent_eleve pe ON pe.id_parent = p.id
             JOIN eleves e ON e.id = pe.id_eleve
-            WHERE e.classe = ? AND p.est_parent_eleve = 'oui'
+            WHERE e.classe = ? AND e.etablissement_id = ? AND p.est_parent_eleve = 'oui'
         ");
-        $parents->execute([$classeId]);
+        $parents->execute([$classeId, \API\Core\EstablishmentContext::id()]);
         $members = array_merge($members, $parents->fetchAll());
     }
     
@@ -47,10 +47,10 @@ function getClassMembers($classeId, $includeEleves = true, $includeParents = fal
     if ($includeProfesseurs) {
         $professeurs = $pdo->prepare("
             SELECT id, 'professeur' as type, CONCAT(prenom, ' ', nom) as nom_complet
-            FROM professeurs 
-            WHERE professeur_principal = ? OR professeur_principal = 'oui'
+            FROM professeurs
+            WHERE (professeur_principal = ? OR professeur_principal = 'oui') AND etablissement_id = ?
         ");
-        $professeurs->execute([$classeId]);
+        $professeurs->execute([$classeId, \API\Core\EstablishmentContext::id()]);
         $members = array_merge($members, $professeurs->fetchAll());
     }
     
@@ -124,7 +124,8 @@ function getAvailableClasses() {
     
     // Si pas de classes dans le fichier, récupérer depuis la base de données
     if (empty($classes)) {
-        $query = $pdo->query("SELECT DISTINCT classe FROM eleves ORDER BY classe");
+        $query = $pdo->prepare("SELECT DISTINCT classe FROM eleves WHERE etablissement_id = ? ORDER BY classe");
+        $query->execute([\API\Core\EstablishmentContext::id()]);
         $classes = $query->fetchAll(PDO::FETCH_COLUMN);
     }
     

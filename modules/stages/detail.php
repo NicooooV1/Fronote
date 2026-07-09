@@ -46,6 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $canEdit) {
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-briefcase"></i> <?= htmlspecialchars($stage['entreprise_nom']) ?></h1>
+        <a href="export_convention.php?id=<?= (int) $stage['id'] ?>" class="btn btn-outline"><i class="fas fa-file-pdf"></i> Convention</a>
         <a href="stages.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
     </div>
 

@@ -51,8 +51,8 @@ class NoteService
 
     public function getById(int $id): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT n.*, e.nom AS eleve_nom, e.prenom AS eleve_prenom, m.nom AS matiere_nom, CONCAT(p.nom, ' ', p.prenom) AS professeur_nom FROM notes n JOIN eleves e ON n.id_eleve = e.id JOIN matieres m ON n.id_matiere = m.id JOIN professeurs p ON n.id_professeur = p.id WHERE n.id = ?");
-        $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare("SELECT n.*, e.nom AS eleve_nom, e.prenom AS eleve_prenom, m.nom AS matiere_nom, CONCAT(p.nom, ' ', p.prenom) AS professeur_nom FROM notes n JOIN eleves e ON n.id_eleve = e.id JOIN matieres m ON n.id_matiere = m.id JOIN professeurs p ON n.id_professeur = p.id WHERE n.id = ? AND n.etablissement_id = ?");
+        $stmt->execute([$id, $this->etabId()]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row !== false ? $row : null;
     }
@@ -78,7 +78,8 @@ class NoteService
             if (array_key_exists($field, $data)) { $sets[] = "{$field} = :{$field}"; $params[":{$field}"] = $data[$field]; }
         }
         if (!$sets) return false;
-        $stmt = $this->pdo->prepare("UPDATE notes SET " . implode(', ', $sets) . ", date_modification = NOW() WHERE id = :id");
+        $params[':etab'] = $this->etabId();
+        $stmt = $this->pdo->prepare("UPDATE notes SET " . implode(', ', $sets) . ", date_modification = NOW() WHERE id = :id AND etablissement_id = :etab");
         $stmt->execute($params);
         $updated = $stmt->rowCount() > 0;
         if ($updated) app('hooks')?->dispatch(new \Modules\Notes\Events\NoteUpdated($id, $data));
@@ -87,8 +88,8 @@ class NoteService
 
     public function delete(int $id): bool
     {
-        $stmt = $this->pdo->prepare('DELETE FROM notes WHERE id = ?');
-        $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare('DELETE FROM notes WHERE id = ? AND etablissement_id = ?');
+        $stmt->execute([$id, $this->etabId()]);
         $deleted = $stmt->rowCount() > 0;
         if ($deleted) app('hooks')?->dispatch(new \Modules\Notes\Events\NoteDeleted($id));
         return $deleted;
@@ -103,8 +104,8 @@ class NoteService
 
     public function getStatsByEleve(int $eleveId): array
     {
-        $stmt = $this->pdo->prepare("SELECT n.trimestre, m.nom AS matiere, AVG(n.note * 20 / n.note_sur) AS moyenne, COUNT(*) AS nb_notes FROM notes n JOIN matieres m ON n.id_matiere = m.id WHERE n.id_eleve = ? GROUP BY n.trimestre, m.id, m.nom ORDER BY n.trimestre, m.nom");
-        $stmt->execute([$eleveId]);
+        $stmt = $this->pdo->prepare("SELECT n.trimestre, m.nom AS matiere, AVG(n.note * 20 / n.note_sur) AS moyenne, COUNT(*) AS nb_notes FROM notes n JOIN matieres m ON n.id_matiere = m.id WHERE n.id_eleve = ? AND n.etablissement_id = ? GROUP BY n.trimestre, m.id, m.nom ORDER BY n.trimestre, m.nom");
+        $stmt->execute([$eleveId, $this->etabId()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

@@ -254,15 +254,17 @@ class BesoinService
      */
     public function ajouterObservation(int $planId, int $auteurId, string $auteurType, string $texte): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO besoins_observations (plan_id, auteur_id, auteur_type, texte, date_observation) VALUES (:pid, :aid, :at, :t, NOW())");
-        $stmt->execute([':pid' => $planId, ':aid' => $auteurId, ':at' => $auteurType, ':t' => $texte]);
+        // Garde d'appartenance : le plan doit exister dans l'établissement courant (getPlan est scopé).
+        if (!$this->getPlan($planId)) return 0;
+        $stmt = $this->pdo->prepare("INSERT INTO besoins_observations (etablissement_id, plan_id, auteur_id, auteur_type, texte, date_observation) VALUES (:etab, :pid, :aid, :at, :t, NOW())");
+        $stmt->execute([':etab' => \API\Core\EstablishmentContext::id(), ':pid' => $planId, ':aid' => $auteurId, ':at' => $auteurType, ':t' => $texte]);
         return (int)$this->pdo->lastInsertId();
     }
 
     public function getObservations(int $planId): array
     {
-        $stmt = $this->pdo->prepare("SELECT o.*, CASE WHEN o.auteur_type = 'professeur' THEN (SELECT CONCAT(pr.prenom,' ',pr.nom) FROM professeurs pr WHERE pr.id = o.auteur_id) ELSE CONCAT(o.auteur_type,'#',o.auteur_id) END AS auteur_nom FROM besoins_observations o WHERE o.plan_id = :pid ORDER BY o.date_observation DESC");
-        $stmt->execute([':pid' => $planId]);
+        $stmt = $this->pdo->prepare("SELECT o.*, CASE WHEN o.auteur_type = 'professeur' THEN (SELECT CONCAT(pr.prenom,' ',pr.nom) FROM professeurs pr WHERE pr.id = o.auteur_id) ELSE CONCAT(o.auteur_type,'#',o.auteur_id) END AS auteur_nom FROM besoins_observations o WHERE o.plan_id = :pid AND o.etablissement_id = :etab ORDER BY o.date_observation DESC");
+        $stmt->execute([':pid' => $planId, ':etab' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -273,8 +275,8 @@ class BesoinService
      */
     public function getProgressionChart(int $planId): array
     {
-        $stmt = $this->pdo->prepare("SELECT date_evaluation, progres FROM plan_evaluations WHERE plan_id = :pid ORDER BY date_evaluation ASC");
-        $stmt->execute([':pid' => $planId]);
+        $stmt = $this->pdo->prepare("SELECT date_evaluation, progres FROM plan_evaluations WHERE plan_id = :pid AND etablissement_id = :etab ORDER BY date_evaluation ASC");
+        $stmt->execute([':pid' => $planId, ':etab' => \API\Core\EstablishmentContext::id()]);
         $evals = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $niveaux = ['insuffisant' => 1, 'en_difficulte' => 2, 'satisfaisant' => 3, 'tres_bien' => 4];
@@ -295,9 +297,9 @@ class BesoinService
      */
     public function getModelesPlan(string $typePlan = ''): array
     {
-        $sql = "SELECT * FROM besoins_modeles";
-        $params = [];
-        if ($typePlan) { $sql .= " WHERE type_plan = :tp"; $params[':tp'] = $typePlan; }
+        $sql = "SELECT * FROM besoins_modeles WHERE etablissement_id = :etab";
+        $params = [':etab' => \API\Core\EstablishmentContext::id()];
+        if ($typePlan) { $sql .= " AND type_plan = :tp"; $params[':tp'] = $typePlan; }
         $sql .= " ORDER BY type_plan, titre";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
@@ -309,13 +311,13 @@ class BesoinService
      */
     public function creerDepuisModele(int $modeleId, int $eleveId, int $createurId): int
     {
-        $modele = $this->pdo->prepare("SELECT * FROM besoins_modeles WHERE id = :id");
-        $modele->execute([':id' => $modeleId]);
+        $etabId = $this->etabId();
+        if ($etabId === null) throw new \RuntimeException('Établissement non déterminé.');
+        $modele = $this->pdo->prepare("SELECT * FROM besoins_modeles WHERE id = :id AND etablissement_id = :etab");
+        $modele->execute([':id' => $modeleId, ':etab' => $etabId]);
         $m = $modele->fetch(PDO::FETCH_ASSOC);
         if (!$m) throw new \RuntimeException('Modèle introuvable');
 
-        $etabId = $this->etabId();
-        if ($etabId === null) throw new \RuntimeException('Établissement non déterminé.');
         // intitule et date_debut sont NOT NULL : on dérive depuis le modèle.
         $intitule = !empty($m['titre']) ? $m['titre'] : ($m['type_plan'] . ' - plan d\'accompagnement');
         $stmt = $this->pdo->prepare("INSERT INTO plans_accompagnement (etablissement_id, eleve_id, type_plan, intitule, description, amenagements, objectifs, createur_id, date_debut, statut) VALUES (:etab, :eid, :tp, :int, :d, :a, :o, :cid, CURDATE(), 'actif')");
@@ -330,8 +332,8 @@ class BesoinService
      */
     public function alertExpiringSoon(int $daysBefore = 30): array
     {
-        $stmt = $this->pdo->prepare("SELECT pa.*, CONCAT(e.prenom,' ',e.nom) AS eleve_nom, e.classe FROM plans_accompagnement pa JOIN eleves e ON pa.eleve_id = e.id WHERE pa.statut = 'actif' AND pa.date_fin BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL :d DAY) ORDER BY pa.date_fin ASC");
-        $stmt->execute([':d' => $daysBefore]);
+        $stmt = $this->pdo->prepare("SELECT pa.*, CONCAT(e.prenom,' ',e.nom) AS eleve_nom, e.classe FROM plans_accompagnement pa JOIN eleves e ON pa.eleve_id = e.id WHERE pa.statut = 'actif' AND pa.etablissement_id = :etab AND pa.date_fin BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL :d DAY) ORDER BY pa.date_fin ASC");
+        $stmt->execute([':d' => $daysBefore, ':etab' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

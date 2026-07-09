@@ -71,6 +71,13 @@ class CompetenceService {
         if (!$chk->fetchColumn()) {
             throw new \RuntimeException('Élève hors de l\'établissement courant : évaluation refusée.');
         }
+        // Anti-IDOR d'écriture (symétrique) : la compétence évaluée DOIT elle aussi
+        // appartenir à l'établissement courant (competence_id provient du POST).
+        $chkC = $this->pdo->prepare("SELECT 1 FROM competences WHERE id = ? AND etablissement_id = ?");
+        $chkC->execute([$data['competence_id'], $etab]);
+        if (!$chkC->fetchColumn()) {
+            throw new \RuntimeException('Compétence hors de l\'établissement courant : évaluation refusée.');
+        }
         $stmt = $this->pdo->prepare("
             INSERT INTO competence_evaluations (etablissement_id, eleve_id, competence_id, professeur_id, matiere_id, niveau_acquis, commentaire, date_evaluation, periode_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)
@@ -543,8 +550,8 @@ class CompetenceService {
             else $niveau = 'non_acquis';
 
             // Trouver les compétences liées à cette matière
-            $comps = $this->pdo->prepare("SELECT DISTINCT ce.competence_id, c.code, c.nom FROM competence_evaluations ce JOIN competences c ON ce.competence_id = c.id WHERE ce.matiere_id = :mid LIMIT 20");
-            $comps->execute([':mid' => $m['matiere_id']]);
+            $comps = $this->pdo->prepare("SELECT DISTINCT ce.competence_id, c.code, c.nom FROM competence_evaluations ce JOIN competences c ON ce.competence_id = c.id WHERE ce.matiere_id = :mid AND ce.etablissement_id = :etab LIMIT 20");
+            $comps->execute([':mid' => $m['matiere_id'], ':etab' => \API\Core\EstablishmentContext::id()]);
 
             foreach ($comps as $comp) {
                 $suggestions[] = [

@@ -87,9 +87,9 @@ class EdtService
         $stmt = $this->pdo->prepare(
             "SELECT COUNT(*) FROM eleves e
              JOIN classes c ON e.classe = c.nom
-             WHERE c.id = ? AND e.actif = 1"
+             WHERE c.id = ? AND c.etablissement_id = ? AND e.actif = 1"
         );
-        $stmt->execute([$classeId]);
+        $stmt->execute([$classeId, $this->etab()]);
         return (int)$stmt->fetchColumn();
     }
 
@@ -196,8 +196,8 @@ class EdtService
      */
     public function getEdtEleve(int $eleveId): array
     {
-        $stmt = $this->pdo->prepare("SELECT classe FROM eleves WHERE id = ?");
-        $stmt->execute([$eleveId]);
+        $stmt = $this->pdo->prepare("SELECT classe FROM eleves WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$eleveId, $this->etab()]);
         $classe = $stmt->fetchColumn();
         if (!$classe) return [];
 
@@ -825,9 +825,9 @@ class EdtService
                 JOIN professeurs p ON e.professeur_id = p.id
                 JOIN classes cl ON e.classe_id = cl.id
                 LEFT JOIN salles s ON e.salle_id = s.id
-                WHERE mod.id = :modificationId";
+                WHERE mod.id = :modificationId AND e.etablissement_id = :etab";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([':modificationId' => $modificationId]);
+        $stmt->execute([':modificationId' => $modificationId, ':etab' => $this->etab()]);
         $modification = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$modification) {
@@ -839,9 +839,9 @@ class EdtService
         if (!empty($modification['nouveau_professeur_id'])) {
             $stmt = $this->pdo->prepare(
                 "SELECT id, CONCAT(prenom, ' ', nom) AS nom_complet
-                 FROM professeurs WHERE id = :profId"
+                 FROM professeurs WHERE id = :profId AND etablissement_id = :etab"
             );
-            $stmt->execute([':profId' => $modification['nouveau_professeur_id']]);
+            $stmt->execute([':profId' => $modification['nouveau_professeur_id'], ':etab' => $this->etab()]);
             $nouveauProf = $stmt->fetch(PDO::FETCH_ASSOC);
         }
 
@@ -849,9 +849,9 @@ class EdtService
         $nouvelleSalle = null;
         if (!empty($modification['nouvelle_salle_id'])) {
             $stmt = $this->pdo->prepare(
-                "SELECT id, nom FROM salles WHERE id = :salleId"
+                "SELECT id, nom FROM salles WHERE id = :salleId AND etablissement_id = :etab"
             );
-            $stmt->execute([':salleId' => $modification['nouvelle_salle_id']]);
+            $stmt->execute([':salleId' => $modification['nouvelle_salle_id'], ':etab' => $this->etab()]);
             $nouvelleSalle = $stmt->fetch(PDO::FETCH_ASSOC);
         }
 
@@ -860,9 +860,9 @@ class EdtService
             "SELECT e.id, e.nom, e.prenom, e.mail AS email
              FROM eleves e
              JOIN classes cl ON e.classe = cl.nom
-             WHERE cl.id = :classeId AND e.actif = 1"
+             WHERE cl.id = :classeId AND cl.etablissement_id = :etab AND e.actif = 1"
         );
-        $stmt->execute([':classeId' => $modification['classe_id']]);
+        $stmt->execute([':classeId' => $modification['classe_id'], ':etab' => $this->etab()]);
         $eleves = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Récupérer les parents des élèves

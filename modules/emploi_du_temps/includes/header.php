@@ -28,37 +28,22 @@ $ffConflictDetect   = $_edtFeatures ? $_edtFeatures->isEnabled('emploi_du_temps.
 $ffIcalExport       = $_edtFeatures ? $_edtFeatures->isEnabled('emploi_du_temps.ical_export') : true;
 $ffReplacements     = $_edtFeatures ? $_edtFeatures->isEnabled('emploi_du_temps.replacements') : true;
 
-if (!isset($headerExtraActions)) {
-    ob_start();
-    if (isAdmin() && $currentPage !== 'gerer') {
-        echo '<a href="gerer_cours.php" class="btn btn-primary"><i class="fas fa-plus"></i> Ajouter un cours</a>';
-    }
-    if ((isAdmin() || isVieScolaire()) && $currentPage !== 'maquette') {
-        echo ' <a href="maquette.php" class="btn btn-secondary btn-sm"><i class="fas fa-list-check"></i> Maquette</a>';
-    }
-    if ($ffIcalExport) {
-        echo ' <a href="export_ical.php" class="btn btn-secondary btn-sm"><i class="fas fa-calendar-alt"></i> iCal</a>';
-    }
-    $headerExtraActions = ob_get_clean();
-}
-
 // Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
+// Source unique de navigation : les gates reprennent les gardes des pages cibles
+// (gerer_cours.php / maquette.php / conflits.php : admin + vie scolaire ;
+//  export.php : staff + professeur ; export_ical.php : tout rôle authentifié,
+//  scopé côté page — seul le feature flag conditionne l'affichage).
 $isStaff = isAdmin() || isVieScolaire();
 $canExport = $isStaff || (function_exists('isTeacher') ? isTeacher() : false);
-$_sub = basename($_SERVER['PHP_SELF'] ?? '');
-ob_start(); ?>
-<div class="sidebar-nav">
-    <a href="emploi_du_temps.php" class="sidebar-nav-item <?= $_sub === 'emploi_du_temps.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-table"></i></span><span>Emploi du temps</span></a>
-<?php if ($isStaff): ?>
-    <a href="gerer_cours.php" class="sidebar-nav-item <?= $_sub === 'gerer_cours.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-pen-to-square"></i></span><span>Gérer les cours</span></a>
-    <a href="maquette.php" class="sidebar-nav-item <?= $_sub === 'maquette.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-list-check"></i></span><span>Maquette</span></a>
-    <a href="conflits.php" class="sidebar-nav-item <?= $_sub === 'conflits.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-triangle-exclamation"></i></span><span>Conflits</span></a>
-<?php endif; ?>
-<?php if ($canExport): ?>
-    <a href="export.php" class="sidebar-nav-item <?= $_sub === 'export.php' ? 'active' : '' ?>"><span class="sidebar-nav-icon"><i class="fas fa-file-export"></i></span><span>Export</span></a>
-<?php endif; ?>
-</div>
-<?php $sidebarExtraContent = ob_get_clean();
+require_once __DIR__ . '/../../../templates/module_subnav.php';
+$sidebarExtraContent = renderModuleSubnav([
+    ['href' => 'emploi_du_temps.php', 'icon' => 'fas fa-table',                'label' => 'Emploi du temps'],
+    ['href' => 'gerer_cours.php',     'icon' => 'fas fa-pen-to-square',        'label' => 'Gérer les cours', 'visible' => $isStaff],
+    ['href' => 'maquette.php',        'icon' => 'fas fa-list-check',           'label' => 'Maquette',        'visible' => $isStaff],
+    ['href' => 'conflits.php',        'icon' => 'fas fa-triangle-exclamation', 'label' => 'Conflits',        'visible' => $isStaff],
+    ['href' => 'export.php',          'icon' => 'fas fa-file-export',          'label' => 'Export',          'visible' => $canExport],
+    ['href' => 'export_ical.php',     'icon' => 'fas fa-calendar-alt',         'label' => 'Export iCal',     'visible' => $ffIcalExport],
+]);
 
 include __DIR__ . '/../../../templates/shared_header.php';
 include __DIR__ . '/../../../templates/shared_topbar.php';
