@@ -22,6 +22,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
     $action = $_POST['action'] ?? '';
     $mid = intval($_POST['message_id'] ?? 0);
 
+    // Cloisonnement multi-tenant : messages/message_reports n'ont pas etablissement_id ;
+    // on borne via la conversation (qui en a un). Un message d'un AUTRE établissement ne
+    // peut plus être supprimé/épinglé/édité par message_id falsifié. Fail-closed.
+    $etabId = \API\Core\EstablishmentContext::id();
+    $msgOwned = function (int $id) use ($pdo, $etabId): bool {
+        if ($id <= 0) return false;
+        $st = $pdo->prepare("SELECT 1 FROM messages m JOIN conversations c ON m.conversation_id = c.id WHERE m.id = ? AND c.etablissement_id = ? LIMIT 1");
+        $st->execute([$id, $etabId]);
+        return (bool) $st->fetchColumn();
+    };
+    if (in_array($action, ['delete_message', 'restore_message', 'toggle_pin', 'edit_message'], true) && !$msgOwned($mid)) {
+        $error = "Message introuvable.";
+        $action = '__denied__';
+    }
+
     if ($action === 'delete_message' && $mid > 0) {
         $pdo->prepare("UPDATE messages SET is_deleted = 1, deleted_at = NOW(), deleted_by_id = ?, deleted_by_type = 'administrateur' WHERE id = ?")
             ->execute([$admin['id'], $mid]);
@@ -62,10 +77,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
         $resolution = $_POST['resolution'] ?? '';
         if ($reportId > 0 && !empty($resolution)) {
             try {
-                $pdo->prepare("UPDATE message_reports SET status = 'resolved', resolved_by = ?, resolved_at = NOW(), admin_note = ? WHERE id = ?")
-                    ->execute([$admin['id'], $resolution, $reportId]);
-                logAudit('report_resolved', 'message_reports', $reportId);
-                $message = "Signalement traité.";
+                // Le signalement ne peut être traité que s'il porte sur un message d'une
+                // conversation de l'établissement courant (cloisonnement multi-tenant).
+                $st = $pdo->prepare("UPDATE message_reports SET status = 'resolved', resolved_by = ?, resolved_at = NOW(), admin_note = ? WHERE id = ? AND message_id IN (SELECT m.id FROM messages m JOIN conversations c ON m.conversation_id = c.id WHERE c.etablissement_id = ?)");
+                $st->execute([$admin['id'], $resolution, $reportId, $etabId]);
+                if ($st->rowCount() > 0) {
+                    logAudit('report_resolved', 'message_reports', $reportId);
+                    $message = "Signalement traité.";
+                } else {
+                    $error = "Signalement introuvable.";
+                }
             } catch (Exception $e) {}
         }
     }
@@ -79,7 +100,10 @@ $page = max(1, intval($_GET['page'] ?? 1));
 $perPage = 30;
 $offset = ($page - 1) * $perPage;
 
-$where = []; $params = [];
+// Cloisonnement multi-tenant de la liste et des compteurs : uniquement les messages de
+// conversations de l'établissement courant (sous-requête, valable même sans JOIN dans le COUNT).
+$where = ["m.conversation_id IN (SELECT id FROM conversations WHERE etablissement_id = ?)"];
+$params = [\API\Core\EstablishmentContext::id()];
 if (!empty($search)) {
     $where[] = "MATCH(m.body) AGAINST(? IN BOOLEAN MODE)";
     $params[] = $search;
@@ -87,7 +111,7 @@ if (!empty($search)) {
 if (!empty($filterType)) { $where[] = "m.status = ?"; $params[] = $filterType; }
 if ($filterDeleted === '1') { $where[] = "m.is_deleted = 1"; }
 elseif ($filterDeleted !== 'all') { $where[] = "m.is_deleted = 0"; }
-$whereSQL = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+$whereSQL = 'WHERE ' . implode(' AND ', $where);
 
 $total = $pdo->prepare("SELECT COUNT(*) FROM messages m $whereSQL");
 $total->execute($params); $totalMessages = $total->fetchColumn();
