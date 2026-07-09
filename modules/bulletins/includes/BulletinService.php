@@ -130,10 +130,10 @@ class BulletinService {
                    MAX(sub.avg_note) AS max_moy
             FROM (
                 SELECT n.id_matiere, n.id_eleve,
-                       AVG(n.note * 20 / n.note_sur) AS avg_note
+                       SUM(n.note * 20 / n.note_sur * n.coefficient) / SUM(n.coefficient) AS avg_note
                 FROM notes n
                 JOIN eleves e ON n.id_eleve = e.id
-                WHERE e.classe = ? AND n.trimestre = ? AND e.etablissement_id = ?
+                WHERE e.classe = ? AND n.trimestre = ? AND e.etablissement_id = ? AND n.coefficient > 0
                 GROUP BY n.id_matiere, n.id_eleve
             ) sub
             GROUP BY sub.id_matiere
@@ -148,12 +148,12 @@ class BulletinService {
             ];
         }
 
-        // Moyenne de classe (AVG plat sur toutes les notes), même définition qu'avant.
+        // Moyenne de classe pondérée par le coefficient de note (cohérent avec les moyennes élèves).
         $sm = $this->pdo->prepare("
-            SELECT n.id_matiere, AVG(n.note * 20 / n.note_sur) AS moy_classe
+            SELECT n.id_matiere, SUM(n.note * 20 / n.note_sur * n.coefficient) / SUM(n.coefficient) AS moy_classe
             FROM notes n
             JOIN eleves e ON n.id_eleve = e.id
-            WHERE e.classe = ? AND n.trimestre = ? AND e.etablissement_id = ?
+            WHERE e.classe = ? AND n.trimestre = ? AND e.etablissement_id = ? AND n.coefficient > 0
             GROUP BY n.id_matiere
         ");
         $sm->execute([$classe, $trimestre, \API\Core\EstablishmentContext::id()]);
@@ -174,13 +174,18 @@ class BulletinService {
         
         // Calculer moyenne générale (moyenne pondérée par coefficient de matière
         // des moyennes par matière, et non une moyenne plate de toutes les notes).
+        // Moyenne par matière PONDÉRÉE par le coefficient de CHAQUE note (n.coefficient),
+        // puis moyenne générale pondérée par le coefficient de matière. L'ancienne version
+        // utilisait AVG() (moyenne plate) → ignorait le coefficient par note et produisait
+        // des moyennes de bulletin fausses, incohérentes avec getMoyennesParMatiere().
         $stmt = $this->pdo->prepare("
             SELECT SUM(avg_mat * coef) / SUM(coef) AS moyenne
             FROM (
-                SELECT AVG(n.note * 20 / n.note_sur) AS avg_mat, m.coefficient AS coef
+                SELECT SUM(n.note * 20 / n.note_sur * n.coefficient) / SUM(n.coefficient) AS avg_mat,
+                       m.coefficient AS coef
                 FROM notes n
                 JOIN matieres m ON n.id_matiere = m.id
-                WHERE n.id_eleve = ? AND n.trimestre = ?
+                WHERE n.id_eleve = ? AND n.trimestre = ? AND n.coefficient > 0
                 GROUP BY n.id_matiere, m.coefficient
             ) t
         ");
@@ -243,8 +248,8 @@ class BulletinService {
         foreach ($matieres as $mat) {
             $matId = (int) $mat['id_matiere'];
 
-            // Moyenne élève (spécifique à l'élève, reste une requête par matière)
-            $s = $this->pdo->prepare("SELECT AVG(note * 20 / note_sur) FROM notes WHERE id_eleve = ? AND id_matiere = ? AND trimestre = ?");
+            // Moyenne élève par matière, pondérée par le coefficient de chaque note.
+            $s = $this->pdo->prepare("SELECT SUM(note * 20 / note_sur * coefficient) / SUM(coefficient) FROM notes WHERE id_eleve = ? AND id_matiere = ? AND trimestre = ? AND coefficient > 0");
             $s->execute([$eleveId, $matId, $trimestre]);
             $moyEleve = round((float)$s->fetchColumn(), 2);
 

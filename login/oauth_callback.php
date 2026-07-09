@@ -47,6 +47,17 @@ try {
 
 	$user = $result['user'];
 
+	// SÉCURITÉ : le SSO ne doit PAS outrepasser les statuts de compte. Un compte désactivé
+	// (actif=0) ou verrouillé (locked_until dans le futur) est refusé, comme sur le login
+	// classique (sinon un compte révoqué se reconnecte via OAuth).
+	$isLocked = !empty($user['locked_until']) && strtotime((string) $user['locked_until']) > time();
+	if ((int) ($user['actif'] ?? 1) !== 1 || $isLocked) {
+		try { app('audit')->logAuth('sso_login', $user['mail'] ?? '', false, ['reason' => 'account_disabled_or_locked']); } catch (\Throwable $e) {}
+		$_SESSION['login_error'] = 'Ce compte est désactivé ou verrouillé.';
+		header('Location: index.php');
+		exit;
+	}
+
 	// Si le compte a activé la 2FA, le SSO ne doit PAS la court-circuiter : on bascule
 	// vers l'étape de second facteur au lieu de créer directement la session.
 	$uId   = (int) ($user['id'] ?? 0);

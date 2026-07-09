@@ -180,20 +180,30 @@ class EmailService
             $bodyText = strip_tags(str_replace(['<br>', '<br/>', '<br />', '</p>', '</div>'], "\n", $bodyHtml));
         }
 
-        $recipients = is_array($to) ? $to : [$to];
+        // Anti-injection d'en-têtes (CRLF) : toute valeur insérée dans un en-tête est
+        // nettoyée de \r/\n (sinon un sujet/adresse malveillant injecte des en-têtes ou
+        // un corps arbitraire). Les adresses sont en plus validées.
+        $hdr = static fn($v): string => str_replace(["\r", "\n", "\0"], '', (string) $v);
+        $addr = static function ($v) use ($hdr): string {
+            $v = $hdr($v);
+            return filter_var($v, FILTER_VALIDATE_EMAIL) ? $v : '';
+        };
+        $recipients = array_values(array_filter(array_map($addr, is_array($to) ? $to : [$to])));
         $boundary = '----=_Part_' . bin2hex(random_bytes(16));
-        $fromAddr = $cfg['from_address'] ?: 'noreply@fronote.local';
-        $fromName = $cfg['from_name'] ?: 'Fronote';
+        $fromAddr = $addr($cfg['from_address'] ?? '') ?: 'noreply@fronote.local';
+        $fromName = $hdr($cfg['from_name'] ?? '') ?: 'Fronote';
 
         // Construire les headers
         $headers = "From: {$fromName} <{$fromAddr}>\r\n";
         $headers .= "To: " . implode(', ', $recipients) . "\r\n";
         if (!empty($options['cc'])) {
-            $headers .= "Cc: " . (is_array($options['cc']) ? implode(', ', $options['cc']) : $options['cc']) . "\r\n";
+            $ccList = is_array($options['cc']) ? $options['cc'] : [$options['cc']];
+            $ccList = array_values(array_filter(array_map($addr, $ccList)));
+            if ($ccList) { $headers .= "Cc: " . implode(', ', $ccList) . "\r\n"; }
         }
-        $replyTo = $options['reply_to'] ?? $cfg['reply_to'] ?? $fromAddr;
+        $replyTo = $addr($options['reply_to'] ?? $cfg['reply_to'] ?? $fromAddr) ?: $fromAddr;
         $headers .= "Reply-To: {$replyTo}\r\n";
-        $headers .= "Subject: {$subject}\r\n";
+        $headers .= "Subject: " . $hdr($subject) . "\r\n";
         $headers .= "MIME-Version: 1.0\r\n";
         $headers .= "Content-Type: multipart/alternative; boundary=\"{$boundary}\"\r\n";
         $headers .= "X-Mailer: Fronote/1.0\r\n";
@@ -279,11 +289,17 @@ class EmailService
             $prefix = 'ssl://';
         }
 
+        // Vérification du certificat TLS par DÉFAUT (anti-MITM). Un serveur SMTP interne
+        // à certificat auto-signé peut désactiver via la config (smtp_allow_self_signed=1),
+        // mais ce n'est jamais le défaut.
+        $allowSelfSigned = !empty($cfg['allow_self_signed']);
         $context = stream_context_create([
             'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-                'allow_self_signed' => true,
+                'verify_peer' => !$allowSelfSigned,
+                'verify_peer_name' => !$allowSelfSigned,
+                'allow_self_signed' => $allowSelfSigned,
+                'SNI_enabled' => true,
+                'peer_name' => $host,
             ],
         ]);
 

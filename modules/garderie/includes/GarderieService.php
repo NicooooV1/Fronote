@@ -62,18 +62,21 @@ class GarderieService
 
     public function desinscrire(int $inscriptionId): bool
     {
-        $stmt = $this->pdo->prepare("UPDATE garderie_inscriptions SET statut = 'annule' WHERE id = ?");
-        return $stmt->execute([$inscriptionId]);
+        // Cloisonnement multi-tenant : n'annuler qu'une inscription de l'établissement courant.
+        $stmt = $this->pdo->prepare("UPDATE garderie_inscriptions SET statut = 'annule' WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$inscriptionId, $this->etabId()]);
+        return $stmt->rowCount() > 0;
     }
 
     public function getInscriptions(?int $creneauId = null): array
     {
+        // Cloisonnement multi-tenant : uniquement les inscriptions de l'établissement courant.
         $sql = "SELECT gi.*, e.nom, e.prenom, e.classe, gc.nom AS creneau_nom, gc.type AS creneau_type
                 FROM garderie_inscriptions gi
                 JOIN eleves e ON gi.eleve_id = e.id
                 JOIN garderie_creneaux gc ON gi.creneau_id = gc.id
-                WHERE gi.statut = 'actif'";
-        $params = [];
+                WHERE gi.statut = 'actif' AND gi.etablissement_id = ?";
+        $params = [$this->etabId()];
         if ($creneauId) { $sql .= " AND gi.creneau_id = ?"; $params[] = $creneauId; }
         $sql .= " ORDER BY gc.type, gi.jour, e.nom";
         $stmt = $this->pdo->prepare($sql);
