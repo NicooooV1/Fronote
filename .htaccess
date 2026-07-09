@@ -14,7 +14,16 @@ RedirectMatch 404 (?i)/.*\.(sql|sqlite|db|bak|ini|conf|log|lock|yml|yaml|sh|dist
 RedirectMatch 404 (?i)/install\.php(\.[a-z0-9.-]+)?$
 
 # --- Blocage des dossiers internes (non destinés au web) ---
-RedirectMatch 404 (?i)/(vendor|logs|storage|database|scripts|config|tests|node_modules|websocket|\.github)(/|$)
+RedirectMatch 404 (?i)/(vendor|logs|storage|database|scripts|config|tests|node_modules|websocket|\.github|lang|cron|docs|ltr)(/|$)
+
+# --- Non-exposition des fichiers de LIBRAIRIE PHP (équivaut à un docroot public/ sans
+#     déplacer les fichiers) : classes, bootstrap, includes, templates ne sont jamais
+#     servis directement — ils sont inclus par les entrypoints. Seul API/endpoints/
+#     (points d'entrée AJAX) reste accessible sous API/. Empêche l'accès HTTP direct à
+#     API/bootstrap.php, API/Legacy/Bridge.php, modules/*/includes/*, templates/*, etc. ---
+RedirectMatch 404 (?i)^/API/(?!endpoints/)[^?]*\.php$
+RedirectMatch 404 (?i)^/modules/[^/]+/(includes|Services|Database|Events|Providers|Jobs|Widgets|Http|Domain|Support|Repositories|views)/
+RedirectMatch 404 (?i)^/templates/[^?]*\.php$
 
 # --- Repli par motif de nom de fichier (si RedirectMatch indisponible) ---
 <FilesMatch "(?i)^(\.env.*|.*\.(sql|sqlite|db|bak|ini|conf|log|lock|yml|yaml|sh|dist|example|md|neon)|composer\.(json|lock)|package(-lock)?\.json|install\.php|Dockerfile|docker-compose\.yml|version\.json)$">
