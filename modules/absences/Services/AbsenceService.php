@@ -69,19 +69,20 @@ class AbsenceService
 
     public function toggleJustificationAbsence(int $id): bool
     {
-        $stmt = $this->pdo->prepare('UPDATE absences SET justifie = NOT justifie, date_modification = NOW() WHERE id = ?');
-        $stmt->execute([$id]); return $stmt->rowCount() > 0;
+        // Cloisonnement multi-tenant : ne toucher qu'une absence de l'établissement courant.
+        $stmt = $this->pdo->prepare('UPDATE absences SET justifie = NOT justifie, date_modification = NOW() WHERE id = ? AND etablissement_id = ?');
+        $stmt->execute([$id, $this->etabId()]); return $stmt->rowCount() > 0;
     }
 
     public function toggleJustificationRetard(int $id): bool
     {
-        $stmt = $this->pdo->prepare('UPDATE retards SET justifie = NOT justifie, date_modification = NOW() WHERE id = ?');
-        $stmt->execute([$id]); return $stmt->rowCount() > 0;
+        $stmt = $this->pdo->prepare('UPDATE retards SET justifie = NOT justifie, date_modification = NOW() WHERE id = ? AND etablissement_id = ?');
+        $stmt->execute([$id, $this->etabId()]); return $stmt->rowCount() > 0;
     }
 
     public function deleteAbsence(int $id): bool
     {
-        $stmt = $this->pdo->prepare('DELETE FROM absences WHERE id = ?'); $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare('DELETE FROM absences WHERE id = ? AND etablissement_id = ?'); $stmt->execute([$id, $this->etabId()]);
         $deleted = $stmt->rowCount() > 0;
         if ($deleted) app('hooks')?->dispatch(new \Modules\Absences\Events\AbsenceDeleted($id));
         return $deleted;
@@ -89,7 +90,7 @@ class AbsenceService
 
     public function deleteRetard(int $id): bool
     {
-        $stmt = $this->pdo->prepare('DELETE FROM retards WHERE id = ?'); $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare('DELETE FROM retards WHERE id = ? AND etablissement_id = ?'); $stmt->execute([$id, $this->etabId()]);
         $deleted = $stmt->rowCount() > 0;
         if ($deleted) app('hooks')?->dispatch(new \Modules\Absences\Events\RetardDeleted($id));
         return $deleted;

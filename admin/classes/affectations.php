@@ -11,18 +11,28 @@ tenantGate('tenant.classes.manage', ['administrateur']); // durci: gestion des c
 $pdo = getPDO();
 $admin = getCurrentUser();
 $message = '';
+// Cloisonnement multi-tenant : toute la matrice profs↔classes est bornée à
+// l'établissement courant (professeur_classes n'a pas etablissement_id → on filtre via
+// le professeur). Sans ça la page listait/éditait/écrasait les affectations de TOUS
+// les établissements (le DELETE global était particulièrement destructif).
+$etabId = \API\Core\EstablishmentContext::id();
 
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 $csrf_token = $_SESSION['csrf_token'];
 
-$professeurs = $pdo->query("SELECT id, nom, prenom FROM professeurs ORDER BY nom, prenom")->fetchAll(PDO::FETCH_ASSOC);
-$classes = $pdo->query("SELECT id, nom, niveau FROM classes WHERE actif = 1 ORDER BY niveau, nom")->fetchAll(PDO::FETCH_ASSOC);
+$pstmt = $pdo->prepare("SELECT id, nom, prenom FROM professeurs WHERE etablissement_id = ? ORDER BY nom, prenom");
+$pstmt->execute([$etabId]);
+$professeurs = $pstmt->fetchAll(PDO::FETCH_ASSOC);
+$cstmt = $pdo->prepare("SELECT id, nom, niveau FROM classes WHERE actif = 1 AND etablissement_id = ? ORDER BY niveau, nom");
+$cstmt->execute([$etabId]);
+$classes = $cstmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Charger affectations existantes : professeur_classes(id_professeur, nom_classe)
+// Charger affectations existantes de l'établissement (jointure sur le professeur).
 $existing = [];
-$stmt = $pdo->query("SELECT id_professeur, nom_classe FROM professeur_classes");
+$stmt = $pdo->prepare("SELECT pc.id_professeur, pc.nom_classe FROM professeur_classes pc JOIN professeurs p ON pc.id_professeur = p.id WHERE p.etablissement_id = ?");
+$stmt->execute([$etabId]);
 while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     $existing[$row['id_professeur'] . '_' . $row['nom_classe']] = true;
 }
@@ -31,20 +41,25 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $csrf_token) {
     $action = $_POST['action'] ?? '';
 
+    // Profs valides = ceux de l'établissement courant (déjà chargés, scopés).
+    $validProfIds = array_column($professeurs, 'id');
+    $validProfIds = array_map('intval', $validProfIds);
+
     if ($action === 'save_matrix') {
         $assignments = $_POST['assign'] ?? [];
         try {
             $pdo->beginTransaction();
-            // Supprimer toutes les affectations
-            $pdo->exec("DELETE FROM professeur_classes");
-            // Insérer les nouvelles
+            // Ne supprimer QUE les affectations des profs de l'établissement courant
+            // (jamais un DELETE global : il effaçait les affectations de tous les établissements).
+            $pdo->prepare("DELETE pc FROM professeur_classes pc JOIN professeurs p ON pc.id_professeur = p.id WHERE p.etablissement_id = ?")->execute([$etabId]);
+            // Insérer les nouvelles — uniquement pour des profs de cet établissement.
             $insert = $pdo->prepare("INSERT INTO professeur_classes (id_professeur, nom_classe) VALUES (?, ?)");
             $count = 0;
             foreach ($assignments as $key => $val) {
                 // key = profId_className
                 $parts = explode('_', $key, 2);
-                if (count($parts) === 2) {
-                    $insert->execute([intval($parts[0]), $parts[1]]);
+                if (count($parts) === 2 && in_array((int) $parts[0], $validProfIds, true)) {
+                    $insert->execute([(int) $parts[0], $parts[1]]);
                     $count++;
                 }
             }
@@ -56,9 +71,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
             error_log("save_matrix failed: " . $e->getMessage());
             $message = "Échec de l'enregistrement des affectations (aucune modification appliquée).";
         }
-        // Recharger
+        // Recharger (scopé établissement)
         $existing = [];
-        $stmt = $pdo->query("SELECT id_professeur, nom_classe FROM professeur_classes");
+        $stmt = $pdo->prepare("SELECT pc.id_professeur, pc.nom_classe FROM professeur_classes pc JOIN professeurs p ON pc.id_professeur = p.id WHERE p.etablissement_id = ?");
+        $stmt->execute([$etabId]);
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $existing[$row['id_professeur'] . '_' . $row['nom_classe']] = true;
         }
@@ -67,7 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
     if ($action === 'toggle_single') {
         $profId = intval($_POST['prof_id'] ?? 0);
         $className = $_POST['class_name'] ?? '';
-        if ($profId > 0 && !empty($className)) {
+        // Le prof doit appartenir à l'établissement courant.
+        if ($profId > 0 && !empty($className) && in_array($profId, $validProfIds, true)) {
             $key = $profId . '_' . $className;
             if (isset($existing[$key])) {
                 $pdo->prepare("DELETE FROM professeur_classes WHERE id_professeur = ? AND nom_classe = ?")->execute([$profId, $className]);

@@ -23,10 +23,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
 
     if ($action === 'delete_conversation') {
         $cid = intval($_POST['conv_id'] ?? 0);
-        if ($cid > 0) {
+        // Cloisonnement multi-tenant : la conversation doit appartenir à l'établissement courant.
+        $owns = $pdo->prepare("SELECT 1 FROM conversations WHERE id = ? AND etablissement_id = ? LIMIT 1");
+        $owns->execute([$cid, \API\Core\EstablishmentContext::id()]);
+        if ($cid > 0 && $owns->fetchColumn()) {
             $pdo->prepare("UPDATE messages SET is_deleted = 1, deleted_at = NOW(), deleted_by_id = ?, deleted_by_type = 'administrateur' WHERE conversation_id = ?")->execute([$admin['id'], $cid]);
             logAudit('conversation_deleted', 'conversations', $cid);
             $message = "Tous les messages de la conversation ont été supprimés.";
+        } elseif ($cid > 0) {
+            $error = "Conversation introuvable.";
         }
     }
 }
