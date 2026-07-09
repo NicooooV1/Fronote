@@ -394,9 +394,23 @@ class AuditService {
             
             $pdo = $this->pdo();
             $stmt = $pdo->prepare($sql);
-            
-            return $stmt->execute(array_values($event));
-            
+
+            $ok = $stmt->execute(array_values($event));
+
+            // Alerte temps réel sur les événements de SÉCURITÉ critiques (auth/security
+            // uniquement — pas les journaux d'accès aux données, pour éviter le bruit).
+            if (($event['severity'] ?? '') === self::CRITICAL) {
+                $action = (string) ($event['action'] ?? '');
+                if (strncmp($action, 'auth.', 5) === 0 || strncmp($action, 'security.', 9) === 0) {
+                    \API\Core\Alerting::notify(
+                        'Événement de sécurité CRITIQUE : ' . $action,
+                        'IP=' . ($event['ip_address'] ?? '?') . ' URI=' . ($event['request_uri'] ?? '?')
+                    );
+                }
+            }
+
+            return $ok;
+
         } catch (\Exception $e) {
             error_log("AuditService insert error: " . $e->getMessage());
             return false;

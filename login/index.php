@@ -77,6 +77,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
             $waitMinutes = $userService->checkLoginRateLimit($ip, $username);
             if ($waitMinutes > 0) {
                 $error = "Trop de tentatives. Réessayez dans {$waitMinutes} minute(s).";
+                // Journaliser + alerter le verrouillage (anti-bruteforce). CRITICAL → alerte temps réel.
+                try { app('audit')->logAuth('lockout', $username, false, ['ip' => $ip, 'wait_minutes' => $waitMinutes]); }
+                catch (\Throwable $e) { error_log('[login] audit lockout failed: ' . $e->getMessage()); }
             } else {
                 // 3) Recherche du compte — type imposé ou multi-type
                 $credentials = [
