@@ -118,6 +118,12 @@ final class ProductionReadinessChecker
                 $issues[] = $this->issue(self::WARNING, 'WEBSOCKET_ALLOWED_ORIGINS',
                     'Aucune origine CORS WebSocket autorisée : le client navigateur ne pourra pas se connecter.');
             }
+            // Anti-IDOR des rooms : sans endpoint d'autorisation, le serveur temps réel
+            // refuse toute jonction en production (fail-closed) → messagerie/classe muettes.
+            if ($this->get('WS_PHP_AUTHORIZE_URL') === '') {
+                $issues[] = $this->issue(self::WARNING, 'WS_PHP_AUTHORIZE_URL',
+                    'WS_PHP_AUTHORIZE_URL vide alors que le WebSocket est activé : les jonctions de rooms seront refusées (fail-closed anti-IDOR). Configurer l\'endpoint /API/endpoints/ws_authorize.php.');
+            }
         }
 
         // ── Cookie de session en clair sur HTTPS = vol de session. ──
