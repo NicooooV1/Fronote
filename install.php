@@ -883,6 +883,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $log[] = ['warn', iT('label.sync_modules', 'Sync modules : ') . $e->getMessage()];
                     }
 
+                    // 5f-bis — Réconciliation déclarative du schéma (colonnes manquantes).
+                    // INDISPENSABLE : le socle pronote.sql et certains modules définissent la
+                    // MÊME table avec des colonnes divergentes ; comme le socle est importé en
+                    // premier, le CREATE TABLE IF NOT EXISTS du module est un no-op → colonnes
+                    // du module absentes → 500 à l'exécution (ex. intelligence_alertes.statut).
+                    // SchemaSyncService fusionne les colonnes (union, additif) et répare ça.
+                    try {
+                        $schemaReport = (new \API\Services\SchemaSyncService($pdo, $installDir))->sync();
+                        $altered = array_sum(array_map('count', $schemaReport['altered'] ?? []));
+                        if ($altered > 0 || !empty($schemaReport['created'])) {
+                            $log[] = ['ok', strtr(iT('result.schema_reconciled', "Schéma réconcilié (:cols colonne(s), :tabs table(s) ajoutées)"), [':cols' => $altered, ':tabs' => count($schemaReport['created'] ?? [])])];
+                        }
+                    } catch (Throwable $e) {
+                        $log[] = ['warn', 'Réconciliation schéma : ' . $e->getMessage()];
+                    }
+
                     // 5g-bis — Cohérence 3-mondes (refonte) : catalogues de rôles, slug/statut de
                     // l'établissement, miroir TENANT de l'admin, et super-admin PLATEFORME (mondes
                     // séparés). Réutilise les services testés ; non bloquant.
