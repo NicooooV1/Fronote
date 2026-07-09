@@ -547,7 +547,9 @@ if (php_sapi_name() !== 'cli' && !empty($_SESSION['user_id'])) {
 		if ($_ssRow !== false && ((int) $_ssRow['is_active'] === 0 || (int) $_ssRow['expired'] === 1)) {
 			$_forceLogout = true;
 		} elseif ($_ssRow !== false) {
-			$_ssPdo->prepare("UPDATE session_security SET last_activity = NOW() WHERE id = ?")->execute([session_id()]);
+			// Throttle : au plus une écriture par minute (au lieu d'un UPDATE à CHAQUE
+			// requête). La précision minute suffit au suivi d'activité de session.
+			$_ssPdo->prepare("UPDATE session_security SET last_activity = NOW() WHERE id = ? AND (last_activity IS NULL OR last_activity < (NOW() - INTERVAL 60 SECOND))")->execute([session_id()]);
 		}
 	} catch (\Throwable $e) { /* fail-open */ error_log('[bootstrap.php] ' . $e->getMessage()); }
 
