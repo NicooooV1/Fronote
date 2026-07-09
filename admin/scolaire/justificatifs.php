@@ -22,28 +22,38 @@ $csrf_token = $_SESSION['csrf_token'];
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $csrf_token) {
     $action = $_POST['action'] ?? '';
     $jid = intval($_POST['justificatif_id'] ?? 0);
+    // Cloisonnement multi-tenant : ne traiter QUE les justificatifs de l'établissement
+    // courant (le clause AND etablissement_id neutralise un justificatif_id falsifié).
+    $etabId = \API\Core\EstablishmentContext::id();
 
     if ($action === 'approve' && $jid > 0) {
         $commentAdmin = trim($_POST['commentaire_admin'] ?? '');
-        $stmt = $pdo->prepare("UPDATE justificatifs SET traite = 1, approuve = 1, commentaire_admin = ?, date_traitement = NOW(), traite_par = ? WHERE id = ?");
-        $stmt->execute([$commentAdmin, $admin['id'], $jid]);
-        // Justifier l'absence correspondante
-        $j = $pdo->prepare("SELECT id_eleve, date_debut_absence, date_fin_absence FROM justificatifs WHERE id = ?"); $j->execute([$jid]); $jd = $j->fetch(PDO::FETCH_ASSOC);
-        if ($jd) {
-            // Justifier toutes les absences qui chevauchent la période du justificatif
-            $pdo->prepare("UPDATE absences SET justifie = 1 WHERE id_eleve = ? AND DATE(date_debut) <= ? AND DATE(date_fin) >= ?")
-                 ->execute([$jd['id_eleve'], $jd['date_fin_absence'], $jd['date_debut_absence']]);
+        $stmt = $pdo->prepare("UPDATE justificatifs SET traite = 1, approuve = 1, commentaire_admin = ?, date_traitement = NOW(), traite_par = ? WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$commentAdmin, $admin['id'], $jid, $etabId]);
+        if ($stmt->rowCount() > 0) {
+            // Justifier l'absence correspondante (élève du même établissement).
+            $j = $pdo->prepare("SELECT id_eleve, date_debut_absence, date_fin_absence FROM justificatifs WHERE id = ? AND etablissement_id = ?"); $j->execute([$jid, $etabId]); $jd = $j->fetch(PDO::FETCH_ASSOC);
+            if ($jd) {
+                $pdo->prepare("UPDATE absences SET justifie = 1 WHERE id_eleve = ? AND DATE(date_debut) <= ? AND DATE(date_fin) >= ? AND id_eleve IN (SELECT id FROM eleves WHERE etablissement_id = ?)")
+                     ->execute([$jd['id_eleve'], $jd['date_fin_absence'], $jd['date_debut_absence'], $etabId]);
+            }
+            logAudit('justificatif_approved', 'justificatifs', $jid);
+            $message = "Justificatif approuvé et absences justifiées.";
+        } else {
+            $error = "Justificatif introuvable.";
         }
-        logAudit('justificatif_approved', 'justificatifs', $jid);
-        $message = "Justificatif approuvé et absences justifiées.";
     }
 
     if ($action === 'reject' && $jid > 0) {
         $commentAdmin = trim($_POST['commentaire_admin'] ?? '');
-        $stmt = $pdo->prepare("UPDATE justificatifs SET traite = 1, approuve = 0, commentaire_admin = ?, date_traitement = NOW(), traite_par = ? WHERE id = ?");
-        $stmt->execute([$commentAdmin, $admin['id'], $jid]);
-        logAudit('justificatif_rejected', 'justificatifs', $jid);
-        $message = "Justificatif rejeté.";
+        $stmt = $pdo->prepare("UPDATE justificatifs SET traite = 1, approuve = 0, commentaire_admin = ?, date_traitement = NOW(), traite_par = ? WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$commentAdmin, $admin['id'], $jid, $etabId]);
+        if ($stmt->rowCount() > 0) {
+            logAudit('justificatif_rejected', 'justificatifs', $jid);
+            $message = "Justificatif rejeté.";
+        } else {
+            $error = "Justificatif introuvable.";
+        }
     }
 }
 
@@ -53,12 +63,14 @@ $page = max(1, intval($_GET['page'] ?? 1));
 $perPage = 30;
 $offset = ($page - 1) * $perPage;
 
-$where = [];
-$params = [];
+// Cloisonnement multi-tenant : la liste et les compteurs ne montrent que l'établissement courant.
+$etabId = \API\Core\EstablishmentContext::id();
+$where = ['j.etablissement_id = ?'];
+$params = [$etabId];
 if ($filterStatus === 'pending') { $where[] = "j.traite = 0"; }
 elseif ($filterStatus === 'approved') { $where[] = "j.traite = 1 AND j.approuve = 1"; }
 elseif ($filterStatus === 'rejected') { $where[] = "j.traite = 1 AND j.approuve = 0"; }
-$whereSQL = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+$whereSQL = 'WHERE ' . implode(' AND ', $where);
 
 $totalStmt = $pdo->prepare("SELECT COUNT(*) FROM justificatifs j $whereSQL");
 $totalStmt->execute($params);
@@ -74,10 +86,17 @@ $sql = "SELECT j.*, e.nom AS eleve_nom, e.prenom AS eleve_prenom, e.classe
 $stmt = $pdo->prepare($sql); $stmt->execute($params);
 $justificatifs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Compteurs pour badges
-$pendingCount = $pdo->query("SELECT COUNT(*) FROM justificatifs WHERE traite = 0")->fetchColumn();
-$approvedCount = $pdo->query("SELECT COUNT(*) FROM justificatifs WHERE traite = 1 AND approuve = 1")->fetchColumn();
-$rejectedCount = $pdo->query("SELECT COUNT(*) FROM justificatifs WHERE traite = 1 AND approuve = 0")->fetchColumn();
+// Compteurs pour badges (bornés à l'établissement courant).
+$cntStmt = $pdo->prepare("SELECT
+        SUM(traite = 0) AS pending,
+        SUM(traite = 1 AND approuve = 1) AS approved,
+        SUM(traite = 1 AND approuve = 0) AS rejected
+    FROM justificatifs WHERE etablissement_id = ?");
+$cntStmt->execute([$etabId]);
+$cnt = $cntStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+$pendingCount  = (int) ($cnt['pending'] ?? 0);
+$approvedCount = (int) ($cnt['approved'] ?? 0);
+$rejectedCount = (int) ($cnt['rejected'] ?? 0);
 
 $pageTitle = 'Justificatifs';
 $currentPage = 'justificatifs';

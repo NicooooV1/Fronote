@@ -24,6 +24,12 @@ $professeurs = $pdo->query("SELECT id, nom, prenom FROM professeurs ORDER BY nom
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $csrf_token) {
     $action = $_POST['action'] ?? '';
 
+    // Cloisonnement multi-tenant : toutes les opérations sur les classes sont bornées à
+    // l'établissement COURANT (contexte de session ; un super_admin ayant basculé opère
+    // sur l'établissement sélectionné). Sans ce scope, un admin éditait/supprimait les
+    // classes d'un AUTRE établissement par class_id falsifié (IDOR cross-tenant).
+    $etabId = \API\Core\EstablishmentContext::id();
+
     if ($action === 'create_class') {
         $nom = trim($_POST['nom'] ?? '');
         $niveau = trim($_POST['niveau'] ?? '');
@@ -31,8 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
         $ppId = intval($_POST['professeur_principal_id'] ?? 0) ?: null;
         if (!empty($nom) && !empty($niveau)) {
             try {
-                $stmt = $pdo->prepare("INSERT INTO classes (nom, niveau, annee_scolaire, professeur_principal_id) VALUES (?,?,?,?)");
-                $stmt->execute([$nom, $niveau, $annee, $ppId]);
+                $stmt = $pdo->prepare("INSERT INTO classes (nom, niveau, annee_scolaire, professeur_principal_id, etablissement_id) VALUES (?,?,?,?,?)");
+                $stmt->execute([$nom, $niveau, $annee, $ppId, $etabId]);
                 logAudit('class_created', 'classes', $pdo->lastInsertId());
                 $message = "Classe « $nom » créée.";
             } catch (PDOException $e) {
@@ -53,24 +59,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
         $ppId = intval($_POST['professeur_principal_id'] ?? 0) ?: null;
         $actif = isset($_POST['actif']) ? 1 : 0;
         if ($cid > 0 && !empty($nom)) {
-            $pdo->prepare("UPDATE classes SET nom = ?, niveau = ?, professeur_principal_id = ?, actif = ? WHERE id = ?")
-                ->execute([$nom, $niveau, $ppId, $actif, $cid]);
-            logAudit('class_edited', 'classes', $cid);
-            $message = "Classe modifiée.";
+            $st = $pdo->prepare("UPDATE classes SET nom = ?, niveau = ?, professeur_principal_id = ?, actif = ? WHERE id = ? AND etablissement_id = ?");
+            $st->execute([$nom, $niveau, $ppId, $actif, $cid, $etabId]);
+            if ($st->rowCount() > 0) {
+                logAudit('class_edited', 'classes', $cid);
+                $message = "Classe modifiée.";
+            } else {
+                $error = "Classe introuvable.";
+            }
         }
     }
 
     if ($action === 'delete_class') {
         $cid = intval($_POST['class_id'] ?? 0);
         if ($cid > 0) {
-            // Vérifier les élèves
-            $count = $pdo->prepare("SELECT COUNT(*) FROM eleves WHERE classe = (SELECT nom FROM classes WHERE id = ?)"); $count->execute([$cid]);
+            // Vérifier les élèves (classe scopée à l'établissement courant)
+            $count = $pdo->prepare("SELECT COUNT(*) FROM eleves WHERE etablissement_id = ? AND classe = (SELECT nom FROM classes WHERE id = ? AND etablissement_id = ?)");
+            $count->execute([$etabId, $cid, $etabId]);
             if ($count->fetchColumn() > 0) {
                 $error = "Impossible de supprimer : des élèves sont encore affectés à cette classe.";
             } else {
-                $pdo->prepare("DELETE FROM classes WHERE id = ?")->execute([$cid]);
-                logAudit('class_deleted', 'classes', $cid);
-                $message = "Classe supprimée.";
+                $st = $pdo->prepare("DELETE FROM classes WHERE id = ? AND etablissement_id = ?");
+                $st->execute([$cid, $etabId]);
+                if ($st->rowCount() > 0) {
+                    logAudit('class_deleted', 'classes', $cid);
+                    $message = "Classe supprimée.";
+                } else {
+                    $error = "Classe introuvable.";
+                }
             }
         }
     }
@@ -79,15 +95,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
         $cid = intval($_POST['class_id'] ?? 0);
         $className = trim($_POST['class_name'] ?? '');
         $studentIds = $_POST['student_ids'] ?? [];
-        if ($cid > 0 && !empty($className)) {
+        // La classe cible doit appartenir à l'établissement courant.
+        $ownsClass = $pdo->prepare("SELECT 1 FROM classes WHERE id = ? AND etablissement_id = ? LIMIT 1");
+        $ownsClass->execute([$cid, $etabId]);
+        if ($cid > 0 && !empty($className) && !$ownsClass->fetchColumn()) {
+            $error = "Classe introuvable.";
+        } elseif ($cid > 0 && !empty($className)) {
             try {
                 $pdo->beginTransaction();
-                // Retirer tous les élèves de cette classe
-                $pdo->prepare("UPDATE eleves SET classe = '' WHERE classe = ?")->execute([$className]);
-                // Affecter les sélectionnés
+                // Retirer tous les élèves de cette classe (bornés à l'établissement courant)
+                $pdo->prepare("UPDATE eleves SET classe = '' WHERE classe = ? AND etablissement_id = ?")->execute([$className, $etabId]);
+                // Affecter les sélectionnés — uniquement des élèves de CET établissement
+                // (empêche d'aspirer un élève d'un autre établissement via un id falsifié).
                 if (!empty($studentIds)) {
-                    $in = implode(',', array_map('intval', $studentIds));
-                    $pdo->exec("UPDATE eleves SET classe = " . $pdo->quote($className) . " WHERE id IN ($in)");
+                    $ids = array_values(array_filter(array_map('intval', $studentIds), fn($v) => $v > 0));
+                    if (!empty($ids)) {
+                        $ph = implode(',', array_fill(0, count($ids), '?'));
+                        $st = $pdo->prepare("UPDATE eleves SET classe = ? WHERE etablissement_id = ? AND id IN ($ph)");
+                        $st->execute(array_merge([$className, $etabId], $ids));
+                    }
                 }
                 $pdo->commit();
                 logAudit('students_assigned', 'classes', $cid, [], ['count' => count($studentIds)]);
