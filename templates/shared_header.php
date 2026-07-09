@@ -189,6 +189,16 @@ if (!headers_sent()) {
         . "object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
         . ($_hdr_isHttps ? ' upgrade-insecure-requests;' : '');
     header("Content-Security-Policy: {$_hdr_csp}");
+    // Politique STRICTE en Report-Only : mesure la surface de scripts/handlers inline
+    // restants (violations rapportées mais non bloquantes) avant de passer en enforce.
+    $_hdr_cspRO = "default-src 'self'; "
+        . "script-src 'self' 'nonce-{$_hdr_nonce}' 'strict-dynamic' https:; "
+        . "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+        . "font-src 'self' https://cdnjs.cloudflare.com data:; "
+        . "img-src 'self' data: blob: https:; "
+        . "connect-src 'self' ws: wss: https:; "
+        . "object-src 'none'; base-uri 'self'; frame-ancestors 'none';";
+    header("Content-Security-Policy-Report-Only: {$_hdr_cspRO}");
     header("X-Frame-Options: DENY");
     header("X-Content-Type-Options: nosniff");
     header("Referrer-Policy: strict-origin-when-cross-origin");
@@ -314,13 +324,15 @@ try {
     <?= $extraHeadHtml ?>
     <!-- WebSocket global -->
     <script nonce="<?= $_hdr_nonce ?>">window.FRONOTE_WS = <?= $_hdr_ws_config ?>;</script>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous" defer></script>
-    <script src="<?= $_assetVersion('assets/js/topbar.js') ?>" defer></script>
-    <script src="<?= $_assetVersion('assets/js/components.js') ?>" defer></script>
-    <script src="<?= $_assetVersion('assets/js/ui/interactions.js') ?>" defer></script>
-    <script src="<?= $_assetVersion('assets/js/fronote-ajax.js') ?>" defer></script>
-    <script src="<?= $_assetVersion('assets/js/ws-global.js') ?>" defer></script>
-    <script src="<?= $_assetVersion('assets/js/push-manager.js') ?>" defer></script>
+    <!-- Pont d'actions CSP (délégué, sans eval) : permet de retirer 'unsafe-inline'. -->
+    <script src="<?= $_assetVersion('assets/js/csp-actions.js') ?>" nonce="<?= $_hdr_nonce ?>"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous" nonce="<?= $_hdr_nonce ?>" defer></script>
+    <script src="<?= $_assetVersion('assets/js/topbar.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>
+    <script src="<?= $_assetVersion('assets/js/components.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>
+    <script src="<?= $_assetVersion('assets/js/ui/interactions.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>
+    <script src="<?= $_assetVersion('assets/js/fronote-ajax.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>
+    <script src="<?= $_assetVersion('assets/js/ws-global.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>
+    <script src="<?= $_assetVersion('assets/js/push-manager.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>
     <script nonce="<?= $_hdr_nonce ?>">
     window.FRONOTE_BASE_URL = <?= json_encode(rtrim($rootPrefix, '/') . '/') ?>;
     if ('serviceWorker' in navigator) {

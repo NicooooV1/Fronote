@@ -56,6 +56,11 @@ $etab     = (int) ($decoded->etablissement_id ?? 0);
 if ($userId <= 0 || $userType === '') {
     $deny('invalid_claims');
 }
+// Fail-closed : le jeton DOIT porter l'établissement (cf. WebSocket::generateToken).
+// Sans lui, on ne peut pas garantir le cloisonnement tenant des rooms → refus.
+if ($etab <= 0) {
+    $deny('missing_tenant_claim');
+}
 
 $pdo = getPDO();
 

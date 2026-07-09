@@ -6,7 +6,7 @@
  * Usage :
  *   GET/POST  API/endpoints/messagerie.php?resource=<resource>&action=<action>
  *
- * Resources : conversations, messages, participants, notifications, search, reactions
+ * Resources : conversations, messages, participants, search, reactions, notifications
  */
 
 // Dépendances du module messagerie (chemin absolu).
@@ -86,13 +86,6 @@ try {
             break;
 
         // ═══════════════════════════════════════════════
-        // NOTIFICATIONS
-        // ═══════════════════════════════════════════════
-        case 'notifications':
-            handleNotifications($action, $user);
-            break;
-
-        // ═══════════════════════════════════════════════
         // RECHERCHE
         // ═══════════════════════════════════════════════
         case 'search':
@@ -104,6 +97,13 @@ try {
         // ═══════════════════════════════════════════════
         case 'reactions':
             handleReactions($action, $user);
+            break;
+
+        // ═══════════════════════════════════════════════
+        // NOTIFICATIONS (compteur non-lus uniquement)
+        // ═══════════════════════════════════════════════
+        case 'notifications':
+            handleNotifications($action, $user);
             break;
 
         default:
@@ -175,17 +175,19 @@ function handleConversations(string $action, array $user): void {
             break;
 
         case 'mark_read':
+            requirePost(); // mutation → POST + CSRF obligatoires
             $convId = Validator::id($_GET['id'] ?? null);
             if (!$convId) throw new Exception('ID de conversation invalide');
-            
+
             $result = markConversationAsRead($convId, $user['id'], $user['type']);
             echo json_encode(['success' => $result]);
             break;
 
         case 'mark_unread':
+            requirePost(); // mutation → POST + CSRF obligatoires
             $convId = Validator::id($_GET['id'] ?? null);
             if (!$convId) throw new Exception('ID de conversation invalide');
-            
+
             $stmt = $pdo->prepare("
                 UPDATE conversation_participants 
                 SET last_read_at = NULL, unread_count = (SELECT COUNT(*) FROM messages WHERE conversation_id = ?)
@@ -529,54 +531,6 @@ function handleParticipants(string $action, array $user): void {
     }
 }
 
-function handleNotifications(string $action, array $user): void {
-    switch ($action) {
-        case 'count':
-        case 'check':
-            $count = countUnreadNotifications($user['id'], $user['type']);
-            
-            // Include latest notification for browser notification support
-            $latestNotification = null;
-            if ($count > 0) {
-                $notifications = getUserNotifications($user['id'], $user['type'], [
-                    'unread_only' => true,
-                    'limit' => 1
-                ]);
-                $latestNotification = !empty($notifications) ? $notifications[0] : null;
-            }
-            
-            echo json_encode([
-                'success' => true, 
-                'count' => $count,
-                'latest_notification' => $latestNotification
-            ]);
-            break;
-
-        case 'mark_read':
-            $notificationId = Validator::id($_GET['id'] ?? null);
-            if (!$notificationId) throw new Exception('ID de notification invalide');
-            
-            require_once MESSAGERIE_DIR . '/controllers/notification.php';
-            $result = handleMarkNotificationRead($notificationId, $user);
-            echo json_encode($result);
-            break;
-
-        case 'preferences':
-            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-                $data = getJsonBody();
-                updateUserNotificationPreferences($user['id'], $user['type'], $data);
-                echo json_encode(['success' => true]);
-            } else {
-                $prefs = getUserNotificationPreferences($user['id'], $user['type']);
-                echo json_encode(['success' => true, 'preferences' => $prefs]);
-            }
-            break;
-
-        default:
-            throw new Exception("Action '{$action}' inconnue pour les notifications");
-    }
-}
-
 function handleSearch(array $user): void {
     $query = Validator::searchQuery($_GET['q'] ?? null);
     if (!$query) throw new Exception('Requête de recherche invalide (min 2 caractères)');
@@ -605,6 +559,22 @@ function handleReactions(string $action, array $user): void {
 
         default:
             throw new Exception("Action '{$action}' inconnue pour les réactions");
+    }
+}
+
+function handleNotifications(string $action, array $user): void {
+    switch ($action) {
+        case 'count':
+            // Compteur de messages non lus — utilisé par le badge de la topbar
+            // (repli par sondage de assets/js/ws-global.js quand le WebSocket est indisponible).
+            echo json_encode([
+                'success' => true,
+                'count'   => countUnreadNotifications($user['id'], $user['type'])
+            ]);
+            break;
+
+        default:
+            throw new Exception("Action '{$action}' inconnue pour les notifications");
     }
 }
 

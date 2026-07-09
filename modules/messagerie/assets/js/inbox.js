@@ -395,7 +395,7 @@ function toggleQuickActions(id) {
  * @param {number} convId
  */
 function markConversationAsRead(convId) {
-    apiFetch(`${getApiBase()}/messagerie.php?resource=conversations&action=mark_read&id=${convId}`)
+    apiFetch(`${getApiBase()}/messagerie.php?resource=conversations&action=mark_read&id=${convId}`, { method: 'POST' })
         .then(data => {
             if (data.success) {
                 window.location.reload();
@@ -411,7 +411,7 @@ function markConversationAsRead(convId) {
  * @param {number} convId
  */
 function markConversationAsUnread(convId) {
-    apiFetch(`${getApiBase()}/messagerie.php?resource=conversations&action=mark_unread&id=${convId}`)
+    apiFetch(`${getApiBase()}/messagerie.php?resource=conversations&action=mark_unread&id=${convId}`, { method: 'POST' })
         .then(data => {
             if (data.success) {
                 window.location.reload();
