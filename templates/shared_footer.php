@@ -90,7 +90,7 @@ if ($_bb_role !== ''):
 </div>
 
 <?php foreach ($extraJs as $js): ?>
-<script src="<?= htmlspecialchars($js) ?>"></script>
+<script src="<?= htmlspecialchars($js) ?>" nonce="<?= csp_nonce() ?>"></script>
 <?php endforeach; ?>
 
 <script nonce="<?= $_hdr_nonce ?? '' ?>">

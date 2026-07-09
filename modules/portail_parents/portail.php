@@ -36,7 +36,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <?php if (count($enfants) > 1): ?>
     <form method="get" style="margin-bottom:20px">
         <label style="font-size:.9em;color:var(--text-muted,#64748b);margin-right:8px">Enfant :</label>
-        <select name="enfant" onchange="this.form.submit()" style="padding:8px 12px;border:1px solid var(--border,#cbd5e0);border-radius:6px">
+        <select name="enfant" data-fr-change="submitOwn" style="padding:8px 12px;border:1px solid var(--border,#cbd5e0);border-radius:6px">
             <?php foreach ($enfants as $en): ?>
             <option value="<?= (int) $en['id'] ?>" <?= (int) $en['id'] === $enfantId ? 'selected' : '' ?>><?= htmlspecialchars(($en['prenom'] ?? '') . ' ' . ($en['nom'] ?? '')) ?> (<?= htmlspecialchars($en['classe'] ?? '') ?>)</option>
             <?php endforeach; ?>

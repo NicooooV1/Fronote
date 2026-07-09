@@ -81,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary" onclick="return confirm('Lancer l\'archivage ?')"><i class="fas fa-archive"></i> Lancer l'archivage</button>
+                    <button type="submit" class="btn btn-primary" data-fr-confirm="Lancer l'archivage ?"><i class="fas fa-archive"></i> Lancer l'archivage</button>
                     <a href="archivage.php" class="btn btn-outline">Annuler</a>
                 </div>
             </form>

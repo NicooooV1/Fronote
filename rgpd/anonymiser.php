@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                     <small class="text-danger">Tapez <strong>ANONYMISER</strong> en majuscules pour confirmer.</small>
                 </div>
                 <div class="form-actions mt-3">
-                    <button type="submit" class="btn btn-danger" onclick="return confirm('Dernière confirmation : êtes-vous absolument sûr ?')">
+                    <button type="submit" class="btn btn-danger" data-fr-confirm="Dernière confirmation : êtes-vous absolument sûr ?">
                         <i class="fas fa-user-slash"></i> Anonymiser cet utilisateur
                     </button>
                     <a href="demandes.php" class="btn btn-outline">Annuler</a>

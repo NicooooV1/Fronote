@@ -136,7 +136,7 @@ include __DIR__ . '/../includes/header.php';
             <select id="editDomain" class="form-control" style="max-width:300px;">
                 ' . implode('', array_map(fn($d) => '<option value="' . e($d) . '">' . e($d) . '</option>', $domains)) . '
             </select>
-            <button type="button" class="ui-btn ui-btn--primary ui-btn--sm" onclick="loadTranslations()">Charger</button>
+            <button type="button" class="ui-btn ui-btn--primary ui-btn--sm" data-fr-click="loadTranslations">Charger</button>
         </div>
         <div id="translationEditor"></div>
     ', ['icon' => 'fas fa-edit']) ?>
@@ -162,7 +162,7 @@ function loadTranslations() {
             var missing = !val ? ' style="background:rgba(239,68,68,0.05)"' : '';
             html += '<tr' + missing + '><td class="text-muted fs-xs">' + key + '</td><td class="fs-sm">' + (frKeys[key] || '') + '</td>';
             html += '<td><input type="text" class="form-control" data-key="' + key + '" value="' + val.replace(/"/g, '&quot;') + '" style="font-size:13px;"></td>';
-            html += '<td><button type="button" class="ui-btn ui-btn--ghost ui-btn--sm" onclick="saveKey(\'' + locale + '\',\'' + domain + '\',\'' + key + '\',this)">Sauver</button></td></tr>';
+            html += '<td><button type="button" class="ui-btn ui-btn--ghost ui-btn--sm" data-fr-click="saveKey" data-fr-args=\'' + JSON.stringify([locale, domain, key]).replace(/'/g, '&#39;') + '\'>Sauver</button></td></tr>';
         });
         html += '</tbody></table>';
         container.innerHTML = html;

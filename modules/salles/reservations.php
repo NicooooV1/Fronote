@@ -43,8 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     <?php if (!empty($error)): ?><div class="alert alert-danger"><?= $error ?></div><?php endif; ?>
 
     <div class="filter-bar">
-        <input type="date" value="<?= $filtreDate ?>" onchange="location.href='reservations.php?date='+this.value" class="form-control" style="width:auto;">
-        <select onchange="location.href='reservations.php?date=<?= $filtreDate ?>&salle_id='+this.value" class="form-control" style="width:auto;">
+        <input type="date" value="<?= $filtreDate ?>" data-fr-change="frRes1" class="form-control" style="width:auto;">
+        <select data-fr-change="frRes2" class="form-control" style="width:auto;">
             <option value="">Toutes salles</option>
             <?php foreach ($salles as $s): ?><option value="<?= $s['id'] ?>" <?= $filtreSalle == $s['id'] ? 'selected' : '' ?>><?= htmlspecialchars($s['nom']) ?></option><?php endforeach; ?>
         </select>
@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                     <td><span class="badge badge-<?= $r['statut'] === 'confirmee' ? 'success' : ($r['statut'] === 'annulee' ? 'danger' : 'warning') ?>"><?= ucfirst($r['statut']) ?></span></td>
                     <td>
                         <?php if ($r['statut'] === 'confirmee' && ($r['reserveur_id'] == getUserId() || isAdmin())): ?>
-                        <form method="post" style="display:inline;"><?= csrfField() ?><input type="hidden" name="reservation_id" value="<?= $r['id'] ?>"><button name="action" value="annuler" class="btn btn-sm btn-danger" onclick="return confirm('Annuler ?')"><i class="fas fa-times"></i></button></form>
+                        <form method="post" style="display:inline;"><?= csrfField() ?><input type="hidden" name="reservation_id" value="<?= $r['id'] ?>"><button name="action" value="annuler" class="btn btn-sm btn-danger" data-fr-confirm="Annuler ?"><i class="fas fa-times"></i></button></form>
                         <?php endif; ?>
                     </td>
                 </tr>
@@ -93,5 +93,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     </div>
     <?php endif; ?>
 </div>
+
+<script nonce="<?= csp_nonce() ?>">
+window.frRes1 = function () { location.href='reservations.php?date='+this.value };
+window.frRes2 = function () { location.href='reservations.php?date=<?= $filtreDate ?>&salle_id='+this.value };
+</script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

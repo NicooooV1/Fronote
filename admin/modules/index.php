@@ -165,7 +165,7 @@ include __DIR__ . '/../includes/header.php';
 
 <!-- Barre d'actions globales -->
 <div style="display:flex;justify-content:flex-end;margin-bottom:18px">
-    <form method="post" onsubmit="return confirm('Resynchroniser tous les module.json ?');">
+    <form method="post" data-fr-confirm="Resynchroniser tous les module.json ?">
         <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
         <input type="hidden" name="action" value="sync_migrate">
         <button type="submit" class="btn btn-secondary btn-sm" title="Relit chaque module.json (permissions, widgets, settings, routes)">
@@ -207,7 +207,7 @@ include __DIR__ . '/../includes/header.php';
                     <input type="hidden" name="enabled" value="<?= empty($mod['enabled']) ? '1' : '0' ?>">
                     <label class="toggle-switch" title="<?= !empty($mod['is_core']) ? 'Module système — ne peut pas être désactivé' : 'Activer/désactiver' ?>">
                         <input type="checkbox" <?= !empty($mod['enabled']) ? 'checked' : '' ?> <?= !empty($mod['is_core']) ? 'disabled' : '' ?>
-                               onchange="this.form.submit()">
+                               data-fr-change="submitOwn">
                         <span class="toggle-slider"></span>
                     </label>
                 </form>

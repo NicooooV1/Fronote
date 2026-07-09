@@ -54,12 +54,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 
 <div class="filter-bar">
     <form method="GET" class="filter-form">
-        <select name="classe" class="form-select" onchange="this.form.submit()">
+        <select name="classe" class="form-select" data-fr-change="submitOwn">
             <?php foreach ($classes as $c): ?>
                 <option value="<?= $c['id'] ?>" <?= $selectedClasse == $c['id'] ? 'selected' : '' ?>><?= htmlspecialchars($c['nom']) ?></option>
             <?php endforeach; ?>
         </select>
-        <select name="periode" class="form-select" onchange="this.form.submit()">
+        <select name="periode" class="form-select" data-fr-change="submitOwn">
             <?php foreach ($periodes as $p): ?>
                 <option value="<?= $p['id'] ?>" <?= $selectedPeriode == $p['id'] ? 'selected' : '' ?>><?= htmlspecialchars($p['nom']) ?></option>
             <?php endforeach; ?>

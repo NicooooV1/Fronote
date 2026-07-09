@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                         <td><?= $jours[$i['jour']] ?? $i['jour'] ?></td>
                         <td>
                             <?php if ($isGestionnaire): ?>
-                            <form method="post" style="display:inline;"><?= csrfField() ?><input type="hidden" name="inscription_id" value="<?= $i['id'] ?>"><button name="action" value="desinscrire" class="btn btn-sm btn-danger" onclick="return confirm('Désinscrire ?')"><i class="fas fa-times"></i></button></form>
+                            <form method="post" style="display:inline;"><?= csrfField() ?><input type="hidden" name="inscription_id" value="<?= $i['id'] ?>"><button name="action" value="desinscrire" class="btn btn-sm btn-danger" data-fr-confirm="Désinscrire ?"><i class="fas fa-times"></i></button></form>
                             <?php endif; ?>
                         </td>
                     </tr>

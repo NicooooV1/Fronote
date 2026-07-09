@@ -117,7 +117,7 @@ include __DIR__ . '/../includes/header.php';
                         <td><?= htmlspecialchars($r['scope_type']) ?></td>
                         <td><?= $r['valid_until'] ? htmlspecialchars($r['valid_until']) : '<em>permanent</em>' ?></td>
                         <td>
-                            <form method="post" onsubmit="return confirm('Révoquer ce rôle ?')">
+                            <form method="post" data-fr-confirm="Révoquer ce rôle ?">
                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
                                 <input type="hidden" name="ut" value="<?= htmlspecialchars($targetType) ?>">
                                 <input type="hidden" name="uid" value="<?= $targetId ?>">

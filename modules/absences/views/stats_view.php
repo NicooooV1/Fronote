@@ -252,8 +252,8 @@ arsort($absences_par_classe);
     <?php endif; ?>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" nonce="<?= csp_nonce() ?>"></script>
+<script nonce="<?= csp_nonce() ?>">
 const colors = {
     primary: '#009b72',
     secondary: '#e74c3c',

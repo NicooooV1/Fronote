@@ -73,7 +73,7 @@ $pageTitle = __('admin.establishments');
 <div class="admin-container">
     <div class="page-header">
         <h1><i class="fas fa-building"></i> <?= htmlspecialchars($pageTitle) ?></h1>
-        <button class="btn btn-primary" onclick="document.getElementById('create-modal').classList.add('active')">
+        <button class="btn btn-primary" data-fr-click="addClass" data-fr-args='["create-modal","active"]'>
             <i class="fas fa-plus"></i> <?= __('admin.add_establishment') ?>
         </button>
     </div>
@@ -127,7 +127,7 @@ $pageTitle = __('admin.establishments');
                                 <i class="fas fa-exchange-alt"></i>
                             </button>
                         </form>
-                        <form method="POST" style="display:inline" onsubmit="return confirm('<?= $etab['actif'] ? 'Archiver' : 'Activer' ?> cet établissement ?')">
+                        <form method="POST" style="display:inline" data-fr-confirm="<?= $etab['actif'] ? 'Archiver' : 'Activer' ?> cet établissement ?">
                             <?= csrf_field() ?>
                             <input type="hidden" name="action" value="toggle">
                             <input type="hidden" name="id" value="<?= $etab['id'] ?>">
@@ -136,7 +136,7 @@ $pageTitle = __('admin.establishments');
                                 <i class="fas fa-<?= $etab['actif'] ? 'box-archive' : 'check' ?>"></i>
                             </button>
                         </form>
-                        <form method="POST" action="purge.php" style="display:inline" onsubmit="return (function(f){var n=prompt('PURGE DÉFINITIVE de cet établissement (sauvegarde automatique avant). Tapez le NOM EXACT pour confirmer :');if(n===null)return false;f.confirm_nom.value=n;return true;})(this)">
+                        <form method="POST" action="purge.php" style="display:inline" data-fr-submit="frEM1">
                             <?= csrf_field() ?>
                             <input type="hidden" name="id" value="<?= $etab['id'] ?>">
                             <input type="hidden" name="confirm_nom" value="">
@@ -157,7 +157,7 @@ $pageTitle = __('admin.establishments');
     <div class="modal-content">
         <div class="modal-header">
             <h3><?= __('admin.add_establishment') ?></h3>
-            <button class="modal-close" onclick="this.closest('.modal-overlay').classList.remove('active')">&times;</button>
+            <button class="modal-close" data-fr-click="frEM2">&times;</button>
         </div>
         <form method="POST">
             <?= csrf_field() ?>
@@ -212,5 +212,18 @@ $pageTitle = __('admin.establishments');
         </form>
     </div>
 </div>
+
+<script nonce="<?= csp_nonce() ?>">
+window.frEM1 = function () {
+    var f = this;
+    var n = prompt('PURGE DÉFINITIVE de cet établissement (sauvegarde automatique avant). Tapez le NOM EXACT pour confirmer :');
+    if (n === null) return false;
+    f.confirm_nom.value = n;
+    return true;
+};
+window.frEM2 = function () {
+    this.closest('.modal-overlay').classList.remove('active');
+};
+</script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

@@ -30,10 +30,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     <?php if (!empty($_SESSION['success_message'])): ?><div class="alert alert-success"><?= $_SESSION['success_message'] ?></div><?php unset($_SESSION['success_message']); endif; ?>
 
     <div class="filter-bar">
-        <select onchange="location.href='presences.php?service_id='+this.value+'&date=<?= $date ?>'" class="form-control" style="width:auto;">
+        <select data-fr-change="frPr1" class="form-control" style="width:auto;">
             <?php foreach ($services as $s): ?><option value="<?= $s['id'] ?>" <?= $s['id'] == $serviceId ? 'selected' : '' ?>><?= htmlspecialchars($s['nom']) ?></option><?php endforeach; ?>
         </select>
-        <input type="date" value="<?= $date ?>" onchange="location.href='presences.php?service_id=<?= $serviceId ?>&date='+this.value" class="form-control" style="width:auto;">
+        <input type="date" value="<?= $date ?>" data-fr-change="frPr2" class="form-control" style="width:auto;">
     </div>
 
     <?php if (empty($presences)): ?>
@@ -60,4 +60,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     <?php endif; ?>
 </div>
 
+<script nonce="<?= csp_nonce() ?>">
+window.frPr1 = function () { location.href='presences.php?service_id='+this.value+'&date=<?= $date ?>'; };
+window.frPr2 = function () { location.href='presences.php?service_id=<?= $serviceId ?>&date='+this.value; };
+</script>
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

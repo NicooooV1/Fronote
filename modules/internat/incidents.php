@@ -39,7 +39,7 @@ $chambres = $internatService->getChambres();
 
     <div class="page-header">
         <h1><i class="fas fa-exclamation-triangle"></i> Incidents internat</h1>
-        <button class="btn btn-primary" onclick="document.getElementById('formIncident').style.display='block'"><i class="fas fa-plus"></i> Signaler</button>
+        <button class="btn btn-primary" data-fr-click="showBlock" data-fr-args='["formIncident"]'><i class="fas fa-plus"></i> Signaler</button>
     </div>
 
     <?php if ($message): ?><div class="alert alert-success"><?= htmlspecialchars($message) ?></div><?php endif; ?>

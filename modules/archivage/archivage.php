@@ -39,13 +39,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     <!-- Filtres -->
     <div class="filter-row">
         <form method="get" class="filter-form">
-            <select name="annee" class="form-control" onchange="this.form.submit()">
+            <select name="annee" class="form-control" data-fr-change="submitOwn">
                 <option value="">Toutes les années</option>
                 <?php foreach ($annees as $a): ?>
                 <option value="<?= $a ?>" <?= $filtreAnnee === $a ? 'selected' : '' ?>><?= $a ?></option>
                 <?php endforeach; ?>
             </select>
-            <select name="type" class="form-control" onchange="this.form.submit()">
+            <select name="type" class="form-control" data-fr-change="submitOwn">
                 <option value="">Tous les types</option>
                 <?php foreach ($types as $k => $v): ?>
                 <option value="<?= $k ?>" <?= $filtreType === $k ? 'selected' : '' ?>><?= $v ?></option>
@@ -80,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                     <button type="submit" name="action" value="deverrouiller" class="btn btn-sm btn-outline" title="Déverrouiller"><i class="fas fa-unlock"></i></button>
                     <?php else: ?>
                     <button type="submit" name="action" value="verrouiller" class="btn btn-sm btn-outline" title="Verrouiller"><i class="fas fa-lock"></i></button>
-                    <button type="submit" name="action" value="supprimer" class="btn btn-sm btn-danger" title="Supprimer" onclick="return confirm('Supprimer cette archive ?')"><i class="fas fa-trash"></i></button>
+                    <button type="submit" name="action" value="supprimer" class="btn btn-sm btn-danger" title="Supprimer" data-fr-confirm="Supprimer cette archive ?"><i class="fas fa-trash"></i></button>
                     <?php endif; ?>
                 </form>
             </div>

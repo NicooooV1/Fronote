@@ -43,7 +43,7 @@ $convocations = $reunionService->getConvocations($userId, $userType);
     <div class="content-header">
         <h1><i class="fas fa-file-invoice"></i> Convocations</h1>
         <?php if (isAdmin() || isVieScolaire()): ?>
-        <button class="btn btn-primary" onclick="document.getElementById('modal-convocation').style.display='flex'"><i class="fas fa-plus"></i> Nouvelle convocation</button>
+        <button class="btn btn-primary" data-fr-click="frCv1"><i class="fas fa-plus"></i> Nouvelle convocation</button>
         <?php endif; ?>
     </div>
 
@@ -89,7 +89,7 @@ $convocations = $reunionService->getConvocations($userId, $userType);
     <div class="modal-content">
         <div class="modal-header">
             <h2>Nouvelle convocation</h2>
-            <button onclick="this.closest('.modal-overlay').style.display='none'" class="modal-close">&times;</button>
+            <button data-fr-click="frCv2" class="modal-close">&times;</button>
         </div>
         <form method="post">
             <?= csrfField() ?>
@@ -141,11 +141,16 @@ $convocations = $reunionService->getConvocations($userId, $userType);
             <input type="hidden" name="reunion_id" value="">
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Envoyer</button>
-                <button type="button" class="btn btn-outline" onclick="this.closest('.modal-overlay').style.display='none'">Annuler</button>
+                <button type="button" class="btn btn-outline" data-fr-click="frCv2">Annuler</button>
             </div>
         </form>
     </div>
 </div>
 <?php endif; ?>
+
+<script nonce="<?= csp_nonce() ?>">
+window.frCv1 = function () { document.getElementById('modal-convocation').style.display='flex' };
+window.frCv2 = function () { this.closest('.modal-overlay').style.display='none' };
+</script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

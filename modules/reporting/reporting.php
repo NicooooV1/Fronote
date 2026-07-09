@@ -26,7 +26,7 @@ $rapport = $classeId ? $reportService->getRapportClasse($classeId, $periodeId ?:
         <form method="get" style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
             <div>
                 <label>Classe :</label>
-                <select name="classe_id" onchange="this.form.submit()" class="form-select">
+                <select name="classe_id" data-fr-change="submitOwn" class="form-select">
                     <?php foreach ($classes as $c): ?>
                         <option value="<?= $c['id'] ?>" <?= $c['id'] == $classeId ? 'selected' : '' ?>><?= htmlspecialchars($c['niveau'].' – '.$c['nom']) ?></option>
                     <?php endforeach; ?>
@@ -34,7 +34,7 @@ $rapport = $classeId ? $reportService->getRapportClasse($classeId, $periodeId ?:
             </div>
             <div>
                 <label>Période :</label>
-                <select name="periode_id" onchange="this.form.submit()" class="form-select">
+                <select name="periode_id" data-fr-change="submitOwn" class="form-select">
                     <option value="0">Toutes les périodes</option>
                     <?php foreach ($periodes as $p): ?>
                         <option value="<?= $p['id'] ?>" <?= ($p['id'] ?? 0) == $periodeId ? 'selected' : '' ?>><?= htmlspecialchars($p['nom'] ?? $p['libelle'] ?? 'Période '.$p['id']) ?></option>
@@ -121,8 +121,8 @@ $rapport = $classeId ? $reportService->getRapportClasse($classeId, $periodeId ?:
         </div>
         <?php endif; ?>
 
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-        <script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" nonce="<?= csp_nonce() ?>"></script>
+        <script nonce="<?= csp_nonce() ?>">
         <?php
             $moyMat = $rapport['moyennes_matieres'] ?? [];
             $matLabels = []; $matValues = [];

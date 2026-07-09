@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
         <form method="post" class="inline-form">
             <?= csrfField() ?>
             <input type="hidden" name="action" value="statut">
-            <select name="statut" class="form-control form-control-sm" onchange="this.form.submit()">
+            <select name="statut" class="form-control form-control-sm" data-fr-change="submitOwn">
                 <option value="soumise" <?= $insc['statut'] === 'soumise' ? 'selected' : '' ?>>Soumise</option>
                 <option value="en_revision" <?= $insc['statut'] === 'en_revision' ? 'selected' : '' ?>>En révision</option>
                 <option value="acceptee" <?= $insc['statut'] === 'acceptee' ? 'selected' : '' ?>>Acceptée</option>

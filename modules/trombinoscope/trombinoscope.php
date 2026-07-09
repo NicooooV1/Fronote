@@ -66,7 +66,7 @@ if ($search) {
             <form method="get">
                 <input type="hidden" name="vue" value="eleves">
                 <label>Classe :</label>
-                <select name="classe_id" onchange="this.form.submit()" class="form-select">
+                <select name="classe_id" data-fr-change="submitOwn" class="form-select">
                     <?php foreach ($classes as $c): ?>
                         <option value="<?= $c['id'] ?>" <?= $c['id'] == $classeId ? 'selected' : '' ?>>
                             <?= h($c['niveau'] . ' – ' . $c['nom']) ?>
@@ -78,7 +78,7 @@ if ($search) {
             <form method="get">
                 <input type="hidden" name="vue" value="profs">
                 <label>Matière :</label>
-                <select name="matiere_id" onchange="this.form.submit()" class="form-select">
+                <select name="matiere_id" data-fr-change="submitOwn" class="form-select">
                     <option value="0">Toutes les matières</option>
                     <?php foreach ($matieres as $m): ?>
                         <option value="<?= $m['id'] ?>" <?= $m['id'] == $matiereId ? 'selected' : '' ?>>

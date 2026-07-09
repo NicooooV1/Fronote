@@ -41,7 +41,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 <div style="max-width:1100px;margin:24px auto;padding:0 16px">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px">
         <h1 style="font-size:1.5em;margin:0"><i class="fas fa-brain"></i> Analyse prédictive — risque de décrochage</h1>
-        <form method="post" onsubmit="return confirm('Recalculer les scores de tous les élèves ?')">
+        <form method="post" data-fr-confirm="Recalculer les scores de tous les élèves ?">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token) ?>">
             <input type="hidden" name="action" value="recalculer">
             <button type="submit" style="background:var(--primary,#0f4c81);color:#fff;border:none;padding:9px 18px;border-radius:8px;cursor:pointer;font-weight:600">

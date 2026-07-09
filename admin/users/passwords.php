@@ -143,8 +143,8 @@ include __DIR__ . '/../includes/header.php';
     <?php if (!empty($error)): ?><div class="alert alert-danger"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('requests')"><i class="fas fa-clipboard-list"></i> Demandes en attente <?php if (count($requests) > 0): ?><span class="badge-count"><?= count($requests) ?></span><?php endif; ?></button>
-        <button class="tab-btn" onclick="switchTab('manual')"><i class="fas fa-key"></i> Réinitialisation manuelle</button>
+        <button class="tab-btn active" data-fr-click="switchTab" data-fr-args='["requests"]'><i class="fas fa-clipboard-list"></i> Demandes en attente <?php if (count($requests) > 0): ?><span class="badge-count"><?= count($requests) ?></span><?php endif; ?></button>
+        <button class="tab-btn" data-fr-click="switchTab" data-fr-args='["manual"]'><i class="fas fa-key"></i> Réinitialisation manuelle</button>
     </div>
 
     <!-- Onglet Demandes -->
@@ -205,11 +205,11 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
-<script>
-function switchTab(name) {
+<script nonce="<?= csp_nonce() ?>">
+function switchTab(name, btn) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    event.target.closest('.tab-btn').classList.add('active');
+    if (btn && btn.closest) btn.closest('.tab-btn').classList.add('active');
     document.getElementById('tab-' + name).classList.add('active');
 }
 </script>

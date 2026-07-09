@@ -34,7 +34,7 @@ $pointes = array_filter($pointage, fn($r) => $r['statut'] === 'consomme');
     <div class="page-header">
         <h1><i class="fas fa-check-double"></i> Pointage cantine</h1>
         <form method="get" class="inline-form">
-            <input type="date" name="date" value="<?= $dateVue ?>" class="form-control" onchange="this.form.submit()">
+            <input type="date" name="date" value="<?= $dateVue ?>" class="form-control" data-fr-change="submitOwn">
         </form>
     </div>
 
@@ -54,12 +54,12 @@ $pointes = array_filter($pointage, fn($r) => $r['statut'] === 'consomme');
                 <?= csrfField() ?>
                 <input type="hidden" name="pointer" value="1">
                 <div class="pointage-actions">
-                    <button type="button" onclick="toggleAll(true)" class="btn btn-sm btn-outline">Tout cocher</button>
-                    <button type="button" onclick="toggleAll(false)" class="btn btn-sm btn-outline">Tout décocher</button>
+                    <button type="button" data-fr-click="toggleAll" data-fr-args='[true]' class="btn btn-sm btn-outline">Tout cocher</button>
+                    <button type="button" data-fr-click="toggleAll" data-fr-args='[false]' class="btn btn-sm btn-outline">Tout décocher</button>
                     <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Pointer la sélection</button>
                 </div>
                 <table class="table">
-                    <thead><tr><th><input type="checkbox" id="checkAll" onchange="toggleAll(this.checked)"></th><th>Élève</th><th>Classe</th><th>Régime</th></tr></thead>
+                    <thead><tr><th><input type="checkbox" id="checkAll" data-fr-change="frP1"></th><th>Élève</th><th>Classe</th><th>Régime</th></tr></thead>
                     <tbody>
                     <?php foreach ($nonPointes as $r): ?>
                         <tr>
@@ -96,11 +96,12 @@ $pointes = array_filter($pointage, fn($r) => $r['statut'] === 'consomme');
     </div>
     <?php endif; ?>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 function toggleAll(checked) {
     document.querySelectorAll('.pointage-cb').forEach(cb => cb.checked = checked);
     document.getElementById('checkAll').checked = checked;
 }
+window.frP1 = function () { toggleAll(this.checked); };
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

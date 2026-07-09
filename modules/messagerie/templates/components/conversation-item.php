@@ -84,30 +84,30 @@ if (isset($conversation['participants']) && count($conversation['participants'])
     </a>
     
     <div class="conversation-actions">
-        <button class="quick-actions-btn" onclick="toggleQuickActions(<?= $convId ?>); return false;" 
+        <button class="quick-actions-btn" data-fr-click="toggleQuickActions" data-fr-args='[<?= $convId ?>]' data-fr-prevent="1"
                 aria-label="Actions rapides">
             <i class="fas fa-ellipsis-v"></i>
         </button>
         
         <div class="quick-actions-menu" id="quick-actions-<?= $convId ?>">
             <?php if ($currentFolder !== 'corbeille'): ?>
-            <a href="#" onclick="markConversationAsRead(<?= $convId ?>); return false;">
+            <a href="#" data-fr-click="markConversationAsRead" data-fr-args='[<?= $convId ?>]' data-fr-prevent="1">
                 <i class="fas fa-envelope-open"></i> Marquer comme lu
             </a>
-            <a href="#" onclick="markConversationAsUnread(<?= $convId ?>); return false;">
+            <a href="#" data-fr-click="markConversationAsUnread" data-fr-args='[<?= $convId ?>]' data-fr-prevent="1">
                 <i class="fas fa-envelope"></i> Marquer comme non lu
             </a>
-            <a href="#" onclick="archiveConversation(<?= $convId ?>); return false;">
+            <a href="#" data-fr-click="archiveConversation" data-fr-args='[<?= $convId ?>]' data-fr-prevent="1">
                 <i class="fas fa-archive"></i> Archiver
             </a>
-            <a href="#" onclick="confirmDelete(<?= $convId ?>); return false;" class="danger">
+            <a href="#" data-fr-click="confirmDelete" data-fr-args='[<?= $convId ?>]' data-fr-prevent="1" class="danger">
                 <i class="fas fa-trash"></i> Supprimer
             </a>
             <?php else: ?>
-            <a href="#" onclick="restoreConversation(<?= $convId ?>); return false;">
+            <a href="#" data-fr-click="restoreConversation" data-fr-args='[<?= $convId ?>]' data-fr-prevent="1">
                 <i class="fas fa-undo"></i> Restaurer
             </a>
-            <a href="#" onclick="confirmDeletePermanently(<?= $convId ?>); return false;" class="danger">
+            <a href="#" data-fr-click="confirmDeletePermanently" data-fr-args='[<?= $convId ?>]' data-fr-prevent="1" class="danger">
                 <i class="fas fa-trash-alt"></i> Supprimer définitivement
             </a>
             <?php endif; ?>

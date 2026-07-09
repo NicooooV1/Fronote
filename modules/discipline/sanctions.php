@@ -250,7 +250,7 @@ if (!empty($_GET['incident_id'])) {
 </div>
 <?php endif; ?>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 // Afficher les champs de retenue si type = exclusion/retenue
 document.getElementById('type_sanction')?.addEventListener('change', function() {
     const show = ['exclusion_temporaire', 'retenue', 'exclusion_cours'].includes(this.value);

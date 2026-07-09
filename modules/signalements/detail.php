@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
         <form method="post" class="inline-form">
             <?= csrfField() ?>
             <input type="hidden" name="action" value="statut">
-            <select name="statut" class="form-control form-control-sm" onchange="this.form.submit()">
+            <select name="statut" class="form-control form-control-sm" data-fr-change="submitOwn">
                 <option value="nouveau" <?= $sig['statut'] === 'nouveau' ? 'selected' : '' ?>>Nouveau</option>
                 <option value="en_cours" <?= $sig['statut'] === 'en_cours' ? 'selected' : '' ?>>En cours</option>
                 <option value="traite" <?= $sig['statut'] === 'traite' ? 'selected' : '' ?>>Traité</option>

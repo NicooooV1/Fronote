@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <form method="get" class="comp-selector-form">
             <div class="form-group">
                 <label>Classe</label>
-                <select name="classe_id" onchange="this.form.submit()" class="form-select">
+                <select name="classe_id" data-fr-change="submitOwn" class="form-select">
                     <?php foreach ($classes as $c): ?>
                         <option value="<?= $c['id'] ?>" <?= $c['id'] == $classeId ? 'selected' : '' ?>><?= htmlspecialchars($c['niveau'].' – '.$c['nom']) ?></option>
                     <?php endforeach; ?>
@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <div class="form-group">
                 <label>Domaine</label>
-                <select name="domaine_id" onchange="this.form.submit()" class="form-select">
+                <select name="domaine_id" data-fr-change="submitOwn" class="form-select">
                     <?php foreach ($domaines as $d): ?>
                         <option value="<?= $d['id'] ?>" <?= $d['id'] == $domaineId ? 'selected' : '' ?>><?= htmlspecialchars($d['code'].' – '.$d['nom']) ?></option>
                     <?php endforeach; ?>
@@ -76,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <div class="form-group">
                 <label>Période</label>
-                <select name="periode_id" onchange="this.form.submit()" class="form-select">
+                <select name="periode_id" data-fr-change="submitOwn" class="form-select">
                     <option value="0">Toutes</option>
                     <?php foreach ($periodes as $p): ?>
                         <option value="<?= $p['id'] ?>" <?= $p['id'] == $periodeId ? 'selected' : '' ?>><?= htmlspecialchars($p['nom']) ?></option>

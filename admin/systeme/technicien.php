@@ -353,10 +353,10 @@ include __DIR__ . '/../includes/header.php';
 
 <!-- Onglets -->
 <div class="tab-nav">
-    <button class="tab-btn active" onclick="switchTab('actifs',this)"><i class="fas fa-shield-alt"></i> Acces actifs (<?= $totalActive ?>)</button>
-    <button class="tab-btn" onclick="switchTab('historique',this)"><i class="fas fa-history"></i> Historique</button>
-    <button class="tab-btn" onclick="switchTab('creer',this)"><i class="fas fa-plus-circle"></i> Creer un acces</button>
-    <button class="tab-btn" onclick="switchTab('audit',this)"><i class="fas fa-clipboard-list"></i> Journal d'audit</button>
+    <button class="tab-btn active" data-fr-click="switchTab" data-fr-args='["actifs"]'><i class="fas fa-shield-alt"></i> Acces actifs (<?= $totalActive ?>)</button>
+    <button class="tab-btn" data-fr-click="switchTab" data-fr-args='["historique"]'><i class="fas fa-history"></i> Historique</button>
+    <button class="tab-btn" data-fr-click="switchTab" data-fr-args='["creer"]'><i class="fas fa-plus-circle"></i> Creer un acces</button>
+    <button class="tab-btn" data-fr-click="switchTab" data-fr-args='["audit"]'><i class="fas fa-clipboard-list"></i> Journal d'audit</button>
 </div>
 
 <!-- ═══ ACCES ACTIFS ═══ -->
@@ -423,7 +423,7 @@ include __DIR__ . '/../includes/header.php';
                         --:--:--
                     </span>
                 </div>
-                <form method="post" style="margin:0" onsubmit="return confirm('Revoquer immediatement cet acces technicien ?')">
+                <form method="post" style="margin:0" data-fr-confirm="Revoquer immediatement cet acces technicien ?">
                     <input type="hidden" name="csrf_token" value="<?= $csrfToken ?>">
                     <input type="hidden" name="action" value="revoke">
                     <input type="hidden" name="tech_id" value="<?= $acc['id'] ?>">
@@ -703,7 +703,7 @@ include __DIR__ . '/../includes/header.php';
         </div>
 
         <div style="display:flex;gap:8px;margin:12px 0 6px">
-            <button class="btn-copy" onclick="copyCredentials()"><i class="fas fa-copy"></i> Copier les identifiants</button>
+            <button class="btn-copy" data-fr-click="copyCredentials"><i class="fas fa-copy"></i> Copier les identifiants</button>
         </div>
 
         <div class="warning">
@@ -711,14 +711,17 @@ include __DIR__ . '/../includes/header.php';
             Conservez ces informations en lieu sur. Le mot de passe est irreversiblement chiffre et ne pourra pas etre recupere.
         </div>
 
-        <button class="btn-modal-close" onclick="document.getElementById('passwordModal').remove()">
+        <button class="btn-modal-close" data-fr-click="frTECH2">
             <i class="fas fa-check"></i> J'ai note les identifiants
         </button>
     </div>
 </div>
 <?php endif; ?>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
+// Wrapper CSP : fermeture de la modal mot de passe
+window.frTECH2 = function () { document.getElementById('passwordModal').remove(); };
+
 // Gestion des onglets
 function switchTab(name, btn) {
     document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
@@ -785,8 +788,8 @@ function copyCredentials() {
     const password = document.getElementById('credPassword')?.textContent || '';
     const text = 'Identifiant: ' + login + '\nMot de passe: ' + password;
 
+    const btn = this.closest('.btn-copy');
     navigator.clipboard.writeText(text).then(() => {
-        const btn = event.target.closest('.btn-copy');
         const original = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-check"></i> Copie !';
         btn.style.background = '#48bb78';

@@ -47,7 +47,7 @@ $canPin = isset($isModerator) && $isModerator && !$deletedAt;
     <?php endif; ?>
     
     <?php if ($parentId): ?>
-    <div class="reply-quote" onclick="scrollToMessage(<?= (int)$parentId ?>)">
+    <div class="reply-quote" data-fr-click="scrollToMessage" data-fr-args='[<?= (int)$parentId ?>]'>
         <i class="fas fa-reply"></i> En réponse à un message
     </div>
     <?php endif; ?>
@@ -73,13 +73,13 @@ $canPin = isset($isModerator) && $isModerator && !$deletedAt;
                 <button class="btn-icon message-menu-btn" title="Actions"><i class="fas fa-ellipsis-v"></i></button>
                 <div class="message-dropdown-content">
                     <?php if ($canEdit): ?>
-                    <button onclick="editMessage(<?= $messageId ?>)"><i class="fas fa-edit"></i> Modifier</button>
+                    <button data-fr-click="editMessage" data-fr-args='[<?= (int)$messageId ?>]'><i class="fas fa-edit"></i> Modifier</button>
                     <?php endif; ?>
                     <?php if ($canDelete): ?>
-                    <button onclick="deleteMessage(<?= $messageId ?>)"><i class="fas fa-trash"></i> Supprimer</button>
+                    <button data-fr-click="deleteMessage" data-fr-args='[<?= (int)$messageId ?>]'><i class="fas fa-trash"></i> Supprimer</button>
                     <?php endif; ?>
                     <?php if ($canPin): ?>
-                    <button onclick="togglePinMessage(<?= $messageId ?>)">
+                    <button data-fr-click="togglePinMessage" data-fr-args='[<?= (int)$messageId ?>]'>
                         <i class="fas fa-thumbtack"></i> <?= $isPinned ? 'Désépingler' : 'Épingler' ?>
                     </button>
                     <?php endif; ?>
@@ -129,7 +129,7 @@ $canPin = isset($isModerator) && $isModerator && !$deletedAt;
     
     <?php if (!$deletedAt): ?>
     <div class="message-reactions-add">
-        <button class="btn-icon reaction-add-btn" onclick="showReactionPicker(<?= $messageId ?>)" title="Ajouter une réaction">
+        <button class="btn-icon reaction-add-btn" data-fr-click="showReactionPicker" data-fr-args='[<?= (int)$messageId ?>]' title="Ajouter une réaction">
             <i class="far fa-smile"></i>
         </button>
     </div>

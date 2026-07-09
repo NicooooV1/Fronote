@@ -35,7 +35,7 @@ if (!$classeId) {
             <form method="get" class="comp-selector-form">
                 <div class="form-group">
                     <label>Période</label>
-                    <select name="periode_id" onchange="this.form.submit()" class="form-select">
+                    <select name="periode_id" data-fr-change="submitOwn" class="form-select">
                         <option value="0">Toutes</option>
                         <?php foreach ($periodes as $p): ?>
                             <option value="<?= (int)$p['id'] ?>" <?= $p['id'] == $periodeId ? 'selected' : '' ?>><?= htmlspecialchars($p['nom']) ?></option>

@@ -270,7 +270,7 @@ include 'includes/header.php';
 </div>
 <?php endif; ?>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 document.addEventListener('DOMContentLoaded', function() {
     // ── Modal de suppression ──
     var modal     = document.getElementById('confirmationModal');

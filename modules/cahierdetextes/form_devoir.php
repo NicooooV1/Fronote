@@ -297,7 +297,7 @@ include 'includes/header.php';
                                                     <span><?= htmlspecialchars($f['nom_original']) ?></span>
                                                     <span class="fichier-taille"><?= FileUploader::formatBytes($f['taille']) ?></span>
                                                     <a href="?id=<?= $id ?>&del_fichier=<?= $f['id'] ?>&token=<?= urlencode(generateCSRFToken()) ?>"
-                                                       class="btn btn-sm btn-danger" onclick="return confirm('Supprimer ce fichier ?');"
+                                                       class="btn btn-sm btn-danger" data-fr-confirm="Supprimer ce fichier ?"
                                                        title="Supprimer"><i class="fas fa-trash"></i></a>
                                                 </div>
                                             <?php endforeach; ?>

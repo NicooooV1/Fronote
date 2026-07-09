@@ -163,7 +163,7 @@ if ($_topbar_is_parent && !empty($_SESSION['user_id'])) {
         <?php if (($activePage ?? '') !== 'accueil'): ?>
         <button class="topbar-dropdown__trigger" type="button" id="topbar-pin-page"
                 title="<?= __('nav.favorite_add', ['default' => 'Épingler cette page']) ?>"
-                onclick="fronotePinCurrentPage()">
+                data-fr-click="fronotePinCurrentPage">
             <i class="far fa-star"></i>
         </button>
         <?php endif; ?>
@@ -188,7 +188,7 @@ if ($_topbar_is_parent && !empty($_SESSION['user_id'])) {
                     <?php if ($_isPage): ?>
                     <button class="topbar-fav-toggle is-favorite" type="button"
                             title="<?= __('nav.favorite_remove') ?>"
-                            onclick="fronoteFavRemove('<?= htmlspecialchars($fav['module_key'], ENT_QUOTES) ?>')">
+                            data-fr-click="fronoteFavRemove" data-fr-args='["<?= htmlspecialchars($fav['module_key'], ENT_QUOTES) ?>"]'>
                         <i class="fas fa-star"></i>
                     </button>
                     <?php else: ?>
@@ -205,7 +205,7 @@ if ($_topbar_is_parent && !empty($_SESSION['user_id'])) {
         </div>
         <?php endif; ?>
 
-        <script>
+        <script nonce="<?= csp_nonce() ?>">
         (function () {
             var EP = '<?= $rootPrefix ?>API/endpoints/favorites.php';
             function csrf() { var m = document.querySelector('meta[name="csrf-token"]'); return m ? m.getAttribute('content') : ''; }
@@ -286,7 +286,7 @@ if ($_topbar_is_parent && !empty($_SESSION['user_id'])) {
         <!-- Parent child selector -->
         <?php if ($_topbar_is_parent && count($_topbar_children) > 1): ?>
         <div class="topbar-child-selector">
-            <select onchange="switchChild(this.value)" class="topbar-child-select">
+            <select data-fr-change="switchChild" data-fr-pass="value" class="topbar-child-select">
                 <?php foreach ($_topbar_children as $_ch): ?>
                 <option value="<?= (int)$_ch['id'] ?>" <?= ($_topbar_selected_child && (int)$_ch['id'] === (int)$_topbar_selected_child['id']) ? 'selected' : '' ?>>
                     <?= htmlspecialchars($_ch['prenom'] . ' ' . $_ch['nom']) ?>

@@ -150,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                         <input type="file" name="documents[]" class="form-control">
                     </div>
                 </div>
-                <button type="button" class="btn btn-sm btn-outline" onclick="ajouterDocument()"><i class="fas fa-plus"></i> Ajouter un document</button>
+                <button type="button" class="btn btn-sm btn-outline" data-fr-click="ajouterDocument"><i class="fas fa-plus"></i> Ajouter un document</button>
             </div>
         </div>
 
@@ -171,7 +171,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     </form>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
+window.frF1 = function () { this.parentElement.remove(); };
 function ajouterDocument() {
     const container = document.getElementById('documents-container');
     const row = document.createElement('div');
@@ -183,7 +184,7 @@ function ajouterDocument() {
             <?php endforeach; ?>
         </select>
         <input type="file" name="documents[]" class="form-control">
-        <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+        <button type="button" class="btn btn-sm btn-danger" data-fr-click="frF1"><i class="fas fa-times"></i></button>
     `;
     container.appendChild(row);
 }

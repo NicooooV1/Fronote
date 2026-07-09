@@ -117,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                     <form method="post" style="display:inline;">
                         <?= csrfField() ?>
                         <input type="hidden" name="inscription_id" value="<?= $m['id'] ?>">
-                        <button name="action" value="retirer" class="btn btn-sm btn-outline" onclick="return confirm('Retirer ?')"><i class="fas fa-user-minus"></i></button>
+                        <button name="action" value="retirer" class="btn btn-sm btn-outline" data-fr-confirm="Retirer ?"><i class="fas fa-user-minus"></i></button>
                     </form>
                     <?php endif; ?>
                 </div>

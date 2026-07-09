@@ -103,7 +103,7 @@ if ($isGestionnaire) {
         <div class="card-header">
             <h3>Inscriptions actives (<?= count($inscriptions) ?>)</h3>
             <form method="get" class="inline-form">
-                <select name="creneau" class="form-select" onchange="this.form.submit()">
+                <select name="creneau" class="form-select" data-fr-change="submitOwn">
                     <option value="">Tous les créneaux</option>
                     <?php foreach ($creneaux as $cr): ?>
                         <option value="<?= $cr['id'] ?>" <?= $cr['id'] == $creneauId ? 'selected' : '' ?>><?= htmlspecialchars($cr['nom']) ?></option>

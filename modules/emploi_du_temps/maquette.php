@@ -119,7 +119,7 @@ include 'includes/header.php';
                     <td><?= htmlspecialchars($row['groupe'] ?? '—') ?></td>
                     <td><?= htmlspecialchars($row['salle_type'] ?? '—') ?></td>
                     <td>
-                        <form method="POST" onsubmit="return confirm('Supprimer ce besoin ?');" style="margin:0">
+                        <form method="POST" data-fr-confirm="Supprimer ce besoin ?" style="margin:0">
                             <?= csrfField() ?>
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="id" value="<?= (int)$row['id'] ?>">

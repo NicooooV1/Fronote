@@ -132,10 +132,10 @@ include 'includes/header.php';
     <input type="hidden" name="commentaire" id="bulk-comment" value="">
 
     <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
-        <button type="submit" name="action" value="bulk_valider" class="ds-btn ds-btn-success ds-btn-sm" onclick="return confirmBulk('valider')">
+        <button type="submit" name="action" value="bulk_valider" class="ds-btn ds-btn-success ds-btn-sm" data-fr-click="confirmBulk" data-fr-args='["valider"]'>
             <i class="fas fa-check"></i> Valider la sélection
         </button>
-        <button type="submit" name="action" value="bulk_refuser" class="ds-btn ds-btn-danger ds-btn-sm" onclick="return confirmBulk('refuser')">
+        <button type="submit" name="action" value="bulk_refuser" class="ds-btn ds-btn-danger ds-btn-sm" data-fr-click="confirmBulk" data-fr-args='["refuser"]'>
             <i class="fas fa-times"></i> Refuser la sélection
         </button>
         <span id="selection-count" style="margin-left:auto;color:var(--ds-text-muted);font-size:0.85rem;align-self:center;">0 sélectionnée(s)</span>
@@ -178,12 +178,12 @@ include 'includes/header.php';
                         <?php endif; ?>
                     </td>
                     <td style="white-space:nowrap;">
-                        <button type="button" class="ds-btn ds-btn-success ds-btn-sm ds-btn-icon" 
-                                onclick="validateSingle(<?= $abs['id'] ?>, 'valider')" title="Valider">
+                        <button type="button" class="ds-btn ds-btn-success ds-btn-sm ds-btn-icon"
+                                data-fr-click="validateSingle" data-fr-args='[<?= $abs['id'] ?>,"valider"]' title="Valider">
                             <i class="fas fa-check"></i>
                         </button>
-                        <button type="button" class="ds-btn ds-btn-danger ds-btn-sm ds-btn-icon" 
-                                onclick="validateSingle(<?= $abs['id'] ?>, 'refuser')" title="Refuser">
+                        <button type="button" class="ds-btn ds-btn-danger ds-btn-sm ds-btn-icon"
+                                data-fr-click="validateSingle" data-fr-args='[<?= $abs['id'] ?>,"refuser"]' title="Refuser">
                             <i class="fas fa-times"></i>
                         </button>
                     </td>
@@ -207,7 +207,7 @@ include 'includes/header.php';
                 <textarea name="commentaire" id="modal-comment" class="ds-form-control" rows="3" placeholder="Motif du refus ou observation..."></textarea>
             </div>
             <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem;">
-                <button type="button" class="ds-btn ds-btn-outline" onclick="closeModal()">Annuler</button>
+                <button type="button" class="ds-btn ds-btn-outline" data-fr-click="closeModal">Annuler</button>
                 <button type="submit" id="modal-submit" class="ds-btn">Confirmer</button>
             </div>
         </form>
@@ -225,7 +225,7 @@ include 'includes/header.php';
 .link-primary:hover { text-decoration: underline; }
 </style>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 // Select all
 document.getElementById('select-all').addEventListener('change', function() {
     document.querySelectorAll('.select-checkbox').forEach(cb => cb.checked = this.checked);

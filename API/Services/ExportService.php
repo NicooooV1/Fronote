@@ -118,7 +118,7 @@ class ExportService
     <p class="print-date">Généré le ' . date('d/m/Y à H:i') . '</p>
 </div>
 ' . $htmlContent . '
-<script>window.onload=function(){window.print();}</script>
+<script nonce="' . csp_nonce() . '">window.onload=function(){window.print();}</script>
 </body>
 </html>';
 

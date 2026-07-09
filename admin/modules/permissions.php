@@ -436,13 +436,13 @@ include __DIR__ . '/../includes/header.php';
 
     <div class="sticky-save">
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button type="button" class="select-all-btn" onclick="toggleAllPerms(true)">
+            <button type="button" class="select-all-btn" data-fr-click="toggleAllPerms" data-fr-args='[true]'>
                 <i class="fas fa-check-double"></i> Tout cocher
             </button>
-            <button type="button" class="select-all-btn" onclick="toggleAllPerms(false)">
+            <button type="button" class="select-all-btn" data-fr-click="toggleAllPerms" data-fr-args='[false]'>
                 <i class="fas fa-times"></i> Tout decocher
             </button>
-            <button type="button" class="select-all-btn" onclick="toggleColumnPerms('can_view', true)">
+            <button type="button" class="select-all-btn" data-fr-click="toggleColumnPerms" data-fr-args='["can_view",true]'>
                 <i class="fas fa-eye"></i> Tout voir
             </button>
         </div>
@@ -464,7 +464,7 @@ include __DIR__ . '/../includes/header.php';
         Les administrateurs auront tous les droits, les professeurs et la vie scolaire des droits intermediaires,
         les eleves et parents des droits en lecture seule.
     </p>
-    <form method="post" onsubmit="return confirm('Etes-vous sur de vouloir reinitialiser toutes les permissions aux valeurs par defaut ? Cette action est irreversible.')">
+    <form method="post" data-fr-confirm="Etes-vous sur de vouloir reinitialiser toutes les permissions aux valeurs par defaut ? Cette action est irreversible.">
         <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
         <input type="hidden" name="action" value="reset_defaults">
         <button type="submit" class="btn-reset">
@@ -477,7 +477,7 @@ include __DIR__ . '/../includes/header.php';
     <a href="index.php" class="btn-back"><i class="fas fa-arrow-left"></i> Retour aux modules</a>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 function toggleAllPerms(checked) {
     document.querySelectorAll('#permissionsForm .perm-cb').forEach(function(cb) {
         cb.checked = checked;

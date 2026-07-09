@@ -76,22 +76,22 @@ $participants = $participants ?? [];
             
             <?php if ($canManage): ?>
             <div class="participant-actions">
-                <button class="btn-icon" onclick="toggleParticipantActions(<?= $p['id'] ?>)">
+                <button class="btn-icon" data-fr-click="toggleParticipantActions" data-fr-args='[<?= (int)$p['id'] ?>]'>
                     <i class="fas fa-ellipsis-v"></i>
                 </button>
                 <div class="participant-actions-menu" id="participant-actions-<?= $p['id'] ?>">
                     <?php if ($isAdmin): ?>
                         <?php if (!$isModerator): ?>
-                        <a href="#" onclick="promoteToModerator(<?= $p['id'] ?>); return false;">
+                        <a href="#" data-fr-click="promoteToModerator" data-fr-args='[<?= (int)$p['id'] ?>]' data-fr-prevent="1">
                             <i class="fas fa-user-shield"></i> Promouvoir modérateur
                         </a>
                         <?php else: ?>
-                        <a href="#" onclick="demoteFromModerator(<?= $p['id'] ?>); return false;">
+                        <a href="#" data-fr-click="demoteFromModerator" data-fr-args='[<?= (int)$p['id'] ?>]' data-fr-prevent="1">
                             <i class="fas fa-user"></i> Rétrograder
                         </a>
                         <?php endif; ?>
                     <?php endif; ?>
-                    <a href="#" onclick="removeParticipant(<?= $p['id'] ?>); return false;" class="danger">
+                    <a href="#" data-fr-click="removeParticipant" data-fr-args='[<?= (int)$p['id'] ?>]' data-fr-prevent="1" class="danger">
                         <i class="fas fa-user-minus"></i> Retirer
                     </a>
                 </div>

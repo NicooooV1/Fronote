@@ -135,7 +135,7 @@ include 'includes/header.php';
         <i class="fas fa-chevron-left"></i> Veille
     </a>
     <input type="date" value="<?= htmlspecialchars($date) ?>"
-           onchange="window.location.href='?date='+this.value" class="form-control date-input">
+           data-fr-change="frAp1" class="form-control date-input">
     <a href="?date=<?= date('Y-m-d', strtotime($date . ' +1 day')) ?>" class="btn btn-sm btn-secondary">
         Lendemain <i class="fas fa-chevron-right"></i>
     </a>
@@ -214,7 +214,7 @@ include 'includes/header.php';
                     <i class="fas fa-save"></i> Enregistrer
                 </button>
                 <button type="submit" name="action" value="valider" class="btn btn-success"
-                        onclick="return confirm('Valider l\'appel ? Les absences et retards seront enregistrés.')">
+                        data-fr-confirm="Valider l'appel ? Les absences et retards seront enregistrés.">
                     <i class="fas fa-check-double"></i> Valider l'appel
                 </button>
                 <a href="appel.php?date=<?= $date ?>" class="btn btn-secondary">
@@ -338,7 +338,8 @@ include 'includes/header.php';
 <?php
 ob_start();
 ?>
-<script>
+<script nonce="<?= csp_nonce() ?>">
+window.frAp1 = function () { window.location.href='?date='+this.value };
 document.addEventListener('DOMContentLoaded', function() {
     // Compteur en temps réel des statuts
     document.querySelectorAll('.statut-radio').forEach(function(radio) {

@@ -187,7 +187,7 @@ include 'includes/header.php';
     </div>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
     document.querySelector('form').addEventListener('submit', function(e) {
         const dateDebut = document.getElementById('date_debut').value;
         const dateFin = document.getElementById('date_fin').value;

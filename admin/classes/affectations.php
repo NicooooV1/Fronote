@@ -167,7 +167,7 @@ include __DIR__ . '/../includes/header.php';
                             <input type="hidden" name="action" value="toggle_single">
                             <input type="hidden" name="prof_id" value="<?= $p['id'] ?>">
                             <input type="hidden" name="class_name" value="<?= htmlspecialchars($c['nom']) ?>">
-                            <input type="checkbox" class="cell-check" <?= $isAssigned ? 'checked' : '' ?> onchange="this.form.submit()">
+                            <input type="checkbox" class="cell-check" <?= $isAssigned ? 'checked' : '' ?> data-fr-change="submitOwn">
                         </form>
                     </td>
                     <?php endforeach; ?>

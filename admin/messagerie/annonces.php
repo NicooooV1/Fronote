@@ -161,10 +161,10 @@ include __DIR__ . '/../includes/header.php';
             <div class="form-group">
                 <label>Destinataires</label>
                 <div class="target-selector">
-                    <label class="target-option active" onclick="selectTarget(this, 'all')"><input type="radio" name="target" value="all" checked style="display:none"> <i class="fas fa-globe"></i> Tous</label>
-                    <label class="target-option" onclick="selectTarget(this, 'eleves')"><input type="radio" name="target" value="eleves" style="display:none"> <i class="fas fa-user-graduate"></i> Élèves</label>
-                    <label class="target-option" onclick="selectTarget(this, 'professeurs')"><input type="radio" name="target" value="professeurs" style="display:none"> <i class="fas fa-chalkboard-teacher"></i> Professeurs</label>
-                    <label class="target-option" onclick="selectTarget(this, 'parents')"><input type="radio" name="target" value="parents" style="display:none"> <i class="fas fa-user-friends"></i> Parents</label>
+                    <label class="target-option active" data-fr-click="selectTarget" data-fr-args='["all"]'><input type="radio" name="target" value="all" checked style="display:none"> <i class="fas fa-globe"></i> Tous</label>
+                    <label class="target-option" data-fr-click="selectTarget" data-fr-args='["eleves"]'><input type="radio" name="target" value="eleves" style="display:none"> <i class="fas fa-user-graduate"></i> Élèves</label>
+                    <label class="target-option" data-fr-click="selectTarget" data-fr-args='["professeurs"]'><input type="radio" name="target" value="professeurs" style="display:none"> <i class="fas fa-chalkboard-teacher"></i> Professeurs</label>
+                    <label class="target-option" data-fr-click="selectTarget" data-fr-args='["parents"]'><input type="radio" name="target" value="parents" style="display:none"> <i class="fas fa-user-friends"></i> Parents</label>
                 </div>
             </div>
             <div class="form-group" id="classeFilter" style="display:none">
@@ -200,11 +200,11 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
-<script>
-function selectTarget(el, val) {
+<script nonce="<?= csp_nonce() ?>">
+function selectTarget(val) {
     document.querySelectorAll('.target-option').forEach(o => o.classList.remove('active'));
-    el.classList.add('active');
-    el.querySelector('input').checked = true;
+    this.classList.add('active');
+    this.querySelector('input').checked = true;
     document.getElementById('classeFilter').style.display = (val === 'eleves') ? '' : 'none';
 }
 </script>

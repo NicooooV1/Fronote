@@ -168,7 +168,7 @@ if (isset($_GET['edit'])) {
                     <span style="font-weight:600;font-size:13px;color:#2d3748;"><?= htmlspecialchars($domaine['nom']) ?></span>
                     <div style="margin-left:auto;display:flex;gap:4px;">
                         <a href="?edit=<?= $domaine['id'] ?>" class="btn btn-sm btn-secondary" title="Modifier"><i class="fas fa-edit"></i></a>
-                        <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer ce domaine et toutes ses sous-compétences ?');">
+                        <form method="post" style="display:inline;" data-fr-confirm="Supprimer ce domaine et toutes ses sous-compétences ?">
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="id" value="<?= $domaine['id'] ?>">
@@ -183,7 +183,7 @@ if (isset($_GET['edit'])) {
                     <span style="color:#4a5568;"><?= htmlspecialchars($child['nom']) ?></span>
                     <div style="margin-left:auto;display:flex;gap:4px;">
                         <a href="?edit=<?= $child['id'] ?>" class="btn btn-sm btn-secondary" style="padding:2px 6px;font-size:11px;"><i class="fas fa-edit"></i></a>
-                        <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer cette compétence ?');">
+                        <form method="post" style="display:inline;" data-fr-confirm="Supprimer cette compétence ?">
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="id" value="<?= $child['id'] ?>">

@@ -69,10 +69,10 @@ $csrf_token = $_SESSION['csrf_token'] ?? '';
 
 <!-- Onglets : Modifier / Notes / Absences -->
 <div class="tab-buttons">
-    <button class="tab-btn active" onclick="switchTab('edit')">Modifier</button>
+    <button class="tab-btn active" data-fr-click="switchTab" data-fr-args='["edit"]'>Modifier</button>
     <?php if ($type === 'eleve'): ?>
-    <button class="tab-btn" onclick="switchTab('notes')">Notes</button>
-    <button class="tab-btn" onclick="switchTab('absences')">Absences</button>
+    <button class="tab-btn" data-fr-click="switchTab" data-fr-args='["notes"]'>Notes</button>
+    <button class="tab-btn" data-fr-click="switchTab" data-fr-args='["absences"]'>Absences</button>
     <?php endif; ?>
 </div>
 
@@ -193,14 +193,14 @@ $csrf_token = $_SESSION['csrf_token'] ?? '';
 <div class="modal-actions">
     <form method="post" action="index.php" style="display:inline"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="reset_password"><input type="hidden" name="user_id" value="<?= $id ?>"><input type="hidden" name="user_type" value="<?= htmlspecialchars($type, ENT_QUOTES) ?>"><button class="btn-xs warning"><i class="fas fa-key"></i> Réinit. MDP</button></form>
     <form method="post" action="index.php" style="display:inline"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="toggle_active"><input type="hidden" name="user_id" value="<?= $id ?>"><input type="hidden" name="user_type" value="<?= htmlspecialchars($type, ENT_QUOTES) ?>"><input type="hidden" name="new_active" value="<?= ($u['actif'] ?? 1) ? 0 : 1 ?>"><button class="btn-xs <?= ($u['actif'] ?? 1) ? 'warning' : 'success' ?>"><i class="fas fa-<?= ($u['actif'] ?? 1) ? 'ban' : 'check' ?>"></i> <?= ($u['actif'] ?? 1) ? 'Désactiver' : 'Activer' ?></button></form>
-    <form method="post" action="index.php" style="display:inline" onsubmit="return confirm('Supprimer définitivement cet utilisateur ?')"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="user_id" value="<?= $id ?>"><input type="hidden" name="user_type" value="<?= htmlspecialchars($type, ENT_QUOTES) ?>"><button class="btn-xs danger"><i class="fas fa-trash"></i> Supprimer</button></form>
+    <form method="post" action="index.php" style="display:inline" data-fr-confirm="Supprimer définitivement cet utilisateur ?"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="user_id" value="<?= $id ?>"><input type="hidden" name="user_type" value="<?= htmlspecialchars($type, ENT_QUOTES) ?>"><button class="btn-xs danger"><i class="fas fa-trash"></i> Supprimer</button></form>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 function switchTab(name) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-    event.target.classList.add('active');
+    this.classList.add('active');
     document.getElementById('tab-' + name).classList.add('active');
 }
 </script>

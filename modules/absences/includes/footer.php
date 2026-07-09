@@ -4,7 +4,7 @@
 // Script spécifique au module absences
 ob_start();
 ?>
-<script>
+<script nonce="<?= csp_nonce() ?>">
 document.addEventListener('DOMContentLoaded', function() {
     // Gestion des coches de filtres
     const filterCheckboxes = document.querySelectorAll('.filter-checkbox');

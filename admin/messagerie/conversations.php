@@ -130,8 +130,8 @@ include __DIR__ . '/../includes/header.php';
                 <td style="font-size:12px"><?= $c['last_msg_at'] ? date('d/m H:i', strtotime($c['last_msg_at'])) : '-' ?></td>
                 <td style="font-size:12px"><?= date('d/m/Y', strtotime($c['created_at'])) ?></td>
                 <td>
-                    <button class="btn-xs primary" onclick="toggleDetail(<?= $c['id'] ?>)" title="Voir détails"><i class="fas fa-eye"></i></button>
-                    <form method="post" style="display:inline" onsubmit="return confirm('Supprimer tous les messages de cette conversation ?')"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="delete_conversation"><input type="hidden" name="conv_id" value="<?= $c['id'] ?>"><button class="btn-xs danger"><i class="fas fa-trash"></i></button></form>
+                    <button class="btn-xs primary" data-fr-click="toggleDetail" data-fr-args='[<?= (int)$c['id'] ?>]' title="Voir détails"><i class="fas fa-eye"></i></button>
+                    <form method="post" style="display:inline" data-fr-confirm="Supprimer tous les messages de cette conversation ?"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="delete_conversation"><input type="hidden" name="conv_id" value="<?= $c['id'] ?>"><button class="btn-xs danger"><i class="fas fa-trash"></i></button></form>
                 </td>
             </tr>
             <tr class="detail-panel" id="detail-<?= $c['id'] ?>">
@@ -153,7 +153,7 @@ include __DIR__ . '/../includes/header.php';
     <?php endif; ?>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 function toggleDetail(cid) {
     const row = document.getElementById('detail-' + cid);
     if (row.classList.contains('active')) {

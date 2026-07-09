@@ -158,7 +158,7 @@ if ($isGestionnaire) {
             <div class="card-header">
                 <h3>Réservations du <?= date('d/m/Y', strtotime($dateVue)) ?></h3>
                 <form method="get" class="inline-form">
-                    <input type="date" name="date" value="<?= $dateVue ?>" class="form-control" onchange="this.form.submit()">
+                    <input type="date" name="date" value="<?= $dateVue ?>" class="form-control" data-fr-change="submitOwn">
                 </form>
             </div>
             <div class="card-body">

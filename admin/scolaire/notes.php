@@ -200,7 +200,7 @@ include __DIR__ . '/../includes/header.php';
         </div>
         <button type="submit" class="btn btn-primary" style="height:35px"><i class="fas fa-filter"></i> Filtrer</button>
         <a href="notes.php" class="btn btn-secondary" style="height:35px;line-height:35px;text-decoration:none">Réinitialiser</a>
-        <button type="button" class="btn btn-success" style="height:35px;margin-left:auto" onclick="openAdd()"><i class="fas fa-plus"></i> Ajouter</button>
+        <button type="button" class="btn btn-success" style="height:35px;margin-left:auto" data-fr-click="openAdd"><i class="fas fa-plus"></i> Ajouter</button>
     </form>
 
     <!-- Table -->
@@ -225,8 +225,8 @@ include __DIR__ . '/../includes/header.php';
                 <td style="font-size:12px"><?= htmlspecialchars((($n['prof_prenom'] ?? '') !== '' ? $n['prof_prenom'][0] . '. ' : '') . ($n['prof_nom'] ?? '')) ?></td>
                 <td>T<?= $n['trimestre'] ?></td>
                 <td>
-                    <button class="btn-xs primary" onclick='openEdit(<?= json_encode($n, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)'><i class="fas fa-pen"></i></button>
-                    <form method="post" style="display:inline" onsubmit="return confirm('Supprimer cette note ?')"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="delete_note"><input type="hidden" name="note_id" value="<?= $n['id'] ?>"><button class="btn-xs danger"><i class="fas fa-trash"></i></button></form>
+                    <button class="btn-xs primary" data-fr-click="openEdit" data-fr-args='[<?= json_encode($n, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>]'><i class="fas fa-pen"></i></button>
+                    <form method="post" style="display:inline" data-fr-confirm="Supprimer cette note ?"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="delete_note"><input type="hidden" name="note_id" value="<?= $n['id'] ?>"><button class="btn-xs danger"><i class="fas fa-trash"></i></button></form>
                 </td>
             </tr>
             <?php endforeach; ?>
@@ -279,7 +279,7 @@ include __DIR__ . '/../includes/header.php';
                 <div class="form-group"><label>Trimestre</label><select name="trimestre"><option value="1">T1</option><option value="2">T2</option><option value="3">T3</option></select></div>
             </div>
             <div class="form-group"><label>Commentaire</label><textarea name="commentaire" rows="2"></textarea></div>
-            <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn btn-secondary" onclick="closeModal('addModal')">Annuler</button><button type="submit" class="btn btn-primary">Ajouter</button></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn btn-secondary" data-fr-click="closeModal" data-fr-args='["addModal"]'>Annuler</button><button type="submit" class="btn btn-primary">Ajouter</button></div>
         </form>
     </div>
 </div>
@@ -298,12 +298,12 @@ include __DIR__ . '/../includes/header.php';
                 <div class="form-group"><label>Coef</label><input type="number" name="coefficient" id="edit_coef" step="0.01"></div>
             </div>
             <div class="form-group"><label>Commentaire</label><textarea name="commentaire" id="edit_comment" rows="2"></textarea></div>
-            <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn btn-secondary" onclick="closeModal('editModal')">Annuler</button><button type="submit" class="btn btn-primary">Enregistrer</button></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn btn-secondary" data-fr-click="closeModal" data-fr-args='["editModal"]'>Annuler</button><button type="submit" class="btn btn-primary">Enregistrer</button></div>
         </form>
     </div>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 function openAdd() { document.getElementById('addModal').classList.add('active'); }
 function openEdit(n) {
     document.getElementById('edit_note_id').value = n.id;

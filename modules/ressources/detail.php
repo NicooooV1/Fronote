@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
             </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer</button>
-                <button type="submit" name="supprimer" value="1" class="btn btn-danger" onclick="return confirm('Supprimer ?')"><i class="fas fa-trash"></i></button>
+                <button type="submit" name="supprimer" value="1" class="btn btn-danger" data-fr-confirm="Supprimer ?"><i class="fas fa-trash"></i></button>
             </div>
         </form>
     </div></div>

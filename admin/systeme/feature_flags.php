@@ -87,7 +87,7 @@ $pageTitle = 'Feature Flags';
 $currentPage = 'feature_flags';
 
 ob_start(); ?>
-<button type="button" class="ui-btn ui-btn--primary ui-btn--sm" onclick="openCreateModal()">
+<button type="button" class="ui-btn ui-btn--primary ui-btn--sm" data-fr-click="openCreateModal">
     <i class="fas fa-plus"></i> Nouveau flag
 </button>
 <?php $headerExtraActions = ob_get_clean();
@@ -106,15 +106,15 @@ include __DIR__ . '/../includes/header.php';
 
     <!-- Filter bar -->
     <div class="d-flex gap-md mb-md flex-wrap" style="align-items:center;">
-        <input type="text" id="flagSearch" class="form-control" placeholder="Rechercher un flag..." style="max-width:300px;" oninput="filterFlags()">
-        <select id="flagFilter" class="form-control" style="max-width:200px;" onchange="filterFlags()">
+        <input type="text" id="flagSearch" class="form-control" placeholder="Rechercher un flag..." style="max-width:300px;" data-fr-input="filterFlags">
+        <select id="flagFilter" class="form-control" style="max-width:200px;" data-fr-change="filterFlags">
             <option value="all">Tous</option>
             <option value="enabled">Actifs uniquement</option>
             <option value="disabled">Inactifs uniquement</option>
         </select>
         <div style="margin-left:auto;">
-            <button type="button" class="ui-btn ui-btn--ghost ui-btn--sm" onclick="expandAll()"><i class="fas fa-expand-arrows-alt"></i> Tout ouvrir</button>
-            <button type="button" class="ui-btn ui-btn--ghost ui-btn--sm" onclick="collapseAll()"><i class="fas fa-compress-arrows-alt"></i> Tout fermer</button>
+            <button type="button" class="ui-btn ui-btn--ghost ui-btn--sm" data-fr-click="expandAll"><i class="fas fa-expand-arrows-alt"></i> Tout ouvrir</button>
+            <button type="button" class="ui-btn ui-btn--ghost ui-btn--sm" data-fr-click="collapseAll"><i class="fas fa-compress-arrows-alt"></i> Tout fermer</button>
         </div>
     </div>
 
@@ -125,7 +125,7 @@ include __DIR__ . '/../includes/header.php';
         $totalInModule = count($flags);
     ?>
     <div class="flag-module-group mb-md" data-module="<?= e($module) ?>">
-        <div class="flag-module-header" onclick="this.parentElement.classList.toggle('collapsed')">
+        <div class="flag-module-header" data-fr-click="frFF1">
             <div class="d-flex gap-md" style="align-items:center;">
                 <i class="fas fa-chevron-down flag-chevron"></i>
                 <strong class="fs-md"><?= e(ucfirst($module)) ?></strong>
@@ -157,10 +157,10 @@ include __DIR__ . '/../includes/header.php';
                     <span class="text-muted fs-xs" title="<?= e(json_encode($flag['config'])) ?>"><i class="fas fa-cog"></i></span>
                     <?php endif; ?>
                     <label class="flag-toggle">
-                        <input type="checkbox" <?= $flag['enabled'] ? 'checked' : '' ?> onchange="toggleFlag('<?= e($flag['flag_key']) ?>', this.checked)">
+                        <input type="checkbox" <?= $flag['enabled'] ? 'checked' : '' ?> data-fr-change="frFF2">
                         <span class="flag-toggle-slider"></span>
                     </label>
-                    <button type="button" class="ui-btn ui-btn--ghost ui-btn--sm" onclick="deleteFlag('<?= e($flag['flag_key']) ?>')" title="Supprimer">
+                    <button type="button" class="ui-btn ui-btn--ghost ui-btn--sm" data-fr-click="deleteFlag" data-fr-args='["<?= e($flag['flag_key']) ?>"]' title="Supprimer">
                         <i class="fas fa-trash-alt text-danger"></i>
                     </button>
                 </div>
@@ -174,14 +174,14 @@ include __DIR__ . '/../includes/header.php';
 
 <!-- Create modal -->
 <?= ui_modal('createFlagModal', 'Nouveau Feature Flag', '
-    <form id="createFlagForm" onsubmit="return createFlag(event)">
+    <form id="createFlagForm" data-fr-submit="createFlag">
         ' . ui_form_group('Cle (module.feature)', '<input type="text" name="flag_key" class="form-control" placeholder="module.feature_name" required pattern="[a-z0-9_.]+">') . '
         ' . ui_form_group('Libelle', '<input type="text" name="label" class="form-control" placeholder="Nom affiche" required>') . '
         ' . ui_form_group('Description', '<textarea name="description" class="form-control" rows="2" placeholder="Description optionnelle"></textarea>') . '
         ' . ui_form_group('Types etablissement', '<input type="text" name="establishment_types" class="form-control" placeholder="Vide = tous, ou: college,lycee,superieur">') . '
         ' . ui_form_group('', '<label class="d-flex gap-sm" style="align-items:center;cursor:pointer;"><input type="checkbox" name="enabled" value="1"> Actif par defaut</label>') . '
         <div class="d-flex gap-md mt-md" style="justify-content:flex-end;">
-            <button type="button" class="ui-btn ui-btn--ghost" onclick="FronoteModal.close(\'createFlagModal\')">Annuler</button>
+            <button type="button" class="ui-btn ui-btn--ghost" data-fr-click="frFF4">Annuler</button>
             <button type="submit" class="ui-btn ui-btn--primary">Creer</button>
         </div>
     </form>
@@ -227,6 +227,10 @@ include __DIR__ . '/../includes/header.php';
 <script nonce="<?= $_hdr_nonce ?>">
 var csrfToken = '<?= $csrfToken ?>';
 
+window.frFF1 = function () { this.parentElement.classList.toggle('collapsed'); };
+window.frFF2 = function () { toggleFlag(this.closest('.flag-row').getAttribute('data-key'), this.checked); };
+window.frFF4 = function () { FronoteModal.close('createFlagModal'); };
+
 function toggleFlag(key, enabled) {
     var row = document.querySelector('.flag-row[data-key="' + key + '"]');
     if (row) row.setAttribute('data-enabled', enabled ? '1' : '0');
@@ -268,8 +272,7 @@ function openCreateModal() {
     FronoteModal.open('createFlagModal');
 }
 
-function createFlag(e) {
-    e.preventDefault();
+function createFlag() {
     var form = document.getElementById('createFlagForm');
     var fd = new FormData(form);
     fd.append('action', 'create');

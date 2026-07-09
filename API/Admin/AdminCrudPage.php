@@ -241,7 +241,7 @@ class AdminCrudPage
             <div class="top-bar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                 <div>
                     <?php if (in_array('create', array_merge($actions, ['create']), true)): ?>
-                        <button class="btn btn-primary" onclick="document.getElementById('crudCreateModal').classList.add('active')">
+                        <button class="btn btn-primary" data-fr-click="addClass" data-fr-args='["crudCreateModal","active"]'>
                             <i class="fas fa-plus"></i> <?= $e($createLabel) ?>
                         </button>
                     <?php endif; ?>
@@ -310,7 +310,7 @@ class AdminCrudPage
         <?php $this->renderCreateModal($csrf, $formFields); ?>
         <?php $this->renderEditModal($csrf, $formFields, $idField); ?>
 
-        <script>
+        <script nonce="<?= csp_nonce() ?>">
         function crudOpenEdit(data) {
             <?php foreach ($formFields as $key => $field): ?>
                 <?php if (($field['type'] ?? 'text') === 'checkbox'): ?>
@@ -470,10 +470,13 @@ class AdminCrudPage
     private function renderRowActions(array $row, string $csrf, string $idField, array $actions): void
     {
         $id = $row[$idField] ?? 0;
-        $jsonData = htmlspecialchars(json_encode($row, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_TAG), ENT_QUOTES, 'UTF-8');
+        // data-fr-args doit être du JSON valide pour JSON.parse : on n'utilise donc PAS
+        // JSON_HEX_* (qui produit " hors chaîne, invalide pour JSON.parse). htmlspecialchars
+        // ENT_QUOTES suffit à sécuriser l'attribut HTML (les " deviennent &quot;).
+        $jsonData = htmlspecialchars(json_encode($row, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
 
         if (in_array('edit', $actions, true)) {
-            echo "<button class=\"btn-xs primary\" onclick='crudOpenEdit({$jsonData})'><i class=\"fas fa-pen\"></i></button> ";
+            echo "<button class=\"btn-xs primary\" data-fr-click=\"crudOpenEdit\" data-fr-args=\"{$jsonData}\"><i class=\"fas fa-pen\"></i></button> ";
         }
 
         foreach ($actions as $action) {
@@ -495,7 +498,7 @@ class AdminCrudPage
         }
 
         if (in_array('delete', $actions, true)) {
-            echo "<form method=\"post\" style=\"display:inline\" onsubmit=\"return confirm('Supprimer ?')\">"
+            echo "<form method=\"post\" style=\"display:inline\" data-fr-confirm=\"Supprimer ?\">"
                 . "<input type=\"hidden\" name=\"csrf_token\" value=\"{$csrf}\">"
                 . "<input type=\"hidden\" name=\"action\" value=\"delete\">"
                 . "<input type=\"hidden\" name=\"{$idField}\" value=\"{$id}\">"
@@ -517,7 +520,7 @@ class AdminCrudPage
                         <?php $this->renderFormField($key, $field, 'c'); ?>
                     <?php endforeach; ?>
                     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
-                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('crudCreateModal').classList.remove('active')">Annuler</button>
+                        <button type="button" class="btn btn-secondary" data-fr-click="removeClass" data-fr-args='["crudCreateModal","active"]'>Annuler</button>
                         <button type="submit" class="btn btn-primary">Créer</button>
                     </div>
                 </form>
@@ -540,7 +543,7 @@ class AdminCrudPage
                         <?php $this->renderFormField($key, $field, 'e'); ?>
                     <?php endforeach; ?>
                     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
-                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('crudEditModal').classList.remove('active')">Annuler</button>
+                        <button type="button" class="btn btn-secondary" data-fr-click="removeClass" data-fr-args='["crudEditModal","active"]'>Annuler</button>
                         <button type="submit" class="btn btn-primary">Enregistrer</button>
                     </div>
                 </form>

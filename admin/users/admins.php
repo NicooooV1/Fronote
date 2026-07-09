@@ -153,8 +153,8 @@ include __DIR__ . '/../includes/header.php';
                 <td style="font-size:13px;color:#718096;"><?= !empty($a['last_login']) ? date('d/m/Y H:i', strtotime($a['last_login'])) : '<em>Jamais</em>' ?></td>
                 <td>
                     <div class="actions-cell">
-                        <button class="btn-xs primary" onclick='openEdit(<?= json_encode($a, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)' title="Modifier"><i class="fas fa-edit"></i></button>
-                        <button class="btn-xs primary" onclick="openPwd(<?= $a['id'] ?>)" title="Mot de passe"><i class="fas fa-key"></i></button>
+                        <button class="btn-xs primary" data-fr-click="openEdit" data-fr-args='[<?= json_encode($a, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>]' title="Modifier"><i class="fas fa-edit"></i></button>
+                        <button class="btn-xs primary" data-fr-click="openPwd" data-fr-args='[<?= $a['id'] ?>]' title="Mot de passe"><i class="fas fa-key"></i></button>
                         <form method="post" style="display:inline"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="toggle_2fa"><input type="hidden" name="admin_id" value="<?= $a['id'] ?>"><button class="btn-xs <?= ($a['two_factor_enabled'] ?? 0) ? 'warning' : 'success' ?>" title="Basculer 2FA"><i class="fas fa-shield-alt"></i></button></form>
                         <?php if (!empty($a['locked_until']) && strtotime($a['locked_until']) > time()): ?>
                             <form method="post" style="display:inline"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="unlock"><input type="hidden" name="admin_id" value="<?= $a['id'] ?>"><button class="btn-xs warning" title="Déverrouiller"><i class="fas fa-unlock"></i></button></form>
@@ -171,7 +171,7 @@ include __DIR__ . '/../includes/header.php';
 <!-- Modal modifier info -->
 <div class="modal-overlay" id="editModal">
     <div class="modal-box">
-        <button class="modal-close" onclick="document.getElementById('editModal').classList.remove('show')">&times;</button>
+        <button class="modal-close" data-fr-click="removeClass" data-fr-args='["editModal","show"]'>&times;</button>
         <h2>Modifier les informations</h2>
         <form method="post">
             <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
@@ -189,7 +189,7 @@ include __DIR__ . '/../includes/header.php';
 <!-- Modal mot de passe -->
 <div class="modal-overlay" id="pwdModal">
     <div class="modal-box">
-        <button class="modal-close" onclick="document.getElementById('pwdModal').classList.remove('show')">&times;</button>
+        <button class="modal-close" data-fr-click="removeClass" data-fr-args='["pwdModal","show"]'>&times;</button>
         <h2>Changer le mot de passe</h2>
         <form method="post">
             <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
@@ -202,7 +202,7 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 function openEdit(admin) {
     document.getElementById('edit_id').value = admin.id;
     document.getElementById('edit_nom').value = admin.nom;

@@ -155,7 +155,7 @@ $ffLock       = $features ? $features->isEnabled('notes.lock_after_deadline') : 
 // Extra JS for graphs
 $extraHeadHtml = '';
 if ($ffGraphs) {
-    $extraHeadHtml = '<script src="' . $rootPrefix . 'modules/notes/assets/js/notes-graphs.js" defer></script>';
+    $extraHeadHtml = '<script src="' . $rootPrefix . 'modules/notes/assets/js/notes-graphs.js" defer nonce="' . csp_nonce() . '"></script>';
 }
 
 // Navigation secondaire du module (rendue en bandeau par shared_topbar.php).
@@ -194,7 +194,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                         <input type="hidden" name="classe" value="<?= htmlspecialchars($filterClasse) ?>">
                         <input type="hidden" name="matiere" value="<?= $filterMatiere ?>">
                         <input type="hidden" name="trimestre" value="<?= $selectedTrimestre ?>">
-                        <button type="submit" class="ds-btn ds-btn-warning ds-btn-sm" onclick="return confirm('Verrouiller toutes les notes de cette classe/matière pour ce trimestre ?')">
+                        <button type="submit" class="ds-btn ds-btn-warning ds-btn-sm" data-fr-confirm="Verrouiller toutes les notes de cette classe/matière pour ce trimestre ?">
                             <i class="fas fa-lock"></i> Verrouiller les notes
                         </button>
                     </form>
@@ -470,7 +470,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                         <canvas id="canvas-boxplot" class="notes-graph-canvas"></canvas>
                     </div>
                 </div>
-                <script>
+                <script nonce="<?= csp_nonce() ?>">
                 (function() {
                     var tabs = document.querySelectorAll('.notes-graphs-tab');
                     for (var i = 0; i < tabs.length; i++) {
@@ -544,7 +544,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                                 <td class="text-center text-muted">×<?= $n['coefficient'] ?></td>
                                 <td class="text-center">
                                     <a href="form_note.php?id=<?= $n['id'] ?>" class="btn btn-sm btn-secondary" title="Modifier"><i class="fas fa-edit"></i></a>
-                                    <form method="POST" action="supprimer_note.php" style="display:inline;" onsubmit="return confirm('Supprimer cette note ?');">
+                                    <form method="POST" action="supprimer_note.php" style="display:inline;" data-fr-confirm="Supprimer cette note ?">
                                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
                                         <input type="hidden" name="id" value="<?= $n['id'] ?>">
                                         <button type="submit" class="btn btn-sm btn-danger" title="Supprimer"><i class="fas fa-trash"></i></button>

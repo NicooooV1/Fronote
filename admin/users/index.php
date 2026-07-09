@@ -316,7 +316,7 @@ include __DIR__ . '/../includes/header.php';
                     </td>
                     <td>
                         <div class="actions-cell">
-                            <button class="btn-xs primary" onclick="openProfile(<?= $u['id'] ?>, '<?= $u['profil'] ?>')"><i class="fas fa-eye"></i></button>
+                            <button class="btn-xs primary" data-fr-click="openProfile" data-fr-args='[<?= $u['id'] ?>,"<?= $u['profil'] ?>"]'><i class="fas fa-eye"></i></button>
                             <?php if (!empty($u['locked_until']) && strtotime($u['locked_until']) > time()): ?>
                                 <form method="post" style="display:inline"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="unlock"><input type="hidden" name="user_id" value="<?= $u['id'] ?>"><input type="hidden" name="user_type" value="<?= $u['profil'] ?>"><button class="btn-xs warning" title="Déverrouiller"><i class="fas fa-unlock"></i></button></form>
                             <?php endif; ?>
@@ -350,13 +350,13 @@ include __DIR__ . '/../includes/header.php';
 <!-- Modal profil utilisateur -->
 <div class="modal-overlay" id="profileModal">
     <div class="modal-box">
-        <button class="modal-close" onclick="closeProfile()">&times;</button>
+        <button class="modal-close" data-fr-click="closeProfile">&times;</button>
         <h2 id="profileTitle">Profil utilisateur</h2>
         <div id="profileContent"><p style="text-align:center;color:#999;"><i class="fas fa-spinner fa-spin"></i> Chargement…</p></div>
     </div>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 function openProfile(userId, userType) {
     document.getElementById('profileModal').classList.add('show');
     const content = document.getElementById('profileContent');

@@ -129,7 +129,7 @@ $policies = $rgpdService->getRetentionPolicies();
                 <i class="fas fa-exclamation-triangle"></i> 
                 <strong>Attention :</strong> Cette action est irréversible. Les données purgées ne pourront pas être récupérées.
             </div>
-            <form method="post" onsubmit="return confirm('Êtes-vous sûr de vouloir exécuter la purge ? Cette action est irréversible.')">
+            <form method="post" data-fr-confirm="Êtes-vous sûr de vouloir exécuter la purge ? Cette action est irréversible.">
                 <?= csrfField() ?>
                 <input type="hidden" name="action" value="execute_purge">
                 <button type="submit" class="btn btn-danger"><i class="fas fa-broom"></i> Exécuter la purge maintenant</button>

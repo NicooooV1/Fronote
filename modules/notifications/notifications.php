@@ -108,7 +108,7 @@ $stats = $notifService->getStats($userId, $userType);
                         <button type="submit" class="btn btn-sm btn-outline" title="Marquer comme lu"><i class="fas fa-check"></i></button>
                     </form>
                     <?php endif; ?>
-                    <form method="post" style="display:inline" onsubmit="return confirm('Supprimer cette notification ?')">
+                    <form method="post" style="display:inline" data-fr-confirm="Supprimer cette notification ?">
                         <?= csrfField() ?>
                         <input type="hidden" name="action" value="supprimer">
                         <input type="hidden" name="id" value="<?= $notif['id'] ?>">

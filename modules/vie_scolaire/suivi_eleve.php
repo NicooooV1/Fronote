@@ -182,7 +182,7 @@ $activeTab = $_GET['tab'] ?? 'resume';
 </div>
 <?php endif; ?>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 (function() {
     const input = document.getElementById('searchEleve');
     const results = document.getElementById('searchResults');

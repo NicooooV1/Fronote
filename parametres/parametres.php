@@ -341,7 +341,7 @@ $roleWidgets = match ($userType) {
                             <p class="form-text" style="margin-bottom:8px">Le thème sombre réduit la fatigue oculaire. Le mode automatique suit les préférences de votre système.</p>
                             <div class="theme-selector">
                                 <?php foreach ($themes as $k => $v): ?>
-                                    <label class="theme-option <?= $settings['theme'] === $k ? 'selected' : '' ?>" onclick="previewTheme('<?= $k ?>')">
+                                    <label class="theme-option <?= $settings['theme'] === $k ? 'selected' : '' ?>" data-fr-click="previewTheme" data-fr-args='["<?= $k ?>"]'>
                                         <input type="radio" name="theme" value="<?= $k ?>" <?= $settings['theme'] === $k ? 'checked' : '' ?>>
                                         <i class="fas <?= ['light' => 'fa-sun', 'dark' => 'fa-moon', 'liquid' => 'fa-droplet', 'auto' => 'fa-circle-half-stroke'][$k] ?? 'fa-adjust' ?>"></i>
                                         <span><?= $v ?></span>
@@ -352,7 +352,7 @@ $roleWidgets = match ($userType) {
 
                         <div class="form-group">
                             <label class="form-label">Taille de police</label>
-                            <select name="taille_police" class="form-select" onchange="previewFontSize(this.value)">
+                            <select name="taille_police" class="form-select" data-fr-change="previewFontSize" data-fr-pass="value">
                                 <?php foreach ($fontSizes as $k => $v): ?>
                                     <option value="<?= $k ?>" <?= $settings['taille_police'] === $k ? 'selected' : '' ?>><?= $v ?></option>
                                 <?php endforeach; ?>
@@ -394,7 +394,7 @@ $roleWidgets = match ($userType) {
                 </div>
             </div>
 
-            <script>
+            <script nonce="<?= csp_nonce() ?>">
             // Aperçu + persistance via le moteur du design system (FronoteUI toujours chargé via shared_header).
             function previewTheme(theme) {
                 if (window.FronoteUI && window.FronoteUI.setTheme) window.FronoteUI.setTheme(theme);
@@ -624,7 +624,7 @@ $roleWidgets = match ($userType) {
                         </div>
                         <div style="display:flex;gap:8px;margin-top:10px">
                             <button type="button" class="btn btn-secondary btn-sm" id="copyBackupCodes"><i class="fas fa-copy"></i> Copier</button>
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="window.print()"><i class="fas fa-print"></i> Imprimer</button>
+                            <button type="button" class="btn btn-secondary btn-sm" data-fr-click="print"><i class="fas fa-print"></i> Imprimer</button>
                         </div>
                         <?php else: ?>
                         <p class="form-text">Il vous reste <strong><?= (int) $twoFA_backupRemaining ?></strong> code(s) de secours utilisable(s).
@@ -709,7 +709,7 @@ $roleWidgets = match ($userType) {
             </div>
 
             <!-- Password strength meter script -->
-            <script>
+            <script nonce="<?= csp_nonce() ?>">
             (function() {
                 var pwd = document.getElementById('newPwd');
                 var bar = document.getElementById('pwdStrengthBar');
@@ -824,7 +824,7 @@ $roleWidgets = match ($userType) {
                                     <p>Réinitialise tous vos paramètres aux valeurs par défaut</p>
                                 </div>
                             </div>
-                            <form method="post" onsubmit="return confirm('Êtes-vous sûr de vouloir réinitialiser tous vos paramètres ?')">
+                            <form method="post" data-fr-confirm="Êtes-vous sûr de vouloir réinitialiser tous vos paramètres ?">
                                 <?= csrfField() ?>
                                 <input type="hidden" name="action" value="reset_settings">
                                 <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-undo"></i> Réinitialiser</button>

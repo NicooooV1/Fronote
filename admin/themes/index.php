@@ -205,7 +205,7 @@ include __DIR__ . '/../includes/header.php';
                     </form>
                     <?php endif; ?>
                     <?php if (empty($theme['is_builtin'])): ?>
-                    <form method="POST" style="display:inline" onsubmit="return confirm('Supprimer ce thème ?')">
+                    <form method="POST" style="display:inline" data-fr-confirm="Supprimer ce thème ?">
                         <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                         <input type="hidden" name="action" value="delete">
                         <input type="hidden" name="theme_key" value="<?= htmlspecialchars($theme['key']) ?>">
@@ -274,7 +274,7 @@ include __DIR__ . '/../includes/header.php';
 
     <form method="GET" style="margin-bottom:14px">
         <label style="font-size:.85em;color:#4a5568;font-weight:600;margin-right:8px">Thème à personnaliser :</label>
-        <select name="edit_theme" onchange="this.form.submit()" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px">
+        <select name="edit_theme" data-fr-change="submitOwn" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px">
             <?php foreach ($themes as $t): ?>
             <option value="<?= htmlspecialchars($t['key']) ?>" <?= $t['key'] === $editTheme ? 'selected' : '' ?>><?= htmlspecialchars($t['name'] ?? $t['key']) ?></option>
             <?php endforeach; ?>

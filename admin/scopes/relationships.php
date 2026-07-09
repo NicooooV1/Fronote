@@ -97,7 +97,7 @@ include __DIR__ . '/../includes/header.php';
                         <td><?= $r['etablissement_id'] !== null ? (int) $r['etablissement_id'] : '<em>—</em>' ?></td>
                         <td><?= !empty($r['expires_at']) ? htmlspecialchars($r['expires_at']) : '<em>permanent</em>' ?></td>
                         <td>
-                            <form method="post" onsubmit="return confirm('Désactiver cette relation ?')">
+                            <form method="post" data-fr-confirm="Désactiver cette relation ?">
                                 <?= csrfField() ?>
                                 <input type="hidden" name="st" value="<?= htmlspecialchars($srcType) ?>">
                                 <input type="hidden" name="sid" value="<?= $srcId ?>">

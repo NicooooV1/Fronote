@@ -107,7 +107,7 @@ $p = $entry ?? ['eleve_id' => '', 'type_parcours' => 'avenir', 'titre' => '', 'd
         </div>
     </form>
 </div>
-<script>
+<script nonce="<?= csp_nonce() ?>">
 document.querySelectorAll('.modele-link').forEach(a => {
     a.addEventListener('click', e => {
         e.preventDefault();

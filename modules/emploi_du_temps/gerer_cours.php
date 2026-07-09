@@ -266,7 +266,7 @@ include 'includes/header.php';
 <?php
 ob_start();
 ?>
-<script>
+<script nonce="<?= csp_nonce() ?>">
 document.addEventListener('DOMContentLoaded', function() {
     // Auto-fill heure_debut/heure_fin quand on sélectionne un créneau
     const creneauSelect = document.getElementById('creneau_id');

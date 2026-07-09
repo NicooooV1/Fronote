@@ -149,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     </div>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 document.getElementById('type').addEventListener('change', function() {
     document.getElementById('section-creneaux').style.display = this.value === 'parents_profs' ? 'block' : 'none';
 });

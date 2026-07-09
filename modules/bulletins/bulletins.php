@@ -183,12 +183,12 @@ if (!$selectedPeriode && !empty($periodes)) {
     $stats = $filterClasse ? $service->getStatsClasse($filterClasse, $selectedPeriode) : [];
     ?>
     <div class="filter-bar">
-        <select id="classeSelect" onchange="window.location='?periode=<?= $selectedPeriode ?>&classe='+this.value" class="form-select">
+        <select id="classeSelect" data-fr-change="frBul1" class="form-select">
             <?php foreach ($classes as $c): ?>
                 <option value="<?= $c['id'] ?>" <?= $filterClasse == $c['id'] ? 'selected' : '' ?>><?= htmlspecialchars($c['nom']) ?></option>
             <?php endforeach; ?>
         </select>
-        <select onchange="window.location='?periode=<?= $selectedPeriode ?>&classe=<?= $filterClasse ?>&statut='+this.value" class="form-select" style="width:auto;">
+        <select data-fr-change="frBul2" class="form-select" style="width:auto;">
             <option value="">Tous statuts</option>
             <option value="brouillon" <?= $filterStatut === 'brouillon' ? 'selected' : '' ?>>Brouillons</option>
             <option value="valide" <?= $filterStatut === 'valide' ? 'selected' : '' ?>>Validés</option>
@@ -249,5 +249,10 @@ if (!$selectedPeriode && !empty($periodes)) {
         <?= \API\Core\DataTable::renderPagination($dtResult) ?>
     </div>
 <?php endif; ?>
+
+<script nonce="<?= csp_nonce() ?>">
+window.frBul1 = function () { window.location='?periode=<?= $selectedPeriode ?? 0 ?>&classe='+this.value };
+window.frBul2 = function () { window.location='?periode=<?= $selectedPeriode ?? 0 ?>&classe=<?= $filterClasse ?? 0 ?>&statut='+this.value };
+</script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

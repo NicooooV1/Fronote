@@ -299,7 +299,7 @@ class DataTable
 
         $html = '<div class="dt-per-page">';
         $html .= '<label>Afficher ';
-        $html .= '<select onchange="window.location.href=this.value" class="dt-per-page-select">';
+        $html .= '<select data-fr-change="href" data-fr-pass="value" class="dt-per-page-select">';
         foreach ($options as $opt) {
             $params['per_page'] = $opt;
             $params['page'] = 1;

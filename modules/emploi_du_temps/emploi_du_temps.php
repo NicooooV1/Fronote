@@ -98,7 +98,7 @@ include 'includes/header.php';
         <?php if (isAdmin() || isVieScolaire()): ?>
         <div class="filter-group">
             <label for="classe">Classe :</label>
-            <select name="classe" id="classe" onchange="this.form.submit()">
+            <select name="classe" id="classe" data-fr-change="submitOwn">
                 <option value="">-- Sélectionner une classe --</option>
                 <?php foreach ($classes as $cl): ?>
                     <option value="<?= $cl['id'] ?>" <?= $classeId == $cl['id'] ? 'selected' : '' ?>>
@@ -112,7 +112,7 @@ include 'includes/header.php';
         <?php if (isParent() && !empty($enfants) && count($enfants) > 1): ?>
         <div class="filter-group">
             <label for="eleve">Enfant :</label>
-            <select name="eleve" id="eleve" onchange="this.form.submit()">
+            <select name="eleve" id="eleve" data-fr-change="submitOwn">
                 <?php foreach ($enfants as $enf): ?>
                     <option value="<?= $enf['id'] ?>" <?= $eleveId == $enf['id'] ? 'selected' : '' ?>>
                         <?= htmlspecialchars($enf['prenom'] . ' ' . $enf['nom']) ?> — <?= htmlspecialchars($enf['classe']) ?>
@@ -133,7 +133,7 @@ include 'includes/header.php';
 </div>
 
 <?php if (isAdmin() || isVieScolaire()): ?>
-<script>
+<script nonce="<?= csp_nonce() ?>">
 (function () {
     var btn = document.getElementById('edt-generate-btn');
     if (!btn) return;
@@ -258,7 +258,7 @@ include 'includes/header.php';
 <?php endif; ?>
 
 <?php if (isAdmin() || isVieScolaire()): ?>
-<script src="assets/js/dragdrop.js"></script>
+<script src="assets/js/dragdrop.js" nonce="<?= csp_nonce() ?>"></script>
 <?php endif; ?>
 
 <?php include 'includes/footer.php'; ?>

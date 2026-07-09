@@ -157,13 +157,13 @@ include __DIR__ . '/../includes/header.php';
             </div>
             <?php if ($isInstalled): ?>
             <div style="display:flex;gap:6px">
-                <form method="POST" style="display:inline" onsubmit="return confirm('Restaurer la dernière sauvegarde de ce module ?')">
+                <form method="POST" style="display:inline" data-fr-confirm="Restaurer la dernière sauvegarde de ce module ?">
                     <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                     <input type="hidden" name="action" value="rollback">
                     <input type="hidden" name="module_key" value="<?= htmlspecialchars($item['key'] ?? '') ?>">
                     <button class="mp-btn" style="background:#ed8936;color:#fff" type="submit" title="Restaurer la dernière sauvegarde"><i class="fas fa-undo"></i></button>
                 </form>
-                <form method="POST" style="display:inline" onsubmit="return confirm('Désinstaller ce module ?')">
+                <form method="POST" style="display:inline" data-fr-confirm="Désinstaller ce module ?">
                     <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                     <input type="hidden" name="action" value="uninstall">
                     <input type="hidden" name="module_key" value="<?= htmlspecialchars($item['key'] ?? '') ?>">

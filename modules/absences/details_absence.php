@@ -172,12 +172,12 @@ include 'includes/header.php';
             <form method="POST" action="valider_absence.php" style="display:inline;">
                 <input type="hidden" name="csrf_token" value="<?= AbsenceHelper::generateCsrf() ?>">
                 <input type="hidden" name="absence_id" value="<?= $id_absence ?>">
-                <button type="submit" name="action" value="valider" class="btn btn-success" 
-                        onclick="return confirm('Valider cette absence ?')">
+                <button type="submit" name="action" value="valider" class="btn btn-success"
+                        data-fr-confirm="Valider cette absence ?">
                     <i class="fas fa-check"></i> Valider
                 </button>
-                <button type="submit" name="action" value="refuser" class="btn btn-danger" 
-                        onclick="return confirm('Refuser cette absence ?')">
+                <button type="submit" name="action" value="refuser" class="btn btn-danger"
+                        data-fr-confirm="Refuser cette absence ?">
                     <i class="fas fa-times"></i> Refuser
                 </button>
             </form>

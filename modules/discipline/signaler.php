@@ -159,7 +159,7 @@ $gravites = DisciplineService::getGravites();
     </form>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 // Recherche élève avec auto-complétion
 (function() {
     const input = document.getElementById('search_eleve');

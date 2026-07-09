@@ -46,7 +46,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <?php else: ?>
     <form method="get" style="margin-bottom:24px">
         <label style="font-size:.9em;color:var(--text-muted,#64748b);margin-right:8px">Classe :</label>
-        <select name="classe" onchange="this.form.submit()" style="padding:8px 12px;border:1px solid var(--border,#cbd5e0);border-radius:6px">
+        <select name="classe" data-fr-change="submitOwn" style="padding:8px 12px;border:1px solid var(--border,#cbd5e0);border-radius:6px">
             <?php foreach ($classes as $c): ?>
             <option value="<?= htmlspecialchars($c) ?>" <?= $c === $classe ? 'selected' : '' ?>><?= htmlspecialchars($c) ?></option>
             <?php endforeach; ?>

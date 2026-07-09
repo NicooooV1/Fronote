@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                 <div class="rdv-actions">
                     <?php if ($rdv['statut'] === 'confirmee'): ?>
                     <span class="badge badge-success">Confirmé</span>
-                    <form method="post" onsubmit="return confirm('Annuler ce rendez-vous ?')">
+                    <form method="post" data-fr-confirm="Annuler ce rendez-vous ?">
                         <?= csrfField() ?>
                         <input type="hidden" name="reservation_id" value="<?= $rdv['id'] ?>">
                         <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-times"></i> Annuler</button>

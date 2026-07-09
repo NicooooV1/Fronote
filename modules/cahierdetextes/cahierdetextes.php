@@ -188,7 +188,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                     <input type="hidden" name="order" value="<?= htmlspecialchars($orderField) ?>">
                     <?php if ($displayMode === 'calendar'): ?><input type="hidden" name="mode" value="calendar"><?php endif; ?>
                     <?php if ($search): ?><input type="hidden" name="q" value="<?= htmlspecialchars($search) ?>"><?php endif; ?>
-                    <select name="classe" class="form-select" style="max-width:180px;" onchange="this.form.submit()">
+                    <select name="classe" class="form-select" style="max-width:180px;" data-fr-change="submitOwn">
                         <option value="">Toutes les classes</option>
                         <?php foreach ($filterOpts['classes'] as $c): ?>
                             <option value="<?= htmlspecialchars($c, ENT_QUOTES) ?>" <?= $filterClasse === $c ? 'selected' : '' ?>>
@@ -196,7 +196,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <select name="matiere" class="form-select" style="max-width:200px;" onchange="this.form.submit()">
+                    <select name="matiere" class="form-select" style="max-width:200px;" data-fr-change="submitOwn">
                         <option value="">Toutes les matières</option>
                         <?php foreach ($filterOpts['matieres'] as $m): ?>
                             <option value="<?= htmlspecialchars($m, ENT_QUOTES) ?>" <?= $filterMatiere === $m ? 'selected' : '' ?>>
@@ -291,7 +291,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                                             <i class="fas fa-edit"></i> Modifier
                                         </a>
                                         <a href="supprimer_devoir.php?id=<?= $devoir['id'] ?>" class="btn btn-danger"
-                                           onclick="return confirm('Supprimer ce devoir ?');">
+                                           data-fr-confirm="Supprimer ce devoir ?">
                                             <i class="fas fa-trash"></i> Supprimer
                                         </a>
                                     <?php endif; ?>

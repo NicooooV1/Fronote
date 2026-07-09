@@ -121,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                     <?php endif; ?>
                 </div>
                 <?php if (!$fiche || $fiche['statut'] !== 'validee'): ?>
-                <button type="button" class="btn btn-sm btn-outline" onclick="ajouterVoeu()"><i class="fas fa-plus"></i> Ajouter un vœu</button>
+                <button type="button" class="btn btn-sm btn-outline" data-fr-click="ajouterVoeu"><i class="fas fa-plus"></i> Ajouter un vœu</button>
                 <?php endif; ?>
             </div>
         </div>
@@ -144,13 +144,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
         <?php if (!$fiche || $fiche['statut'] !== 'validee'): ?>
         <div class="form-actions">
             <button type="submit" name="action_submit" value="brouillon" class="btn btn-outline"><i class="fas fa-save"></i> Enregistrer brouillon</button>
-            <button type="submit" name="action_submit" value="soumettre" class="btn btn-primary" onclick="return confirm('Soumettre définitivement ?')"><i class="fas fa-paper-plane"></i> Soumettre</button>
+            <button type="submit" name="action_submit" value="soumettre" class="btn btn-primary" data-fr-confirm="Soumettre définitivement ?"><i class="fas fa-paper-plane"></i> Soumettre</button>
         </div>
         <?php endif; ?>
     </form>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 let voeuCount = document.querySelectorAll('.voeu-row').length;
 function ajouterVoeu() {
     voeuCount++;
@@ -162,10 +162,11 @@ function ajouterVoeu() {
         <input type="text" name="voeu_formation[]" class="form-control" placeholder="Formation / Filière">
         <input type="text" name="voeu_etablissement[]" class="form-control" placeholder="Établissement visé">
         <input type="text" name="voeu_motivation[]" class="form-control" placeholder="Motivation">
-        <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+        <button type="button" class="btn btn-sm btn-danger" data-fr-click="frOF1"><i class="fas fa-times"></i></button>
     `;
     container.appendChild(row);
 }
+window.frOF1 = function () { this.parentElement.remove(); };
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

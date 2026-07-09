@@ -269,16 +269,16 @@ include 'templates/header.php';
                                 <?= getRecipientTypeLabel($type) ?> 
                                 <span class="category-count">(<?= count($liste) ?>)</span>
                                 <div class="category-actions">
-                                    <a href="javascript:void(0)" onclick="selectAllInCategory('category-<?= $type ?>')">Tout sélectionner</a>
-                                    <a href="javascript:void(0)" onclick="deselectAllInCategory('category-<?= $type ?>')">Tout désélectionner</a>
+                                    <a href="javascript:void(0)" data-fr-click="selectAllInCategory" data-fr-args='["category-<?= $type ?>"]'>Tout sélectionner</a>
+                                    <a href="javascript:void(0)" data-fr-click="deselectAllInCategory" data-fr-args='["category-<?= $type ?>"]'>Tout désélectionner</a>
                                 </div>
                             </div>
                             <div class="recipient-items">
                                 <?php foreach ($liste as $dest): ?>
                                     <div class="recipient-item">
                                         <input type="checkbox" name="destinataires[]" id="dest_<?= $type ?>_<?= $dest['id'] ?>" 
-                                            value="<?= $type ?>_<?= $dest['id'] ?>" 
-                                            onchange="updateSelectedRecipients()"
+                                            value="<?= $type ?>_<?= $dest['id'] ?>"
+                                            data-fr-change="updateSelectedRecipients"
                                             <?= in_array($type.'_'.$dest['id'], $destinataires) ? 'checked' : '' ?>>
                                         <label for="dest_<?= $type ?>_<?= $dest['id'] ?>"><?= htmlspecialchars($dest['nom_complet']) ?></label>
                                     </div>

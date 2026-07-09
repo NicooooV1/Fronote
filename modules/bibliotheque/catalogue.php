@@ -33,7 +33,7 @@ $stats = $biblioService->getStats();
     <div class="search-filter">
         <form method="get" class="search-bar">
             <input type="text" name="q" class="form-control" placeholder="Rechercher un livre..." value="<?= htmlspecialchars($recherche) ?>">
-            <select name="cat" class="form-control" onchange="this.form.submit()">
+            <select name="cat" class="form-control" data-fr-change="submitOwn">
                 <option value="">Toutes catégories</option>
                 <?php foreach ($cats as $k => $v): ?>
                 <option value="<?= $k ?>" <?= $categorie === $k ? 'selected' : '' ?>><?= $v ?></option>

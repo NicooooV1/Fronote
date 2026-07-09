@@ -62,13 +62,13 @@ if (isEleve()) {
 
     <div class="filter-row">
         <form method="get" class="filter-form">
-            <select name="classe" class="form-control" onchange="this.form.submit()">
+            <select name="classe" class="form-control" data-fr-change="submitOwn">
                 <option value="">Toutes les classes</option>
                 <?php foreach ($classes as $c): ?>
                 <option value="<?= $c['id'] ?>" <?= $filtreClasse == $c['id'] ? 'selected' : '' ?>><?= htmlspecialchars($c['nom']) ?></option>
                 <?php endforeach; ?>
             </select>
-            <select name="statut" class="form-control" onchange="this.form.submit()">
+            <select name="statut" class="form-control" data-fr-change="submitOwn">
                 <option value="">Tous les statuts</option>
                 <option value="brouillon" <?= $filtreStatut === 'brouillon' ? 'selected' : '' ?>>Brouillon</option>
                 <option value="soumise" <?= $filtreStatut === 'soumise' ? 'selected' : '' ?>>Soumise</option>

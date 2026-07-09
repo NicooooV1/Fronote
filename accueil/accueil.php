@@ -425,7 +425,7 @@ foreach ($availableAll as $aw) {
     ];
 }
 
-$_nonceAttr = isset($_hdr_nonce) ? ' nonce="' . htmlspecialchars($_hdr_nonce, ENT_QUOTES) . '"' : '';
+$_nonceAttr = ' nonce="' . htmlspecialchars(csp_nonce(), ENT_QUOTES) . '"';
 $extraScriptHtml = '<script' . $_nonceAttr . '>
 window.DASHBOARD_CONFIG = ' . json_encode($jsWidgetConfig, JSON_HEX_TAG | JSON_HEX_AMP) . ';
 window.DASHBOARD_AVAILABLE = ' . json_encode($jsAvailableWidgets, JSON_HEX_TAG | JSON_HEX_AMP) . ';

@@ -291,7 +291,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
         <h3 style="margin:0 0 14px;font-size:1.05em">📅 Périodes scolaires</h3>
         <div class="form-group" style="margin-bottom:14px">
             <label>Système de périodes</label>
-            <select name="periode_system" id="periodeSystem" onchange="togglePeriodes()" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px">
+            <select name="periode_system" id="periodeSystem" data-fr-change="togglePeriodes" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px">
                 <option value="trimestre">Trimestres (3 périodes)</option>
                 <option value="semestre">Semestres (2 périodes)</option>
             </select>
@@ -339,7 +339,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
             Ajoutez vos propres classes. Elles s'ajoutent à celles générées par défaut.
         </p>
         <div id="classes-rows" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
-        <button type="button" onclick="addClasseRow()" style="background:var(--surface,#fff);border:1px dashed var(--border,#cbd5e0);color:var(--text,#333);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:.88em;margin-bottom:20px">
+        <button type="button" data-fr-click="frOI1" style="background:var(--surface,#fff);border:1px dashed var(--border,#cbd5e0);color:var(--text,#333);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:.88em;margin-bottom:20px">
             <i class="fas fa-plus"></i> Ajouter une classe
         </button>
 
@@ -355,7 +355,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <?php endif; ?>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 function togglePeriodes() {
     var el = document.getElementById('periodeSystem');
     if (!el) return;
@@ -372,9 +372,11 @@ function addClasseRow(niveau, nom) {
     row.innerHTML =
         '<input type="text" name="classe_niveau[]" placeholder="Niveau (ex: 6eme)" value="' + (niveau || '') + '" style="flex:1;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px">' +
         '<input type="text" name="classe_nom[]" placeholder="Nom (ex: 6A)" value="' + (nom || '') + '" style="flex:1;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px">' +
-        '<button type="button" title="Retirer" style="background:none;border:none;color:#e53e3e;cursor:pointer;font-size:1.1em" onclick="this.parentNode.remove()"><i class="fas fa-times"></i></button>';
+        '<button type="button" title="Retirer" style="background:none;border:none;color:#e53e3e;cursor:pointer;font-size:1.1em" data-fr-click="frOI2"><i class="fas fa-times"></i></button>';
     wrap.appendChild(row);
 }
+window.frOI1 = function () { addClasseRow(); };
+window.frOI2 = function () { this.parentNode.remove(); };
 </script>
 
 <?php include __DIR__ . '/../../templates/shared_footer.php'; ?>

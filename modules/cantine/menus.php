@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isGestionnaire && isset($_POST['sa
             </div>
             <?php if ($isGestionnaire): ?>
             <div class="menu-card-footer">
-                <button class="btn btn-sm btn-outline" onclick="editMenu('<?= $dateStr ?>')"><i class="fas fa-edit"></i> Modifier</button>
+                <button class="btn btn-sm btn-outline" data-fr-click="editMenu" data-fr-args='["<?= $dateStr ?>"]'><i class="fas fa-edit"></i> Modifier</button>
             </div>
             <?php endif; ?>
         </div>
@@ -102,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isGestionnaire && isset($_POST['sa
 <?php if ($isGestionnaire): ?>
 <div id="menuModal" class="modal" style="display:none">
     <div class="modal-content">
-        <div class="modal-header"><h3>Modifier le menu</h3><button onclick="closeModal()" class="btn-close">&times;</button></div>
+        <div class="modal-header"><h3>Modifier le menu</h3><button data-fr-click="closeModal" class="btn-close">&times;</button></div>
         <form method="post">
             <?= csrfField() ?>
             <input type="hidden" name="save_menu" value="1">
@@ -124,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isGestionnaire && isset($_POST['sa
         </form>
     </div>
 </div>
-<script>
+<script nonce="<?= csp_nonce() ?>">
 function editMenu(date) {
     document.getElementById('modal_date').value = date;
     document.getElementById('menuModal').style.display = 'flex';

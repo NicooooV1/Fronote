@@ -169,11 +169,11 @@ include __DIR__ . '/../includes/header.php';
         
         <h3><i class="fas fa-user-tag"></i> Type de profil</h3>
         <div class="profil-selector">
-            <button type="button" class="profil-btn" data-profil="eleve" onclick="selectProfil('eleve')"><i class="fas fa-user-graduate"></i> Élève</button>
-            <button type="button" class="profil-btn" data-profil="professeur" onclick="selectProfil('professeur')"><i class="fas fa-chalkboard-teacher"></i> Professeur</button>
-            <button type="button" class="profil-btn" data-profil="parent" onclick="selectProfil('parent')"><i class="fas fa-users"></i> Parent</button>
-            <button type="button" class="profil-btn" data-profil="vie_scolaire" onclick="selectProfil('vie_scolaire')"><i class="fas fa-user-tie"></i> Vie scolaire</button>
-            <button type="button" class="profil-btn" data-profil="administrateur" onclick="selectProfil('administrateur')"><i class="fas fa-user-shield"></i> Administrateur</button>
+            <button type="button" class="profil-btn" data-profil="eleve" data-fr-click="selectProfil" data-fr-args='["eleve"]'><i class="fas fa-user-graduate"></i> Élève</button>
+            <button type="button" class="profil-btn" data-profil="professeur" data-fr-click="selectProfil" data-fr-args='["professeur"]'><i class="fas fa-chalkboard-teacher"></i> Professeur</button>
+            <button type="button" class="profil-btn" data-profil="parent" data-fr-click="selectProfil" data-fr-args='["parent"]'><i class="fas fa-users"></i> Parent</button>
+            <button type="button" class="profil-btn" data-profil="vie_scolaire" data-fr-click="selectProfil" data-fr-args='["vie_scolaire"]'><i class="fas fa-user-tie"></i> Vie scolaire</button>
+            <button type="button" class="profil-btn" data-profil="administrateur" data-fr-click="selectProfil" data-fr-args='["administrateur"]'><i class="fas fa-user-shield"></i> Administrateur</button>
         </div>
         <input type="hidden" name="profil" id="profilInput" value="">
 
@@ -298,7 +298,7 @@ include __DIR__ . '/../includes/header.php';
     </form>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 // Tiers de rôles autorisés par type de compte (garde-fou : vie scolaire ≠ administration).
 var ALLOWED_TIERS = <?= json_encode(\API\Security\RoleCatalog::accountAllowedTiers(), JSON_UNESCAPED_UNICODE) ?>;
 

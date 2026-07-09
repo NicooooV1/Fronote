@@ -76,7 +76,7 @@ $cats = BibliothequeService::categories();
                     <a href="ajouter.php?edit=<?= $id ?>" class="btn btn-outline"><i class="fas fa-edit"></i> Modifier</a>
                     <form method="post" style="display:inline;">
                         <?= csrfField() ?>
-                        <button name="action" value="supprimer" class="btn btn-danger" onclick="return confirm('Supprimer ?')"><i class="fas fa-trash"></i></button>
+                        <button name="action" value="supprimer" class="btn btn-danger" data-fr-confirm="Supprimer ?"><i class="fas fa-trash"></i></button>
                     </form>
                     <?php endif; ?>
                 </div>

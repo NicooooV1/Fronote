@@ -243,7 +243,7 @@ include 'templates/header.php';
             
             <div class="form-group">
                 <label for="cible">Destinataires</label>
-                <select name="cible" id="cible" required onchange="toggleTargetOptions()">
+                <select name="cible" id="cible" required data-fr-change="toggleTargetOptions">
                 <option value="">Sélectionner une cible</option>
                     <option value="tous">Tous les utilisateurs</option>
                     <option value="personnel">Personnel uniquement</option>

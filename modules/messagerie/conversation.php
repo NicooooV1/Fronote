@@ -250,7 +250,7 @@ include 'templates/header.php';
         <div class="pinned-messages-bar">
             <div class="pinned-header">
                 <i class="fas fa-thumbtack"></i> Messages épinglés (<?= count($pinnedMessages) ?>)
-                <button class="btn-icon toggle-pinned" onclick="document.querySelector('.pinned-messages-list').classList.toggle('collapsed')">
+                <button class="btn-icon toggle-pinned" data-fr-click="toggleClass" data-fr-args='[".pinned-messages-list","collapsed"]'>
                     <i class="fas fa-chevron-down"></i>
                 </button>
             </div>
@@ -259,7 +259,7 @@ include 'templates/header.php';
                 <div class="pinned-message-preview" data-message-id="<?= $pinned['id'] ?>">
                     <strong><?= h($pinned['expediteur_nom']) ?></strong>: 
                     <?= h(mb_substr($pinned['body'], 0, 100)) ?><?= mb_strlen($pinned['body']) > 100 ? '…' : '' ?>
-                    <a href="#" onclick="scrollToMessage(<?= $pinned['id'] ?>); return false;" class="jump-to-msg">
+                    <a href="#" data-fr-click="scrollToMessage" data-fr-args='[<?= $pinned['id'] ?>]' data-fr-prevent="1" class="jump-to-msg">
                         <i class="fas fa-arrow-right"></i>
                     </a>
                 </div>
@@ -270,7 +270,7 @@ include 'templates/header.php';
         
         <?php if ($hasMoreMessages): ?>
         <div class="load-more-messages" id="load-more-messages">
-            <button class="btn secondary btn-sm" onclick="loadOlderMessages()">
+            <button class="btn secondary btn-sm" data-fr-click="loadOlderMessages">
                 <i class="fas fa-history"></i> Charger les messages précédents
             </button>
         </div>
@@ -302,7 +302,7 @@ include 'templates/header.php';
         <div id="reply-interface" style="display: none;">
             <div class="reply-header">
                 <span id="reply-to" class="reply-to"></span>
-                <button type="button" class="btn-icon" onclick="cancelReply()">
+                <button type="button" class="btn-icon" data-fr-click="cancelReply">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -347,7 +347,7 @@ include 'templates/header.php';
 <!-- Modal pour ajouter des participants -->
 <div class="modal" id="addParticipantModal">
     <div class="modal-content">
-        <span class="close" onclick="closeAddParticipantModal()">&times;</span>
+        <span class="close" data-fr-click="closeAddParticipantModal">&times;</span>
         <h3>Ajouter des participants</h3>
         <form method="post" id="addParticipantForm">
             <?= csrf_field() ?>
@@ -355,7 +355,7 @@ include 'templates/header.php';
             
             <div class="form-group">
                 <label for="participant_type">Type de participant</label>
-                <select name="participant_type" id="participant_type" onchange="loadParticipants()" required>
+                <select name="participant_type" id="participant_type" data-fr-change="loadParticipants" required>
                     <option value="">Sélectionner un type</option>
                     <option value="eleve">Élève</option>
                     <option value="parent">Parent</option>

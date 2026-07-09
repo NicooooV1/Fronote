@@ -61,7 +61,7 @@ $niveaux = CompetenceService::niveauxLabels();
             <form method="get" class="comp-selector-form">
                 <div class="form-group">
                     <label>Enfant</label>
-                    <select name="eleve_id" onchange="this.form.submit()" class="form-select">
+                    <select name="eleve_id" data-fr-change="submitOwn" class="form-select">
                         <?php foreach ($enfants as $enf): ?>
                             <option value="<?= $enf['id'] ?>" <?= $enf['id'] == $eleveId ? 'selected' : '' ?>><?= htmlspecialchars($enf['prenom'].' '.$enf['nom']) ?></option>
                         <?php endforeach; ?>
@@ -69,7 +69,7 @@ $niveaux = CompetenceService::niveauxLabels();
                 </div>
                 <div class="form-group">
                     <label>Période</label>
-                    <select name="periode_id" onchange="this.form.submit()" class="form-select">
+                    <select name="periode_id" data-fr-change="submitOwn" class="form-select">
                         <option value="0">Toutes</option>
                         <?php foreach ($periodes as $p): ?>
                             <option value="<?= $p['id'] ?>" <?= $p['id'] == $periodeId ? 'selected' : '' ?>><?= htmlspecialchars($p['nom']) ?></option>

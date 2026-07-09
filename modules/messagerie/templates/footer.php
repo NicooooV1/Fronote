@@ -20,7 +20,7 @@ if (in_array(basename($_SERVER['PHP_SELF']), ['new_message.php', 'new_announceme
 // Scripts spécifiques messagerie
 ob_start();
 ?>
-    <script>
+    <script nonce="<?= csp_nonce() ?>">
     // ── CSRF Token ──
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 

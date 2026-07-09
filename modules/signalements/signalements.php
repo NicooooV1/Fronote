@@ -37,13 +37,13 @@ $types = SignalementService::typesSignalement();
 
     <div class="filter-row">
         <form method="get" class="filter-form">
-            <select name="statut" class="form-control" onchange="this.form.submit()">
+            <select name="statut" class="form-control" data-fr-change="submitOwn">
                 <option value="">Tous les statuts</option>
                 <option value="nouveau" <?= $filtreStatut === 'nouveau' ? 'selected' : '' ?>>Nouveau</option>
                 <option value="en_cours" <?= $filtreStatut === 'en_cours' ? 'selected' : '' ?>>En cours</option>
                 <option value="traite" <?= $filtreStatut === 'traite' ? 'selected' : '' ?>>Traité</option>
             </select>
-            <select name="type" class="form-control" onchange="this.form.submit()">
+            <select name="type" class="form-control" data-fr-change="submitOwn">
                 <option value="">Tous les types</option>
                 <?php foreach ($types as $k => $v): ?>
                 <option value="<?= $k ?>" <?= $filtreType === $k ? 'selected' : '' ?>><?= $v ?></option>

@@ -150,7 +150,7 @@ include __DIR__ . '/../includes/header.php';
     <?php endif; ?>
 
     <div class="top-actions">
-        <form method="post" onsubmit="return confirm('Fermer TOUTES les sessions (sauf la vôtre) ?')">
+        <form method="post" data-fr-confirm="Fermer TOUTES les sessions (sauf la vôtre) ?">
             <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
             <input type="hidden" name="action" value="kill_all">
             <button class="btn btn-danger"><i class="fas fa-power-off"></i> Fermer toutes les sessions</button>

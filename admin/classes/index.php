@@ -179,7 +179,7 @@ include __DIR__ . '/../includes/header.php';
     </div>
 
     <div class="top-bar">
-        <button class="btn btn-primary" onclick="document.getElementById('createModal').classList.add('active')"><i class="fas fa-plus"></i> Nouvelle classe</button>
+        <button class="btn btn-primary" data-fr-click="addClass" data-fr-args='["createModal","active"]'><i class="fas fa-plus"></i> Nouvelle classe</button>
     </div>
 
     <div class="classes-grid">
@@ -196,9 +196,9 @@ include __DIR__ . '/../includes/header.php';
                 <?php if (!empty($c['pp_nom'])): ?><div><i class="fas fa-user-tie"></i> <?= htmlspecialchars($c['pp_nom']) ?></div><?php endif; ?>
             </div>
             <div class="class-actions">
-                <button class="btn-xs primary" onclick='openEdit(<?= json_encode($c, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)' title="Modifier"><i class="fas fa-pen"></i></button>
-                <button class="btn-xs success" onclick='openStudents(<?= $c["id"] ?>, <?= json_encode($c["nom"], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)' title="Gérer élèves"><i class="fas fa-users"></i></button>
-                <form method="post" style="display:inline" onsubmit="return confirm('Supprimer cette classe ?')"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="delete_class"><input type="hidden" name="class_id" value="<?= $c['id'] ?>"><button class="btn-xs danger" title="Supprimer"><i class="fas fa-trash"></i></button></form>
+                <button class="btn-xs primary" data-fr-click="openEdit" data-fr-args='[<?= json_encode($c, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>]' title="Modifier"><i class="fas fa-pen"></i></button>
+                <button class="btn-xs success" data-fr-click="openStudents" data-fr-args='[<?= $c["id"] ?>, <?= json_encode($c["nom"], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>]' title="Gérer élèves"><i class="fas fa-users"></i></button>
+                <form method="post" style="display:inline" data-fr-confirm="Supprimer cette classe ?"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="delete_class"><input type="hidden" name="class_id" value="<?= $c['id'] ?>"><button class="btn-xs danger" title="Supprimer"><i class="fas fa-trash"></i></button></form>
             </div>
         </div>
         <?php endforeach; ?>
@@ -222,7 +222,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php foreach ($professeurs as $p): ?><option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['prenom'] . ' ' . $p['nom']) ?></option><?php endforeach; ?>
                 </select></div>
             </div>
-            <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn btn-secondary" onclick="document.getElementById('createModal').classList.remove('active')">Annuler</button><button type="submit" class="btn btn-primary">Créer</button></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn btn-secondary" data-fr-click="removeClass" data-fr-args='["createModal","active"]'>Annuler</button><button type="submit" class="btn btn-primary">Créer</button></div>
         </form>
     </div>
 </div>
@@ -243,7 +243,7 @@ include __DIR__ . '/../includes/header.php';
                 <?php foreach ($professeurs as $p): ?><option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['prenom'] . ' ' . $p['nom']) ?></option><?php endforeach; ?>
             </select></div>
             <div class="form-group"><label><input type="checkbox" name="actif" id="edit_actif" checked> Active</label></div>
-            <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn btn-secondary" onclick="document.getElementById('editModal').classList.remove('active')">Annuler</button><button type="submit" class="btn btn-primary">Enregistrer</button></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn btn-secondary" data-fr-click="removeClass" data-fr-args='["editModal","active"]'>Annuler</button><button type="submit" class="btn btn-primary">Enregistrer</button></div>
         </form>
     </div>
 </div>
@@ -257,14 +257,14 @@ include __DIR__ . '/../includes/header.php';
             <input type="hidden" name="action" value="assign_students">
             <input type="hidden" name="class_id" id="sm_cid">
             <input type="hidden" name="class_name" id="sm_cname">
-            <input type="text" id="sm_search" placeholder="Rechercher…" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;margin-bottom:10px;box-sizing:border-box;font-size:13px" oninput="filterStudents()">
+            <input type="text" id="sm_search" placeholder="Rechercher…" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;margin-bottom:10px;box-sizing:border-box;font-size:13px" data-fr-input="filterStudents">
             <div class="student-list" id="sm_list">Chargement…</div>
-            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button type="button" class="btn btn-secondary" onclick="document.getElementById('studentsModal').classList.remove('active')">Annuler</button><button type="submit" class="btn btn-primary">Enregistrer</button></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button type="button" class="btn btn-secondary" data-fr-click="removeClass" data-fr-args='["studentsModal","active"]'>Annuler</button><button type="submit" class="btn btn-primary">Enregistrer</button></div>
         </form>
     </div>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 const allStudents = <?= json_encode($pdo->query("SELECT id, nom, prenom, classe FROM eleves WHERE actif = 1 ORDER BY nom, prenom")->fetchAll(PDO::FETCH_ASSOC), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
 
 function openEdit(c) {

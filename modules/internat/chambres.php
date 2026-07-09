@@ -37,7 +37,7 @@ $stats = $internatService->getStats();
 
     <div class="page-header">
         <h1><i class="fas fa-bed"></i> Chambres de l'internat</h1>
-        <button class="btn btn-primary" onclick="document.getElementById('formChambre').style.display='block'"><i class="fas fa-plus"></i> Nouvelle chambre</button>
+        <button class="btn btn-primary" data-fr-click="showBlock" data-fr-args='["formChambre"]'><i class="fas fa-plus"></i> Nouvelle chambre</button>
     </div>
 
     <?php if ($message): ?><div class="alert alert-success"><?= htmlspecialchars($message) ?></div><?php endif; ?>

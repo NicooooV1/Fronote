@@ -57,9 +57,9 @@ ob_start();
 ?>
     <?= csrf_meta() ?>
     <!-- Socket.IO client chargé par shared_header.php (4.7.5) -->
-    <script src="<?= $rootPrefix ?>modules/messagerie/assets/js/websocket-client.js"></script>
+    <script src="<?= $rootPrefix ?>modules/messagerie/assets/js/websocket-client.js" nonce="<?= csp_nonce() ?>"></script>
     <?php if (isset($wsToken)): ?>
-    <script>
+    <script nonce="<?= csp_nonce() ?>">
         window.currentUserId = <?= json_encode($user['id']) ?>;
         window.currentUserType = <?= json_encode($user['type']) ?>;
         document.addEventListener('DOMContentLoaded', () => {

@@ -38,7 +38,7 @@ $affectations = $internatService->getAffectations();
 
     <div class="page-header">
         <h1><i class="fas fa-exchange-alt"></i> Mouvements du <?= date('d/m/Y', strtotime($dateVue)) ?></h1>
-        <form method="get" class="inline-form"><input type="date" name="date" value="<?= $dateVue ?>" class="form-control" onchange="this.form.submit()"></form>
+        <form method="get" class="inline-form"><input type="date" name="date" value="<?= $dateVue ?>" class="form-control" data-fr-change="submitOwn"></form>
     </div>
 
     <?php if ($message): ?><div class="alert alert-success"><?= htmlspecialchars($message) ?></div><?php endif; ?>
@@ -51,7 +51,7 @@ $affectations = $internatService->getAffectations();
                 <input type="hidden" name="enregistrer" value="1">
                 <div class="form-row">
                     <div class="form-group"><label>Interne</label>
-                        <select name="eleve_id" required class="form-select" onchange="updateChambre(this)">
+                        <select name="eleve_id" required class="form-select" data-fr-change="updateChambre" data-fr-pass="this">
                             <option value="">— Choisir —</option>
                             <?php foreach ($affectations as $af): if ($af['statut'] !== 'actif') continue; ?>
                                 <option value="<?= $af['eleve_id'] ?>" data-chambre="<?= $af['chambre_id'] ?>">
@@ -96,7 +96,7 @@ $affectations = $internatService->getAffectations();
         </div>
     </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 function updateChambre(sel) {
     var opt = sel.options[sel.selectedIndex];
     document.getElementById('chambre_id_hidden').value = opt.dataset.chambre || '';

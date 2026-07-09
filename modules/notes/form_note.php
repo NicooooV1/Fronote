@@ -431,7 +431,7 @@ include 'includes/header.php';
 if (!$isEdit && !empty($eleves)):
     ob_start();
 ?>
-<script>
+<script nonce="<?= csp_nonce() ?>">
 document.addEventListener('DOMContentLoaded', function() {
     const noteInputs  = document.querySelectorAll('input[name^="notes["]');
     const noteSurInput = document.querySelector('input[name="note_sur"]');
@@ -491,7 +491,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <?php
     $extraScriptHtml = ob_get_clean();
     // Add batch auto-save script
-    $extraScriptHtml .= '<script src="assets/js/notes-batch.js" defer></script>';
+    $extraScriptHtml .= '<script src="assets/js/notes-batch.js" defer nonce="' . csp_nonce() . '"></script>';
 endif;
 
 include 'includes/footer.php';

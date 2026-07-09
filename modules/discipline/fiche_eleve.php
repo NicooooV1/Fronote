@@ -200,7 +200,7 @@ $gravites      = DisciplineService::getGravites();
     <a href="incidents.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Retour</a>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 // Gestion des onglets
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', function() {

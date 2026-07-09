@@ -100,7 +100,7 @@ $etapesActualisees = $projetService->getEtapes($id);
                                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
                                                 <input type="hidden" name="action" value="statut_etape">
                                                 <input type="hidden" name="etape_id" value="<?= $et['id'] ?>">
-                                                <select name="etape_statut" class="form-select form-select-sm" onchange="this.form.submit()" style="width:auto">
+                                                <select name="etape_statut" class="form-select form-select-sm" data-fr-change="submitOwn" style="width:auto">
                                                     <?php foreach (['a_faire' => 'À faire', 'en_cours' => 'En cours', 'termine' => 'Terminé'] as $k => $v): ?>
                                                         <option value="<?= $k ?>" <?= $et['statut'] === $k ? 'selected' : '' ?>><?= $v ?></option>
                                                     <?php endforeach; ?>

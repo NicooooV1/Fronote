@@ -117,7 +117,7 @@ include __DIR__ . '/../includes/header.php';
     <form method="get" style="margin-bottom:16px;display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
         <div class="form-group">
             <label>Rôle</label>
-            <select name="role" class="form-control" onchange="this.form.submit()">
+            <select name="role" class="form-control" data-fr-change="submitOwn">
                 <?php foreach ($rolesMeta as $rk => $rm): ?>
                     <option value="<?= htmlspecialchars($rk) ?>" <?= $rk === $selectedRole ? 'selected' : '' ?>>
                         <?= htmlspecialchars($rm['label'] ?? $rk) ?> — <?= htmlspecialchars($rm['tier'] ?? '') ?><?= !empty($rm['sensitive']) ? ' ⚠️' : '' ?>
@@ -136,8 +136,8 @@ include __DIR__ . '/../includes/header.php';
         <input type="hidden" name="role" value="<?= htmlspecialchars($selectedRole) ?>">
 
         <div style="margin-bottom:12px;display:flex;gap:8px">
-            <button type="button" class="btn btn-sm btn-outline" onclick="document.querySelectorAll('.perm-cb').forEach(c=>c.checked=true)">Tout cocher</button>
-            <button type="button" class="btn btn-sm btn-outline" onclick="document.querySelectorAll('.perm-cb').forEach(c=>c.checked=false)">Tout décocher</button>
+            <button type="button" class="btn btn-sm btn-outline" data-fr-click="frRP1">Tout cocher</button>
+            <button type="button" class="btn btn-sm btn-outline" data-fr-click="frRP2">Tout décocher</button>
         </div>
 
         <?php foreach ($byCat as $cat => $perms): ?>
@@ -145,7 +145,7 @@ include __DIR__ . '/../includes/header.php';
             <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
                 <h3 style="margin:0;text-transform:capitalize"><?= htmlspecialchars($cat) ?></h3>
                 <label style="font-size:.85rem;font-weight:normal">
-                    <input type="checkbox" onchange="this.closest('.card').querySelectorAll('.perm-cb').forEach(c=>c.checked=this.checked)"> tout
+                    <input type="checkbox" data-fr-change="frRP3"> tout
                 </label>
             </div>
             <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px">
@@ -169,4 +169,9 @@ include __DIR__ . '/../includes/header.php';
     </form>
     <?php endif; ?>
 </div>
+<script nonce="<?= csp_nonce() ?>">
+window.frRP1 = function () { document.querySelectorAll('.perm-cb').forEach(c=>c.checked=true) };
+window.frRP2 = function () { document.querySelectorAll('.perm-cb').forEach(c=>c.checked=false) };
+window.frRP3 = function () { this.closest('.card').querySelectorAll('.perm-cb').forEach(c=>c.checked=this.checked) };
+</script>
 <?php include __DIR__ . '/../includes/footer.php'; ?>

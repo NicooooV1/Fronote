@@ -479,8 +479,8 @@ include __DIR__ . '/../includes/header.php';
                 <input type="hidden" name="action" value="export_sql">
 
                 <div class="select-actions">
-                    <a onclick="document.querySelectorAll('.sql-table-cb').forEach(c=>c.checked=true)">Tout selectionner</a>
-                    <a onclick="document.querySelectorAll('.sql-table-cb').forEach(c=>c.checked=false)">Tout deselectionner</a>
+                    <a data-fr-click="frIE1">Tout selectionner</a>
+                    <a data-fr-click="frIE2">Tout deselectionner</a>
                 </div>
                 <div class="tables-grid">
                     <?php foreach ($allTables as $t): ?>
@@ -878,5 +878,10 @@ include __DIR__ . '/../includes/header.php';
 
     <?php endif; ?>
 </div>
+
+<script nonce="<?= csp_nonce() ?>">
+window.frIE1 = function () { document.querySelectorAll('.sql-table-cb').forEach(c=>c.checked=true) };
+window.frIE2 = function () { document.querySelectorAll('.sql-table-cb').forEach(c=>c.checked=false) };
+</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

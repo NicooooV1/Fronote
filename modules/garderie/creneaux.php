@@ -29,7 +29,7 @@ $typeColors = ['matin' => '#f59e0b', 'soir' => '#6366f1', 'mercredi' => '#10b981
     <div class="page-header">
         <h1><i class="fas fa-child"></i> Créneaux de garderie</h1>
         <?php if ($isGestionnaire): ?>
-        <button class="btn btn-primary" onclick="document.getElementById('formCreneau').style.display='block'"><i class="fas fa-plus"></i> Nouveau</button>
+        <button class="btn btn-primary" data-fr-click="showBlock" data-fr-args='["formCreneau"]'><i class="fas fa-plus"></i> Nouveau</button>
         <?php endif; ?>
     </div>
 

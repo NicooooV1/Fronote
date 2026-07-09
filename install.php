@@ -19,6 +19,20 @@ ini_set('display_errors', $installDebug ? '1' : '0');
 error_reporting($installDebug ? E_ALL : 0);
 set_time_limit(300);
 
+// ─── Nonce CSP (installeur autonome : helpers.php n'est pas chargé ici) ───────
+// Fournit csp_nonce() si le bootstrap applicatif ne l'a pas déjà définie, afin
+// que les attributs nonce="" des <script> restent valides sans erreur fatale.
+if (!function_exists('csp_nonce')) {
+    function csp_nonce(): string
+    {
+        static $n = null;
+        if ($n === null) {
+            $n = defined('CSP_NONCE') ? CSP_NONCE : base64_encode(random_bytes(16));
+        }
+        return $n;
+    }
+}
+
 // ─── i18n de l'installeur (autonome : AVANT tout écran, y compris les gardes) ──
 // iT(clé, défaut) renvoie la traduction de la locale courante, sinon le DÉFAUT
 // FRANÇAIS fourni : une clé manquante ne casse jamais l'installeur.
@@ -1452,7 +1466,7 @@ code{background:#edf2f7;padding:1px 6px;border-radius:3px;font-size:.88em;font-f
         🏫 <?= iT('app.establishment_note', 'L\'établissement (identité, périodes, classes, matières) se configure au premier login administrateur, via l\'assistant de mise en route.') ?>
     </p>
 
-    <script>
+    <script nonce="<?= csp_nonce() ?>">
     function toggleSmtp() {
         var on = document.getElementById('smtpEnabled').checked;
         document.getElementById('smtp-fields').style.display = on ? '' : 'none';
@@ -1463,7 +1477,7 @@ code{background:#edf2f7;padding:1px 6px;border-radius:3px;font-size:.88em;font-f
     <div class="form-group">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
             <input type="checkbox" name="smtp_enabled" id="smtpEnabled" value="1"
-                   onchange="toggleSmtp()"
+                   data-fr-change="toggleSmtp"
                    <?= !empty($inst['smtp']['enabled']) ? 'checked' : '' ?>>
             <?= iT('app.smtp_enable', 'Configurer un serveur SMTP pour l\'envoi d\'emails') ?>
         </label>
@@ -1543,9 +1557,9 @@ code{background:#edf2f7;padding:1px 6px;border-radius:3px;font-size:.88em;font-f
     <div class="form-group pw-wrap">
         <label><?= iT('label.password', 'Mot de passe') ?></label>
         <input type="password" name="admin_password" id="pw" required minlength="12">
-        <button type="button" class="pw-toggle" onclick="let f=document.getElementById('pw');f.type=f.type==='password'?'text':'password'">👁️</button>
+        <button type="button" class="pw-toggle" data-fr-click="frIn1">👁️</button>
         <div class="pw-bar-track"><div class="pw-bar" id="pwBar"></div></div>
-        <button type="button" class="pw-gen" onclick="genPw()">🎲 <?= iT('admin.generate_pw', 'Générer un mot de passe sécurisé') ?></button>
+        <button type="button" class="pw-gen" data-fr-click="genPw">🎲 <?= iT('admin.generate_pw', 'Générer un mot de passe sécurisé') ?></button>
         <div class="pw-reqs">
             <strong><?= iT('admin.requirements', 'Exigences :') ?></strong>
             <div class="pw-req fail" id="r-len">✗ <?= iT('admin.pw_req_length', 'Au moins 12 caractères') ?></div>
@@ -1561,7 +1575,8 @@ code{background:#edf2f7;padding:1px 6px;border-radius:3px;font-size:.88em;font-f
     </div>
 </form>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
+window.frIn1 = function () { let f=document.getElementById('pw');f.type=f.type==='password'?'text':'password' };
 function checkPw(v){
     const rules={len:v.length>=12,up:/[A-Z]/.test(v),lo:/[a-z]/.test(v),num:/[0-9]/.test(v),sp:/[^A-Za-z0-9]/.test(v)};
     let s=0;
@@ -1700,13 +1715,13 @@ document.getElementById('pw').addEventListener('input',function(){checkPw(this.v
             </div>
         </form>
         <?php if (!empty($inst['db_exists'])): ?>
-        <script>
+        <script nonce="<?= csp_nonce() ?>">
         document.getElementById('confirmOverwrite').addEventListener('change',function(){
             document.getElementById('btnInstall').disabled = !this.checked;
         });
         </script>
         <?php endif; ?>
-        <script>
+        <script nonce="<?= csp_nonce() ?>">
         document.getElementById('execForm').addEventListener('submit',function(){
             var b=document.getElementById('btnInstall');
             b.disabled=true;b.textContent='⏳ Installation en cours…';

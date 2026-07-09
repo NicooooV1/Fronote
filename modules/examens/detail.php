@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
         <div class="info-item">
             <form method="post" style="display:flex;gap:.3rem;">
                 <?= csrfField() ?><input type="hidden" name="action" value="modifier_statut">
-                <select name="statut" class="form-control" onchange="this.form.submit()">
+                <select name="statut" class="form-control" data-fr-change="submitOwn">
                     <option value="planifie" <?= $examen['statut'] === 'planifie' ? 'selected' : '' ?>>Planifié</option>
                     <option value="en_cours" <?= $examen['statut'] === 'en_cours' ? 'selected' : '' ?>>En cours</option>
                     <option value="termine" <?= $examen['statut'] === 'termine' ? 'selected' : '' ?>>Terminé</option>
@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
                     <span><i class="fas fa-users"></i> <?= $ep['nb_convocations'] ?> élèves</span>
                     <a href="epreuve.php?id=<?= $ep['id'] ?>" class="btn btn-sm btn-primary">Gérer</a>
                     <?php if ($isGestionnaire): ?>
-                    <form method="post" style="display:inline;"><?= csrfField() ?><input type="hidden" name="epreuve_id" value="<?= $ep['id'] ?>"><button name="action" value="supprimer_epreuve" class="btn btn-sm btn-danger" onclick="return confirm('Supprimer ?')"><i class="fas fa-trash"></i></button></form>
+                    <form method="post" style="display:inline;"><?= csrfField() ?><input type="hidden" name="epreuve_id" value="<?= $ep['id'] ?>"><button name="action" value="supprimer_epreuve" class="btn btn-sm btn-danger" data-fr-confirm="Supprimer ?"><i class="fas fa-trash"></i></button></form>
                     <?php endif; ?>
                 </div>
             </div>

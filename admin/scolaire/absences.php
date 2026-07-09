@@ -177,7 +177,7 @@ include __DIR__ . '/../includes/header.php';
         <input type="text" name="eleve" value="<?= htmlspecialchars($filterEleve) ?>" placeholder="Nom élève…">
         <select name="justifie"><option value="">Justification</option><option value="1" <?= $filterJustifie === '1' ? 'selected' : '' ?>>Justifié</option><option value="0" <?= $filterJustifie === '0' ? 'selected' : '' ?>>Non justifié</option></select>
         <button type="submit" class="btn btn-primary" style="height:35px"><i class="fas fa-filter"></i></button>
-        <button type="button" class="btn btn-success" style="height:35px;margin-left:auto" onclick="document.getElementById('<?= $tab === 'retards' ? 'addRetardModal' : 'addAbsModal' ?>').classList.add('active')"><i class="fas fa-plus"></i> Ajouter</button>
+        <button type="button" class="btn btn-success" style="height:35px;margin-left:auto" data-fr-click="frAB1"><i class="fas fa-plus"></i> Ajouter</button>
     </form>
 
     <?php if ($tab === 'absences'): ?>
@@ -199,7 +199,7 @@ include __DIR__ . '/../includes/header.php';
                 <td><span class="badge-j <?= $a['justifie'] ? 'badge-oui' : 'badge-non' ?>"><?= $a['justifie'] ? 'Oui' : 'Non' ?></span></td>
                 <td>
                     <form method="post" style="display:inline"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="toggle_justify_absence"><input type="hidden" name="absence_id" value="<?= $a['id'] ?>"><button class="btn-xs <?= $a['justifie'] ? 'warning' : 'success' ?>" title="<?= $a['justifie'] ? 'Retirer justification' : 'Justifier' ?>"><i class="fas fa-<?= $a['justifie'] ? 'times' : 'check' ?>"></i></button></form>
-                    <form method="post" style="display:inline" onsubmit="return confirm('Supprimer ?')"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="delete_absence"><input type="hidden" name="absence_id" value="<?= $a['id'] ?>"><button class="btn-xs danger"><i class="fas fa-trash"></i></button></form>
+                    <form method="post" style="display:inline" data-fr-confirm="Supprimer ?"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="delete_absence"><input type="hidden" name="absence_id" value="<?= $a['id'] ?>"><button class="btn-xs danger"><i class="fas fa-trash"></i></button></form>
                 </td>
             </tr>
             <?php endforeach; ?>
@@ -225,7 +225,7 @@ include __DIR__ . '/../includes/header.php';
                 <td><span class="badge-j <?= $r['justifie'] ? 'badge-oui' : 'badge-non' ?>"><?= $r['justifie'] ? 'Oui' : 'Non' ?></span></td>
                 <td>
                     <form method="post" style="display:inline"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="toggle_justify_retard"><input type="hidden" name="retard_id" value="<?= $r['id'] ?>"><button class="btn-xs <?= $r['justifie'] ? 'warning' : 'success' ?>"><i class="fas fa-<?= $r['justifie'] ? 'times' : 'check' ?>"></i></button></form>
-                    <form method="post" style="display:inline" onsubmit="return confirm('Supprimer ?')"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="delete_retard"><input type="hidden" name="retard_id" value="<?= $r['id'] ?>"><button class="btn-xs danger"><i class="fas fa-trash"></i></button></form>
+                    <form method="post" style="display:inline" data-fr-confirm="Supprimer ?"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="delete_retard"><input type="hidden" name="retard_id" value="<?= $r['id'] ?>"><button class="btn-xs danger"><i class="fas fa-trash"></i></button></form>
                 </td>
             </tr>
             <?php endforeach; ?>
@@ -251,7 +251,7 @@ include __DIR__ . '/../includes/header.php';
             <div class="form-group"><label>Type</label><select name="type_absence"><option>absence</option><option>maladie</option><option>famille</option><option>autre</option></select></div>
             <div class="form-group"><label>Motif</label><input type="text" name="motif"></div>
             <div class="form-group"><label>Commentaire</label><textarea name="commentaire" rows="2"></textarea></div>
-            <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn btn-secondary" onclick="document.getElementById('addAbsModal').classList.remove('active')">Annuler</button><button type="submit" class="btn btn-primary">Ajouter</button></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn btn-secondary" data-fr-click="frAB2">Annuler</button><button type="submit" class="btn btn-primary">Ajouter</button></div>
         </form>
     </div>
 </div>
@@ -271,13 +271,16 @@ include __DIR__ . '/../includes/header.php';
                 <div class="form-group"><label>Durée (min)</label><input type="number" name="duree_minutes" min="1" required></div>
             </div>
             <div class="form-group"><label>Motif</label><input type="text" name="motif"></div>
-            <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn btn-secondary" onclick="document.getElementById('addRetardModal').classList.remove('active')">Annuler</button><button type="submit" class="btn btn-primary">Ajouter</button></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn btn-secondary" data-fr-click="frAB3">Annuler</button><button type="submit" class="btn btn-primary">Ajouter</button></div>
         </form>
     </div>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('active'); }));
+window.frAB1 = function () { document.getElementById('<?= $tab === 'retards' ? 'addRetardModal' : 'addAbsModal' ?>').classList.add('active') };
+window.frAB2 = function () { document.getElementById('addAbsModal').classList.remove('active') };
+window.frAB3 = function () { document.getElementById('addRetardModal').classList.remove('active') };
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

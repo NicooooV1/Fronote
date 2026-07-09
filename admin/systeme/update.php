@@ -140,10 +140,10 @@ include __DIR__ . '/../includes/header.php';
       sans migration ni réinitialisation.
     </p>
     <div class="upd-row">
-      <button id="btn-update" class="btn btn-primary" onclick="doUpdate()" <?= $gitOk ? '' : 'disabled' ?>>
+      <button id="btn-update" class="btn btn-primary" data-fr-click="doUpdate" <?= $gitOk ? '' : 'disabled' ?>>
         <i class="fas fa-rotate"></i> Mettre à jour maintenant
       </button>
-      <button id="btn-check" class="btn btn-secondary" onclick="doCheck()" <?= $gitOk ? '' : 'disabled' ?>>
+      <button id="btn-check" class="btn btn-secondary" data-fr-click="doCheck" <?= $gitOk ? '' : 'disabled' ?>>
         <i class="fas fa-search"></i> Vérifier
       </button>
       <span id="upd-inline" class="muted"></span>
@@ -168,7 +168,7 @@ include __DIR__ . '/../includes/header.php';
   </div>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 const CSRF = <?= json_encode($csrfToken) ?>;
 function post(action) {
   return fetch(window.location.href, {

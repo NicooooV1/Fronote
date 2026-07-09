@@ -24,7 +24,7 @@ $categories = DocumentService::categories();
     <!-- Filtres -->
     <div class="doc-filters">
         <form method="get" class="doc-filter-form">
-            <select name="categorie" onchange="this.form.submit()" class="form-select">
+            <select name="categorie" data-fr-change="submitOwn" class="form-select">
                 <option value="">Toutes les catégories</option>
                 <?php foreach ($categories as $k => $v): ?>
                     <option value="<?= $k ?>" <?= $categorie === $k ? 'selected' : '' ?>><?= $v ?></option>
@@ -69,7 +69,7 @@ $categories = DocumentService::categories();
                         <a href="telecharger.php?id=<?= $doc['id'] ?>" class="btn btn-sm btn-primary" title="Télécharger"><i class="fas fa-download"></i></a>
                         <?php if (isAdmin()): ?>
                             <form method="post" action="supprimer.php" style="display:inline"
-                                  onsubmit="return confirm('Supprimer ce document ?')">
+                                  data-fr-confirm="Supprimer ce document ?">
                                 <?= csrfField() ?>
                                 <input type="hidden" name="id" value="<?= $doc['id'] ?>">
                                 <button type="submit" class="btn btn-sm btn-danger" title="Supprimer"><i class="fas fa-trash"></i></button>

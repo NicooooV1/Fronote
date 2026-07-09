@@ -191,7 +191,7 @@ include 'includes/header.php';
     </div>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
     document.getElementById('date_debut').addEventListener('change', function() {
         document.getElementById('date_fin').value = this.value;
     });

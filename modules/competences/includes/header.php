@@ -23,7 +23,7 @@ $ffLsuExport   = $_compFeatures ? $_compFeatures->isEnabled('competences.lsu_exp
 $ffLinkGrades  = $_compFeatures ? $_compFeatures->isEnabled('competences.link_to_grades') : true;
 
 if ($ffRadarGraph) {
-    $extraHeadHtml = ($extraHeadHtml ?? '') . '<script src="' . $rootPrefix . 'modules/competences/assets/js/competences-radar.js" defer></script>';
+    $extraHeadHtml = ($extraHeadHtml ?? '') . '<script src="' . $rootPrefix . 'modules/competences/assets/js/competences-radar.js" defer nonce="' . csp_nonce() . '"></script>';
 }
 
 $isTeacher = isAdmin() || isTeacher();

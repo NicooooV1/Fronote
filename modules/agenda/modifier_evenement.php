@@ -310,7 +310,7 @@ include 'includes/header.php';
     </div>
 </div>
 
-<script src="assets/js/event_form.js"></script>
+<script src="assets/js/event_form.js" nonce="<?= csp_nonce() ?>"></script>
 
 <?php
 include 'includes/footer.php';
