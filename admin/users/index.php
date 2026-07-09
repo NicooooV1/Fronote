@@ -25,6 +25,17 @@ $csrf_token = $_SESSION['csrf_token'];
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['csrf_token']) && $_POST['csrf_token'] === $csrf_token) {
     $action = $_POST['action'] ?? '';
 
+    // Cloisonnement multi-tenant : toute action ciblant un utilisateur par id DOIT viser un
+    // compte du MÊME établissement (super_admin exempté). Sans ce garde, un admin pouvait
+    // désactiver / déverrouiller / réinitialiser / supprimer / éditer un compte d'un AUTRE
+    // établissement en falsifiant user_id (IDOR destructif). Fail-closed.
+    $_idActions = ['toggle_active', 'unlock', 'reset_password', 'delete', 'edit_user'];
+    if (in_array($action, $_idActions, true)
+        && !adminCanManageUser((int) ($_POST['user_id'] ?? 0), (string) ($_POST['user_type'] ?? ''))) {
+        $error = "Action non autorisée sur cet utilisateur.";
+        $action = '__denied__';
+    }
+
     // Activer / Désactiver
     if ($action === 'toggle_active') {
         $uid = intval($_POST['user_id'] ?? 0);

@@ -25,6 +25,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
     $action = $_POST['action'] ?? '';
     $adminId = intval($_POST['admin_id'] ?? 0);
 
+    // Cloisonnement multi-tenant : ne jamais agir sur un administrateur d'un AUTRE
+    // établissement via un admin_id falsifié (super_admin exempté). Fail-closed.
+    if ($adminId > 0 && !adminCanManageUser($adminId, 'administrateur')) {
+        $error = "Action non autorisée sur cet administrateur.";
+        $action = '__denied__';
+    }
+
     if ($action === 'change_password' && $adminId > 0) {
         $newPwd = trim($_POST['new_password'] ?? '');
         $confirmPwd = trim($_POST['confirm_password'] ?? '');

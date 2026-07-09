@@ -187,7 +187,7 @@ class SallesMaterielService
                 WHERE 1=1";
         $params = [];
         if (!empty($filters['statut'])) { $sql .= ' AND pm.statut = ?'; $params[] = $filters['statut']; }
-        $sql .= ' ORDER BY pm.date_emprunt DESC';
+        $sql .= ' ORDER BY pm.date_pret DESC';
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

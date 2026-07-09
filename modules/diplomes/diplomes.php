@@ -62,7 +62,7 @@ $stats = $isGestionnaire ? $diplService->getStats() : null;
                 <div class="diplome-details">
                     <span><i class="fas fa-user-graduate"></i> <?= htmlspecialchars($d['eleve_nom']) ?></span>
                     <span><i class="fas fa-calendar"></i> <?= formatDate($d['date_obtention']) ?></span>
-                    <span><i class="fas fa-hashtag"></i> <?= htmlspecialchars($d['numero']) ?></span>
+                    <span><i class="fas fa-hashtag"></i> <?= htmlspecialchars($d['numero_diplome'] ?? $d['numero'] ?? '-') ?></span>
                 </div>
             </div>
             <?php if ($isGestionnaire): ?>

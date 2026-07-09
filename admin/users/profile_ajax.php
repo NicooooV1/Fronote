@@ -25,6 +25,10 @@ if ($id <= 0 || empty($type)) { echo '<p class="alert alert-danger">Paramètres 
 
 $u = $userObj->getById($id, $type);
 if (!$u) { echo '<p class="alert alert-danger">Utilisateur non trouvé.</p>'; exit; }
+// Cloisonnement multi-tenant : un admin d'établissement ne consulte QUE ses utilisateurs
+// (super_admin exempté). Même message que « non trouvé » pour ne pas créer d'oracle
+// d'existence inter-établissements.
+if (!adminCanManageUser($id, $type)) { echo '<p class="alert alert-danger">Utilisateur non trouvé.</p>'; exit; }
 
 $csrf_token = $_SESSION['csrf_token'] ?? '';
 ?>

@@ -7,6 +7,20 @@ if (defined('PRONOTE_BOOTSTRAP_LOADED')) {
 }
 define('PRONOTE_BOOTSTRAP_LOADED', true);
 
+// ─── Output buffering (web) ─────────────────────────────────────────────────
+// Beaucoup de pages incluent le header (qui émet du HTML) PUIS redirigent via
+// header('Location: …') quand une ressource est introuvable / un paramètre manque.
+// Sans tampon de sortie, ces redirections tardives échouent (« headers already
+// sent ») et laissent une page cassée. Un ob_start() global rend header()/setcookie()
+// utilisables jusqu'au flush final. Hors CLI (le cron ne doit pas tamponner stdout).
+// NB : php.ini peut déjà avoir output_buffering=4096 (buffer auto qui se VIDE à 4 Ko
+// et envoie alors les en-têtes en plein rendu). On empile notre propre buffer SANS
+// limite de taille (chunk_size=0) pour qu'aucun flush automatique n'intervienne avant
+// la fin du script — c'est ce qui garantit qu'un header('Location: …') tardif marche.
+if (PHP_SAPI !== 'cli') {
+	ob_start(null, 0);
+}
+
 // Définir les constantes de base
 define('API_PATH', __DIR__);
 define('BASE_PATH', dirname(__DIR__));
@@ -522,13 +536,18 @@ if (php_sapi_name() !== 'cli' && !empty($_SESSION['user_id'])) {
 	try {
 		// Comparaison expires_at <= NOW() faite DANS MySQL (même fuseau que NOW()) :
 		// comparer en PHP via strtotime() casserait sur le décalage UTC/Europe-Paris.
-		$_ss = getPDO()->prepare("SELECT is_active, (expires_at IS NOT NULL AND expires_at <= NOW()) AS expired FROM session_security WHERE id = ? LIMIT 1");
+		// PDO via le container : getPDO() (Bridge legacy) N'EST PAS encore chargé à ce stade
+		// du bootstrap → l'appeler ici lançait "Call to undefined function getPDO()", avalée
+		// fail-open, DÉSACTIVANT silencieusement la révocation de session côté serveur
+		// (kill-session + expiration) à chaque requête. app('db') est déjà prêt ici.
+		$_ssPdo = $app->make('db')->getConnection();
+		$_ss = $_ssPdo->prepare("SELECT is_active, (expires_at IS NOT NULL AND expires_at <= NOW()) AS expired FROM session_security WHERE id = ? LIMIT 1");
 		$_ss->execute([session_id()]);
 		$_ssRow = $_ss->fetch(\PDO::FETCH_ASSOC);
 		if ($_ssRow !== false && ((int) $_ssRow['is_active'] === 0 || (int) $_ssRow['expired'] === 1)) {
 			$_forceLogout = true;
 		} elseif ($_ssRow !== false) {
-			getPDO()->prepare("UPDATE session_security SET last_activity = NOW() WHERE id = ?")->execute([session_id()]);
+			$_ssPdo->prepare("UPDATE session_security SET last_activity = NOW() WHERE id = ?")->execute([session_id()]);
 		}
 	} catch (\Throwable $e) { /* fail-open */ error_log('[bootstrap.php] ' . $e->getMessage()); }
 

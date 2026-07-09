@@ -2,6 +2,11 @@
 /**
  * M14 – Réunions — Créer une réunion
  */
+// Bootstrap AVANT la garde : isAdmin()/isTeacher()/isVieScolaire() sont fournies par
+// le bridge (chargé via bootstrap). Sans ça la garde fatalait (Call to undefined
+// function isAdmin()). Le header inclus plus bas re-require le bootstrap (idempotent).
+require_once __DIR__ . '/../../API/bootstrap.php';
+requireAuth();
 if (!isAdmin() && !isTeacher() && !isVieScolaire()) { header('Location: reunions.php'); exit; }
 
 $pageTitle = 'Planifier une réunion';

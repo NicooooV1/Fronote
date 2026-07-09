@@ -41,6 +41,12 @@ class BackupService
 		$sql = "-- Fronote Database Backup\n";
 		$sql .= "-- Date: " . date('Y-m-d H:i:s') . "\n";
 		$sql .= "-- Tables: " . count($tables) . "\n\n";
+		// Mode SQL permissif pour la durée du dump (comme mysqldump) : une restauration
+		// est une reproduction fidèle de la source, pas une revalidation. Sans cela, une
+		// valeur héritée non stricte (ex. enum='' saisie sous un ancien mode SQL) casse
+		// l'INSERT si la base cible est en mode strict. On restaure le mode à la fin.
+		$sql .= "SET @OLD_SQL_MODE = @@SQL_MODE;\n";
+		$sql .= "SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';\n";
 		$sql .= "SET FOREIGN_KEY_CHECKS = 0;\n\n";
 
 		foreach ($tables as $table) {
@@ -100,6 +106,7 @@ class BackupService
 		}
 
 		$sql .= "SET FOREIGN_KEY_CHECKS = 1;\n";
+		$sql .= "SET SQL_MODE = @OLD_SQL_MODE;\n";
 
 		// Compression gzip si disponible.
 		$payload = $sql;
@@ -208,6 +215,17 @@ class BackupService
 			throw new \RuntimeException("Failed to read backup file");
 		}
 
+		// Mode SQL permissif pour la restauration : reproduire fidèlement la source,
+		// sans revalider en mode strict des valeurs héritées (ex. enum vide saisi sous
+		// un ancien mode). Sécurise aussi les dumps antérieurs à l'en-tête SQL_MODE.
+		$oldSqlMode = null;
+		try {
+			$oldSqlMode = $this->pdo->query('SELECT @@SESSION.sql_mode')->fetchColumn();
+			$this->pdo->exec("SET SESSION sql_mode = 'NO_AUTO_VALUE_ON_ZERO'");
+		} catch (\Throwable $e) {
+			$oldSqlMode = null;
+		}
+
 		try {
 			$this->pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
 
@@ -221,6 +239,10 @@ class BackupService
 		} catch (\Throwable $e) {
 			$this->pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
 			throw $e;
+		} finally {
+			if ($oldSqlMode !== null) {
+				try { $this->pdo->exec('SET SESSION sql_mode = ' . $this->pdo->quote((string) $oldSqlMode)); } catch (\Throwable $e) {}
+			}
 		}
 	}
 

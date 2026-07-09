@@ -50,8 +50,11 @@ include __DIR__ . '/../includes/header.php';
             <table class="table">
                 <thead><tr><th>Rôle</th><th>Clé</th><th>Périmètre</th><th>Sensible</th><th>Permissions</th><th>Attribué à</th><th></th></tr></thead>
                 <tbody>
-                <?php foreach ($roles as $rk):
-                    $meta  = $catalog[$rk] ?? [];
+                <?php foreach ($roles as $rk => $tierMeta):
+                    // rolesByTier() renvoie [tier => [role_key => meta]] : on itère sur les
+                    // CLÉS (role_key), pas les valeurs (meta), sinon $rk serait un tableau
+                    // (→ "Illegal offset type" sur $catalog[$rk]).
+                    $meta  = $catalog[$rk] ?? $tierMeta ?? [];
                     $grants = RoleCatalog::grantsFor($rk);
                     $permCount = in_array('*', $grants, true) ? 'toutes' : count(RoleCatalog::permissionsFor($rk));
                 ?>

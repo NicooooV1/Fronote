@@ -430,7 +430,9 @@ class NoteService
         if (!empty($filters['classe']) && !empty($filters['matiere'])) {
             $notes = $this->getNotesClasseMatiere($filters['classe'], (int) $filters['matiere'], $trimestre);
         } else {
-            $notes = $this->getAllNotes($trimestre, 10000);
+            // getAllNotes renvoie ['notes'=>[...], 'total'=>N] (paginé) — on extrait la
+            // liste plate, sinon array_map itère les clés du wrapper (→ 'note' indéfini, 500).
+            $notes = $this->getAllNotes($trimestre, 10000)['notes'] ?? [];
             if (!empty($filters['classe'])) {
                 $notes = array_filter($notes, fn($n) => ($n['classe'] ?? '') === $filters['classe']);
             }
@@ -445,7 +447,7 @@ class NoteService
                 'eleve'       => $n['eleve_nom'] ?? (($n['prenom'] ?? '') . ' ' . ($n['nom'] ?? '')),
                 'classe'      => $n['classe'] ?? '',
                 'matiere'     => $n['matiere_nom'] ?? $n['nom_matiere'] ?? '',
-                'note'        => $n['note'] . '/' . ($n['note_sur'] ?? 20),
+                'note'        => ($n['note'] ?? '') . '/' . ($n['note_sur'] ?? 20),
                 'coefficient' => $n['coefficient'] ?? 1,
                 'type'        => $n['type_evaluation'] ?? '',
                 'date'        => !empty($n['date_note']) ? date('d/m/Y', strtotime($n['date_note'])) : '',

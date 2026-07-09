@@ -4,6 +4,46 @@
  */
 
 /**
+ * Cloisonnement multi-tenant du back-office « utilisateurs ».
+ *
+ * Vrai UNIQUEMENT si l'utilisateur cible (id + type) appartient à l'établissement
+ * courant. super_admin : toujours vrai (portée globale légitime). Fail-closed : en
+ * cas de doute (contexte d'établissement indéterminé, erreur DB, type inconnu) → refus.
+ *
+ * Empêche un administrateur d'établissement d'agir sur les comptes d'un AUTRE
+ * établissement en manipulant l'id (IDOR : lecture de profil, activation/désactivation,
+ * déverrouillage, réinitialisation de mot de passe, suppression, édition).
+ */
+function adminCanManageUser(int $id, string $type): bool
+{
+    if ($id <= 0 || $type === '') {
+        return false;
+    }
+    if (function_exists('isSuperAdmin') && isSuperAdmin()) {
+        return true;
+    }
+    static $map = [
+        'eleve'         => 'eleves',
+        'professeur'    => 'professeurs',
+        'parent'        => 'parents',
+        'vie_scolaire'  => 'vie_scolaire',
+        'administrateur' => 'administrateurs',
+    ];
+    if (!isset($map[$type])) {
+        return false;
+    }
+    try {
+        $pdo  = getPDO();
+        $etab = \API\Core\EstablishmentContext::id();
+        $stmt = $pdo->prepare("SELECT 1 FROM `{$map[$type]}` WHERE id = ? AND etablissement_id = ? LIMIT 1");
+        $stmt->execute([$id, $etab]);
+        return (bool) $stmt->fetchColumn();
+    } catch (\Throwable $e) {
+        return false; // fail-closed : données personnelles → refuser plutôt que fuiter.
+    }
+}
+
+/**
  * Journalise une action dans la table audit_log
  */
 function logAudit($action, $model = null, $modelId = null, $oldValues = null, $newValues = null) {

@@ -45,7 +45,7 @@ class DiplomeService
     public function creerDiplome(array $d): int
     {
         $numero = strtoupper(substr($d['type'], 0, 3)) . '-' . date('Y') . '-' . str_pad(mt_rand(1, 99999), 5, '0', STR_PAD_LEFT);
-        $stmt = $this->pdo->prepare("INSERT INTO diplomes (eleve_id, intitule, type, mention, date_obtention, numero, fichier_path, description)
+        $stmt = $this->pdo->prepare("INSERT INTO diplomes (eleve_id, intitule, type, mention, date_obtention, numero_diplome, fichier_path, description)
                 VALUES (?,?,?,?,?,?,?,?)");
         $stmt->execute([$d['eleve_id'], $d['intitule'], $d['type'], $d['mention'] ?? null,
                         $d['date_obtention'], $numero, $d['fichier_path'] ?? null, $d['description'] ?? null]);
@@ -167,7 +167,7 @@ class DiplomeService
         $types = self::typesDiplome();
         $mentions = self::mentions();
         return array_map(fn($d) => [
-            $d['numero'] ?? '-',
+            $d['numero_diplome'] ?? $d['numero'] ?? '-',
             $d['eleve_nom'],
             $d['classe_nom'] ?? '-',
             $d['intitule'],

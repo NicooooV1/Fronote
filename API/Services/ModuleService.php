@@ -610,19 +610,39 @@ class ModuleService
             return;
         }
         $this->favColsEnsured = true;
+        // Colonnes à garantir (nom => clause ADD). On teste la présence via
+        // information_schema AVANT d'altérer : évite d'exécuter un DDL à chaque requête
+        // et de logger une erreur "Duplicate column" en boucle (bruit + coût).
         $columns = [
-            "ADD COLUMN `target_type` ENUM('module','page') NOT NULL DEFAULT 'module'",
-            "ADD COLUMN `target_url` VARCHAR(255) NULL",
-            "ADD COLUMN `label` VARCHAR(150) NULL",
-            "ADD COLUMN `icon` VARCHAR(64) NULL",
+            'target_type' => "ADD COLUMN `target_type` ENUM('module','page') NOT NULL DEFAULT 'module'",
+            'target_url'  => "ADD COLUMN `target_url` VARCHAR(255) NULL",
+            'label'       => "ADD COLUMN `label` VARCHAR(150) NULL",
+            'icon'        => "ADD COLUMN `icon` VARCHAR(64) NULL",
         ];
-        foreach ($columns as $clause) {
-            try {
-                $this->pdo->exec("ALTER TABLE `user_favorites` {$clause}");
-            } catch (\Throwable $e) {
-                // Colonne déjà présente → ignorer.
-                error_log('[ModuleService.php] ' . $e->getMessage());
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT COLUMN_NAME FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user_favorites'"
+            );
+            $stmt->execute();
+            $existing = array_map('strtolower', $stmt->fetchAll(\PDO::FETCH_COLUMN) ?: []);
+        } catch (\Throwable $e) {
+            // Impossible de lire le schéma → on n'altère pas (pas de DDL aveugle).
+            return;
+        }
+        $missing = [];
+        foreach ($columns as $name => $clause) {
+            if (!in_array(strtolower($name), $existing, true)) {
+                $missing[] = $clause;
             }
+        }
+        if (!$missing) {
+            return; // rien à faire (cas nominal) — aucun DDL, aucun log.
+        }
+        try {
+            $this->pdo->exec('ALTER TABLE `user_favorites` ' . implode(', ', $missing));
+        } catch (\Throwable $e) {
+            error_log('[ModuleService.php] ensureFavoritesColumns: ' . $e->getMessage());
         }
     }
 

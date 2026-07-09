@@ -112,8 +112,15 @@ class UserService
             $data['metier']           = $userData['metier'] ?? null;
             $data['est_parent_eleve'] = $userData['est_parent_eleve'] ?? 'non';
         } elseif ($profil === 'vie_scolaire') {
-            $data['est_CPE']        = $userData['est_CPE'] ?? 0;
-            $data['est_infirmerie'] = $userData['est_infirmerie'] ?? 0;
+            // Colonnes enum('oui','non') : normaliser toute entrée (case à cocher 1/on,
+            // 'oui', booléen…) vers un membre valide. `?? 0` insérait l'entier 0, que
+            // MySQL mappe sur l'index enum 0 = chaîne vide invalide (casse la restauration
+            // en mode SQL strict).
+            $toEnum = static function ($v): string {
+                return in_array($v, [1, '1', true, 'oui', 'on', 'yes', 'true'], true) ? 'oui' : 'non';
+            };
+            $data['est_CPE']        = $toEnum($userData['est_CPE'] ?? 'non');
+            $data['est_infirmerie'] = $toEnum($userData['est_infirmerie'] ?? 'non');
         }
 
         $columns      = array_keys($data);

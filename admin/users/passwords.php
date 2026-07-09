@@ -30,7 +30,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
         $rid = intval($_POST['request_id'] ?? 0);
         $uid = intval($_POST['user_id'] ?? 0);
         $utype = $_POST['user_type'] ?? '';
-        if ($rid > 0 && $uid > 0 && !empty($utype)) {
+        // Cloisonnement multi-tenant : ne réinitialiser QUE le mdp d'un utilisateur de son
+        // établissement (super_admin exempté) — sinon IDOR de prise de contrôle inter-tenant.
+        if ($rid > 0 && $uid > 0 && !empty($utype) && !adminCanManageUser($uid, $utype)) {
+            $error = "Action non autorisée sur cet utilisateur.";
+        } elseif ($rid > 0 && $uid > 0 && !empty($utype)) {
             $generatedPwd = generateSecurePassword(12);
             if ($userObj->changePassword($utype, $uid, $generatedPwd)) {
                 $stmt = $pdo->prepare("UPDATE demandes_reinitialisation SET status = 'approved', date_traitement = NOW(), admin_id = ? WHERE id = ?");
@@ -56,7 +60,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
     if ($action === 'manual_reset') {
         $uid = intval($_POST['user_id'] ?? 0);
         $utype = $_POST['user_type'] ?? '';
-        if ($uid > 0 && !empty($utype)) {
+        // Cloisonnement multi-tenant (cf. approve) : refus si la cible n'est pas de
+        // l'établissement courant (super_admin exempté).
+        if ($uid > 0 && !empty($utype) && !adminCanManageUser($uid, $utype)) {
+            $error = "Action non autorisée sur cet utilisateur.";
+        } elseif ($uid > 0 && !empty($utype)) {
             $generatedPwd = generateSecurePassword(12);
             if ($userObj->changePassword($utype, $uid, $generatedPwd)) {
                 logAudit('password_manual_reset', $userObj->getTableName($utype), $uid);
