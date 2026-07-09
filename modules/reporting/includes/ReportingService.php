@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M22 – Reporting & Exports — Service
  * Enhanced with global dashboards, trend analysis, cross-class comparison

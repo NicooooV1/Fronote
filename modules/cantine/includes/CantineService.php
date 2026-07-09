@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * CantineService — Service métier pour le module Cantine (M18).
  */

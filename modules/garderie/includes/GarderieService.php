@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * GarderieService — Service métier pour le module Garderie (M20).
  */

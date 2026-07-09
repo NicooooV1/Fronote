@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * AJAX endpoint — Radar chart data for competences.
  * GET: type (eleve|classe), eleve_id|classe_id, periode_id

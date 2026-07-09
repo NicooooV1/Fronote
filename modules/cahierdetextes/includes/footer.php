@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Pied de page commun pour le module Cahier de Textes
  * Utilise les templates partagés Fronote

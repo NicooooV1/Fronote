@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M36 – Contenus pédagogiques — Service
  */
@@ -72,7 +73,7 @@ class RessourceService
             $d['niveau'] ?? null, $d['tags'] ?? null,
             $d['publie'] ?? 1
         ]);
-        return $this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function modifierRessource(int $id, array $d): void

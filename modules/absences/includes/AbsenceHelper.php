@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * AbsenceHelper — Fonctions utilitaires partagées pour le module Absences.
  * Remplace les utilities éparpillées et centralise :

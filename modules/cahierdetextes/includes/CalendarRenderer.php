@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * CalendarRenderer — Composant calendrier réutilisable (REF-3)
  *

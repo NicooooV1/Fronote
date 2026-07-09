@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * AppelService — Service métier pour le module Appel / Présence (M04).
  *

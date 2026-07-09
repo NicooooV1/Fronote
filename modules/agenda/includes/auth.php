@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Authentification pour le module Agenda
  * Charge l'API centralisée (toutes les fonctions auth viennent du Bridge)

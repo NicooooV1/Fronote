@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Fonctions utilitaires pour le module Notes
  * formatDate, sanitizeInput, generateCSRFToken, validateCSRFToken sont fournis par l'API (Bridge)

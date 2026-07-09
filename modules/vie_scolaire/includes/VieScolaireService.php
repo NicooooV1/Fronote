@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * VieScolaireService — Tableau de bord consolidé pour la vie scolaire (M10)
  * Agrège les données absences, retards, incidents, appels 

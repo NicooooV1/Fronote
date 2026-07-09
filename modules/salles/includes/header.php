@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 // Charger l'API (Bridge -> bootstrap.php) AVANT tout démarrage de session :
 // le bloc gardé de bootstrap.php démarre la session durcie (HttpOnly + Secure(https)
 // + SameSite=Lax + nom/path par instance). Ne PAS faire de session_start() nu ici.

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * En-tête standardisé pour le module Emploi du Temps (topbar layout)
  */

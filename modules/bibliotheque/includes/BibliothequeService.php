@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M29 – Bibliothèque/CDI — Service
  */
@@ -69,7 +70,7 @@ class BibliothequeService
             $data['categorie'] ?? 'general', $data['description'] ?? null,
             $data['exemplaires_total'] ?? 1, $data['emplacement'] ?? null,
         ]);
-        return $this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function modifierLivre(int $id, array $data): void
@@ -113,7 +114,7 @@ class BibliothequeService
             VALUES (?, ?, ?, ?, NOW(), ?, 'en_cours')
         ");
         $stmt->execute([$etabId, $livreId, $emprunteurId, $emprunteurType, $dateRetourPrevue]);
-        return $this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function retourner(int $empruntId, ?int $ownerId = null, ?string $ownerType = null): void

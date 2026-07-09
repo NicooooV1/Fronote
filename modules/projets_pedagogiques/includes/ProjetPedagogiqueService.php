@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * ProjetPedagogiqueService — Service métier pour le module Projets Pédagogiques (M41).
  */

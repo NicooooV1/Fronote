@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * InternatService — Service métier pour le module Internat (M19).
  */

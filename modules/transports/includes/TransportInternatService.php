@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M32 – Transports — Service
  * (Le volet internat a été retiré : voir modules/internat/includes/InternatService.php.)
@@ -48,7 +49,7 @@ class TransportInternatService
     {
         $stmt = $this->pdo->prepare("INSERT INTO lignes_transport (etablissement_id, nom, type, itineraire, horaire_depart, horaire_arrivee, capacite) VALUES (?,?,?,?,?,?,?)");
         $stmt->execute([\API\Core\EstablishmentContext::id(), $d['nom'], $d['type'], $d['itineraire'] ?? null, $d['horaire_depart'] ?? null, $d['horaire_arrivee'] ?? null, $d['capacite'] ?? null]);
-        return $this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     /* ───── INSCRIPTIONS TRANSPORT ───── */

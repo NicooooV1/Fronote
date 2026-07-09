@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M37 – Besoins particuliers — Service
  */
@@ -69,7 +70,7 @@ class BesoinService
         $intitule = !empty($d['intitule']) ? $d['intitule'] : ($d['type'] . ' - plan d\'accompagnement');
         $stmt = $this->pdo->prepare("INSERT INTO plans_accompagnement (etablissement_id, eleve_id, type_plan, intitule, amenagements, responsable_id, date_debut, date_fin, statut, document_path) VALUES (?,?,?,?,?,?,?,?,?,?)");
         $stmt->execute([$etabId, $d['eleve_id'], $d['type'], $intitule, $d['amenagements'] ?? null, $d['responsable_id'] ?: null, $d['date_debut'], $d['date_fin'] ?: null, 'actif', $d['document_path'] ?? null]);
-        return $this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function modifierPlan(int $id, array $d): void

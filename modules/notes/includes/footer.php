@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Pied de page standardisé pour le module Notes
  * Utilise le template partagé Fronote

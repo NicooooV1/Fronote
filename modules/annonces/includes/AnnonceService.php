@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * AnnonceService — Service métier pour le module Annonces / Sondages (M11).
  *

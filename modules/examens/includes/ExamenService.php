@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M27 – Examens & Épreuves — Service
  */
@@ -35,7 +36,7 @@ class ExamenService
     {
         $stmt = $this->pdo->prepare("INSERT INTO examens (etablissement_id, nom, type, date_debut, date_fin, description, statut, created_by) VALUES (?,?,?,?,?,?,?,?)");
         $stmt->execute([\API\Core\EstablishmentContext::id(), $d['nom'], $d['type'], $d['date_debut'], $d['date_fin'] ?: null, $d['description'] ?? null, 'planifie', $d['created_by'] ?? null]);
-        return $this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function modifierExamen(int $id, array $d): void
@@ -78,7 +79,7 @@ class ExamenService
     {
         $stmt = $this->pdo->prepare("INSERT INTO epreuves (etablissement_id, examen_id, matiere_id, intitule, date_epreuve, duree_minutes, salle_id, coefficient, type, consignes) VALUES (?,?,?,?,?,?,?,?,?,?)");
         $stmt->execute([\API\Core\EstablishmentContext::id(), $d['examen_id'], $d['matiere_id'] ?: null, $d['intitule'], $d['date_epreuve'], $d['duree_minutes'], $d['salle_id'] ?: null, $d['coefficient'] ?? 1, $d['type'], $d['consignes'] ?? null]);
-        return $this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function supprimerEpreuve(int $id): void

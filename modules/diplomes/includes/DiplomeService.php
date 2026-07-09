@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M44 – Diplômes & Relevés — Service
  */
@@ -49,7 +50,7 @@ class DiplomeService
                 VALUES (?,?,?,?,?,?,?,?)");
         $stmt->execute([$d['eleve_id'], $d['intitule'], $d['type'], $d['mention'] ?? null,
                         $d['date_obtention'], $numero, $d['fichier_path'] ?? null, $d['description'] ?? null]);
-        return $this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function modifierDiplome(int $id, array $d): void

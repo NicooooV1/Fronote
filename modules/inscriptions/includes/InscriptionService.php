@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M26 – Inscriptions en ligne — Service
  */
@@ -41,7 +42,7 @@ class InscriptionService
             $data['adresse'], $data['telephone'], $data['email_contact'],
             $data['etablissement_precedent'] ?? null, $data['observations'] ?? null
         ]);
-        return $this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function getInscription(int $id): ?array
@@ -172,7 +173,7 @@ class InscriptionService
             $result['type_mime'],
             $result['taille'],
         ]);
-        return $this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function getDocuments(int $inscriptionId): array

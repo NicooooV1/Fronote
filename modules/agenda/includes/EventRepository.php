@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * EventRepository — Service centralisé pour la gestion des événements agenda.
  *

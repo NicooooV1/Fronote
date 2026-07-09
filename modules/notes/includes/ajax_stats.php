@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * AJAX endpoint — Statistics data for Canvas graphs.
  * GET params: type (distribution|evolution|boxplot), classe, matiere, trimestre, eleve_id

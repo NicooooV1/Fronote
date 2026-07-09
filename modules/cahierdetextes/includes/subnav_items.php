@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 // Entrées de la navigation secondaire du module cahier de textes — partagées entre
 // cahierdetextes.php, includes/header.php et includes/header_rendus.php pour éviter
 // toute divergence (fusion de l'ancien bandeau inline et des ex-onglets .cdt-tabs).

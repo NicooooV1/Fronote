@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M17 – Stages & Alternance — Service
  */
@@ -64,7 +65,7 @@ class StageService
             $d['prof_referent_id'] ?: null, $d['date_debut'], $d['date_fin'],
             $d['statut'] ?? 'brouillon', $d['description'] ?? null
         ]);
-        return $this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function modifierStage(int $id, array $d): void

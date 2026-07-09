@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * AbsenceRepository — Centralisation de toutes les requêtes SQL du module Absences.
  * Remplace les fonctions éparses de functions.php et les requêtes dupliquées

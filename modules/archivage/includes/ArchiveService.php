@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M35 – Archivage annuel — Service
  */
@@ -157,7 +158,7 @@ class ArchiveService
             VALUES (?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([$this->etabId(), $annee, $type, $json, 'exports/' . $filename, getUserId()]);
-        return $this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     /**

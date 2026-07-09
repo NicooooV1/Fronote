@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * EdtService — Service métier pour le module Emploi du Temps (M03).
  *

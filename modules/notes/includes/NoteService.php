@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * NoteService — Service métier pour le module Notes.
  *

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * En-tête standardisé pour le module Appel / Présence (M04)
  * Utilise les templates partagés Fronote

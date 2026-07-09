@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * AJAX endpoint — Auto-save batch notes (every 30s from the batch entry grid).
  * POST JSON: { common: {...}, notes: [{id_eleve, note, commentaire}, ...] }

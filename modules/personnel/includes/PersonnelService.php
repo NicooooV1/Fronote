@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M39 – Gestion du personnel — Service
  */
@@ -40,7 +41,7 @@ class PersonnelService
     {
         $stmt = $this->pdo->prepare("INSERT INTO personnel_absences (personnel_id, type, date_debut, date_fin, motif, statut, etablissement_id) VALUES (?,?,?,?,?,?,?)");
         $stmt->execute([$d['personnel_id'], $d['type'], $d['date_debut'], $d['date_fin'], $d['motif'] ?? null, $d['statut'] ?? 'en_attente', \API\Core\EstablishmentContext::id()]);
-        return $this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function modifierStatut(int $id, string $statut): void
@@ -74,7 +75,7 @@ class PersonnelService
     {
         $stmt = $this->pdo->prepare("INSERT INTO remplacements (absence_id, professeur_absent_id, professeur_remplacant_id, matiere_id, classe_id, date_debut, date_fin, statut, etablissement_id) VALUES (?,?,?,?,?,?,?,?,?)");
         $stmt->execute([$d['absence_id'] ?? null, $d['professeur_absent_id'], $d['professeur_remplacant_id'] ?? null, $d['matiere_id'] ?? null, $d['classe_id'] ?? null, $d['date_debut'], $d['date_fin'], $d['statut'] ?? 'propose', \API\Core\EstablishmentContext::id()]);
-        return $this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function attribuerRemplacant(int $id, int $remplacantId): void

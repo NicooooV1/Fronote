@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M33 – Facturation — Service
  */
@@ -54,7 +55,7 @@ class FacturationService
         $intitule = $d['intitule'] ?? ($d['description'] ?? ('Facture ' . ($d['type'] ?? 'scolarite')));
         $stmt = $this->pdo->prepare("INSERT INTO factures (etablissement_id, numero, parent_id, montant_ht, tva, montant_ttc, intitule, date_emission, date_echeance, statut, type, notes) VALUES (?,?,?,?,?,?,?,CURDATE(),?,?,?,?)");
         $stmt->execute([$etab, $numero, $d['parent_id'], $d['montant_ht'], $d['montant_tva'] ?? 0, $d['montant_ttc'], $intitule, $d['date_echeance'], 'en_attente', $d['type'] ?? 'scolarite', $d['description'] ?? null]);
-        return $this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     /* ───── LIGNES FACTURE ───── */

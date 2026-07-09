@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * RenduService — Gestion des rendus de devoirs en ligne (M08)
  * S'articule avec le module cahierdetextes existant

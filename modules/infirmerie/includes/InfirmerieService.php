@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M31 – Santé / Infirmerie — Service
  */
@@ -151,7 +152,7 @@ class InfirmerieService
             $data['orientation'] ?? 'retour_classe', $data['notifier_parents'] ?? 0,
             $data['remarques'] ?? null,
         ]);
-        return $this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function getPassage(int $id): ?array

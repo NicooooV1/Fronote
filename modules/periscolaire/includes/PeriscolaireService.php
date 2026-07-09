@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M16 – Périscolaire / Cantine — Service
  */
@@ -35,7 +36,7 @@ class PeriscolaireService
     {
         $stmt = $this->pdo->prepare("INSERT INTO services_periscolaires (nom, type, description, tarif, places_max, horaires, etablissement_id) VALUES (?,?,?,?,?,?,?)");
         $stmt->execute([$d['nom'], $d['type'], $d['description'] ?? null, $d['tarif'] ?? 0, $d['places_max'] ?? null, $d['horaires'] ?? null, \API\Core\EstablishmentContext::id()]);
-        return $this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     /* ───── INSCRIPTIONS ───── */

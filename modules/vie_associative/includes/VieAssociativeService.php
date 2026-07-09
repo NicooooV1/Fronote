@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * VieAssociativeService — Service métier pour le module Vie Associative (M43).
  */

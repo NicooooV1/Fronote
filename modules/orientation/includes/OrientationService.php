@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M28 – Orientation — Service
  */
@@ -29,7 +30,7 @@ class OrientationService
             $data['avis_pp'] ?? null,
             $data['avis_conseil'] ?? null,
         ]);
-        return $this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function modifierFiche(int $id, array $data): void

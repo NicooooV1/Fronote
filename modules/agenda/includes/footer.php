@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Pied de page — Module Agenda
  * Nettoyé : plus de ~170 lignes de JS inline dupliqué (navigateToPrevious/Next/Today,

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * DisciplineService — Service métier pour le module Discipline / Sanctions (M06).
  *

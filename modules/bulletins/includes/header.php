@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 require_once __DIR__ . '/../../../API/core.php';
 // Auth + gate d'autorisation par module (avant tout rendu).
 requireAuth();

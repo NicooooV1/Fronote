@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * M30 – Clubs & Associations — Service
  */
@@ -54,7 +55,7 @@ class ClubService
             $data['responsable_id'] ?? null, $data['horaires'] ?? null, $data['lieu'] ?? null,
             $data['places_max'] ?? null, $data['date_debut'] ?? null, $data['date_fin'] ?? null,
         ]);
-        return $this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function modifierClub(int $id, array $data): void
@@ -93,7 +94,7 @@ class ClubService
 
         $stmt = $this->pdo->prepare("INSERT INTO club_inscriptions (etablissement_id, club_id, eleve_id, date_inscription, statut) VALUES (?, ?, ?, NOW(), 'en_attente')");
         $stmt->execute([\API\Core\EstablishmentContext::id(), $clubId, $eleveId]);
-        return $this->pdo->lastInsertId();
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function getMembres(int $clubId): array

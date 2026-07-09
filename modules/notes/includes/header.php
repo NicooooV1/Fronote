@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * En-tête standardisé pour le module Notes
  * Utilise les templates partagés Fronote (topbar layout)

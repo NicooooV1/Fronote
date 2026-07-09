@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * BulletinService — Service métier pour les bulletins scolaires (M07)
  */

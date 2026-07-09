@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * ParcoursEducatifService — Service métier pour le module Parcours Éducatifs (M42).
  */

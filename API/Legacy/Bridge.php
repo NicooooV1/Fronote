@@ -655,7 +655,7 @@ if (!function_exists('executeQuery')) {
 			return $stmt->fetchAll($fetchMode);
 		}
 		if ($head === 'INSERT') {
-			return $pdo->lastInsertId();
+			return (int) $pdo->lastInsertId();
 		}
 		return $stmt->rowCount();
 	}

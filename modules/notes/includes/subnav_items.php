@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Navigation secondaire du module notes — source unique du câblage,
  * partagée entre notes.php et includes/header.php pour éviter toute divergence.

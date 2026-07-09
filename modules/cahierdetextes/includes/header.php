@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * En-tête commun pour le module Cahier de Textes (topbar layout)
  */
