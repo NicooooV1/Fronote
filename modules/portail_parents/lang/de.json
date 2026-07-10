@@ -1,0 +1,21 @@
+{
+    "portail_parents.page_title": "Elternportal",
+    "portail_parents.no_child": "Kein Kind mit Ihrem Konto verknüpft.",
+    "portail_parents.child": "Kind:",
+    "portail_parents.moyenne_generale": "Gesamtdurchschnitt",
+    "portail_parents.dernieres_notes": "Neueste Noten",
+    "portail_parents.aucune_note": "Keine aktuellen Noten.",
+    "portail_parents.absences_recentes": "Aktuelle Abwesenheiten",
+    "portail_parents.aucune_absence": "Keine aktuellen Abwesenheiten.",
+    "portail_parents.justifiee": "Entschuldigt",
+    "portail_parents.non_justifiee": "Unentschuldigt",
+    "portail_parents.documents_a_signer": "Zu unterschreibende Dokumente",
+    "portail_parents.obligatoire": "Pflicht",
+    "portail_parents.limite": "Frist:",
+    "portail_parents.signe": "Unterschrieben",
+    "portail_parents.a_signer": "Zu unterschreiben",
+    "portail_parents.autorisations_sortie": "Ausgangsgenehmigungen",
+    "portail_parents.historique_paiements": "Zahlungsverlauf",
+    "portail_parents.reference": "Referenz",
+    "portail_parents.echeance": "Fälligkeit"
+}

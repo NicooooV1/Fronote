@@ -161,7 +161,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 <?php if ($pendingConsent): ?>
     <!-- ─── Écran consentement ─── -->
     <section style="background:#fffbeb;border:2px solid #f59e0b;border-radius:10px;padding:20px;margin:18px 0">
-        <h2 style="margin:0 0 12px;color:#b45309"><i class="fas fa-exclamation-triangle"></i> Consentement requis</h2>
+        <h2 style="margin:0 0 12px;color:#b45309"><i class="fas fa-exclamation-triangle"></i> <?= __('marketplace.consentement_requis') ?></h2>
         <p>Le module <strong><?= htmlspecialchars($pendingConsent['manifest']['key'] ?? '') ?> v<?= htmlspecialchars($pendingConsent['manifest']['version'] ?? '') ?></strong>
            demande les permissions suivantes. Cochez chacune pour continuer.</p>
         <form method="post">
@@ -179,25 +179,25 @@ include __DIR__ . '/../../templates/shared_topbar.php';
             </table>
             <div style="display:flex;gap:10px;margin-top:12px">
                 <button type="submit" style="padding:8px 18px;background:#b45309;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer">
-                    <i class="fas fa-check"></i> Accorder et installer
+                    <i class="fas fa-check"></i> <?= __('marketplace.accorder_installer') ?>
                 </button>
-                <a href="?" style="padding:8px 18px;background:#e5e7eb;color:#374151;border-radius:6px;text-decoration:none;line-height:2">Annuler</a>
+                <a href="?" style="padding:8px 18px;background:#e5e7eb;color:#374151;border-radius:6px;text-decoration:none;line-height:2"><?= __('btn.cancel') ?></a>
             </div>
         </form>
     </section>
 <?php else: ?>
     <section style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:18px;margin:18px 0">
-        <h2 style="margin:0 0 12px;font-size:1.1em">Téléverser un paquet <code>.fmod</code></h2>
+        <h2 style="margin:0 0 12px;font-size:1.1em"><?= __('marketplace.televerser_paquet') ?> <code>.fmod</code></h2>
         <form method="post" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
             <input type="hidden" name="action" value="sideload">
             <input type="file" name="fmod" accept=".fmod" required style="margin-bottom:10px">
             <button type="submit" style="padding:8px 18px;background:#0f4c81;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer">
-                <i class="fas fa-shield-alt"></i> Vérifier &amp; installer
+                <i class="fas fa-shield-alt"></i> <?= __('marketplace.verifier_installer') ?>
             </button>
         </form>
         <p style="margin-top:10px;font-size:.88em;color:#64748b">
-            Root CA reconnues : <strong><?= count($rootFiles) ?></strong>
+            <?= __('marketplace.root_ca_reconnues') ?> <strong><?= count($rootFiles) ?></strong>
             <?php foreach ($rootFiles as $rf): ?><code style="margin-left:6px"><?= htmlspecialchars($rf) ?></code><?php endforeach; ?>
             <?= empty($rootFiles) ? ' — <span style="color:#b91c1c">aucune ; tout sideload sera refusé.</span>' : '' ?>
         </p>
@@ -205,19 +205,19 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 <?php endif; ?>
 
     <section style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:18px;margin:18px 0">
-        <h2 style="margin:0 0 12px;font-size:1.1em">Modules installés — signature vérifiée (<?= $total ?>)</h2>
+        <h2 style="margin:0 0 12px;font-size:1.1em"><?= __('marketplace.modules_installes_signature') ?> (<?= $total ?>)</h2>
         <?php if (empty($installed)): ?>
-            <p style="color:#64748b">Aucune installation signée enregistrée.</p>
+            <p style="color:#64748b"><?= __('marketplace.aucune_installation') ?></p>
         <?php else: ?>
             <table style="width:100%;border-collapse:collapse;font-size:.92em">
                 <thead style="background:#f8fafc">
                     <tr>
-                        <th style="text-align:left;padding:8px">Module</th>
-                        <th style="text-align:left;padding:8px">Version</th>
-                        <th style="text-align:left;padding:8px">Éditeur</th>
-                        <th style="text-align:left;padding:8px">Canal</th>
-                        <th style="text-align:left;padding:8px">Cert. fingerprint</th>
-                        <th style="text-align:left;padding:8px">Vérifié</th>
+                        <th style="text-align:left;padding:8px"><?= __('marketplace.module') ?></th>
+                        <th style="text-align:left;padding:8px"><?= __('marketplace.version') ?></th>
+                        <th style="text-align:left;padding:8px"><?= __('marketplace.editeur') ?></th>
+                        <th style="text-align:left;padding:8px"><?= __('marketplace.canal') ?></th>
+                        <th style="text-align:left;padding:8px"><?= __('marketplace.cert_fingerprint') ?></th>
+                        <th style="text-align:left;padding:8px"><?= __('marketplace.verifie') ?></th>
                     </tr>
                 </thead>
                 <tbody>

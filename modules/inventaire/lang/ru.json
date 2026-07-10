@@ -1,0 +1,14 @@
+{
+    "inventaire.titre_page": "Инвентарь &amp; ИТ-имущество",
+    "inventaire.valeur_achat_totale": "Общая стоимость покупки",
+    "inventaire.valeur_residuelle": "Остаточная стоимость",
+    "inventaire.pannes_ouvertes": "Открытые неисправности",
+    "inventaire.parc_par_type": "Парк по типу",
+    "inventaire.aucun_equipement": "Оборудование не зарегистрировано.",
+    "inventaire.prets_en_retard": "Просроченные выдачи",
+    "inventaire.retour_prevu_le": "возврат ожидается",
+    "inventaire.maintenances_a_venir": "Предстоящее обслуживание",
+    "inventaire.aucune_maintenance": "Обслуживание не запланировано на ближайшие 30 дней.",
+    "inventaire.equipement": "Оборудование",
+    "inventaire.prevue_le": "Запланировано на"
+}

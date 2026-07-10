@@ -1,0 +1,15 @@
+{
+    "marketplace.consentement_requis": "Требуется согласие",
+    "marketplace.accorder_installer": "Разрешить и установить",
+    "marketplace.televerser_paquet": "Загрузить пакет",
+    "marketplace.verifier_installer": "Проверить и установить",
+    "marketplace.root_ca_reconnues": "Признанные корневые ЦС:",
+    "marketplace.modules_installes_signature": "Установленные модули — подпись проверена",
+    "marketplace.aucune_installation": "Нет записей о подписанной установке.",
+    "marketplace.module": "Модуль",
+    "marketplace.version": "Версия",
+    "marketplace.editeur": "Издатель",
+    "marketplace.canal": "Канал",
+    "marketplace.cert_fingerprint": "Отпечаток серт.",
+    "marketplace.verifie": "Проверено"
+}

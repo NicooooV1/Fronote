@@ -1,0 +1,15 @@
+{
+    "marketplace.consentement_requis": "Toestemming vereist",
+    "marketplace.accorder_installer": "Verlenen en installeren",
+    "marketplace.televerser_paquet": "Een pakket uploaden",
+    "marketplace.verifier_installer": "Verifiëren en installeren",
+    "marketplace.root_ca_reconnues": "Erkende Root-CA's:",
+    "marketplace.modules_installes_signature": "Geïnstalleerde modules — handtekening geverifieerd",
+    "marketplace.aucune_installation": "Geen ondertekende installatie geregistreerd.",
+    "marketplace.module": "Module",
+    "marketplace.version": "Versie",
+    "marketplace.editeur": "Uitgever",
+    "marketplace.canal": "Kanaal",
+    "marketplace.cert_fingerprint": "Cert.-vingerafdruk",
+    "marketplace.verifie": "Geverifieerd"
+}

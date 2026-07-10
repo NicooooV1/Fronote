@@ -1,0 +1,15 @@
+{
+    "marketplace.consentement_requis": "Consent required",
+    "marketplace.accorder_installer": "Grant and install",
+    "marketplace.televerser_paquet": "Upload a package",
+    "marketplace.verifier_installer": "Verify & install",
+    "marketplace.root_ca_reconnues": "Recognized Root CAs:",
+    "marketplace.modules_installes_signature": "Installed modules — signature verified",
+    "marketplace.aucune_installation": "No signed installation recorded.",
+    "marketplace.module": "Module",
+    "marketplace.version": "Version",
+    "marketplace.editeur": "Publisher",
+    "marketplace.canal": "Channel",
+    "marketplace.cert_fingerprint": "Cert. fingerprint",
+    "marketplace.verifie": "Verified"
+}

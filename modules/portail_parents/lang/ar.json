@@ -1,0 +1,21 @@
+{
+    "portail_parents.page_title": "بوابة أولياء الأمور",
+    "portail_parents.no_child": "لا يوجد طفل مرتبط بحسابك.",
+    "portail_parents.child": "الطفل:",
+    "portail_parents.moyenne_generale": "المعدل العام",
+    "portail_parents.dernieres_notes": "أحدث الدرجات",
+    "portail_parents.aucune_note": "لا توجد درجات حديثة.",
+    "portail_parents.absences_recentes": "الغيابات الأخيرة",
+    "portail_parents.aucune_absence": "لا توجد غيابات حديثة.",
+    "portail_parents.justifiee": "مبررة",
+    "portail_parents.non_justifiee": "غير مبررة",
+    "portail_parents.documents_a_signer": "مستندات للتوقيع",
+    "portail_parents.obligatoire": "إلزامي",
+    "portail_parents.limite": "الموعد النهائي:",
+    "portail_parents.signe": "موقّع",
+    "portail_parents.a_signer": "بانتظار التوقيع",
+    "portail_parents.autorisations_sortie": "تصاريح الخروج",
+    "portail_parents.historique_paiements": "سجل المدفوعات",
+    "portail_parents.reference": "المرجع",
+    "portail_parents.echeance": "تاريخ الاستحقاق"
+}

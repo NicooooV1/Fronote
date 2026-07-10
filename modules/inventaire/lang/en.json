@@ -1,0 +1,14 @@
+{
+    "inventaire.titre_page": "Inventory &amp; IT assets",
+    "inventaire.valeur_achat_totale": "Total purchase value",
+    "inventaire.valeur_residuelle": "Residual value",
+    "inventaire.pannes_ouvertes": "Open faults",
+    "inventaire.parc_par_type": "Assets by type",
+    "inventaire.aucun_equipement": "No equipment recorded.",
+    "inventaire.prets_en_retard": "Overdue loans",
+    "inventaire.retour_prevu_le": "return due on",
+    "inventaire.maintenances_a_venir": "Upcoming maintenance",
+    "inventaire.aucune_maintenance": "No maintenance scheduled in the next 30 days.",
+    "inventaire.equipement": "Equipment",
+    "inventaire.prevue_le": "Scheduled for"
+}

@@ -1,0 +1,21 @@
+{
+    "portail_parents.page_title": "Ouderportaal",
+    "portail_parents.no_child": "Geen kind gekoppeld aan uw account.",
+    "portail_parents.child": "Kind:",
+    "portail_parents.moyenne_generale": "Algemeen gemiddelde",
+    "portail_parents.dernieres_notes": "Laatste cijfers",
+    "portail_parents.aucune_note": "Geen recente cijfers.",
+    "portail_parents.absences_recentes": "Recente afwezigheden",
+    "portail_parents.aucune_absence": "Geen recente afwezigheden.",
+    "portail_parents.justifiee": "Gewettigd",
+    "portail_parents.non_justifiee": "Ongewettigd",
+    "portail_parents.documents_a_signer": "Te ondertekenen documenten",
+    "portail_parents.obligatoire": "Verplicht",
+    "portail_parents.limite": "Deadline:",
+    "portail_parents.signe": "Ondertekend",
+    "portail_parents.a_signer": "Te ondertekenen",
+    "portail_parents.autorisations_sortie": "Uitgangstoestemmingen",
+    "portail_parents.historique_paiements": "Betalingsgeschiedenis",
+    "portail_parents.reference": "Referentie",
+    "portail_parents.echeance": "Vervaldatum"
+}

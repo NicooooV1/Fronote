@@ -1,0 +1,14 @@
+{
+    "inventaire.titre_page": "Inventario &amp; patrimonio TI",
+    "inventaire.valeur_achat_totale": "Valor de compra total",
+    "inventaire.valeur_residuelle": "Valor residual",
+    "inventaire.pannes_ouvertes": "Averías abiertas",
+    "inventaire.parc_par_type": "Parque por tipo",
+    "inventaire.aucun_equipement": "Ningún equipo registrado.",
+    "inventaire.prets_en_retard": "Préstamos vencidos",
+    "inventaire.retour_prevu_le": "devolución prevista el",
+    "inventaire.maintenances_a_venir": "Mantenimientos próximos",
+    "inventaire.aucune_maintenance": "Ningún mantenimiento planificado en los próximos 30 días.",
+    "inventaire.equipement": "Equipo",
+    "inventaire.prevue_le": "Prevista el"
+}

@@ -1,0 +1,21 @@
+{
+    "portail_parents.page_title": "Parent portal",
+    "portail_parents.no_child": "No child linked to your account.",
+    "portail_parents.child": "Child:",
+    "portail_parents.moyenne_generale": "Overall average",
+    "portail_parents.dernieres_notes": "Latest grades",
+    "portail_parents.aucune_note": "No recent grades.",
+    "portail_parents.absences_recentes": "Recent absences",
+    "portail_parents.aucune_absence": "No recent absences.",
+    "portail_parents.justifiee": "Justified",
+    "portail_parents.non_justifiee": "Unjustified",
+    "portail_parents.documents_a_signer": "Documents to sign",
+    "portail_parents.obligatoire": "Mandatory",
+    "portail_parents.limite": "Deadline:",
+    "portail_parents.signe": "Signed",
+    "portail_parents.a_signer": "To sign",
+    "portail_parents.autorisations_sortie": "Exit permissions",
+    "portail_parents.historique_paiements": "Payment history",
+    "portail_parents.reference": "Reference",
+    "portail_parents.echeance": "Due date"
+}

@@ -1,0 +1,21 @@
+{
+    "portail_parents.page_title": "Portal de padres",
+    "portail_parents.no_child": "Ningún hijo vinculado a su cuenta.",
+    "portail_parents.child": "Hijo:",
+    "portail_parents.moyenne_generale": "Media general",
+    "portail_parents.dernieres_notes": "Últimas notas",
+    "portail_parents.aucune_note": "Sin notas recientes.",
+    "portail_parents.absences_recentes": "Ausencias recientes",
+    "portail_parents.aucune_absence": "Sin ausencias recientes.",
+    "portail_parents.justifiee": "Justificada",
+    "portail_parents.non_justifiee": "Injustificada",
+    "portail_parents.documents_a_signer": "Documentos por firmar",
+    "portail_parents.obligatoire": "Obligatorio",
+    "portail_parents.limite": "Límite:",
+    "portail_parents.signe": "Firmado",
+    "portail_parents.a_signer": "Por firmar",
+    "portail_parents.autorisations_sortie": "Autorizaciones de salida",
+    "portail_parents.historique_paiements": "Historial de pagos",
+    "portail_parents.reference": "Referencia",
+    "portail_parents.echeance": "Vencimiento"
+}

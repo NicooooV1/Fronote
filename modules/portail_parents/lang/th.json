@@ -1,0 +1,21 @@
+{
+    "portail_parents.page_title": "พอร์ทัลผู้ปกครอง",
+    "portail_parents.no_child": "ไม่มีบุตรหลานที่เชื่อมโยงกับบัญชีของคุณ",
+    "portail_parents.child": "บุตรหลาน:",
+    "portail_parents.moyenne_generale": "ค่าเฉลี่ยรวม",
+    "portail_parents.dernieres_notes": "คะแนนล่าสุด",
+    "portail_parents.aucune_note": "ไม่มีคะแนนล่าสุด",
+    "portail_parents.absences_recentes": "การขาดเรียนล่าสุด",
+    "portail_parents.aucune_absence": "ไม่มีการขาดเรียนล่าสุด",
+    "portail_parents.justifiee": "มีเหตุผล",
+    "portail_parents.non_justifiee": "ไม่มีเหตุผล",
+    "portail_parents.documents_a_signer": "เอกสารที่ต้องลงนาม",
+    "portail_parents.obligatoire": "บังคับ",
+    "portail_parents.limite": "กำหนดเวลา:",
+    "portail_parents.signe": "ลงนามแล้ว",
+    "portail_parents.a_signer": "รอลงนาม",
+    "portail_parents.autorisations_sortie": "การอนุญาตออกนอกสถานที่",
+    "portail_parents.historique_paiements": "ประวัติการชำระเงิน",
+    "portail_parents.reference": "หมายเลขอ้างอิง",
+    "portail_parents.echeance": "วันครบกำหนด"
+}

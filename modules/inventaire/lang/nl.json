@@ -1,0 +1,14 @@
+{
+    "inventaire.titre_page": "Inventaris &amp; IT-bezit",
+    "inventaire.valeur_achat_totale": "Totale aankoopwaarde",
+    "inventaire.valeur_residuelle": "Restwaarde",
+    "inventaire.pannes_ouvertes": "Openstaande storingen",
+    "inventaire.parc_par_type": "Park per type",
+    "inventaire.aucun_equipement": "Geen apparatuur geregistreerd.",
+    "inventaire.prets_en_retard": "Te late uitleningen",
+    "inventaire.retour_prevu_le": "retour verwacht op",
+    "inventaire.maintenances_a_venir": "Aankomend onderhoud",
+    "inventaire.aucune_maintenance": "Geen onderhoud gepland in de komende 30 dagen.",
+    "inventaire.equipement": "Apparatuur",
+    "inventaire.prevue_le": "Gepland voor"
+}

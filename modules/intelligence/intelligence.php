@@ -93,7 +93,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <!-- Alertes actives -->
     <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-bell"></i> <?= __('intelligence.alertes_actives') ?> (<?= count($alertes) ?>)</h2>
     <?php if (empty($alertes)): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px">Aucune alerte active.</p>
+    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('intelligence.aucune_alerte') ?></p>
     <?php else: ?>
     <?php foreach ($alertes as $al): ?>
         <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:8px;padding:12px 14px;margin-bottom:8px">
@@ -105,8 +105,8 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token) ?>">
                 <input type="hidden" name="action" value="traiter_alerte">
                 <input type="hidden" name="alerte_id" value="<?= (int) $al['id'] ?>">
-                <input type="text" name="action_prise" placeholder="Action prise…" style="padding:6px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px;font-size:.85em">
-                <button type="submit" style="background:#16a34a;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:.85em">Traiter</button>
+                <input type="text" name="action_prise" placeholder="<?= __('intelligence.action_prise') ?>" style="padding:6px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px;font-size:.85em">
+                <button type="submit" style="background:#16a34a;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:.85em"><?= __('intelligence.traiter') ?></button>
             </form>
         </div>
     <?php endforeach; ?>

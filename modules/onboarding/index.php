@@ -209,12 +209,12 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 
 <div class="onboarding-wrap" style="max-width:860px;margin:24px auto;padding:0 16px">
     <h1 style="font-size:1.5em;margin-bottom:4px">
-        <?= $createNew ? 'Nouvel établissement 🏫' : 'Bienvenue 👋' ?>
+        <?= $createNew ? __('onboarding.new_etab_title') : __('onboarding.welcome_title') ?>
     </h1>
     <p style="color:var(--text-muted,#6b7280);margin-bottom:24px">
         <?= $createNew
-            ? "Renseignez un établissement supplémentaire. Vous pourrez en ajouter d'autres ensuite."
-            : "Configurez votre établissement pour commencer à utiliser Fronote. Vous pourrez tout modifier plus tard depuis l'administration." ?>
+            ? __('onboarding.intro_new')
+            : __('onboarding.intro_welcome') ?>
     </p>
 
     <?php if ($error): ?>
@@ -225,7 +225,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 
     <?php if (!empty($configuredEtabs)): ?>
         <div style="background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:14px 16px;margin-bottom:18px">
-            <div style="font-size:.85em;color:var(--text-muted,#6b7280);margin-bottom:6px">Établissements configurés (<?= count($configuredEtabs) ?>)</div>
+            <div style="font-size:.85em;color:var(--text-muted,#6b7280);margin-bottom:6px"><?= __('onboarding.configured_etabs') ?> (<?= count($configuredEtabs) ?>)</div>
             <div style="display:flex;flex-wrap:wrap;gap:8px">
                 <?php foreach ($configuredEtabs as $ce): ?>
                 <span style="background:#eef2ff;color:#3730a3;border-radius:16px;padding:4px 12px;font-size:.85em">
@@ -239,14 +239,14 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <?php if ($justSaved): ?>
         <div style="background:#d1fae5;color:#065f46;border:1px solid #a7f3d0;padding:16px 18px;border-radius:10px;margin-bottom:18px">
             <strong><i class="fas fa-check-circle"></i> <?= $success ?></strong>
-            <p style="margin:8px 0 0;font-size:.9em">Souhaitez-vous ajouter un autre établissement ou commencer à utiliser Fronote ?</p>
+            <p style="margin:8px 0 0;font-size:.9em"><?= __('onboarding.saved_question') ?></p>
         </div>
         <div style="display:flex;gap:12px;flex-wrap:wrap">
             <a href="index.php?nouveau=1" class="btn" style="background:var(--surface,#fff);border:1px solid var(--primary,#003366);color:var(--primary,#003366);padding:10px 22px;border-radius:8px;text-decoration:none;font-weight:600">
-                <i class="fas fa-plus"></i> Ajouter un autre établissement
+                <i class="fas fa-plus"></i> <?= __('onboarding.add_another_etab') ?>
             </a>
             <a href="<?= (defined('BASE_URL') ? BASE_URL : '') ?>/accueil/accueil.php" class="btn btn-primary" style="background:var(--primary,#003366);color:#fff;padding:10px 22px;border-radius:8px;text-decoration:none;font-weight:600">
-                Aller à l'accueil →
+                <?= __('onboarding.go_home') ?>
             </a>
         </div>
     <?php else: ?>
@@ -255,55 +255,55 @@ include __DIR__ . '/../../templates/shared_topbar.php';
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token) ?>">
         <?php if ($createNew): ?><input type="hidden" name="create_new" value="1"><?php endif; ?>
 
-        <h3 style="margin:0 0 14px;font-size:1.05em">🏫 Identité</h3>
+        <h3 style="margin:0 0 14px;font-size:1.05em"><?= __('onboarding.section_identity') ?></h3>
         <div class="form-group" style="margin-bottom:14px">
-            <label>Nom de l'établissement <span style="color:#e53e3e">*</span></label>
+            <label><?= __('onboarding.etab_name') ?> <span style="color:#e53e3e">*</span></label>
 <?php $nomPrefill = ($current['nom'] ?? '') === 'Établissement Scolaire' ? '' : ($current['nom'] ?? ''); ?>
-            <input type="text" name="nom" required value="<?= htmlspecialchars($_POST['nom'] ?? $nomPrefill) ?>" placeholder="Ex: Lycée Jean Monnet" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px">
+            <input type="text" name="nom" required value="<?= htmlspecialchars($_POST['nom'] ?? $nomPrefill) ?>" placeholder="<?= __('onboarding.etab_name_placeholder') ?>" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px">
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
             <div class="form-group">
-                <label>Type d'établissement</label>
+                <label><?= __('onboarding.etab_type') ?></label>
                 <?php $curType = $_POST['type'] ?? ($current['type'] ?? 'college'); ?>
                 <select name="type" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px">
-                    <option value="primaire"   <?= $curType === 'primaire' ? 'selected' : '' ?>>Primaire</option>
-                    <option value="college"    <?= $curType === 'college' ? 'selected' : '' ?>>Collège</option>
-                    <option value="lycee"      <?= $curType === 'lycee' ? 'selected' : '' ?>>Lycée</option>
-                    <option value="polyvalent" <?= $curType === 'polyvalent' ? 'selected' : '' ?>>Polyvalent (primaire + collège + lycée)</option>
-                    <option value="superieur"  <?= $curType === 'superieur' ? 'selected' : '' ?>>Supérieur</option>
+                    <option value="primaire"   <?= $curType === 'primaire' ? 'selected' : '' ?>><?= __('onboarding.type_primaire') ?></option>
+                    <option value="college"    <?= $curType === 'college' ? 'selected' : '' ?>><?= __('onboarding.type_college') ?></option>
+                    <option value="lycee"      <?= $curType === 'lycee' ? 'selected' : '' ?>><?= __('onboarding.type_lycee') ?></option>
+                    <option value="polyvalent" <?= $curType === 'polyvalent' ? 'selected' : '' ?>><?= __('onboarding.type_polyvalent') ?></option>
+                    <option value="superieur"  <?= $curType === 'superieur' ? 'selected' : '' ?>><?= __('onboarding.type_superieur') ?></option>
                 </select>
             </div>
             <div class="form-group">
-                <label>Année scolaire</label>
+                <label><?= __('onboarding.school_year') ?></label>
                 <input type="text" name="annee_scolaire" value="<?= htmlspecialchars($_POST['annee_scolaire'] ?? ($current['annee_scolaire'] ?? ($curYear . '-' . ($curYear + 1)))) ?>" placeholder="2025-2026" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px">
             </div>
         </div>
         <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;margin-bottom:14px">
-            <div class="form-group"><label>Adresse</label><input type="text" name="adresse" value="<?= htmlspecialchars($_POST['adresse'] ?? '') ?>" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px"></div>
-            <div class="form-group"><label>Code postal</label><input type="text" name="code_postal" value="<?= htmlspecialchars($_POST['code_postal'] ?? '') ?>" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px"></div>
-            <div class="form-group"><label>Ville</label><input type="text" name="ville" value="<?= htmlspecialchars($_POST['ville'] ?? '') ?>" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px"></div>
+            <div class="form-group"><label><?= __('label.adresse') ?></label><input type="text" name="adresse" value="<?= htmlspecialchars($_POST['adresse'] ?? '') ?>" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px"></div>
+            <div class="form-group"><label><?= __('onboarding.postal_code') ?></label><input type="text" name="code_postal" value="<?= htmlspecialchars($_POST['code_postal'] ?? '') ?>" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px"></div>
+            <div class="form-group"><label><?= __('onboarding.city') ?></label><input type="text" name="ville" value="<?= htmlspecialchars($_POST['ville'] ?? '') ?>" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px"></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:20px">
-            <div class="form-group"><label>Téléphone</label><input type="text" name="telephone" value="<?= htmlspecialchars($_POST['telephone'] ?? '') ?>" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px"></div>
-            <div class="form-group"><label>Email</label><input type="email" name="email" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px"></div>
-            <div class="form-group"><label>Académie</label><input type="text" name="academie" value="<?= htmlspecialchars($_POST['academie'] ?? '') ?>" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px"></div>
+            <div class="form-group"><label><?= __('label.telephone') ?></label><input type="text" name="telephone" value="<?= htmlspecialchars($_POST['telephone'] ?? '') ?>" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px"></div>
+            <div class="form-group"><label><?= __('label.email') ?></label><input type="email" name="email" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px"></div>
+            <div class="form-group"><label><?= __('onboarding.academy') ?></label><input type="text" name="academie" value="<?= htmlspecialchars($_POST['academie'] ?? '') ?>" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px"></div>
         </div>
 
-        <h3 style="margin:0 0 14px;font-size:1.05em">📅 Périodes scolaires</h3>
+        <h3 style="margin:0 0 14px;font-size:1.05em"><?= __('onboarding.section_periods') ?></h3>
         <div class="form-group" style="margin-bottom:14px">
-            <label>Système de périodes</label>
+            <label><?= __('onboarding.period_system') ?></label>
             <select name="periode_system" id="periodeSystem" data-fr-change="togglePeriodes" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px">
-                <option value="trimestre">Trimestres (3 périodes)</option>
-                <option value="semestre">Semestres (2 périodes)</option>
+                <option value="trimestre"><?= __('onboarding.trimestre_option') ?></option>
+                <option value="semestre"><?= __('onboarding.semestre_option') ?></option>
             </select>
         </div>
         <div id="trimestre-fields">
             <?php for ($i = 0; $i < 3; $i++): ?>
             <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px">
                 <strong style="min-width:120px"><?= $i === 0 ? '1er' : ($i + 1) . 'ème' ?> trimestre</strong>
-                <label style="font-size:12px;margin:0">Du</label>
+                <label style="font-size:12px;margin:0"><?= __('onboarding.date_from') ?></label>
                 <input type="date" name="p<?= $i + 1 ?>_debut" value="<?= $defTri[$i]['debut'] ?>" style="flex:1;padding:6px;border:1px solid var(--border,#cbd5e0);border-radius:6px">
-                <label style="font-size:12px;margin:0">Au</label>
+                <label style="font-size:12px;margin:0"><?= __('onboarding.date_to') ?></label>
                 <input type="date" name="p<?= $i + 1 ?>_fin" value="<?= $defTri[$i]['fin'] ?>" style="flex:1;padding:6px;border:1px solid var(--border,#cbd5e0);border-radius:6px">
             </div>
             <?php endfor; ?>
@@ -312,44 +312,44 @@ include __DIR__ . '/../../templates/shared_topbar.php';
             <?php for ($i = 0; $i < 2; $i++): ?>
             <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px">
                 <strong style="min-width:120px"><?= $i === 0 ? '1er' : '2ème' ?> semestre</strong>
-                <label style="font-size:12px;margin:0">Du</label>
+                <label style="font-size:12px;margin:0"><?= __('onboarding.date_from') ?></label>
                 <input type="date" name="s<?= $i + 1 ?>_debut" value="<?= $defSem[$i]['debut'] ?>" style="flex:1;padding:6px;border:1px solid var(--border,#cbd5e0);border-radius:6px">
-                <label style="font-size:12px;margin:0">Au</label>
+                <label style="font-size:12px;margin:0"><?= __('onboarding.date_to') ?></label>
                 <input type="date" name="s<?= $i + 1 ?>_fin" value="<?= $defSem[$i]['fin'] ?>" style="flex:1;padding:6px;border:1px solid var(--border,#cbd5e0);border-radius:6px">
             </div>
             <?php endfor; ?>
         </div>
 
-        <h3 style="margin:20px 0 14px;font-size:1.05em">🎨 Couleurs (optionnel)</h3>
+        <h3 style="margin:20px 0 14px;font-size:1.05em"><?= __('onboarding.section_colors') ?></h3>
         <div style="display:flex;gap:24px;margin-bottom:20px">
-            <label style="display:flex;align-items:center;gap:8px">Primaire
+            <label style="display:flex;align-items:center;gap:8px"><?= __('onboarding.color_primary') ?>
                 <input type="color" name="couleur_primaire" value="<?= htmlspecialchars($current['couleur_primaire'] ?? '#003366') ?>">
             </label>
-            <label style="display:flex;align-items:center;gap:8px">Secondaire
+            <label style="display:flex;align-items:center;gap:8px"><?= __('onboarding.color_secondary') ?>
                 <input type="color" name="couleur_secondaire" value="<?= htmlspecialchars($current['couleur_secondaire'] ?? '#0066cc') ?>">
             </label>
         </div>
 
         <label style="display:flex;align-items:center;gap:8px;margin-bottom:18px;cursor:pointer">
             <input type="checkbox" name="gen_defaults" value="1" checked>
-            Générer des classes par défaut pour ce type d'établissement<?= $createNew ? '' : ' (et les matières communes)' ?>
+            <?= __('onboarding.gen_defaults') ?><?= $createNew ? '' : ' ' . __('onboarding.gen_defaults_matieres') ?>
         </label>
 
-        <h3 style="margin:6px 0 10px;font-size:1.05em">🏷️ Classes personnalisées (optionnel)</h3>
+        <h3 style="margin:6px 0 10px;font-size:1.05em"><?= __('onboarding.section_custom_classes') ?></h3>
         <p style="color:var(--text-muted,#6b7280);font-size:.85em;margin:0 0 10px">
-            Ajoutez vos propres classes. Elles s'ajoutent à celles générées par défaut.
+            <?= __('onboarding.custom_classes_hint') ?>
         </p>
         <div id="classes-rows" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
         <button type="button" data-fr-click="frOI1" style="background:var(--surface,#fff);border:1px dashed var(--border,#cbd5e0);color:var(--text,#333);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:.88em;margin-bottom:20px">
-            <i class="fas fa-plus"></i> Ajouter une classe
+            <i class="fas fa-plus"></i> <?= __('onboarding.add_class') ?>
         </button>
 
         <div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap">
             <button type="submit" name="add_another" value="1" class="btn" style="background:var(--surface,#fff);border:1px solid var(--primary,#003366);color:var(--primary,#003366);padding:10px 22px;border-radius:8px;cursor:pointer;font-weight:600">
-                Enregistrer &amp; ajouter un autre
+                <?= __('onboarding.save_add_another') ?>
             </button>
             <button type="submit" name="finish" value="1" class="btn btn-primary" style="background:var(--primary,#003366);color:#fff;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-weight:600">
-                Terminer &amp; aller à l'accueil →
+                <?= __('onboarding.finish_home') ?>
             </button>
         </div>
     </form>

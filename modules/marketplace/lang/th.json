@@ -1,0 +1,15 @@
+{
+    "marketplace.consentement_requis": "ต้องได้รับความยินยอม",
+    "marketplace.accorder_installer": "อนุญาตและติดตั้ง",
+    "marketplace.televerser_paquet": "อัปโหลดแพ็กเกจ",
+    "marketplace.verifier_installer": "ตรวจสอบและติดตั้ง",
+    "marketplace.root_ca_reconnues": "Root CA ที่รู้จัก:",
+    "marketplace.modules_installes_signature": "โมดูลที่ติดตั้ง — ยืนยันลายเซ็นแล้ว",
+    "marketplace.aucune_installation": "ไม่มีการติดตั้งที่ลงลายเซ็นบันทึกไว้",
+    "marketplace.module": "โมดูล",
+    "marketplace.version": "เวอร์ชัน",
+    "marketplace.editeur": "ผู้เผยแพร่",
+    "marketplace.canal": "ช่องทาง",
+    "marketplace.cert_fingerprint": "ลายนิ้วมือใบรับรอง",
+    "marketplace.verifie": "ยืนยันแล้ว"
+}

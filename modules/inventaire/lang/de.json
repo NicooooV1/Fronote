@@ -1,0 +1,14 @@
+{
+    "inventaire.titre_page": "Inventar &amp; IT-Bestand",
+    "inventaire.valeur_achat_totale": "Gesamter Kaufwert",
+    "inventaire.valeur_residuelle": "Restwert",
+    "inventaire.pannes_ouvertes": "Offene Störungen",
+    "inventaire.parc_par_type": "Bestand nach Typ",
+    "inventaire.aucun_equipement": "Kein Gerät erfasst.",
+    "inventaire.prets_en_retard": "Überfällige Ausleihen",
+    "inventaire.retour_prevu_le": "Rückgabe fällig am",
+    "inventaire.maintenances_a_venir": "Anstehende Wartungen",
+    "inventaire.aucune_maintenance": "Keine Wartung in den nächsten 30 Tagen geplant.",
+    "inventaire.equipement": "Gerät",
+    "inventaire.prevue_le": "Geplant für"
+}

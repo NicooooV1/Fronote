@@ -1,0 +1,14 @@
+{
+    "inventaire.titre_page": "คลังพัสดุ &amp; ทรัพย์สินไอที",
+    "inventaire.valeur_achat_totale": "มูลค่าซื้อรวม",
+    "inventaire.valeur_residuelle": "มูลค่าคงเหลือ",
+    "inventaire.pannes_ouvertes": "ข้อขัดข้องที่เปิดอยู่",
+    "inventaire.parc_par_type": "พัสดุตามประเภท",
+    "inventaire.aucun_equipement": "ไม่มีอุปกรณ์ที่บันทึกไว้",
+    "inventaire.prets_en_retard": "การยืมที่เกินกำหนด",
+    "inventaire.retour_prevu_le": "กำหนดคืนวันที่",
+    "inventaire.maintenances_a_venir": "การบำรุงรักษาที่จะมาถึง",
+    "inventaire.aucune_maintenance": "ไม่มีการบำรุงรักษาที่วางแผนไว้ใน 30 วันข้างหน้า",
+    "inventaire.equipement": "อุปกรณ์",
+    "inventaire.prevue_le": "กำหนดวันที่"
+}

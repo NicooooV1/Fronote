@@ -1,0 +1,15 @@
+{
+    "marketplace.consentement_requis": "Consentimiento requerido",
+    "marketplace.accorder_installer": "Conceder e instalar",
+    "marketplace.televerser_paquet": "Subir un paquete",
+    "marketplace.verifier_installer": "Verificar e instalar",
+    "marketplace.root_ca_reconnues": "Root CA reconocidas:",
+    "marketplace.modules_installes_signature": "Módulos instalados — firma verificada",
+    "marketplace.aucune_installation": "No hay instalación firmada registrada.",
+    "marketplace.module": "Módulo",
+    "marketplace.version": "Versión",
+    "marketplace.editeur": "Editor",
+    "marketplace.canal": "Canal",
+    "marketplace.cert_fingerprint": "Huella cert.",
+    "marketplace.verifie": "Verificado"
+}

@@ -1,0 +1,21 @@
+{
+    "portail_parents.page_title": "Родительский портал",
+    "portail_parents.no_child": "К вашей учётной записи не привязан ни один ребёнок.",
+    "portail_parents.child": "Ребёнок:",
+    "portail_parents.moyenne_generale": "Общий средний балл",
+    "portail_parents.dernieres_notes": "Последние оценки",
+    "portail_parents.aucune_note": "Нет недавних оценок.",
+    "portail_parents.absences_recentes": "Недавние пропуски",
+    "portail_parents.aucune_absence": "Нет недавних пропусков.",
+    "portail_parents.justifiee": "Уважительная",
+    "portail_parents.non_justifiee": "Неуважительная",
+    "portail_parents.documents_a_signer": "Документы на подпись",
+    "portail_parents.obligatoire": "Обязательно",
+    "portail_parents.limite": "Срок:",
+    "portail_parents.signe": "Подписано",
+    "portail_parents.a_signer": "На подпись",
+    "portail_parents.autorisations_sortie": "Разрешения на выход",
+    "portail_parents.historique_paiements": "История платежей",
+    "portail_parents.reference": "Номер",
+    "portail_parents.echeance": "Срок оплаты"
+}

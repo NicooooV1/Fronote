@@ -1,0 +1,15 @@
+{
+    "marketplace.consentement_requis": "الموافقة مطلوبة",
+    "marketplace.accorder_installer": "منح وتثبيت",
+    "marketplace.televerser_paquet": "رفع حزمة",
+    "marketplace.verifier_installer": "تحقق وتثبيت",
+    "marketplace.root_ca_reconnues": "شهادات الجذر المعتمدة:",
+    "marketplace.modules_installes_signature": "الوحدات المثبتة — تم التحقق من التوقيع",
+    "marketplace.aucune_installation": "لا يوجد تثبيت موقّع مسجّل.",
+    "marketplace.module": "الوحدة",
+    "marketplace.version": "الإصدار",
+    "marketplace.editeur": "الناشر",
+    "marketplace.canal": "القناة",
+    "marketplace.cert_fingerprint": "بصمة الشهادة",
+    "marketplace.verifie": "تم التحقق"
+}

@@ -1,0 +1,14 @@
+{
+    "inventaire.titre_page": "الجرد &amp; الأصول المعلوماتية",
+    "inventaire.valeur_achat_totale": "إجمالي قيمة الشراء",
+    "inventaire.valeur_residuelle": "القيمة المتبقية",
+    "inventaire.pannes_ouvertes": "الأعطال المفتوحة",
+    "inventaire.parc_par_type": "المعدات حسب النوع",
+    "inventaire.aucun_equipement": "لا توجد معدات مسجلة.",
+    "inventaire.prets_en_retard": "الإعارات المتأخرة",
+    "inventaire.retour_prevu_le": "الإرجاع المتوقع في",
+    "inventaire.maintenances_a_venir": "الصيانة القادمة",
+    "inventaire.aucune_maintenance": "لا توجد صيانة مخطط لها في الأيام الثلاثين القادمة.",
+    "inventaire.equipement": "المعدات",
+    "inventaire.prevue_le": "مقرر في"
+}
