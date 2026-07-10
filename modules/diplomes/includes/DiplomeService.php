@@ -45,7 +45,7 @@ class DiplomeService
 
     public function creerDiplome(array $d): int
     {
-        $numero = strtoupper(substr($d['type'], 0, 3)) . '-' . date('Y') . '-' . str_pad(mt_rand(1, 99999), 5, '0', STR_PAD_LEFT);
+        $numero = strtoupper(substr($d['type'], 0, 3)) . '-' . date('Y') . '-' . str_pad((string) mt_rand(1, 99999), 5, '0', STR_PAD_LEFT);
         $stmt = $this->pdo->prepare("INSERT INTO diplomes (eleve_id, intitule, type, mention, date_obtention, numero_diplome, fichier_path, description)
                 VALUES (?,?,?,?,?,?,?,?)");
         $stmt->execute([$d['eleve_id'], $d['intitule'], $d['type'], $d['mention'] ?? null,

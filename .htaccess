@@ -26,7 +26,11 @@ RedirectMatch 404 (?i)/lang/.*\.(php\d*|phtml|phar|pht|phps)(\.|/|$)
 #     (points d'entrée AJAX) reste accessible sous API/. Empêche l'accès HTTP direct à
 #     API/bootstrap.php, API/Legacy/Bridge.php, modules/*/includes/*, templates/*, etc. ---
 RedirectMatch 404 (?i)^/API/(?!endpoints/)[^?]*\.php$
-RedirectMatch 404 (?i)^/modules/[^/]+/(includes|Services|Database|Events|Providers|Jobs|Widgets|Http|Domain|Support|Repositories|views)/
+# Exception : les points d'entrée AJAX suivent la convention includes/ajax_*.php
+# (ex. notes/includes/ajax_stats.php, ajax_batch_save.php, competences/includes/ajax_radar.php) —
+# ils sont fetch/XHR par le JS et DOIVENT rester joignables. Le reste d'includes/… (librairie)
+# est bloqué. Le lookahead négatif exempte uniquement ces entrypoints.
+RedirectMatch 404 (?i)^/modules/[^/]+/(includes|Services|Database|Events|Providers|Jobs|Widgets|Http|Domain|Support|Repositories|views)/(?!ajax_[a-z0-9_]+\.php)
 RedirectMatch 404 (?i)^/templates/[^?]*\.php$
 
 # --- Repli par motif de nom de fichier (si RedirectMatch indisponible) ---
