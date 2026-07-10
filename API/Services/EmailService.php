@@ -30,12 +30,15 @@ class EmailService
     public function getConfig(): array
     {
         if ($this->config === null) {
+            $row = null;
             try {
                 $stmt = $this->pdo->query("SELECT * FROM smtp_config WHERE id = 1 LIMIT 1");
-                $this->config = $stmt->fetch(PDO::FETCH_ASSOC) ?: $this->defaultConfig();
+                $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
             } catch (\PDOException $e) {
-                $this->config = $this->defaultConfig();
+                $row = null;
             }
+            // Priorité : BDD puis fallback .env (MAIL_*)
+            $this->config = $this->mergeEnvFallback($row ?: $this->defaultConfig());
         }
         return $this->config;
     }
@@ -485,5 +488,39 @@ HTML;
             'encryption' => 'tls', 'from_address' => '', 'from_name' => '',
             'reply_to' => null, 'enabled' => 0,
         ];
+    }
+
+    /**
+     * Complète la configuration avec les variables MAIL_* du .env
+     * lorsque les champs correspondants sont absents/vides en BDD.
+     * La BDD reste prioritaire ; le .env ne comble que les trous.
+     */
+    private function mergeEnvFallback(array $config): array
+    {
+        $env = static function (string $key) {
+            $value = function_exists('env') ? env($key) : getenv($key);
+            return ($value === false || $value === null) ? '' : (string) $value;
+        };
+
+        $map = [
+            'host'         => 'MAIL_HOST',
+            'port'         => 'MAIL_PORT',
+            'username'     => 'MAIL_USERNAME',
+            'password'     => 'MAIL_PASSWORD',
+            'from_address' => 'MAIL_FROM_ADDRESS',
+            'encryption'   => 'MAIL_ENCRYPTION',
+        ];
+
+        foreach ($map as $field => $envKey) {
+            $current = $config[$field] ?? '';
+            if ($current === '' || $current === null) {
+                $val = $env($envKey);
+                if ($val !== '') {
+                    $config[$field] = ($field === 'port') ? (int) $val : $val;
+                }
+            }
+        }
+
+        return $config;
     }
 }

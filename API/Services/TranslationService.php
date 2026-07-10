@@ -484,11 +484,11 @@ class TranslationService
     public static function getLocaleNames(): array
     {
         return [
-            'fr' => 'Francais',
+            'fr' => 'Français',
             'en' => 'English',
-            'es' => 'Espanol',
+            'es' => 'Español',
             'de' => 'Deutsch',
-            'ru' => 'Russkiy',
+            'ru' => 'Русский',
             'nl' => 'Nederlands',
             'ar' => 'العربية',
             'th' => 'ไทย',

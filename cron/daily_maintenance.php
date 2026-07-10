@@ -88,9 +88,17 @@ try {
 	$log('Audit cleanup error: ' . $e->getMessage());
 }
 
-// 4. Email queue cleanup (corps traités + lignes email_log expirées)
+// 4. Email queue : envoi des e-mails en attente puis purge des lignes traitées
 try {
 	$emailQueue = new \API\Services\EmailQueueService(getPDO());
+	// 4a. Traiter la file d'attente (envoi borné pour éviter les runs interminables).
+	try {
+		$sent = $emailQueue->processQueue(100);
+		$log("Email queue: sent {$sent} pending emails");
+	} catch (\Throwable $e) {
+		$log('Email queue processing error: ' . $e->getMessage());
+	}
+	// 4b. Purge des corps traités + lignes email_log expirées.
 	$purged = $emailQueue->cleanup();
 	$log("Email queue: purged {$purged} processed entries");
 } catch (\Throwable $e) {

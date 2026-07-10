@@ -17,6 +17,12 @@ $username = isset($_SESSION['reset_username']) ? $_SESSION['reset_username'] : '
 // Nettoyer les variables de session
 unset($_SESSION['reset_requested']);
 unset($_SESSION['reset_username']);
+
+// En-têtes de sécurité (page du flux d'auth) : CSP + X-Frame-Options.
+if (!headers_sent()) {
+    header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' cdnjs.cloudflare.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self';");
+    header("X-Frame-Options: DENY");
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">

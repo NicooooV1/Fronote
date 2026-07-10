@@ -414,6 +414,10 @@ class AnnonceService
             'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
             'text/plain', 'text/csv',
         ];
+        $allowedExts = [
+            'pdf', 'jpg', 'jpeg', 'png', 'gif',
+            'doc', 'docx', 'xls', 'xlsx', 'odt', 'txt',
+        ];
         $maxSize = 10 * 1024 * 1024; // 10 MB
 
         $results = [];
@@ -443,7 +447,8 @@ class AnnonceService
             if (!in_array($mimeType, $allowedMimes, true)) continue;
             if ($file['size'] > $maxSize) continue;
 
-            $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+            $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            if (!in_array($ext, $allowedExts, true)) continue;
             $safeName = bin2hex(random_bytes(16)) . ($ext ? '.' . strtolower($ext) : '');
             $destPath = $uploadDir . $safeName;
 

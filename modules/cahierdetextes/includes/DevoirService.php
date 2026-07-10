@@ -372,6 +372,49 @@ class DevoirService
         return $row ?: null;
     }
 
+    /**
+     * Contrôle de scope pour le téléchargement d'une PJ (anti-IDOR).
+     * $fichier doit provenir de getFichierById() (contient classe + nom_professeur du devoir).
+     * Fail-closed : tout rôle non explicitement autorisé se voit refuser l'accès.
+     */
+    public function userCanAccessFichier(array $fichier, ?int $userId, ?string $role, ?string $fullName): bool
+    {
+        // Staff : accès complet (déjà scopé établissement par getFichierById)
+        if (in_array($role, ['administrateur', 'vie_scolaire', 'professeur'], true)) {
+            return true;
+        }
+
+        $classeDevoir = $fichier['classe'] ?? null;
+        if ($classeDevoir === null || $userId === null) {
+            return false;
+        }
+
+        if ($role === 'eleve') {
+            return $this->getEleveClasse($userId) === $classeDevoir;
+        }
+
+        if ($role === 'parent') {
+            try {
+                $stmt = $this->pdo->prepare(
+                    'SELECT 1 FROM parent_eleve pe
+                     JOIN eleves e ON e.id = pe.id_eleve
+                     WHERE pe.id_parent = :pid AND e.classe = :classe AND e.etablissement_id = :etab
+                     LIMIT 1'
+                );
+                $stmt->execute([
+                    ':pid'    => $userId,
+                    ':classe' => $classeDevoir,
+                    ':etab'   => \API\Core\EstablishmentContext::id(),
+                ]);
+                return (bool) $stmt->fetchColumn();
+            } catch (\PDOException $e) {
+                return false;
+            }
+        }
+
+        return false; // fail-closed
+    }
+
     public function countFichiers(int $devoirId): int
     {
         try {

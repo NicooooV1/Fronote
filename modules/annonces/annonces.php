@@ -16,9 +16,14 @@ $user = getCurrentUser();
 $role = getUserRole();
 
 // Marquer comme lue (AJAX)
-if (isset($_GET['ajax']) && $_GET['ajax'] === 'marquer_lue') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['ajax'] ?? '') === 'marquer_lue') {
     header('Content-Type: application/json');
-    $annonceId = (int)($_GET['id'] ?? 0);
+    if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'error' => 'csrf']);
+        exit;
+    }
+    $annonceId = (int)($_POST['id'] ?? 0);
     $userType = $role;
     $service->marquerLue($annonceId, $user['id'], $userType);
     echo json_encode(['ok' => true]);
@@ -158,10 +163,16 @@ $service->publishScheduled();
 
 <script nonce="<?= csp_nonce() ?>">
 // Marquer comme lue au clic
+const ANNONCE_CSRF = <?= json_encode(csrf_token()) ?>;
 document.querySelectorAll('.annonce-card.annonce-non-lue').forEach(card => {
     card.addEventListener('click', function() {
         const id = this.dataset.id;
-        fetch('annonces.php?ajax=marquer_lue&id=' + id).then(() => {
+        const body = new URLSearchParams({ ajax: 'marquer_lue', id: id, csrf_token: ANNONCE_CSRF });
+        fetch('annonces.php', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: body
+        }).then(() => {
             this.classList.remove('annonce-non-lue');
             this.querySelector('.badge-new')?.remove();
         });

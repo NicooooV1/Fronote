@@ -108,7 +108,7 @@ class FileUploadService
     {
         $this->config  = self::CONTEXTS[$context] ?? self::CONTEXTS['messagerie'];
         $this->baseDir = rtrim(
-            getenv('UPLOADS_PATH') ?: (defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2) . '/') . 'uploads',
+            getenv('UPLOADS_PATH') ?: rtrim(defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2), '/') . '/uploads',
             '/'
         );
     }

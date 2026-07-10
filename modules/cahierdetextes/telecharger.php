@@ -26,6 +26,15 @@ if (!$fichier) {
     exit('Fichier introuvable.');
 }
 
+// Contrôle d'accès (anti-IDOR) : au-delà du scope établissement, l'utilisateur
+// doit avoir accès au devoir (élève/parent de la classe, ou prof/staff).
+// Fail-closed : même réponse 404 qu'un fichier inexistant (pas d'énumération).
+$user = getCurrentUser();
+if (!$service->userCanAccessFichier($fichier, $user['id'] ?? null, getUserRole(), getUserFullName())) {
+    http_response_code(404);
+    exit('Fichier introuvable.');
+}
+
 // Servir le fichier via le service centralisé
 $uploader = new \API\Services\FileUploadService('devoirs');
 $uploader->serve($fichier['nom_stockage'], $fichier['nom_original']);

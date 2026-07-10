@@ -47,9 +47,8 @@ RedirectMatch 404 (?i)^/templates/[^?]*\.php$
 # --- En-têtes de sécurité (la CSP est gérée côté PHP) ---
 <IfModule mod_headers.c>
     Header always set X-Content-Type-Options "nosniff"
-    # DENY (et non SAMEORIGIN) pour ne pas contredire le X-Frame-Options DENY posé par
-    # PHP et la CSP frame-ancestors 'none' : l'app ne s'encadre jamais elle-même.
-    Header always set X-Frame-Options "DENY"
+    # X-Frame-Options est posé côté PHP (X-Frame-Options: DENY) et la CSP
+    # frame-ancestors 'none' assure la protection anti-cadrage : pas de doublon ici.
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
     Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
     # Anti-fingerprinting : retirer la bannière de version PHP (expose_php n'est

@@ -169,6 +169,12 @@ class SallesMaterielService
 
     public function modifierMateriel(int $id, array $d): void
     {
+        // Cloisonnement multi-tenant : on ne modifie que le materiel de l'etablissement courant (fail-closed).
+        $etabId = $this->etabId();
+        if ($etabId === null) return;
+        $chk = $this->pdo->prepare("SELECT 1 FROM materiels WHERE id = ? AND etablissement_id = ?");
+        $chk->execute([$id, $etabId]);
+        if (!$chk->fetchColumn()) return;
         $stmt = $this->pdo->prepare("UPDATE materiels SET nom=?, categorie=?, reference=?, etat=?, salle_id=?, quantite=?, valeur=? WHERE id=?");
         $stmt->execute([$d['nom'], $d['categorie'], $d['reference'], $d['etat'], $d['salle_id'] ?: null, $d['quantite'], $d['valeur'], $id]);
     }
@@ -199,6 +205,12 @@ class SallesMaterielService
 
     public function creerPret(array $d): int
     {
+        // Cloisonnement multi-tenant : on ne prete que le materiel de l'etablissement courant (fail-closed).
+        $etabId = $this->etabId();
+        if ($etabId === null) return 0;
+        $chk = $this->pdo->prepare("SELECT 1 FROM materiels WHERE id = ? AND etablissement_id = ?");
+        $chk->execute([$d['materiel_id'], $etabId]);
+        if (!$chk->fetchColumn()) return 0;
         $stmt = $this->pdo->prepare("INSERT INTO prets_materiels (materiel_id, emprunteur_id, date_emprunt, date_retour_prevue, statut) VALUES (?,?,?,?,?)");
         $stmt->execute([$d['materiel_id'], $d['emprunteur_id'], $d['date_emprunt'], $d['date_retour_prevue'], 'en_cours']);
         return (int) $this->pdo->lastInsertId();
@@ -206,6 +218,12 @@ class SallesMaterielService
 
     public function retournerPret(int $id): void
     {
+        // Cloisonnement multi-tenant : prets_materiels est scope via materiels.etablissement_id (fail-closed).
+        $etabId = $this->etabId();
+        if ($etabId === null) return;
+        $chk = $this->pdo->prepare("SELECT 1 FROM prets_materiels pm JOIN materiels mat ON pm.materiel_id = mat.id AND mat.etablissement_id = ? WHERE pm.id = ?");
+        $chk->execute([$etabId, $id]);
+        if (!$chk->fetchColumn()) return;
         $this->pdo->prepare("UPDATE prets_materiels SET statut = 'retourne', date_retour_effective = NOW() WHERE id = ?")->execute([$id]);
     }
 

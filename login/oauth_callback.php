@@ -10,6 +10,12 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/API/bootstrap.php';
 
+// En-têtes de sécurité (page du flux d'auth) : CSP + X-Frame-Options.
+if (!headers_sent()) {
+	header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' cdnjs.cloudflare.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self';");
+	header("X-Frame-Options: DENY");
+}
+
 $code  = $_GET['code'] ?? '';
 $state = $_GET['state'] ?? '';
 // (string) : un ?error[]=x rendrait $error un tableau → htmlspecialchars(array) = TypeError (500).

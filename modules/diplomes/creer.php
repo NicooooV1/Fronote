@@ -38,7 +38,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
         }
         // Nom de stockage aleatoire non devinable, extension bornee a l'allowlist.
         $fichier = 'dipl_' . bin2hex(random_bytes(8)) . '.' . $ext;
-        move_uploaded_file($_FILES['fichier']['tmp_name'], $dir . $fichier);
+        // Si le deplacement echoue, ne pas enregistrer un diplome pointant vers un fichier inexistant.
+        if (!move_uploaded_file($_FILES['fichier']['tmp_name'], $dir . $fichier)) {
+            $_SESSION['error_message'] = "Échec de l'enregistrement du fichier. Veuillez réessayer.";
+            header('Location: diplomes.php'); exit;
+        }
     }
     $id = $diplService->creerDiplome([
         'eleve_id' => (int)$_POST['eleve_id'],

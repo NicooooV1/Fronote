@@ -25,10 +25,15 @@ $user_fullname = getUserFullName();
 $user_initials = getUserInitials();
 $service       = new DevoirService($pdo);
 
-// ── AJAX : toggle devoir fait (UX-3) ──
-if (isset($_GET['ajax']) && $_GET['ajax'] === 'toggle_fait' && isStudent()) {
+// ── AJAX : toggle devoir fait (UX-3) — mutation via POST + jeton CSRF ──
+if (($_GET['ajax'] ?? '') === 'toggle_fait' && isStudent()) {
     header('Content-Type: application/json');
-    $devoirId = intval($_GET['devoir_id'] ?? 0);
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !validateCSRFToken($_POST['csrf_token'] ?? null)) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Requête invalide']);
+        exit;
+    }
+    $devoirId = intval($_POST['devoir_id'] ?? 0);
     $newState = $service->toggleDevoirFait($user['id'], $devoirId);
     echo json_encode(['fait' => $newState]);
     exit;

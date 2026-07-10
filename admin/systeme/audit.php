@@ -46,7 +46,7 @@ $actionTypes = $pdo->query("SELECT DISTINCT action FROM audit_log ORDER BY actio
 $models = $pdo->query("SELECT DISTINCT model FROM audit_log WHERE model IS NOT NULL ORDER BY model")->fetchAll(PDO::FETCH_COLUMN);
 
 // Stats rapides
-$todayCount = $pdo->query("SELECT COUNT(*) FROM audit_log WHERE DATE(created_at) = CURDATE()")->fetchColumn();
+$todayCount = $pdo->query("SELECT COUNT(*) FROM audit_log WHERE created_at >= CURDATE() AND created_at < CURDATE() + INTERVAL 1 DAY")->fetchColumn();
 $weekCount = $pdo->query("SELECT COUNT(*) FROM audit_log WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)")->fetchColumn();
 
 $pageTitle = 'Journal d\'audit';

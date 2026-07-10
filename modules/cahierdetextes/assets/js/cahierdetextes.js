@@ -194,7 +194,17 @@ const CahierTextes = {
             btn.addEventListener('click', function () {
                 const devoirId = this.dataset.devoirId;
                 const card     = this.closest('.devoir-card');
-                fetch('?ajax=toggle_fait&devoir_id=' + devoirId)
+                const csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+                const body = new URLSearchParams({ devoir_id: devoirId, csrf_token: csrfToken });
+                fetch('?ajax=toggle_fait', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRF-Token': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: body.toString()
+                })
                     .then(r => r.json())
                     .then(data => {
                         if (data.fait) {

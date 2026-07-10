@@ -187,13 +187,20 @@ let eventsThisSecond = 0;
 setInterval(() => {
     metrics.eventsPerSecond = eventsThisSecond;
     eventsThisSecond = 0;
-    // Emit metrics to admin room
-    io.to('admin:metrics').emit('metrics', {
+    // Emit metrics to admin rooms : room globale (super_admin) + rooms
+    // cloisonnées par établissement ('admin:metrics:<etab>'). Les métriques
+    // restent globales au serveur ; seul le ciblage des destinataires diffère.
+    const metricsPayload = {
         connections: io.engine.clientsCount,
         eventsPerSecond: metrics.eventsPerSecond,
         totalEvents: metrics.totalEvents,
         uptime: Math.floor((Date.now() - metrics.startTime) / 1000),
-    });
+    };
+    for (const roomName of io.sockets.adapter.rooms.keys()) {
+        if (roomName === 'admin:metrics' || roomName.startsWith('admin:metrics:')) {
+            io.to(roomName).emit('metrics', metricsPayload);
+        }
+    }
 }, 1000);
 
 // ─── HTTP Handler ──────────────────────────────────────────────
@@ -400,9 +407,15 @@ io.on('connection', (socket) => {
     });
 
     // ─── Admin metrics room ─────────────────────────────────
+    // Cloisonnement tenant : un administrateur n'accède qu'aux métriques
+    // de son établissement (room 'admin:metrics:<etab>'). Seul un super_admin
+    // rejoint la room globale 'admin:metrics'. Un administrateur sans claim
+    // établissement est refusé (empêche l'accès cross-tenant).
     socket.on('join:admin', () => {
-        if (userType === 'administrateur') {
+        if (userType === 'super_admin') {
             socket.join('admin:metrics');
+        } else if (userType === 'administrateur' && socket.etab) {
+            socket.join(`admin:metrics:${socket.etab}`);
         }
     });
 

@@ -38,6 +38,18 @@ class IntelligenceService
         $scoreDiscipline = $this->calculerScoreDiscipline($eleveId);
         $scoreEngagement = $this->calculerScoreEngagement($eleveId);
 
+        $seuils = $this->getSeuilsConfig($etabId);
+
+        return $this->finaliserScore($eleveId, $etabId, $poids, $seuils, $scoreAbsences, $scoreNotes, $scoreDiscipline, $scoreEngagement);
+    }
+
+    /**
+     * Agrégation pondérée + niveau + facteurs + recommandations + persistance.
+     * Extrait de calculerScoreEleve() pour être réutilisé tel quel par le recalcul
+     * en masse (recalculerTous) sans dupliquer la sémantique du score.
+     */
+    private function finaliserScore(int $eleveId, int $etabId, array $poids, array $seuils, float $scoreAbsences, float $scoreNotes, float $scoreDiscipline, float $scoreEngagement): array
+    {
         $scoreRisque = round(
             $scoreAbsences * $poids['absences'] +
             $scoreNotes * $poids['notes'] +
@@ -46,7 +58,6 @@ class IntelligenceService
             2
         );
 
-        $seuils = $this->getSeuilsConfig($etabId);
         if ($scoreRisque >= $seuils['rouge']) $niveau = 'rouge';
         elseif ($scoreRisque >= $seuils['orange']) $niveau = 'orange';
         elseif ($scoreRisque >= $seuils['jaune']) $niveau = 'jaune';
@@ -153,11 +164,71 @@ class IntelligenceService
 
     public function recalculerTous(int $etabId): int
     {
+        // Config mémoïsée une seule fois (au lieu de 2 requêtes par élève).
+        $poids = $this->getPoidsConfig($etabId);
+        $seuils = $this->getSeuilsConfig($etabId);
+        // Les sous-scores unitaires filtrent les données sur le contexte courant :
+        // on reproduit exactement la même sémantique en masse.
+        $ctxId = \API\Core\EstablishmentContext::id();
+
         $eleves = $this->pdo->prepare("SELECT id FROM eleves WHERE actif = 1 AND etablissement_id = :etab");
         $eleves->execute([':etab' => $etabId]);
+        $ids = $eleves->fetchAll(PDO::FETCH_COLUMN);
+        if (!$ids) {
+            return 0;
+        }
+
+        // ── Agrégats groupés (une requête GROUP BY par dimension, au lieu de N) ──
+        $absMap = [];   // eleve_id => ['total'=>int, 'nj'=>int]
+        $stmt = $this->pdo->prepare("SELECT id_eleve, COUNT(*) AS total, SUM(CASE WHEN justifie = 0 THEN 1 ELSE 0 END) AS nj FROM absences WHERE etablissement_id = :etab AND date_debut >= DATE_SUB(CURDATE(), INTERVAL 90 DAY) GROUP BY id_eleve");
+        $stmt->execute([':etab' => $ctxId]);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $absMap[(int)$r['id_eleve']] = ['total' => (int)$r['total'], 'nj' => (int)$r['nj']];
+        }
+
+        $notesMap = []; // eleve_id => moyenne (float) ; absent = pas de note
+        $stmt = $this->pdo->prepare("SELECT id_eleve, ROUND(AVG(note / note_sur * 20),2) AS moyenne FROM notes WHERE etablissement_id = :etab AND date_note >= DATE_SUB(CURDATE(), INTERVAL 90 DAY) GROUP BY id_eleve");
+        $stmt->execute([':etab' => $ctxId]);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $notesMap[(int)$r['id_eleve']] = $r['moyenne'] === null ? null : (float)$r['moyenne'];
+        }
+
+        $discMap = []; // eleve_id => poids_total (int)
+        $stmt = $this->pdo->prepare("SELECT eleve_id, SUM(CASE WHEN gravite = 'grave' THEN 3 WHEN gravite = 'moyen' THEN 2 ELSE 1 END) AS poids_total FROM incidents WHERE etablissement_id = :etab AND date_incident >= DATE_SUB(CURDATE(), INTERVAL 90 DAY) GROUP BY eleve_id");
+        $stmt->execute([':etab' => $ctxId]);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $discMap[(int)$r['eleve_id']] = (int)($r['poids_total'] ?? 0);
+        }
+
+        $engMap = []; // eleve_id => ['total'=>int, 'rendus'=>int]
+        $stmt = $this->pdo->prepare("SELECT e.id AS eleve_id, COUNT(d.id) AS total, SUM(CASE WHEN dr.id IS NOT NULL THEN 1 ELSE 0 END) AS rendus FROM eleves e JOIN devoirs d ON d.classe = e.classe AND d.etablissement_id = :etab AND d.date_rendu >= DATE_SUB(CURDATE(), INTERVAL 90 DAY) LEFT JOIN devoirs_rendus dr ON dr.devoir_id = d.id AND dr.eleve_id = e.id WHERE e.actif = 1 AND e.etablissement_id = :etab2 GROUP BY e.id");
+        $stmt->execute([':etab' => $ctxId, ':etab2' => $etabId]);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $engMap[(int)$r['eleve_id']] = ['total' => (int)$r['total'], 'rendus' => (int)$r['rendus']];
+        }
+
+        // ── Calcul en mémoire, sémantique identique aux calculerScore*() ──
         $count = 0;
-        foreach ($eleves as $e) {
-            $this->calculerScoreEleve($e['id'], $etabId);
+        foreach ($ids as $id) {
+            $id = (int)$id;
+
+            $a = $absMap[$id] ?? ['total' => 0, 'nj' => 0];
+            $scoreAbsences = min(100, ($a['nj'] * 5) + ($a['total'] * 1.5));
+
+            $moyenne = array_key_exists($id, $notesMap) && $notesMap[$id] !== null ? $notesMap[$id] : 10;
+            $scoreNotes = max(0, min(100, (20 - $moyenne) * 5));
+
+            $scoreDiscipline = min(100, ($discMap[$id] ?? 0) * 10);
+
+            $eng = $engMap[$id] ?? ['total' => 0, 'rendus' => 0];
+            if ($eng['total'] === 0) {
+                $scoreEngagement = 30;
+            } else {
+                $tauxRendu = $eng['rendus'] / $eng['total'];
+                $scoreEngagement = max(0, min(100, (1 - $tauxRendu) * 100));
+            }
+
+            $this->finaliserScore($id, $etabId, $poids, $seuils, (float)$scoreAbsences, (float)$scoreNotes, (float)$scoreDiscipline, (float)$scoreEngagement);
             $count++;
         }
         return $count;

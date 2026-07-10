@@ -191,8 +191,9 @@ if (!headers_sent()) {
         . "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
         . "font-src 'self' https://cdnjs.cloudflare.com data:; "
         . "img-src 'self' data: blob: https:; "
-        . "connect-src 'self' ws: wss: https:; "
-        . "object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+        . "connect-src 'self' ws: wss:; "
+        . "object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; "
+        . "report-uri /API/endpoints/csp_report.php;"
         . ($_hdr_isHttps ? ' upgrade-insecure-requests;' : '');
     header("Content-Security-Policy: {$_hdr_csp}");
     // Politique STRICTE en Report-Only : mesure la surface de scripts/handlers inline
@@ -202,8 +203,9 @@ if (!headers_sent()) {
         . "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
         . "font-src 'self' https://cdnjs.cloudflare.com data:; "
         . "img-src 'self' data: blob: https:; "
-        . "connect-src 'self' ws: wss: https:; "
-        . "object-src 'none'; base-uri 'self'; frame-ancestors 'none';";
+        . "connect-src 'self' ws: wss:; "
+        . "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; "
+        . "report-uri /API/endpoints/csp_report.php;";
     header("Content-Security-Policy-Report-Only: {$_hdr_cspRO}");
     header("X-Frame-Options: DENY");
     header("X-Content-Type-Options: nosniff");
@@ -372,7 +374,7 @@ try {
 </head>
 <body>
 
-<a href="#main-content" class="skip-link">Aller au contenu principal</a>
+<a href="#main-content" class="skip-link"><?php echo function_exists('__') ? __('nav.skip_to_content', ['default' => 'Aller au contenu principal']) : 'Aller au contenu principal'; ?></a>
 
 <?php include __DIR__ . '/cookie_consent.php'; ?>
 

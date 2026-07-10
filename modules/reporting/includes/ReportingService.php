@@ -154,14 +154,33 @@ class ReportingService {
             '16-17' => [16, 17.99],
             '18-20' => [18, 20],
         ];
+        $sql = "SELECT CASE
+                    WHEN (note / note_sur * 20) BETWEEN 0 AND 4.99 THEN '0-4'
+                    WHEN (note / note_sur * 20) BETWEEN 5 AND 7.99 THEN '5-7'
+                    WHEN (note / note_sur * 20) BETWEEN 8 AND 9.99 THEN '8-9'
+                    WHEN (note / note_sur * 20) BETWEEN 10 AND 11.99 THEN '10-11'
+                    WHEN (note / note_sur * 20) BETWEEN 12 AND 13.99 THEN '12-13'
+                    WHEN (note / note_sur * 20) BETWEEN 14 AND 15.99 THEN '14-15'
+                    WHEN (note / note_sur * 20) BETWEEN 16 AND 17.99 THEN '16-17'
+                    WHEN (note / note_sur * 20) BETWEEN 18 AND 20 THEN '18-20'
+                END AS tranche, COUNT(*) AS cnt
+                FROM notes
+                WHERE etablissement_id = ?
+                  AND (note / note_sur * 20) BETWEEN 0 AND 20";
+        $params = [\API\Core\EstablishmentContext::id()];
+        if ($periodeId) { $sql .= " AND trimestre = ?"; $params[] = $periodeId; }
+        $sql .= " GROUP BY tranche";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        $counts = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            if ($row['tranche'] !== null) {
+                $counts[$row['tranche']] = (int)$row['cnt'];
+            }
+        }
         $result = [];
-        foreach ($tranches as $label => [$min, $max]) {
-            $sql = "SELECT COUNT(*) FROM notes WHERE (note / note_sur * 20) BETWEEN ? AND ? AND etablissement_id = ?";
-            $params = [$min, $max, \API\Core\EstablishmentContext::id()];
-            if ($periodeId) { $sql .= " AND trimestre = ?"; $params[] = $periodeId; }
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute($params);
-            $result[] = ['tranche' => $label, 'count' => (int)$stmt->fetchColumn()];
+        foreach ($tranches as $label => $bornes) {
+            $result[] = ['tranche' => $label, 'count' => $counts[$label] ?? 0];
         }
         return $result;
     }

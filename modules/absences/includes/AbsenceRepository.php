@@ -321,10 +321,10 @@ class AbsenceRepository
 
     public function update(int $id, array $data): bool
     {
-        $sql = "UPDATE absences SET 
-                    date_debut = ?, date_fin = ?, type_absence = ?, 
-                    motif = ?, justifie = ?, commentaire = ? 
-                WHERE id = ?";
+        $sql = "UPDATE absences SET
+                    date_debut = ?, date_fin = ?, type_absence = ?,
+                    motif = ?, justifie = ?, commentaire = ?
+                WHERE id = ? AND etablissement_id = ?";
         $stmt = $this->pdo->prepare($sql);
         return $stmt->execute([
             $data['date_debut'],
@@ -333,14 +333,15 @@ class AbsenceRepository
             $data['motif'] ?? null,
             !empty($data['justifie']) ? 1 : 0,
             $data['commentaire'] ?? null,
-            $id
+            $id,
+            \API\Core\EstablishmentContext::id()
         ]);
     }
 
     public function delete(int $id): bool
     {
-        $stmt = $this->pdo->prepare("DELETE FROM absences WHERE id = ?");
-        return $stmt->execute([$id]);
+        $stmt = $this->pdo->prepare("DELETE FROM absences WHERE id = ? AND etablissement_id = ?");
+        return $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
     }
 
     /* ================================================================

@@ -63,11 +63,15 @@ class VieScolaireService {
     public function getElevesASurveiller(int $limit = 10): array {
         $stmt = $this->pdo->prepare("
             SELECT e.id, e.nom, e.prenom, e.classe,
-                (SELECT COUNT(*) FROM absences WHERE id_eleve = e.id AND justifie = 0) AS abs_injustifiees,
-                (SELECT COUNT(*) FROM retards WHERE id_eleve = e.id) AS nb_retards,
-                (SELECT COUNT(*) FROM incidents WHERE eleve_id = e.id) AS nb_incidents
+                COUNT(DISTINCT a.id) AS abs_injustifiees,
+                COUNT(DISTINCT r.id) AS nb_retards,
+                COUNT(DISTINCT i.id) AS nb_incidents
             FROM eleves e
+            LEFT JOIN absences a ON a.id_eleve = e.id AND a.justifie = 0
+            LEFT JOIN retards r ON r.id_eleve = e.id
+            LEFT JOIN incidents i ON i.eleve_id = e.id
             WHERE e.actif = 1 AND e.etablissement_id = ?
+            GROUP BY e.id, e.nom, e.prenom, e.classe
             HAVING abs_injustifiees > 3 OR nb_retards > 5 OR nb_incidents > 2
             ORDER BY (abs_injustifiees * 3 + nb_retards + nb_incidents * 2) DESC
             LIMIT ?
