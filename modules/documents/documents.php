@@ -18,7 +18,7 @@ $categories = DocumentService::categories();
     <div class="page-header">
         <h1><i class="fas fa-folder-open"></i> Documents administratifs</h1>
         <?php if (isAdmin() || isTeacher() || isVieScolaire()): ?>
-            <a href="ajouter.php" class="btn btn-primary"><i class="fas fa-upload"></i> Ajouter</a>
+            <a href="ajouter.php" class="btn btn-primary"><i class="fas fa-upload"></i> <?= __('btn.add') ?></a>
         <?php endif; ?>
     </div>
 

@@ -228,7 +228,7 @@ include 'includes/header.php';
                 <div style="background:white; border-radius:10px; padding:30px; box-shadow:0 2px 8px rgba(0,0,0,0.06); max-width:700px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                         <h2 style="font-size:1.1em; color:#2d3748; margin:0;">Modification de la note</h2>
-                        <a href="notes.php" class="btn btn-secondary" style="font-size:13px;"><i class="fas fa-arrow-left"></i> Retour</a>
+                        <a href="notes.php" class="btn btn-secondary" style="font-size:13px;"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
                     </div>
 
                     <form method="post" action="" novalidate>
@@ -281,8 +281,8 @@ include 'includes/header.php';
                         </div>
 
                         <div style="display:flex; gap:10px; justify-content:flex-end; padding-top:15px; border-top:1px solid #edf2f7;">
-                            <a href="notes.php" class="btn btn-secondary"><i class="fas fa-times"></i> Annuler</a>
-                            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer</button>
+                            <a href="notes.php" class="btn btn-secondary"><i class="fas fa-times"></i> <?= __('btn.cancel') ?></a>
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> <?= __('btn.save') ?></button>
                         </div>
                     </form>
                 </div>
@@ -294,7 +294,7 @@ include 'includes/header.php';
                     <form method="get" action="">
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:20px;">
                             <div>
-                                <label style="display:block; font-size:13px; font-weight:600; color:#4a5568; margin-bottom:6px;">Classe <span style="color:#e53e3e;">*</span></label>
+                                <label style="display:block; font-size:13px; font-weight:600; color:#4a5568; margin-bottom:6px;"><?= __('label.classe') ?> <span style="color:#e53e3e;">*</span></label>
                                 <select name="classe" class="form-control" required>
                                     <option value="">Sélectionnez</option>
                                     <?php foreach ($classes as $c): ?>
@@ -351,7 +351,7 @@ include 'includes/header.php';
                                 <input type="date" name="date_note" class="form-control" value="<?= htmlspecialchars($_POST['date_note'] ?? date('Y-m-d')) ?>" required>
                             </div>
                             <div>
-                                <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;">Trimestre</label>
+                                <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;"><?= __('label.trimestre') ?></label>
                                 <select name="trimestre" class="form-control" required>
                                     <?php
                                     $currentTri = NoteService::getTrimestreCourant();
@@ -363,7 +363,7 @@ include 'includes/header.php';
                                 </select>
                             </div>
                             <div>
-                                <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;">Coefficient</label>
+                                <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;"><?= __('label.coefficient') ?></label>
                                 <input type="number" name="coefficient" class="form-control" min="0.25" max="10" step="0.25" value="<?= htmlspecialchars($_POST['coefficient'] ?? '1') ?>" required>
                             </div>
                             <div>
@@ -431,7 +431,7 @@ include 'includes/header.php';
 
                         <div style="display:flex; gap:10px; justify-content:flex-end; align-items:center; margin-top:20px; padding-top:15px; border-top:1px solid #edf2f7;">
                             <span id="autosave-status" class="autosave-status" style="margin-right:auto;"></span>
-                            <a href="notes.php" class="btn btn-secondary">Annuler</a>
+                            <a href="notes.php" class="btn btn-secondary"><?= __('btn.cancel') ?></a>
                             <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer les notes</button>
                         </div>
                     </form>

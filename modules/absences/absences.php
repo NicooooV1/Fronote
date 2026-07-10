@@ -141,7 +141,7 @@ include 'includes/header.php';
         <div class="filter-item">
             <label for="justifie" class="form-label">Justification</label>
             <select id="justifie" name="justifie" class="form-control">
-                <option value="">Toutes</option>
+                <option value=""><?= __('label.toutes') ?></option>
                 <option value="oui" <?= $justifie === 'oui' ? 'selected' : '' ?>>Justifié<?= $type === 'absences' ? 'es' : 's' ?></option>
                 <option value="non" <?= $justifie === 'non' ? 'selected' : '' ?>>Non justifié<?= $type === 'absences' ? 'es' : 's' ?></option>
             </select>

@@ -210,12 +210,12 @@ $types = AnnonceService::getTypes();
 <!-- Actions admin -->
 <?php if (isAdmin() || ($annonce['auteur_id'] == $user['id'] && $annonce['auteur_type'] === $role)): ?>
 <div class="form-actions">
-    <a href="modifier_annonce.php?id=<?= $id ?>" class="btn btn-secondary"><i class="fas fa-edit"></i> Modifier</a>
+    <a href="modifier_annonce.php?id=<?= $id ?>" class="btn btn-secondary"><i class="fas fa-edit"></i> <?= __('btn.edit') ?></a>
     <form method="POST" action="supprimer_annonce.php" style="display:inline;"
           data-fr-confirm="Supprimer cette annonce ?">
         <?= csrfField() ?>
         <input type="hidden" name="id" value="<?= $id ?>">
-        <button type="submit" class="btn btn-danger"><i class="fas fa-trash"></i> Supprimer</button>
+        <button type="submit" class="btn btn-danger"><i class="fas fa-trash"></i> <?= __('btn.delete') ?></button>
     </form>
 </div>
 <?php endif; ?>

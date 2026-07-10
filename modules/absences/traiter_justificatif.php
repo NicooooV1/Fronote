@@ -129,7 +129,7 @@ include 'includes/header.php';
                     <div class="form-value"><?= htmlspecialchars($justificatif['motif'] ?? 'Non spécifié') ?></div>
                 </div>
                 <div class="form-group form-full">
-                    <label>Description</label>
+                    <label><?= __('label.description') ?></label>
                     <div class="form-value"><?= nl2br(htmlspecialchars($justificatif['description'] ?? 'Aucune description fournie')) ?></div>
                 </div>
 

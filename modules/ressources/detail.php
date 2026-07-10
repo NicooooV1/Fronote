@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-<?= RessourceService::iconeType($res['type']) ?>"></i> <?= htmlspecialchars($res['titre']) ?></h1>
-        <a href="ressources.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="ressources.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <div class="info-grid">
@@ -55,20 +55,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
     <?php endif; ?>
 
     <?php if ($isGestionnaire): ?>
-    <div class="card" style="margin-top:1.5rem;"><div class="card-header"><h2>Modifier</h2></div><div class="card-body">
+    <div class="card" style="margin-top:1.5rem;"><div class="card-header"><h2><?= __('btn.edit') ?></h2></div><div class="card-body">
         <form method="post">
             <?= csrfField() ?>
             <div class="form-grid-2">
                 <div class="form-group"><label>Titre *</label><input type="text" name="titre" class="form-control" value="<?= htmlspecialchars($res['titre']) ?>" required></div>
                 <div class="form-group"><label><?= __('ressources.type') ?></label><select name="type" class="form-control"><?php foreach ($types as $k => $v): ?><option value="<?= $k ?>" <?= $res['type'] === $k ? 'selected' : '' ?>><?= $v ?></option><?php endforeach; ?></select></div>
-                <div class="form-group"><label>Matière</label><select name="matiere_id" class="form-control"><option value="">—</option><?php foreach ($resService->getMatieres() as $m): ?><option value="<?= $m['id'] ?>" <?= $res['matiere_id'] == $m['id'] ? 'selected' : '' ?>><?= htmlspecialchars($m['nom']) ?></option><?php endforeach; ?></select></div>
+                <div class="form-group"><label><?= __('label.matiere') ?></label><select name="matiere_id" class="form-control"><option value="">—</option><?php foreach ($resService->getMatieres() as $m): ?><option value="<?= $m['id'] ?>" <?= $res['matiere_id'] == $m['id'] ? 'selected' : '' ?>><?= htmlspecialchars($m['nom']) ?></option><?php endforeach; ?></select></div>
                 <div class="form-group"><label>Niveau</label><select name="niveau" class="form-control"><option value="">—</option><?php foreach ($niveaux as $k => $v): ?><option value="<?= $k ?>" <?= ($res['niveau'] ?? '') === $k ? 'selected' : '' ?>><?= $v ?></option><?php endforeach; ?></select></div>
                 <div class="form-group full-width"><label>Tags (virgule)</label><input type="text" name="tags" class="form-control" value="<?= htmlspecialchars($res['tags'] ?? '') ?>"></div>
                 <div class="form-group full-width"><label>Contenu</label><textarea name="contenu" class="form-control" rows="6"><?= htmlspecialchars($res['contenu'] ?? '') ?></textarea></div>
                 <div class="form-group"><label><input type="checkbox" name="publie" <?= $res['publie'] ? 'checked' : '' ?>> Publié</label></div>
             </div>
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> <?= __('btn.save') ?></button>
                 <button type="submit" name="supprimer" value="1" class="btn btn-danger" data-fr-confirm="Supprimer ?"><i class="fas fa-trash"></i></button>
             </div>
         </form>

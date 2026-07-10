@@ -60,28 +60,28 @@ $types     = DisciplineService::getTypesIncident();
 <div class="filter-bar card">
     <form method="GET" class="filter-form">
         <div class="filter-group">
-            <label for="statut">Statut</label>
+            <label for="statut"><?= __('label.statut') ?></label>
             <select name="statut" id="statut">
-                <option value="">Tous</option>
+                <option value=""><?= __('label.tous') ?></option>
                 <option value="signale" <?= $filtreStatut === 'signale' ? 'selected' : '' ?>>Signalé</option>
-                <option value="en_cours" <?= $filtreStatut === 'en_cours' ? 'selected' : '' ?>>En cours</option>
+                <option value="en_cours" <?= $filtreStatut === 'en_cours' ? 'selected' : '' ?>><?= __('status.en_cours') ?></option>
                 <option value="traite" <?= $filtreStatut === 'traite' ? 'selected' : '' ?>>Traité</option>
                 <option value="classe" <?= $filtreStatut === 'classe' ? 'selected' : '' ?>>Classé</option>
             </select>
         </div>
         <div class="filter-group">
-            <label for="gravite">Gravité</label>
+            <label for="gravite"><?= __('label.gravite') ?></label>
             <select name="gravite" id="gravite">
-                <option value="">Toutes</option>
+                <option value=""><?= __('label.toutes') ?></option>
                 <?php foreach ($gravites as $key => $label): ?>
                 <option value="<?= $key ?>" <?= $filtreGravite === $key ? 'selected' : '' ?>><?= $label ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
         <div class="filter-group">
-            <label for="classe">Classe</label>
+            <label for="classe"><?= __('label.classe') ?></label>
             <select name="classe" id="classe">
-                <option value="">Toutes</option>
+                <option value=""><?= __('label.toutes') ?></option>
                 <?php foreach ($classes as $c): ?>
                 <option value="<?= htmlspecialchars($c['nom']) ?>" <?= $filtreClasse === $c['nom'] ? 'selected' : '' ?>><?= htmlspecialchars($c['nom']) ?></option>
                 <?php endforeach; ?>
@@ -96,7 +96,7 @@ $types     = DisciplineService::getTypesIncident();
             <input type="date" name="date_fin" id="date_fin" value="<?= htmlspecialchars($filtreDateFin) ?>">
         </div>
         <div class="filter-actions">
-            <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filtrer</button>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> <?= __('btn.filter') ?></button>
             <a href="incidents.php" class="btn btn-secondary">Réinitialiser</a>
         </div>
     </form>
@@ -135,11 +135,11 @@ $types     = DisciplineService::getTypesIncident();
             <tr>
                 <th><?= __('discipline.date') ?></th>
                 <th><?= __('discipline.student') ?></th>
-                <th>Classe</th>
+                <th><?= __('label.classe') ?></th>
                 <th><?= __('discipline.type') ?></th>
                 <th><?= __('discipline.severity') ?></th>
-                <th>Statut</th>
-                <th>Actions</th>
+                <th><?= __('label.statut') ?></th>
+                <th><?= __('label.actions') ?></th>
             </tr>
         </thead>
         <tbody>

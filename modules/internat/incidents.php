@@ -58,18 +58,18 @@ $chambres = $internatService->getChambres();
                             <?php foreach ($chambres as $ch): ?><option value="<?= $ch['id'] ?>"><?= htmlspecialchars($ch['numero']) ?></option><?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="form-group"><label>Type</label>
+                    <div class="form-group"><label><?= __('label.type') ?></label>
                         <select name="type" class="form-select">
                             <option value="bruit">Bruit</option><option value="degradation">Dégradation</option>
                             <option value="absence">Absence</option><option value="conflit">Conflit</option><option value="autre">Autre</option>
                         </select>
                     </div>
-                    <div class="form-group"><label>Gravité</label>
+                    <div class="form-group"><label><?= __('label.gravite') ?></label>
                         <select name="gravite" class="form-select"><option value="1">Mineur</option><option value="2">Moyen</option><option value="3">Grave</option></select>
                     </div>
                 </div>
                 <div class="form-group"><label>Élève ID (optionnel)</label><input type="number" name="eleve_id" class="form-control"></div>
-                <div class="form-group"><label>Description</label><textarea name="description" required class="form-control" rows="3"></textarea></div>
+                <div class="form-group"><label><?= __('label.description') ?></label><textarea name="description" required class="form-control" rows="3"></textarea></div>
                 <button type="submit" class="btn btn-primary">Signaler</button>
             </form>
         </div>
@@ -78,7 +78,7 @@ $chambres = $internatService->getChambres();
     <div class="card">
         <div class="card-body">
             <table class="table">
-                <thead><tr><th>Date</th><th>Chambre</th><th>Élève</th><th>Type</th><th>Gravité</th><th>Statut</th><th>Actions</th></tr></thead>
+                <thead><tr><th><?= __('label.date') ?></th><th>Chambre</th><th>Élève</th><th><?= __('label.type') ?></th><th><?= __('label.gravite') ?></th><th><?= __('label.statut') ?></th><th><?= __('label.actions') ?></th></tr></thead>
                 <tbody>
                 <?php foreach ($incidents as $inc):
                     $gravBadge = ['1' => 'success', '2' => 'warning', '3' => 'danger'];

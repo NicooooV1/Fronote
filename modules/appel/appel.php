@@ -175,7 +175,7 @@ include 'includes/header.php';
                         <th class="text-center"><?= __('appel.absent') ?></th>
                         <th class="text-center">Retard</th>
                         <th class="text-center">Dispensé</th>
-                        <th>Motif</th>
+                        <th><?= __('label.motif') ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -212,14 +212,14 @@ include 'includes/header.php';
 
             <div class="form-actions">
                 <button type="submit" name="action" value="sauvegarder" class="btn btn-primary">
-                    <i class="fas fa-save"></i> Enregistrer
+                    <i class="fas fa-save"></i> <?= __('btn.save') ?>
                 </button>
                 <button type="submit" name="action" value="valider" class="btn btn-success"
                         data-fr-confirm="Valider l'appel ? Les absences et retards seront enregistrés.">
                     <i class="fas fa-check-double"></i> Valider l'appel
                 </button>
                 <a href="appel.php?date=<?= $date ?>" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left"></i> Retour
+                    <i class="fas fa-arrow-left"></i> <?= __('btn.back') ?>
                 </a>
             </div>
         </form>
@@ -227,7 +227,7 @@ include 'includes/header.php';
         <!-- Appel validé (lecture seule) -->
         <table class="table appel-table">
             <thead>
-                <tr><th>Élève</th><th class="text-center"><?= __('appel.status') ?></th><th>Motif</th></tr>
+                <tr><th>Élève</th><th class="text-center"><?= __('appel.status') ?></th><th><?= __('label.motif') ?></th></tr>
             </thead>
             <tbody>
                 <?php foreach ($eleves as $el): ?>
@@ -243,7 +243,7 @@ include 'includes/header.php';
                 <?php endforeach; ?>
             </tbody>
         </table>
-        <a href="appel.php?date=<?= $date ?>" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="appel.php?date=<?= $date ?>" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
         <?php endif; ?>
     </div>
 </div>

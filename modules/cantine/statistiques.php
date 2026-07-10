@@ -21,9 +21,9 @@ $regimes = $cantineService->getStatsParRegime(date('Y-m-d'));
 
     <form method="get" class="filter-form">
         <div class="form-row">
-            <div class="form-group"><label>Début</label><input type="date" name="date_debut" value="<?= $dateDebut ?>" class="form-control"></div>
-            <div class="form-group"><label>Fin</label><input type="date" name="date_fin" value="<?= $dateFin ?>" class="form-control"></div>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filtrer</button>
+            <div class="form-group"><label><?= __('label.debut') ?></label><input type="date" name="date_debut" value="<?= $dateDebut ?>" class="form-control"></div>
+            <div class="form-group"><label><?= __('label.fin') ?></label><input type="date" name="date_fin" value="<?= $dateFin ?>" class="form-control"></div>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> <?= __('btn.filter') ?></button>
         </div>
     </form>
 

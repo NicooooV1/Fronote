@@ -188,7 +188,7 @@ include 'includes/header.php';
                 </div>
 
                 <div class="form-group">
-                    <label for="creneau_id">Créneau <span class="required">*</span></label>
+                    <label for="creneau_id"><?= __('label.creneau') ?> <span class="required">*</span></label>
                     <select name="creneau_id" id="creneau_id" class="form-control" required>
                         <option value="">-- Créneau --</option>
                         <?php foreach ($creneaux as $cr): ?>
@@ -254,10 +254,10 @@ include 'includes/header.php';
 
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-save"></i> <?= $editMode ? 'Modifier' : 'Ajouter' ?>
+                    <i class="fas fa-save"></i> <?= $editMode ? __('btn.edit') : __('btn.add') ?>
                 </button>
                 <a href="emploi_du_temps.php" class="btn btn-secondary">
-                    <i class="fas fa-times"></i> Annuler
+                    <i class="fas fa-times"></i> <?= __('btn.cancel') ?>
                 </a>
             </div>
         </form>

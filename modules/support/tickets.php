@@ -35,17 +35,17 @@ if (isAdmin()) {
     <!-- Stats admin -->
     <?php if ($stats): ?>
     <div class="ticket-stats">
-        <div class="stat-card"><div class="stat-value"><?= $stats['total'] ?></div><div class="stat-label">Total</div></div>
+        <div class="stat-card"><div class="stat-value"><?= $stats['total'] ?></div><div class="stat-label"><?= __('label.total') ?></div></div>
         <div class="stat-card stat-info"><div class="stat-value"><?= $stats['ouverts'] ?></div><div class="stat-label">Ouverts</div></div>
-        <div class="stat-card stat-warning"><div class="stat-value"><?= $stats['en_cours'] ?></div><div class="stat-label">En cours</div></div>
+        <div class="stat-card stat-warning"><div class="stat-value"><?= $stats['en_cours'] ?></div><div class="stat-label"><?= __('status.en_cours') ?></div></div>
         <div class="stat-card stat-success"><div class="stat-value"><?= $stats['resolus'] ?></div><div class="stat-label">Résolus</div></div>
         <div class="stat-card stat-danger"><div class="stat-value"><?= $stats['urgents'] ?></div><div class="stat-label">Urgents</div></div>
     </div>
     <!-- Filtres admin -->
     <div class="filter-bar">
-        <a href="tickets.php" class="filter-btn <?= empty($filtreStatut) ? 'active' : '' ?>">Tous</a>
+        <a href="tickets.php" class="filter-btn <?= empty($filtreStatut) ? 'active' : '' ?>"><?= __('label.tous') ?></a>
         <a href="tickets.php?statut=ouvert" class="filter-btn <?= ($filtreStatut ?? '') === 'ouvert' ? 'active' : '' ?>">Ouverts</a>
-        <a href="tickets.php?statut=en_cours" class="filter-btn <?= ($filtreStatut ?? '') === 'en_cours' ? 'active' : '' ?>">En cours</a>
+        <a href="tickets.php?statut=en_cours" class="filter-btn <?= ($filtreStatut ?? '') === 'en_cours' ? 'active' : '' ?>"><?= __('status.en_cours') ?></a>
         <a href="tickets.php?statut=resolu" class="filter-btn <?= ($filtreStatut ?? '') === 'resolu' ? 'active' : '' ?>">Résolus</a>
     </div>
     <?php endif; ?>

@@ -71,7 +71,7 @@ if (isEleve()) {
             </select>
             <select name="statut" class="form-control" data-fr-change="submitOwn">
                 <option value="">Tous les statuts</option>
-                <option value="brouillon" <?= $filtreStatut === 'brouillon' ? 'selected' : '' ?>>Brouillon</option>
+                <option value="brouillon" <?= $filtreStatut === 'brouillon' ? 'selected' : '' ?>><?= __('status.brouillon') ?></option>
                 <option value="soumise" <?= $filtreStatut === 'soumise' ? 'selected' : '' ?>>Soumise</option>
                 <option value="validee" <?= $filtreStatut === 'validee' ? 'selected' : '' ?>>Validée</option>
             </select>

@@ -81,7 +81,7 @@ if ($isGestionnaire) {
         <div class="card-header"><h3>Liste des internes (<?= count($affectations) ?>)</h3></div>
         <div class="card-body">
             <table class="table">
-                <thead><tr><th>Élève</th><th>Classe</th><th>Chambre</th><th>Bâtiment</th><th>Depuis</th><?php if ($isGestionnaire): ?><th>Actions</th><?php endif; ?></tr></thead>
+                <thead><tr><th>Élève</th><th><?= __('label.classe') ?></th><th>Chambre</th><th>Bâtiment</th><th>Depuis</th><?php if ($isGestionnaire): ?><th><?= __('label.actions') ?></th><?php endif; ?></tr></thead>
                 <tbody>
                 <?php foreach ($affectations as $af): ?>
                     <tr>

@@ -37,7 +37,7 @@ $reste = $facture['montant_ttc'] - $totalPaye;
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-file-invoice-dollar"></i> <?= htmlspecialchars($facture['numero']) ?></h1>
-        <a href="factures.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="factures.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <div class="info-grid">
@@ -52,7 +52,7 @@ $reste = $facture['montant_ttc'] - $totalPaye;
         <div class="card-header"><h2>Lignes</h2></div>
         <div class="card-body">
             <table class="table">
-                <thead><tr><th>Description</th><th>Qté</th><th>P.U.</th><th>Total</th></tr></thead>
+                <thead><tr><th><?= __('label.description') ?></th><th>Qté</th><th>P.U.</th><th><?= __('label.total') ?></th></tr></thead>
                 <tbody>
                     <?php foreach ($lignes as $l): ?>
                     <tr><td><?= htmlspecialchars($l['description']) ?></td><td><?= $l['quantite'] ?></td><td><?= number_format((float) ($l['prix_unitaire']), 2, ',', ' ') ?> €</td><td><?= number_format((float) ($l['quantite'] * $l['prix_unitaire']), 2, ',', ' ') ?> €</td></tr>
@@ -65,7 +65,7 @@ $reste = $facture['montant_ttc'] - $totalPaye;
             <?php if ($isGestionnaire): ?>
             <form method="post" class="form-inline" style="margin-top:1rem;">
                 <?= csrfField() ?><input type="hidden" name="action" value="ajouter_ligne">
-                <input type="text" name="description" class="form-control" placeholder="Description" required>
+                <input type="text" name="description" class="form-control" placeholder="<?= __('label.description') ?>" required>
                 <input type="number" name="quantite" class="form-control" value="1" min="1" style="width:70px;">
                 <input type="number" name="prix_unitaire" class="form-control" step="0.01" min="0" placeholder="Prix" style="width:100px;" required>
                 <button class="btn btn-primary"><i class="fas fa-plus"></i></button>
@@ -90,7 +90,7 @@ $reste = $facture['montant_ttc'] - $totalPaye;
                 <?= csrfField() ?><input type="hidden" name="action" value="paiement">
                 <input type="number" name="montant" class="form-control" step="0.01" min="0.01" max="<?= $reste ?>" value="<?= $reste ?>" style="width:120px;" required>
                 <select name="mode_paiement" class="form-control"><?php foreach ($modes as $k => $v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?></select>
-                <button class="btn btn-success"><i class="fas fa-check"></i> Enregistrer</button>
+                <button class="btn btn-success"><i class="fas fa-check"></i> <?= __('btn.save') ?></button>
             </form>
             <?php endif; ?>
         </div>

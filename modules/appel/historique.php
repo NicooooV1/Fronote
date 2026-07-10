@@ -88,7 +88,7 @@ include 'includes/header.php';
         <div class="filter-group">
             <label>Classe :</label>
             <select name="classe" class="form-control">
-                <option value="">Toutes</option>
+                <option value=""><?= __('label.toutes') ?></option>
                 <?php foreach ($classes as $cl): ?>
                     <option value="<?= $cl['id'] ?>" <?= $classeId == $cl['id'] ? 'selected' : '' ?>>
                         <?= htmlspecialchars($cl['nom']) ?>
@@ -96,7 +96,7 @@ include 'includes/header.php';
                 <?php endforeach; ?>
             </select>
         </div>
-        <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Filtrer</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> <?= __('btn.filter') ?></button>
     </form>
 </div>
 
@@ -109,8 +109,8 @@ include 'includes/header.php';
                     <th><?= __('appel.date') ?></th>
                     <th>Horaire</th>
                     <th><?= __('appel.class') ?></th>
-                    <th>Matière</th>
-                    <th>Professeur</th>
+                    <th><?= __('label.matiere') ?></th>
+                    <th><?= __('label.professeur') ?></th>
                     <th class="text-center">Effectif</th>
                     <th class="text-center">Absents</th>
                     <th class="text-center">Retards</th>

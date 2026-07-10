@@ -29,7 +29,7 @@ $types = SignalementService::typesSignalement();
     <?php endif; ?>
 
     <div class="stats-grid">
-        <div class="stat-card"><div class="stat-value"><?= $stats['total'] ?></div><div class="stat-label">Total</div></div>
+        <div class="stat-card"><div class="stat-value"><?= $stats['total'] ?></div><div class="stat-label"><?= __('label.total') ?></div></div>
         <div class="stat-card stat-danger"><div class="stat-value"><?= $stats['nouveaux'] ?></div><div class="stat-label">Nouveaux</div></div>
         <div class="stat-card stat-warning"><div class="stat-value"><?= $stats['en_cours'] ?></div><div class="stat-label"><?= __('signalements.in_progress') ?></div></div>
         <div class="stat-card stat-danger"><div class="stat-value"><?= $stats['urgents'] ?></div><div class="stat-label">Urgents</div></div>

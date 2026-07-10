@@ -108,7 +108,7 @@ $convocations = $reunionService->getConvocations($userId, $userType);
                     <select name="destinataire_type" class="form-control">
                         <option value="parent">Parent</option>
                         <option value="eleve">Élève</option>
-                        <option value="professeur">Professeur</option>
+                        <option value="professeur"><?= __('label.professeur') ?></option>
                     </select>
                 </div>
             </div>
@@ -122,7 +122,7 @@ $convocations = $reunionService->getConvocations($userId, $userType);
                     <input type="time" name="heure" class="form-control">
                 </div>
                 <div class="form-group">
-                    <label>Type</label>
+                    <label><?= __('label.type') ?></label>
                     <select name="type_conv" class="form-control">
                         <option value="reunion">Réunion</option>
                         <option value="conseil">Conseil</option>
@@ -141,8 +141,8 @@ $convocations = $reunionService->getConvocations($userId, $userType);
             </div>
             <input type="hidden" name="reunion_id" value="">
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Envoyer</button>
-                <button type="button" class="btn btn-outline" data-fr-click="frCv2">Annuler</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> <?= __('btn.send') ?></button>
+                <button type="button" class="btn btn-outline" data-fr-click="frCv2"><?= __('btn.cancel') ?></button>
             </div>
         </form>
     </div>

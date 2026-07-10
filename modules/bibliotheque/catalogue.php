@@ -20,7 +20,7 @@ $stats = $biblioService->getStats();
     <div class="content-header">
         <h1><i class="fas fa-book"></i> <?= __('bibliotheque.catalog') ?></h1>
         <?php if (isAdmin() || isPersonnelVS()): ?>
-        <a href="ajouter.php" class="btn btn-primary"><i class="fas fa-plus"></i> Ajouter</a>
+        <a href="ajouter.php" class="btn btn-primary"><i class="fas fa-plus"></i> <?= __('btn.add') ?></a>
         <?php endif; ?>
     </div>
 

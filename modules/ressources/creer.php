@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-plus-circle"></i> Créer une ressource</h1>
-        <a href="ressources.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="ressources.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <div class="card"><div class="card-body">
@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
             <div class="form-grid-2">
                 <div class="form-group"><label>Titre *</label><input type="text" name="titre" class="form-control" required></div>
                 <div class="form-group"><label><?= __('ressources.type') ?></label><select name="type" class="form-control"><?php foreach ($types as $k => $v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?></select></div>
-                <div class="form-group"><label>Matière</label><select name="matiere_id" class="form-control"><option value="">—</option><?php foreach ($matieres as $m): ?><option value="<?= $m['id'] ?>"><?= htmlspecialchars($m['nom']) ?></option><?php endforeach; ?></select></div>
+                <div class="form-group"><label><?= __('label.matiere') ?></label><select name="matiere_id" class="form-control"><option value="">—</option><?php foreach ($matieres as $m): ?><option value="<?= $m['id'] ?>"><?= htmlspecialchars($m['nom']) ?></option><?php endforeach; ?></select></div>
                 <div class="form-group"><label>Niveau</label><select name="niveau" class="form-control"><option value="">—</option><?php foreach ($niveaux as $k => $v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?></select></div>
                 <div class="form-group full-width"><label>Tags (séparés par ,)</label><input type="text" name="tags" class="form-control" placeholder="ex: maths, algèbre, calcul"></div>
                 <div class="form-group full-width"><label>Contenu</label><textarea name="contenu" class="form-control" rows="8"></textarea></div>
@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
             </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Créer</button>
-                <a href="ressources.php" class="btn btn-outline">Annuler</a>
+                <a href="ressources.php" class="btn btn-outline"><?= __('btn.cancel') ?></a>
             </div>
         </form>
     </div></div>

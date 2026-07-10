@@ -29,32 +29,32 @@ $statuts  = ProjetPedagogiqueService::statutLabels();
 
     <!-- Stats -->
     <div class="row g-3 mb-4">
-        <div class="col-md-4"><div class="stat-card bg-primary-light"><div class="stat-value"><?= $stats['total'] ?></div><div class="stat-label">Total</div></div></div>
-        <div class="col-md-4"><div class="stat-card bg-warning-light"><div class="stat-value"><?= $stats['en_cours'] ?></div><div class="stat-label">En cours</div></div></div>
+        <div class="col-md-4"><div class="stat-card bg-primary-light"><div class="stat-value"><?= $stats['total'] ?></div><div class="stat-label"><?= __('label.total') ?></div></div></div>
+        <div class="col-md-4"><div class="stat-card bg-warning-light"><div class="stat-value"><?= $stats['en_cours'] ?></div><div class="stat-label"><?= __('status.en_cours') ?></div></div></div>
         <div class="col-md-4"><div class="stat-card bg-success-light"><div class="stat-value"><?= $stats['termines'] ?></div><div class="stat-label">Terminés</div></div></div>
     </div>
 
     <!-- Filtres -->
     <form method="get" class="row g-2 mb-4 align-items-end">
         <div class="col-md-3">
-            <label class="form-label">Type</label>
+            <label class="form-label"><?= __('label.type') ?></label>
             <select name="type" class="form-select form-select-sm">
-                <option value="">Tous</option>
+                <option value=""><?= __('label.tous') ?></option>
                 <?php foreach ($types as $k => $v): ?>
                     <option value="<?= $k ?>" <?= ($filtres['type'] === $k) ? 'selected' : '' ?>><?= $v ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
         <div class="col-md-3">
-            <label class="form-label">Statut</label>
+            <label class="form-label"><?= __('label.statut') ?></label>
             <select name="statut" class="form-select form-select-sm">
-                <option value="">Tous</option>
+                <option value=""><?= __('label.tous') ?></option>
                 <?php foreach ($statuts as $k => $v): ?>
                     <option value="<?= $k ?>" <?= ($filtres['statut'] === $k) ? 'selected' : '' ?>><?= $v ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
-        <div class="col-md-2"><button class="btn btn-sm btn-outline-primary">Filtrer</button></div>
+        <div class="col-md-2"><button class="btn btn-sm btn-outline-primary"><?= __('btn.filter') ?></button></div>
     </form>
 
     <!-- Liste -->

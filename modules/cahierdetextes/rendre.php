@@ -49,7 +49,7 @@ $isPast = strtotime($devoir['date_rendu']) < time();
 
 <div class="page-header">
     <h1><i class="fas fa-upload"></i> Rendre le devoir</h1>
-    <a href="mes_devoirs.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+    <a href="mes_devoirs.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
 </div>
 
 <?php if ($message): ?>
@@ -109,7 +109,7 @@ $isPast = strtotime($devoir['date_rendu']) < time();
             </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> <?= $existing ? 'Mettre à jour' : 'Soumettre' ?></button>
-                <a href="mes_devoirs.php" class="btn btn-outline">Annuler</a>
+                <a href="mes_devoirs.php" class="btn btn-outline"><?= __('btn.cancel') ?></a>
             </div>
         </form>
     </div>

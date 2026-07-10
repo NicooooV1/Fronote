@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     <div class="header-actions">
         <?= BulletinService::statutBadge($bulletin['statut']) ?>
         <a href="detail_bulletin.php?id=<?= $id ?>" class="btn btn-outline"><i class="fas fa-eye"></i> Voir</a>
-        <a href="bulletins.php?classe=<?= $bulletin['classe_id'] ?>" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="bulletins.php?classe=<?= $bulletin['classe_id'] ?>" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 </div>
 
@@ -108,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                 <div class="form-group">
                     <textarea name="appreciation_generale" rows="4" class="form-control" placeholder="Appréciation du conseil de classe..."><?= htmlspecialchars($bulletin['appreciation_generale'] ?? '') ?></textarea>
                 </div>
-                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> <?= __('btn.save') ?></button>
             </form>
         </div>
     </div>
@@ -126,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> <?= __('btn.save') ?></button>
             </form>
         </div>
     </div>

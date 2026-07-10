@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-plus-circle"></i> <?= __('clubs.add') ?></h1>
-        <a href="clubs.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="clubs.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <?php if (!empty($error)): ?><div class="alert alert-danger"><?= $error ?></div><?php endif; ?>
@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                 <div class="form-grid-2">
                     <div class="form-group"><label>Nom *</label><input type="text" name="nom" class="form-control" required value="<?= htmlspecialchars($_POST['nom'] ?? '') ?>"></div>
                     <div class="form-group">
-                        <label>Catégorie</label>
+                        <label><?= __('label.categorie') ?></label>
                         <select name="categorie" class="form-control">
                             <?php foreach ($cats as $k => $v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?>
                         </select>
@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                         </select>
                     </div>
                     <div class="form-group"><label>Horaires</label><input type="text" name="horaires" class="form-control" placeholder="ex: Mercredi 14h-16h"></div>
-                    <div class="form-group"><label>Lieu</label><input type="text" name="lieu" class="form-control" placeholder="ex: Salle polyvalente"></div>
+                    <div class="form-group"><label><?= __('label.lieu') ?></label><input type="text" name="lieu" class="form-control" placeholder="ex: Salle polyvalente"></div>
                     <div class="form-group"><label>Places max</label><input type="number" name="places_max" class="form-control" min="1"></div>
                     <div class="form-group"><label>Date début</label><input type="date" name="date_debut" class="form-control"></div>
                     <div class="form-group"><label>Date fin</label><input type="date" name="date_fin" class="form-control"></div>
@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Créer</button>
-                    <a href="clubs.php" class="btn btn-outline">Annuler</a>
+                    <a href="clubs.php" class="btn btn-outline"><?= __('btn.cancel') ?></a>
                 </div>
             </form>
         </div>

@@ -62,15 +62,15 @@ $affectations = $internatService->getAffectations();
                         </select>
                     </div>
                     <input type="hidden" name="chambre_id" id="chambre_id_hidden">
-                    <div class="form-group"><label>Type</label>
+                    <div class="form-group"><label><?= __('label.type') ?></label>
                         <select name="type" class="form-select">
                             <option value="entree">Entrée</option><option value="sortie">Sortie</option>
                             <option value="absence">Absence</option><option value="retard">Retard</option>
                         </select>
                     </div>
-                    <div class="form-group"><label>Motif</label><input type="text" name="motif" class="form-control"></div>
+                    <div class="form-group"><label><?= __('label.motif') ?></label><input type="text" name="motif" class="form-control"></div>
                 </div>
-                <button type="submit" class="btn btn-primary">Enregistrer</button>
+                <button type="submit" class="btn btn-primary"><?= __('btn.save') ?></button>
             </form>
         </div>
     </div>
@@ -79,7 +79,7 @@ $affectations = $internatService->getAffectations();
         <div class="card-header"><h3>Mouvements du jour (<?= count($mouvements) ?>)</h3></div>
         <div class="card-body">
             <table class="table">
-                <thead><tr><th>Heure</th><th>Élève</th><th>Chambre</th><th>Type</th><th>Motif</th></tr></thead>
+                <thead><tr><th><?= __('label.heure') ?></th><th>Élève</th><th>Chambre</th><th><?= __('label.type') ?></th><th><?= __('label.motif') ?></th></tr></thead>
                 <tbody>
                 <?php foreach ($mouvements as $m):
                     $typeColors = ['entree' => 'success', 'sortie' => 'info', 'absence' => 'danger', 'retard' => 'warning'];

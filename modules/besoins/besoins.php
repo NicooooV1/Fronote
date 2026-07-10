@@ -45,7 +45,7 @@ $stats = ($isGestionnaire || isAdmin()) ? $besoinService->getStats() : null;
 
     <?php if ($isGestionnaire): ?>
     <div class="filter-bar">
-        <a href="besoins.php" class="btn <?= !$filtreType ? 'btn-primary' : 'btn-outline' ?>">Tous</a>
+        <a href="besoins.php" class="btn <?= !$filtreType ? 'btn-primary' : 'btn-outline' ?>"><?= __('label.tous') ?></a>
         <?php foreach ($typesPlan as $k => $v): ?>
         <a href="besoins.php?type=<?= $k ?>" class="btn <?= $filtreType === $k ? 'btn-primary' : 'btn-outline' ?>"><?= $k ?></a>
         <?php endforeach; ?>

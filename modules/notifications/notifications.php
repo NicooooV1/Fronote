@@ -52,7 +52,7 @@ $stats = $notifService->getStats($userId, $userType);
     <div class="notif-stats">
         <div class="stat-card">
             <div class="stat-value"><?= (int)$stats['total'] ?></div>
-            <div class="stat-label">Total</div>
+            <div class="stat-label"><?= __('label.total') ?></div>
         </div>
         <div class="stat-card stat-warning">
             <div class="stat-value"><?= (int)$stats['non_lues'] ?></div>
@@ -66,7 +66,7 @@ $stats = $notifService->getStats($userId, $userType);
 
     <!-- Filtres -->
     <div class="notif-filters">
-        <a href="?filtre=toutes" class="filter-btn <?= $filtre === 'toutes' ? 'active' : '' ?>">Toutes</a>
+        <a href="?filtre=toutes" class="filter-btn <?= $filtre === 'toutes' ? 'active' : '' ?>"><?= __('label.toutes') ?></a>
         <a href="?filtre=non_lues" class="filter-btn <?= $filtre === 'non_lues' ? 'active' : '' ?>"><?= __('notifications.unread') ?></a>
         <a href="?filtre=lues" class="filter-btn <?= $filtre === 'lues' ? 'active' : '' ?>">Lues</a>
     </div>

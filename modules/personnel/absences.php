@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     </div>
 
     <div class="filter-bar">
-        <a href="absences.php" class="btn <?= !$filtreStatut ? 'btn-primary' : 'btn-outline' ?>">Toutes</a>
+        <a href="absences.php" class="btn <?= !$filtreStatut ? 'btn-primary' : 'btn-outline' ?>"><?= __('label.toutes') ?></a>
         <?php foreach (PersonnelService::statutsAbsence() as $k => $v): ?>
         <a href="absences.php?statut=<?= $k ?>" class="btn <?= $filtreStatut === $k ? 'btn-primary' : 'btn-outline' ?>"><?= $v ?></a>
         <?php endforeach; ?>
@@ -59,10 +59,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                 <?= csrfField() ?><input type="hidden" name="action" value="creer">
                 <div class="form-grid-3">
                     <div class="form-group"><label>Personnel *</label><select name="personnel_id" class="form-control" required><option value="">—</option><?php foreach ($personnel as $p): ?><option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['prenom'] . ' ' . $p['nom']) ?></option><?php endforeach; ?></select></div>
-                    <div class="form-group"><label>Type</label><select name="type" class="form-control"><?php foreach ($typesAbsence as $k => $v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?></select></div>
+                    <div class="form-group"><label><?= __('label.type') ?></label><select name="type" class="form-control"><?php foreach ($typesAbsence as $k => $v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?></select></div>
                     <div class="form-group"><label>Début *</label><input type="date" name="date_debut" class="form-control" required></div>
                     <div class="form-group"><label>Fin *</label><input type="date" name="date_fin" class="form-control" required></div>
-                    <div class="form-group"><label>Motif</label><input type="text" name="motif" class="form-control"></div>
+                    <div class="form-group"><label><?= __('label.motif') ?></label><input type="text" name="motif" class="form-control"></div>
                     <div class="form-group" style="align-self:end;"><button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Déclarer</button></div>
                 </div>
             </form>
@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     <?php else: ?>
     <div class="table-container">
         <table class="table">
-            <thead><tr><th><?= __('personnel.title') ?></th><th>Type</th><th>Début</th><th>Fin</th><th>Motif</th><th>Statut</th><th>Actions</th></tr></thead>
+            <thead><tr><th><?= __('personnel.title') ?></th><th><?= __('label.type') ?></th><th><?= __('label.debut') ?></th><th><?= __('label.fin') ?></th><th><?= __('label.motif') ?></th><th><?= __('label.statut') ?></th><th><?= __('label.actions') ?></th></tr></thead>
             <tbody>
                 <?php foreach ($absences as $a): ?>
                 <tr>

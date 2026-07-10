@@ -300,7 +300,7 @@ include 'templates/header.php';
                     <button type="submit" class="btn warning">
                         <i class="fas fa-bullhorn"></i> Envoyer l'annonce importante
                     </button>
-                    <a href="index.php" class="btn cancel">Annuler</a>
+                    <a href="index.php" class="btn cancel"><?= __('btn.cancel') ?></a>
                 </div>
             </div>
         </form>

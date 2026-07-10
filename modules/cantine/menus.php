@@ -93,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isGestionnaire && isset($_POST['sa
             </div>
             <?php if ($isGestionnaire): ?>
             <div class="menu-card-footer">
-                <button class="btn btn-sm btn-outline" data-fr-click="editMenu" data-fr-args='["<?= $dateStr ?>"]'><i class="fas fa-edit"></i> Modifier</button>
+                <button class="btn btn-sm btn-outline" data-fr-click="editMenu" data-fr-args='["<?= $dateStr ?>"]'><i class="fas fa-edit"></i> <?= __('btn.edit') ?></button>
             </div>
             <?php endif; ?>
         </div>
@@ -115,13 +115,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isGestionnaire && isset($_POST['sa
             <div class="form-group"><label><?= __('cantine.allergens') ?></label><input type="text" name="allergenes" id="modal_allergenes" class="form-control"></div>
             <div class="form-group"><label>Régime</label>
                 <select name="regime_special" class="form-select">
-                    <option value="normal">Normal</option>
+                    <option value="normal"><?= __('status.normal') ?></option>
                     <option value="végétarien">Végétarien</option>
                     <option value="sans porc">Sans porc</option>
                     <option value="sans gluten">Sans gluten</option>
                 </select>
             </div>
-            <div class="modal-footer"><button type="submit" class="btn btn-primary">Enregistrer</button></div>
+            <div class="modal-footer"><button type="submit" class="btn btn-primary"><?= __('btn.save') ?></button></div>
         </form>
     </div>
 </div>

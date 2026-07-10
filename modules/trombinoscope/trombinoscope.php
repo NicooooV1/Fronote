@@ -46,7 +46,7 @@ if ($search) {
                 <i class="fas fa-search"></i>
                 <input type="text" name="q" value="<?= h($search) ?>" placeholder="Rechercher un élève ou professeur..." class="form-control">
             </div>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Rechercher</button>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> <?= __('btn.search') ?></button>
             <?php if ($search): ?>
                 <a href="trombinoscope.php?vue=<?= h($vue) ?>" class="btn btn-secondary">Effacer</a>
             <?php endif; ?>
@@ -55,7 +55,7 @@ if ($search) {
 
     <!-- Onglets -->
     <div class="trombi-tabs">
-        <a href="?vue=eleves" class="trombi-tab <?= $vue === 'eleves' ? 'active' : '' ?>"><i class="fas fa-user-graduate"></i> Élèves</a>
+        <a href="?vue=eleves" class="trombi-tab <?= $vue === 'eleves' ? 'active' : '' ?>"><i class="fas fa-user-graduate"></i> <?= __('label.eleves') ?></a>
         <a href="?vue=profs" class="trombi-tab <?= $vue === 'profs' ? 'active' : '' ?>"><i class="fas fa-chalkboard-teacher"></i> Professeurs</a>
         <a href="?vue=vie_scolaire" class="trombi-tab <?= $vue === 'vie_scolaire' ? 'active' : '' ?>"><i class="fas fa-user-shield"></i> Vie scolaire</a>
     </div>

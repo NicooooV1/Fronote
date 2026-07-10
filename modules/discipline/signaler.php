@@ -117,7 +117,7 @@ $gravites = DisciplineService::getGravites();
                            class="form-control" value="<?= date('Y-m-d\TH:i') ?>" required>
                 </div>
                 <div class="form-group col-md-6">
-                    <label for="lieu">Lieu</label>
+                    <label for="lieu"><?= __('label.lieu') ?></label>
                     <input type="text" name="lieu" id="lieu" class="form-control"
                            placeholder="Ex : Salle 204, Cour, Cantine...">
                 </div>
@@ -155,7 +155,7 @@ $gravites = DisciplineService::getGravites();
 
         <div class="form-actions">
             <button type="submit" class="btn btn-danger"><i class="fas fa-exclamation-triangle"></i> Signaler l'incident</button>
-            <a href="incidents.php" class="btn btn-secondary">Annuler</a>
+            <a href="incidents.php" class="btn btn-secondary"><?= __('btn.cancel') ?></a>
         </div>
     </form>
 </div>

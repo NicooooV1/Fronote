@@ -63,10 +63,10 @@ if (!$selectedPeriode && !empty($periodes)) {
         <table class="bulletin-table">
             <thead>
                 <tr>
-                    <th>Matière</th>
-                    <th>Professeur</th>
-                    <th class="text-center">Moyenne</th>
-                    <th class="text-center">Classe</th>
+                    <th><?= __('label.matiere') ?></th>
+                    <th><?= __('label.professeur') ?></th>
+                    <th class="text-center"><?= __('label.moyenne') ?></th>
+                    <th class="text-center"><?= __('label.classe') ?></th>
                     <th class="text-center">Min</th>
                     <th class="text-center">Max</th>
                     <th><?= __('bulletins.appreciation') ?></th>
@@ -130,7 +130,7 @@ if (!$selectedPeriode && !empty($periodes)) {
     <div class="bulletin-view">
         <table class="bulletin-table">
             <thead>
-                <tr><th>Matière</th><th>Professeur</th><th class="text-center">Moyenne</th><th class="text-center">Classe</th><th><?= __('bulletins.appreciation') ?></th></tr>
+                <tr><th><?= __('label.matiere') ?></th><th><?= __('label.professeur') ?></th><th class="text-center"><?= __('label.moyenne') ?></th><th class="text-center"><?= __('label.classe') ?></th><th><?= __('bulletins.appreciation') ?></th></tr>
             </thead>
             <tbody>
                 <?php foreach ($lignes as $l): ?>
@@ -202,7 +202,7 @@ if (!$selectedPeriode && !empty($periodes)) {
 
     <?php if (!empty($stats) && $stats['total'] > 0): ?>
     <div class="stats-row">
-        <div class="stat-card"><span class="stat-value"><?= $stats['total'] ?></span><span class="stat-label">Bulletins</span></div>
+        <div class="stat-card"><span class="stat-value"><?= $stats['total'] ?></span><span class="stat-label"><?= __('bulletins.title') ?></span></div>
         <div class="stat-card primary"><span class="stat-value"><?= $stats['moy_classe'] ? number_format((float) ($stats['moy_classe']), 2) : '-' ?></span><span class="stat-label">Moyenne classe</span></div>
         <div class="stat-card success"><span class="stat-value"><?= $stats['publies'] ?></span><span class="stat-label">Publiés</span></div>
         <div class="stat-card warning"><span class="stat-value"><?= $stats['brouillons'] ?></span><span class="stat-label">Brouillons</span></div>
@@ -223,7 +223,7 @@ if (!$selectedPeriode && !empty($periodes)) {
                     <th class="text-center"><?= \API\Core\DataTable::renderSortHeader('Absences', 'nb_absences', $dtResult) ?></th>
                     <th class="text-center">Avis</th>
                     <th class="text-center"><?= \API\Core\DataTable::renderSortHeader('Statut', 'statut', $dtResult) ?></th>
-                    <th>Actions</th>
+                    <th><?= __('label.actions') ?></th>
                 </tr>
             </thead>
             <tbody>

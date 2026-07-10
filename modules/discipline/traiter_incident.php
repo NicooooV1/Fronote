@@ -110,10 +110,10 @@ $gravites = DisciplineService::getGravites();
                 </select>
             </div>
             <div class="form-group col-md-4">
-                <label for="statut">Statut</label>
+                <label for="statut"><?= __('label.statut') ?></label>
                 <select name="statut" id="statut" class="form-control" required>
                     <option value="signale" <?= $incident['statut'] === 'signale' ? 'selected' : '' ?>>Signalé</option>
-                    <option value="en_cours" <?= $incident['statut'] === 'en_cours' ? 'selected' : '' ?>>En cours</option>
+                    <option value="en_cours" <?= $incident['statut'] === 'en_cours' ? 'selected' : '' ?>><?= __('status.en_cours') ?></option>
                     <option value="traite" <?= $incident['statut'] === 'traite' ? 'selected' : '' ?>>Traité</option>
                     <option value="classe" <?= $incident['statut'] === 'classe' ? 'selected' : '' ?>>Classé</option>
                 </select>
@@ -132,7 +132,7 @@ $gravites = DisciplineService::getGravites();
 
         <div class="form-row">
             <div class="form-group col-md-6">
-                <label for="lieu">Lieu</label>
+                <label for="lieu"><?= __('label.lieu') ?></label>
                 <input type="text" name="lieu" id="lieu" class="form-control" value="<?= htmlspecialchars($incident['lieu'] ?? '') ?>">
             </div>
             <div class="form-group col-md-6">
@@ -142,9 +142,9 @@ $gravites = DisciplineService::getGravites();
         </div>
 
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer</button>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> <?= __('btn.save') ?></button>
             <a href="sanctions.php?incident_id=<?= $id ?>" class="btn btn-danger"><i class="fas fa-gavel"></i> Sanctionner</a>
-            <a href="detail_incident.php?id=<?= $id ?>" class="btn btn-secondary">Annuler</a>
+            <a href="detail_incident.php?id=<?= $id ?>" class="btn btn-secondary"><?= __('btn.cancel') ?></a>
         </div>
     </form>
 </div>

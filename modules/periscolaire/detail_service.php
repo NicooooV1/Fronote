@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-<?= PeriscolaireService::iconeType($service['type']) ?>"></i> <?= htmlspecialchars($service['nom']) ?></h1>
-        <a href="services.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="services.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <?php if (!empty($_SESSION['success_message'])): ?><div class="alert alert-success"><?= $_SESSION['success_message'] ?></div><?php unset($_SESSION['success_message']); endif; ?>
@@ -90,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                     <?php if (isParent()): foreach ($enfants as $e): ?><option value="<?= $e['id'] ?>"><?= htmlspecialchars($e['prenom'] . ' ' . $e['nom']) ?></option><?php endforeach; endif; ?>
                 </select>
                 <select name="jour" class="form-control"><?php foreach ($jours as $k => $v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?></select>
-                <button class="btn btn-primary"><i class="fas fa-plus"></i> Inscrire</button>
+                <button class="btn btn-primary"><i class="fas fa-plus"></i> <?= __('periscolaire.register') ?></button>
             </form>
         </div>
     </div>
@@ -104,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
             <?php if (empty($inscriptions)): ?><p class="text-muted">Aucun inscrit.</p>
             <?php else: ?>
             <table class="table">
-                <thead><tr><th>Élève</th><th>Classe</th><th>Jour</th><th></th></tr></thead>
+                <thead><tr><th>Élève</th><th><?= __('label.classe') ?></th><th><?= __('label.jour') ?></th><th></th></tr></thead>
                 <tbody>
                     <?php foreach ($inscriptions as $i): ?>
                     <tr>

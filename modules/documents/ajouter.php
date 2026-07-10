@@ -50,7 +50,7 @@ $roles = ['administrateur' => 'Administrateurs', 'professeur' => 'Professeurs', 
 <div class="main-content">
     <div class="page-header">
         <h1><i class="fas fa-upload"></i> Ajouter un document</h1>
-        <a href="documents.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="documents.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <?php if ($error): ?>
@@ -72,13 +72,13 @@ $roles = ['administrateur' => 'Administrateurs', 'professeur' => 'Professeurs', 
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Description</label>
+                    <label class="form-label"><?= __('label.description') ?></label>
                     <textarea name="description" class="form-control" rows="3"><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group col-md-6">
-                        <label class="form-label">Catégorie</label>
+                        <label class="form-label"><?= __('label.categorie') ?></label>
                         <select name="categorie" class="form-select">
                             <?php foreach ($categories as $k => $v): ?>
                                 <option value="<?= $k ?>"><?= $v ?></option>

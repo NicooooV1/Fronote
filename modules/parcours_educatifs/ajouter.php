@@ -69,7 +69,7 @@ $p = $entry ?? ['eleve_id' => '', 'type_parcours' => 'avenir', 'titre' => '', 'd
                 </select>
             </div>
             <div class="col-md-4">
-                <label class="form-label">Date</label>
+                <label class="form-label"><?= __('label.date') ?></label>
                 <input name="date_activite" type="date" class="form-control" value="<?= htmlspecialchars($p['date_activite']) ?>">
             </div>
             <div class="col-md-8">
@@ -88,7 +88,7 @@ $p = $entry ?? ['eleve_id' => '', 'type_parcours' => 'avenir', 'titre' => '', 'd
                 <input name="annee_scolaire" class="form-control" placeholder="2024/2025" value="<?= htmlspecialchars($p['annee_scolaire']) ?>">
             </div>
             <div class="col-12">
-                <label class="form-label">Description</label>
+                <label class="form-label"><?= __('label.description') ?></label>
                 <textarea name="description" class="form-control" rows="3"><?= htmlspecialchars($p['description'] ?? '') ?></textarea>
             </div>
             <div class="col-12">
@@ -98,12 +98,12 @@ $p = $entry ?? ['eleve_id' => '', 'type_parcours' => 'avenir', 'titre' => '', 'd
             <div class="col-12">
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" name="validation" id="valid" <?= $p['validation'] ? 'checked' : '' ?>>
-                    <label class="form-check-label" for="valid">Validé</label>
+                    <label class="form-check-label" for="valid"><?= __('status.valide') ?></label>
                 </div>
             </div>
         </div>
         <div class="card-footer text-end">
-            <a href="parcours.php" class="btn btn-secondary me-2">Annuler</a>
+            <a href="parcours.php" class="btn btn-secondary me-2"><?= __('btn.cancel') ?></a>
             <button class="btn btn-primary"><i class="fas fa-save me-1"></i><?= $editId ? 'Enregistrer' : 'Ajouter' ?></button>
         </div>
     </form>

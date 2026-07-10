@@ -7,7 +7,7 @@ declare(strict_types=1);
 $events = $data['events'] ?? [];
 ?>
 <?php if (empty($events)): ?>
-    <p class="widget-empty">Aucun événement à venir.</p>
+    <p class="widget-empty"><?= __('agenda.no_events') ?></p>
 <?php else: ?>
     <ul class="widget-list">
         <?php foreach ($events as $event): ?>

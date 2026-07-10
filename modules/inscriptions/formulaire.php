@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-user-plus"></i> Inscrire un enfant</h1>
-        <a href="inscriptions.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="inscriptions.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <?php if (!empty($errors)): ?>
@@ -167,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-paper-plane"></i> Soumettre l'inscription</button>
-            <a href="inscriptions.php" class="btn btn-outline">Annuler</a>
+            <a href="inscriptions.php" class="btn btn-outline"><?= __('btn.cancel') ?></a>
         </div>
     </form>
 </div>

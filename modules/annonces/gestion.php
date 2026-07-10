@@ -64,12 +64,12 @@ $types = AnnonceService::getTypes();
             <tr>
                 <th>ID</th>
                 <th><?= __('annonces.titre') ?></th>
-                <th>Type</th>
+                <th><?= __('label.type') ?></th>
                 <th><?= __('annonces.published') ?></th>
                 <th><?= __('annonces.epinglee') ?></th>
                 <th>Lectures</th>
-                <th>Date</th>
-                <th>Actions</th>
+                <th><?= __('label.date') ?></th>
+                <th><?= __('label.actions') ?></th>
             </tr>
         </thead>
         <tbody>

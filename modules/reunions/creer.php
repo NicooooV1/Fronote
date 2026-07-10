@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-plus-circle"></i> <?= __('reunions.schedule') ?></h1>
-        <a href="reunions.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="reunions.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <?php if (!empty($error)): ?>
@@ -82,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                     </div>
 
                     <div class="form-group">
-                        <label for="classe_id">Classe</label>
+                        <label for="classe_id"><?= __('label.classe') ?></label>
                         <select name="classe_id" id="classe_id" class="form-control">
                             <option value="">— Aucune —</option>
                             <?php foreach ($classes as $c): ?>
@@ -106,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                     </div>
 
                     <div class="form-group full-width">
-                        <label for="description">Description</label>
+                        <label for="description"><?= __('label.description') ?></label>
                         <textarea name="description" id="description" class="form-control" rows="3"><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
                     </div>
                 </div>
@@ -143,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Créer la réunion</button>
-                    <a href="reunions.php" class="btn btn-outline">Annuler</a>
+                    <a href="reunions.php" class="btn btn-outline"><?= __('btn.cancel') ?></a>
                 </div>
             </form>
         </div>

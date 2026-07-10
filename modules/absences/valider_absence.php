@@ -115,7 +115,7 @@ include 'includes/header.php';
                 <?php endforeach; ?>
             </select>
         </div>
-        <button type="submit" class="ds-btn ds-btn-primary"><i class="fas fa-filter"></i> Filtrer</button>
+        <button type="submit" class="ds-btn ds-btn-primary"><i class="fas fa-filter"></i> <?= __('btn.filter') ?></button>
         <a href="valider_absence.php" class="ds-btn ds-btn-outline">Réinitialiser</a>
     </form>
 </div>
@@ -149,12 +149,12 @@ include 'includes/header.php';
                     <th style="width:40px;"><input type="checkbox" id="select-all" title="Tout sélectionner"></th>
                     <th><?= __('absences.eleve') ?></th>
                     <th><?= __('absences.classe') ?></th>
-                    <th>Début</th>
-                    <th>Fin</th>
-                    <th>Type</th>
+                    <th><?= __('label.debut') ?></th>
+                    <th><?= __('label.fin') ?></th>
+                    <th><?= __('label.type') ?></th>
                     <th><?= __('absences.motif') ?></th>
                     <th>Justifié</th>
-                    <th>Actions</th>
+                    <th><?= __('label.actions') ?></th>
                 </tr>
             </thead>
             <tbody>
@@ -208,8 +208,8 @@ include 'includes/header.php';
                 <textarea name="commentaire" id="modal-comment" class="ds-form-control" rows="3" placeholder="Motif du refus ou observation..."></textarea>
             </div>
             <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem;">
-                <button type="button" class="ds-btn ds-btn-outline" data-fr-click="closeModal">Annuler</button>
-                <button type="submit" id="modal-submit" class="ds-btn">Confirmer</button>
+                <button type="button" class="ds-btn ds-btn-outline" data-fr-click="closeModal"><?= __('btn.cancel') ?></button>
+                <button type="submit" id="modal-submit" class="ds-btn"><?= __('btn.confirm') ?></button>
             </div>
         </form>
     </div>

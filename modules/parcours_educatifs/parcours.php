@@ -70,9 +70,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($role, ['admin', 'professe
     <!-- Filtres -->
     <form method="get" class="row g-2 mb-4 align-items-end">
         <div class="col-md-3">
-            <label class="form-label">Type</label>
+            <label class="form-label"><?= __('label.type') ?></label>
             <select name="type" class="form-select form-select-sm">
-                <option value="">Tous</option>
+                <option value=""><?= __('label.tous') ?></option>
                 <?php foreach ($types as $k => $v): ?>
                     <option value="<?= $k ?>" <?= ($filtres['type_parcours'] === $k) ? 'selected' : '' ?>><?= $v ?></option>
                 <?php endforeach; ?>
@@ -82,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($role, ['admin', 'professe
             <label class="form-label">Année scolaire</label>
             <input name="annee" class="form-control form-control-sm" placeholder="ex: 2024/2025" value="<?= htmlspecialchars($filtres['annee_scolaire']) ?>">
         </div>
-        <div class="col-md-2"><button class="btn btn-sm btn-outline-primary">Filtrer</button></div>
+        <div class="col-md-2"><button class="btn btn-sm btn-outline-primary"><?= __('btn.filter') ?></button></div>
     </form>
 
     <!-- Liste -->
@@ -93,9 +93,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($role, ['admin', 'professe
         <table class="table table-hover align-middle">
             <thead class="table-light">
                 <tr>
-                    <th>Type</th><th>Titre</th>
+                    <th><?= __('label.type') ?></th><th><?= __('label.titre') ?></th>
                     <?php if (!in_array($role, ['eleve'])): ?><th><?= __('parcours_educatifs.student') ?></th><?php endif; ?>
-                    <th>Date</th><th>Compétences</th><th>Validé</th>
+                    <th><?= __('label.date') ?></th><th>Compétences</th><th><?= __('status.valide') ?></th>
                     <?php if (in_array($role, ['admin', 'professeur'])): ?><th></th><?php endif; ?>
                 </tr>
             </thead>

@@ -35,7 +35,7 @@ if (isset($_GET['utile'])) {
 
     <!-- Catégories -->
     <div class="faq-categories">
-        <a href="aide.php" class="cat-chip <?= !$categorie ? 'active' : '' ?>">Toutes</a>
+        <a href="aide.php" class="cat-chip <?= !$categorie ? 'active' : '' ?>"><?= __('label.toutes') ?></a>
         <?php foreach ($categories as $key => $label): ?>
         <a href="aide.php?cat=<?= $key ?>" class="cat-chip <?= $categorie === $key ? 'active' : '' ?>"><?= $label ?></a>
         <?php endforeach; ?>

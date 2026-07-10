@@ -60,7 +60,7 @@ $pointes = array_filter($pointage, fn($r) => $r['statut'] === 'consomme');
                     <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Pointer la sélection</button>
                 </div>
                 <table class="table">
-                    <thead><tr><th><input type="checkbox" id="checkAll" data-fr-change="frP1"></th><th>Élève</th><th>Classe</th><th>Régime</th></tr></thead>
+                    <thead><tr><th><input type="checkbox" id="checkAll" data-fr-change="frP1"></th><th>Élève</th><th><?= __('label.classe') ?></th><th>Régime</th></tr></thead>
                     <tbody>
                     <?php foreach ($nonPointes as $r): ?>
                         <tr>
@@ -82,7 +82,7 @@ $pointes = array_filter($pointage, fn($r) => $r['statut'] === 'consomme');
         <div class="card-header"><h3>Déjà pointés</h3></div>
         <div class="card-body">
             <table class="table">
-                <thead><tr><th>Élève</th><th>Classe</th><th>Heure</th></tr></thead>
+                <thead><tr><th>Élève</th><th><?= __('label.classe') ?></th><th><?= __('label.heure') ?></th></tr></thead>
                 <tbody>
                 <?php foreach ($pointes as $r): ?>
                     <tr>

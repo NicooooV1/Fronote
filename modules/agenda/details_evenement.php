@@ -179,7 +179,7 @@ include 'includes/header.php';
 
                     <?php if (!empty($evenement['matieres'])): ?>
                     <div class="info-item">
-                        <div class="info-label">Matière</div>
+                        <div class="info-label"><?= __('label.matiere') ?></div>
                         <div class="info-value"><i class="fas fa-book"></i> <?= htmlspecialchars($evenement['matieres']) ?></div>
                     </div>
                     <?php endif; ?>
@@ -218,7 +218,7 @@ include 'includes/header.php';
             <!-- Actions -->
             <div class="event-actions">
                 <a href="agenda.php" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left"></i> Retour
+                    <i class="fas fa-arrow-left"></i> <?= __('btn.back') ?>
                 </a>
 
                 <a href="<?= htmlspecialchars($ical_link) ?>" class="btn btn-secondary" download>
@@ -233,13 +233,13 @@ include 'includes/header.php';
 
                 <?php if ($can_edit): ?>
                 <a href="modifier_evenement.php?id=<?= (int) $id ?>" class="btn btn-primary">
-                    <i class="fas fa-edit"></i> Modifier
+                    <i class="fas fa-edit"></i> <?= __('btn.edit') ?>
                 </a>
                 <?php endif; ?>
 
                 <?php if ($can_delete): ?>
                 <button type="button" class="btn btn-danger" id="openDeleteModal">
-                    <i class="fas fa-trash-alt"></i> Supprimer
+                    <i class="fas fa-trash-alt"></i> <?= __('btn.delete') ?>
                 </button>
                 <?php endif; ?>
             </div>
@@ -253,18 +253,18 @@ include 'includes/header.php';
     <div class="modal-content">
         <div class="modal-header">
             <h3 id="modalTitle">Confirmation de suppression</h3>
-            <button class="close" id="closeModal" aria-label="Fermer">&times;</button>
+            <button class="close" id="closeModal" aria-label="<?= __('btn.close') ?>">&times;</button>
         </div>
         <div class="modal-body">
             <p><?= __('agenda.confirm_delete') ?></p>
             <p>Cette action est irréversible.</p>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary" id="cancelDelete">Annuler</button>
+            <button class="btn btn-secondary" id="cancelDelete"><?= __('btn.cancel') ?></button>
             <form method="post" action="supprimer_evenement.php" style="display:inline">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
                 <input type="hidden" name="id" value="<?= (int) $id ?>">
-                <button type="submit" class="btn btn-danger">Supprimer</button>
+                <button type="submit" class="btn btn-danger"><?= __('btn.delete') ?></button>
             </form>
         </div>
     </div>

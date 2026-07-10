@@ -20,7 +20,7 @@ $cats = ClubService::categories();
     </div>
 
     <div class="cat-bar">
-        <a href="clubs.php" class="cat-chip <?= !$categorie ? 'active' : '' ?>">Tous</a>
+        <a href="clubs.php" class="cat-chip <?= !$categorie ? 'active' : '' ?>"><?= __('label.tous') ?></a>
         <?php foreach ($cats as $k => $v): ?>
         <a href="clubs.php?cat=<?= $k ?>" class="cat-chip <?= $categorie === $k ? 'active' : '' ?>">
             <i class="fas fa-<?= ClubService::iconeCategorie($k) ?>"></i> <?= $v ?>

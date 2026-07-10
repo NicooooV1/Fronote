@@ -67,7 +67,7 @@ $selectedPeriode = (int)($_GET['periode'] ?? 0);
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="periode_id">Période</label>
+                    <label for="periode_id"><?= __('label.periode') ?></label>
                     <select name="periode_id" id="periode_id" class="form-select" required>
                         <option value="">— Sélectionner —</option>
                         <?php foreach ($periodes as $p): ?>
@@ -78,7 +78,7 @@ $selectedPeriode = (int)($_GET['periode'] ?? 0);
             </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary"><i class="fas fa-sync"></i> <?= __('bulletins.generate') ?></button>
-                <a href="bulletins.php" class="btn btn-outline">Retour</a>
+                <a href="bulletins.php" class="btn btn-outline"><?= __('btn.back') ?></a>
             </div>
         </form>
     </div>

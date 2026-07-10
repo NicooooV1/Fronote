@@ -35,9 +35,9 @@ if (!$classeId) {
         <div class="comp-selectors">
             <form method="get" class="comp-selector-form">
                 <div class="form-group">
-                    <label>Période</label>
+                    <label><?= __('label.periode') ?></label>
                     <select name="periode_id" data-fr-change="submitOwn" class="form-select">
-                        <option value="0">Toutes</option>
+                        <option value="0"><?= __('label.toutes') ?></option>
                         <?php foreach ($periodes as $p): ?>
                             <option value="<?= (int)$p['id'] ?>" <?= $p['id'] == $periodeId ? 'selected' : '' ?>><?= htmlspecialchars($p['nom']) ?></option>
                         <?php endforeach; ?>
@@ -53,7 +53,7 @@ if (!$classeId) {
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Classe</th>
+                            <th><?= __('label.classe') ?></th>
                             <th class="text-center">Évaluations</th>
                             <th class="text-center">Bilan par domaine</th>
                         </tr>

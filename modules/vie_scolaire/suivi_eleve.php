@@ -80,7 +80,7 @@ $activeTab = $_GET['tab'] ?? 'resume';
             <div class="card-header"><h3>Dernières absences</h3></div>
             <div class="card-body p-0">
                 <table class="data-table">
-                    <thead><tr><th>Date</th><th>Type</th><th>Justifié</th></tr></thead>
+                    <thead><tr><th><?= __('label.date') ?></th><th><?= __('label.type') ?></th><th>Justifié</th></tr></thead>
                     <tbody>
                     <?php foreach (array_slice($fiche['absences'], 0, 5) as $a): ?>
                         <tr>
@@ -97,7 +97,7 @@ $activeTab = $_GET['tab'] ?? 'resume';
             <div class="card-header"><h3>Derniers incidents</h3></div>
             <div class="card-body p-0">
                 <table class="data-table">
-                    <thead><tr><th>Date</th><th>Type</th><th>Gravité</th></tr></thead>
+                    <thead><tr><th><?= __('label.date') ?></th><th><?= __('label.type') ?></th><th><?= __('label.gravite') ?></th></tr></thead>
                     <tbody>
                     <?php foreach (array_slice($fiche['incidents'] ?? [], 0, 5) as $i): ?>
                         <tr>
@@ -114,7 +114,7 @@ $activeTab = $_GET['tab'] ?? 'resume';
 
 <?php elseif ($activeTab === 'absences'): ?>
     <table class="data-table">
-        <thead><tr><th>Début</th><th>Fin</th><th>Type</th><th>Motif</th><th>Justifié</th></tr></thead>
+        <thead><tr><th><?= __('label.debut') ?></th><th><?= __('label.fin') ?></th><th><?= __('label.type') ?></th><th><?= __('label.motif') ?></th><th>Justifié</th></tr></thead>
         <tbody>
         <?php foreach ($fiche['absences'] as $a): ?>
             <tr>
@@ -130,7 +130,7 @@ $activeTab = $_GET['tab'] ?? 'resume';
 
 <?php elseif ($activeTab === 'retards'): ?>
     <table class="data-table">
-        <thead><tr><th>Date</th><th>Durée</th><th>Motif</th><th>Justifié</th></tr></thead>
+        <thead><tr><th><?= __('label.date') ?></th><th><?= __('label.duree') ?></th><th><?= __('label.motif') ?></th><th>Justifié</th></tr></thead>
         <tbody>
         <?php foreach ($fiche['retards'] as $r): ?>
             <tr>
@@ -145,7 +145,7 @@ $activeTab = $_GET['tab'] ?? 'resume';
 
 <?php elseif ($activeTab === 'incidents'): ?>
     <table class="data-table">
-        <thead><tr><th>Date</th><th>Type</th><th>Gravité</th><th>Lieu</th><th>Statut</th></tr></thead>
+        <thead><tr><th><?= __('label.date') ?></th><th><?= __('label.type') ?></th><th><?= __('label.gravite') ?></th><th><?= __('label.lieu') ?></th><th><?= __('label.statut') ?></th></tr></thead>
         <tbody>
         <?php foreach ($fiche['incidents'] ?? [] as $i): ?>
             <tr>
@@ -161,7 +161,7 @@ $activeTab = $_GET['tab'] ?? 'resume';
 
 <?php elseif ($activeTab === 'sanctions'): ?>
     <table class="data-table">
-        <thead><tr><th>Date</th><th>Type</th><th>Motif</th><th>Statut</th></tr></thead>
+        <thead><tr><th><?= __('label.date') ?></th><th><?= __('label.type') ?></th><th><?= __('label.motif') ?></th><th><?= __('label.statut') ?></th></tr></thead>
         <tbody>
         <?php foreach ($fiche['sanctions'] ?? [] as $sa): ?>
             <tr>

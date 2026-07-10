@@ -228,7 +228,7 @@ arsort($absences_par_classe);
                         <th><?= __('absences.classe') ?></th>
                         <th><?= __('absences.title') ?></th>
                         <th>Durée totale</th>
-                        <th>Actions</th>
+                        <th><?= __('label.actions') ?></th>
                     </tr>
                 </thead>
                 <tbody>

@@ -297,7 +297,7 @@ include 'templates/header.php';
             </div>
             
             <div class="form-group">
-                <label for="titre">Titre</label>
+                <label for="titre"><?= __('label.titre') ?></label>
                 <input type="text" name="titre" id="titre" value="<?= htmlspecialchars($titre) ?>" required maxlength="100">
                 <div id="title-counter" class="text-muted small">0/100 caractères</div>
             </div>
@@ -313,7 +313,7 @@ include 'templates/header.php';
                 <div class="form-group" style="margin-bottom: 0;">
                     <label for="importance">Importance</label>
                     <select name="importance" id="importance">
-                        <option value="normal" <?= $importance === 'normal' ? 'selected' : '' ?>>Normal</option>
+                        <option value="normal" <?= $importance === 'normal' ? 'selected' : '' ?>><?= __('status.normal') ?></option>
                         <option value="important" <?= $importance === 'important' ? 'selected' : '' ?>>Important</option>
                         <option value="urgent" <?= $importance === 'urgent' ? 'selected' : '' ?>>Urgent</option>
                     </select>
@@ -336,7 +336,7 @@ include 'templates/header.php';
             <div class="form-footer">
                 <div class="form-actions">
                     <button type="submit" class="btn primary"><?= __('messagerie.send') ?></button>
-                    <a href="index.php" class="btn cancel">Annuler</a>
+                    <a href="index.php" class="btn cancel"><?= __('btn.cancel') ?></a>
                 </div>
             </div>
         </form>

@@ -57,7 +57,7 @@ $p = $projet ?? ['titre' => '', 'description' => '', 'objectifs' => '', 'type' =
                     <input name="titre" class="form-control" value="<?= htmlspecialchars($p['titre']) ?>" required>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">Type</label>
+                    <label class="form-label"><?= __('label.type') ?></label>
                     <select name="type" class="form-select">
                         <?php foreach ($types as $k => $v): ?>
                             <option value="<?= $k ?>" <?= ($p['type'] ?? '') === $k ? 'selected' : '' ?>><?= $v ?></option>
@@ -97,7 +97,7 @@ $p = $projet ?? ['titre' => '', 'description' => '', 'objectifs' => '', 'type' =
                     <input name="budget" type="number" step="0.01" class="form-control" value="<?= htmlspecialchars($p['budget'] ?? '') ?>">
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Statut</label>
+                    <label class="form-label"><?= __('label.statut') ?></label>
                     <select name="statut" class="form-select">
                         <?php foreach ($statuts as $k => $v): ?>
                             <option value="<?= $k ?>" <?= ($p['statut'] ?? '') === $k ? 'selected' : '' ?>><?= $v ?></option>
@@ -113,7 +113,7 @@ $p = $projet ?? ['titre' => '', 'description' => '', 'objectifs' => '', 'type' =
             </div>
         </div>
         <div class="card-footer text-end">
-            <a href="projets.php" class="btn btn-secondary me-2">Annuler</a>
+            <a href="projets.php" class="btn btn-secondary me-2"><?= __('btn.cancel') ?></a>
             <button class="btn btn-primary"><i class="fas fa-save me-1"></i><?= $editId ? 'Enregistrer' : 'Créer le projet' ?></button>
         </div>
     </form>

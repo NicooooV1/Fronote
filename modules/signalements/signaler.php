@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 
                 <div class="form-grid-2">
                     <div class="form-group">
-                        <label for="lieu">Lieu</label>
+                        <label for="lieu"><?= __('label.lieu') ?></label>
                         <input type="text" name="lieu" id="lieu" class="form-control" placeholder="ex: cour de récréation, salle 204..." value="<?= htmlspecialchars($_POST['lieu'] ?? '') ?>">
                     </div>
                     <div class="form-group">

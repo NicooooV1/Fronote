@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canEdit && validateCSRFToken()) {
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-notes-medical"></i> Fiche santé — <?= htmlspecialchars($eleve['prenom'] . ' ' . $eleve['nom']) ?></h1>
-        <a href="<?= $canEdit ? 'fiches.php' : 'infirmerie.php' ?>" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="<?= $canEdit ? 'fiches.php' : 'infirmerie.php' ?>" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <?php if (!empty($_SESSION['success_message'])): ?>
@@ -118,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canEdit && validateCSRFToken()) {
                         <textarea name="remarques" class="form-control" rows="2"><?= htmlspecialchars($fiche['remarques'] ?? '') ?></textarea>
                     </div>
                 </div>
-                <div class="form-actions"><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer</button></div>
+                <div class="form-actions"><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> <?= __('btn.save') ?></button></div>
             </form>
             <?php else: ?>
             <!-- Lecture seule pour parent/élève -->

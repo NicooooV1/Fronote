@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                 </div>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="categorie">Catégorie</label>
+                        <label for="categorie"><?= __('label.categorie') ?></label>
                         <select name="categorie" id="categorie" class="form-control">
                             <?php foreach (SupportService::categoriesTicket() as $val => $label): ?>
                             <option value="<?= $val ?>"><?= $label ?></option>
@@ -65,8 +65,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                     <textarea name="description" id="description" class="form-control" rows="6" required placeholder="Décrivez votre problème en détail : que faisiez-vous, quel message d'erreur avez-vous vu, etc."><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
                 </div>
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Envoyer</button>
-                    <a href="tickets.php" class="btn btn-outline">Annuler</a>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> <?= __('btn.send') ?></button>
+                    <a href="tickets.php" class="btn btn-outline"><?= __('btn.cancel') ?></a>
                 </div>
             </form>
         </div>

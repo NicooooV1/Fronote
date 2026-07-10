@@ -95,7 +95,7 @@ $topIncidents    = $reportService->getTopIncidents();
                 <div class="card-header"><h5 class="mb-0"><i class="fas fa-calendar-times me-2"></i>Absences par classe</h5></div>
                 <div class="card-body" style="max-height:400px;overflow-y:auto">
                     <table class="ds-table">
-                        <thead><tr><th>Classe</th><th>Total</th><th>Justifiées</th><th>Élèves</th></tr></thead>
+                        <thead><tr><th><?= __('label.classe') ?></th><th><?= __('label.total') ?></th><th>Justifiées</th><th><?= __('label.eleves') ?></th></tr></thead>
                         <tbody>
                         <?php foreach ($absParClasse as $ac): ?>
                             <tr>
@@ -118,7 +118,7 @@ $topIncidents    = $reportService->getTopIncidents();
                         <p class="text-muted">Aucun incident enregistré.</p>
                     <?php else: ?>
                     <table class="ds-table">
-                        <thead><tr><th>Type</th><th>Total</th><th>Résolus</th><th>En cours</th></tr></thead>
+                        <thead><tr><th><?= __('label.type') ?></th><th><?= __('label.total') ?></th><th>Résolus</th><th><?= __('status.en_cours') ?></th></tr></thead>
                         <tbody>
                         <?php foreach ($topIncidents as $inc): ?>
                             <tr>

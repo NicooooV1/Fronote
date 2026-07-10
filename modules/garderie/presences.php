@@ -49,13 +49,13 @@ $presences = $garderieService->getPresencesJour($dateVue, $creneauId ?: null);
     <form method="get" class="filter-form">
         <div class="form-row">
             <div class="form-group"><label><?= __('garderie.date') ?></label><input type="date" name="date" value="<?= $dateVue ?>" class="form-control"></div>
-            <div class="form-group"><label>Créneau</label>
+            <div class="form-group"><label><?= __('label.creneau') ?></label>
                 <select name="creneau" class="form-select">
-                    <option value="">Tous</option>
+                    <option value=""><?= __('label.tous') ?></option>
                     <?php foreach ($creneaux as $cr): ?><option value="<?= $cr['id'] ?>" <?= $cr['id'] == $creneauId ? 'selected' : '' ?>><?= htmlspecialchars($cr['nom']) ?></option><?php endforeach; ?>
                 </select>
             </div>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filtrer</button>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> <?= __('btn.filter') ?></button>
         </div>
     </form>
 
@@ -68,7 +68,7 @@ $presences = $garderieService->getPresencesJour($dateVue, $creneauId ?: null);
                 <?= csrfField() ?>
                 <input type="hidden" name="pointer" value="1">
                 <table class="table">
-                    <thead><tr><th>Présent</th><th><?= __('garderie.student') ?></th><th>Classe</th><th>Créneau</th><th>Remarques</th></tr></thead>
+                    <thead><tr><th><?= __('status.present') ?></th><th><?= __('garderie.student') ?></th><th><?= __('label.classe') ?></th><th><?= __('label.creneau') ?></th><th>Remarques</th></tr></thead>
                     <tbody>
                     <?php foreach ($presences as $p):
                         $insId = $p['inscription_id'] ?? $p['id'];
@@ -86,7 +86,7 @@ $presences = $garderieService->getPresencesJour($dateVue, $creneauId ?: null);
                     <?php endforeach; ?>
                     </tbody>
                 </table>
-                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> <?= __('btn.save') ?></button>
             </form>
         </div>
     </div>

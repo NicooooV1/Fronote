@@ -71,13 +71,13 @@ $canPin = isset($isModerator) && $isModerator && !$deletedAt;
             
             <?php if (!$deletedAt): ?>
             <div class="message-dropdown">
-                <button class="btn-icon message-menu-btn" title="Actions"><i class="fas fa-ellipsis-v"></i></button>
+                <button class="btn-icon message-menu-btn" title="<?= __('label.actions') ?>"><i class="fas fa-ellipsis-v"></i></button>
                 <div class="message-dropdown-content">
                     <?php if ($canEdit): ?>
-                    <button data-fr-click="editMessage" data-fr-args='[<?= (int)$messageId ?>]'><i class="fas fa-edit"></i> Modifier</button>
+                    <button data-fr-click="editMessage" data-fr-args='[<?= (int)$messageId ?>]'><i class="fas fa-edit"></i> <?= __('btn.edit') ?></button>
                     <?php endif; ?>
                     <?php if ($canDelete): ?>
-                    <button data-fr-click="deleteMessage" data-fr-args='[<?= (int)$messageId ?>]'><i class="fas fa-trash"></i> Supprimer</button>
+                    <button data-fr-click="deleteMessage" data-fr-args='[<?= (int)$messageId ?>]'><i class="fas fa-trash"></i> <?= __('btn.delete') ?></button>
                     <?php endif; ?>
                     <?php if ($canPin): ?>
                     <button data-fr-click="togglePinMessage" data-fr-args='[<?= (int)$messageId ?>]'>
@@ -86,7 +86,7 @@ $canPin = isset($isModerator) && $isModerator && !$deletedAt;
                     <?php endif; ?>
                     <?php if (!$isSelf): ?>
                     <button class="js-reply" data-message-id="<?= (int)$messageId ?>" data-sender="<?= h($senderName) ?>">
-                        <i class="fas fa-reply"></i> Répondre
+                        <i class="fas fa-reply"></i> <?= __('messagerie.reply') ?>
                     </button>
                     <?php endif; ?>
                 </div>
@@ -154,7 +154,7 @@ $canPin = isset($isModerator) && $isModerator && !$deletedAt;
         <?php else: ?>
         <div class="message-actions">
             <button class="btn-icon js-reply" data-message-id="<?= (int)$messageId ?>" data-sender="<?= h($senderName) ?>">
-                <i class="fas fa-reply"></i> Répondre
+                <i class="fas fa-reply"></i> <?= __('messagerie.reply') ?>
             </button>
         </div>
         <?php endif; ?>

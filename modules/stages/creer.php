@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-plus-circle"></i> Nouveau stage</h1>
-        <a href="stages.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="stages.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <div class="card"><div class="card-body">
@@ -48,18 +48,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
             <?= csrfField() ?>
             <div class="form-grid-3">
                 <div class="form-group"><label>Élève *</label><select name="eleve_id" class="form-control" required><option value="">—</option><?php foreach ($eleves as $e): ?><option value="<?= $e['id'] ?>"><?= htmlspecialchars($e['nom'] . ' ' . $e['prenom']) ?> (<?= $e['classe_nom'] ?? '-' ?>)</option><?php endforeach; ?></select></div>
-                <div class="form-group"><label>Type</label><select name="type" class="form-control"><?php foreach ($types as $k => $v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?></select></div>
+                <div class="form-group"><label><?= __('label.type') ?></label><select name="type" class="form-control"><?php foreach ($types as $k => $v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?></select></div>
                 <div class="form-group"><label>Entreprise *</label><input type="text" name="entreprise_nom" class="form-control" required></div>
-                <div class="form-group"><label>Adresse</label><input type="text" name="entreprise_adresse" class="form-control"></div>
+                <div class="form-group"><label><?= __('label.adresse') ?></label><input type="text" name="entreprise_adresse" class="form-control"></div>
                 <div class="form-group"><label>Tél.</label><input type="text" name="entreprise_tel" class="form-control"></div>
                 <div class="form-group"><label><?= __('stages.tutor') ?></label><input type="text" name="tuteur_nom" class="form-control"></div>
                 <div class="form-group"><label>Email tuteur</label><input type="email" name="tuteur_email" class="form-control"></div>
                 <div class="form-group"><label>Référent</label><select name="prof_referent_id" class="form-control"><option value="">—</option><?php foreach ($profs as $p): ?><option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['prenom'] . ' ' . $p['nom']) ?></option><?php endforeach; ?></select></div>
                 <div class="form-group"><label>Début *</label><input type="date" name="date_debut" class="form-control" required></div>
                 <div class="form-group"><label>Fin *</label><input type="date" name="date_fin" class="form-control" required></div>
-                <div class="form-group full-width"><label>Description</label><textarea name="description" class="form-control" rows="3"></textarea></div>
+                <div class="form-group full-width"><label><?= __('label.description') ?></label><textarea name="description" class="form-control" rows="3"></textarea></div>
             </div>
-            <div class="form-actions"><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Créer</button><a href="stages.php" class="btn btn-outline">Annuler</a></div>
+            <div class="form-actions"><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Créer</button><a href="stages.php" class="btn btn-outline"><?= __('btn.cancel') ?></a></div>
         </form>
     </div></div>
 </div>

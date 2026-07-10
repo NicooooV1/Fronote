@@ -92,7 +92,7 @@ $typesSanction = DisciplineService::getTypesSanction();
                     </a>
                 </div>
                 <div class="detail-info-item">
-                    <span class="detail-label"><i class="fas fa-chalkboard"></i> Classe</span>
+                    <span class="detail-label"><i class="fas fa-chalkboard"></i> <?= __('label.classe') ?></span>
                     <span><?= htmlspecialchars($incident['eleve_classe'] ?? $incident['classe_nom'] ?? '-') ?></span>
                 </div>
                 <div class="detail-info-item">
@@ -101,7 +101,7 @@ $typesSanction = DisciplineService::getTypesSanction();
                 </div>
                 <?php if ($incident['lieu']): ?>
                 <div class="detail-info-item">
-                    <span class="detail-label"><i class="fas fa-map-marker-alt"></i> Lieu</span>
+                    <span class="detail-label"><i class="fas fa-map-marker-alt"></i> <?= __('label.lieu') ?></span>
                     <span><?= htmlspecialchars($incident['lieu']) ?></span>
                 </div>
                 <?php endif; ?>
@@ -121,7 +121,7 @@ $typesSanction = DisciplineService::getTypesSanction();
     <a href="sanctions.php?incident_id=<?= $id ?>" class="btn btn-primary"><i class="fas fa-gavel"></i> Sanctionner</a>
     <a href="traiter_incident.php?id=<?= $id ?>" class="btn btn-warning"><i class="fas fa-edit"></i> Traiter</a>
     <?php endif; ?>
-    <a href="incidents.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Retour</a>
+    <a href="incidents.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
 </div>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

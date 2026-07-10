@@ -27,7 +27,7 @@ $niveaux = CompetenceService::niveauxLabels();
     <div class="comp-selectors">
         <form method="get" class="comp-selector-form">
             <div class="form-group">
-                <label>Classe</label>
+                <label><?= __('label.classe') ?></label>
                 <select name="classe_id" data-fr-change="submitOwn" class="form-select">
                     <?php foreach ($classes as $c): ?>
                         <option value="<?= $c['id'] ?>" <?= $c['id'] == $classeId ? 'selected' : '' ?>><?= htmlspecialchars($c['niveau'].' – '.$c['nom']) ?></option>
@@ -35,9 +35,9 @@ $niveaux = CompetenceService::niveauxLabels();
                 </select>
             </div>
             <div class="form-group">
-                <label>Période</label>
+                <label><?= __('label.periode') ?></label>
                 <select name="periode_id" data-fr-change="submitOwn" class="form-select">
-                    <option value="0">Toutes</option>
+                    <option value="0"><?= __('label.toutes') ?></option>
                     <?php foreach ($periodes as $p): ?>
                         <option value="<?= $p['id'] ?>" <?= $p['id'] == $periodeId ? 'selected' : '' ?>><?= htmlspecialchars($p['nom']) ?></option>
                     <?php endforeach; ?>
@@ -57,7 +57,7 @@ $niveaux = CompetenceService::niveauxLabels();
                         <th><?= __('competences.skill') ?></th>
                         <th><?= __('competences.domain') ?></th>
                         <th class="text-center">Distribution</th>
-                        <th class="text-center">Total</th>
+                        <th class="text-center"><?= __('label.total') ?></th>
                     </tr>
                 </thead>
                 <tbody>

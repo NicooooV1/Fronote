@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     <div class="content-header"><h1><i class="fas fa-exchange-alt"></i> Remplacements</h1></div>
 
     <div class="filter-bar">
-        <a href="remplacements.php" class="btn <?= !$filtreStatut ? 'btn-primary' : 'btn-outline' ?>">Tous</a>
+        <a href="remplacements.php" class="btn <?= !$filtreStatut ? 'btn-primary' : 'btn-outline' ?>"><?= __('label.tous') ?></a>
         <?php foreach (PersonnelService::statutsRemplacement() as $k => $v): ?>
         <a href="remplacements.php?statut=<?= $k ?>" class="btn <?= $filtreStatut === $k ? 'btn-primary' : 'btn-outline' ?>"><?= $v ?></a>
         <?php endforeach; ?>
@@ -53,8 +53,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                 <div class="form-grid-3">
                     <div class="form-group"><label>Prof absent *</label><select name="professeur_absent_id" class="form-control" required><option value="">—</option><?php foreach ($profs as $p): ?><option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['prenom'] . ' ' . $p['nom']) ?></option><?php endforeach; ?></select></div>
                     <div class="form-group"><label>Remplaçant</label><select name="professeur_remplacant_id" class="form-control"><option value="">— à déterminer —</option><?php foreach ($profs as $p): ?><option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['prenom'] . ' ' . $p['nom']) ?></option><?php endforeach; ?></select></div>
-                    <div class="form-group"><label>Matière</label><select name="matiere_id" class="form-control"><option value="">—</option><?php foreach ($matieres as $m): ?><option value="<?= $m['id'] ?>"><?= htmlspecialchars($m['nom']) ?></option><?php endforeach; ?></select></div>
-                    <div class="form-group"><label>Classe</label><select name="classe_id" class="form-control"><option value="">—</option><?php foreach ($classes as $c): ?><option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['nom']) ?></option><?php endforeach; ?></select></div>
+                    <div class="form-group"><label><?= __('label.matiere') ?></label><select name="matiere_id" class="form-control"><option value="">—</option><?php foreach ($matieres as $m): ?><option value="<?= $m['id'] ?>"><?= htmlspecialchars($m['nom']) ?></option><?php endforeach; ?></select></div>
+                    <div class="form-group"><label><?= __('label.classe') ?></label><select name="classe_id" class="form-control"><option value="">—</option><?php foreach ($classes as $c): ?><option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['nom']) ?></option><?php endforeach; ?></select></div>
                     <div class="form-group"><label>Début *</label><input type="datetime-local" name="date_debut" class="form-control" required></div>
                     <div class="form-group"><label>Fin *</label><input type="datetime-local" name="date_fin" class="form-control" required></div>
                     <input type="hidden" name="absence_id" value="">

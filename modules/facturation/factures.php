@@ -46,7 +46,7 @@ $stats = $isGestionnaire ? $factService->getStats() : null;
 
     <?php if ($isGestionnaire): ?>
     <div class="filter-bar">
-        <a href="factures.php" class="btn <?= !$filtreStatut ? 'btn-primary' : 'btn-outline' ?>">Toutes</a>
+        <a href="factures.php" class="btn <?= !$filtreStatut ? 'btn-primary' : 'btn-outline' ?>"><?= __('label.toutes') ?></a>
         <a href="factures.php?statut=en_attente" class="btn <?= $filtreStatut === 'en_attente' ? 'btn-primary' : 'btn-outline' ?>"><?= __('facturation.pending') ?></a>
         <a href="factures.php?statut=payee" class="btn <?= $filtreStatut === 'payee' ? 'btn-primary' : 'btn-outline' ?>">Payées</a>
         <a href="factures.php?statut=en_retard" class="btn <?= $filtreStatut === 'en_retard' ? 'btn-primary' : 'btn-outline' ?>"><?= __('facturation.overdue') ?></a>

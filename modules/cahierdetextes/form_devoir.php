@@ -237,7 +237,7 @@ include 'includes/header.php';
 
                                 <!-- Professeur -->
                                 <div class="form-group">
-                                    <label class="form-label" for="nom_professeur">Professeur <span class="required">*</span></label>
+                                    <label class="form-label" for="nom_professeur"><?= __('label.professeur') ?> <span class="required">*</span></label>
                                     <?php if (isTeacher()): ?>
                                         <div class="selected-user-display"><?= htmlspecialchars($defaults['nom_professeur']) ?></div>
                                         <input type="hidden" name="nom_professeur" id="nom_professeur"
@@ -272,7 +272,7 @@ include 'includes/header.php';
 
                                 <!-- Description (SEC-5 : maxlength) -->
                                 <div class="form-group" style="grid-column: span 2;">
-                                    <label class="form-label" for="description">Description <span class="required">*</span></label>
+                                    <label class="form-label" for="description"><?= __('label.description') ?> <span class="required">*</span></label>
                                     <textarea name="description" id="description" class="form-control" rows="6" required
                                               maxlength="5000" placeholder="Description détaillée du devoir"><?= htmlspecialchars($defaults['description']) ?></textarea>
                                 </div>
@@ -308,7 +308,7 @@ include 'includes/header.php';
                             </div>
 
                             <div class="form-actions">
-                                <a href="cahierdetextes.php" class="btn btn-secondary"><i class="fas fa-times"></i> Annuler</a>
+                                <a href="cahierdetextes.php" class="btn btn-secondary"><i class="fas fa-times"></i> <?= __('btn.cancel') ?></a>
                                 <button type="submit" class="btn btn-primary">
                                     <i class="fas fa-save"></i> <?= $isEdit ? 'Enregistrer les modifications' : 'Ajouter le devoir' ?>
                                 </button>

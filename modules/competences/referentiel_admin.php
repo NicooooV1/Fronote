@@ -80,7 +80,7 @@ if (isset($_GET['edit'])) {
             <h1><i class="fas fa-cogs"></i> Gestion du référentiel</h1>
             <p class="page-subtitle">Ajouter, modifier ou supprimer des compétences du socle commun</p>
         </div>
-        <a href="competences.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="competences.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <?php if ($success): ?>
@@ -120,7 +120,7 @@ if (isset($_GET['edit'])) {
                 </div>
 
                 <div style="margin-bottom:12px;">
-                    <label style="display:block;font-size:12px;font-weight:600;color:#4a5568;margin-bottom:4px;">Description</label>
+                    <label style="display:block;font-size:12px;font-weight:600;color:#4a5568;margin-bottom:4px;"><?= __('label.description') ?></label>
                     <textarea name="description" class="form-control" rows="2"><?= htmlspecialchars($editComp['description'] ?? '') ?></textarea>
                 </div>
 
@@ -151,7 +151,7 @@ if (isset($_GET['edit'])) {
                 <div style="display:flex;gap:8px;">
                     <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> <?= $editComp ? 'Mettre à jour' : 'Créer' ?></button>
                     <?php if ($editComp): ?>
-                    <a href="referentiel_admin.php" class="btn btn-secondary">Annuler</a>
+                    <a href="referentiel_admin.php" class="btn btn-secondary"><?= __('btn.cancel') ?></a>
                     <?php endif; ?>
                 </div>
             </form>
@@ -168,7 +168,7 @@ if (isset($_GET['edit'])) {
                     <span style="font-weight:700;color:#0f4c81;font-size:13px;"><?= htmlspecialchars($domaine['code']) ?></span>
                     <span style="font-weight:600;font-size:13px;color:#2d3748;"><?= htmlspecialchars($domaine['nom']) ?></span>
                     <div style="margin-left:auto;display:flex;gap:4px;">
-                        <a href="?edit=<?= $domaine['id'] ?>" class="btn btn-sm btn-secondary" title="Modifier"><i class="fas fa-edit"></i></a>
+                        <a href="?edit=<?= $domaine['id'] ?>" class="btn btn-sm btn-secondary" title="<?= __('btn.edit') ?>"><i class="fas fa-edit"></i></a>
                         <form method="post" style="display:inline;" data-fr-confirm="Supprimer ce domaine et toutes ses sous-compétences ?">
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
                             <input type="hidden" name="action" value="delete">

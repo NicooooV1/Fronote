@@ -173,7 +173,7 @@ include 'includes/header.php';
                 <path d="M10 19L3 12L10 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 <path d="M3 12H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-            Retour
+            <?= __('btn.back') ?>
         </a>
         <h2><?= __('agenda.add') ?></h2>
         <?php if ($user_role === 'eleve' || $user_role === 'parent'): ?>
@@ -234,7 +234,7 @@ include 'includes/header.php';
 
                 <!-- Dates et heures -->
                 <div class="form-group">
-                    <label for="date_debut">Date de début <span aria-hidden="true">*</span></label>
+                    <label for="date_debut"><?= __('label.date_debut') ?> <span aria-hidden="true">*</span></label>
                     <input type="date" name="date_debut" id="date_debut" value="<?= htmlspecialchars($date_par_defaut) ?>" required>
                 </div>
                 <div class="form-group">
@@ -356,7 +356,7 @@ include 'includes/header.php';
                 <!-- Actions -->
                 <div class="form-full">
                     <div class="form-actions">
-                        <a href="agenda.php" class="btn-cancel">Annuler</a>
+                        <a href="agenda.php" class="btn-cancel"><?= __('btn.cancel') ?></a>
                         <button type="submit" class="btn-submit">Créer l'événement</button>
                     </div>
                 </div>

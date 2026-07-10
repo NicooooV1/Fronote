@@ -39,7 +39,7 @@ $typeColors = ['matin' => '#f59e0b', 'soir' => '#6366f1', 'mercredi' => '#10b981
     <div class="stats-row">
         <div class="stat-card"><div class="stat-value"><?= $stats['total_creneaux'] ?></div><div class="stat-label">Créneaux</div></div>
         <div class="stat-card stat-info"><div class="stat-value"><?= $stats['total_inscrits'] ?></div><div class="stat-label">Inscriptions</div></div>
-        <div class="stat-card stat-success"><div class="stat-value"><?= $stats['nb_eleves'] ?></div><div class="stat-label">Élèves</div></div>
+        <div class="stat-card stat-success"><div class="stat-value"><?= $stats['nb_eleves'] ?></div><div class="stat-label"><?= __('label.eleves') ?></div></div>
     </div>
 
     <?php if ($isGestionnaire): ?>
@@ -50,15 +50,15 @@ $typeColors = ['matin' => '#f59e0b', 'soir' => '#6366f1', 'mercredi' => '#10b981
                 <?= csrfField() ?>
                 <input type="hidden" name="creer" value="1">
                 <div class="form-row">
-                    <div class="form-group"><label>Nom</label><input type="text" name="nom" required class="form-control" placeholder="Ex: Garderie du matin"></div>
-                    <div class="form-group"><label>Type</label>
+                    <div class="form-group"><label><?= __('label.nom') ?></label><input type="text" name="nom" required class="form-control" placeholder="Ex: Garderie du matin"></div>
+                    <div class="form-group"><label><?= __('label.type') ?></label>
                         <select name="type" class="form-select">
                             <option value="matin"><?= __('garderie.morning') ?></option><option value="soir"><?= __('garderie.evening') ?></option>
                             <option value="mercredi">Mercredi</option><option value="vacances">Vacances</option>
                         </select>
                     </div>
-                    <div class="form-group"><label>Début</label><input type="time" name="heure_debut" required class="form-control"></div>
-                    <div class="form-group"><label>Fin</label><input type="time" name="heure_fin" required class="form-control"></div>
+                    <div class="form-group"><label><?= __('label.debut') ?></label><input type="time" name="heure_debut" required class="form-control"></div>
+                    <div class="form-group"><label><?= __('label.fin') ?></label><input type="time" name="heure_fin" required class="form-control"></div>
                     <div class="form-group"><label>Places max</label><input type="number" name="places_max" class="form-control"></div>
                     <div class="form-group"><label>Tarif (€)</label><input type="number" step="0.01" name="tarif" class="form-control"></div>
                 </div>

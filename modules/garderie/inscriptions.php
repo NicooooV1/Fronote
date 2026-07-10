@@ -71,7 +71,7 @@ if ($isGestionnaire) {
                 <?= csrfField() ?>
                 <input type="hidden" name="inscrire" value="1">
                 <div class="form-row">
-                    <div class="form-group"><label>Créneau</label>
+                    <div class="form-group"><label><?= __('label.creneau') ?></label>
                         <select name="creneau_id" required class="form-select">
                             <?php foreach ($creneaux as $cr): ?>
                                 <option value="<?= $cr['id'] ?>" <?= $cr['id'] == $creneauId ? 'selected' : '' ?>><?= htmlspecialchars($cr['nom']) ?></option>
@@ -114,7 +114,7 @@ if ($isGestionnaire) {
         </div>
         <div class="card-body">
             <table class="table">
-                <thead><tr><th><?= __('garderie.student') ?></th><th>Classe</th><th>Créneau</th><th>Jour</th><?php if ($isGestionnaire): ?><th>Actions</th><?php endif; ?></tr></thead>
+                <thead><tr><th><?= __('garderie.student') ?></th><th><?= __('label.classe') ?></th><th><?= __('label.creneau') ?></th><th><?= __('label.jour') ?></th><?php if ($isGestionnaire): ?><th><?= __('label.actions') ?></th><?php endif; ?></tr></thead>
                 <tbody>
                 <?php foreach ($inscriptions as $ins): ?>
                     <tr>

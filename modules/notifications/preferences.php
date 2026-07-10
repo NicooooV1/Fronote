@@ -32,7 +32,7 @@ $preferences = $notifService->getPreferences($userId, $userType);
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-sliders-h"></i> Préférences de notification</h1>
-        <a href="notifications.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="notifications.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <?php if (!empty($_SESSION['success_message'])): ?>
@@ -52,7 +52,7 @@ $preferences = $notifService->getPreferences($userId, $userType);
                             <th>Type de notification</th>
                             <th class="text-center">Activé</th>
                             <th class="text-center"><i class="fas fa-globe"></i> Web</th>
-                            <th class="text-center"><i class="fas fa-envelope"></i> Email</th>
+                            <th class="text-center"><i class="fas fa-envelope"></i> <?= __('label.email') ?></th>
                             <th class="text-center"><i class="fas fa-mobile-alt"></i> Push</th>
                         </tr>
                     </thead>
@@ -97,7 +97,7 @@ $preferences = $notifService->getPreferences($userId, $userType);
 
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Sauvegarder</button>
-                    <a href="notifications.php" class="btn btn-outline">Annuler</a>
+                    <a href="notifications.php" class="btn btn-outline"><?= __('btn.cancel') ?></a>
                 </div>
             </form>
         </div>

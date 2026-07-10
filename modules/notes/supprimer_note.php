@@ -94,9 +94,9 @@ include 'includes/header.php';
                     <form method="post" action="">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
                         <div style="display:flex; gap:10px; justify-content:flex-end;">
-                            <a href="notes.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Annuler</a>
+                            <a href="notes.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> <?= __('btn.cancel') ?></a>
                             <button type="submit" class="btn btn-danger" data-fr-confirm="Confirmer la suppression ?">
-                                <i class="fas fa-trash"></i> Supprimer
+                                <i class="fas fa-trash"></i> <?= __('btn.delete') ?>
                             </button>
                         </div>
                     </form>

@@ -169,8 +169,8 @@ include 'includes/header.php';
         <div class="form-container">
             <h3>Informations sur l'élève</h3>
             <div class="form-grid">
-                <div class="form-group"><label>Nom</label><div class="form-value"><?= htmlspecialchars($justificatif['nom']) ?></div></div>
-                <div class="form-group"><label>Prénom</label><div class="form-value"><?= htmlspecialchars($justificatif['prenom']) ?></div></div>
+                <div class="form-group"><label><?= __('label.nom') ?></label><div class="form-value"><?= htmlspecialchars($justificatif['nom']) ?></div></div>
+                <div class="form-group"><label><?= __('label.prenom') ?></label><div class="form-value"><?= htmlspecialchars($justificatif['prenom']) ?></div></div>
                 <div class="form-group"><label><?= __('absences.classe') ?></label><div class="form-value"><?= htmlspecialchars($justificatif['classe']) ?></div></div>
             </div>
         </div>
@@ -195,7 +195,7 @@ include 'includes/header.php';
                     <div class="form-value"><?= htmlspecialchars($justificatif['motif'] ?? 'Non spécifié') ?></div>
                 </div>
                 <div class="form-group form-full">
-                    <label>Description</label>
+                    <label><?= __('label.description') ?></label>
                     <div class="form-value"><?= nl2br(htmlspecialchars($justificatif['description'] ?? 'Aucune description fournie')) ?></div>
                 </div>
 
@@ -247,23 +247,23 @@ include 'includes/header.php';
                     <div class="form-value"><?= date('d/m/Y à H:i', strtotime($absence['date_fin'])) ?></div>
                 </div>
                 <div class="form-group">
-                    <label>Type</label>
+                    <label><?= __('label.type') ?></label>
                     <div class="form-value">
                         <span class="badge badge-<?= htmlspecialchars($absence['type_absence']) ?>"><?= AbsenceHelper::typeLabel($absence['type_absence']) ?></span>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Statut</label>
+                    <label><?= __('label.statut') ?></label>
                     <div class="form-value">
                         <span class="badge <?= $absence['justifie'] ? 'badge-success' : 'badge-danger' ?>"><?= $absence['justifie'] ? 'Justifiée' : 'Non justifiée' ?></span>
                     </div>
                 </div>
                 <div class="form-group form-full">
-                    <label>Actions</label>
+                    <label><?= __('label.actions') ?></label>
                     <div class="form-value">
                         <a href="details_absence.php?id=<?= $absence['id'] ?>" class="btn btn-outline"><i class="fas fa-eye"></i> Voir les détails</a>
                         <?php if (canManageAbsences()): ?>
-                        <a href="modifier_absence.php?id=<?= $absence['id'] ?>" class="btn btn-outline ml-2"><i class="fas fa-edit"></i> Modifier</a>
+                        <a href="modifier_absence.php?id=<?= $absence['id'] ?>" class="btn btn-outline ml-2"><i class="fas fa-edit"></i> <?= __('btn.edit') ?></a>
                         <?php endif; ?>
                     </div>
                 </div>

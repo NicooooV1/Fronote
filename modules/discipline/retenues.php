@@ -102,7 +102,7 @@ $retenues = $service->getRetenues();
                 <input type="time" name="heure_fin" id="heure_fin" class="form-control" value="18:00" required>
             </div>
             <div class="form-group col-md-3">
-                <label for="lieu">Lieu</label>
+                <label for="lieu"><?= __('label.lieu') ?></label>
                 <input type="text" name="lieu" id="lieu" class="form-control" placeholder="Salle de retenue">
             </div>
             <div class="form-group col-md-2">
@@ -112,7 +112,7 @@ $retenues = $service->getRetenues();
         </div>
 
         <div class="form-group">
-            <label for="commentaire">Commentaire</label>
+            <label for="commentaire"><?= __('label.commentaire') ?></label>
             <input type="text" name="commentaire" id="commentaire" class="form-control" placeholder="Informations supplémentaires">
         </div>
 

@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     <?php else: ?>
     <div class="table-container">
         <table class="table">
-            <thead><tr><th>Salle</th><th>Horaire</th><th>Objet</th><th>Réservé par</th><th>Statut</th><th></th></tr></thead>
+            <thead><tr><th><?= __('label.salle') ?></th><th>Horaire</th><th>Objet</th><th>Réservé par</th><th><?= __('label.statut') ?></th><th></th></tr></thead>
             <tbody>
                 <?php foreach ($reservations as $r): ?>
                 <tr>

@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-plus-circle"></i> Nouveau plan</h1>
-        <a href="besoins.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="besoins.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <?php if (!empty($error)): ?><div class="alert alert-danger"><?= $error ?></div><?php endif; ?>
@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                 <div class="form-group"><label>Responsable</label><select name="responsable_id" class="form-control"><option value="">—</option><?php foreach ($profs as $p): ?><option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['prenom'] . ' ' . $p['nom']) ?></option><?php endforeach; ?></select></div>
                 <div class="form-group full-width"><label><?= __('besoins.adaptations') ?></label><textarea name="amenagements" class="form-control" rows="4" placeholder="Tiers temps, matériel adapté, supports agrandis…"></textarea></div>
             </div>
-            <div class="form-actions"><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Créer</button><a href="besoins.php" class="btn btn-outline">Annuler</a></div>
+            <div class="form-actions"><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Créer</button><a href="besoins.php" class="btn btn-outline"><?= __('btn.cancel') ?></a></div>
         </form>
     </div></div>
 </div>

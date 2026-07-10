@@ -26,7 +26,7 @@ $rapport = $classeId ? $reportService->getRapportClasse($classeId, $periodeId ?:
     <div class="report-filter">
         <form method="get" style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
             <div>
-                <label>Classe :</label>
+                <label><?= __('label.classe') ?> :</label>
                 <select name="classe_id" data-fr-change="submitOwn" class="form-select">
                     <?php foreach ($classes as $c): ?>
                         <option value="<?= $c['id'] ?>" <?= $c['id'] == $classeId ? 'selected' : '' ?>><?= htmlspecialchars($c['niveau'].' – '.$c['nom']) ?></option>
@@ -34,7 +34,7 @@ $rapport = $classeId ? $reportService->getRapportClasse($classeId, $periodeId ?:
                 </select>
             </div>
             <div>
-                <label>Période :</label>
+                <label><?= __('label.periode') ?> :</label>
                 <select name="periode_id" data-fr-change="submitOwn" class="form-select">
                     <option value="0">Toutes les périodes</option>
                     <?php foreach ($periodes as $p): ?>
@@ -54,7 +54,7 @@ $rapport = $classeId ? $reportService->getRapportClasse($classeId, $periodeId ?:
             <div class="report-stat-card">
                 <i class="fas fa-users"></i>
                 <div class="report-stat-value"><?= $rapport['effectif'] ?></div>
-                <div class="report-stat-label">Élèves</div>
+                <div class="report-stat-label"><?= __('label.eleves') ?></div>
             </div>
             <div class="report-stat-card report-stat-primary">
                 <i class="fas fa-chart-bar"></i>
@@ -101,7 +101,7 @@ $rapport = $classeId ? $reportService->getRapportClasse($classeId, $periodeId ?:
             <div class="card-body">
                 <table class="ds-table">
                     <thead>
-                        <tr><th>#</th><th>Nom</th><th>Prénom</th><th>Moyenne</th></tr>
+                        <tr><th>#</th><th><?= __('label.nom') ?></th><th><?= __('label.prenom') ?></th><th><?= __('label.moyenne') ?></th></tr>
                     </thead>
                     <tbody>
                     <?php foreach ($rapport['classement'] as $i => $el): ?>

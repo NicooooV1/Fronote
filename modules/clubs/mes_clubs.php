@@ -29,7 +29,7 @@ $cats = ClubService::categories();
                 <h3><?= htmlspecialchars($i['club_nom']) ?></h3>
                 <div class="club-meta">
                     <?php if ($i['statut'] === 'en_attente'): ?>
-                    <span class="badge badge-warning">En attente</span>
+                    <span class="badge badge-warning"><?= __('status.en_attente') ?></span>
                     <?php elseif ($i['statut'] === 'accepte'): ?>
                     <span class="badge badge-success">Membre</span>
                     <?php endif; ?>

@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-plus-circle"></i> Nouvelle archive</h1>
-        <a href="archivage.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="archivage.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <?php if (!empty($error)): ?>
@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary" data-fr-confirm="Lancer l'archivage ?"><i class="fas fa-archive"></i> Lancer l'archivage</button>
-                    <a href="archivage.php" class="btn btn-outline">Annuler</a>
+                    <a href="archivage.php" class="btn btn-outline"><?= __('btn.cancel') ?></a>
                 </div>
             </form>
         </div>

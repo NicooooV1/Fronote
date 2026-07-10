@@ -43,20 +43,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     <form method="post">
         <?= csrfField() ?>
         <table class="table">
-            <thead><tr><th>Élève</th><th>Présent</th></tr></thead>
+            <thead><tr><th>Élève</th><th><?= __('status.present') ?></th></tr></thead>
             <tbody>
                 <?php foreach ($presences as $p): ?>
                 <tr>
                     <td><?= htmlspecialchars($p['eleve_nom']) ?></td>
                     <td>
-                        <label><input type="radio" name="presence[<?= $p['inscription_id'] ?>]" value="1" <?= $p['present'] === '1' || $p['present'] === 1 ? 'checked' : '' ?>> Présent</label>
-                        <label><input type="radio" name="presence[<?= $p['inscription_id'] ?>]" value="0" <?= $p['present'] === '0' || $p['present'] === 0 ? 'checked' : '' ?>> Absent</label>
+                        <label><input type="radio" name="presence[<?= $p['inscription_id'] ?>]" value="1" <?= $p['present'] === '1' || $p['present'] === 1 ? 'checked' : '' ?>> <?= __('status.present') ?></label>
+                        <label><input type="radio" name="presence[<?= $p['inscription_id'] ?>]" value="0" <?= $p['present'] === '0' || $p['present'] === 0 ? 'checked' : '' ?>> <?= __('status.absent') ?></label>
                     </td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
-        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> <?= __('btn.save') ?></button>
     </form>
     <?php endif; ?>
 </div>

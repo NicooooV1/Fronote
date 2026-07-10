@@ -60,7 +60,7 @@ $now = time();
                     <span class="badge badge-primary"><?= $d['note'] ?>/20</span>
                 <?php endif; ?>
             <?php elseif ($isPast): ?>
-                <span class="badge badge-danger">En retard</span>
+                <span class="badge badge-danger"><?= __('status.en_retard') ?></span>
             <?php elseif ($isUrgent): ?>
                 <span class="badge badge-warning">Urgent</span>
             <?php endif; ?>
@@ -86,7 +86,7 @@ $now = time();
 <div class="data-table-container">
     <table class="data-table">
         <thead>
-            <tr><th>Titre</th><th><?= __('cahierdetextes.subject') ?></th><th><?= __('cahierdetextes.class') ?></th><th class="text-center">Échéance</th><th class="text-center">Rendus</th><th>Actions</th></tr>
+            <tr><th><?= __('label.titre') ?></th><th><?= __('cahierdetextes.subject') ?></th><th><?= __('cahierdetextes.class') ?></th><th class="text-center">Échéance</th><th class="text-center">Rendus</th><th><?= __('label.actions') ?></th></tr>
         </thead>
         <tbody>
             <?php foreach ($devoirs as $d): ?>

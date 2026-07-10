@@ -41,13 +41,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
 
     <?php if ($stats): ?>
     <div class="stats-grid">
-        <div class="stat-card"><div class="stat-value"><?= $stats['total'] ?></div><div class="stat-label">Total</div></div>
+        <div class="stat-card"><div class="stat-value"><?= $stats['total'] ?></div><div class="stat-label"><?= __('label.total') ?></div></div>
         <div class="stat-card stat-info"><div class="stat-value"><?= $stats['soumises'] ?></div><div class="stat-label"><?= __('inscriptions.pending') ?></div></div>
         <div class="stat-card stat-warning"><div class="stat-value"><?= $stats['en_revision'] ?></div><div class="stat-label">En révision</div></div>
         <div class="stat-card stat-success"><div class="stat-value"><?= $stats['acceptees'] ?></div><div class="stat-label">Acceptées</div></div>
     </div>
     <div class="filter-bar">
-        <a href="inscriptions.php" class="filter-btn <?= empty($filtreStatut) ? 'active' : '' ?>">Toutes</a>
+        <a href="inscriptions.php" class="filter-btn <?= empty($filtreStatut) ? 'active' : '' ?>"><?= __('label.toutes') ?></a>
         <a href="inscriptions.php?statut=soumise" class="filter-btn <?= ($filtreStatut ?? '') === 'soumise' ? 'active' : '' ?>">Soumises</a>
         <a href="inscriptions.php?statut=en_revision" class="filter-btn <?= ($filtreStatut ?? '') === 'en_revision' ? 'active' : '' ?>">En révision</a>
         <a href="inscriptions.php?statut=acceptee" class="filter-btn <?= ($filtreStatut ?? '') === 'acceptee' ? 'active' : '' ?>">Acceptées</a>

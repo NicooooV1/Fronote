@@ -37,10 +37,10 @@ $types = ReunionService::typesReunion();
             <select name="statut" class="form-control">
                 <option value="">Tous les statuts</option>
                 <option value="planifiee" <?= $filtreStatut === 'planifiee' ? 'selected' : '' ?>>Planifiée</option>
-                <option value="en_cours" <?= $filtreStatut === 'en_cours' ? 'selected' : '' ?>>En cours</option>
+                <option value="en_cours" <?= $filtreStatut === 'en_cours' ? 'selected' : '' ?>><?= __('status.en_cours') ?></option>
                 <option value="terminee" <?= $filtreStatut === 'terminee' ? 'selected' : '' ?>>Terminée</option>
             </select>
-            <button type="submit" class="btn btn-outline"><i class="fas fa-filter"></i> Filtrer</button>
+            <button type="submit" class="btn btn-outline"><i class="fas fa-filter"></i> <?= __('btn.filter') ?></button>
         </form>
     </div>
 

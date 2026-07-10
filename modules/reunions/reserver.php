@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-bookmark"></i> <?= __('reunions.book_slot') ?></h1>
-        <a href="detail.php?id=<?= $reunionId ?>" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="detail.php?id=<?= $reunionId ?>" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <div class="card">

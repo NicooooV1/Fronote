@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isResponsable) {
 $etapesActualisees = $projetService->getEtapes($id);
 ?>
 <div class="container mt-4">
-    <a href="projets.php" class="btn btn-sm btn-outline-secondary mb-3"><i class="fas fa-arrow-left me-1"></i>Retour</a>
+    <a href="projets.php" class="btn btn-sm btn-outline-secondary mb-3"><i class="fas fa-arrow-left me-1"></i><?= __('btn.back') ?></a>
 
     <div class="row g-4">
         <!-- Colonne principale -->
@@ -122,7 +122,7 @@ $etapesActualisees = $projetService->getEtapes($id);
                             <div class="col-md-4"><input name="titre_etape" class="form-control form-control-sm" placeholder="Titre de l'étape" required></div>
                             <div class="col-md-3"><input name="desc_etape" class="form-control form-control-sm" placeholder="<?= __('projets_pedagogiques.description') ?>"></div>
                             <div class="col-md-3"><input name="date_etape" type="date" class="form-control form-control-sm"></div>
-                            <div class="col-md-2"><button class="btn btn-sm btn-primary w-100">Ajouter</button></div>
+                            <div class="col-md-2"><button class="btn btn-sm btn-primary w-100"><?= __('btn.add') ?></button></div>
                         </form>
                     <?php endif; ?>
                 </div>
@@ -153,7 +153,7 @@ $etapesActualisees = $projetService->getEtapes($id);
         <div class="col-lg-4">
             <?php if ($isResponsable): ?>
             <div class="card mb-4">
-                <div class="card-header"><h6 class="mb-0">Actions</h6></div>
+                <div class="card-header"><h6 class="mb-0"><?= __('label.actions') ?></h6></div>
                 <div class="card-body">
                     <form method="post" class="mb-2">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">

@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
         <h1><i class="fas fa-award"></i> <?= htmlspecialchars($diplome['intitule']) ?></h1>
         <div class="header-actions">
             <a href="export_diplome.php?id=<?= $id ?>" class="btn btn-outline" title="Attestation PDF"><i class="fas fa-file-pdf"></i> Attestation PDF</a>
-            <a href="diplomes.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+            <a href="diplomes.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
         </div>
     </div>
 
@@ -62,14 +62,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
             <?= csrfField() ?>
             <div class="form-grid-2">
                 <div class="form-group"><label>Intitulé *</label><input type="text" name="intitule" class="form-control" value="<?= htmlspecialchars($diplome['intitule']) ?>" required></div>
-                <div class="form-group"><label>Type</label><select name="type" class="form-control"><?php foreach ($types as $k => $v): ?><option value="<?= $k ?>" <?= $diplome['type'] === $k ? 'selected' : '' ?>><?= $v ?></option><?php endforeach; ?></select></div>
+                <div class="form-group"><label><?= __('label.type') ?></label><select name="type" class="form-control"><?php foreach ($types as $k => $v): ?><option value="<?= $k ?>" <?= $diplome['type'] === $k ? 'selected' : '' ?>><?= $v ?></option><?php endforeach; ?></select></div>
                 <div class="form-group"><label><?= __('diplomes.mention') ?></label><select name="mention" class="form-control"><option value="">—</option><?php foreach ($mentions as $k => $v): ?><option value="<?= $k ?>" <?= ($diplome['mention'] ?? '') === $k ? 'selected' : '' ?>><?= $v ?></option><?php endforeach; ?></select></div>
                 <div class="form-group"><label>Date d'obtention *</label><input type="date" name="date_obtention" class="form-control" value="<?= $diplome['date_obtention'] ?>" required></div>
-                <div class="form-group full-width"><label>Description</label><textarea name="description" class="form-control" rows="3"><?= htmlspecialchars($diplome['description'] ?? '') ?></textarea></div>
+                <div class="form-group full-width"><label><?= __('label.description') ?></label><textarea name="description" class="form-control" rows="3"><?= htmlspecialchars($diplome['description'] ?? '') ?></textarea></div>
             </div>
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer</button>
-                <button type="submit" name="supprimer" value="1" class="btn btn-danger" data-fr-confirm="Supprimer ce diplôme ?"><i class="fas fa-trash"></i> Supprimer</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> <?= __('btn.save') ?></button>
+                <button type="submit" name="supprimer" value="1" class="btn btn-danger" data-fr-confirm="Supprimer ce diplôme ?"><i class="fas fa-trash"></i> <?= __('btn.delete') ?></button>
             </div>
         </form>
     </div></div>

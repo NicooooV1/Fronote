@@ -70,8 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 
 <?php if (!empty($stats) && $stats['total'] > 0): ?>
 <div class="stats-row">
-    <div class="stat-card"><span class="stat-value"><?= $stats['total'] ?></span><span class="stat-label">Élèves</span></div>
-    <div class="stat-card primary"><span class="stat-value"><?= $stats['moy_classe'] ? number_format((float) ($stats['moy_classe']), 2) : '-' ?></span><span class="stat-label">Moyenne</span></div>
+    <div class="stat-card"><span class="stat-value"><?= $stats['total'] ?></span><span class="stat-label"><?= __('label.eleves') ?></span></div>
+    <div class="stat-card primary"><span class="stat-value"><?= $stats['moy_classe'] ? number_format((float) ($stats['moy_classe']), 2) : '-' ?></span><span class="stat-label"><?= __('label.moyenne') ?></span></div>
     <div class="stat-card success"><span class="stat-value"><?= $stats['moy_max'] ? number_format((float) ($stats['moy_max']), 2) : '-' ?></span><span class="stat-label">Max</span></div>
     <div class="stat-card danger"><span class="stat-value"><?= $stats['moy_min'] ? number_format((float) ($stats['moy_min']), 2) : '-' ?></span><span class="stat-label">Min</span></div>
 </div>

@@ -282,7 +282,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                                     <th>Évaluation</th>
                                     <th class="text-center"><?= __('notes.grade') ?></th>
                                     <th class="text-center">Coeff.</th>
-                                    <th>Professeur</th>
+                                    <th><?= __('label.professeur') ?></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -362,7 +362,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                                 <th>Évaluation</th>
                                 <th class="text-center"><?= __('notes.grade') ?></th>
                                 <th class="text-center">Coeff.</th>
-                                <th>Professeur</th>
+                                <th><?= __('label.professeur') ?></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -400,24 +400,24 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                 <form method="get" class="notes-filter-bar" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:20px; background:white; padding:15px 20px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
                     <input type="hidden" name="trimestre" value="<?= $selectedTrimestre ?>">
                     <div>
-                        <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:4px;">Classe</label>
+                        <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:4px;"><?= __('label.classe') ?></label>
                         <select name="classe" class="form-control" style="min-width:140px;">
-                            <option value="">Toutes</option>
+                            <option value=""><?= __('label.toutes') ?></option>
                             <?php foreach ($availableClasses as $c): ?>
                             <option value="<?= htmlspecialchars($c) ?>" <?= $filterClasse === $c ? 'selected' : '' ?>><?= htmlspecialchars($c) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
                     <div>
-                        <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:4px;">Matière</label>
+                        <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:4px;"><?= __('label.matiere') ?></label>
                         <select name="matiere" class="form-control" style="min-width:160px;">
-                            <option value="">Toutes</option>
+                            <option value=""><?= __('label.toutes') ?></option>
                             <?php foreach ($availableMatieres as $m): ?>
                             <option value="<?= $m['id'] ?>" <?= $filterMatiere == $m['id'] ? 'selected' : '' ?>><?= htmlspecialchars($m['nom']) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <button type="submit" class="btn btn-secondary" style="height:38px;"><i class="fas fa-filter"></i> Filtrer</button>
+                    <button type="submit" class="btn btn-secondary" style="height:38px;"><i class="fas fa-filter"></i> <?= __('btn.filter') ?></button>
                     <?php if ($filterClasse || $filterMatiere): ?>
                     <a href="?trimestre=<?= $selectedTrimestre ?>" class="btn btn-sm" style="color:#718096; height:38px; line-height:38px;">✕ Réinitialiser</a>
                     <?php endif; ?>
@@ -519,12 +519,12 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                             <tr>
                                 <th><?= __('notes.date') ?></th>
                                 <th>Élève</th>
-                                <th>Classe</th>
+                                <th><?= __('label.classe') ?></th>
                                 <th><?= __('notes.subject') ?></th>
                                 <th>Évaluation</th>
                                 <th class="text-center"><?= __('notes.grade') ?></th>
                                 <th class="text-center">Coeff.</th>
-                                <th class="text-center">Actions</th>
+                                <th class="text-center"><?= __('label.actions') ?></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -544,11 +544,11 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                                 </td>
                                 <td class="text-center text-muted">×<?= $n['coefficient'] ?></td>
                                 <td class="text-center">
-                                    <a href="form_note.php?id=<?= $n['id'] ?>" class="btn btn-sm btn-secondary" title="Modifier"><i class="fas fa-edit"></i></a>
+                                    <a href="form_note.php?id=<?= $n['id'] ?>" class="btn btn-sm btn-secondary" title="<?= __('btn.edit') ?>"><i class="fas fa-edit"></i></a>
                                     <form method="POST" action="supprimer_note.php" style="display:inline;" data-fr-confirm="Supprimer cette note ?">
                                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
                                         <input type="hidden" name="id" value="<?= $n['id'] ?>">
-                                        <button type="submit" class="btn btn-sm btn-danger" title="Supprimer"><i class="fas fa-trash"></i></button>
+                                        <button type="submit" class="btn btn-sm btn-danger" title="<?= __('btn.delete') ?>"><i class="fas fa-trash"></i></button>
                                     </form>
                                 </td>
                             </tr>
@@ -590,11 +590,11 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                             <tr>
                                 <th><?= __('notes.date') ?></th>
                                 <th>Élève</th>
-                                <th>Classe</th>
+                                <th><?= __('label.classe') ?></th>
                                 <th><?= __('notes.subject') ?></th>
-                                <th>Type</th>
+                                <th><?= __('label.type') ?></th>
                                 <th class="text-center"><?= __('notes.grade') ?></th>
-                                <th>Professeur</th>
+                                <th><?= __('label.professeur') ?></th>
                             </tr>
                         </thead>
                         <tbody>

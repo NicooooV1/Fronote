@@ -42,7 +42,7 @@ $avisLabels = BulletinService::avisLabels();
     <h1><i class="fas fa-file-alt"></i> Bulletin — <?= htmlspecialchars($bulletin['eleve_prenom'] . ' ' . $bulletin['eleve_nom']) ?></h1>
     <div class="header-actions">
         <?= BulletinService::statutBadge($bulletin['statut']) ?>
-        <a href="bulletins.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="bulletins.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
         <?php if (isAdmin() || isVieScolaire()): ?>
             <a href="editer_bulletin.php?id=<?= $id ?>" class="btn btn-primary"><i class="fas fa-edit"></i> Éditer</a>
         <?php endif; ?>
@@ -57,7 +57,7 @@ $avisLabels = BulletinService::avisLabels();
             <span class="text-muted"><?= htmlspecialchars($bulletin['periode_nom']) ?></span>
         </div>
         <div class="bulletin-summary">
-            <div class="summary-item primary"><span class="value"><?= $bulletin['moyenne_generale'] !== null ? number_format((float) ($bulletin['moyenne_generale']), 2) : '-' ?>/20</span><span class="label">Moyenne</span></div>
+            <div class="summary-item primary"><span class="value"><?= $bulletin['moyenne_generale'] !== null ? number_format((float) ($bulletin['moyenne_generale']), 2) : '-' ?>/20</span><span class="label"><?= __('label.moyenne') ?></span></div>
             <div class="summary-item info"><span class="value"><?= $bulletin['rang'] ?? '-' ?></span><span class="label">Rang</span></div>
             <div class="summary-item warning"><span class="value"><?= $bulletin['nb_absences'] ?></span><span class="label">Absences</span></div>
             <div class="summary-item danger"><span class="value"><?= $bulletin['nb_retards'] ?></span><span class="label">Retards</span></div>
@@ -76,10 +76,10 @@ $avisLabels = BulletinService::avisLabels();
             <table class="bulletin-table">
                 <thead>
                     <tr>
-                        <th>Matière</th>
-                        <th>Professeur</th>
+                        <th><?= __('label.matiere') ?></th>
+                        <th><?= __('label.professeur') ?></th>
                         <th class="text-center"><?= __('bulletins.student') ?></th>
-                        <th class="text-center">Classe</th>
+                        <th class="text-center"><?= __('label.classe') ?></th>
                         <th class="text-center">Min</th>
                         <th class="text-center">Max</th>
                         <th class="text-center">Coeff.</th>

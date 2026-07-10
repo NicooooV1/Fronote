@@ -147,7 +147,7 @@ include 'templates/header.php';
         <form method="post" enctype="multipart/form-data" id="messageForm">
             <?= csrf_field() ?>
             <div class="form-group">
-                <label for="classe">Classe</label>
+                <label for="classe"><?= __('label.classe') ?></label>
                 <select name="classe" id="classe" required>
                     <option value="">Sélectionner une classe</option>
                     <?php foreach ($classes as $classe): ?>
@@ -157,13 +157,13 @@ include 'templates/header.php';
             </div>
             
             <div class="form-group">
-                <label for="titre">Titre</label>
+                <label for="titre"><?= __('label.titre') ?></label>
                 <input type="text" name="titre" id="titre" required maxlength="100">
                 <div id="title-counter" class="text-muted small">0/100 caractères</div>
             </div>
             
             <div class="form-group">
-                <label for="contenu">Message</label>
+                <label for="contenu"><?= __('messagerie.body') ?></label>
                 <textarea name="contenu" id="contenu" required></textarea>
                 <div id="char-counter" class="text-muted small">0/10000 caractères</div>
             </div>
@@ -173,7 +173,7 @@ include 'templates/header.php';
                 <div class="form-group" style="margin-bottom: 0;">
                     <label for="importance">Importance</label>
                     <select name="importance" id="importance">
-                        <option value="normal">Normal</option>
+                        <option value="normal"><?= __('status.normal') ?></option>
                         <option value="important">Important</option>
                         <option value="urgent">Urgent</option>
                     </select>
@@ -198,7 +198,7 @@ include 'templates/header.php';
             </div>
             
             <div class="form-group">
-                <label for="attachments">Pièces jointes</label>
+                <label for="attachments"><?= __('messagerie.attachments') ?></label>
                 <div class="file-upload">
                     <input type="file" name="attachments[]" id="attachments" multiple>
                     <label for="attachments">
@@ -210,8 +210,8 @@ include 'templates/header.php';
             
             <div class="form-footer">
                 <div class="form-actions">
-                    <button type="submit" class="btn primary">Envoyer</button>
-                    <a href="index.php" class="btn cancel">Annuler</a>
+                    <button type="submit" class="btn primary"><?= __('messagerie.send') ?></button>
+                    <a href="index.php" class="btn cancel"><?= __('btn.cancel') ?></a>
                 </div>
             </div>
         </form>

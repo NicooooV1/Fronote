@@ -178,7 +178,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                 </div>
 
                 <?php if (canManageDevoirs()): ?>
-                <a href="form_devoir.php" class="btn btn-primary"><i class="fas fa-plus"></i> Ajouter</a>
+                <a href="form_devoir.php" class="btn btn-primary"><i class="fas fa-plus"></i> <?= __('btn.add') ?></a>
                 <?php endif; ?>
             </div>
 

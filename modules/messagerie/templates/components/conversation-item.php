@@ -99,10 +99,10 @@ if (isset($conversation['participants']) && count($conversation['participants'])
                 <i class="fas fa-envelope"></i> Marquer comme non lu
             </a>
             <a href="#" data-fr-click="archiveConversation" data-fr-args='[<?= $convId ?>]' data-fr-prevent="1">
-                <i class="fas fa-archive"></i> Archiver
+                <i class="fas fa-archive"></i> <?= __('messagerie.archive') ?>
             </a>
             <a href="#" data-fr-click="confirmDelete" data-fr-args='[<?= $convId ?>]' data-fr-prevent="1" class="danger">
-                <i class="fas fa-trash"></i> Supprimer
+                <i class="fas fa-trash"></i> <?= __('btn.delete') ?>
             </a>
             <?php else: ?>
             <a href="#" data-fr-click="restoreConversation" data-fr-args='[<?= $convId ?>]' data-fr-prevent="1">

@@ -49,7 +49,7 @@ $canReply      = $ticket['statut'] !== 'ferme';
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-ticket-alt"></i> Ticket #<?= $id ?></h1>
-        <a href="tickets.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="tickets.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <?php if (!empty($_SESSION['success_message'])): ?>
@@ -81,7 +81,7 @@ $canReply      = $ticket['statut'] !== 'ferme';
                         <input type="hidden" name="action" value="statut">
                         <select name="statut" class="form-control form-control-sm" data-fr-change="submitOwn">
                             <option value="ouvert" <?= $ticket['statut'] === 'ouvert' ? 'selected' : '' ?>><?= __('support.open') ?></option>
-                            <option value="en_cours" <?= $ticket['statut'] === 'en_cours' ? 'selected' : '' ?>>En cours</option>
+                            <option value="en_cours" <?= $ticket['statut'] === 'en_cours' ? 'selected' : '' ?>><?= __('status.en_cours') ?></option>
                             <option value="resolu" <?= $ticket['statut'] === 'resolu' ? 'selected' : '' ?>>Résolu</option>
                             <option value="ferme" <?= $ticket['statut'] === 'ferme' ? 'selected' : '' ?>><?= __('support.closed') ?></option>
                         </select>
@@ -148,7 +148,7 @@ $canReply      = $ticket['statut'] !== 'ferme';
                             <label>Ajouter un message</label>
                             <textarea name="contenu" class="form-control" rows="3" required placeholder="Apporter une précision, relancer…"></textarea>
                         </div>
-                        <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Envoyer</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> <?= __('btn.send') ?></button>
                     </form>
                 </div>
                 <?php endif; ?>

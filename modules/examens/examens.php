@@ -19,9 +19,9 @@ $isGestionnaire = isAdmin() || isPersonnelVS();
     </div>
 
     <div class="filter-bar">
-        <a href="examens.php" class="btn <?= !$statut ? 'btn-primary' : 'btn-outline' ?>">Tous</a>
+        <a href="examens.php" class="btn <?= !$statut ? 'btn-primary' : 'btn-outline' ?>"><?= __('label.tous') ?></a>
         <a href="examens.php?statut=planifie" class="btn <?= $statut === 'planifie' ? 'btn-primary' : 'btn-outline' ?>">Planifiés</a>
-        <a href="examens.php?statut=en_cours" class="btn <?= $statut === 'en_cours' ? 'btn-primary' : 'btn-outline' ?>">En cours</a>
+        <a href="examens.php?statut=en_cours" class="btn <?= $statut === 'en_cours' ? 'btn-primary' : 'btn-outline' ?>"><?= __('status.en_cours') ?></a>
         <a href="examens.php?statut=termine" class="btn <?= $statut === 'termine' ? 'btn-primary' : 'btn-outline' ?>">Terminés</a>
     </div>
 

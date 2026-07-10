@@ -89,7 +89,7 @@ if ($isGestionnaire) {
                     <div class="form-group">
                         <label>Régime alimentaire</label>
                         <select name="regime" class="form-select">
-                            <option value="">Normal</option>
+                            <option value=""><?= __('status.normal') ?></option>
                             <option value="végétarien">Végétarien</option>
                             <option value="sans porc">Sans porc</option>
                             <option value="sans gluten">Sans gluten</option>
@@ -132,7 +132,7 @@ if ($isGestionnaire) {
                     <div class="form-group">
                         <label>Régime</label>
                         <select name="regime" class="form-select">
-                            <option value="">Normal</option>
+                            <option value=""><?= __('status.normal') ?></option>
                             <option value="végétarien">Végétarien</option>
                             <option value="sans porc">Sans porc</option>
                         </select>
@@ -165,7 +165,7 @@ if ($isGestionnaire) {
             <div class="card-body">
                 <p><strong><?= count($reservationsJour) ?></strong> réservation(s)</p>
                 <table class="table">
-                    <thead><tr><th>Élève</th><th>Classe</th><th>Régime</th><th>Statut</th><th>Actions</th></tr></thead>
+                    <thead><tr><th>Élève</th><th><?= __('label.classe') ?></th><th>Régime</th><th><?= __('label.statut') ?></th><th><?= __('label.actions') ?></th></tr></thead>
                     <tbody>
                     <?php foreach ($reservationsJour as $r): ?>
                         <tr>

@@ -13,7 +13,7 @@ $typeIcons = [
 ];
 ?>
 <?php if (empty($annonces)): ?>
-    <p class="widget-empty">Aucune annonce publiée.</p>
+    <p class="widget-empty"><?= __('annonces.no_annonces') ?></p>
 <?php else: ?>
     <ul class="widget-list">
         <?php foreach ($annonces as $a): ?>
@@ -26,7 +26,7 @@ $typeIcons = [
                 <div class="widget-list-meta">
                     <?= htmlspecialchars(date('d/m/Y', strtotime($a['date_publication']))) ?>
                     <?php if (!empty($a['epingle'])): ?>
-                        <span class="badge-pinned">Épinglée</span>
+                        <span class="badge-pinned"><?= __('annonces.epinglee') ?></span>
                     <?php endif; ?>
                 </div>
             </div>

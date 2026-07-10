@@ -62,7 +62,7 @@ $service->publishScheduled();
 <div class="filter-bar card">
     <form method="GET" class="filter-form">
         <div class="filter-group">
-            <label for="type">Type</label>
+            <label for="type"><?= __('label.type') ?></label>
             <select name="type" id="type">
                 <option value=""><?= __('annonces.cible_tous') ?></option>
                 <?php foreach ($types as $key => $label): ?>
@@ -71,7 +71,7 @@ $service->publishScheduled();
             </select>
         </div>
         <div class="filter-actions">
-            <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filtrer</button>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> <?= __('btn.filter') ?></button>
             <a href="annonces.php" class="btn btn-secondary">Réinitialiser</a>
             <a href="export.php?format=csv<?= !empty($filtreType) ? '&type=' . urlencode($filtreType) : '' ?>" class="btn btn-outline" title="Export CSV"><i class="fas fa-file-csv"></i> CSV</a>
             <a href="export.php?format=pdf<?= !empty($filtreType) ? '&type=' . urlencode($filtreType) : '' ?>" class="btn btn-outline" title="Export PDF"><i class="fas fa-file-pdf"></i> PDF</a>
@@ -128,7 +128,7 @@ $service->publishScheduled();
                 <?php if ($sondage['date_fin'] && strtotime($sondage['date_fin']) > time()): ?>
                  — Jusqu'au <?= date('d/m/Y', strtotime($sondage['date_fin'])) ?>
                 <?php elseif ($sondage['date_fin'] && strtotime($sondage['date_fin']) <= time()): ?>
-                 — <span class="text-muted">Terminé</span>
+                 — <span class="text-muted"><?= __('status.termine') ?></span>
                 <?php endif; ?>
             </div>
             <a href="detail_annonce.php?id=<?= $a['id'] ?>" class="btn btn-sm btn-primary">

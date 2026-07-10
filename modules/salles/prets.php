@@ -33,10 +33,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     <div class="content-header"><h1><i class="fas fa-hand-holding"></i> Prêts de matériels</h1></div>
 
     <div class="filter-bar">
-        <a href="prets.php" class="btn <?= !$filtreStatut ? 'btn-primary' : 'btn-outline' ?>">Tous</a>
-        <a href="prets.php?statut=en_cours" class="btn <?= $filtreStatut === 'en_cours' ? 'btn-primary' : 'btn-outline' ?>">En cours</a>
+        <a href="prets.php" class="btn <?= !$filtreStatut ? 'btn-primary' : 'btn-outline' ?>"><?= __('label.tous') ?></a>
+        <a href="prets.php?statut=en_cours" class="btn <?= $filtreStatut === 'en_cours' ? 'btn-primary' : 'btn-outline' ?>"><?= __('status.en_cours') ?></a>
         <a href="prets.php?statut=retourne" class="btn <?= $filtreStatut === 'retourne' ? 'btn-primary' : 'btn-outline' ?>">Retournés</a>
-        <a href="prets.php?statut=en_retard" class="btn <?= $filtreStatut === 'en_retard' ? 'btn-primary' : 'btn-outline' ?>">En retard</a>
+        <a href="prets.php?statut=en_retard" class="btn <?= $filtreStatut === 'en_retard' ? 'btn-primary' : 'btn-outline' ?>"><?= __('status.en_retard') ?></a>
     </div>
 
     <?php if (isAdmin() || isPersonnelVS()): ?>
@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     <?php else: ?>
     <div class="table-container">
         <table class="table">
-            <thead><tr><th>Matériel</th><th>Emprunteur</th><th>Emprunt</th><th>Retour prévu</th><th>Statut</th><th></th></tr></thead>
+            <thead><tr><th>Matériel</th><th>Emprunteur</th><th>Emprunt</th><th>Retour prévu</th><th><?= __('label.statut') ?></th><th></th></tr></thead>
             <tbody>
                 <?php foreach ($prets as $p): ?>
                 <tr>

@@ -37,14 +37,14 @@ $stats = $isGestionnaire ? $stageService->getStats() : null;
 
     <?php if ($stats): ?>
     <div class="stats-row">
-        <div class="stat-card"><div class="stat-value"><?= $stats['total'] ?></div><div class="stat-label">Total</div></div>
-        <div class="stat-card"><div class="stat-value"><?= $stats['en_cours'] ?></div><div class="stat-label">En cours</div></div>
+        <div class="stat-card"><div class="stat-value"><?= $stats['total'] ?></div><div class="stat-label"><?= __('label.total') ?></div></div>
+        <div class="stat-card"><div class="stat-value"><?= $stats['en_cours'] ?></div><div class="stat-label"><?= __('status.en_cours') ?></div></div>
         <div class="stat-card"><div class="stat-value"><?= $stats['en_recherche'] ?></div><div class="stat-label">En recherche</div></div>
     </div>
     <?php endif; ?>
 
     <div class="filter-bar">
-        <a href="stages.php" class="btn <?= !$filtreStatut ? 'btn-primary' : 'btn-outline' ?>">Tous</a>
+        <a href="stages.php" class="btn <?= !$filtreStatut ? 'btn-primary' : 'btn-outline' ?>"><?= __('label.tous') ?></a>
         <?php foreach ($statuts as $k => $v): ?>
         <a href="stages.php?statut=<?= $k ?>" class="btn <?= $filtreStatut === $k ? 'btn-primary' : 'btn-outline' ?>"><?= $v ?></a>
         <?php endforeach; ?>

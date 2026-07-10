@@ -33,14 +33,14 @@ $stats = $isGestionnaire ? $diplService->getStats() : null;
 
     <?php if ($stats): ?>
     <div class="stats-row">
-        <div class="stat-card"><div class="stat-value"><?= $stats['total'] ?></div><div class="stat-label">Total</div></div>
+        <div class="stat-card"><div class="stat-value"><?= $stats['total'] ?></div><div class="stat-label"><?= __('label.total') ?></div></div>
         <div class="stat-card"><div class="stat-value"><?= $stats['annee_courante'] ?></div><div class="stat-label">Cette année</div></div>
     </div>
     <?php endif; ?>
 
     <?php if ($isGestionnaire): ?>
     <div class="filter-bar">
-        <a href="diplomes.php" class="btn <?= !$filtreType ? 'btn-primary' : 'btn-outline' ?>">Tous</a>
+        <a href="diplomes.php" class="btn <?= !$filtreType ? 'btn-primary' : 'btn-outline' ?>"><?= __('label.tous') ?></a>
         <?php foreach (array_slice($types, 0, 5) as $k => $v): ?>
         <a href="diplomes.php?type=<?= $k ?>" class="btn <?= $filtreType === $k ? 'btn-primary' : 'btn-outline' ?>"><?= $v ?></a>
         <?php endforeach; ?>

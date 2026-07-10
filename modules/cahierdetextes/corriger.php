@@ -71,7 +71,7 @@ if ($devoirId) {
 <div class="page-header">
     <h1><i class="fas fa-check-double"></i> <?= $devoirId ? 'Corriger : ' . htmlspecialchars($devoir['titre'] ?? '') : 'Corrections' ?></h1>
     <?php if ($devoirId): ?>
-    <a href="corriger.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+    <a href="corriger.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     <?php endif; ?>
 </div>
 
@@ -82,10 +82,10 @@ if ($devoirId) {
 <?php if ($devoirId && !empty($devoir)): ?>
     <!-- Stats du devoir -->
     <div class="stats-row">
-        <div class="stat-card"><span class="stat-value"><?= $stats['total_eleves'] ?? 0 ?></span><span class="stat-label">Élèves</span></div>
+        <div class="stat-card"><span class="stat-value"><?= $stats['total_eleves'] ?? 0 ?></span><span class="stat-label"><?= __('label.eleves') ?></span></div>
         <div class="stat-card primary"><span class="stat-value"><?= $stats['total_rendus'] ?? 0 ?></span><span class="stat-label">Rendus</span></div>
         <div class="stat-card success"><span class="stat-value"><?= $stats['corriges'] ?? 0 ?></span><span class="stat-label">Corrigés</span></div>
-        <div class="stat-card info"><span class="stat-value"><?= $stats['moyenne_notes'] ? number_format((float) ($stats['moyenne_notes']), 1) : '-' ?></span><span class="stat-label">Moyenne</span></div>
+        <div class="stat-card info"><span class="stat-value"><?= $stats['moyenne_notes'] ? number_format((float) ($stats['moyenne_notes']), 1) : '-' ?></span><span class="stat-label"><?= __('label.moyenne') ?></span></div>
     </div>
 
     <!-- Liste des rendus -->
@@ -98,7 +98,7 @@ if ($devoirId) {
             </div>
             <div class="rendu-meta">
                 <?= RenduService::statutBadge($r['statut']) ?>
-                <?php if ($r['en_retard']): ?><span class="badge badge-danger">En retard</span><?php endif; ?>
+                <?php if ($r['en_retard']): ?><span class="badge badge-danger"><?= __('status.en_retard') ?></span><?php endif; ?>
                 <span class="text-muted"><?= formatDateTime($r['date_rendu']) ?></span>
             </div>
         </div>
@@ -114,7 +114,7 @@ if ($devoirId) {
             <input type="hidden" name="rendu_id" value="<?= $r['id'] ?>">
             <div class="correction-grid">
                 <div class="form-group">
-                    <label>Note</label>
+                    <label><?= __('label.note') ?></label>
                     <div class="note-input">
                         <input type="number" name="note" step="0.5" min="0" max="20" value="<?= $r['note'] ?? '' ?>" class="form-control" placeholder="—">
                         <span>/</span>
@@ -122,7 +122,7 @@ if ($devoirId) {
                     </div>
                 </div>
                 <div class="form-group" style="flex:1">
-                    <label>Commentaire</label>
+                    <label><?= __('label.commentaire') ?></label>
                     <textarea name="commentaire" rows="2" class="form-control" placeholder="Commentaire pour l'élève..."><?= htmlspecialchars($r['commentaire_prof'] ?? '') ?></textarea>
                 </div>
             </div>
@@ -142,7 +142,7 @@ if ($devoirId) {
     <!-- Liste des devoirs avec rendus -->
     <div class="data-table-container">
         <table class="data-table">
-            <thead><tr><th>Devoir</th><th><?= __('cahierdetextes.subject') ?></th><th><?= __('cahierdetextes.class') ?></th><th class="text-center">Échéance</th><th class="text-center">Rendus</th><th class="text-center">Corrigés</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Devoir</th><th><?= __('cahierdetextes.subject') ?></th><th><?= __('cahierdetextes.class') ?></th><th class="text-center">Échéance</th><th class="text-center">Rendus</th><th class="text-center">Corrigés</th><th><?= __('label.actions') ?></th></tr></thead>
             <tbody>
                 <?php foreach ($devoirsAvecRendus ?? [] as $d): ?>
                 <tr>

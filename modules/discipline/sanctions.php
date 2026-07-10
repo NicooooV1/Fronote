@@ -163,7 +163,7 @@ if (!empty($_GET['incident_id'])) {
         </div>
 
         <div class="form-group">
-            <label for="commentaire">Commentaire</label>
+            <label for="commentaire"><?= __('label.commentaire') ?></label>
             <textarea name="commentaire" id="commentaire" class="form-control" rows="2"></textarea>
         </div>
 
@@ -176,7 +176,7 @@ if (!empty($_GET['incident_id'])) {
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Créer la sanction</button>
-            <a href="sanctions.php" class="btn btn-secondary">Annuler</a>
+            <a href="sanctions.php" class="btn btn-secondary"><?= __('btn.cancel') ?></a>
         </div>
     </form>
 </div>
@@ -188,23 +188,23 @@ if (!empty($_GET['incident_id'])) {
         <div class="filter-group">
             <label for="type_sanction_f"><?= __('discipline.type') ?></label>
             <select name="type_sanction" id="type_sanction_f">
-                <option value="">Tous</option>
+                <option value=""><?= __('label.tous') ?></option>
                 <?php foreach ($typesSanction as $key => $label): ?>
                 <option value="<?= $key ?>" <?= $filtreType === $key ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
         <div class="filter-group">
-            <label for="classe_f">Classe</label>
+            <label for="classe_f"><?= __('label.classe') ?></label>
             <select name="classe" id="classe_f">
-                <option value="">Toutes</option>
+                <option value=""><?= __('label.toutes') ?></option>
                 <?php foreach ($classes as $c): ?>
                 <option value="<?= htmlspecialchars($c['nom']) ?>" <?= $filtreClasse === $c['nom'] ? 'selected' : '' ?>><?= htmlspecialchars($c['nom']) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
         <div class="filter-actions">
-            <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filtrer</button>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> <?= __('btn.filter') ?></button>
             <a href="sanctions.php" class="btn btn-secondary">Réinitialiser</a>
         </div>
     </form>
@@ -223,10 +223,10 @@ if (!empty($_GET['incident_id'])) {
             <tr>
                 <th><?= __('discipline.date') ?></th>
                 <th><?= __('discipline.student') ?></th>
-                <th>Classe</th>
+                <th><?= __('label.classe') ?></th>
                 <th><?= __('discipline.type') ?></th>
-                <th>Motif</th>
-                <th>Durée</th>
+                <th><?= __('label.motif') ?></th>
+                <th><?= __('label.duree') ?></th>
                 <th>Parent</th>
             </tr>
         </thead>

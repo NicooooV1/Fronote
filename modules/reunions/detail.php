@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && (isAdmin() |
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-calendar-alt"></i> <?= htmlspecialchars($reunion['titre']) ?></h1>
-        <a href="reunions.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="reunions.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <?php if (!empty($_SESSION['success_message'])): ?>
@@ -41,15 +41,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && (isAdmin() |
             <div class="card-header">Informations</div>
             <div class="card-body">
                 <div class="info-grid">
-                    <div class="info-item"><span class="info-label">Type</span><span class="info-value"><?= $types[$reunion['type']] ?? $reunion['type'] ?></span></div>
-                    <div class="info-item"><span class="info-label">Statut</span><span class="info-value"><?= ReunionService::statutBadge($reunion['statut']) ?></span></div>
+                    <div class="info-item"><span class="info-label"><?= __('label.type') ?></span><span class="info-value"><?= $types[$reunion['type']] ?? $reunion['type'] ?></span></div>
+                    <div class="info-item"><span class="info-label"><?= __('label.statut') ?></span><span class="info-value"><?= ReunionService::statutBadge($reunion['statut']) ?></span></div>
                     <div class="info-item"><span class="info-label">Date début</span><span class="info-value"><?= formatDateTime($reunion['date_debut']) ?></span></div>
                     <div class="info-item"><span class="info-label">Date fin</span><span class="info-value"><?= formatDateTime($reunion['date_fin']) ?></span></div>
                     <?php if ($reunion['lieu']): ?>
                     <div class="info-item"><span class="info-label"><?= __('reunions.location') ?></span><span class="info-value"><?= htmlspecialchars($reunion['lieu']) ?></span></div>
                     <?php endif; ?>
                     <?php if ($reunion['classe_nom']): ?>
-                    <div class="info-item"><span class="info-label">Classe</span><span class="info-value"><?= htmlspecialchars($reunion['classe_nom']) ?></span></div>
+                    <div class="info-item"><span class="info-label"><?= __('label.classe') ?></span><span class="info-value"><?= htmlspecialchars($reunion['classe_nom']) ?></span></div>
                     <?php endif; ?>
                 </div>
                 <?php if ($reunion['description']): ?>
@@ -66,10 +66,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && (isAdmin() |
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Professeur</th>
+                            <th><?= __('label.professeur') ?></th>
                             <th>Horaire</th>
-                            <th>Salle</th>
-                            <th>Statut</th>
+                            <th><?= __('label.salle') ?></th>
+                            <th><?= __('label.statut') ?></th>
                             <?php if (isAdmin() || isTeacher() || isVieScolaire()): ?>
                             <th>Réservé par</th>
                             <?php endif; ?>

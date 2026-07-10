@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-plus-circle"></i> Nouveau diplôme</h1>
-        <a href="diplomes.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="diplomes.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <div class="card"><div class="card-body">
@@ -69,11 +69,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                 <div class="form-group"><label><?= __('diplomes.mention') ?></label><select name="mention" class="form-control"><option value="">—</option><?php foreach ($mentions as $k => $v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?></select></div>
                 <div class="form-group"><label>Date d'obtention *</label><input type="date" name="date_obtention" class="form-control" required></div>
                 <div class="form-group"><label>Fichier (PDF)</label><input type="file" name="fichier" class="form-control" accept=".pdf,.jpg,.png"></div>
-                <div class="form-group full-width"><label>Description</label><textarea name="description" class="form-control" rows="3"></textarea></div>
+                <div class="form-group full-width"><label><?= __('label.description') ?></label><textarea name="description" class="form-control" rows="3"></textarea></div>
             </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Créer</button>
-                <a href="diplomes.php" class="btn btn-outline">Annuler</a>
+                <a href="diplomes.php" class="btn btn-outline"><?= __('btn.cancel') ?></a>
             </div>
         </form>
     </div></div>

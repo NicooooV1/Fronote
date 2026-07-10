@@ -102,11 +102,11 @@ include 'includes/header.php';
             <h3>Informations sur l'élève</h3>
             <div class="details-grid">
                 <div class="details-row">
-                    <span class="details-label">Nom</span>
+                    <span class="details-label"><?= __('label.nom') ?></span>
                     <span class="details-value"><?= htmlspecialchars($absence['nom']) ?></span>
                 </div>
                 <div class="details-row">
-                    <span class="details-label">Prénom</span>
+                    <span class="details-label"><?= __('label.prenom') ?></span>
                     <span class="details-value"><?= htmlspecialchars($absence['prenom']) ?></span>
                 </div>
                 <div class="details-row">
@@ -129,11 +129,11 @@ include 'includes/header.php';
                     <span class="details-value"><?= date('d/m/Y à H:i', strtotime($absence['date_fin'])) ?></span>
                 </div>
                 <div class="details-row">
-                    <span class="details-label">Durée</span>
+                    <span class="details-label"><?= __('label.duree') ?></span>
                     <span class="details-value"><?= $duree ?></span>
                 </div>
                 <div class="details-row">
-                    <span class="details-label">Type</span>
+                    <span class="details-label"><?= __('label.type') ?></span>
                     <span class="details-value">
                         <span class="badge badge-<?= htmlspecialchars($absence['type_absence']) ?>">
                             <?= AbsenceHelper::typeLabel($absence['type_absence']) ?>

@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $canEdit) {
     <div class="content-header">
         <h1><i class="fas fa-briefcase"></i> <?= htmlspecialchars($stage['entreprise_nom']) ?></h1>
         <a href="export_convention.php?id=<?= (int) $stage['id'] ?>" class="btn btn-outline"><i class="fas fa-file-pdf"></i> Convention</a>
-        <a href="stages.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="stages.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <?php if (!empty($_SESSION['success_message'])): ?><div class="alert alert-success"><?= $_SESSION['success_message'] ?></div><?php unset($_SESSION['success_message']); endif; ?>
@@ -64,27 +64,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $canEdit) {
 
     <?php if ($canEdit): ?>
     <div class="card">
-        <div class="card-header"><h2>Modifier</h2></div>
+        <div class="card-header"><h2><?= __('btn.edit') ?></h2></div>
         <div class="card-body">
             <form method="post">
                 <?= csrfField() ?>
                 <?php $profs = $stageService->getProfesseurs(); ?>
                 <div class="form-grid-3">
-                    <div class="form-group"><label>Type</label><select name="type" class="form-control"><?php foreach ($types as $k => $v): ?><option value="<?= $k ?>" <?= $stage['type'] === $k ? 'selected' : '' ?>><?= $v ?></option><?php endforeach; ?></select></div>
-                    <div class="form-group"><label>Statut</label><select name="statut" class="form-control"><?php foreach ($statuts as $k => $v): ?><option value="<?= $k ?>" <?= $stage['statut'] === $k ? 'selected' : '' ?>><?= $v ?></option><?php endforeach; ?></select></div>
+                    <div class="form-group"><label><?= __('label.type') ?></label><select name="type" class="form-control"><?php foreach ($types as $k => $v): ?><option value="<?= $k ?>" <?= $stage['type'] === $k ? 'selected' : '' ?>><?= $v ?></option><?php endforeach; ?></select></div>
+                    <div class="form-group"><label><?= __('label.statut') ?></label><select name="statut" class="form-control"><?php foreach ($statuts as $k => $v): ?><option value="<?= $k ?>" <?= $stage['statut'] === $k ? 'selected' : '' ?>><?= $v ?></option><?php endforeach; ?></select></div>
                     <div class="form-group"><label>Entreprise *</label><input type="text" name="entreprise_nom" class="form-control" value="<?= htmlspecialchars($stage['entreprise_nom']) ?>" required></div>
-                    <div class="form-group"><label>Adresse</label><input type="text" name="entreprise_adresse" class="form-control" value="<?= htmlspecialchars($stage['entreprise_adresse'] ?? '') ?>"></div>
+                    <div class="form-group"><label><?= __('label.adresse') ?></label><input type="text" name="entreprise_adresse" class="form-control" value="<?= htmlspecialchars($stage['entreprise_adresse'] ?? '') ?>"></div>
                     <div class="form-group"><label>Tél.</label><input type="text" name="entreprise_tel" class="form-control" value="<?= htmlspecialchars($stage['entreprise_tel'] ?? '') ?>"></div>
                     <div class="form-group"><label><?= __('stages.tutor') ?></label><input type="text" name="tuteur_nom" class="form-control" value="<?= htmlspecialchars($stage['tuteur_nom'] ?? '') ?>"></div>
                     <div class="form-group"><label>Email tuteur</label><input type="email" name="tuteur_email" class="form-control" value="<?= htmlspecialchars($stage['tuteur_email'] ?? '') ?>"></div>
                     <div class="form-group"><label>Référent</label><select name="prof_referent_id" class="form-control"><option value="">—</option><?php foreach ($profs as $p): ?><option value="<?= $p['id'] ?>" <?= $stage['prof_referent_id'] == $p['id'] ? 'selected' : '' ?>><?= htmlspecialchars($p['prenom'] . ' ' . $p['nom']) ?></option><?php endforeach; ?></select></div>
-                    <div class="form-group"><label>Début</label><input type="date" name="date_debut" class="form-control" value="<?= $stage['date_debut'] ?>"></div>
-                    <div class="form-group"><label>Fin</label><input type="date" name="date_fin" class="form-control" value="<?= $stage['date_fin'] ?>"></div>
-                    <div class="form-group full-width"><label>Description</label><textarea name="description" class="form-control" rows="2"><?= htmlspecialchars($stage['description'] ?? '') ?></textarea></div>
+                    <div class="form-group"><label><?= __('label.debut') ?></label><input type="date" name="date_debut" class="form-control" value="<?= $stage['date_debut'] ?>"></div>
+                    <div class="form-group"><label><?= __('label.fin') ?></label><input type="date" name="date_fin" class="form-control" value="<?= $stage['date_fin'] ?>"></div>
+                    <div class="form-group full-width"><label><?= __('label.description') ?></label><textarea name="description" class="form-control" rows="2"><?= htmlspecialchars($stage['description'] ?? '') ?></textarea></div>
                     <div class="form-group full-width"><label>Évaluation entreprise</label><textarea name="evaluation_entreprise" class="form-control" rows="2"><?= htmlspecialchars($stage['evaluation_entreprise'] ?? '') ?></textarea></div>
                     <div class="form-group full-width"><label>Évaluation prof</label><textarea name="evaluation_prof" class="form-control" rows="2"><?= htmlspecialchars($stage['evaluation_prof'] ?? '') ?></textarea></div>
                 </div>
-                <div class="form-actions"><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer</button></div>
+                <div class="form-actions"><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> <?= __('btn.save') ?></button></div>
             </form>
         </div>
     </div>

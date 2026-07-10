@@ -29,7 +29,7 @@ $statsClasses = $service->getStatsParClasse();
         <thead>
             <tr>
                 <th><?= __('vie_scolaire.class') ?></th>
-                <th class="text-center">Élèves</th>
+                <th class="text-center"><?= __('label.eleves') ?></th>
                 <th class="text-center"><?= __('vie_scolaire.absences') ?></th>
                 <th class="text-center">Retards</th>
                 <th class="text-center">Abs./élève</th>

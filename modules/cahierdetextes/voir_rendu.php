@@ -24,7 +24,7 @@ if (!$rendu || !$devoir) {
 
 <div class="page-header">
     <h1><i class="fas fa-file-alt"></i> Mon rendu</h1>
-    <a href="mes_devoirs.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+    <a href="mes_devoirs.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
 </div>
 
 <div class="devoir-detail-card">
@@ -33,7 +33,7 @@ if (!$rendu || !$devoir) {
         <span><i class="fas fa-book"></i> <?= htmlspecialchars($devoir['nom_matiere']) ?></span>
         <span><i class="fas fa-clock"></i> <?= formatDate($devoir['date_rendu']) ?></span>
         <?= RenduService::statutBadge($rendu['statut']) ?>
-        <?php if ($rendu['en_retard']): ?><span class="badge badge-danger">En retard</span><?php endif; ?>
+        <?php if ($rendu['en_retard']): ?><span class="badge badge-danger"><?= __('status.en_retard') ?></span><?php endif; ?>
     </div>
 </div>
 

@@ -26,7 +26,7 @@ $types = VieAssociativeService::typesLabels();
                 <?php endforeach; ?>
             </select>
         </div>
-        <div class="col-auto"><button class="btn btn-sm btn-outline-primary">Filtrer</button></div>
+        <div class="col-auto"><button class="btn btn-sm btn-outline-primary"><?= __('btn.filter') ?></button></div>
     </form>
 
     <div class="asso-grid">

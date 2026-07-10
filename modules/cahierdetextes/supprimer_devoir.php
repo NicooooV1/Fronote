@@ -110,7 +110,7 @@ include 'includes/header.php';
                         <form method="post" style="margin-top: 20px;">
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
                             <div class="form-actions">
-                                <a href="cahierdetextes.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Annuler</a>
+                                <a href="cahierdetextes.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> <?= __('btn.cancel') ?></a>
                                 <button type="submit" class="btn btn-danger"><i class="fas fa-trash"></i> Confirmer la suppression</button>
                             </div>
                         </form>

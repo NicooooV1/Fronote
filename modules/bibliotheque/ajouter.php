@@ -93,13 +93,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                         <input type="text" name="emplacement" class="form-control" placeholder="ex: Rayon A3" value="<?= htmlspecialchars($livre['emplacement'] ?? '') ?>">
                     </div>
                     <div class="form-group full-width">
-                        <label>Description</label>
+                        <label><?= __('label.description') ?></label>
                         <textarea name="description" class="form-control" rows="3"><?= htmlspecialchars($livre['description'] ?? '') ?></textarea>
                     </div>
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> <?= $livre ? 'Modifier' : 'Ajouter' ?></button>
-                    <a href="catalogue.php" class="btn btn-outline">Annuler</a>
+                    <a href="catalogue.php" class="btn btn-outline"><?= __('btn.cancel') ?></a>
                 </div>
             </form>
         </div>

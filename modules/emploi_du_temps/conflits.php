@@ -25,7 +25,7 @@ require_once __DIR__ . '/includes/header.php';
 <div class="page-header">
     <h1><i class="fas fa-exclamation-triangle"></i> Conflits d'emploi du temps</h1>
     <div class="header-actions">
-        <a href="emploi_du_temps.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="emploi_du_temps.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 </div>
 
@@ -44,11 +44,11 @@ require_once __DIR__ . '/includes/header.php';
         <table class="ds-table">
             <thead>
                 <tr>
-                    <th>Type</th>
+                    <th><?= __('label.type') ?></th>
                     <th><?= __('emploi_du_temps.day') ?></th>
-                    <th>Créneau</th>
-                    <th>Description</th>
-                    <th>Actions</th>
+                    <th><?= __('label.creneau') ?></th>
+                    <th><?= __('label.description') ?></th>
+                    <th><?= __('label.actions') ?></th>
                 </tr>
             </thead>
             <tbody>

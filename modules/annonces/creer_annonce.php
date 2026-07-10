@@ -286,7 +286,7 @@ try {
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Publier l'annonce</button>
-            <a href="annonces.php" class="btn btn-secondary">Annuler</a>
+            <a href="annonces.php" class="btn btn-secondary"><?= __('btn.cancel') ?></a>
         </div>
     </form>
 </div>

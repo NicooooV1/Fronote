@@ -30,7 +30,7 @@ $types = RessourceService::types();
                 <h3><?= htmlspecialchars($r['titre']) ?></h3>
                 <div class="res-meta">
                     <span class="badge badge-primary"><?= $types[$r['type']] ?? $r['type'] ?></span>
-                    <?php if (!$r['publie']): ?><span class="badge badge-secondary">Brouillon</span><?php endif; ?>
+                    <?php if (!$r['publie']): ?><span class="badge badge-secondary"><?= __('status.brouillon') ?></span><?php endif; ?>
                 </div>
             </div>
         </a>

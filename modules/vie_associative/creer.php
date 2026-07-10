@@ -48,8 +48,8 @@ $a = $asso ?? ['nom' => '', 'type' => 'association', 'description' => '', 'presi
             <div class="col-md-4"><label class="form-label">Budget annuel (€)</label><input name="budget_annuel" type="number" step="0.01" class="form-control" value="<?= htmlspecialchars($a['budget_annuel'] ?? '') ?>"></div>
         </div>
         <div class="card-footer text-end">
-            <a href="associations.php" class="btn btn-secondary me-2">Annuler</a>
-            <button class="btn btn-primary"><i class="fas fa-save me-1"></i><?= $editId ? 'Enregistrer' : 'Créer' ?></button>
+            <a href="associations.php" class="btn btn-secondary me-2"><?= __('btn.cancel') ?></a>
+            <button class="btn btn-primary"><i class="fas fa-save me-1"></i><?= $editId ? __('btn.save') : 'Créer' ?></button>
         </div>
     </form>
 </div>

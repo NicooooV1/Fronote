@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-file-alt"></i> Inscription #<?= $id ?></h1>
-        <a href="inscriptions.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="inscriptions.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <!-- Statut -->
@@ -61,8 +61,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
         <div class="card-header"><h2><i class="fas fa-child"></i> Informations élève</h2></div>
         <div class="card-body">
             <div class="detail-grid">
-                <div class="detail-item"><label>Nom</label><span><?= htmlspecialchars($insc['nom_eleve']) ?></span></div>
-                <div class="detail-item"><label>Prénom</label><span><?= htmlspecialchars($insc['prenom_eleve']) ?></span></div>
+                <div class="detail-item"><label><?= __('label.nom') ?></label><span><?= htmlspecialchars($insc['nom_eleve']) ?></span></div>
+                <div class="detail-item"><label><?= __('label.prenom') ?></label><span><?= htmlspecialchars($insc['prenom_eleve']) ?></span></div>
                 <div class="detail-item"><label>Date de naissance</label><span><?= formatDate($insc['date_naissance']) ?></span></div>
                 <div class="detail-item"><label>Sexe</label><span><?= $insc['sexe'] === 'M' ? 'Masculin' : 'Féminin' ?></span></div>
                 <div class="detail-item"><label>Classe demandée</label><span><?= htmlspecialchars($insc['classe_nom'] ?? 'Non précisée') ?></span></div>
@@ -76,9 +76,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
         <div class="card-header"><h2><i class="fas fa-phone"></i> Contact</h2></div>
         <div class="card-body">
             <div class="detail-grid">
-                <div class="detail-item full-width"><label>Adresse</label><span><?= htmlspecialchars($insc['adresse']) ?></span></div>
-                <div class="detail-item"><label>Téléphone</label><span><?= htmlspecialchars($insc['telephone']) ?></span></div>
-                <div class="detail-item"><label>Email</label><span><?= htmlspecialchars($insc['email_contact']) ?></span></div>
+                <div class="detail-item full-width"><label><?= __('label.adresse') ?></label><span><?= htmlspecialchars($insc['adresse']) ?></span></div>
+                <div class="detail-item"><label><?= __('label.telephone') ?></label><span><?= htmlspecialchars($insc['telephone']) ?></span></div>
+                <div class="detail-item"><label><?= __('label.email') ?></label><span><?= htmlspecialchars($insc['email_contact']) ?></span></div>
             </div>
         </div>
     </div>
@@ -102,9 +102,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
                         <?php if ($doc['valide'] === null): ?>
                             <span class="badge badge-secondary"><?= __('inscriptions.pending') ?></span>
                         <?php elseif ($doc['valide']): ?>
-                            <span class="badge badge-success">Validé</span>
+                            <span class="badge badge-success"><?= __('status.valide') ?></span>
                         <?php else: ?>
-                            <span class="badge badge-danger">Refusé</span>
+                            <span class="badge badge-danger"><?= __('status.refuse') ?></span>
                         <?php endif; ?>
                     </div>
                     <div class="doc-actions">

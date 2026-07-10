@@ -106,7 +106,7 @@ include 'includes/header.php';
             <thead>
                 <tr>
                     <th><?= __('emploi_du_temps.class') ?></th><th><?= __('emploi_du_temps.subject') ?></th><th><?= __('emploi_du_temps.teacher') ?></th>
-                    <th>Créneaux</th><th>Type</th><th>Groupe</th><th>Salle</th><th></th>
+                    <th>Créneaux</th><th><?= __('label.type') ?></th><th>Groupe</th><th><?= __('label.salle') ?></th><th></th>
                 </tr>
             </thead>
             <tbody>
@@ -183,7 +183,7 @@ include 'includes/header.php';
 
             <div class="form-row">
                 <div class="form-group">
-                    <label for="type_cours">Type</label>
+                    <label for="type_cours"><?= __('label.type') ?></label>
                     <select name="type_cours" id="type_cours" class="form-control">
                         <?php foreach ($typesCours as $val => $label): ?>
                             <option value="<?= $val ?>"><?= $label ?></option>
@@ -208,7 +208,7 @@ include 'includes/header.php';
             </div>
 
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Ajouter</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> <?= __('btn.add') ?></button>
                 <a href="emploi_du_temps.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Retour à la grille</a>
             </div>
         </form>

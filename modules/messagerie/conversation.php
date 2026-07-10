@@ -312,7 +312,7 @@ include 'templates/header.php';
         <?php if (canSetMessageImportance($user['type'])): ?>
         <div class="reply-options">
             <select name="importance" class="importance-select">
-                <option value="normal">Normal</option>
+                <option value="normal"><?= __('status.normal') ?></option>
                 <option value="important">Important</option>
                 <option value="urgent">Urgent</option>
             </select>
@@ -360,7 +360,7 @@ include 'templates/header.php';
                     <option value="">Sélectionner un type</option>
                     <option value="eleve">Élève</option>
                     <option value="parent">Parent</option>
-                    <option value="professeur">Professeur</option>
+                    <option value="professeur"><?= __('label.professeur') ?></option>
                     <option value="vie_scolaire">Vie scolaire</option>
                     <option value="administrateur">Administrateur</option>
                 </select>
@@ -373,7 +373,7 @@ include 'templates/header.php';
                 </select>
             </div>
             
-            <button type="submit" class="btn primary">Ajouter</button>
+            <button type="submit" class="btn primary"><?= __('btn.add') ?></button>
         </form>
     </div>
 </div>

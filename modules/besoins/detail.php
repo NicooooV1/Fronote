@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $canEdit) {
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-hands-helping"></i> <?= htmlspecialchars($plan['eleve_nom']) ?></h1>
-        <a href="besoins.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="besoins.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <?php if (!empty($_SESSION['success_message'])): ?><div class="alert alert-success"><?= $_SESSION['success_message'] ?></div><?php unset($_SESSION['success_message']); endif; ?>

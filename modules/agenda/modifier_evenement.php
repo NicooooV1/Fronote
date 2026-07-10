@@ -180,7 +180,7 @@ include 'includes/header.php';
 
                 <!-- Dates / Heures -->
                 <div class="form-group">
-                    <label for="date_debut">Date de début <span aria-hidden="true">*</span></label>
+                    <label for="date_debut"><?= __('label.date_debut') ?> <span aria-hidden="true">*</span></label>
                     <input type="date" name="date_debut" id="date_debut" class="form-control"
                            value="<?= $date_debut->format('Y-m-d') ?>" required>
                 </div>
@@ -222,7 +222,7 @@ include 'includes/header.php';
 
                 <!-- Statut -->
                 <div class="form-group">
-                    <label for="statut">Statut</label>
+                    <label for="statut"><?= __('label.statut') ?></label>
                     <select name="statut" id="statut" class="form-control">
                         <?php foreach (EventRepository::VALID_STATUTS as $s): ?>
                             <option value="<?= htmlspecialchars($s) ?>"
@@ -242,7 +242,7 @@ include 'includes/header.php';
 
                 <!-- Matière -->
                 <div class="form-group">
-                    <label for="matieres">Matière</label>
+                    <label for="matieres"><?= __('label.matiere') ?></label>
                     <select name="matieres" id="matieres" class="form-control">
                         <option value="">-- Sélectionner --</option>
                         <?php foreach ($matieres as $mat): ?>
@@ -303,7 +303,7 @@ include 'includes/header.php';
 
                 <!-- Actions -->
                 <div class="form-actions form-full">
-                    <a href="details_evenement.php?id=<?= (int) $id ?>" class="btn btn-secondary">Annuler</a>
+                    <a href="details_evenement.php?id=<?= (int) $id ?>" class="btn btn-secondary"><?= __('btn.cancel') ?></a>
                     <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
                 </div>
             </div>

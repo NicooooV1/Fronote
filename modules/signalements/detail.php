@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-shield-alt"></i> Signalement #<?= $id ?></h1>
-        <a href="signalements.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="signalements.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <div class="detail-status">
@@ -52,11 +52,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
             <div class="card-header"><h2>Informations</h2></div>
             <div class="card-body">
                 <div class="detail-grid">
-                    <div class="detail-item"><label>Type</label><span><?= $types[$sig['type']] ?? $sig['type'] ?></span></div>
+                    <div class="detail-item"><label><?= __('label.type') ?></label><span><?= $types[$sig['type']] ?? $sig['type'] ?></span></div>
                     <div class="detail-item"><label>Urgence</label><span><?= $sig['urgence'] ?></span></div>
                     <div class="detail-item"><label>Date signalement</label><span><?= formatDateTime($sig['date_signalement']) ?></span></div>
                     <div class="detail-item"><label>Date des faits</label><span><?= $sig['date_faits'] ? formatDate($sig['date_faits']) : '—' ?></span></div>
-                    <div class="detail-item"><label>Lieu</label><span><?= htmlspecialchars($sig['lieu'] ?: '—') ?></span></div>
+                    <div class="detail-item"><label><?= __('label.lieu') ?></label><span><?= htmlspecialchars($sig['lieu'] ?: '—') ?></span></div>
                     <div class="detail-item"><label>Auteur</label><span><?= $sig['anonyme'] ? '<i class="fas fa-user-secret"></i> Anonyme' : ($sig['auteur_type'] . ' #' . $sig['auteur_id']) ?></span></div>
                 </div>
             </div>
@@ -94,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                     <div class="form-group">
                         <textarea name="note" class="form-control" rows="3" placeholder="Ajouter une note de suivi..." required></textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Ajouter</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> <?= __('btn.add') ?></button>
                 </form>
             </div>
         </div>

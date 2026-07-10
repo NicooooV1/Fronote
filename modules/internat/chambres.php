@@ -61,7 +61,7 @@ $stats = $internatService->getStats();
                     <div class="form-group"><label>Bâtiment</label><input type="text" name="batiment" class="form-control"></div>
                     <div class="form-group"><label><?= __('internat.floor') ?></label><input type="number" name="etage" class="form-control"></div>
                     <div class="form-group"><label><?= __('internat.capacity') ?></label><input type="number" name="capacite" value="2" class="form-control"></div>
-                    <div class="form-group"><label>Type</label>
+                    <div class="form-group"><label><?= __('label.type') ?></label>
                         <select name="type" class="form-select">
                             <option value="simple">Simple</option><option value="double" selected>Double</option>
                             <option value="triple">Triple</option><option value="dortoir">Dortoir</option>

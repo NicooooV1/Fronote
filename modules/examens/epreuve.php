@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
             <?php if (empty($convocations)): ?><p class="text-muted">Aucun candidat.</p>
             <?php else: ?>
             <table class="table">
-                <thead><tr><th>Place</th><th>Élève</th><th>Classe</th><th>Présent</th><th>Note</th><th><?= __('examens.convocation') ?></th></tr></thead>
+                <thead><tr><th>Place</th><th>Élève</th><th><?= __('label.classe') ?></th><th><?= __('status.present') ?></th><th><?= __('label.note') ?></th><th><?= __('examens.convocation') ?></th></tr></thead>
                 <tbody>
                     <?php foreach ($convocations as $c): ?>
                     <tr>
@@ -117,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
             <?php endif; ?>
 
             <?php if ($isGestionnaire && !empty($convocations)): ?>
-                <button type="submit" class="btn btn-primary" style="margin-top:.5rem;"><i class="fas fa-save"></i> Enregistrer</button>
+                <button type="submit" class="btn btn-primary" style="margin-top:.5rem;"><i class="fas fa-save"></i> <?= __('btn.save') ?></button>
             </form>
             <?php endif; ?>
         </div>

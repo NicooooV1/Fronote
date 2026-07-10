@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="comp-selectors">
         <form method="get" class="comp-selector-form">
             <div class="form-group">
-                <label>Classe</label>
+                <label><?= __('label.classe') ?></label>
                 <select name="classe_id" data-fr-change="submitOwn" class="form-select">
                     <?php foreach ($classes as $c): ?>
                         <option value="<?= $c['id'] ?>" <?= $c['id'] == $classeId ? 'selected' : '' ?>><?= htmlspecialchars($c['niveau'].' – '.$c['nom']) ?></option>
@@ -76,9 +76,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </select>
             </div>
             <div class="form-group">
-                <label>Période</label>
+                <label><?= __('label.periode') ?></label>
                 <select name="periode_id" data-fr-change="submitOwn" class="form-select">
-                    <option value="0">Toutes</option>
+                    <option value="0"><?= __('label.toutes') ?></option>
                     <?php foreach ($periodes as $p): ?>
                         <option value="<?= $p['id'] ?>" <?= $p['id'] == $periodeId ? 'selected' : '' ?>><?= htmlspecialchars($p['nom']) ?></option>
                     <?php endforeach; ?>
@@ -121,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
-                        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Enregistrer</button>
+                        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> <?= __('btn.save') ?></button>
                     </form>
                 </div>
             </div>

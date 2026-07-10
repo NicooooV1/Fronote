@@ -68,7 +68,7 @@ $periodes = $reportService->getPeriodes();
 <div class="main-content">
     <div class="page-header">
         <h1><i class="fas fa-file-csv"></i> Exporter des données</h1>
-        <a href="reporting.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="reporting.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <div class="export-form-wrap">
@@ -90,7 +90,7 @@ $periodes = $reportService->getPeriodes();
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Classe</label>
+                        <label class="form-label"><?= __('label.classe') ?></label>
                         <select name="classe_id" class="form-select" required>
                             <option value="">-- Choisir --</option>
                             <?php foreach ($classes as $c): ?>

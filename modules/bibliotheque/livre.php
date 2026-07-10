@@ -53,7 +53,7 @@ $cats = BibliothequeService::categories();
         <div class="card">
             <div class="card-body">
                 <div class="detail-grid">
-                    <div class="detail-item"><label>Titre</label><span><?= htmlspecialchars($livre['titre']) ?></span></div>
+                    <div class="detail-item"><label><?= __('label.titre') ?></label><span><?= htmlspecialchars($livre['titre']) ?></span></div>
                     <div class="detail-item"><label><?= __('bibliotheque.author') ?></label><span><?= htmlspecialchars($livre['auteur'] ?: '—') ?></span></div>
                     <div class="detail-item"><label><?= __('bibliotheque.isbn') ?></label><span><?= htmlspecialchars($livre['isbn'] ?: '—') ?></span></div>
                     <div class="detail-item"><label><?= __('bibliotheque.publisher') ?></label><span><?= htmlspecialchars($livre['editeur'] ?: '—') ?></span></div>
@@ -63,7 +63,7 @@ $cats = BibliothequeService::categories();
                     <div class="detail-item"><label>Exemplaires</label><span><?= $livre['exemplaires_disponibles'] ?> / <?= $livre['exemplaires_total'] ?></span></div>
                 </div>
                 <?php if ($livre['description']): ?>
-                <div class="livre-description"><h3>Description</h3><p><?= nl2br(htmlspecialchars($livre['description'])) ?></p></div>
+                <div class="livre-description"><h3><?= __('label.description') ?></h3><p><?= nl2br(htmlspecialchars($livre['description'])) ?></p></div>
                 <?php endif; ?>
 
                 <div class="livre-detail-actions">
@@ -74,7 +74,7 @@ $cats = BibliothequeService::categories();
                     </form>
                     <?php endif; ?>
                     <?php if ($isGestionnaire): ?>
-                    <a href="ajouter.php?edit=<?= $id ?>" class="btn btn-outline"><i class="fas fa-edit"></i> Modifier</a>
+                    <a href="ajouter.php?edit=<?= $id ?>" class="btn btn-outline"><i class="fas fa-edit"></i> <?= __('btn.edit') ?></a>
                     <form method="post" style="display:inline;">
                         <?= csrfField() ?>
                         <button name="action" value="supprimer" class="btn btn-danger" data-fr-confirm="Supprimer ?"><i class="fas fa-trash"></i></button>

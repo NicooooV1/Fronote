@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($isAdmin || $isRef)) {
 $types = VieAssociativeService::typesLabels();
 ?>
 <div class="container mt-4">
-    <a href="associations.php" class="btn btn-sm btn-outline-secondary mb-3"><i class="fas fa-arrow-left me-1"></i>Retour</a>
+    <a href="associations.php" class="btn btn-sm btn-outline-secondary mb-3"><i class="fas fa-arrow-left me-1"></i><?= __('btn.back') ?></a>
 
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center" style="border-top:4px solid <?= VieAssociativeService::typeColor($asso['type']) ?>">
@@ -109,9 +109,9 @@ $types = VieAssociativeService::typesLabels();
                     <form method="post" class="row g-1">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
                         <input type="hidden" name="action" value="activite">
-                        <div class="col-md-5"><input name="act_titre" class="form-control form-control-sm" placeholder="Titre" required></div>
+                        <div class="col-md-5"><input name="act_titre" class="form-control form-control-sm" placeholder="<?= __('label.titre') ?>" required></div>
                         <div class="col-md-3"><input name="act_date" type="date" class="form-control form-control-sm" required></div>
-                        <div class="col-md-2"><input name="act_lieu" class="form-control form-control-sm" placeholder="Lieu"></div>
+                        <div class="col-md-2"><input name="act_lieu" class="form-control form-control-sm" placeholder="<?= __('label.lieu') ?>"></div>
                         <div class="col-md-2"><button class="btn btn-sm btn-primary w-100">+</button></div>
                     </form>
                 </div>
@@ -132,7 +132,7 @@ $types = VieAssociativeService::typesLabels();
             <?php else: ?>
                 <div class="table-responsive">
                     <table class="table table-sm table-hover align-middle">
-                        <thead class="table-light"><tr><th>Date</th><th>Type</th><th>Description</th><th class="text-end">Montant</th></tr></thead>
+                        <thead class="table-light"><tr><th><?= __('label.date') ?></th><th><?= __('label.type') ?></th><th><?= __('label.description') ?></th><th class="text-end"><?= __('label.montant') ?></th></tr></thead>
                         <tbody>
                         <?php foreach ($tresorerie as $op): ?>
                             <tr>
@@ -155,10 +155,10 @@ $types = VieAssociativeService::typesLabels();
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
                 <input type="hidden" name="action" value="operation">
                 <div class="col-md-2"><select name="op_type" class="form-select form-select-sm"><option value="recette">Recette</option><option value="depense">Dépense</option></select></div>
-                <div class="col-md-2"><input name="op_montant" type="number" step="0.01" class="form-control form-control-sm" placeholder="Montant" required></div>
-                <div class="col-md-4"><input name="op_desc" class="form-control form-control-sm" placeholder="Description"></div>
+                <div class="col-md-2"><input name="op_montant" type="number" step="0.01" class="form-control form-control-sm" placeholder="<?= __('label.montant') ?>" required></div>
+                <div class="col-md-4"><input name="op_desc" class="form-control form-control-sm" placeholder="<?= __('label.description') ?>"></div>
                 <div class="col-md-2"><input name="op_date" type="date" class="form-control form-control-sm" value="<?= date('Y-m-d') ?>"></div>
-                <div class="col-md-2"><button class="btn btn-sm btn-primary w-100">Ajouter</button></div>
+                <div class="col-md-2"><button class="btn btn-sm btn-primary w-100"><?= __('btn.add') ?></button></div>
             </form>
             <?php endif; ?>
         </div>

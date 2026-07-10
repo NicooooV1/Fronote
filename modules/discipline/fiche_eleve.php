@@ -61,7 +61,7 @@ $gravites      = DisciplineService::getGravites();
 <div class="fiche-header card">
     <div class="fiche-info-grid">
         <div class="fiche-info-item">
-            <span class="fiche-label">Classe</span>
+            <span class="fiche-label"><?= __('label.classe') ?></span>
             <span class="fiche-value"><?= htmlspecialchars($eleve['classe'] ?? '-') ?></span>
         </div>
         <div class="fiche-info-item">
@@ -165,8 +165,8 @@ $gravites      = DisciplineService::getGravites();
                     <tr>
                         <th><?= __('discipline.date') ?></th>
                         <th>Horaire</th>
-                        <th>Lieu</th>
-                        <th>Présent</th>
+                        <th><?= __('label.lieu') ?></th>
+                        <th><?= __('status.present') ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -179,9 +179,9 @@ $gravites      = DisciplineService::getGravites();
                             <?php if ($r['present'] === null): ?>
                                 <span class="badge badge-secondary">Non renseigné</span>
                             <?php elseif ($r['present']): ?>
-                                <span class="badge badge-success">Présent</span>
+                                <span class="badge badge-success"><?= __('status.present') ?></span>
                             <?php else: ?>
-                                <span class="badge badge-danger">Absent</span>
+                                <span class="badge badge-danger"><?= __('status.absent') ?></span>
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -197,8 +197,8 @@ $gravites      = DisciplineService::getGravites();
     <?php if (isAdmin() || isVieScolaire()): ?>
     <a href="sanctions.php?new=1" class="btn btn-primary"><i class="fas fa-gavel"></i> Nouvelle sanction</a>
     <?php endif; ?>
-    <a href="signaler.php" class="btn btn-danger"><i class="fas fa-exclamation-triangle"></i> Signaler un incident</a>
-    <a href="incidents.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Retour</a>
+    <a href="signaler.php" class="btn btn-danger"><i class="fas fa-exclamation-triangle"></i> <?= __('discipline.add') ?></a>
+    <a href="incidents.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
 </div>
 
 <script nonce="<?= csp_nonce() ?>">

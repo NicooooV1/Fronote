@@ -96,15 +96,15 @@ include 'includes/header.php';
             </select>
         </div>
         <div class="filter-item">
-            <label for="traite" class="filter-label">Statut</label>
+            <label for="traite" class="filter-label"><?= __('label.statut') ?></label>
             <select id="traite" name="traite">
-                <option value="">Tous</option>
+                <option value=""><?= __('label.tous') ?></option>
                 <option value="oui" <?= $traite === 'oui' ? 'selected' : '' ?>>Traités</option>
                 <option value="non" <?= $traite === 'non' ? 'selected' : '' ?>>Non traités</option>
             </select>
         </div>
         <div class="filter-buttons">
-            <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filtrer</button>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> <?= __('btn.filter') ?></button>
             <a href="justificatifs.php" class="btn btn-secondary"><i class="fas fa-redo"></i> Réinitialiser</a>
         </div>
     </form>
@@ -129,10 +129,10 @@ include 'includes/header.php';
                         <div class="list-cell"><?= __('absences.eleve') ?></div>
                         <div class="list-cell"><?= __('absences.classe') ?></div>
                         <div class="list-cell">Date de dépôt</div>
-                        <div class="list-cell">Période</div>
+                        <div class="list-cell"><?= __('label.periode') ?></div>
                         <div class="list-cell"><?= __('absences.motif') ?></div>
-                        <div class="list-cell">Statut</div>
-                        <div class="list-actions">Actions</div>
+                        <div class="list-cell"><?= __('label.statut') ?></div>
+                        <div class="list-actions"><?= __('label.actions') ?></div>
                     </div>
                 </div>
 

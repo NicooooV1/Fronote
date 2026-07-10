@@ -46,7 +46,7 @@ if ($isGestionnaire) {
 
     <?php if ($isGestionnaire): ?>
     <div class="filter-bar">
-        <a href="emprunts.php?statut=en_cours" class="filter-btn <?= ($filtreStatut ?? '') === 'en_cours' ? 'active' : '' ?>">En cours</a>
+        <a href="emprunts.php?statut=en_cours" class="filter-btn <?= ($filtreStatut ?? '') === 'en_cours' ? 'active' : '' ?>"><?= __('status.en_cours') ?></a>
         <a href="emprunts.php?retard=1" class="filter-btn <?= isset($_GET['retard']) ? 'active' : '' ?>"><?= __('bibliotheque.overdue') ?></a>
         <a href="emprunts.php?statut=rendu" class="filter-btn <?= ($filtreStatut ?? '') === 'rendu' ? 'active' : '' ?>">Retournés</a>
     </div>

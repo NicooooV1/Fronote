@@ -108,7 +108,7 @@ $allRoles = [
             </div>
             <div class="form-row">
                 <div class="form-group col-md-4">
-                    <label for="type">Type</label>
+                    <label for="type"><?= __('label.type') ?></label>
                     <select name="type" id="type" class="form-control">
                         <?php foreach ($types as $key => $label): ?>
                         <option value="<?= $key ?>" <?= $annonce['type'] === $key ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
@@ -167,8 +167,8 @@ $allRoles = [
         </div>
 
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer</button>
-            <a href="detail_annonce.php?id=<?= $id ?>" class="btn btn-secondary">Annuler</a>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> <?= __('btn.save') ?></button>
+            <a href="detail_annonce.php?id=<?= $id ?>" class="btn btn-secondary"><?= __('btn.cancel') ?></a>
         </div>
     </form>
 </div>

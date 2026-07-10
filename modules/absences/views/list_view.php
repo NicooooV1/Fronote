@@ -48,11 +48,11 @@ $paginated = AbsenceHelper::paginate($absences, $page, 20);
                     <div class="list-cell"><?= __('absences.eleve') ?></div>
                     <div class="list-cell"><?= __('absences.classe') ?></div>
                 <?php endif; ?>
-                <div class="list-cell">Date</div>
-                <div class="list-cell">Durée</div>
-                <div class="list-cell">Type</div>
-                <div class="list-cell">Statut</div>
-                <div class="list-actions">Actions</div>
+                <div class="list-cell"><?= __('label.date') ?></div>
+                <div class="list-cell"><?= __('label.duree') ?></div>
+                <div class="list-cell"><?= __('label.type') ?></div>
+                <div class="list-cell"><?= __('label.statut') ?></div>
+                <div class="list-actions"><?= __('label.actions') ?></div>
             </div>
         </div>
 

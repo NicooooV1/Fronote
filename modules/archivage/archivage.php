@@ -81,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                     <button type="submit" name="action" value="deverrouiller" class="btn btn-sm btn-outline" title="Déverrouiller"><i class="fas fa-unlock"></i></button>
                     <?php else: ?>
                     <button type="submit" name="action" value="verrouiller" class="btn btn-sm btn-outline" title="Verrouiller"><i class="fas fa-lock"></i></button>
-                    <button type="submit" name="action" value="supprimer" class="btn btn-sm btn-danger" title="Supprimer" data-fr-confirm="Supprimer cette archive ?"><i class="fas fa-trash"></i></button>
+                    <button type="submit" name="action" value="supprimer" class="btn btn-sm btn-danger" title="<?= __('btn.delete') ?>" data-fr-confirm="Supprimer cette archive ?"><i class="fas fa-trash"></i></button>
                     <?php endif; ?>
                 </form>
             </div>
