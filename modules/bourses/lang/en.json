@@ -1,0 +1,17 @@
+{
+    "bourses.page_title": "Scholarships &amp; financial aid",
+    "bourses.campagne": "Campaign",
+    "bourses.simulateur_titre": "Eligibility simulator",
+    "bourses.revenu_fiscal": "Reference tax income (€)",
+    "bourses.nb_enfants": "Number of dependent children",
+    "bourses.simuler": "Simulate",
+    "bourses.eligible": "Eligible",
+    "bourses.non_eligible": "Not eligible",
+    "bourses.etat_campagne": "Campaign status",
+    "bourses.aucune_demande_campagne": "No application for this campaign.",
+    "bourses.demandes_a_instruire": "Applications to review",
+    "bourses.aucune_demande_instruction": "No application awaiting review.",
+    "bourses.eleve": "Student",
+    "bourses.echelon_simule": "Simulated level",
+    "bourses.soumise_le": "Submitted on"
+}

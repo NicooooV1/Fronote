@@ -1,0 +1,17 @@
+{
+    "intelligence.analyse_predictive_titre": "Analyse prédictive — risque de décrochage",
+    "intelligence.recalculer": "Recalculer",
+    "intelligence.risque_eleve": "Risque élevé",
+    "intelligence.risque_modere": "Risque modéré",
+    "intelligence.a_surveiller": "À surveiller",
+    "intelligence.aucun_risque": "Aucun risque",
+    "intelligence.eleves_a_risque": "Élèves à risque",
+    "intelligence.aucun_eleve_risque": "Aucun élève en risque élevé ou modéré. Lancez « Recalculer » si les scores n'ont pas encore été calculés.",
+    "intelligence.eleve": "Élève",
+    "intelligence.score": "Score",
+    "intelligence.niveau": "Niveau",
+    "intelligence.alertes_actives": "Alertes actives",
+    "intelligence.aucune_alerte": "Aucune alerte active.",
+    "intelligence.action_prise": "Action prise…",
+    "intelligence.traiter": "Traiter"
+}

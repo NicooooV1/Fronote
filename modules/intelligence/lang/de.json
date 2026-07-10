@@ -1,0 +1,17 @@
+{
+    "intelligence.analyse_predictive_titre": "Prädiktive Analyse — Abbruchrisiko",
+    "intelligence.recalculer": "Neu berechnen",
+    "intelligence.risque_eleve": "Hohes Risiko",
+    "intelligence.risque_modere": "Mittleres Risiko",
+    "intelligence.a_surveiller": "Zu beobachten",
+    "intelligence.aucun_risque": "Kein Risiko",
+    "intelligence.eleves_a_risque": "Gefährdete Schüler",
+    "intelligence.aucun_eleve_risque": "Kein Schüler mit hohem oder mittlerem Risiko. Klicken Sie auf „Neu berechnen“, falls die Werte noch nicht berechnet wurden.",
+    "intelligence.eleve": "Schüler",
+    "intelligence.score": "Punktzahl",
+    "intelligence.niveau": "Stufe",
+    "intelligence.alertes_actives": "Aktive Warnungen",
+    "intelligence.aucune_alerte": "Keine aktive Warnung.",
+    "intelligence.action_prise": "Ergriffene Maßnahme…",
+    "intelligence.traiter": "Bearbeiten"
+}

@@ -1,0 +1,17 @@
+{
+    "intelligence.analyse_predictive_titre": "التحليل التنبؤي — خطر التسرب",
+    "intelligence.recalculer": "إعادة الحساب",
+    "intelligence.risque_eleve": "خطر مرتفع",
+    "intelligence.risque_modere": "خطر متوسط",
+    "intelligence.a_surveiller": "قيد المراقبة",
+    "intelligence.aucun_risque": "لا يوجد خطر",
+    "intelligence.eleves_a_risque": "التلاميذ المعرضون للخطر",
+    "intelligence.aucun_eleve_risque": "لا يوجد تلميذ معرض لخطر مرتفع أو متوسط. اضغط «إعادة الحساب» إذا لم يتم احتساب الدرجات بعد.",
+    "intelligence.eleve": "التلميذ",
+    "intelligence.score": "الدرجة",
+    "intelligence.niveau": "المستوى",
+    "intelligence.alertes_actives": "التنبيهات النشطة",
+    "intelligence.aucune_alerte": "لا يوجد تنبيه نشط.",
+    "intelligence.action_prise": "الإجراء المتخذ…",
+    "intelligence.traiter": "معالجة"
+}

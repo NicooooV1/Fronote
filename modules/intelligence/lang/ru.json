@@ -1,0 +1,17 @@
+{
+    "intelligence.analyse_predictive_titre": "Прогнозный анализ — риск отсева",
+    "intelligence.recalculer": "Пересчитать",
+    "intelligence.risque_eleve": "Высокий риск",
+    "intelligence.risque_modere": "Умеренный риск",
+    "intelligence.a_surveiller": "Под наблюдением",
+    "intelligence.aucun_risque": "Нет риска",
+    "intelligence.eleves_a_risque": "Ученики в зоне риска",
+    "intelligence.aucun_eleve_risque": "Нет учеников с высоким или умеренным риском. Нажмите «Пересчитать», если баллы ещё не рассчитаны.",
+    "intelligence.eleve": "Ученик",
+    "intelligence.score": "Балл",
+    "intelligence.niveau": "Уровень",
+    "intelligence.alertes_actives": "Активные оповещения",
+    "intelligence.aucune_alerte": "Нет активных оповещений.",
+    "intelligence.action_prise": "Принятая мера…",
+    "intelligence.traiter": "Обработать"
+}

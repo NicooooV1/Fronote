@@ -1,0 +1,17 @@
+{
+    "intelligence.analyse_predictive_titre": "Voorspellende analyse — uitvalrisico",
+    "intelligence.recalculer": "Herberekenen",
+    "intelligence.risque_eleve": "Hoog risico",
+    "intelligence.risque_modere": "Matig risico",
+    "intelligence.a_surveiller": "In de gaten houden",
+    "intelligence.aucun_risque": "Geen risico",
+    "intelligence.eleves_a_risque": "Leerlingen met risico",
+    "intelligence.aucun_eleve_risque": "Geen leerling met hoog of matig risico. Klik op “Herberekenen” als de scores nog niet zijn berekend.",
+    "intelligence.eleve": "Leerling",
+    "intelligence.score": "Score",
+    "intelligence.niveau": "Niveau",
+    "intelligence.alertes_actives": "Actieve waarschuwingen",
+    "intelligence.aucune_alerte": "Geen actieve waarschuwing.",
+    "intelligence.action_prise": "Genomen actie…",
+    "intelligence.traiter": "Behandelen"
+}

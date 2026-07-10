@@ -34,34 +34,34 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 ?>
 
 <div style="max-width:1000px;margin:24px auto;padding:0 16px">
-    <h1 style="font-size:1.5em;margin:0 0 20px"><i class="fas fa-poll-h"></i> Enquêtes &amp; satisfaction</h1>
+    <h1 style="font-size:1.5em;margin:0 0 20px"><i class="fas fa-poll-h"></i> <?= __('enquetes.titre_page') ?></h1>
 
-    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-inbox"></i> À répondre (<?= count($ouvertes) ?>)</h2>
+    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-inbox"></i> <?= __('enquetes.a_repondre') ?> (<?= count($ouvertes) ?>)</h2>
     <?php if (empty($ouvertes)): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px">Aucune enquête ouverte ne vous est destinée.</p>
+    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('enquetes.aucune_ouverte') ?></p>
     <?php else: ?>
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px">
         <?php foreach ($ouvertes as $e): ?>
         <div style="background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:14px 16px">
             <strong><?= htmlspecialchars($e['titre']) ?></strong>
-            <?php if (!empty($e['anonyme'])): ?><span style="background:#eef2ff;color:#3730a3;border-radius:12px;padding:2px 10px;font-size:.75em;margin-left:8px">Anonyme</span><?php endif; ?>
+            <?php if (!empty($e['anonyme'])): ?><span style="background:#eef2ff;color:#3730a3;border-radius:12px;padding:2px 10px;font-size:.75em;margin-left:8px"><?= __('enquetes.anonyme') ?></span><?php endif; ?>
             <?php if (!empty($e['description'])): ?><div style="font-size:.85em;color:var(--text-muted,#64748b);margin-top:4px"><?= htmlspecialchars($e['description']) ?></div><?php endif; ?>
-            <?php if (!empty($e['date_fermeture'])): ?><div style="font-size:.78em;color:#a0aec0;margin-top:4px">Clôture le <?= htmlspecialchars($e['date_fermeture']) ?></div><?php endif; ?>
+            <?php if (!empty($e['date_fermeture'])): ?><div style="font-size:.78em;color:#a0aec0;margin-top:4px"><?= __('enquetes.cloture_le') ?> <?= htmlspecialchars($e['date_fermeture']) ?></div><?php endif; ?>
         </div>
         <?php endforeach; ?>
     </div>
     <?php endif; ?>
 
     <?php if ($isAdmin): ?>
-    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-sliders-h"></i> Pilotage (<?= count($pilotage) ?>)</h2>
+    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-sliders-h"></i> <?= __('enquetes.pilotage') ?> (<?= count($pilotage) ?>)</h2>
     <?php if (empty($pilotage)): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px">Aucune enquête créée.</p>
+    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('enquetes.aucune_creee') ?></p>
     <?php else: ?>
     <div style="overflow-x:auto">
     <table style="width:100%;border-collapse:collapse;font-size:.9em">
         <thead><tr style="text-align:left;color:#718096;border-bottom:1px solid #e2e8f0">
-            <th style="padding:8px 10px">Titre</th><th style="padding:8px 10px">Type</th>
-            <th style="padding:8px 10px">Réponses</th><th style="padding:8px 10px">Statut</th>
+            <th style="padding:8px 10px"><?= __('label.titre') ?></th><th style="padding:8px 10px"><?= __('label.type') ?></th>
+            <th style="padding:8px 10px"><?= __('enquetes.reponses') ?></th><th style="padding:8px 10px"><?= __('label.statut') ?></th>
         </tr></thead>
         <tbody>
         <?php foreach ($pilotage as $e): $stt = $e['statut']; ?>

@@ -23,7 +23,16 @@ class InfirmerieService
        Les champs libres médicaux sont chiffrés (AES-256-GCM via APP_KEY) en base.
        Rétro-compatible : la lecture déchiffre le format chiffré et laisse passer
        le clair hérité ; si aucune clé n'est configurée, on reste en clair. */
-    private const HEALTH_FIELDS = ['allergies', 'traitements', 'contact_urgence', 'contacts_urgence', 'pai', 'observations', 'remarques'];
+    // Champs médicaux libres (RGPD Art. 9) chiffrés at-rest. decryptRow() déchiffre toute
+    // colonne portant l'un de ces noms (array_key_exists garde → sans effet ailleurs).
+    // fiches_sante : allergies/traitements/contact/pai/observations/pathologies/antecedents/pai_details.
+    // passages_infirmerie : symptomes/soins_prodigues (+alias soins)/observations.
+    // infirmerie_traitements : medicament/posologie.
+    private const HEALTH_FIELDS = [
+        'allergies', 'traitements', 'contact_urgence', 'contacts_urgence', 'pai', 'pai_details',
+        'observations', 'remarques', 'pathologies', 'antecedents',
+        'symptomes', 'soins_prodigues', 'soins', 'medicament', 'posologie',
+    ];
     private ?\API\Core\Encryption $enc = null;
     private bool $encResolved = false;
 
@@ -61,7 +70,10 @@ class InfirmerieService
     {
         if ($row === null) return null;
         foreach (self::HEALTH_FIELDS as $f) {
-            if (array_key_exists($f, $row)) $row[$f] = $this->decField($row[$f]);
+            // is_string : un même nom de colonne peut être du texte dans une table et un
+            // entier dans une autre (ex. `pai` = texte PAI dans fiches_sante, tinyint dans
+            // infirmerie_traitements). Ne déchiffrer que les valeurs chaîne.
+            if (array_key_exists($f, $row) && is_string($row[$f])) $row[$f] = $this->decField($row[$f]);
         }
         return $row;
     }
@@ -146,11 +158,13 @@ class InfirmerieService
             INSERT INTO passages_infirmerie (eleve_id, etablissement_id, date_passage, motif, symptomes, soins_prodigues, orientation, parent_prevenu, observations)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
+        // Chiffrement at-rest (Art. 9) : symptômes/soins/observations sont du texte médical
+        // libre. motif reste en clair (catégorie utilisée dans les GROUP BY stats).
         $stmt->execute([
             $data['eleve_id'], $this->etabId(), $data['date_passage'] ?? date('Y-m-d H:i:s'),
-            $data['motif'], $data['symptomes'] ?? null, $data['soins'] ?? null,
+            $data['motif'], $this->encField($data['symptomes'] ?? null), $this->encField($data['soins'] ?? null),
             $data['orientation'] ?? 'retour_classe', $data['notifier_parents'] ?? 0,
-            $data['remarques'] ?? null,
+            $this->encField($data['remarques'] ?? null),
         ]);
         return (int) $this->pdo->lastInsertId();
     }
@@ -168,7 +182,7 @@ class InfirmerieService
             WHERE p.id = ? AND p.etablissement_id = ?
         ");
         $stmt->execute([$id, $etabId]);
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        return $this->decryptRow($stmt->fetch(PDO::FETCH_ASSOC) ?: null);
     }
 
     public function getPassages(array $filtres = []): array
@@ -203,7 +217,7 @@ class InfirmerieService
         $sql .= ' ORDER BY p.date_passage DESC';
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map([$this, 'decryptRow'], $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     public function getPassagesEleve(int $eleveId): array
@@ -482,7 +496,8 @@ class InfirmerieService
             INSERT INTO infirmerie_traitements (eleve_id, etablissement_id, medicament, posologie, date_debut, date_fin, pai, created_at)
             VALUES (:e, :etab, :m, :p, :dd, :df, :pai, NOW())
         ");
-        $stmt->execute([':e' => $eleveId, ':etab' => $this->etabId(), ':m' => $medicament, ':p' => $posologie, ':dd' => $dateDebut, ':df' => $dateFin, ':pai' => $paiActif ? 1 : 0]);
+        // Chiffrement at-rest (Art. 9) du médicament et de la posologie.
+        $stmt->execute([':e' => $eleveId, ':etab' => $this->etabId(), ':m' => $this->encField($medicament), ':p' => $this->encField($posologie), ':dd' => $dateDebut, ':df' => $dateFin, ':pai' => $paiActif ? 1 : 0]);
         return (int)$this->pdo->lastInsertId();
     }
 
@@ -495,7 +510,7 @@ class InfirmerieService
         $sql .= " ORDER BY date_debut DESC";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([':e' => $eleveId, ':etab' => $etabId]);
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        return array_map([$this, 'decryptRow'], $stmt->fetchAll(\PDO::FETCH_ASSOC));
     }
 
     public function enregistrerPriseTraitement(int $traitementId, string $date, ?string $commentaire = null): void

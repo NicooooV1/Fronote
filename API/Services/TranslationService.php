@@ -67,6 +67,15 @@ class TranslationService
         'salles' => 'modules/salles', 'signalements' => 'modules/signalements', 'stages' => 'modules/stages',
         'support' => 'modules/support', 'transports' => 'modules/transports', 'trombinoscope' => 'modules/trombinoscope',
         'vie_associative' => 'modules/vie_associative', 'vie_scolaire' => 'modules/vie_scolaire',
+        // Modules restants (long-tail) — préfixes enregistrés pour que leurs clés résolvent.
+        'accessibilite' => 'modules/accessibilite', 'bourses' => 'modules/bourses',
+        'conseil_classe' => 'modules/conseil_classe', 'devoirs' => 'modules/devoirs',
+        'echanges' => 'modules/echanges', 'enquetes' => 'modules/enquetes',
+        'evaluations' => 'modules/evaluations', 'formations' => 'modules/formations',
+        'intelligence' => 'modules/intelligence', 'inventaire' => 'modules/inventaire',
+        'marketplace' => 'modules/marketplace', 'mediatheque' => 'modules/mediatheque',
+        'onboarding' => 'modules/onboarding', 'portail_parents' => 'modules/portail_parents',
+        'tableau_de_bord' => 'modules/tableau_de_bord',
     ];
 
     public function __construct(string $langPath, string $defaultLocale = 'fr', string $fallbackLocale = 'fr')

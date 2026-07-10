@@ -1,0 +1,17 @@
+{
+    "intelligence.analyse_predictive_titre": "Análisis predictivo — riesgo de abandono",
+    "intelligence.recalculer": "Recalcular",
+    "intelligence.risque_eleve": "Riesgo alto",
+    "intelligence.risque_modere": "Riesgo moderado",
+    "intelligence.a_surveiller": "A vigilar",
+    "intelligence.aucun_risque": "Sin riesgo",
+    "intelligence.eleves_a_risque": "Alumnos en riesgo",
+    "intelligence.aucun_eleve_risque": "Ningún alumno con riesgo alto o moderado. Pulse «Recalcular» si las puntuaciones aún no se han calculado.",
+    "intelligence.eleve": "Alumno",
+    "intelligence.score": "Puntuación",
+    "intelligence.niveau": "Nivel",
+    "intelligence.alertes_actives": "Alertas activas",
+    "intelligence.aucune_alerte": "Ninguna alerta activa.",
+    "intelligence.action_prise": "Acción tomada…",
+    "intelligence.traiter": "Tratar"
+}

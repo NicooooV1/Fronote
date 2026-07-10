@@ -1,0 +1,17 @@
+{
+    "intelligence.analyse_predictive_titre": "Predictive analysis — dropout risk",
+    "intelligence.recalculer": "Recalculate",
+    "intelligence.risque_eleve": "High risk",
+    "intelligence.risque_modere": "Moderate risk",
+    "intelligence.a_surveiller": "To watch",
+    "intelligence.aucun_risque": "No risk",
+    "intelligence.eleves_a_risque": "Students at risk",
+    "intelligence.aucun_eleve_risque": "No student at high or moderate risk. Click “Recalculate” if the scores have not been computed yet.",
+    "intelligence.eleve": "Student",
+    "intelligence.score": "Score",
+    "intelligence.niveau": "Level",
+    "intelligence.alertes_actives": "Active alerts",
+    "intelligence.aucune_alerte": "No active alert.",
+    "intelligence.action_prise": "Action taken…",
+    "intelligence.traiter": "Handle"
+}

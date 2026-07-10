@@ -1,0 +1,17 @@
+{
+    "intelligence.analyse_predictive_titre": "การวิเคราะห์เชิงพยากรณ์ — ความเสี่ยงการออกกลางคัน",
+    "intelligence.recalculer": "คำนวณใหม่",
+    "intelligence.risque_eleve": "ความเสี่ยงสูง",
+    "intelligence.risque_modere": "ความเสี่ยงปานกลาง",
+    "intelligence.a_surveiller": "ต้องเฝ้าระวัง",
+    "intelligence.aucun_risque": "ไม่มีความเสี่ยง",
+    "intelligence.eleves_a_risque": "นักเรียนที่มีความเสี่ยง",
+    "intelligence.aucun_eleve_risque": "ไม่มีนักเรียนที่มีความเสี่ยงสูงหรือปานกลาง คลิก “คำนวณใหม่” หากยังไม่ได้คำนวณคะแนน",
+    "intelligence.eleve": "นักเรียน",
+    "intelligence.score": "คะแนน",
+    "intelligence.niveau": "ระดับ",
+    "intelligence.alertes_actives": "การแจ้งเตือนที่ใช้งานอยู่",
+    "intelligence.aucune_alerte": "ไม่มีการแจ้งเตือนที่ใช้งานอยู่",
+    "intelligence.action_prise": "การดำเนินการที่ทำ…",
+    "intelligence.traiter": "จัดการ"
+}

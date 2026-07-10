@@ -1,0 +1,17 @@
+{
+    "bourses.page_title": "المنح والمساعدات المالية",
+    "bourses.campagne": "الحملة",
+    "bourses.simulateur_titre": "محاكي الأهلية",
+    "bourses.revenu_fiscal": "الدخل الخاضع للضريبة المرجعي (€)",
+    "bourses.nb_enfants": "عدد الأطفال المعالين",
+    "bourses.simuler": "محاكاة",
+    "bourses.eligible": "مؤهل",
+    "bourses.non_eligible": "غير مؤهل",
+    "bourses.etat_campagne": "حالة الحملة",
+    "bourses.aucune_demande_campagne": "لا يوجد طلب لهذه الحملة.",
+    "bourses.demandes_a_instruire": "الطلبات قيد الدراسة",
+    "bourses.aucune_demande_instruction": "لا يوجد طلب في انتظار الدراسة.",
+    "bourses.eleve": "الطالب",
+    "bourses.echelon_simule": "المستوى المحاكى",
+    "bourses.soumise_le": "قُدّم في"
+}

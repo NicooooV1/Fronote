@@ -1,0 +1,17 @@
+{
+    "bourses.page_title": "ทุนการศึกษาและความช่วยเหลือทางการเงิน",
+    "bourses.campagne": "แคมเปญ",
+    "bourses.simulateur_titre": "เครื่องมือจำลองคุณสมบัติ",
+    "bourses.revenu_fiscal": "รายได้ที่ต้องเสียภาษีอ้างอิง (€)",
+    "bourses.nb_enfants": "จำนวนบุตรในความอุปการะ",
+    "bourses.simuler": "จำลอง",
+    "bourses.eligible": "มีสิทธิ์",
+    "bourses.non_eligible": "ไม่มีสิทธิ์",
+    "bourses.etat_campagne": "สถานะแคมเปญ",
+    "bourses.aucune_demande_campagne": "ไม่มีคำขอสำหรับแคมเปญนี้",
+    "bourses.demandes_a_instruire": "คำขอที่ต้องพิจารณา",
+    "bourses.aucune_demande_instruction": "ไม่มีคำขอที่รอการพิจารณา",
+    "bourses.eleve": "นักเรียน",
+    "bourses.echelon_simule": "ระดับที่จำลอง",
+    "bourses.soumise_le": "ส่งเมื่อ"
+}

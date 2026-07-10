@@ -1,0 +1,17 @@
+{
+    "bourses.page_title": "Stipendien &amp; finanzielle Hilfen",
+    "bourses.campagne": "Kampagne",
+    "bourses.simulateur_titre": "Berechtigungssimulator",
+    "bourses.revenu_fiscal": "Zu versteuerndes Referenzeinkommen (€)",
+    "bourses.nb_enfants": "Anzahl unterhaltsberechtigter Kinder",
+    "bourses.simuler": "Simulieren",
+    "bourses.eligible": "Berechtigt",
+    "bourses.non_eligible": "Nicht berechtigt",
+    "bourses.etat_campagne": "Status der Kampagne",
+    "bourses.aucune_demande_campagne": "Kein Antrag für diese Kampagne.",
+    "bourses.demandes_a_instruire": "Zu prüfende Anträge",
+    "bourses.aucune_demande_instruction": "Kein Antrag zur Prüfung ausstehend.",
+    "bourses.eleve": "Schüler",
+    "bourses.echelon_simule": "Simulierte Stufe",
+    "bourses.soumise_le": "Eingereicht am"
+}

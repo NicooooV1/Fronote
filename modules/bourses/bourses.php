@@ -40,32 +40,32 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 ?>
 
 <div style="max-width:1100px;margin:24px auto;padding:0 16px">
-    <h1 style="font-size:1.5em;margin:0 0 4px"><i class="fas fa-hand-holding-usd"></i> Bourses &amp; aides financières</h1>
-    <p style="color:var(--text-muted,#64748b);margin:0 0 24px">Campagne <?= htmlspecialchars($annee) ?></p>
+    <h1 style="font-size:1.5em;margin:0 0 4px"><i class="fas fa-hand-holding-usd"></i> <?= __('bourses.page_title') ?></h1>
+    <p style="color:var(--text-muted,#64748b);margin:0 0 24px"><?= __('bourses.campagne') ?> <?= htmlspecialchars($annee) ?></p>
 
     <!-- Simulateur (tous rôles) -->
     <div style="background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:18px;margin-bottom:28px">
-        <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-calculator"></i> Simulateur d'éligibilité</h2>
+        <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-calculator"></i> <?= __('bourses.simulateur_titre') ?></h2>
         <form method="post" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token) ?>">
             <input type="hidden" name="action" value="simuler">
             <label style="display:flex;flex-direction:column;font-size:.85em;color:var(--text-muted,#64748b)">
-                Revenu fiscal de référence (€)
+                <?= __('bourses.revenu_fiscal') ?>
                 <input type="number" name="revenu_fiscal" min="0" step="1" required value="<?= htmlspecialchars((string) ($_POST['revenu_fiscal'] ?? '')) ?>" style="margin-top:4px;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px;width:180px">
             </label>
             <label style="display:flex;flex-direction:column;font-size:.85em;color:var(--text-muted,#64748b)">
-                Nombre d'enfants à charge
+                <?= __('bourses.nb_enfants') ?>
                 <input type="number" name="nb_enfants" min="1" step="1" required value="<?= htmlspecialchars((string) ($_POST['nb_enfants'] ?? '1')) ?>" style="margin-top:4px;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px;width:120px">
             </label>
-            <button type="submit" style="background:var(--primary,#0f4c81);color:#fff;border:none;padding:9px 18px;border-radius:8px;cursor:pointer;font-weight:600">Simuler</button>
+            <button type="submit" style="background:var(--primary,#0f4c81);color:#fff;border:none;padding:9px 18px;border-radius:8px;cursor:pointer;font-weight:600"><?= __('bourses.simuler') ?></button>
         </form>
         <?php if ($simulation !== null): ?>
         <div style="margin-top:16px;padding:14px 16px;border-radius:8px;background:<?= $simulation['eligible'] ? '#d1fae5' : '#fef2f2' ?>;color:<?= $simulation['eligible'] ? '#065f46' : '#991b1b' ?>">
             <?php if ($simulation['eligible']): ?>
-            <strong>Éligible</strong> — échelon <?= (int) $simulation['echelon'] ?> · <?= (float) $simulation['montant_annuel'] ?> €/an
+            <strong><?= __('bourses.eligible') ?></strong> — échelon <?= (int) $simulation['echelon'] ?> · <?= (float) $simulation['montant_annuel'] ?> €/an
             (<?= (float) $simulation['montant_trimestriel'] ?> €/trimestre). Quotient familial : <?= (float) $simulation['quotient_familial'] ?> €.
             <?php else: ?>
-            <strong>Non éligible</strong> — quotient familial <?= (float) $simulation['quotient_familial'] ?> € au-dessus des plafonds.
+            <strong><?= __('bourses.non_eligible') ?></strong> — quotient familial <?= (float) $simulation['quotient_familial'] ?> € au-dessus des plafonds.
             <?php endif; ?>
         </div>
         <?php endif; ?>
@@ -73,9 +73,9 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 
     <?php if ($isAdmin): ?>
     <!-- Stats campagne -->
-    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-chart-pie"></i> État de la campagne</h2>
+    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-chart-pie"></i> <?= __('bourses.etat_campagne') ?></h2>
     <?php if (empty($stats['par_statut'])): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px">Aucune demande pour cette campagne.</p>
+    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('bourses.aucune_demande_campagne') ?></p>
     <?php else: ?>
     <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:28px">
         <?php foreach ($stats['par_statut'] as $s): ?>
@@ -91,16 +91,16 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <?php endif; ?>
 
     <!-- Demandes à instruire -->
-    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-inbox"></i> Demandes à instruire (<?= count($aInstruire) ?>)</h2>
+    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-inbox"></i> <?= __('bourses.demandes_a_instruire') ?> (<?= count($aInstruire) ?>)</h2>
     <?php if (empty($aInstruire)): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px">Aucune demande en attente d'instruction.</p>
+    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('bourses.aucune_demande_instruction') ?></p>
     <?php else: ?>
     <div style="overflow-x:auto">
     <table style="width:100%;border-collapse:collapse;font-size:.9em">
         <thead><tr style="text-align:left;color:#718096;border-bottom:1px solid #e2e8f0">
-            <th style="padding:8px 10px">Élève</th><th style="padding:8px 10px">Classe</th>
-            <th style="padding:8px 10px">Type</th><th style="padding:8px 10px">Échelon simulé</th>
-            <th style="padding:8px 10px">Soumise le</th>
+            <th style="padding:8px 10px"><?= __('bourses.eleve') ?></th><th style="padding:8px 10px"><?= __('label.classe') ?></th>
+            <th style="padding:8px 10px"><?= __('label.type') ?></th><th style="padding:8px 10px"><?= __('bourses.echelon_simule') ?></th>
+            <th style="padding:8px 10px"><?= __('bourses.soumise_le') ?></th>
         </tr></thead>
         <tbody>
         <?php foreach ($aInstruire as $d): ?>

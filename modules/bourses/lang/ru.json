@@ -1,0 +1,17 @@
+{
+    "bourses.page_title": "Стипендии и финансовая помощь",
+    "bourses.campagne": "Кампания",
+    "bourses.simulateur_titre": "Симулятор права на получение",
+    "bourses.revenu_fiscal": "Базовый налогооблагаемый доход (€)",
+    "bourses.nb_enfants": "Количество детей на иждивении",
+    "bourses.simuler": "Смоделировать",
+    "bourses.eligible": "Имеет право",
+    "bourses.non_eligible": "Не имеет права",
+    "bourses.etat_campagne": "Состояние кампании",
+    "bourses.aucune_demande_campagne": "Нет заявок по этой кампании.",
+    "bourses.demandes_a_instruire": "Заявки на рассмотрение",
+    "bourses.aucune_demande_instruction": "Нет заявок, ожидающих рассмотрения.",
+    "bourses.eleve": "Ученик",
+    "bourses.echelon_simule": "Смоделированный уровень",
+    "bourses.soumise_le": "Подана"
+}

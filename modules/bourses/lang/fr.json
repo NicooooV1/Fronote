@@ -1,0 +1,17 @@
+{
+    "bourses.page_title": "Bourses &amp; aides financières",
+    "bourses.campagne": "Campagne",
+    "bourses.simulateur_titre": "Simulateur d'éligibilité",
+    "bourses.revenu_fiscal": "Revenu fiscal de référence (€)",
+    "bourses.nb_enfants": "Nombre d'enfants à charge",
+    "bourses.simuler": "Simuler",
+    "bourses.eligible": "Éligible",
+    "bourses.non_eligible": "Non éligible",
+    "bourses.etat_campagne": "État de la campagne",
+    "bourses.aucune_demande_campagne": "Aucune demande pour cette campagne.",
+    "bourses.demandes_a_instruire": "Demandes à instruire",
+    "bourses.aucune_demande_instruction": "Aucune demande en attente d'instruction.",
+    "bourses.eleve": "Élève",
+    "bourses.echelon_simule": "Échelon simulé",
+    "bourses.soumise_le": "Soumise le"
+}

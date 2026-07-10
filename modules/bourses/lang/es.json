@@ -1,0 +1,17 @@
+{
+    "bourses.page_title": "Becas &amp; ayudas económicas",
+    "bourses.campagne": "Campaña",
+    "bourses.simulateur_titre": "Simulador de elegibilidad",
+    "bourses.revenu_fiscal": "Renta fiscal de referencia (€)",
+    "bourses.nb_enfants": "Número de hijos a cargo",
+    "bourses.simuler": "Simular",
+    "bourses.eligible": "Elegible",
+    "bourses.non_eligible": "No elegible",
+    "bourses.etat_campagne": "Estado de la campaña",
+    "bourses.aucune_demande_campagne": "Ninguna solicitud para esta campaña.",
+    "bourses.demandes_a_instruire": "Solicitudes por revisar",
+    "bourses.aucune_demande_instruction": "Ninguna solicitud pendiente de revisión.",
+    "bourses.eleve": "Alumno",
+    "bourses.echelon_simule": "Nivel simulado",
+    "bourses.soumise_le": "Enviada el"
+}

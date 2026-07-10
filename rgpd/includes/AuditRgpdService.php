@@ -384,6 +384,23 @@ class AuditRgpdService
                  ORDER BY i.id DESC",
                 [$userId]);
 
+            // Déchiffrement at-rest (Art. 9) : tous les champs médicaux libres sont chiffrés en
+            // base. L'export du sujet lui-même doit les rendre en clair. Helper partagé pour les
+            // 3 collections santé (sinon export = charabia chiffré).
+            $enc = \API\Core\Encryption::available() ? new \API\Core\Encryption() : null;
+            $decryptFields = function (?array $rows, array $fields) use ($enc): ?array {
+                if (!$enc || empty($rows)) return $rows;
+                foreach ($rows as &$row) {
+                    foreach ($fields as $f) {
+                        if (!empty($row[$f]) && $enc->isEncrypted($row[$f])) {
+                            try { $row[$f] = $enc->decrypt($row[$f]); } catch (\Throwable $e) {}
+                        }
+                    }
+                }
+                unset($row);
+                return $rows;
+            };
+
             // Fiche santé (RGPD Art. 9) — déchiffrée pour l'export du sujet lui-même.
             $fiche = $this->collecte('fiche_sante',
                 "SELECT allergies, traitements, antecedents, medecin_traitant, telephone_urgence,
@@ -391,30 +408,20 @@ class AuditRgpdService
                         pathologies, date_modification
                  FROM fiches_sante WHERE eleve_id = ?",
                 [$userId]);
-            if (\API\Core\Encryption::available() && $fiche) {
-                try {
-                    $enc = new \API\Core\Encryption();
-                    foreach ($fiche as &$row) {
-                        foreach (['allergies', 'traitements', 'contact_urgence', 'pai', 'observations'] as $f) {
-                            if (!empty($row[$f]) && $enc->isEncrypted($row[$f])) {
-                                try { $row[$f] = $enc->decrypt($row[$f]); } catch (\Throwable $e) {}
-                            }
-                        }
-                    }
-                    unset($row);
-                } catch (\Throwable $e) { error_log('[rgpd export] health decrypt: ' . $e->getMessage()); }
-            }
-            $data['fiche_sante'] = $fiche;
+            $data['fiche_sante'] = $decryptFields($fiche,
+                ['allergies', 'traitements', 'contact_urgence', 'pai', 'observations', 'pathologies', 'antecedents', 'pai_details']);
 
-            // Passages infirmerie
-            $data['passages_infirmerie'] = $this->collecte('passages_infirmerie',
+            // Passages infirmerie (Art.9)
+            $passages = $this->collecte('passages_infirmerie',
                 "SELECT date_passage, motif, symptomes, soins_prodigues, orientation
                  FROM passages_infirmerie WHERE eleve_id = ? ORDER BY date_passage DESC",
                 [$userId]);
+            $data['passages_infirmerie'] = $decryptFields($passages, ['symptomes', 'soins_prodigues']);
 
             // Traitements infirmerie (Art.9)
-            $data['traitements_infirmerie'] = $this->collecte('traitements_infirmerie',
+            $trait = $this->collecte('traitements_infirmerie',
                 "SELECT * FROM infirmerie_traitements WHERE eleve_id = ? ORDER BY id DESC", [$userId]);
+            $data['traitements_infirmerie'] = $decryptFields($trait, ['medicament', 'posologie']);
 
             // Diplômes obtenus
             $data['diplomes'] = $this->collecte('diplomes',

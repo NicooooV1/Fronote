@@ -33,7 +33,7 @@ $dash    = $svc->getDashboardRisque($etabId);
 $alertes = $svc->getAlertes($etabId, 'active');
 $dist    = $dash['distribution'];
 $ragColors = ['rouge' => '#dc2626', 'orange' => '#f59e0b', 'jaune' => '#eab308', 'vert' => '#16a34a'];
-$ragLabels = ['rouge' => 'Risque élevé', 'orange' => 'Risque modéré', 'jaune' => 'À surveiller', 'vert' => 'Aucun risque'];
+$ragLabels = ['rouge' => __('intelligence.risque_eleve'), 'orange' => __('intelligence.risque_modere'), 'jaune' => __('intelligence.a_surveiller'), 'vert' => __('intelligence.aucun_risque')];
 
 include __DIR__ . '/../../templates/shared_header.php';
 include __DIR__ . '/../../templates/shared_topbar.php';
@@ -41,12 +41,12 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 
 <div style="max-width:1100px;margin:24px auto;padding:0 16px">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px">
-        <h1 style="font-size:1.5em;margin:0"><i class="fas fa-brain"></i> Analyse prédictive — risque de décrochage</h1>
+        <h1 style="font-size:1.5em;margin:0"><i class="fas fa-brain"></i> <?= __('intelligence.analyse_predictive_titre') ?></h1>
         <form method="post" data-fr-confirm="Recalculer les scores de tous les élèves ?">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token) ?>">
             <input type="hidden" name="action" value="recalculer">
             <button type="submit" style="background:var(--primary,#0f4c81);color:#fff;border:none;padding:9px 18px;border-radius:8px;cursor:pointer;font-weight:600">
-                <i class="fas fa-rotate"></i> Recalculer
+                <i class="fas fa-rotate"></i> <?= __('intelligence.recalculer') ?>
             </button>
         </form>
     </div>
@@ -66,15 +66,15 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     </div>
 
     <!-- Élèves à risque -->
-    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-triangle-exclamation"></i> Élèves à risque (<?= count($dash['eleves_a_risque']) ?>)</h2>
+    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-triangle-exclamation"></i> <?= __('intelligence.eleves_a_risque') ?> (<?= count($dash['eleves_a_risque']) ?>)</h2>
     <?php if (empty($dash['eleves_a_risque'])): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px">Aucun élève en risque élevé ou modéré. Lancez « Recalculer » si les scores n'ont pas encore été calculés.</p>
+    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('intelligence.aucun_eleve_risque') ?></p>
     <?php else: ?>
     <div style="overflow-x:auto;margin-bottom:28px">
     <table style="width:100%;border-collapse:collapse;font-size:.9em">
         <thead><tr style="text-align:left;color:#718096;border-bottom:1px solid #e2e8f0">
-            <th style="padding:8px 10px">Élève</th><th style="padding:8px 10px">Classe</th>
-            <th style="padding:8px 10px">Score</th><th style="padding:8px 10px">Niveau</th>
+            <th style="padding:8px 10px"><?= __('intelligence.eleve') ?></th><th style="padding:8px 10px"><?= __('label.classe') ?></th>
+            <th style="padding:8px 10px"><?= __('intelligence.score') ?></th><th style="padding:8px 10px"><?= __('intelligence.niveau') ?></th>
         </tr></thead>
         <tbody>
         <?php foreach ($dash['eleves_a_risque'] as $e): ?>
@@ -91,7 +91,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <?php endif; ?>
 
     <!-- Alertes actives -->
-    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-bell"></i> Alertes actives (<?= count($alertes) ?>)</h2>
+    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-bell"></i> <?= __('intelligence.alertes_actives') ?> (<?= count($alertes) ?>)</h2>
     <?php if (empty($alertes)): ?>
     <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px">Aucune alerte active.</p>
     <?php else: ?>

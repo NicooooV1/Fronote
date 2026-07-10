@@ -1,0 +1,10 @@
+{
+  "conseil_classe.page_title": "การประชุมประจำชั้นเรียน",
+  "conseil_classe.annee": "ปี",
+  "conseil_classe.aucune_classe": "ไม่พบชั้นเรียนสำหรับสถานศึกษานี้",
+  "conseil_classe.filtre_classe": "ชั้นเรียน:",
+  "conseil_classe.conseils": "การประชุม",
+  "conseil_classe.aucun_conseil": "ไม่มีการประชุมที่บันทึกไว้สำหรับชั้นเรียนนี้",
+  "conseil_classe.date_a_definir": "ยังไม่กำหนดวันที่",
+  "conseil_classe.statut_planifie": "กำหนดการแล้ว"
+}
