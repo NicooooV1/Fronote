@@ -1,6 +1,6 @@
-# Analyse statique Fronote (advisory dans la CI le temps de figer une baseline).
-# Monter le niveau progressivement (0 → 6) puis générer la baseline :
-#   phpstan analyse --generate-baseline phpstan-baseline.neon
+# Analyse statique Fronote — BLOQUANTE en CI : la baseline (phpstan-baseline.neon) fige la
+# dette existante ; toute NOUVELLE erreur fait échouer le build. Pour monter le niveau
+# (3 → 6), régénérer la baseline : phpstan analyse --generate-baseline phpstan-baseline.neon
 includes:
     - phpstan-baseline.neon
 
