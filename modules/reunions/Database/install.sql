@@ -97,7 +97,8 @@ CREATE TABLE IF NOT EXISTS `reunion_presences` (
   UNIQUE KEY `uniq_reunion_user` (`reunion_id`, `user_id`),
   KEY `idx_reunion` (`reunion_id`),
   KEY `idx_user` (`user_id`),
-  KEY `idx_etablissement` (`etablissement_id`)
+  KEY `idx_etablissement` (`etablissement_id`),
+  CONSTRAINT `fk_etab_reunion_presences` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- [drift-fix] reunion_comptes_rendus
@@ -110,5 +111,6 @@ CREATE TABLE IF NOT EXISTS `reunion_comptes_rendus` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_reunion` (`reunion_id`),
   KEY `idx_redacteur` (`redacteur_id`),
-  KEY `idx_etablissement` (`etablissement_id`)
+  KEY `idx_etablissement` (`etablissement_id`),
+  CONSTRAINT `fk_etab_reunion_comptes_rendus` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

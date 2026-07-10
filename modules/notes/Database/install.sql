@@ -43,7 +43,8 @@ CREATE TABLE IF NOT EXISTS `notes_verrous` (
   `date_verrouillage` DATETIME NULL,
   UNIQUE KEY `uq_verrou` (`matiere_id`,`trimestre`,`classe`,`etablissement_id`),
   KEY `idx_etab` (`etablissement_id`),
-  KEY `idx_lookup` (`matiere_id`,`classe`,`trimestre`,`etablissement_id`)
+  KEY `idx_lookup` (`matiere_id`,`classe`,`trimestre`,`etablissement_id`),
+  CONSTRAINT `fk_etab_notes_verrous` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- [drift-fix] notes_config_ponderation
@@ -55,7 +56,8 @@ CREATE TABLE IF NOT EXISTS `notes_config_ponderation` (
   `poids` DECIMAL(5,2) NOT NULL DEFAULT 1.00,
   UNIQUE KEY `uq_ponderation` (`matiere_id`,`etablissement_id`,`type_evaluation`),
   KEY `idx_etab` (`etablissement_id`),
-  KEY `idx_matiere` (`matiere_id`,`etablissement_id`)
+  KEY `idx_matiere` (`matiere_id`,`etablissement_id`),
+  CONSTRAINT `fk_etab_notes_config_ponderation` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- [drift-fix] note_history

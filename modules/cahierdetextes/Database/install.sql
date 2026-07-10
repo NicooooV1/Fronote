@@ -111,7 +111,8 @@ CREATE TABLE IF NOT EXISTS `cahier_templates` (
   PRIMARY KEY (`id`),
   KEY `idx_cahtpl_prof` (`professeur_id`),
   KEY `idx_cahtpl_matiere` (`matiere_id`),
-  KEY `idx_cahtpl_etab` (`etablissement_id`)
+  KEY `idx_cahtpl_etab` (`etablissement_id`),
+  CONSTRAINT `fk_etab_cahier_templates` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- [drift-fix] cahier_vues

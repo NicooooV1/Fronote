@@ -71,5 +71,6 @@ CREATE TABLE IF NOT EXISTS `examen_places` (
   UNIQUE KEY `uniq_epreuve_convocation` (`epreuve_id`, `convocation_id`),
   KEY `idx_epreuve` (`epreuve_id`),
   KEY `idx_convocation` (`convocation_id`),
-  KEY `idx_etablissement` (`etablissement_id`)
+  KEY `idx_etablissement` (`etablissement_id`),
+  CONSTRAINT `fk_etab_examen_places` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

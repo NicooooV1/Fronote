@@ -72,7 +72,8 @@ CREATE TABLE IF NOT EXISTS `cantine_evaluations` (
   UNIQUE KEY `uniq_menu_eleve` (`menu_id`, `eleve_id`),
   KEY `idx_menu` (`menu_id`),
   KEY `idx_eleve` (`eleve_id`),
-  KEY `idx_etablissement` (`etablissement_id`)
+  KEY `idx_etablissement` (`etablissement_id`),
+  CONSTRAINT `fk_etab_cantine_evaluations` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- [drift-fix] cantine_gaspillage
@@ -87,5 +88,6 @@ CREATE TABLE IF NOT EXISTS `cantine_gaspillage` (
   PRIMARY KEY (`id`),
   KEY `idx_date_mesure` (`date_mesure`),
   KEY `idx_type` (`type`),
-  KEY `idx_etablissement` (`etablissement_id`)
+  KEY `idx_etablissement` (`etablissement_id`),
+  CONSTRAINT `fk_etab_cantine_gaspillage` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

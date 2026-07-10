@@ -187,7 +187,7 @@ CREATE TABLE `super_admins` (
   `mot_de_passe` varchar(255) NOT NULL,
   `actif` tinyint(1) NOT NULL DEFAULT 1,
   `two_factor_enabled` tinyint(1) DEFAULT 0,
-  `two_factor_secret` varchar(32) DEFAULT NULL,
+  `two_factor_secret` VARCHAR(255) DEFAULT NULL,
   `date_creation` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `last_login` datetime NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -204,7 +204,9 @@ CREATE TABLE `periodes` (
   `date_debut` date NOT NULL,
   `date_fin` date NOT NULL,
   `annee_scolaire` varchar(10) DEFAULT '2025-2026',
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_etab_periodes` (`etablissement_id`),
+  CONSTRAINT `fk_etab_periodes` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `matieres` (
@@ -216,7 +218,9 @@ CREATE TABLE `matieres` (
   `couleur` varchar(7) DEFAULT '#3498db',
   `actif` tinyint(1) NOT NULL DEFAULT 1,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `code` (`code`)
+  UNIQUE KEY `code` (`code`),
+  KEY `idx_etab_matieres` (`etablissement_id`),
+  CONSTRAINT `fk_etab_matieres` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `classes` (
@@ -230,7 +234,9 @@ CREATE TABLE `classes` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `nom_annee` (`nom`, `annee_scolaire`),
   KEY `idx_professeur_principal` (`professeur_principal_id`),
-  CONSTRAINT `fk_classes_prof_principal` FOREIGN KEY (`professeur_principal_id`) REFERENCES `professeurs` (`id`) ON DELETE SET NULL
+  CONSTRAINT `fk_classes_prof_principal` FOREIGN KEY (`professeur_principal_id`) REFERENCES `professeurs` (`id`) ON DELETE SET NULL,
+  KEY `idx_etab_classes` (`etablissement_id`),
+  CONSTRAINT `fk_etab_classes` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
@@ -254,10 +260,12 @@ CREATE TABLE `administrateurs` (
   `locked_until` datetime NULL DEFAULT NULL,
   `password_changed_at` datetime NULL DEFAULT NULL,
   `two_factor_enabled` tinyint(1) DEFAULT 0,
-  `two_factor_secret` varchar(32) DEFAULT NULL,
+  `two_factor_secret` VARCHAR(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `identifiant` (`identifiant`),
-  UNIQUE KEY `mail` (`mail`)
+  UNIQUE KEY `mail` (`mail`),
+  KEY `idx_etab_administrateurs` (`etablissement_id`),
+  CONSTRAINT `fk_etab_administrateurs` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `eleves` (
@@ -275,7 +283,7 @@ CREATE TABLE `eleves` (
   `mot_de_passe` varchar(255) NOT NULL,
   `actif` tinyint(1) NOT NULL DEFAULT 1,
   `two_factor_enabled` tinyint(1) NOT NULL DEFAULT 0,
-  `two_factor_secret` varchar(64) DEFAULT NULL,
+  `two_factor_secret` VARCHAR(255) DEFAULT NULL,
   `date_creation` datetime DEFAULT CURRENT_TIMESTAMP,
   `last_login` datetime NULL DEFAULT NULL,
   `failed_login_attempts` int(3) DEFAULT 0,
@@ -284,7 +292,9 @@ CREATE TABLE `eleves` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `mail` (`mail`),
   UNIQUE KEY `identifiant` (`identifiant`),
-  KEY `idx_classe` (`classe`)
+  KEY `idx_classe` (`classe`),
+  KEY `idx_etab_eleves` (`etablissement_id`),
+  CONSTRAINT `fk_etab_eleves` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `professeurs` (
@@ -301,7 +311,7 @@ CREATE TABLE `professeurs` (
   `matiere` varchar(100) NOT NULL,
   `actif` tinyint(1) NOT NULL DEFAULT 1,
   `two_factor_enabled` tinyint(1) NOT NULL DEFAULT 0,
-  `two_factor_secret` varchar(64) DEFAULT NULL,
+  `two_factor_secret` VARCHAR(255) DEFAULT NULL,
   `date_creation` datetime DEFAULT CURRENT_TIMESTAMP,
   `last_login` datetime NULL DEFAULT NULL,
   `failed_login_attempts` int(3) DEFAULT 0,
@@ -310,7 +320,9 @@ CREATE TABLE `professeurs` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `mail` (`mail`),
   UNIQUE KEY `identifiant` (`identifiant`),
-  KEY `idx_matiere` (`matiere`)
+  KEY `idx_matiere` (`matiere`),
+  KEY `idx_etab_professeurs` (`etablissement_id`),
+  CONSTRAINT `fk_etab_professeurs` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `parents` (
@@ -327,7 +339,7 @@ CREATE TABLE `parents` (
   `est_parent_eleve` enum('oui','non') NOT NULL DEFAULT 'non',
   `actif` tinyint(1) NOT NULL DEFAULT 1,
   `two_factor_enabled` tinyint(1) NOT NULL DEFAULT 0,
-  `two_factor_secret` varchar(64) DEFAULT NULL,
+  `two_factor_secret` VARCHAR(255) DEFAULT NULL,
   `date_creation` datetime DEFAULT CURRENT_TIMESTAMP,
   `last_login` datetime NULL DEFAULT NULL,
   `failed_login_attempts` int(3) DEFAULT 0,
@@ -335,7 +347,9 @@ CREATE TABLE `parents` (
   `password_changed_at` datetime NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `mail` (`mail`),
-  UNIQUE KEY `identifiant` (`identifiant`)
+  UNIQUE KEY `identifiant` (`identifiant`),
+  KEY `idx_etab_parents` (`etablissement_id`),
+  CONSTRAINT `fk_etab_parents` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `vie_scolaire` (
@@ -351,7 +365,7 @@ CREATE TABLE `vie_scolaire` (
   `est_infirmerie` enum('oui','non') NOT NULL DEFAULT 'non',
   `actif` tinyint(1) NOT NULL DEFAULT 1,
   `two_factor_enabled` tinyint(1) NOT NULL DEFAULT 0,
-  `two_factor_secret` varchar(64) DEFAULT NULL,
+  `two_factor_secret` VARCHAR(255) DEFAULT NULL,
   `date_creation` datetime DEFAULT CURRENT_TIMESTAMP,
   `last_login` datetime NULL DEFAULT NULL,
   `failed_login_attempts` int(3) DEFAULT 0,
@@ -359,7 +373,9 @@ CREATE TABLE `vie_scolaire` (
   `password_changed_at` datetime NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `mail` (`mail`),
-  UNIQUE KEY `identifiant` (`identifiant`)
+  UNIQUE KEY `identifiant` (`identifiant`),
+  KEY `idx_etab_vie_scolaire` (`etablissement_id`),
+  CONSTRAINT `fk_etab_vie_scolaire` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `parent_eleve` (
@@ -1024,7 +1040,9 @@ CREATE TABLE `user_roles` (
   UNIQUE KEY `uk_user_role_etab` (`user_type`, `user_id`, `role_key`, `etablissement_id`),
   KEY `idx_user` (`user_type`, `user_id`),
   KEY `idx_role_key` (`role_key`),
-  KEY `idx_validity` (`valid_until`)
+  KEY `idx_validity` (`valid_until`),
+  KEY `idx_etab_user_roles` (`etablissement_id`),
+  CONSTRAINT `fk_etab_user_roles` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
@@ -1069,7 +1087,9 @@ CREATE TABLE `account_relationships` (
   KEY `idx_rel_source` (`source_type`, `source_id`),
   KEY `idx_rel_target` (`target_type`, `target_id`),
   KEY `idx_rel_type` (`relationship_type`),
-  KEY `idx_rel_active` (`is_active`, `expires_at`)
+  KEY `idx_rel_active` (`is_active`, `expires_at`),
+  KEY `idx_etab_account_relationships` (`etablissement_id`),
+  CONSTRAINT `fk_etab_account_relationships` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
@@ -1130,7 +1150,9 @@ CREATE TABLE `accounts` (
   UNIQUE KEY `uk_acc_legacy` (`legacy_type`, `legacy_id`),
   KEY `idx_acc_email` (`email`),
   KEY `idx_acc_type` (`account_type`),
-  KEY `idx_acc_status` (`status`)
+  KEY `idx_acc_status` (`status`),
+  KEY `idx_etab_accounts` (`etablissement_id`),
+  CONSTRAINT `fk_etab_accounts` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `account_profiles` (
@@ -1148,7 +1170,9 @@ CREATE TABLE `account_profiles` (
   `created_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`       DATETIME     DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   KEY `idx_ap_account` (`account_id`),
-  CONSTRAINT `fk_ap_account` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE
+  CONSTRAINT `fk_ap_account` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE,
+  KEY `idx_etab_account_profiles` (`etablissement_id`),
+  CONSTRAINT `fk_etab_account_profiles` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================================
@@ -1170,7 +1194,7 @@ CREATE TABLE `platform_accounts` (
   `last_name`          VARCHAR(100) NOT NULL,
   `status`             ENUM('active','inactive','locked','archived') NOT NULL DEFAULT 'active',
   `two_factor_enabled` TINYINT(1)   NOT NULL DEFAULT 0,
-  `two_factor_secret`  VARCHAR(128) NULL,
+  `two_factor_secret`  VARCHAR(255) NULL,
   `last_login_at`      DATETIME     NULL,
   `locked_until`       DATETIME     NULL,
   `failed_login_attempts` INT       NOT NULL DEFAULT 0,
@@ -1275,7 +1299,7 @@ CREATE TABLE `tenant_accounts` (
   `must_change_password` TINYINT(1) NOT NULL DEFAULT 1,
   `password_changed_at`  DATETIME  NULL,
   `two_factor_enabled`   TINYINT(1) NOT NULL DEFAULT 0,
-  `two_factor_secret`    VARCHAR(128) NULL,
+  `two_factor_secret`    VARCHAR(255) NULL,
   `last_login_at`     DATETIME NULL,
   `locked_until`      DATETIME NULL,
   `failed_login_attempts` INT NOT NULL DEFAULT 0,
@@ -2682,7 +2706,9 @@ CREATE TABLE IF NOT EXISTS `note_calculations` (
   `value` DECIMAL(5,2) NOT NULL,
   `etablissement_id` INT NOT NULL DEFAULT 1,
   `calculated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY `uk_calc` (`classe_id`, `matiere_id`, `periode_id`, `type`, `etablissement_id`)
+  UNIQUE KEY `uk_calc` (`classe_id`, `matiere_id`, `periode_id`, `type`, `etablissement_id`),
+  KEY `idx_etab_note_calculations` (`etablissement_id`),
+  CONSTRAINT `fk_etab_note_calculations` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Phase 6: Competences — referentiel
@@ -2693,7 +2719,8 @@ CREATE TABLE IF NOT EXISTS `referentiel_competences` (
   `item` VARCHAR(500) NOT NULL,
   `niveau_attendu` TINYINT DEFAULT 3,
   `etablissement_id` INT NOT NULL DEFAULT 1,
-  INDEX `idx_etab` (`etablissement_id`)
+  INDEX `idx_etab` (`etablissement_id`),
+  CONSTRAINT `fk_etab_referentiel_competences` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -2704,7 +2731,9 @@ CREATE TABLE IF NOT EXISTS `bulletin_templates` (
   `name` VARCHAR(100) NOT NULL,
   `html_template` TEXT NOT NULL,
   `etablissement_id` INT NOT NULL DEFAULT 1,
-  UNIQUE KEY `uk_template_key_etab` (`template_key`, `etablissement_id`)
+  UNIQUE KEY `uk_template_key_etab` (`template_key`, `etablissement_id`),
+  KEY `idx_etab_bulletin_templates` (`etablissement_id`),
+  CONSTRAINT `fk_etab_bulletin_templates` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `bulletin_appreciations` (
@@ -2729,7 +2758,8 @@ CREATE TABLE IF NOT EXISTS `devoir_rendus` (
   `commentaire_prof` TEXT DEFAULT NULL,
   `etablissement_id` INT NOT NULL DEFAULT 1,
   UNIQUE KEY `uk_devoir_eleve` (`devoir_id`, `eleve_id`),
-  INDEX `idx_etab` (`etablissement_id`)
+  INDEX `idx_etab` (`etablissement_id`),
+  CONSTRAINT `fk_etab_devoir_rendus` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Phase 6: Cahier de textes — pieces jointes
@@ -2740,7 +2770,9 @@ CREATE TABLE IF NOT EXISTS `cahier_pieces_jointes` (
   `nom_original` VARCHAR(255) NOT NULL,
   `taille` INT DEFAULT 0,
   `etablissement_id` INT NOT NULL DEFAULT 1,
-  INDEX `idx_entree` (`entree_id`)
+  INDEX `idx_entree` (`entree_id`),
+  KEY `idx_etab_cahier_pieces_jointes` (`etablissement_id`),
+  CONSTRAINT `fk_etab_cahier_pieces_jointes` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Phase 6: Emploi du temps — remplacement enhancement
@@ -2783,7 +2815,9 @@ CREATE TABLE IF NOT EXISTS `absence_patterns` (
   `details_json` JSON DEFAULT NULL,
   `detected_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `etablissement_id` INT NOT NULL DEFAULT 1,
-  INDEX `idx_eleve` (`eleve_id`)
+  INDEX `idx_eleve` (`eleve_id`),
+  KEY `idx_etab_absence_patterns` (`etablissement_id`),
+  CONSTRAINT `fk_etab_absence_patterns` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Phase 7: Appel — completion tracking
@@ -2800,14 +2834,18 @@ CREATE TABLE IF NOT EXISTS `discipline_points` (
   `prof_id` INT DEFAULT NULL,
   `date` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `etablissement_id` INT NOT NULL DEFAULT 1,
-  INDEX `idx_eleve` (`eleve_id`)
+  INDEX `idx_eleve` (`eleve_id`),
+  KEY `idx_etab_discipline_points` (`etablissement_id`),
+  CONSTRAINT `fk_etab_discipline_points` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `discipline_seuils` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `points_min` INT NOT NULL,
   `sanction_type` VARCHAR(100) NOT NULL,
-  `etablissement_id` INT NOT NULL DEFAULT 1
+  `etablissement_id` INT NOT NULL DEFAULT 1,
+  KEY `idx_etab_discipline_seuils` (`etablissement_id`),
+  CONSTRAINT `fk_etab_discipline_seuils` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Phase 7: Vie scolaire — suivi decrochage
@@ -2818,7 +2856,9 @@ CREATE TABLE IF NOT EXISTS `suivi_eleves` (
   `derniere_analyse` DATE DEFAULT NULL,
   `notes_json` JSON DEFAULT NULL,
   `etablissement_id` INT NOT NULL DEFAULT 1,
-  UNIQUE KEY `uk_eleve` (`eleve_id`, `etablissement_id`)
+  UNIQUE KEY `uk_eleve` (`eleve_id`, `etablissement_id`),
+  KEY `idx_etab_suivi_eleves` (`etablissement_id`),
+  CONSTRAINT `fk_etab_suivi_eleves` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Phase 7: Reporting — custom report templates
@@ -2829,7 +2869,9 @@ CREATE TABLE IF NOT EXISTS `report_templates` (
   `schedule_cron` VARCHAR(50) DEFAULT NULL,
   `email_to` VARCHAR(500) DEFAULT NULL,
   `created_by` INT DEFAULT NULL,
-  `etablissement_id` INT NOT NULL DEFAULT 1
+  `etablissement_id` INT NOT NULL DEFAULT 1,
+  KEY `idx_etab_report_templates` (`etablissement_id`),
+  CONSTRAINT `fk_etab_report_templates` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Phase 7: Signalements — tracking
@@ -2877,7 +2919,9 @@ CREATE TABLE IF NOT EXISTS `notification_user_preferences` (
   `channel` VARCHAR(20) NOT NULL DEFAULT 'web',
   `enabled` TINYINT(1) NOT NULL DEFAULT 1,
   `etablissement_id` INT NOT NULL DEFAULT 1,
-  UNIQUE KEY `uk_pref` (`user_id`, `user_type`, `category`, `channel`)
+  UNIQUE KEY `uk_pref` (`user_id`, `user_type`, `category`, `channel`),
+  KEY `idx_etab_notification_user_preferences` (`etablissement_id`),
+  CONSTRAINT `fk_etab_notification_user_preferences` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Phase 8: Inscriptions — workflow steps
@@ -2911,7 +2955,8 @@ CREATE TABLE IF NOT EXISTS `entreprises` (
   `contact_email` VARCHAR(150) DEFAULT NULL,
   `secteur` VARCHAR(100) DEFAULT NULL,
   `etablissement_id` INT NOT NULL DEFAULT 1,
-  INDEX `idx_etab` (`etablissement_id`)
+  INDEX `idx_etab` (`etablissement_id`),
+  CONSTRAINT `fk_etab_entreprises` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Phase 8: Transports — delay alerts
@@ -2925,7 +2970,9 @@ CREATE TABLE IF NOT EXISTS `eleve_allergies` (
   `allergene` VARCHAR(100) NOT NULL,
   `severity` ENUM('low','medium','high','critical') DEFAULT 'medium',
   `etablissement_id` INT NOT NULL DEFAULT 1,
-  UNIQUE KEY `uk_allergie` (`eleve_id`, `allergene`)
+  UNIQUE KEY `uk_allergie` (`eleve_id`, `allergene`),
+  KEY `idx_etab_eleve_allergies` (`etablissement_id`),
+  CONSTRAINT `fk_etab_eleve_allergies` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Phase 8: Garderie — attendance
@@ -2976,7 +3023,9 @@ CREATE TABLE IF NOT EXISTS `archives` (
   `data_json` JSON DEFAULT NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `etablissement_id` INT NOT NULL DEFAULT 1,
-  INDEX `idx_annee` (`annee_scolaire`)
+  INDEX `idx_annee` (`annee_scolaire`),
+  KEY `idx_etab_archives` (`etablissement_id`),
+  CONSTRAINT `fk_etab_archives` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Phase 9: Personnel — leave management
@@ -2990,7 +3039,9 @@ CREATE TABLE IF NOT EXISTS `personnel_conges` (
   `justificatif_path` VARCHAR(500) DEFAULT NULL,
   `valide_par` INT DEFAULT NULL,
   `etablissement_id` INT NOT NULL DEFAULT 1,
-  INDEX `idx_personnel` (`personnel_id`)
+  INDEX `idx_personnel` (`personnel_id`),
+  KEY `idx_etab_personnel_conges` (`etablissement_id`),
+  CONSTRAINT `fk_etab_personnel_conges` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- V1.5.0 Feature Flags (new granular flags for module improvements)

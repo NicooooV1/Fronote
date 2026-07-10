@@ -71,7 +71,8 @@ CREATE TABLE IF NOT EXISTS `bulletin_signatures` (
   PRIMARY KEY (`id`),
   KEY `idx_bsig_bulletin` (`bulletin_id`),
   KEY `idx_bsig_etab` (`etablissement_id`),
-  CONSTRAINT `fk_bsig_bulletin` FOREIGN KEY (`bulletin_id`) REFERENCES `bulletins` (`id`) ON DELETE CASCADE
+  CONSTRAINT `fk_bsig_bulletin` FOREIGN KEY (`bulletin_id`) REFERENCES `bulletins` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_etab_bulletin_signatures` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- File d'attente minimale pour la generation asynchrone des bulletins en lot
@@ -86,5 +87,6 @@ CREATE TABLE IF NOT EXISTS `jobs` (
   PRIMARY KEY (`id`),
   KEY `idx_jobs_queue` (`queue`),
   KEY `idx_jobs_status` (`status`),
-  KEY `idx_jobs_etab` (`etablissement_id`)
+  KEY `idx_jobs_etab` (`etablissement_id`),
+  CONSTRAINT `fk_etab_jobs` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

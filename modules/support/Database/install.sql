@@ -84,7 +84,8 @@ CREATE TABLE IF NOT EXISTS `support_reponses_types` (
   `titre` varchar(255) NOT NULL,
   `contenu` text NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `idx_supportrt_etab` (`etablissement_id`)
+  KEY `idx_supportrt_etab` (`etablissement_id`),
+  CONSTRAINT `fk_etab_support_reponses_types` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- SLA par catégorie/priorité (objectifs de délai, en heures).
@@ -96,5 +97,6 @@ CREATE TABLE IF NOT EXISTS `support_sla` (
   `first_response_hours` int(11) NOT NULL DEFAULT 24,
   `resolution_hours` int(11) NOT NULL DEFAULT 72,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_support_sla` (`etablissement_id`, `categorie`, `priorite`)
+  UNIQUE KEY `uk_support_sla` (`etablissement_id`, `categorie`, `priorite`),
+  CONSTRAINT `fk_etab_support_sla` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

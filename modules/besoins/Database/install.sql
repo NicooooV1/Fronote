@@ -54,7 +54,8 @@ CREATE TABLE IF NOT EXISTS `besoins_observations` (
   PRIMARY KEY (`id`),
   KEY `idx_obs_plan` (`plan_id`),
   KEY `idx_obs_etab` (`etablissement_id`),
-  CONSTRAINT `fk_obs_plan` FOREIGN KEY (`plan_id`) REFERENCES `plans_accompagnement` (`id`) ON DELETE CASCADE
+  CONSTRAINT `fk_obs_plan` FOREIGN KEY (`plan_id`) REFERENCES `plans_accompagnement` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_etab_besoins_observations` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Évaluations datées d'un plan, source du graphe de progression (getProgressionChart).
@@ -70,7 +71,8 @@ CREATE TABLE IF NOT EXISTS `plan_evaluations` (
   PRIMARY KEY (`id`),
   KEY `idx_eval_plan` (`plan_id`),
   KEY `idx_eval_etab` (`etablissement_id`),
-  CONSTRAINT `fk_eval_plan` FOREIGN KEY (`plan_id`) REFERENCES `plans_accompagnement` (`id`) ON DELETE CASCADE
+  CONSTRAINT `fk_eval_plan` FOREIGN KEY (`plan_id`) REFERENCES `plans_accompagnement` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_etab_plan_evaluations` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Modèles de plan réutilisables (getModelesPlan/creerDepuisModele).
@@ -86,5 +88,6 @@ CREATE TABLE IF NOT EXISTS `besoins_modeles` (
   `updated_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_modele_type` (`type_plan`),
-  KEY `idx_modele_etab` (`etablissement_id`)
+  KEY `idx_modele_etab` (`etablissement_id`),
+  CONSTRAINT `fk_etab_besoins_modeles` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

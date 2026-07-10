@@ -60,7 +60,8 @@ CREATE TABLE IF NOT EXISTS `bibliotheque_listes_lecture` (
   PRIMARY KEY (`id`),
   KEY `idx_professeur` (`professeur_id`),
   KEY `idx_classe` (`classe`),
-  KEY `idx_etablissement` (`etablissement_id`)
+  KEY `idx_etablissement` (`etablissement_id`),
+  CONSTRAINT `fk_etab_bibliotheque_listes_lecture` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- [drift-fix] livre_reservations
@@ -78,5 +79,6 @@ CREATE TABLE IF NOT EXISTS `livre_reservations` (
   KEY `idx_livre_statut` (`livre_id`, `statut`),
   KEY `idx_user` (`user_id`, `user_type`),
   KEY `idx_position` (`position_queue`),
-  KEY `idx_etablissement` (`etablissement_id`)
+  KEY `idx_etablissement` (`etablissement_id`),
+  CONSTRAINT `fk_etab_livre_reservations` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -60,5 +60,6 @@ CREATE TABLE IF NOT EXISTS `garderie_activites` (
   PRIMARY KEY (`id`),
   KEY `idx_creneau` (`creneau_id`),
   KEY `idx_date_activite` (`date_activite`),
-  KEY `idx_etablissement` (`etablissement_id`)
+  KEY `idx_etablissement` (`etablissement_id`),
+  CONSTRAINT `fk_etab_garderie_activites` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
