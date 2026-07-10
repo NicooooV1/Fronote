@@ -129,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canEdit && validateCSRFToken()) {
                     <div class="detail-item"><label>Traitements</label><p><?= nl2br(htmlspecialchars($fiche['traitements'] ?: 'Aucun')) ?></p></div>
                     <div class="detail-item"><label>Contacts urgence</label><p><?= nl2br(htmlspecialchars($fiche['contacts_urgence'] ?: 'Non renseigné')) ?></p></div>
                     <div class="detail-item"><label>Groupe sanguin</label><p><?= htmlspecialchars($fiche['groupe_sanguin'] ?: 'Non renseigné') ?></p></div>
-                    <div class="detail-item"><label>PAI</label><p><?= nl2br(htmlspecialchars($fiche['pai'] ?: 'Aucun')) ?></p></div>
+                    <div class="detail-item"><label><?= __('infirmerie.pai') ?></label><p><?= nl2br(htmlspecialchars($fiche['pai'] ?: 'Aucun')) ?></p></div>
                     <?php if ($fiche['remarques']): ?><div class="detail-item"><label>Remarques</label><p><?= nl2br(htmlspecialchars($fiche['remarques'])) ?></p></div><?php endif; ?>
                 </div>
                 <?php else: ?><p class="text-muted">Aucune fiche santé renseignée.</p><?php endif; ?>

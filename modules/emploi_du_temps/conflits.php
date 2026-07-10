@@ -45,7 +45,7 @@ require_once __DIR__ . '/includes/header.php';
             <thead>
                 <tr>
                     <th>Type</th>
-                    <th>Jour</th>
+                    <th><?= __('emploi_du_temps.day') ?></th>
                     <th>Créneau</th>
                     <th>Description</th>
                     <th>Actions</th>

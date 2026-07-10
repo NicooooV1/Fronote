@@ -101,7 +101,7 @@ include 'includes/header.php';
   <div>
     <button class="nav-button" data-nav="prev" aria-label="Précédent"><i class="fas fa-chevron-left"></i></button>
     <button class="nav-button" data-nav="next" aria-label="Suivant"><i class="fas fa-chevron-right"></i></button>
-    <button class="today-button" data-nav="today">Aujourd'hui</button>
+    <button class="today-button" data-nav="today"><?= __('agenda.today') ?></button>
   </div>
   <h2 class="calendar-title">
     <?php if ($view === 'month'): ?>

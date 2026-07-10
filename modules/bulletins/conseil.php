@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
         <table class="data-table conseil-table">
             <thead>
                 <tr>
-                    <th>Élève</th>
+                    <th><?= __('bulletins.student') ?></th>
                     <th class="text-center">Moy.</th>
                     <th class="text-center">Rang</th>
                     <th>Avis du conseil</th>

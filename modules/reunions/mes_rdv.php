@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-handshake"></i> Mes rendez-vous</h1>
-        <a href="reunions.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Réunions</a>
+        <a href="reunions.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('reunions.title') ?></a>
     </div>
 
     <?php if (!empty($_SESSION['success_message'])): ?>

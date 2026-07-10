@@ -34,7 +34,7 @@ if ($search) {
 
 <div class="main-content">
     <div class="page-header">
-        <h1><i class="fas fa-users"></i> Trombinoscope</h1>
+        <h1><i class="fas fa-users"></i> <?= __('trombinoscope.title') ?></h1>
         <p class="page-subtitle"><?= $stats['eleves'] ?> élèves · <?= $stats['profs'] ?> professeurs · <?= $stats['classes'] ?> classes</p>
     </div>
 
@@ -95,7 +95,7 @@ if ($search) {
     <?php if ($search): ?>
         <p class="trombi-result-info"><strong><?= count($personnes) ?></strong> résultat(s) pour « <?= h($search) ?> »</p>
     <?php elseif ($vue === 'eleves' && $classeNom): ?>
-        <p class="trombi-result-info">Classe <strong><?= h($classeNom) ?></strong> — <?= count($personnes) ?> élève(s)</p>
+        <p class="trombi-result-info"><?= __('trombinoscope.class') ?> <strong><?= h($classeNom) ?></strong> — <?= count($personnes) ?> élève(s)</p>
     <?php endif; ?>
 
     <!-- Grille -->

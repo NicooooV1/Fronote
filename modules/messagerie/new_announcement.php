@@ -276,7 +276,7 @@ include 'templates/header.php';
             </div>
             
             <div class="form-group">
-                <label for="attachments">Pièces jointes</label>
+                <label for="attachments"><?= __('messagerie.attachments') ?></label>
                 <div class="file-upload">
                     <input type="file" name="attachments[]" id="attachments" multiple>
                     <label for="attachments">

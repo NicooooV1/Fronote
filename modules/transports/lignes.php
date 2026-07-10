@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
     <div class="content-header"><h1><i class="fas fa-bus"></i> Transports scolaires</h1></div>
 
     <div class="filter-bar">
-        <a href="lignes.php" class="btn <?= !$filtreType ? 'btn-primary' : 'btn-outline' ?>">Tous</a>
+        <a href="lignes.php" class="btn <?= !$filtreType ? 'btn-primary' : 'btn-outline' ?>"><?= __('label.tous') ?></a>
         <?php foreach ($types as $k => $v): ?>
         <a href="lignes.php?type=<?= $k ?>" class="btn <?= $filtreType === $k ? 'btn-primary' : 'btn-outline' ?>"><?= $v ?></a>
         <?php endforeach; ?>
@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
                 <?= csrfField() ?><input type="hidden" name="action" value="creer">
                 <div class="form-grid-3">
                     <div class="form-group"><label>Nom *</label><input type="text" name="nom" class="form-control" required></div>
-                    <div class="form-group"><label>Type</label><select name="type" class="form-control"><?php foreach ($types as $k => $v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?></select></div>
+                    <div class="form-group"><label><?= __('label.type') ?></label><select name="type" class="form-control"><?php foreach ($types as $k => $v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?></select></div>
                     <div class="form-group"><label>Capacité</label><input type="number" name="capacite" class="form-control" min="1"></div>
                     <div class="form-group"><label>Heure de départ</label><input type="time" name="horaire_depart" class="form-control"></div>
                     <div class="form-group"><label>Heure d'arrivée</label><input type="time" name="horaire_arrivee" class="form-control"></div>

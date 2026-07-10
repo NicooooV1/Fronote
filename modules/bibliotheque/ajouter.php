@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-<?= $livre ? 'edit' : 'plus-circle' ?>"></i> <?= $livre ? 'Modifier' : 'Ajouter' ?> un livre</h1>
-        <a href="catalogue.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Catalogue</a>
+        <a href="catalogue.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('bibliotheque.catalog') ?></a>
     </div>
 
     <?php if (!empty($error)): ?>
@@ -61,15 +61,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                         <input type="text" name="titre" class="form-control" required value="<?= htmlspecialchars($livre['titre'] ?? $_POST['titre'] ?? '') ?>">
                     </div>
                     <div class="form-group">
-                        <label>Auteur</label>
+                        <label><?= __('bibliotheque.author') ?></label>
                         <input type="text" name="auteur" class="form-control" value="<?= htmlspecialchars($livre['auteur'] ?? '') ?>">
                     </div>
                     <div class="form-group">
-                        <label>ISBN</label>
+                        <label><?= __('bibliotheque.isbn') ?></label>
                         <input type="text" name="isbn" class="form-control" value="<?= htmlspecialchars($livre['isbn'] ?? '') ?>">
                     </div>
                     <div class="form-group">
-                        <label>Éditeur</label>
+                        <label><?= __('bibliotheque.publisher') ?></label>
                         <input type="text" name="editeur" class="form-control" value="<?= htmlspecialchars($livre['editeur'] ?? '') ?>">
                     </div>
                     <div class="form-group">
@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                         <input type="number" name="annee_publication" class="form-control" min="1900" max="2100" value="<?= $livre['annee_publication'] ?? '' ?>">
                     </div>
                     <div class="form-group">
-                        <label>Catégorie</label>
+                        <label><?= __('bibliotheque.category') ?></label>
                         <select name="categorie" class="form-control">
                             <?php foreach ($cats as $k => $v): ?>
                             <option value="<?= $k ?>" <?= ($livre['categorie'] ?? '') === $k ? 'selected' : '' ?>><?= $v ?></option>

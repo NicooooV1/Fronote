@@ -303,7 +303,7 @@ include 'templates/header.php';
             </div>
             
             <div class="form-group">
-                <label for="contenu">Message</label>
+                <label for="contenu"><?= __('messagerie.body') ?></label>
                 <textarea name="contenu" id="contenu" required><?= htmlspecialchars($contenu) ?></textarea>
                 <div id="char-counter" class="text-muted small"></div>
             </div>
@@ -322,7 +322,7 @@ include 'templates/header.php';
             </div>
             
             <div class="form-group">
-                <label for="attachments">Pièces jointes</label>
+                <label for="attachments"><?= __('messagerie.attachments') ?></label>
                 <div class="file-upload">
                     <input type="file" name="attachments[]" id="attachments" multiple>
                     <label for="attachments">
@@ -335,7 +335,7 @@ include 'templates/header.php';
             
             <div class="form-footer">
                 <div class="form-actions">
-                    <button type="submit" class="btn primary">Envoyer</button>
+                    <button type="submit" class="btn primary"><?= __('messagerie.send') ?></button>
                     <a href="index.php" class="btn cancel">Annuler</a>
                 </div>
             </div>

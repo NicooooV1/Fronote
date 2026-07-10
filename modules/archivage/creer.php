@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
             <form method="post">
                 <?= csrfField() ?>
                 <div class="form-group">
-                    <label for="annee">Année scolaire</label>
+                    <label for="annee"><?= __('archivage.year') ?></label>
                     <input type="text" name="annee" id="annee" class="form-control" value="<?= htmlspecialchars($currentYear) ?>" placeholder="ex: 2024-2025">
                 </div>
 

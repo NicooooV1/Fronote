@@ -33,7 +33,7 @@ if ($isGestionnaire) {
 
 <div class="content-wrapper">
     <div class="content-header">
-        <h1><i class="fas fa-heartbeat"></i> Infirmerie</h1>
+        <h1><i class="fas fa-heartbeat"></i> <?= __('infirmerie.title') ?></h1>
         <?php if ($isGestionnaire): ?>
         <a href="passage.php" class="btn btn-primary"><i class="fas fa-plus"></i> Nouveau passage</a>
         <?php endif; ?>

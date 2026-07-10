@@ -15,7 +15,7 @@ $cats = ClubService::categories();
     <div class="content-header">
         <h1><i class="fas fa-users"></i> Clubs & Activités</h1>
         <?php if (isAdmin() || isPersonnelVS() || isProfesseur()): ?>
-        <a href="creer.php" class="btn btn-primary"><i class="fas fa-plus"></i> Créer un club</a>
+        <a href="creer.php" class="btn btn-primary"><i class="fas fa-plus"></i> <?= __('clubs.add') ?></a>
         <?php endif; ?>
     </div>
 

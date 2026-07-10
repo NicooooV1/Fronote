@@ -161,7 +161,7 @@ include 'includes/header.php';
                 <div class="form-grid">
                     <!-- Sélection de l'élève -->
                     <div class="form-group <?= count($eleves) === 1 ? '' : 'form-full' ?>">
-                        <label for="id_eleve">Élève <span class="required">*</span></label>
+                        <label for="id_eleve"><?= __('absences.eleve') ?> <span class="required">*</span></label>
                         <?php if (count($eleves) === 1): ?>
                             <input type="hidden" name="id_eleve" value="<?= $eleves[0]['id'] ?>">
                             <div class="form-value"><?= htmlspecialchars($eleves[0]['prenom'] . ' ' . $eleves[0]['nom'] . ' (' . $eleves[0]['classe'] . ')') ?></div>
@@ -179,19 +179,19 @@ include 'includes/header.php';
 
                     <!-- Dates -->
                     <div class="form-group">
-                        <label for="date_debut_absence">Date de début <span class="required">*</span></label>
+                        <label for="date_debut_absence"><?= __('absences.date_debut') ?> <span class="required">*</span></label>
                         <input type="date" name="date_debut_absence" id="date_debut_absence" required max="<?= date('Y-m-d') ?>"
                                value="<?= htmlspecialchars($_POST['date_debut_absence'] ?? '') ?>">
                     </div>
                     <div class="form-group">
-                        <label for="date_fin_absence">Date de fin <span class="required">*</span></label>
+                        <label for="date_fin_absence"><?= __('absences.date_fin') ?> <span class="required">*</span></label>
                         <input type="date" name="date_fin_absence" id="date_fin_absence" required max="<?= date('Y-m-d') ?>"
                                value="<?= htmlspecialchars($_POST['date_fin_absence'] ?? '') ?>">
                     </div>
 
                     <!-- Motif -->
                     <div class="form-group form-full">
-                        <label for="motif">Motif <span class="required">*</span></label>
+                        <label for="motif"><?= __('absences.motif') ?> <span class="required">*</span></label>
                         <select name="motif" id="motif" required>
                             <option value="">-- Sélectionner un motif --</option>
                             <option value="maladie" <?= ($_POST['motif'] ?? '') === 'maladie' ? 'selected' : '' ?>>Maladie</option>

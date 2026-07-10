@@ -78,7 +78,7 @@ if ($isGestionnaire) {
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="form-group"><label>Élève</label>
+                    <div class="form-group"><label><?= __('garderie.student') ?></label>
                         <select name="eleve_id" required class="form-select">
                             <?php foreach ($eleves as $e): ?>
                                 <option value="<?= $e['id'] ?>"><?= htmlspecialchars($e['nom'] . ' ' . $e['prenom']) ?></option>
@@ -93,7 +93,7 @@ if ($isGestionnaire) {
                         <?php endforeach; ?>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-primary">Inscrire</button>
+                <button type="submit" class="btn btn-primary"><?= __('garderie.register') ?></button>
             </form>
         </div>
     </div>
@@ -114,7 +114,7 @@ if ($isGestionnaire) {
         </div>
         <div class="card-body">
             <table class="table">
-                <thead><tr><th>Élève</th><th>Classe</th><th>Créneau</th><th>Jour</th><?php if ($isGestionnaire): ?><th>Actions</th><?php endif; ?></tr></thead>
+                <thead><tr><th><?= __('garderie.student') ?></th><th>Classe</th><th>Créneau</th><th>Jour</th><?php if ($isGestionnaire): ?><th>Actions</th><?php endif; ?></tr></thead>
                 <tbody>
                 <?php foreach ($inscriptions as $ins): ?>
                     <tr>

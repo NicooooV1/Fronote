@@ -51,7 +51,7 @@ $affectations = $internatService->getAffectations();
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
                 <input type="hidden" name="enregistrer" value="1">
                 <div class="form-row">
-                    <div class="form-group"><label>Interne</label>
+                    <div class="form-group"><label><?= __('internat.student') ?></label>
                         <select name="eleve_id" required class="form-select" data-fr-change="updateChambre" data-fr-pass="this">
                             <option value="">— Choisir —</option>
                             <?php foreach ($affectations as $af): if ($af['statut'] !== 'actif') continue; ?>

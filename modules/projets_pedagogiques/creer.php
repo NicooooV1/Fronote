@@ -65,7 +65,7 @@ $p = $projet ?? ['titre' => '', 'description' => '', 'objectifs' => '', 'type' =
                     </select>
                 </div>
                 <div class="col-12">
-                    <label class="form-label">Description</label>
+                    <label class="form-label"><?= __('projets_pedagogiques.description') ?></label>
                     <textarea name="description" class="form-control" rows="3"><?= htmlspecialchars($p['description'] ?? '') ?></textarea>
                 </div>
                 <div class="col-12">

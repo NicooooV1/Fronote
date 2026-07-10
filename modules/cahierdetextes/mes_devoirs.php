@@ -86,7 +86,7 @@ $now = time();
 <div class="data-table-container">
     <table class="data-table">
         <thead>
-            <tr><th>Titre</th><th>Matière</th><th>Classe</th><th class="text-center">Échéance</th><th class="text-center">Rendus</th><th>Actions</th></tr>
+            <tr><th>Titre</th><th><?= __('cahierdetextes.subject') ?></th><th><?= __('cahierdetextes.class') ?></th><th class="text-center">Échéance</th><th class="text-center">Rendus</th><th>Actions</th></tr>
         </thead>
         <tbody>
             <?php foreach ($devoirs as $d): ?>

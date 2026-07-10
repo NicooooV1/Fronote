@@ -111,7 +111,7 @@ $periodes = $reportService->getPeriodes();
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Période <small>(pour notes/moyennes)</small></label>
+                        <label class="form-label"><?= __('reporting.date_range') ?> <small>(pour notes/moyennes)</small></label>
                         <select name="periode_id" class="form-select">
                             <option value="0">Toutes les périodes</option>
                             <?php foreach ($periodes as $p): ?>

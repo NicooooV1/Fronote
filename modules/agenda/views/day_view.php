@@ -16,7 +16,7 @@ $day_events     = $events; // already filtered by controller
         <h2 class="day-title">
             <?= $formatted_date ?>
             <?php if ($is_today): ?>
-                <span class="today-badge">Aujourd'hui</span>
+                <span class="today-badge"><?= __('agenda.today') ?></span>
             <?php endif; ?>
         </h2>
     </div>

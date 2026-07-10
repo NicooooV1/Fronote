@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                     <div class="form-group"><label>Objet *</label><input type="text" name="objet" class="form-control" required></div>
                     <div class="form-group"><label>Début *</label><input type="time" name="heure_debut" class="form-control" required></div>
                     <div class="form-group"><label>Fin *</label><input type="time" name="heure_fin" class="form-control" required></div>
-                    <div class="form-group" style="align-self:end;"><button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Réserver</button></div>
+                    <div class="form-group" style="align-self:end;"><button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> <?= __('salles.reserve') ?></button></div>
                 </div>
             </form>
         </div>

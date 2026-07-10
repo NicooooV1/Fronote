@@ -127,7 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $canEdit) {
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Statut</label>
+                    <label><?= __('orientation.status') ?></label>
                     <select name="statut" class="form-control" style="max-width:200px;">
                         <option value="soumise" <?= $fiche['statut'] === 'soumise' ? 'selected' : '' ?>>Soumise</option>
                         <option value="validee" <?= $fiche['statut'] === 'validee' ? 'selected' : '' ?>>Validée</option>

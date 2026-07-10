@@ -129,7 +129,7 @@ include 'includes/header.php';
                     <?php endif; ?>
 
                     <?php if ($is_today): ?>
-                        <span class="event-badge today">Aujourd'hui</span>
+                        <span class="event-badge today"><?= __('agenda.today') ?></span>
                     <?php elseif ($is_tomorrow): ?>
                         <span class="event-badge tomorrow">Demain</span>
                     <?php elseif ($is_future): ?>
@@ -155,7 +155,7 @@ include 'includes/header.php';
         <div class="event-body">
             <?php if (!empty($evenement['description'])): ?>
             <div class="event-section">
-                <h3 class="section-title"><i class="fas fa-align-left"></i> Description</h3>
+                <h3 class="section-title"><i class="fas fa-align-left"></i> <?= __('agenda.event_desc') ?></h3>
                 <div class="section-content description">
                     <?= nl2br(htmlspecialchars($evenement['description'])) ?>
                 </div>
@@ -167,7 +167,7 @@ include 'includes/header.php';
                 <div class="info-grid">
                     <?php if (!empty($evenement['lieu'])): ?>
                     <div class="info-item">
-                        <div class="info-label">Lieu</div>
+                        <div class="info-label"><?= __('agenda.event_lieu') ?></div>
                         <div class="info-value"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($evenement['lieu']) ?></div>
                     </div>
                     <?php endif; ?>
@@ -256,7 +256,7 @@ include 'includes/header.php';
             <button class="close" id="closeModal" aria-label="Fermer">&times;</button>
         </div>
         <div class="modal-body">
-            <p>Êtes-vous sûr de vouloir supprimer cet événement ?</p>
+            <p><?= __('agenda.confirm_delete') ?></p>
             <p>Cette action est irréversible.</p>
         </div>
         <div class="modal-footer">

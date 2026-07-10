@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isGestionnaire && isset($_POST['sa
             <div class="form-group"><label>Plat principal</label><input type="text" name="plat_principal" id="modal_plat" class="form-control"></div>
             <div class="form-group"><label>Accompagnement</label><input type="text" name="accompagnement" id="modal_accomp" class="form-control"></div>
             <div class="form-group"><label>Dessert</label><input type="text" name="dessert" id="modal_dessert" class="form-control"></div>
-            <div class="form-group"><label>Allergènes</label><input type="text" name="allergenes" id="modal_allergenes" class="form-control"></div>
+            <div class="form-group"><label><?= __('cantine.allergens') ?></label><input type="text" name="allergenes" id="modal_allergenes" class="form-control"></div>
             <div class="form-group"><label>Régime</label>
                 <select name="regime_special" class="form-select">
                     <option value="normal">Normal</option>

@@ -51,11 +51,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="priorite">Priorité</label>
+                        <label for="priorite"><?= __('support.priority') ?></label>
                         <select name="priorite" id="priorite" class="form-control">
-                            <option value="basse">Basse</option>
+                            <option value="basse"><?= __('support.low') ?></option>
                             <option value="normale" selected>Normale</option>
-                            <option value="haute">Haute</option>
+                            <option value="haute"><?= __('support.high') ?></option>
                             <option value="urgente">Urgente</option>
                         </select>
                     </div>

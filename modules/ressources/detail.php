@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
             <?= csrfField() ?>
             <div class="form-grid-2">
                 <div class="form-group"><label>Titre *</label><input type="text" name="titre" class="form-control" value="<?= htmlspecialchars($res['titre']) ?>" required></div>
-                <div class="form-group"><label>Type</label><select name="type" class="form-control"><?php foreach ($types as $k => $v): ?><option value="<?= $k ?>" <?= $res['type'] === $k ? 'selected' : '' ?>><?= $v ?></option><?php endforeach; ?></select></div>
+                <div class="form-group"><label><?= __('ressources.type') ?></label><select name="type" class="form-control"><?php foreach ($types as $k => $v): ?><option value="<?= $k ?>" <?= $res['type'] === $k ? 'selected' : '' ?>><?= $v ?></option><?php endforeach; ?></select></div>
                 <div class="form-group"><label>Matière</label><select name="matiere_id" class="form-control"><option value="">—</option><?php foreach ($resService->getMatieres() as $m): ?><option value="<?= $m['id'] ?>" <?= $res['matiere_id'] == $m['id'] ? 'selected' : '' ?>><?= htmlspecialchars($m['nom']) ?></option><?php endforeach; ?></select></div>
                 <div class="form-group"><label>Niveau</label><select name="niveau" class="form-control"><option value="">—</option><?php foreach ($niveaux as $k => $v): ?><option value="<?= $k ?>" <?= ($res['niveau'] ?? '') === $k ? 'selected' : '' ?>><?= $v ?></option><?php endforeach; ?></select></div>
                 <div class="form-group full-width"><label>Tags (virgule)</label><input type="text" name="tags" class="form-control" value="<?= htmlspecialchars($res['tags'] ?? '') ?>"></div>

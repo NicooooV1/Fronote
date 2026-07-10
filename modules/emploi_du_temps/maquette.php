@@ -105,7 +105,7 @@ include 'includes/header.php';
         <table class="edt-table" style="width:100%">
             <thead>
                 <tr>
-                    <th>Classe</th><th>Matière</th><th>Professeur</th>
+                    <th><?= __('emploi_du_temps.class') ?></th><th><?= __('emploi_du_temps.subject') ?></th><th><?= __('emploi_du_temps.teacher') ?></th>
                     <th>Créneaux</th><th>Type</th><th>Groupe</th><th>Salle</th><th></th>
                 </tr>
             </thead>
@@ -146,7 +146,7 @@ include 'includes/header.php';
 
             <div class="form-row">
                 <div class="form-group">
-                    <label for="classe_id">Classe <span class="required">*</span></label>
+                    <label for="classe_id"><?= __('emploi_du_temps.class') ?> <span class="required">*</span></label>
                     <select name="classe_id" id="classe_id" class="form-control" required>
                         <option value="">-- Classe --</option>
                         <?php foreach ($classes as $cl): ?>
@@ -155,7 +155,7 @@ include 'includes/header.php';
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="matiere_id">Matière <span class="required">*</span></label>
+                    <label for="matiere_id"><?= __('emploi_du_temps.subject') ?> <span class="required">*</span></label>
                     <select name="matiere_id" id="matiere_id" class="form-control" required>
                         <option value="">-- Matière --</option>
                         <?php foreach ($matieres as $mat): ?>
@@ -167,7 +167,7 @@ include 'includes/header.php';
 
             <div class="form-row">
                 <div class="form-group">
-                    <label for="professeur_id">Professeur <span class="required">*</span></label>
+                    <label for="professeur_id"><?= __('emploi_du_temps.teacher') ?> <span class="required">*</span></label>
                     <select name="professeur_id" id="professeur_id" class="form-control" required>
                         <option value="">-- Professeur --</option>
                         <?php foreach ($professeurs as $prof): ?>

@@ -277,10 +277,10 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                         <table class="notes-table">
                             <thead>
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Matière</th>
+                                    <th><?= __('notes.date') ?></th>
+                                    <th><?= __('notes.subject') ?></th>
                                     <th>Évaluation</th>
-                                    <th class="text-center">Note</th>
+                                    <th class="text-center"><?= __('notes.grade') ?></th>
                                     <th class="text-center">Coeff.</th>
                                     <th>Professeur</th>
                                 </tr>
@@ -357,10 +357,10 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                     <table class="notes-table">
                         <thead>
                             <tr>
-                                <th>Date</th>
-                                <th>Matière</th>
+                                <th><?= __('notes.date') ?></th>
+                                <th><?= __('notes.subject') ?></th>
                                 <th>Évaluation</th>
-                                <th class="text-center">Note</th>
+                                <th class="text-center"><?= __('notes.grade') ?></th>
                                 <th class="text-center">Coeff.</th>
                                 <th>Professeur</th>
                             </tr>
@@ -392,7 +392,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 
                 <div class="section-header">
                     <h2 class="section-title">Notes attribuées — <?= $selectedTrimestre === 1 ? '1er' : $selectedTrimestre . 'ème' ?> trimestre</h2>
-                    <a href="form_note.php" class="btn btn-primary"><i class="fas fa-plus"></i> Ajouter des notes</a>
+                    <a href="form_note.php" class="btn btn-primary"><i class="fas fa-plus"></i> <?= __('notes.add') ?></a>
                 </div>
 
                 <!-- Filtres classe / matière -->
@@ -517,12 +517,12 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                     <table class="notes-table">
                         <thead>
                             <tr>
-                                <th>Date</th>
+                                <th><?= __('notes.date') ?></th>
                                 <th>Élève</th>
                                 <th>Classe</th>
-                                <th>Matière</th>
+                                <th><?= __('notes.subject') ?></th>
                                 <th>Évaluation</th>
-                                <th class="text-center">Note</th>
+                                <th class="text-center"><?= __('notes.grade') ?></th>
                                 <th class="text-center">Coeff.</th>
                                 <th class="text-center">Actions</th>
                             </tr>
@@ -588,12 +588,12 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                     <table class="notes-table">
                         <thead>
                             <tr>
-                                <th>Date</th>
+                                <th><?= __('notes.date') ?></th>
                                 <th>Élève</th>
                                 <th>Classe</th>
-                                <th>Matière</th>
+                                <th><?= __('notes.subject') ?></th>
                                 <th>Type</th>
-                                <th class="text-center">Note</th>
+                                <th class="text-center"><?= __('notes.grade') ?></th>
                                 <th>Professeur</th>
                             </tr>
                         </thead>

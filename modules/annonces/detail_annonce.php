@@ -104,7 +104,7 @@ $types = AnnonceService::getTypes();
             <?= htmlspecialchars($types[$annonce['type']] ?? $annonce['type']) ?>
         </span>
         <?php if ($annonce['epingle']): ?>
-        <span class="badge badge-pin"><i class="fas fa-thumbtack"></i> Épinglée</span>
+        <span class="badge badge-pin"><i class="fas fa-thumbtack"></i> <?= __('annonces.epinglee') ?></span>
         <?php endif; ?>
         <span class="annonce-detail-date">
             Publiée le <?= date('d/m/Y à H:i', strtotime($annonce['date_publication'])) ?>

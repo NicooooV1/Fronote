@@ -331,7 +331,7 @@ include 'templates/header.php';
             </div>
             
             <button type="submit" class="btn primary">
-                <i class="fas fa-paper-plane"></i> Envoyer
+                <i class="fas fa-paper-plane"></i> <?= __('messagerie.send') ?>
             </button>
         </div>
     </form>

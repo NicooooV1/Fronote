@@ -127,7 +127,7 @@ while ($jour_courant <= $fin_calendrier) {
     <span class="legend-item"><span class="legend-dot type-cours"></span> Cours</span>
     <span class="legend-item"><span class="legend-dot type-demi"></span> Demi-journée</span>
     <span class="legend-item"><span class="legend-dot type-journee"></span> Journée</span>
-    <span class="legend-item"><span class="legend-dot justified"></span> Justifiée</span>
+    <span class="legend-item"><span class="legend-dot justified"></span> <?= __('absences.justified') ?></span>
 </div>
 
 <div class="calendar-container">

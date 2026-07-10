@@ -38,7 +38,7 @@ ob_start();
 ?>
                 <?php if (isAdmin() || isVieScolaire() || isTeacher()): ?>
                 <a href="creer_annonce.php" class="btn btn-primary">
-                    <i class="fas fa-plus"></i> Nouvelle annonce
+                    <i class="fas fa-plus"></i> <?= __('annonces.add') ?>
                 </a>
                 <?php endif; ?>
 <?php

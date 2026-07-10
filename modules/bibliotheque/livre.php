@@ -37,7 +37,7 @@ $cats = BibliothequeService::categories();
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-book"></i> <?= htmlspecialchars($livre['titre']) ?></h1>
-        <a href="catalogue.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Catalogue</a>
+        <a href="catalogue.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('bibliotheque.catalog') ?></a>
     </div>
 
     <?php if (!empty($_SESSION['success_message'])): ?>
@@ -54,11 +54,11 @@ $cats = BibliothequeService::categories();
             <div class="card-body">
                 <div class="detail-grid">
                     <div class="detail-item"><label>Titre</label><span><?= htmlspecialchars($livre['titre']) ?></span></div>
-                    <div class="detail-item"><label>Auteur</label><span><?= htmlspecialchars($livre['auteur'] ?: '—') ?></span></div>
-                    <div class="detail-item"><label>ISBN</label><span><?= htmlspecialchars($livre['isbn'] ?: '—') ?></span></div>
-                    <div class="detail-item"><label>Éditeur</label><span><?= htmlspecialchars($livre['editeur'] ?: '—') ?></span></div>
-                    <div class="detail-item"><label>Année</label><span><?= $livre['annee_publication'] ?: '—' ?></span></div>
-                    <div class="detail-item"><label>Catégorie</label><span><?= $cats[$livre['categorie']] ?? $livre['categorie'] ?></span></div>
+                    <div class="detail-item"><label><?= __('bibliotheque.author') ?></label><span><?= htmlspecialchars($livre['auteur'] ?: '—') ?></span></div>
+                    <div class="detail-item"><label><?= __('bibliotheque.isbn') ?></label><span><?= htmlspecialchars($livre['isbn'] ?: '—') ?></span></div>
+                    <div class="detail-item"><label><?= __('bibliotheque.publisher') ?></label><span><?= htmlspecialchars($livre['editeur'] ?: '—') ?></span></div>
+                    <div class="detail-item"><label><?= __('bibliotheque.year') ?></label><span><?= $livre['annee_publication'] ?: '—' ?></span></div>
+                    <div class="detail-item"><label><?= __('bibliotheque.category') ?></label><span><?= $cats[$livre['categorie']] ?? $livre['categorie'] ?></span></div>
                     <div class="detail-item"><label>Emplacement</label><span><?= htmlspecialchars($livre['emplacement'] ?: '—') ?></span></div>
                     <div class="detail-item"><label>Exemplaires</label><span><?= $livre['exemplaires_disponibles'] ?> / <?= $livre['exemplaires_total'] ?></span></div>
                 </div>

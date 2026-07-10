@@ -54,8 +54,8 @@ $niveaux = CompetenceService::niveauxLabels();
                 <thead>
                     <tr>
                         <th>Code</th>
-                        <th>Compétence</th>
-                        <th>Domaine</th>
+                        <th><?= __('competences.skill') ?></th>
+                        <th><?= __('competences.domain') ?></th>
                         <th class="text-center">Distribution</th>
                         <th class="text-center">Total</th>
                     </tr>

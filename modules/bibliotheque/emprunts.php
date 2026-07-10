@@ -47,7 +47,7 @@ if ($isGestionnaire) {
     <?php if ($isGestionnaire): ?>
     <div class="filter-bar">
         <a href="emprunts.php?statut=en_cours" class="filter-btn <?= ($filtreStatut ?? '') === 'en_cours' ? 'active' : '' ?>">En cours</a>
-        <a href="emprunts.php?retard=1" class="filter-btn <?= isset($_GET['retard']) ? 'active' : '' ?>">En retard</a>
+        <a href="emprunts.php?retard=1" class="filter-btn <?= isset($_GET['retard']) ? 'active' : '' ?>"><?= __('bibliotheque.overdue') ?></a>
         <a href="emprunts.php?statut=rendu" class="filter-btn <?= ($filtreStatut ?? '') === 'rendu' ? 'active' : '' ?>">Retournés</a>
     </div>
     <?php endif; ?>
@@ -69,7 +69,7 @@ if ($isGestionnaire) {
                 <div class="emprunt-meta">
                     <span><i class="fas fa-calendar-plus"></i> <?= formatDate($e['date_emprunt']) ?></span>
                     <span><i class="fas fa-calendar-check"></i> Retour: <?= formatDate($e['date_retour_prevue']) ?></span>
-                    <?php if ($retard): ?><span class="badge badge-danger">En retard</span><?php endif; ?>
+                    <?php if ($retard): ?><span class="badge badge-danger"><?= __('bibliotheque.overdue') ?></span><?php endif; ?>
                     <?php if ($e['statut'] === 'rendu'): ?><span class="badge badge-success">Retourné le <?= formatDate($e['date_retour_effective']) ?></span><?php endif; ?>
                 </div>
             </div>

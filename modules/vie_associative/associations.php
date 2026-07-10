@@ -11,7 +11,7 @@ $types = VieAssociativeService::typesLabels();
 ?>
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2><i class="fas fa-hands-helping me-2"></i>Vie associative</h2>
+        <h2><i class="fas fa-hands-helping me-2"></i><?= __('vie_associative.title') ?></h2>
         <?php if (in_array($role, ['admin'])): ?>
             <a href="creer.php" class="btn btn-primary"><i class="fas fa-plus me-1"></i>Nouvelle association</a>
         <?php endif; ?>
@@ -31,7 +31,7 @@ $types = VieAssociativeService::typesLabels();
 
     <div class="asso-grid">
         <?php if (empty($associations)): ?>
-            <div class="alert alert-info">Aucune association enregistrée.</div>
+            <div class="alert alert-info"><?= __('vie_associative.no_associations') ?></div>
         <?php endif; ?>
         <?php foreach ($associations as $a): ?>
             <div class="asso-card" style="border-top:4px solid <?= VieAssociativeService::typeColor($a['type']) ?>">

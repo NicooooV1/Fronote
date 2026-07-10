@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                         <textarea name="symptomes" class="form-control" rows="2" placeholder="Description détaillée des symptômes"></textarea>
                     </div>
                     <div class="form-group full-width">
-                        <label>Soins prodigués</label>
+                        <label><?= __('infirmerie.treatment') ?></label>
                         <textarea name="soins" class="form-control" rows="2" placeholder="Glace, pansement, repos…"></textarea>
                     </div>
                     <div class="form-group">

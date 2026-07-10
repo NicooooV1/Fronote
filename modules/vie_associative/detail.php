@@ -79,7 +79,7 @@ $types = VieAssociativeService::typesLabels();
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
                         <input type="hidden" name="action" value="inscrire">
                         <div class="col-5"><input name="eleve_id" type="number" class="form-control form-control-sm" placeholder="ID élève" required></div>
-                        <div class="col-4"><select name="role_membre" class="form-select form-select-sm"><option value="membre">Membre</option><option value="bureau">Bureau</option><option value="president">Président</option></select></div>
+                        <div class="col-4"><select name="role_membre" class="form-select form-select-sm"><option value="membre">Membre</option><option value="bureau">Bureau</option><option value="president"><?= __('vie_associative.president') ?></option></select></div>
                         <div class="col-3"><button class="btn btn-sm btn-primary w-100">+</button></div>
                     </form>
                 </div>

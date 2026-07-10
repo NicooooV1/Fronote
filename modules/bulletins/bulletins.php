@@ -69,7 +69,7 @@ if (!$selectedPeriode && !empty($periodes)) {
                     <th class="text-center">Classe</th>
                     <th class="text-center">Min</th>
                     <th class="text-center">Max</th>
-                    <th>Appréciation</th>
+                    <th><?= __('bulletins.appreciation') ?></th>
                 </tr>
             </thead>
             <tbody>
@@ -89,7 +89,7 @@ if (!$selectedPeriode && !empty($periodes)) {
 
         <?php if (!empty($bulletin['appreciation_generale'])): ?>
         <div class="appreciation-generale">
-            <h4>Appréciation générale</h4>
+            <h4><?= __('bulletins.general_appreciation') ?></h4>
             <p><?= nl2br(htmlspecialchars($bulletin['appreciation_generale'])) ?></p>
         </div>
         <?php endif; ?>
@@ -130,7 +130,7 @@ if (!$selectedPeriode && !empty($periodes)) {
     <div class="bulletin-view">
         <table class="bulletin-table">
             <thead>
-                <tr><th>Matière</th><th>Professeur</th><th class="text-center">Moyenne</th><th class="text-center">Classe</th><th>Appréciation</th></tr>
+                <tr><th>Matière</th><th>Professeur</th><th class="text-center">Moyenne</th><th class="text-center">Classe</th><th><?= __('bulletins.appreciation') ?></th></tr>
             </thead>
             <tbody>
                 <?php foreach ($lignes as $l): ?>
@@ -145,7 +145,7 @@ if (!$selectedPeriode && !empty($periodes)) {
             </tbody>
         </table>
         <?php if (!empty($bulletin['appreciation_generale'])): ?>
-        <div class="appreciation-generale"><h4>Appréciation générale</h4><p><?= nl2br(htmlspecialchars($bulletin['appreciation_generale'])) ?></p></div>
+        <div class="appreciation-generale"><h4><?= __('bulletins.general_appreciation') ?></h4><p><?= nl2br(htmlspecialchars($bulletin['appreciation_generale'])) ?></p></div>
         <?php endif; ?>
     </div>
     <?php else: ?>
@@ -228,7 +228,7 @@ if (!$selectedPeriode && !empty($periodes)) {
             </thead>
             <tbody>
                 <?php if (empty($bulletins)): ?>
-                    <tr><td colspan="7" class="text-center text-muted">Aucun bulletin généré. <a href="generer.php?classe=<?= $filterClasse ?>&periode=<?= $selectedPeriode ?>">Générer les bulletins</a></td></tr>
+                    <tr><td colspan="7" class="text-center text-muted"><?= __('bulletins.no_bulletins') ?> <a href="generer.php?classe=<?= $filterClasse ?>&periode=<?= $selectedPeriode ?>"><?= __('bulletins.generate') ?></a></td></tr>
                 <?php else: ?>
                     <?php foreach ($bulletins as $b): ?>
                     <tr>

@@ -50,7 +50,7 @@ if (isAdmin()) {
 $types = AnnonceService::getTypes();
 ?>
 
-<h1 class="page-title"><i class="fas fa-bullhorn"></i> Annonces</h1>
+<h1 class="page-title"><i class="fas fa-bullhorn"></i> <?= __('annonces.title') ?></h1>
 
 <?php
 // Publier les annonces programmées et notifier
@@ -64,7 +64,7 @@ $service->publishScheduled();
         <div class="filter-group">
             <label for="type">Type</label>
             <select name="type" id="type">
-                <option value="">Tous</option>
+                <option value=""><?= __('annonces.cible_tous') ?></option>
                 <?php foreach ($types as $key => $label): ?>
                 <option value="<?= $key ?>" <?= ($filtreType ?? '') === $key ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
                 <?php endforeach; ?>
@@ -141,7 +141,7 @@ $service->publishScheduled();
             <?php if (isAdmin()): ?>
             <span class="annonce-meta"><i class="fas fa-eye"></i> <?= $a['nb_lues'] ?? 0 ?> lecture(s)</span>
             <?php if (!$a['publie']): ?>
-            <span class="badge badge-secondary">Brouillon</span>
+            <span class="badge badge-secondary"><?= __('annonces.draft') ?></span>
             <?php endif; ?>
             <?php endif; ?>
             <a href="detail_annonce.php?id=<?= $a['id'] ?>" class="btn btn-sm btn-outline">Lire</a>

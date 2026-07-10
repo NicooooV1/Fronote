@@ -69,7 +69,7 @@ include 'includes/header.php';
 
 <div class="welcome-banner">
     <div class="welcome-content">
-        <h2><i class="fas fa-history"></i> Historique des appels</h2>
+        <h2><i class="fas fa-history"></i> <?= __('appel.history') ?></h2>
         <p>Consultez tous les appels réalisés sur une période.</p>
     </div>
 </div>
@@ -106,15 +106,15 @@ include 'includes/header.php';
         <table class="table">
             <thead>
                 <tr>
-                    <th>Date</th>
+                    <th><?= __('appel.date') ?></th>
                     <th>Horaire</th>
-                    <th>Classe</th>
+                    <th><?= __('appel.class') ?></th>
                     <th>Matière</th>
                     <th>Professeur</th>
                     <th class="text-center">Effectif</th>
                     <th class="text-center">Absents</th>
                     <th class="text-center">Retards</th>
-                    <th>Statut</th>
+                    <th><?= __('appel.status') ?></th>
                     <th></th>
                 </tr>
             </thead>

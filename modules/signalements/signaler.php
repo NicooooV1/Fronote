@@ -107,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                         <input type="checkbox" name="anonyme" value="1" <?= isset($_POST['anonyme']) ? 'checked' : '' ?>>
                         <span class="checkmark"></span>
                         <div>
-                            <strong>Signalement anonyme</strong>
+                            <strong><?= __('signalements.anonymous') ?></strong>
                             <p>Votre identité ne sera pas communiquée. Attention : le suivi sera limité.</p>
                         </div>
                     </label>

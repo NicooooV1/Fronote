@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 
 <div class="content-wrapper">
     <div class="content-header">
-        <h1><i class="fas fa-plus-circle"></i> Planifier une réunion</h1>
+        <h1><i class="fas fa-plus-circle"></i> <?= __('reunions.schedule') ?></h1>
         <a href="reunions.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
     </div>
 
@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                     </div>
 
                     <div class="form-group">
-                        <label for="lieu">Lieu</label>
+                        <label for="lieu"><?= __('reunions.location') ?></label>
                         <input type="text" name="lieu" id="lieu" class="form-control" placeholder="Salle, bâtiment...">
                     </div>
 

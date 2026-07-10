@@ -21,7 +21,7 @@ $types = ReunionService::typesReunion();
     <div class="content-header">
         <h1><i class="fas fa-calendar-alt"></i> Réunions & RDV</h1>
         <?php if (isAdmin() || isTeacher() || isVieScolaire()): ?>
-        <a href="creer.php" class="btn btn-primary"><i class="fas fa-plus"></i> Planifier une réunion</a>
+        <a href="creer.php" class="btn btn-primary"><i class="fas fa-plus"></i> <?= __('reunions.schedule') ?></a>
         <?php endif; ?>
     </div>
 

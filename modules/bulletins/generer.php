@@ -40,7 +40,7 @@ $selectedPeriode = (int)($_GET['periode'] ?? 0);
 ?>
 
 <div class="page-header">
-    <h1><i class="fas fa-cogs"></i> Générer les bulletins</h1>
+    <h1><i class="fas fa-cogs"></i> <?= __('bulletins.generate') ?></h1>
 </div>
 
 <?php if ($message): ?>
@@ -58,7 +58,7 @@ $selectedPeriode = (int)($_GET['periode'] ?? 0);
             <?= csrfField() ?>
             <div class="form-row">
                 <div class="form-group">
-                    <label for="classe_id">Classe</label>
+                    <label for="classe_id"><?= __('bulletins.class') ?></label>
                     <select name="classe_id" id="classe_id" class="form-select" required>
                         <option value="">— Sélectionner —</option>
                         <?php foreach ($classes as $c): ?>
@@ -77,7 +77,7 @@ $selectedPeriode = (int)($_GET['periode'] ?? 0);
                 </div>
             </div>
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary"><i class="fas fa-sync"></i> Générer les bulletins</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-sync"></i> <?= __('bulletins.generate') ?></button>
                 <a href="bulletins.php" class="btn btn-outline">Retour</a>
             </div>
         </form>

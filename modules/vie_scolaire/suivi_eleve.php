@@ -57,7 +57,7 @@ $activeTab = $_GET['tab'] ?? 'resume';
         <span class="text-muted"><?= htmlspecialchars($e['date_naissance'] ? formatDate($e['date_naissance']) : '') ?></span>
     </div>
     <div class="fiche-counters">
-        <div class="fc <?= $s['abs_injustifiees'] > 3 ? 'fc-alert' : '' ?>"><span class="fc-value"><?= $s['absences'] ?></span><span class="fc-label">Absences <small>(<?= $s['abs_injustifiees'] ?> inj.)</small></span></div>
+        <div class="fc <?= $s['abs_injustifiees'] > 3 ? 'fc-alert' : '' ?>"><span class="fc-value"><?= $s['absences'] ?></span><span class="fc-label"><?= __('vie_scolaire.absences') ?> <small>(<?= $s['abs_injustifiees'] ?> inj.)</small></span></div>
         <div class="fc <?= $s['retards'] > 5 ? 'fc-alert' : '' ?>"><span class="fc-value"><?= $s['retards'] ?></span><span class="fc-label">Retards</span></div>
         <div class="fc"><span class="fc-value"><?= $s['incidents'] ?></span><span class="fc-label">Incidents</span></div>
         <div class="fc"><span class="fc-value"><?= $s['sanctions'] ?></span><span class="fc-label">Sanctions</span></div>
@@ -67,7 +67,7 @@ $activeTab = $_GET['tab'] ?? 'resume';
 <!-- Tabs -->
 <div class="tabs-bar">
     <a href="?id=<?= $eleveId ?>&tab=resume" class="tab-item <?= $activeTab === 'resume' ? 'active' : '' ?>">Résumé</a>
-    <a href="?id=<?= $eleveId ?>&tab=absences" class="tab-item <?= $activeTab === 'absences' ? 'active' : '' ?>">Absences (<?= $s['absences'] ?>)</a>
+    <a href="?id=<?= $eleveId ?>&tab=absences" class="tab-item <?= $activeTab === 'absences' ? 'active' : '' ?>"><?= __('vie_scolaire.absences') ?> (<?= $s['absences'] ?>)</a>
     <a href="?id=<?= $eleveId ?>&tab=retards" class="tab-item <?= $activeTab === 'retards' ? 'active' : '' ?>">Retards (<?= $s['retards'] ?>)</a>
     <a href="?id=<?= $eleveId ?>&tab=incidents" class="tab-item <?= $activeTab === 'incidents' ? 'active' : '' ?>">Incidents (<?= $s['incidents'] ?>)</a>
     <a href="?id=<?= $eleveId ?>&tab=sanctions" class="tab-item <?= $activeTab === 'sanctions' ? 'active' : '' ?>">Sanctions (<?= $s['sanctions'] ?>)</a>

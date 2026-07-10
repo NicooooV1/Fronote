@@ -20,7 +20,7 @@ $types = SignalementService::typesSignalement();
 
 <div class="content-wrapper">
     <div class="content-header">
-        <h1><i class="fas fa-shield-alt"></i> Signalements</h1>
+        <h1><i class="fas fa-shield-alt"></i> <?= __('signalements.title') ?></h1>
     </div>
 
     <?php if (!empty($_SESSION['success_message'])): ?>
@@ -31,7 +31,7 @@ $types = SignalementService::typesSignalement();
     <div class="stats-grid">
         <div class="stat-card"><div class="stat-value"><?= $stats['total'] ?></div><div class="stat-label">Total</div></div>
         <div class="stat-card stat-danger"><div class="stat-value"><?= $stats['nouveaux'] ?></div><div class="stat-label">Nouveaux</div></div>
-        <div class="stat-card stat-warning"><div class="stat-value"><?= $stats['en_cours'] ?></div><div class="stat-label">En cours</div></div>
+        <div class="stat-card stat-warning"><div class="stat-value"><?= $stats['en_cours'] ?></div><div class="stat-label"><?= __('signalements.in_progress') ?></div></div>
         <div class="stat-card stat-danger"><div class="stat-value"><?= $stats['urgents'] ?></div><div class="stat-label">Urgents</div></div>
         <div class="stat-card"><div class="stat-value"><?= $stats['anonymes'] ?></div><div class="stat-label">Anonymes</div></div>
     </div>
@@ -40,8 +40,8 @@ $types = SignalementService::typesSignalement();
         <form method="get" class="filter-form">
             <select name="statut" class="form-control" data-fr-change="submitOwn">
                 <option value="">Tous les statuts</option>
-                <option value="nouveau" <?= $filtreStatut === 'nouveau' ? 'selected' : '' ?>>Nouveau</option>
-                <option value="en_cours" <?= $filtreStatut === 'en_cours' ? 'selected' : '' ?>>En cours</option>
+                <option value="nouveau" <?= $filtreStatut === 'nouveau' ? 'selected' : '' ?>><?= __('signalements.new') ?></option>
+                <option value="en_cours" <?= $filtreStatut === 'en_cours' ? 'selected' : '' ?>><?= __('signalements.in_progress') ?></option>
                 <option value="traite" <?= $filtreStatut === 'traite' ? 'selected' : '' ?>>Traité</option>
             </select>
             <select name="type" class="form-control" data-fr-change="submitOwn">

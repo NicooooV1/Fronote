@@ -107,7 +107,7 @@ include 'includes/header.php';
 <div class="ds-card" style="margin-bottom: 1.5rem;">
     <form method="GET" class="filter-form" style="display:flex;gap:1rem;align-items:end;padding:1rem;">
         <div class="ds-form-group" style="margin:0;flex:1;">
-            <label class="ds-form-label" for="classe">Classe</label>
+            <label class="ds-form-label" for="classe"><?= __('absences.classe') ?></label>
             <select name="classe" id="classe" class="ds-form-control">
                 <option value="">Toutes les classes</option>
                 <?php foreach ($classes as $c): ?>
@@ -147,12 +147,12 @@ include 'includes/header.php';
             <thead>
                 <tr>
                     <th style="width:40px;"><input type="checkbox" id="select-all" title="Tout sélectionner"></th>
-                    <th>Élève</th>
-                    <th>Classe</th>
+                    <th><?= __('absences.eleve') ?></th>
+                    <th><?= __('absences.classe') ?></th>
                     <th>Début</th>
                     <th>Fin</th>
                     <th>Type</th>
-                    <th>Motif</th>
+                    <th><?= __('absences.motif') ?></th>
                     <th>Justifié</th>
                     <th>Actions</th>
                 </tr>

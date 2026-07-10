@@ -53,7 +53,7 @@ $typeColors = ['matin' => '#f59e0b', 'soir' => '#6366f1', 'mercredi' => '#10b981
                     <div class="form-group"><label>Nom</label><input type="text" name="nom" required class="form-control" placeholder="Ex: Garderie du matin"></div>
                     <div class="form-group"><label>Type</label>
                         <select name="type" class="form-select">
-                            <option value="matin">Matin</option><option value="soir">Soir</option>
+                            <option value="matin"><?= __('garderie.morning') ?></option><option value="soir"><?= __('garderie.evening') ?></option>
                             <option value="mercredi">Mercredi</option><option value="vacances">Vacances</option>
                         </select>
                     </div>

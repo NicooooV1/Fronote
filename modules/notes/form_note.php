@@ -240,7 +240,7 @@ include 'includes/header.php';
                                 <input type="text" value="<?= htmlspecialchars(($note['prenom_eleve'] ?? '') . ' ' . ($note['nom_eleve'] ?? '')) ?>" readonly class="form-control" style="background:#f7fafc;">
                             </div>
                             <div>
-                                <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;">Matière</label>
+                                <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;"><?= __('notes.subject') ?></label>
                                 <input type="text" value="<?= htmlspecialchars($note['nom_matiere'] ?? '') ?>" readonly class="form-control" style="background:#f7fafc;">
                             </div>
                         </div>
@@ -275,7 +275,7 @@ include 'includes/header.php';
                         </div>
 
                         <div style="margin-bottom:20px;">
-                            <label for="commentaire" style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;">Commentaire</label>
+                            <label for="commentaire" style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;"><?= __('notes.comment') ?></label>
                             <textarea id="commentaire" name="commentaire" rows="3" maxlength="500" class="form-control"><?= htmlspecialchars($note['commentaire'] ?? '') ?></textarea>
                             <small style="color:#a0aec0; font-size:11px;">Maximum 500 caractères</small>
                         </div>
@@ -303,7 +303,7 @@ include 'includes/header.php';
                                 </select>
                             </div>
                             <div>
-                                <label style="display:block; font-size:13px; font-weight:600; color:#4a5568; margin-bottom:6px;">Matière <span style="color:#e53e3e;">*</span></label>
+                                <label style="display:block; font-size:13px; font-weight:600; color:#4a5568; margin-bottom:6px;"><?= __('notes.subject') ?> <span style="color:#e53e3e;">*</span></label>
                                 <select name="matiere" class="form-control" required>
                                     <option value="">Sélectionnez</option>
                                     <?php foreach ($matieres as $m): ?>
@@ -335,7 +335,7 @@ include 'includes/header.php';
                         <!-- Paramètres de l'évaluation -->
                         <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:15px; margin-bottom:25px; padding-bottom:20px; border-bottom:1px solid #edf2f7;">
                             <div>
-                                <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;">Matière</label>
+                                <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;"><?= __('notes.subject') ?></label>
                                 <select name="id_matiere" class="form-control" required>
                                     <?php foreach ($matieres as $m): ?>
                                     <option value="<?= $m['id'] ?>" <?= $selectedMatiere == $m['id'] ? 'selected' : '' ?>><?= htmlspecialchars($m['nom']) ?></option>
@@ -347,7 +347,7 @@ include 'includes/header.php';
                                 <input type="text" name="type_evaluation" class="form-control" value="<?= htmlspecialchars($_POST['type_evaluation'] ?? 'Contrôle') ?>" required placeholder="Ex: Contrôle, DS, DM...">
                             </div>
                             <div>
-                                <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;">Date</label>
+                                <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;"><?= __('notes.date') ?></label>
                                 <input type="date" name="date_note" class="form-control" value="<?= htmlspecialchars($_POST['date_note'] ?? date('Y-m-d')) ?>" required>
                             </div>
                             <div>
@@ -377,8 +377,8 @@ include 'includes/header.php';
                             <thead>
                                 <tr style="background:#f7fafc;">
                                     <th style="padding:10px 15px; text-align:left; font-size:13px; color:#4a5568; font-weight:600; width:35%;">Élève</th>
-                                    <th style="padding:10px 15px; text-align:center; font-size:13px; color:#4a5568; font-weight:600; width:15%;">Note</th>
-                                    <th style="padding:10px 15px; text-align:left; font-size:13px; color:#4a5568; font-weight:600;">Commentaire</th>
+                                    <th style="padding:10px 15px; text-align:center; font-size:13px; color:#4a5568; font-weight:600; width:15%;"><?= __('notes.grade') ?></th>
+                                    <th style="padding:10px 15px; text-align:left; font-size:13px; color:#4a5568; font-weight:600;"><?= __('notes.comment') ?></th>
                                 </tr>
                             </thead>
                             <tbody>

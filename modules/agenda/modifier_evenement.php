@@ -152,7 +152,7 @@ include 'includes/header.php';
 
 <div class="event-edit-container">
     <div class="event-edit-header">
-        <h1>Modifier l'événement</h1>
+        <h1><?= __('agenda.edit') ?></h1>
     </div>
 
     <div class="event-edit-form">
@@ -166,14 +166,14 @@ include 'includes/header.php';
             <div class="form-grid">
                 <!-- Titre -->
                 <div class="form-group form-full">
-                    <label for="titre">Titre <span aria-hidden="true">*</span></label>
+                    <label for="titre"><?= __('agenda.event_title') ?> <span aria-hidden="true">*</span></label>
                     <input type="text" name="titre" id="titre" class="form-control"
                            value="<?= htmlspecialchars($evenement['titre']) ?>" required maxlength="100">
                 </div>
 
                 <!-- Description -->
                 <div class="form-group form-full">
-                    <label for="description">Description</label>
+                    <label for="description"><?= __('agenda.event_desc') ?></label>
                     <textarea name="description" id="description" class="form-control"
                               maxlength="2000"><?= htmlspecialchars($evenement['description'] ?? '') ?></textarea>
                 </div>
@@ -190,7 +190,7 @@ include 'includes/header.php';
                            value="<?= $date_debut->format('H:i') ?>" required>
                 </div>
                 <div class="form-group">
-                    <label for="date_fin">Date de fin <span aria-hidden="true">*</span></label>
+                    <label for="date_fin"><?= __('agenda.event_date_fin') ?> <span aria-hidden="true">*</span></label>
                     <input type="date" name="date_fin" id="date_fin" class="form-control"
                            value="<?= $date_fin->format('Y-m-d') ?>" required>
                 </div>
@@ -202,7 +202,7 @@ include 'includes/header.php';
 
                 <!-- Type d'événement -->
                 <div class="form-group">
-                    <label for="type_evenement">Type <span aria-hidden="true">*</span></label>
+                    <label for="type_evenement"><?= __('agenda.event_type') ?> <span aria-hidden="true">*</span></label>
                     <select name="type_evenement" id="type_evenement" class="form-control" required>
                         <?php foreach ($types_evenements as $code => $type): ?>
                             <option value="<?= htmlspecialchars($code) ?>"
@@ -235,7 +235,7 @@ include 'includes/header.php';
 
                 <!-- Lieu -->
                 <div class="form-group">
-                    <label for="lieu">Lieu</label>
+                    <label for="lieu"><?= __('agenda.event_lieu') ?></label>
                     <input type="text" name="lieu" id="lieu" class="form-control"
                            value="<?= htmlspecialchars($evenement['lieu'] ?? '') ?>" maxlength="100">
                 </div>
@@ -270,7 +270,7 @@ include 'includes/header.php';
                 <!-- Classes spécifiques -->
                 <div id="section_classes" class="form-group form-full"
                      <?= strpos($evenement['visibilite'], 'classes:') !== 0 ? 'hidden' : '' ?>>
-                    <label>Classes concernées</label>
+                    <label><?= __('agenda.classes') ?></label>
                     <div class="multiselect-container">
                         <div class="multiselect-search">
                             <input type="text" id="classes_search" placeholder="Rechercher une classe">

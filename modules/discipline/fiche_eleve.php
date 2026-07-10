@@ -163,7 +163,7 @@ $gravites      = DisciplineService::getGravites();
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Date</th>
+                        <th><?= __('discipline.date') ?></th>
                         <th>Horaire</th>
                         <th>Lieu</th>
                         <th>Présent</th>

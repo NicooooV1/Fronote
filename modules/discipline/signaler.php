@@ -84,7 +84,7 @@ $typesIncident = DisciplineService::getTypesIncident();
 $gravites = DisciplineService::getGravites();
 ?>
 
-<h1 class="page-title"><i class="fas fa-exclamation-triangle"></i> Signaler un incident</h1>
+<h1 class="page-title"><i class="fas fa-exclamation-triangle"></i> <?= __('discipline.add') ?></h1>
 
 <?php if ($success): ?>
     <div class="alert alert-success"><i class="fas fa-check-circle"></i> <?= htmlspecialchars($success) ?></div>

@@ -57,13 +57,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     <div class="card" style="margin-bottom:1.5rem;"><div class="card-body"><p><?= nl2br(htmlspecialchars($diplome['description'])) ?></p></div></div>
     <?php endif; ?>
 
-    <div class="card"><div class="card-header"><h2>Modifier</h2></div><div class="card-body">
+    <div class="card"><div class="card-header"><h2><?= __('diplomes.edit') ?></h2></div><div class="card-body">
         <form method="post">
             <?= csrfField() ?>
             <div class="form-grid-2">
                 <div class="form-group"><label>Intitulé *</label><input type="text" name="intitule" class="form-control" value="<?= htmlspecialchars($diplome['intitule']) ?>" required></div>
                 <div class="form-group"><label>Type</label><select name="type" class="form-control"><?php foreach ($types as $k => $v): ?><option value="<?= $k ?>" <?= $diplome['type'] === $k ? 'selected' : '' ?>><?= $v ?></option><?php endforeach; ?></select></div>
-                <div class="form-group"><label>Mention</label><select name="mention" class="form-control"><option value="">—</option><?php foreach ($mentions as $k => $v): ?><option value="<?= $k ?>" <?= ($diplome['mention'] ?? '') === $k ? 'selected' : '' ?>><?= $v ?></option><?php endforeach; ?></select></div>
+                <div class="form-group"><label><?= __('diplomes.mention') ?></label><select name="mention" class="form-control"><option value="">—</option><?php foreach ($mentions as $k => $v): ?><option value="<?= $k ?>" <?= ($diplome['mention'] ?? '') === $k ? 'selected' : '' ?>><?= $v ?></option><?php endforeach; ?></select></div>
                 <div class="form-group"><label>Date d'obtention *</label><input type="date" name="date_obtention" class="form-control" value="<?= $diplome['date_obtention'] ?>" required></div>
                 <div class="form-group full-width"><label>Description</label><textarea name="description" class="form-control" rows="3"><?= htmlspecialchars($diplome['description'] ?? '') ?></textarea></div>
             </div>

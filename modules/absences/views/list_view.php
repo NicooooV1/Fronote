@@ -45,8 +45,8 @@ $paginated = AbsenceHelper::paginate($absences, $page, 20);
         <div class="list-header">
             <div class="list-row header-row">
                 <?php if (isAdmin() || isVieScolaire() || isTeacher()): ?>
-                    <div class="list-cell">Élève</div>
-                    <div class="list-cell">Classe</div>
+                    <div class="list-cell"><?= __('absences.eleve') ?></div>
+                    <div class="list-cell"><?= __('absences.classe') ?></div>
                 <?php endif; ?>
                 <div class="list-cell">Date</div>
                 <div class="list-cell">Durée</div>
@@ -88,9 +88,9 @@ $paginated = AbsenceHelper::paginate($absences, $page, 20);
 
                 <div class="list-cell">
                     <?php if ($absence['justifie']): ?>
-                        <span class="badge badge-success">Justifiée</span>
+                        <span class="badge badge-success"><?= __('absences.justified') ?></span>
                     <?php else: ?>
-                        <span class="badge badge-danger">Non justifiée</span>
+                        <span class="badge badge-danger"><?= __('absences.unjustified') ?></span>
                     <?php endif; ?>
                 </div>
 

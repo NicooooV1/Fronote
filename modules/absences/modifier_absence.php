@@ -125,7 +125,7 @@ include 'includes/header.php';
                 </div>
                 
                 <div class="form-group">
-                    <label for="date_debut" class="form-label">Date de début <span class="required">*</span></label>
+                    <label for="date_debut" class="form-label"><?= __('absences.date_debut') ?> <span class="required">*</span></label>
                     <input type="date" name="date_debut" id="date_debut" value="<?= $date_debut->format('Y-m-d') ?>" required max="<?= date('Y-m-d') ?>" class="form-control">
                 </div>
                 
@@ -135,7 +135,7 @@ include 'includes/header.php';
                 </div>
                 
                 <div class="form-group">
-                    <label for="date_fin" class="form-label">Date de fin <span class="required">*</span></label>
+                    <label for="date_fin" class="form-label"><?= __('absences.date_fin') ?> <span class="required">*</span></label>
                     <input type="date" name="date_fin" id="date_fin" value="<?= $date_fin->format('Y-m-d') ?>" required max="<?= date('Y-m-d') ?>" class="form-control">
                 </div>
                 
@@ -154,7 +154,7 @@ include 'includes/header.php';
                 </div>
                 
                 <div class="form-group">
-                    <label for="motif" class="form-label">Motif</label>
+                    <label for="motif" class="form-label"><?= __('absences.motif') ?></label>
                     <select name="motif" id="motif" class="form-control">
                         <option value="">Sélectionner un motif</option>
                         <?php foreach (array_filter(AbsenceHelper::validMotifs()) as $m): ?>
@@ -171,7 +171,7 @@ include 'includes/header.php';
                 </div>
                 
                 <div class="form-group form-full">
-                    <label for="commentaire" class="form-label">Commentaire</label>
+                    <label for="commentaire" class="form-label"><?= __('absences.commentaire') ?></label>
                     <textarea name="commentaire" id="commentaire" rows="4" class="form-control"><?= htmlspecialchars($absence['commentaire'] ?? '') ?></textarea>
                 </div>
                 

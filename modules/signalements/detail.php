@@ -39,8 +39,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
             <?= csrfField() ?>
             <input type="hidden" name="action" value="statut">
             <select name="statut" class="form-control form-control-sm" data-fr-change="submitOwn">
-                <option value="nouveau" <?= $sig['statut'] === 'nouveau' ? 'selected' : '' ?>>Nouveau</option>
-                <option value="en_cours" <?= $sig['statut'] === 'en_cours' ? 'selected' : '' ?>>En cours</option>
+                <option value="nouveau" <?= $sig['statut'] === 'nouveau' ? 'selected' : '' ?>><?= __('signalements.new') ?></option>
+                <option value="en_cours" <?= $sig['statut'] === 'en_cours' ? 'selected' : '' ?>><?= __('signalements.in_progress') ?></option>
                 <option value="traite" <?= $sig['statut'] === 'traite' ? 'selected' : '' ?>>Traité</option>
                 <option value="clos" <?= $sig['statut'] === 'clos' ? 'selected' : '' ?>>Classé</option>
             </select>
@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
         </div>
 
         <div class="card">
-            <div class="card-header"><h2>Description</h2></div>
+            <div class="card-header"><h2><?= __('signalements.description') ?></h2></div>
             <div class="card-body"><p><?= nl2br(htmlspecialchars($sig['description'])) ?></p></div>
         </div>
 

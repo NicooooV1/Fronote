@@ -94,7 +94,7 @@ $gravites = DisciplineService::getGravites();
 
         <div class="form-row">
             <div class="form-group col-md-4">
-                <label for="type_incident">Type</label>
+                <label for="type_incident"><?= __('discipline.type') ?></label>
                 <select name="type_incident" id="type_incident" class="form-control" required>
                     <?php foreach ($typesIncident as $key => $label): ?>
                     <option value="<?= $key ?>" <?= $incident['type_incident'] === $key ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
@@ -102,7 +102,7 @@ $gravites = DisciplineService::getGravites();
                 </select>
             </div>
             <div class="form-group col-md-4">
-                <label for="gravite">Gravité</label>
+                <label for="gravite"><?= __('discipline.severity') ?></label>
                 <select name="gravite" id="gravite" class="form-control" required>
                     <?php foreach ($gravites as $key => $label): ?>
                     <option value="<?= $key ?>" <?= $incident['gravite'] === $key ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
@@ -121,7 +121,7 @@ $gravites = DisciplineService::getGravites();
         </div>
 
         <div class="form-group">
-            <label for="description">Description</label>
+            <label for="description"><?= __('discipline.description') ?></label>
             <textarea name="description" id="description" class="form-control" rows="5" required><?= htmlspecialchars($incident['description']) ?></textarea>
         </div>
 

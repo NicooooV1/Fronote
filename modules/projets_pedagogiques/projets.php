@@ -21,7 +21,7 @@ $statuts  = ProjetPedagogiqueService::statutLabels();
 ?>
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2><i class="fas fa-project-diagram me-2"></i>Projets pédagogiques</h2>
+        <h2><i class="fas fa-project-diagram me-2"></i><?= __('projets_pedagogiques.title') ?></h2>
         <?php if (in_array($role, ['admin', 'professeur'])): ?>
             <a href="creer.php" class="btn btn-primary"><i class="fas fa-plus me-1"></i>Nouveau projet</a>
         <?php endif; ?>

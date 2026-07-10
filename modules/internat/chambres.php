@@ -44,7 +44,7 @@ $stats = $internatService->getStats();
     <?php if ($message): ?><div class="alert alert-success"><?= htmlspecialchars($message) ?></div><?php endif; ?>
 
     <div class="stats-row">
-        <div class="stat-card"><div class="stat-value"><?= $stats['total_chambres'] ?></div><div class="stat-label">Chambres</div></div>
+        <div class="stat-card"><div class="stat-value"><?= $stats['total_chambres'] ?></div><div class="stat-label"><?= __('internat.rooms') ?></div></div>
         <div class="stat-card stat-info"><div class="stat-value"><?= $stats['capacite_totale'] ?></div><div class="stat-label">Places totales</div></div>
         <div class="stat-card stat-success"><div class="stat-value"><?= $stats['internes_actifs'] ?></div><div class="stat-label">Internes</div></div>
         <div class="stat-card"><div class="stat-value"><?= $stats['taux_occupation'] ?>%</div><div class="stat-label">Occupation</div></div>
@@ -59,8 +59,8 @@ $stats = $internatService->getStats();
                 <div class="form-row">
                     <div class="form-group"><label>Numéro</label><input type="text" name="numero" required class="form-control"></div>
                     <div class="form-group"><label>Bâtiment</label><input type="text" name="batiment" class="form-control"></div>
-                    <div class="form-group"><label>Étage</label><input type="number" name="etage" class="form-control"></div>
-                    <div class="form-group"><label>Capacité</label><input type="number" name="capacite" value="2" class="form-control"></div>
+                    <div class="form-group"><label><?= __('internat.floor') ?></label><input type="number" name="etage" class="form-control"></div>
+                    <div class="form-group"><label><?= __('internat.capacity') ?></label><input type="number" name="capacite" value="2" class="form-control"></div>
                     <div class="form-group"><label>Type</label>
                         <select name="type" class="form-select">
                             <option value="simple">Simple</option><option value="double" selected>Double</option>
@@ -85,7 +85,7 @@ $stats = $internatService->getStats();
             </div>
             <div class="chambre-info">
                 <?php if ($ch['batiment']): ?><span><i class="fas fa-building"></i> <?= htmlspecialchars($ch['batiment']) ?></span><?php endif; ?>
-                <?php if ($ch['etage'] !== null): ?><span><i class="fas fa-layer-group"></i> Étage <?= $ch['etage'] ?></span><?php endif; ?>
+                <?php if ($ch['etage'] !== null): ?><span><i class="fas fa-layer-group"></i> <?= __('internat.floor') ?> <?= $ch['etage'] ?></span><?php endif; ?>
                 <span><i class="fas fa-tag"></i> <?= ucfirst($ch['type']) ?></span>
             </div>
             <a href="affectations.php?chambre=<?= $ch['id'] ?>" class="btn btn-sm btn-outline">Voir occupants</a>

@@ -109,7 +109,7 @@ if ($isGestionnaire) {
                             <label class="checkbox-label">
                                 <input type="checkbox" name="dates[]" value="<?= $ds ?>" <?= $dejaReserve ? 'checked disabled' : '' ?>>
                                 <?= ['Lun','Mar','Mer','Jeu','Ven'][$i] ?> <?= $j->format('d/m') ?>
-                                <?= $dejaReserve ? '<span class="badge badge-success">Réservé</span>' : '' ?>
+                                <?= $dejaReserve ? '<span class="badge badge-success">' . __('cantine.booked') . '</span>' : '' ?>
                             </label>
                             <?php endfor; ?>
                         </div>

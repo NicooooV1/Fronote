@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 
 <div class="content-wrapper">
     <div class="content-header">
-        <h1><i class="fas fa-plus-circle"></i> Créer un club</h1>
+        <h1><i class="fas fa-plus-circle"></i> <?= __('clubs.add') ?></h1>
         <a href="clubs.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
     </div>
 
@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                     <div class="form-group"><label>Places max</label><input type="number" name="places_max" class="form-control" min="1"></div>
                     <div class="form-group"><label>Date début</label><input type="date" name="date_debut" class="form-control"></div>
                     <div class="form-group"><label>Date fin</label><input type="date" name="date_fin" class="form-control"></div>
-                    <div class="form-group full-width"><label>Description</label><textarea name="description" class="form-control" rows="3"><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea></div>
+                    <div class="form-group full-width"><label><?= __('clubs.description') ?></label><textarea name="description" class="form-control" rows="3"><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea></div>
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Créer</button>

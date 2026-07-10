@@ -110,7 +110,7 @@ include 'includes/header.php';
             <h3>Informations sur le justificatif</h3>
             <div class="form-grid">
                 <div class="form-group">
-                    <label>Élève</label>
+                    <label><?= __('absences.eleve') ?></label>
                     <div class="form-value"><?= htmlspecialchars($justificatif['prenom'] . ' ' . $justificatif['nom']) ?> (<?= htmlspecialchars($justificatif['classe']) ?>)</div>
                 </div>
                 <div class="form-group">
@@ -125,7 +125,7 @@ include 'includes/header.php';
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Motif</label>
+                    <label><?= __('absences.motif') ?></label>
                     <div class="form-value"><?= htmlspecialchars($justificatif['motif'] ?? 'Non spécifié') ?></div>
                 </div>
                 <div class="form-group form-full">

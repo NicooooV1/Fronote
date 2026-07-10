@@ -110,7 +110,7 @@ include 'includes/header.php';
                     <span class="details-value"><?= htmlspecialchars($absence['prenom']) ?></span>
                 </div>
                 <div class="details-row">
-                    <span class="details-label">Classe</span>
+                    <span class="details-label"><?= __('absences.classe') ?></span>
                     <span class="details-value"><?= htmlspecialchars($absence['classe']) ?></span>
                 </div>
             </div>
@@ -121,11 +121,11 @@ include 'includes/header.php';
             <h3>Détails de l'absence</h3>
             <div class="details-grid">
                 <div class="details-row">
-                    <span class="details-label">Date de début</span>
+                    <span class="details-label"><?= __('absences.date_debut') ?></span>
                     <span class="details-value"><?= date('d/m/Y à H:i', strtotime($absence['date_debut'])) ?></span>
                 </div>
                 <div class="details-row">
-                    <span class="details-label">Date de fin</span>
+                    <span class="details-label"><?= __('absences.date_fin') ?></span>
                     <span class="details-value"><?= date('d/m/Y à H:i', strtotime($absence['date_fin'])) ?></span>
                 </div>
                 <div class="details-row">
@@ -141,12 +141,12 @@ include 'includes/header.php';
                     </span>
                 </div>
                 <div class="details-row">
-                    <span class="details-label">Motif</span>
+                    <span class="details-label"><?= __('absences.motif') ?></span>
                     <span class="details-value"><?= AbsenceHelper::motifLabel($absence['motif'] ?? '') ?></span>
                 </div>
                 <?php if (!empty($absence['commentaire'])): ?>
                 <div class="details-row details-full">
-                    <span class="details-label">Commentaire</span>
+                    <span class="details-label"><?= __('absences.commentaire') ?></span>
                     <span class="details-value"><?= nl2br(htmlspecialchars($absence['commentaire'])) ?></span>
                 </div>
                 <?php endif; ?>

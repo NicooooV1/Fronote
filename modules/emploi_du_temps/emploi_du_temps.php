@@ -78,7 +78,7 @@ include 'includes/header.php';
 <!-- Bannière -->
 <div class="welcome-banner">
     <div class="welcome-content">
-        <h2><i class="fas fa-calendar-week"></i> Emploi du temps</h2>
+        <h2><i class="fas fa-calendar-week"></i> <?= __('emploi_du_temps.title') ?></h2>
         <p>
             <?php if (isTeacher()): ?>
                 Votre emploi du temps hebdomadaire.
@@ -98,7 +98,7 @@ include 'includes/header.php';
     <form method="GET" class="filters-form">
         <?php if (isAdmin() || isVieScolaire()): ?>
         <div class="filter-group">
-            <label for="classe">Classe :</label>
+            <label for="classe"><?= __('emploi_du_temps.class') ?> :</label>
             <select name="classe" id="classe" data-fr-change="submitOwn">
                 <option value="">-- Sélectionner une classe --</option>
                 <?php foreach ($classes as $cl): ?>

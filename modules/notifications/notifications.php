@@ -41,10 +41,10 @@ $stats = $notifService->getStats($userId, $userType);
             <form method="post" style="display:inline">
                 <?= csrfField() ?>
                 <input type="hidden" name="action" value="marquer_toutes_lues">
-                <button type="submit" class="btn btn-outline"><i class="fas fa-check-double"></i> Tout marquer comme lu</button>
+                <button type="submit" class="btn btn-outline"><i class="fas fa-check-double"></i> <?= __('notifications.mark_all_read') ?></button>
             </form>
             <?php endif; ?>
-            <a href="preferences.php" class="btn btn-outline"><i class="fas fa-sliders-h"></i> Préférences</a>
+            <a href="preferences.php" class="btn btn-outline"><i class="fas fa-sliders-h"></i> <?= __('notifications.preferences') ?></a>
         </div>
     </div>
 
@@ -56,7 +56,7 @@ $stats = $notifService->getStats($userId, $userType);
         </div>
         <div class="stat-card stat-warning">
             <div class="stat-value"><?= (int)$stats['non_lues'] ?></div>
-            <div class="stat-label">Non lues</div>
+            <div class="stat-label"><?= __('notifications.unread') ?></div>
         </div>
         <div class="stat-card stat-danger">
             <div class="stat-value"><?= (int)$stats['urgentes'] ?></div>
@@ -67,7 +67,7 @@ $stats = $notifService->getStats($userId, $userType);
     <!-- Filtres -->
     <div class="notif-filters">
         <a href="?filtre=toutes" class="filter-btn <?= $filtre === 'toutes' ? 'active' : '' ?>">Toutes</a>
-        <a href="?filtre=non_lues" class="filter-btn <?= $filtre === 'non_lues' ? 'active' : '' ?>">Non lues</a>
+        <a href="?filtre=non_lues" class="filter-btn <?= $filtre === 'non_lues' ? 'active' : '' ?>"><?= __('notifications.unread') ?></a>
         <a href="?filtre=lues" class="filter-btn <?= $filtre === 'lues' ? 'active' : '' ?>">Lues</a>
     </div>
 
@@ -113,7 +113,7 @@ $stats = $notifService->getStats($userId, $userType);
                         <?= csrfField() ?>
                         <input type="hidden" name="action" value="supprimer">
                         <input type="hidden" name="id" value="<?= $notif['id'] ?>">
-                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="fas fa-trash"></i></button>
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="<?= __('notifications.delete') ?>"><i class="fas fa-trash"></i></button>
                     </form>
                 </div>
             </div>

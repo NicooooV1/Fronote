@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </select>
             </div>
             <div class="form-group">
-                <label>Domaine</label>
+                <label><?= __('competences.domain') ?></label>
                 <select name="domaine_id" data-fr-change="submitOwn" class="form-select">
                     <?php foreach ($domaines as $d): ?>
                         <option value="<?= $d['id'] ?>" <?= $d['id'] == $domaineId ? 'selected' : '' ?>><?= htmlspecialchars($d['code'].' – '.$d['nom']) ?></option>
@@ -100,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <table class="table">
                             <thead>
                                 <tr>
-                                    <th>Élève</th>
+                                    <th><?= __('competences.student') ?></th>
                                     <?php foreach ($niveaux as $k => $v): ?>
                                         <?php if ($k === 'non_evalue') continue; ?>
                                         <th class="text-center"><?= CompetenceService::niveauDot($k) ?></th>

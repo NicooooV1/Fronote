@@ -87,7 +87,7 @@ include 'includes/header.php';
             <input type="date" id="date_fin" name="date_fin" value="<?= $date_fin ?>" max="<?= date('Y-m-d') ?>">
         </div>
         <div class="filter-item">
-            <label for="classe" class="filter-label">Classe</label>
+            <label for="classe" class="filter-label"><?= __('absences.classe') ?></label>
             <select id="classe" name="classe">
                 <option value="">Toutes les classes</option>
                 <?php foreach ($classes as $c): ?>
@@ -126,11 +126,11 @@ include 'includes/header.php';
             <div class="justificatifs-list absences-list">
                 <div class="list-header">
                     <div class="list-row header-row">
-                        <div class="list-cell">Élève</div>
-                        <div class="list-cell">Classe</div>
+                        <div class="list-cell"><?= __('absences.eleve') ?></div>
+                        <div class="list-cell"><?= __('absences.classe') ?></div>
                         <div class="list-cell">Date de dépôt</div>
                         <div class="list-cell">Période</div>
-                        <div class="list-cell">Motif</div>
+                        <div class="list-cell"><?= __('absences.motif') ?></div>
                         <div class="list-cell">Statut</div>
                         <div class="list-actions">Actions</div>
                     </div>

@@ -42,7 +42,7 @@ $types = AnnonceService::getTypes();
 <div class="stats-row">
     <div class="stat-card stat-total">
         <div class="stat-number"><?= $totalAnnonces ?></div>
-        <div class="stat-label">Annonces</div>
+        <div class="stat-label"><?= __('annonces.title') ?></div>
     </div>
     <div class="stat-card" style="border-left-color: #10b981;">
         <div class="stat-number" style="color:#10b981;"><?= $totalPubliees ?></div>
@@ -63,10 +63,10 @@ $types = AnnonceService::getTypes();
         <thead>
             <tr>
                 <th>ID</th>
-                <th>Titre</th>
+                <th><?= __('annonces.titre') ?></th>
                 <th>Type</th>
-                <th>Publiée</th>
-                <th>Épinglée</th>
+                <th><?= __('annonces.published') ?></th>
+                <th><?= __('annonces.epinglee') ?></th>
                 <th>Lectures</th>
                 <th>Date</th>
                 <th>Actions</th>

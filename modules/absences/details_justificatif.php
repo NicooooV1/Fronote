@@ -171,7 +171,7 @@ include 'includes/header.php';
             <div class="form-grid">
                 <div class="form-group"><label>Nom</label><div class="form-value"><?= htmlspecialchars($justificatif['nom']) ?></div></div>
                 <div class="form-group"><label>Prénom</label><div class="form-value"><?= htmlspecialchars($justificatif['prenom']) ?></div></div>
-                <div class="form-group"><label>Classe</label><div class="form-value"><?= htmlspecialchars($justificatif['classe']) ?></div></div>
+                <div class="form-group"><label><?= __('absences.classe') ?></label><div class="form-value"><?= htmlspecialchars($justificatif['classe']) ?></div></div>
             </div>
         </div>
 
@@ -191,7 +191,7 @@ include 'includes/header.php';
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Motif</label>
+                    <label><?= __('absences.motif') ?></label>
                     <div class="form-value"><?= htmlspecialchars($justificatif['motif'] ?? 'Non spécifié') ?></div>
                 </div>
                 <div class="form-group form-full">
@@ -239,11 +239,11 @@ include 'includes/header.php';
             <h3>Absence associée</h3>
             <div class="form-grid">
                 <div class="form-group">
-                    <label>Date de début</label>
+                    <label><?= __('absences.date_debut') ?></label>
                     <div class="form-value"><?= date('d/m/Y à H:i', strtotime($absence['date_debut'])) ?></div>
                 </div>
                 <div class="form-group">
-                    <label>Date de fin</label>
+                    <label><?= __('absences.date_fin') ?></label>
                     <div class="form-value"><?= date('d/m/Y à H:i', strtotime($absence['date_fin'])) ?></div>
                 </div>
                 <div class="form-group">

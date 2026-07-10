@@ -15,12 +15,12 @@ $currentPageNum = $pagination['current_page'];
     <div class="list-header">
         <div class="list-row header-row retard-grid">
             <?php if (isAdmin() || isVieScolaire() || isTeacher()): ?>
-                <div class="list-cell">Élève</div>
-                <div class="list-cell">Classe</div>
+                <div class="list-cell"><?= __('absences.eleve') ?></div>
+                <div class="list-cell"><?= __('absences.classe') ?></div>
             <?php endif; ?>
             <div class="list-cell">Date</div>
             <div class="list-cell">Durée</div>
-            <div class="list-cell">Motif</div>
+            <div class="list-cell"><?= __('absences.motif') ?></div>
             <div class="list-cell">Justifié</div>
             <div class="list-actions">Actions</div>
         </div>

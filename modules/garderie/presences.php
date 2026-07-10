@@ -48,7 +48,7 @@ $presences = $garderieService->getPresencesJour($dateVue, $creneauId ?: null);
 
     <form method="get" class="filter-form">
         <div class="form-row">
-            <div class="form-group"><label>Date</label><input type="date" name="date" value="<?= $dateVue ?>" class="form-control"></div>
+            <div class="form-group"><label><?= __('garderie.date') ?></label><input type="date" name="date" value="<?= $dateVue ?>" class="form-control"></div>
             <div class="form-group"><label>Créneau</label>
                 <select name="creneau" class="form-select">
                     <option value="">Tous</option>
@@ -68,7 +68,7 @@ $presences = $garderieService->getPresencesJour($dateVue, $creneauId ?: null);
                 <?= csrfField() ?>
                 <input type="hidden" name="pointer" value="1">
                 <table class="table">
-                    <thead><tr><th>Présent</th><th>Élève</th><th>Classe</th><th>Créneau</th><th>Remarques</th></tr></thead>
+                    <thead><tr><th>Présent</th><th><?= __('garderie.student') ?></th><th>Classe</th><th>Créneau</th><th>Remarques</th></tr></thead>
                     <tbody>
                     <?php foreach ($presences as $p):
                         $insId = $p['inscription_id'] ?? $p['id'];

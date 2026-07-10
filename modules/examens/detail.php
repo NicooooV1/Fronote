@@ -98,11 +98,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
                 <?= csrfField() ?><input type="hidden" name="action" value="ajouter_epreuve">
                 <div class="form-grid-3">
                     <div class="form-group"><label>Intitulé *</label><input type="text" name="intitule" class="form-control" required></div>
-                    <div class="form-group"><label>Matière</label><select name="matiere_id" class="form-control"><option value="">—</option><?php foreach ($matieres as $m): ?><option value="<?= $m['id'] ?>"><?= htmlspecialchars($m['nom']) ?></option><?php endforeach; ?></select></div>
+                    <div class="form-group"><label><?= __('examens.subject') ?></label><select name="matiere_id" class="form-control"><option value="">—</option><?php foreach ($matieres as $m): ?><option value="<?= $m['id'] ?>"><?= htmlspecialchars($m['nom']) ?></option><?php endforeach; ?></select></div>
                     <div class="form-group"><label>Type</label><select name="type_epreuve" class="form-control"><?php foreach ($typesEpreuve as $k => $v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?></select></div>
                     <div class="form-group"><label>Date & heure *</label><input type="datetime-local" name="date_epreuve" class="form-control" required></div>
                     <div class="form-group"><label>Durée (min)</label><input type="number" name="duree_minutes" class="form-control" value="120"></div>
-                    <div class="form-group"><label>Salle</label><select name="salle_id" class="form-control"><option value="">—</option><?php foreach ($salles as $s): ?><option value="<?= $s['id'] ?>"><?= htmlspecialchars($s['nom']) ?> (<?= $s['capacite'] ?>p)</option><?php endforeach; ?></select></div>
+                    <div class="form-group"><label><?= __('examens.room') ?></label><select name="salle_id" class="form-control"><option value="">—</option><?php foreach ($salles as $s): ?><option value="<?= $s['id'] ?>"><?= htmlspecialchars($s['nom']) ?> (<?= $s['capacite'] ?>p)</option><?php endforeach; ?></select></div>
                     <div class="form-group"><label>Coefficient</label><input type="number" name="coefficient" class="form-control" value="1" step="0.5" min="0.5"></div>
                     <div class="form-group full-width"><label>Consignes</label><textarea name="consignes" class="form-control" rows="2"></textarea></div>
                 </div>

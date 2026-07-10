@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     <?php else: ?>
     <div class="table-container">
         <table class="table">
-            <thead><tr><th>Personnel</th><th>Type</th><th>Début</th><th>Fin</th><th>Motif</th><th>Statut</th><th>Actions</th></tr></thead>
+            <thead><tr><th><?= __('personnel.title') ?></th><th>Type</th><th>Début</th><th>Fin</th><th>Motif</th><th>Statut</th><th>Actions</th></tr></thead>
             <tbody>
                 <?php foreach ($absences as $a): ?>
                 <tr>

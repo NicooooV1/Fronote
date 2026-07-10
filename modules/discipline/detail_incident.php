@@ -65,7 +65,7 @@ $typesSanction = DisciplineService::getTypesSanction();
             </div>
 
             <div class="detail-section">
-                <h3>Description</h3>
+                <h3><?= __('discipline.description') ?></h3>
                 <p><?= nl2br(htmlspecialchars($incident['description'])) ?></p>
             </div>
 
@@ -86,7 +86,7 @@ $typesSanction = DisciplineService::getTypesSanction();
         <div class="detail-sidebar">
             <div class="detail-info">
                 <div class="detail-info-item">
-                    <span class="detail-label"><i class="fas fa-user-graduate"></i> Élève</span>
+                    <span class="detail-label"><i class="fas fa-user-graduate"></i> <?= __('discipline.student') ?></span>
                     <a href="fiche_eleve.php?id=<?= $incident['eleve_id'] ?>" class="link-eleve">
                         <?= htmlspecialchars($incident['eleve_prenom'] . ' ' . $incident['eleve_nom']) ?>
                     </a>
@@ -96,7 +96,7 @@ $typesSanction = DisciplineService::getTypesSanction();
                     <span><?= htmlspecialchars($incident['eleve_classe'] ?? $incident['classe_nom'] ?? '-') ?></span>
                 </div>
                 <div class="detail-info-item">
-                    <span class="detail-label"><i class="fas fa-calendar"></i> Date</span>
+                    <span class="detail-label"><i class="fas fa-calendar"></i> <?= __('discipline.date') ?></span>
                     <span><?= date('d/m/Y à H:i', strtotime($incident['date_incident'])) ?></span>
                 </div>
                 <?php if ($incident['lieu']): ?>

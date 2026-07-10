@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-bus"></i> <?= htmlspecialchars($ligne['nom']) ?></h1>
-        <a href="lignes.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Retour</a>
+        <a href="lignes.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
     <?php if ($ligne['itineraire']): ?><p><?= nl2br(htmlspecialchars($ligne['itineraire'])) ?></p><?php endif; ?>
@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
             <?php if (empty($inscrits)): ?><p class="text-muted">Aucun inscrit.</p>
             <?php else: ?>
             <table class="table">
-                <thead><tr><th>Élève</th><th>Classe</th><th>Arrêt</th></tr></thead>
+                <thead><tr><th>Élève</th><th><?= __('label.classe') ?></th><th>Arrêt</th></tr></thead>
                 <tbody>
                     <?php foreach ($inscrits as $i): ?>
                     <tr><td><?= htmlspecialchars($i['eleve_nom']) ?></td><td><?= htmlspecialchars($i['classe_nom'] ?? '-') ?></td><td><?= htmlspecialchars($i['arret'] ?? '-') ?></td></tr>

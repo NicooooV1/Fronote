@@ -175,7 +175,7 @@ include 'includes/header.php';
             </svg>
             Retour
         </a>
-        <h2>Ajouter un événement</h2>
+        <h2><?= __('agenda.add') ?></h2>
         <?php if ($user_role === 'eleve' || $user_role === 'parent'): ?>
             <span class="role-indicator">Événement personnel</span>
         <?php endif; ?>
@@ -195,7 +195,7 @@ include 'includes/header.php';
             <div class="form-grid">
                 <!-- Titre -->
                 <div class="form-group form-full">
-                    <label for="titre">Titre <span aria-hidden="true">*</span></label>
+                    <label for="titre"><?= __('agenda.event_title') ?> <span aria-hidden="true">*</span></label>
                     <input type="text" name="titre" id="titre" required placeholder="Titre de l'événement" maxlength="100">
                 </div>
 
@@ -242,7 +242,7 @@ include 'includes/header.php';
                     <input type="time" name="heure_debut" id="heure_debut" value="<?= htmlspecialchars($heure_debut_defaut) ?>" required>
                 </div>
                 <div class="form-group">
-                    <label for="date_fin">Date de fin <span aria-hidden="true">*</span></label>
+                    <label for="date_fin"><?= __('agenda.event_date_fin') ?> <span aria-hidden="true">*</span></label>
                     <input type="date" name="date_fin" id="date_fin" value="<?= htmlspecialchars($date_par_defaut) ?>" required>
                 </div>
                 <div class="form-group">
@@ -252,7 +252,7 @@ include 'includes/header.php';
 
                 <!-- Classes spécifiques (affiché si visibilité = classes_specifiques) -->
                 <div id="section_classes" class="form-group form-full" hidden>
-                    <label>Classes concernées</label>
+                    <label><?= __('agenda.classes') ?></label>
                     <div class="multiselect-container">
                         <div class="multiselect-search">
                             <input type="text" id="classes_search" placeholder="Rechercher une classe">
@@ -293,7 +293,7 @@ include 'includes/header.php';
 
                 <!-- Lieu -->
                 <div class="form-group">
-                    <label for="lieu">Lieu</label>
+                    <label for="lieu"><?= __('agenda.event_lieu') ?></label>
                     <input type="text" name="lieu" id="lieu" placeholder="Salle, bâtiment…" maxlength="100">
                 </div>
 
@@ -312,7 +312,7 @@ include 'includes/header.php';
 
                 <!-- Description -->
                 <div class="form-group form-full">
-                    <label for="description">Description</label>
+                    <label for="description"><?= __('agenda.event_desc') ?></label>
                     <textarea name="description" id="description" rows="4" placeholder="Détails de l'événement…" maxlength="2000"></textarea>
                 </div>
 

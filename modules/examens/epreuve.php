@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
             <form method="post" class="form-inline" style="margin-top:.5rem;">
                 <?= csrfField() ?><input type="hidden" name="action" value="ajouter_surveillant">
                 <select name="professeur_id" class="form-control" required><option value="">— Prof —</option><?php foreach ($profs as $p): ?><option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['prenom'] . ' ' . $p['nom']) ?></option><?php endforeach; ?></select>
-                <select name="role" class="form-control"><option value="surveillant">Surveillant</option><option value="responsable">Responsable</option></select>
+                <select name="role" class="form-control"><option value="surveillant"><?= __('examens.supervisor') ?></option><option value="responsable">Responsable</option></select>
                 <button class="btn btn-sm btn-primary"><i class="fas fa-plus"></i></button>
             </form>
             <?php endif; ?>
@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
             <?php if (empty($convocations)): ?><p class="text-muted">Aucun candidat.</p>
             <?php else: ?>
             <table class="table">
-                <thead><tr><th>Place</th><th>Élève</th><th>Classe</th><th>Présent</th><th>Note</th><th>Convocation</th></tr></thead>
+                <thead><tr><th>Place</th><th>Élève</th><th>Classe</th><th>Présent</th><th>Note</th><th><?= __('examens.convocation') ?></th></tr></thead>
                 <tbody>
                     <?php foreach ($convocations as $c): ?>
                     <tr>

@@ -32,7 +32,7 @@ $stats = $isGestionnaire ? $factService->getStats() : null;
 
 <div class="content-wrapper">
     <div class="content-header">
-        <h1><i class="fas fa-file-invoice-dollar"></i> Facturation</h1>
+        <h1><i class="fas fa-file-invoice-dollar"></i> <?= __('facturation.title') ?></h1>
         <?php if ($isGestionnaire): ?><a href="creer.php" class="btn btn-primary"><i class="fas fa-plus"></i> Nouvelle facture</a><?php endif; ?>
     </div>
 
@@ -47,9 +47,9 @@ $stats = $isGestionnaire ? $factService->getStats() : null;
     <?php if ($isGestionnaire): ?>
     <div class="filter-bar">
         <a href="factures.php" class="btn <?= !$filtreStatut ? 'btn-primary' : 'btn-outline' ?>">Toutes</a>
-        <a href="factures.php?statut=en_attente" class="btn <?= $filtreStatut === 'en_attente' ? 'btn-primary' : 'btn-outline' ?>">En attente</a>
+        <a href="factures.php?statut=en_attente" class="btn <?= $filtreStatut === 'en_attente' ? 'btn-primary' : 'btn-outline' ?>"><?= __('facturation.pending') ?></a>
         <a href="factures.php?statut=payee" class="btn <?= $filtreStatut === 'payee' ? 'btn-primary' : 'btn-outline' ?>">Payées</a>
-        <a href="factures.php?statut=en_retard" class="btn <?= $filtreStatut === 'en_retard' ? 'btn-primary' : 'btn-outline' ?>">En retard</a>
+        <a href="factures.php?statut=en_retard" class="btn <?= $filtreStatut === 'en_retard' ? 'btn-primary' : 'btn-outline' ?>"><?= __('facturation.overdue') ?></a>
         <div class="filter-spacer"></div>
         <a href="export.php?format=csv&statut=<?= urlencode($filtreStatut) ?>" class="btn btn-outline btn-sm"><i class="fas fa-file-csv"></i> CSV</a>
         <a href="export.php?format=pdf&statut=<?= urlencode($filtreStatut) ?>" class="btn btn-outline btn-sm"><i class="fas fa-file-pdf"></i> PDF</a>

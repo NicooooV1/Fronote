@@ -84,7 +84,7 @@ $allRoles = [
 ];
 ?>
 
-<h1 class="page-title"><i class="fas fa-edit"></i> Modifier l'annonce</h1>
+<h1 class="page-title"><i class="fas fa-edit"></i> <?= __('annonces.edit') ?></h1>
 
 <?php if ($success): ?>
     <div class="alert alert-success"><i class="fas fa-check-circle"></i> <?= htmlspecialchars($success) ?>
@@ -116,7 +116,7 @@ $allRoles = [
                     </select>
                 </div>
                 <div class="form-group col-md-4">
-                    <label for="date_expiration">Date d'expiration</label>
+                    <label for="date_expiration"><?= __('annonces.date_expiration') ?></label>
                     <input type="datetime-local" name="date_expiration" id="date_expiration" class="form-control"
                            value="<?= $annonce['date_expiration'] ? date('Y-m-d\TH:i', strtotime($annonce['date_expiration'])) : '' ?>">
                 </div>

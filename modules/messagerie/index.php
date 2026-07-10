@@ -127,7 +127,7 @@ include 'templates/header.php';
             </a>
             <?php endif; ?>
         </div>
-        <button type="submit" class="btn primary btn-sm">Rechercher</button>
+        <button type="submit" class="btn primary btn-sm"><?= __('messagerie.search') ?></button>
     </form>
 </div>
 

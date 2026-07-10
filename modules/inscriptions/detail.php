@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
                 <option value="soumise" <?= $insc['statut'] === 'soumise' ? 'selected' : '' ?>>Soumise</option>
                 <option value="en_revision" <?= $insc['statut'] === 'en_revision' ? 'selected' : '' ?>>En révision</option>
                 <option value="acceptee" <?= $insc['statut'] === 'acceptee' ? 'selected' : '' ?>>Acceptée</option>
-                <option value="refusee" <?= $insc['statut'] === 'refusee' ? 'selected' : '' ?>>Refusée</option>
+                <option value="refusee" <?= $insc['statut'] === 'refusee' ? 'selected' : '' ?>><?= __('inscriptions.rejected') ?></option>
                 <option value="liste_attente" <?= $insc['statut'] === 'liste_attente' ? 'selected' : '' ?>>Liste d'attente</option>
             </select>
         </form>
@@ -100,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
                     </div>
                     <div class="doc-status">
                         <?php if ($doc['valide'] === null): ?>
-                            <span class="badge badge-secondary">En attente</span>
+                            <span class="badge badge-secondary"><?= __('inscriptions.pending') ?></span>
                         <?php elseif ($doc['valide']): ?>
                             <span class="badge badge-success">Validé</span>
                         <?php else: ?>

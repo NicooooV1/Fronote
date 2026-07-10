@@ -113,7 +113,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
         <!-- Welcome Banner -->
         <div class="welcome-banner">
             <div class="welcome-content">
-                <h2>Cahier de textes</h2>
+                <h2><?= __('cahierdetextes.title') ?></h2>
                 <p>Consultez et gérez les devoirs à faire</p>
             </div>
             <div class="welcome-logo"><i class="fas fa-book"></i></div>
@@ -268,7 +268,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                                 <!-- Pièces jointes (PJ-5) -->
                                 <?php if (!empty($fichiers)): ?>
                                 <div class="fichiers-list">
-                                    <h4><i class="fas fa-paperclip"></i> Pièces jointes</h4>
+                                    <h4><i class="fas fa-paperclip"></i> <?= __('cahierdetextes.attachments') ?></h4>
                                     <?php foreach ($fichiers as $f): ?>
                                         <a href="telecharger.php?id=<?= $f['id'] ?>" class="fichier-item">
                                             <i class="fas fa-<?= FileUploadService::getFileIcon($f['type_mime']) ?>"></i>
@@ -289,11 +289,11 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                                     <?php endif; ?>
                                     <?php if (canManageDevoirs() && $service->canUserEdit($devoir, $user_fullname, $user_role)): ?>
                                         <a href="form_devoir.php?id=<?= $devoir['id'] ?>" class="btn btn-secondary">
-                                            <i class="fas fa-edit"></i> Modifier
+                                            <i class="fas fa-edit"></i> <?= __('cahierdetextes.edit') ?>
                                         </a>
                                         <a href="supprimer_devoir.php?id=<?= $devoir['id'] ?>" class="btn btn-danger"
                                            data-fr-confirm="Supprimer ce devoir ?">
-                                            <i class="fas fa-trash"></i> Supprimer
+                                            <i class="fas fa-trash"></i> <?= __('cahierdetextes.delete') ?>
                                         </a>
                                     <?php endif; ?>
                                 </div>

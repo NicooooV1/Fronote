@@ -42,7 +42,7 @@ $categories = DocumentService::categories();
     <?php if (empty($documents)): ?>
         <div class="empty-state">
             <i class="fas fa-folder-open fa-3x"></i>
-            <p>Aucun document disponible.</p>
+            <p><?= __('documents.no_documents') ?></p>
         </div>
     <?php else: ?>
         <div class="doc-grid">
@@ -67,13 +67,13 @@ $categories = DocumentService::categories();
                         </div>
                     </div>
                     <div class="doc-actions">
-                        <a href="telecharger.php?id=<?= $doc['id'] ?>" class="btn btn-sm btn-primary" title="Télécharger"><i class="fas fa-download"></i></a>
+                        <a href="telecharger.php?id=<?= $doc['id'] ?>" class="btn btn-sm btn-primary" title="<?= __('documents.download') ?>"><i class="fas fa-download"></i></a>
                         <?php if (isAdmin()): ?>
                             <form method="post" action="supprimer.php" style="display:inline"
                                   data-fr-confirm="Supprimer ce document ?">
                                 <?= csrfField() ?>
                                 <input type="hidden" name="id" value="<?= $doc['id'] ?>">
-                                <button type="submit" class="btn btn-sm btn-danger" title="Supprimer"><i class="fas fa-trash"></i></button>
+                                <button type="submit" class="btn btn-sm btn-danger" title="<?= __('documents.delete') ?>"><i class="fas fa-trash"></i></button>
                             </form>
                         <?php endif; ?>
                     </div>

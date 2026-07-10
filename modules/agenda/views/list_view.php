@@ -77,7 +77,7 @@ $hasAny = !empty($events);
                     <i class="fas fa-calendar"></i>
                     <p>Aucun événement à afficher.</p>
                     <?php if (in_array($user_role, ['professeur', 'administrateur', 'vie_scolaire'])): ?>
-                        <a href="ajouter_evenement.php" class="create-button"><i class="fas fa-plus"></i> Ajouter un événement</a>
+                        <a href="ajouter_evenement.php" class="create-button"><i class="fas fa-plus"></i> <?= __('agenda.add') ?></a>
                     <?php endif; ?>
                 </div>
             </div>

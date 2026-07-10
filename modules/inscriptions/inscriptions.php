@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $isGestionna
     <?php if ($stats): ?>
     <div class="stats-grid">
         <div class="stat-card"><div class="stat-value"><?= $stats['total'] ?></div><div class="stat-label">Total</div></div>
-        <div class="stat-card stat-info"><div class="stat-value"><?= $stats['soumises'] ?></div><div class="stat-label">En attente</div></div>
+        <div class="stat-card stat-info"><div class="stat-value"><?= $stats['soumises'] ?></div><div class="stat-label"><?= __('inscriptions.pending') ?></div></div>
         <div class="stat-card stat-warning"><div class="stat-value"><?= $stats['en_revision'] ?></div><div class="stat-label">En révision</div></div>
         <div class="stat-card stat-success"><div class="stat-value"><?= $stats['acceptees'] ?></div><div class="stat-label">Acceptées</div></div>
     </div>

@@ -100,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 
     <!-- Appréciation générale + Avis -->
     <div class="card">
-        <div class="card-header"><h3>Appréciation générale</h3></div>
+        <div class="card-header"><h3><?= __('bulletins.general_appreciation') ?></h3></div>
         <div class="card-body">
             <form method="POST">
                 <?= csrfField() ?>

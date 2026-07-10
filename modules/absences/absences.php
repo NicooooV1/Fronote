@@ -105,7 +105,7 @@ include 'includes/header.php';
 <div class="admin-toolbar">
     <span class="admin-toolbar-badge"><i class="fas fa-shield-alt"></i> Administration</span>
     <span style="font-size:13px;color:#4a5568"><?= count($absences) ?> enregistrement(s) — Période du <?= $date_debut_formattee ?> au <?= $date_fin_formattee ?></span>
-    <a href="ajouter_absence.php" class="btn-sm" style="background:#059669;color:white;text-decoration:none;margin-left:auto"><i class="fas fa-plus"></i> Saisir une absence</a>
+    <a href="ajouter_absence.php" class="btn-sm" style="background:#059669;color:white;text-decoration:none;margin-left:auto"><i class="fas fa-plus"></i> <?= __('absences.add') ?></a>
     <a href="justificatifs.php" class="btn-sm" style="background:#d97706;color:white;text-decoration:none"><i class="fas fa-file-medical"></i> Justificatifs</a>
     <a href="../../admin/scolaire/absences.php" class="btn-sm" style="background:#0f4c81;color:white;text-decoration:none"><i class="fas fa-cog"></i> Panneau admin</a>
 </div>
@@ -128,7 +128,7 @@ include 'includes/header.php';
         
         <?php if (isAdmin() || isVieScolaire() || isTeacher()): ?>
         <div class="filter-item">
-            <label for="classe" class="form-label">Classe</label>
+            <label for="classe" class="form-label"><?= __('absences.classe') ?></label>
             <select id="classe" name="classe" class="form-control">
                 <option value="">Toutes les classes</option>
                 <?php foreach ($classes as $c): ?>

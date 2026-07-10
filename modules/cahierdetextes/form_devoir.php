@@ -186,7 +186,7 @@ include 'includes/header.php';
 
                                 <!-- Classe (SEC-1 : htmlspecialchars) -->
                                 <div class="form-group">
-                                    <label class="form-label" for="classe">Classe <span class="required">*</span></label>
+                                    <label class="form-label" for="classe"><?= __('cahierdetextes.class') ?> <span class="required">*</span></label>
                                     <select name="classe" id="classe" class="form-select" required>
                                         <option value="">Sélectionnez une classe</option>
                                         <?php if (!empty($etablissement_data['classes'])): ?>
@@ -220,7 +220,7 @@ include 'includes/header.php';
 
                                 <!-- Matière -->
                                 <div class="form-group">
-                                    <label class="form-label" for="nom_matiere">Matière <span class="required">*</span></label>
+                                    <label class="form-label" for="nom_matiere"><?= __('cahierdetextes.subject') ?> <span class="required">*</span></label>
                                     <select name="nom_matiere" id="nom_matiere" class="form-select" required>
                                         <option value="">Sélectionnez une matière</option>
                                         <?php if (!empty($etablissement_data['matieres'])): ?>
@@ -299,7 +299,7 @@ include 'includes/header.php';
                                                     <span class="fichier-taille"><?= FileUploader::formatBytes($f['taille']) ?></span>
                                                     <a href="?id=<?= $id ?>&del_fichier=<?= $f['id'] ?>&token=<?= urlencode(generateCSRFToken()) ?>"
                                                        class="btn btn-sm btn-danger" data-fr-confirm="Supprimer ce fichier ?"
-                                                       title="Supprimer"><i class="fas fa-trash"></i></a>
+                                                       title="<?= __('cahierdetextes.delete') ?>"><i class="fas fa-trash"></i></a>
                                                 </div>
                                             <?php endforeach; ?>
                                         </div>

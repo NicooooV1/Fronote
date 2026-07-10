@@ -45,7 +45,7 @@ $types     = DisciplineService::getTypesIncident();
 
 <!-- Actions -->
 <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
-    <a href="signaler.php" class="ds-btn ds-btn-primary"><i class="fas fa-plus"></i> Signaler un incident</a>
+    <a href="signaler.php" class="ds-btn ds-btn-primary"><i class="fas fa-plus"></i> <?= __('discipline.add') ?></a>
     <?php if (isAdmin() || isVieScolaire()): ?>
     <a href="export.php?type=incidents&format=csv<?= $filtreStatut ? '&statut='.$filtreStatut : '' ?><?= $filtreClasse ? '&classe='.urlencode($filtreClasse) : '' ?>" class="ds-btn ds-btn-outline ds-btn-sm" style="margin-left:auto;">
         <i class="fas fa-file-csv"></i> CSV
@@ -106,7 +106,7 @@ $types     = DisciplineService::getTypesIncident();
 <div class="stats-row">
     <div class="stat-card stat-total">
         <div class="stat-number"><?= count($incidents) ?></div>
-        <div class="stat-label">Incidents</div>
+        <div class="stat-label"><?= __('discipline.incidents') ?></div>
     </div>
     <?php
     $nbGrave = count(array_filter($incidents, fn($i) => in_array($i['gravite'], ['grave', 'tres_grave'])));
@@ -133,11 +133,11 @@ $types     = DisciplineService::getTypesIncident();
     <table class="data-table">
         <thead>
             <tr>
-                <th>Date</th>
-                <th>Élève</th>
+                <th><?= __('discipline.date') ?></th>
+                <th><?= __('discipline.student') ?></th>
                 <th>Classe</th>
-                <th>Type</th>
-                <th>Gravité</th>
+                <th><?= __('discipline.type') ?></th>
+                <th><?= __('discipline.severity') ?></th>
                 <th>Statut</th>
                 <th>Actions</th>
             </tr>

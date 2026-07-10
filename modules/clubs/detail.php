@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     <div class="inscription-action">
         <form method="post">
             <?= csrfField() ?>
-            <button name="action" value="inscrire" class="btn btn-primary btn-lg"><i class="fas fa-hand-point-up"></i> S'inscrire</button>
+            <button name="action" value="inscrire" class="btn btn-primary btn-lg"><i class="fas fa-hand-point-up"></i> <?= __('clubs.register') ?></button>
         </form>
     </div>
     <?php endif; ?>
@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 
     <!-- Membres -->
     <div class="card">
-        <div class="card-header"><h2>Membres (<?= count($membres) ?>)</h2></div>
+        <div class="card-header"><h2><?= __('clubs.members') ?> (<?= count($membres) ?>)</h2></div>
         <div class="card-body">
             <?php if (empty($membres)): ?>
                 <p class="text-muted">Aucun membre pour l'instant.</p>

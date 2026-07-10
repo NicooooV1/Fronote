@@ -120,7 +120,7 @@ $etapesActualisees = $projetService->getEtapes($id);
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
                             <input type="hidden" name="action" value="ajouter_etape">
                             <div class="col-md-4"><input name="titre_etape" class="form-control form-control-sm" placeholder="Titre de l'étape" required></div>
-                            <div class="col-md-3"><input name="desc_etape" class="form-control form-control-sm" placeholder="Description"></div>
+                            <div class="col-md-3"><input name="desc_etape" class="form-control form-control-sm" placeholder="<?= __('projets_pedagogiques.description') ?>"></div>
                             <div class="col-md-3"><input name="date_etape" type="date" class="form-control form-control-sm"></div>
                             <div class="col-md-2"><button class="btn btn-sm btn-primary w-100">Ajouter</button></div>
                         </form>
@@ -168,7 +168,7 @@ $etapesActualisees = $projetService->getEtapes($id);
                             <button class="btn btn-outline-primary">OK</button>
                         </div>
                     </form>
-                    <a href="creer.php?id=<?= $id ?>" class="btn btn-sm btn-outline-warning w-100"><i class="fas fa-edit me-1"></i>Modifier</a>
+                    <a href="creer.php?id=<?= $id ?>" class="btn btn-sm btn-outline-warning w-100"><i class="fas fa-edit me-1"></i><?= __('projets_pedagogiques.edit') ?></a>
                 </div>
             </div>
             <?php endif; ?>

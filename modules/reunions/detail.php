@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && (isAdmin() |
                     <div class="info-item"><span class="info-label">Date début</span><span class="info-value"><?= formatDateTime($reunion['date_debut']) ?></span></div>
                     <div class="info-item"><span class="info-label">Date fin</span><span class="info-value"><?= formatDateTime($reunion['date_fin']) ?></span></div>
                     <?php if ($reunion['lieu']): ?>
-                    <div class="info-item"><span class="info-label">Lieu</span><span class="info-value"><?= htmlspecialchars($reunion['lieu']) ?></span></div>
+                    <div class="info-item"><span class="info-label"><?= __('reunions.location') ?></span><span class="info-value"><?= htmlspecialchars($reunion['lieu']) ?></span></div>
                     <?php endif; ?>
                     <?php if ($reunion['classe_nom']): ?>
                     <div class="info-item"><span class="info-label">Classe</span><span class="info-value"><?= htmlspecialchars($reunion['classe_nom']) ?></span></div>
@@ -104,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && (isAdmin() |
                 </table>
                 <?php if (isParent() && $reunion['statut'] === 'planifiee'): ?>
                 <div style="margin-top: 1rem;">
-                    <a href="reserver.php?reunion_id=<?= $id ?>" class="btn btn-success"><i class="fas fa-bookmark"></i> Réserver un créneau</a>
+                    <a href="reserver.php?reunion_id=<?= $id ?>" class="btn btn-success"><i class="fas fa-bookmark"></i> <?= __('reunions.book_slot') ?></a>
                 </div>
                 <?php endif; ?>
             </div>

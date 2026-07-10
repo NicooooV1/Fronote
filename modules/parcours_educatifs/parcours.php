@@ -43,9 +43,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($role, ['admin', 'professe
 ?>
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2><i class="fas fa-route me-2"></i>Parcours éducatifs</h2>
+        <h2><i class="fas fa-route me-2"></i><?= __('parcours_educatifs.title') ?></h2>
         <?php if (in_array($role, ['admin', 'professeur'])): ?>
-            <a href="ajouter.php" class="btn btn-primary"><i class="fas fa-plus me-1"></i>Ajouter une activité</a>
+            <a href="ajouter.php" class="btn btn-primary"><i class="fas fa-plus me-1"></i><?= __('parcours_educatifs.add') ?></a>
         <?php endif; ?>
     </div>
 
@@ -87,14 +87,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($role, ['admin', 'professe
 
     <!-- Liste -->
     <?php if (empty($parcours)): ?>
-        <div class="alert alert-info">Aucune activité enregistrée.</div>
+        <div class="alert alert-info"><?= __('parcours_educatifs.no_activities') ?></div>
     <?php else: ?>
     <div class="table-responsive">
         <table class="table table-hover align-middle">
             <thead class="table-light">
                 <tr>
                     <th>Type</th><th>Titre</th>
-                    <?php if (!in_array($role, ['eleve'])): ?><th>Élève</th><?php endif; ?>
+                    <?php if (!in_array($role, ['eleve'])): ?><th><?= __('parcours_educatifs.student') ?></th><?php endif; ?>
                     <th>Date</th><th>Compétences</th><th>Validé</th>
                     <?php if (in_array($role, ['admin', 'professeur'])): ?><th></th><?php endif; ?>
                 </tr>

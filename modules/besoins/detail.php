@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $canEdit) {
 
     <?php if ($plan['amenagements']): ?>
     <div class="card">
-        <div class="card-header"><h2>Aménagements</h2></div>
+        <div class="card-header"><h2><?= __('besoins.adaptations') ?></h2></div>
         <div class="card-body"><p><?= nl2br(htmlspecialchars($plan['amenagements'])) ?></p></div>
     </div>
     <?php endif; ?>

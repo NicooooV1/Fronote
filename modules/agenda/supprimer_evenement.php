@@ -91,7 +91,7 @@ include 'includes/header.php';
 
 <div class="event-delete-container">
     <div class="event-delete-header">
-        <h1>Supprimer l'événement</h1>
+        <h1><?= __('agenda.delete') ?></h1>
     </div>
 
     <div class="event-delete-body">

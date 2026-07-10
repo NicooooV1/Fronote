@@ -23,7 +23,7 @@ $timeline = $service->getTimeline(20);
 ?>
 
 <div class="page-header">
-    <h1><i class="fas fa-shield-alt"></i> Vie scolaire — <?= date('d/m/Y') ?></h1>
+    <h1><i class="fas fa-shield-alt"></i> <?= __('vie_scolaire.title') ?> — <?= date('d/m/Y') ?></h1>
 </div>
 
 <!-- Indicateurs du jour -->
@@ -87,7 +87,7 @@ $timeline = $service->getTimeline(20);
                 <p class="text-muted p-1">Aucun élève en alerte.</p>
             <?php else: ?>
             <table class="data-table">
-                <thead><tr><th>Élève</th><th>Classe</th><th class="text-center">Abs. inj.</th><th class="text-center">Retards</th><th class="text-center">Incidents</th><th></th></tr></thead>
+                <thead><tr><th><?= __('vie_scolaire.student') ?></th><th><?= __('vie_scolaire.class') ?></th><th class="text-center">Abs. inj.</th><th class="text-center">Retards</th><th class="text-center">Incidents</th><th></th></tr></thead>
                 <tbody>
                     <?php foreach ($elevesASurveiller as $e): ?>
                     <tr>
@@ -135,7 +135,7 @@ $timeline = $service->getTimeline(20);
 
 <!-- Accès rapides -->
 <div class="vs-quick-links">
-    <a href="../absences/absences.php" class="vs-quick-link"><i class="fas fa-calendar-times"></i> Absences</a>
+    <a href="../absences/absences.php" class="vs-quick-link"><i class="fas fa-calendar-times"></i> <?= __('vie_scolaire.absences') ?></a>
     <a href="../absences/justificatifs.php" class="vs-quick-link"><i class="fas fa-file-medical"></i> Justificatifs</a>
     <a href="../discipline/incidents.php" class="vs-quick-link"><i class="fas fa-gavel"></i> Incidents</a>
     <a href="../discipline/retenues.php" class="vs-quick-link"><i class="fas fa-door-closed"></i> Retenues</a>

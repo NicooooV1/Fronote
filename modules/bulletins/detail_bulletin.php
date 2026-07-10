@@ -78,12 +78,12 @@ $avisLabels = BulletinService::avisLabels();
                     <tr>
                         <th>Matière</th>
                         <th>Professeur</th>
-                        <th class="text-center">Élève</th>
+                        <th class="text-center"><?= __('bulletins.student') ?></th>
                         <th class="text-center">Classe</th>
                         <th class="text-center">Min</th>
                         <th class="text-center">Max</th>
                         <th class="text-center">Coeff.</th>
-                        <th>Appréciation</th>
+                        <th><?= __('bulletins.appreciation') ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -109,7 +109,7 @@ $avisLabels = BulletinService::avisLabels();
 
     <?php if (!empty($bulletin['appreciation_generale'])): ?>
     <div class="appreciation-generale">
-        <h4><i class="fas fa-comment-alt"></i> Appréciation générale</h4>
+        <h4><i class="fas fa-comment-alt"></i> <?= __('bulletins.general_appreciation') ?></h4>
         <p><?= nl2br(htmlspecialchars($bulletin['appreciation_generale'])) ?></p>
     </div>
     <?php endif; ?>

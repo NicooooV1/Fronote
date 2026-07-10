@@ -123,7 +123,7 @@ include 'includes/header.php';
 
             <div class="form-row">
                 <div class="form-group">
-                    <label for="classe_id">Classe <span class="required">*</span></label>
+                    <label for="classe_id"><?= __('emploi_du_temps.class') ?> <span class="required">*</span></label>
                     <select name="classe_id" id="classe_id" class="form-control" required>
                         <option value="">-- Classe --</option>
                         <?php foreach ($classes as $cl): ?>
@@ -135,7 +135,7 @@ include 'includes/header.php';
                 </div>
 
                 <div class="form-group">
-                    <label for="matiere_id">Matière <span class="required">*</span></label>
+                    <label for="matiere_id"><?= __('emploi_du_temps.subject') ?> <span class="required">*</span></label>
                     <select name="matiere_id" id="matiere_id" class="form-control" required>
                         <option value="">-- Matière --</option>
                         <?php foreach ($matieres as $mat): ?>
@@ -149,7 +149,7 @@ include 'includes/header.php';
 
             <div class="form-row">
                 <div class="form-group">
-                    <label for="professeur_id">Professeur <span class="required">*</span></label>
+                    <label for="professeur_id"><?= __('emploi_du_temps.teacher') ?> <span class="required">*</span></label>
                     <select name="professeur_id" id="professeur_id" class="form-control" required>
                         <option value="">-- Professeur --</option>
                         <?php foreach ($professeurs as $prof): ?>
@@ -161,7 +161,7 @@ include 'includes/header.php';
                 </div>
 
                 <div class="form-group">
-                    <label for="salle_id">Salle</label>
+                    <label for="salle_id"><?= __('emploi_du_temps.room') ?></label>
                     <select name="salle_id" id="salle_id" class="form-control">
                         <option value="">-- Pas de salle --</option>
                         <?php foreach ($salles as $salle): ?>
@@ -176,7 +176,7 @@ include 'includes/header.php';
 
             <div class="form-row">
                 <div class="form-group">
-                    <label for="jour">Jour <span class="required">*</span></label>
+                    <label for="jour"><?= __('emploi_du_temps.day') ?> <span class="required">*</span></label>
                     <select name="jour" id="jour" class="form-control" required>
                         <option value="">-- Jour --</option>
                         <?php foreach ($joursOptions as $val => $label): ?>

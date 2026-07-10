@@ -224,9 +224,9 @@ arsort($absences_par_classe);
             <table>
                 <thead>
                     <tr>
-                        <th>Élève</th>
-                        <th>Classe</th>
-                        <th>Absences</th>
+                        <th><?= __('absences.eleve') ?></th>
+                        <th><?= __('absences.classe') ?></th>
+                        <th><?= __('absences.title') ?></th>
                         <th>Durée totale</th>
                         <th>Actions</th>
                     </tr>

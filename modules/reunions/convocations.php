@@ -118,7 +118,7 @@ $convocations = $reunionService->getConvocations($userId, $userType);
                     <input type="date" name="date_convocation" class="form-control" required>
                 </div>
                 <div class="form-group">
-                    <label>Heure</label>
+                    <label><?= __('reunions.time') ?></label>
                     <input type="time" name="heure" class="form-control">
                 </div>
                 <div class="form-group">
@@ -132,7 +132,7 @@ $convocations = $reunionService->getConvocations($userId, $userType);
                 </div>
             </div>
             <div class="form-group">
-                <label>Lieu</label>
+                <label><?= __('reunions.location') ?></label>
                 <input type="text" name="lieu" class="form-control">
             </div>
             <div class="form-group">

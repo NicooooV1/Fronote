@@ -109,7 +109,7 @@ if (isset($_GET['edit'])) {
                         <input type="text" name="code" class="form-control" required value="<?= htmlspecialchars($editComp['code'] ?? '') ?>" placeholder="Ex: D1.1">
                     </div>
                     <div>
-                        <label style="display:block;font-size:12px;font-weight:600;color:#4a5568;margin-bottom:4px;">Domaine</label>
+                        <label style="display:block;font-size:12px;font-weight:600;color:#4a5568;margin-bottom:4px;"><?= __('competences.domain') ?></label>
                         <input type="text" name="domaine" class="form-control" value="<?= htmlspecialchars($editComp['domaine'] ?? '') ?>" placeholder="Ex: Langages">
                     </div>
                 </div>

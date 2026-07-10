@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                 <div class="form-group"><label>Date début *</label><input type="date" name="date_debut" class="form-control" required></div>
                 <div class="form-group"><label>Date fin</label><input type="date" name="date_fin" class="form-control"></div>
                 <div class="form-group"><label>Responsable</label><select name="responsable_id" class="form-control"><option value="">—</option><?php foreach ($profs as $p): ?><option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['prenom'] . ' ' . $p['nom']) ?></option><?php endforeach; ?></select></div>
-                <div class="form-group full-width"><label>Aménagements</label><textarea name="amenagements" class="form-control" rows="4" placeholder="Tiers temps, matériel adapté, supports agrandis…"></textarea></div>
+                <div class="form-group full-width"><label><?= __('besoins.adaptations') ?></label><textarea name="amenagements" class="form-control" rows="4" placeholder="Tiers temps, matériel adapté, supports agrandis…"></textarea></div>
             </div>
             <div class="form-actions"><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Créer</button><a href="besoins.php" class="btn btn-outline">Annuler</a></div>
         </form>

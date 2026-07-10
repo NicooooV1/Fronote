@@ -52,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                 <div class="form-group"><label>Entreprise *</label><input type="text" name="entreprise_nom" class="form-control" required></div>
                 <div class="form-group"><label>Adresse</label><input type="text" name="entreprise_adresse" class="form-control"></div>
                 <div class="form-group"><label>Tél.</label><input type="text" name="entreprise_tel" class="form-control"></div>
-                <div class="form-group"><label>Tuteur</label><input type="text" name="tuteur_nom" class="form-control"></div>
+                <div class="form-group"><label><?= __('stages.tutor') ?></label><input type="text" name="tuteur_nom" class="form-control"></div>
                 <div class="form-group"><label>Email tuteur</label><input type="email" name="tuteur_email" class="form-control"></div>
                 <div class="form-group"><label>Référent</label><select name="prof_referent_id" class="form-control"><option value="">—</option><?php foreach ($profs as $p): ?><option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['prenom'] . ' ' . $p['nom']) ?></option><?php endforeach; ?></select></div>
                 <div class="form-group"><label>Début *</label><input type="date" name="date_debut" class="form-control" required></div>

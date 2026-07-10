@@ -13,7 +13,7 @@ $average = $data['average'] ?? null;
     </div>
 <?php endif; ?>
 <?php if (empty($notes)): ?>
-    <p class="widget-empty">Aucune note enregistrée.</p>
+    <p class="widget-empty"><?= __('notes.no_grades') ?></p>
 <?php else: ?>
     <ul class="widget-list">
         <?php foreach ($notes as $note): ?>

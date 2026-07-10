@@ -48,7 +48,7 @@ $stats = $isGestionnaire ? $diplService->getStats() : null;
     <?php endif; ?>
 
     <?php if (empty($diplomes)): ?>
-        <div class="empty-state"><i class="fas fa-graduation-cap"></i><p>Aucun diplôme enregistré.</p></div>
+        <div class="empty-state"><i class="fas fa-graduation-cap"></i><p><?= __('diplomes.no_diplomas') ?></p></div>
     <?php else: ?>
     <div class="diplomes-grid">
         <?php foreach ($diplomes as $d): ?>

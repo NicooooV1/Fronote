@@ -78,7 +78,7 @@ $_msgUserType = $user['type'] ?? 'eleve';
 ob_start();
 ?>
                 <a href="<?= $rootPrefix ?>modules/messagerie/new_message.php" class="btn btn-primary">
-                    <i class="fas fa-pen"></i> <span>Nouveau message</span>
+                    <i class="fas fa-pen"></i> <span><?= __('messagerie.compose') ?></span>
                 </a>
                 <?php if ($_msgUserType === 'professeur'): ?>
                 <a href="<?= $rootPrefix ?>modules/messagerie/class_message.php" class="btn">

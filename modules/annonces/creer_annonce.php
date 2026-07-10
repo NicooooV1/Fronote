@@ -105,7 +105,7 @@ try {
 } catch (\Throwable $e) { error_log('[creer_annonce.php] ' . $e->getMessage()); }
 ?>
 
-<h1 class="page-title"><i class="fas fa-plus-circle"></i> Nouvelle annonce</h1>
+<h1 class="page-title"><i class="fas fa-plus-circle"></i> <?= __('annonces.add') ?></h1>
 
 <?php if ($success): ?>
     <div class="alert alert-success"><i class="fas fa-check-circle"></i> <?= htmlspecialchars($success) ?>
@@ -122,7 +122,7 @@ try {
 
         <!-- Informations principales -->
         <div class="form-section">
-            <h3><i class="fas fa-info-circle"></i> Contenu</h3>
+            <h3><i class="fas fa-info-circle"></i> <?= __('annonces.contenu') ?></h3>
             <div class="form-group">
                 <label for="titre">Titre *</label>
                 <input type="text" name="titre" id="titre" class="form-control" required
@@ -139,12 +139,12 @@ try {
                     </select>
                 </div>
                 <div class="form-group col-md-4">
-                    <label for="date_publication">Date de publication</label>
+                    <label for="date_publication"><?= __('annonces.date_publication') ?></label>
                     <input type="datetime-local" name="date_publication" id="date_publication"
                            class="form-control" value="<?= date('Y-m-d\TH:i') ?>">
                 </div>
                 <div class="form-group col-md-4">
-                    <label for="date_expiration">Date d'expiration</label>
+                    <label for="date_expiration"><?= __('annonces.date_expiration') ?></label>
                     <input type="datetime-local" name="date_expiration" id="date_expiration" class="form-control">
                 </div>
             </div>
@@ -215,7 +215,7 @@ try {
 
         <!-- Sondage (conditionnel) -->
         <div class="form-section" id="section-sondage" style="display:none;">
-            <h3><i class="fas fa-poll"></i> Sondage</h3>
+            <h3><i class="fas fa-poll"></i> <?= __('annonces.sondage') ?></h3>
             <div class="form-group">
                 <label for="sondage_question">Question</label>
                 <input type="text" name="sondage_question" id="sondage_question" class="form-control"
@@ -259,7 +259,7 @@ try {
 
         <!-- Pièces jointes -->
         <div class="form-section">
-            <h3><i class="fas fa-paperclip"></i> Pièces jointes <small class="text-muted">(max 5 fichiers, 10 Mo chacun)</small></h3>
+            <h3><i class="fas fa-paperclip"></i> <?= __('annonces.attachments') ?> <small class="text-muted">(max 5 fichiers, 10 Mo chacun)</small></h3>
             <div class="form-group">
                 <input type="file" name="fichiers[]" id="fichiers" class="form-control" multiple
                        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.gif,.webp">

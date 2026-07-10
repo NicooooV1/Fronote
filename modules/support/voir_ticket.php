@@ -80,10 +80,10 @@ $canReply      = $ticket['statut'] !== 'ferme';
                         <?= csrfField() ?>
                         <input type="hidden" name="action" value="statut">
                         <select name="statut" class="form-control form-control-sm" data-fr-change="submitOwn">
-                            <option value="ouvert" <?= $ticket['statut'] === 'ouvert' ? 'selected' : '' ?>>Ouvert</option>
+                            <option value="ouvert" <?= $ticket['statut'] === 'ouvert' ? 'selected' : '' ?>><?= __('support.open') ?></option>
                             <option value="en_cours" <?= $ticket['statut'] === 'en_cours' ? 'selected' : '' ?>>En cours</option>
                             <option value="resolu" <?= $ticket['statut'] === 'resolu' ? 'selected' : '' ?>>Résolu</option>
-                            <option value="ferme" <?= $ticket['statut'] === 'ferme' ? 'selected' : '' ?>>Fermé</option>
+                            <option value="ferme" <?= $ticket['statut'] === 'ferme' ? 'selected' : '' ?>><?= __('support.closed') ?></option>
                         </select>
                     </form>
                     <?php endif; ?>

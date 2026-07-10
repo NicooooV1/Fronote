@@ -18,7 +18,7 @@ $stats = $biblioService->getStats();
 
 <div class="content-wrapper">
     <div class="content-header">
-        <h1><i class="fas fa-book"></i> Catalogue</h1>
+        <h1><i class="fas fa-book"></i> <?= __('bibliotheque.catalog') ?></h1>
         <?php if (isAdmin() || isPersonnelVS()): ?>
         <a href="ajouter.php" class="btn btn-primary"><i class="fas fa-plus"></i> Ajouter</a>
         <?php endif; ?>
@@ -28,7 +28,7 @@ $stats = $biblioService->getStats();
         <div class="stat-card"><div class="stat-value"><?= $stats['total'] ?></div><div class="stat-label">Ouvrages</div></div>
         <div class="stat-card"><div class="stat-value"><?= $stats['exemplaires'] ?></div><div class="stat-label">Exemplaires</div></div>
         <div class="stat-card stat-info"><div class="stat-value"><?= $stats['actifs'] ?></div><div class="stat-label">Empruntés</div></div>
-        <div class="stat-card stat-danger"><div class="stat-value"><?= $stats['retards'] ?></div><div class="stat-label">En retard</div></div>
+        <div class="stat-card stat-danger"><div class="stat-value"><?= $stats['retards'] ?></div><div class="stat-label"><?= __('bibliotheque.overdue') ?></div></div>
     </div>
 
     <div class="search-filter">

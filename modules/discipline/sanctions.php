@@ -85,7 +85,7 @@ if (!empty($_GET['incident_id'])) {
 }
 ?>
 
-<h1 class="page-title"><i class="fas fa-gavel"></i> Sanctions</h1>
+<h1 class="page-title"><i class="fas fa-gavel"></i> <?= __('discipline.sanctions') ?></h1>
 
 <?php if ($success): ?>
     <div class="alert alert-success"><i class="fas fa-check-circle"></i> <?= htmlspecialchars($success) ?></div>
@@ -186,7 +186,7 @@ if (!empty($_GET['incident_id'])) {
 <div class="filter-bar card">
     <form method="GET" class="filter-form">
         <div class="filter-group">
-            <label for="type_sanction_f">Type</label>
+            <label for="type_sanction_f"><?= __('discipline.type') ?></label>
             <select name="type_sanction" id="type_sanction_f">
                 <option value="">Tous</option>
                 <?php foreach ($typesSanction as $key => $label): ?>
@@ -221,10 +221,10 @@ if (!empty($_GET['incident_id'])) {
     <table class="data-table">
         <thead>
             <tr>
-                <th>Date</th>
-                <th>Élève</th>
+                <th><?= __('discipline.date') ?></th>
+                <th><?= __('discipline.student') ?></th>
                 <th>Classe</th>
-                <th>Type</th>
+                <th><?= __('discipline.type') ?></th>
                 <th>Motif</th>
                 <th>Durée</th>
                 <th>Parent</th>

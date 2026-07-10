@@ -171,8 +171,8 @@ include 'includes/header.php';
                 <thead>
                     <tr>
                         <th>Élève</th>
-                        <th class="text-center">Présent</th>
-                        <th class="text-center">Absent</th>
+                        <th class="text-center"><?= __('appel.present') ?></th>
+                        <th class="text-center"><?= __('appel.absent') ?></th>
                         <th class="text-center">Retard</th>
                         <th class="text-center">Dispensé</th>
                         <th>Motif</th>
@@ -227,7 +227,7 @@ include 'includes/header.php';
         <!-- Appel validé (lecture seule) -->
         <table class="table appel-table">
             <thead>
-                <tr><th>Élève</th><th class="text-center">Statut</th><th>Motif</th></tr>
+                <tr><th>Élève</th><th class="text-center"><?= __('appel.status') ?></th><th>Motif</th></tr>
             </thead>
             <tbody>
                 <?php foreach ($eleves as $el): ?>

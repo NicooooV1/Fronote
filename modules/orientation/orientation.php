@@ -28,7 +28,7 @@ if (isEleve()) {
 
 <div class="content-wrapper">
     <div class="content-header">
-        <h1><i class="fas fa-compass"></i> Orientation</h1>
+        <h1><i class="fas fa-compass"></i> <?= __('orientation.title') ?></h1>
     </div>
 
     <?php if (isParent()): ?>

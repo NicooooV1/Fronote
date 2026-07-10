@@ -37,7 +37,7 @@ $groupes = InfirmerieService::groupesSanguins();
             </div>
             <div class="fiche-tags">
                 <?php if ($f['allergies']): ?><span class="badge badge-danger"><i class="fas fa-exclamation-triangle"></i> Allergies</span><?php endif; ?>
-                <?php if ($f['pai']): ?><span class="badge badge-warning">PAI</span><?php endif; ?>
+                <?php if ($f['pai']): ?><span class="badge badge-warning"><?= __('infirmerie.pai') ?></span><?php endif; ?>
                 <?php if ($f['groupe_sanguin']): ?><span class="badge badge-info"><?= htmlspecialchars($f['groupe_sanguin']) ?></span><?php endif; ?>
             </div>
             <a href="fiche_sante.php?eleve=<?= $f['eleve_id'] ?>" class="btn btn-sm btn-outline"><i class="fas fa-eye"></i> Voir</a>
