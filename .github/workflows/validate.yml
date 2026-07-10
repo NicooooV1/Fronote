@@ -76,25 +76,39 @@ jobs:
         run: php tests/module_sdk_smoke.php
 
   tests:
-    name: PHPUnit (unit)
+    name: PHPUnit (unit + intégration MySQL)
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_DATABASE: fronote_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=10s --health-timeout=5s --health-retries=10
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: sodium, zip, json, pdo, pdo_sqlite, mbstring
+          extensions: sodium, zip, json, pdo, pdo_mysql, pdo_sqlite, mbstring
           coverage: none
           tools: composer:v2
       - name: Install dependencies (with dev)
         run: composer install --no-interaction --prefer-dist --no-progress
-      - name: Run unit tests
+      - name: Provision .env (MySQL CI) — active les tests d'isolation/backup/sécurité
+        run: cp .env.ci.example .env
+      - name: Charger le schéma
+        run: mysql -h 127.0.0.1 -P 3306 -uroot fronote_ci < pronote.sql || true
+      - name: Run tests (unit + intégration DB)
         run: vendor/bin/phpunit --testsuite unit
 
   websocket-audit:
     name: WebSocket deps audit (npm)
     runs-on: ubuntu-latest
-    continue-on-error: true   # advisory : le serveur temps réel est optionnel
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -102,12 +116,14 @@ jobs:
           node-version: '20'
       - name: npm audit (websocket)
         working-directory: websocket
-        run: npm audit --omit=dev --audit-level=high || true
+        # Bloquant : une vulnérabilité high/critical dans les deps WS fait échouer le build.
+        run: npm audit --omit=dev --audit-level=high
 
   static-analysis:
-    name: Static analysis (PHPStan, advisory)
+    name: Static analysis (PHPStan)
     runs-on: ubuntu-latest
-    continue-on-error: true   # advisory tant que la baseline n'est pas figée
+    # Bloquant : la baseline (phpstan-baseline.neon) fige la dette existante ;
+    # toute NOUVELLE erreur de typage fait échouer le build.
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2

@@ -1,0 +1,1849 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Access to property \$absenceId on an unknown class API\\Events\\AbsenceCreated\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Events/Listeners/NotifyParentAbsenceListener.php
+
+		-
+			message: '#^Access to property \$data on an unknown class API\\Events\\AbsenceCreated\.$#'
+			identifier: class.notFound
+			count: 5
+			path: API/Events/Listeners/NotifyParentAbsenceListener.php
+
+		-
+			message: '#^Class API\\Jobs\\SendAbsenceNotificationJob not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Events/Listeners/NotifyParentAbsenceListener.php
+
+		-
+			message: '#^Parameter \$event of method API\\Events\\Listeners\\NotifyParentAbsenceListener\:\:handle\(\) has invalid type API\\Events\\AbsenceCreated\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Events/Listeners/NotifyParentAbsenceListener.php
+
+		-
+			message: '#^Access to property \$absenceId on an unknown class API\\Events\\AbsenceCreated\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Events/Listeners/WebSocketListener.php
+
+		-
+			message: '#^Access to property \$data on an unknown class API\\Events\\AbsenceCreated\.$#'
+			identifier: class.notFound
+			count: 3
+			path: API/Events/Listeners/WebSocketListener.php
+
+		-
+			message: '#^Access to property \$data on an unknown class API\\Events\\EvenementCreated\.$#'
+			identifier: class.notFound
+			count: 2
+			path: API/Events/Listeners/WebSocketListener.php
+
+		-
+			message: '#^Access to property \$data on an unknown class API\\Events\\NoteCreated\.$#'
+			identifier: class.notFound
+			count: 4
+			path: API/Events/Listeners/WebSocketListener.php
+
+		-
+			message: '#^Access to property \$evenementId on an unknown class API\\Events\\EvenementCreated\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Events/Listeners/WebSocketListener.php
+
+		-
+			message: '#^Access to property \$messageId on an unknown class API\\Events\\MessageSent\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Events/Listeners/WebSocketListener.php
+
+		-
+			message: '#^Access to property \$noteId on an unknown class API\\Events\\NoteCreated\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Events/Listeners/WebSocketListener.php
+
+		-
+			message: '#^Access to property \$senderId on an unknown class API\\Events\\MessageSent\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Events/Listeners/WebSocketListener.php
+
+		-
+			message: '#^Access to property \$senderType on an unknown class API\\Events\\MessageSent\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Events/Listeners/WebSocketListener.php
+
+		-
+			message: '#^Class API\\Events\\AbsenceCreated not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Events/Listeners/WebSocketListener.php
+
+		-
+			message: '#^Class API\\Events\\EvenementCreated not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Events/Listeners/WebSocketListener.php
+
+		-
+			message: '#^Class API\\Events\\MessageSent not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Events/Listeners/WebSocketListener.php
+
+		-
+			message: '#^Class API\\Events\\NoteCreated not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Events/Listeners/WebSocketListener.php
+
+		-
+			message: '#^Parameter \$event of method API\\Events\\Listeners\\WebSocketListener\:\:onAbsenceCreated\(\) has invalid type API\\Events\\AbsenceCreated\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Events/Listeners/WebSocketListener.php
+
+		-
+			message: '#^Parameter \$event of method API\\Events\\Listeners\\WebSocketListener\:\:onEvenementCreated\(\) has invalid type API\\Events\\EvenementCreated\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Events/Listeners/WebSocketListener.php
+
+		-
+			message: '#^Parameter \$event of method API\\Events\\Listeners\\WebSocketListener\:\:onMessageSent\(\) has invalid type API\\Events\\MessageSent\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Events/Listeners/WebSocketListener.php
+
+		-
+			message: '#^Parameter \$event of method API\\Events\\Listeners\\WebSocketListener\:\:onNoteCreated\(\) has invalid type API\\Events\\NoteCreated\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Events/Listeners/WebSocketListener.php
+
+		-
+			message: '#^PHPDoc tag @param for parameter \$coreVersion with type array is incompatible with native type string\.$#'
+			identifier: parameter.phpDocType
+			count: 1
+			path: API/Services/FmodService.php
+
+		-
+			message: '#^Call to method loadHtml\(\) on an unknown class Dompdf\\Dompdf\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Services/PdfService.php
+
+		-
+			message: '#^Call to method render\(\) on an unknown class Dompdf\\Dompdf\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Services/PdfService.php
+
+		-
+			message: '#^Call to method setPaper\(\) on an unknown class Dompdf\\Dompdf\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Services/PdfService.php
+
+		-
+			message: '#^Call to method stream\(\) on an unknown class Dompdf\\Dompdf\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Services/PdfService.php
+
+		-
+			message: '#^Instantiated class Dompdf\\Dompdf not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Services/PdfService.php
+
+		-
+			message: '#^Call to method handle\(\) on an unknown class API\\Jobs\\SendAbsenceNotificationJob\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Services/QueueService.php
+
+		-
+			message: '#^Class API\\Jobs\\SendAbsenceNotificationJob not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Services/QueueService.php
+
+		-
+			message: '#^Instantiated class API\\Jobs\\SendAbsenceNotificationJob not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Services/QueueService.php
+
+		-
+			message: '#^Instantiated class API\\Events\\ClasseCreated not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Services/Scolaire/ClasseService.php
+
+		-
+			message: '#^Instantiated class API\\Events\\ClasseDeleted not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Services/Scolaire/ClasseService.php
+
+		-
+			message: '#^Instantiated class API\\Events\\ClasseUpdated not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: API/Services/Scolaire/ClasseService.php
+
+		-
+			message: '#^Variable \$envLoader on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.variable
+			count: 1
+			path: API/bootstrap.php
+
+		-
+			message: '#^Variable \$where in empty\(\) always exists and is not falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: admin/messagerie/conversations.php
+
+		-
+			message: '#^Variable \$error in empty\(\) always exists and is always falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: admin/scolaire/absences.php
+
+		-
+			message: '#^Variable \$error in empty\(\) always exists and is always falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: admin/scolaire/notes.php
+
+		-
+			message: '#^Variable \$_hdr_nonce might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: admin/systeme/feature_flags.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: admin/systeme/monitoring.php
+
+		-
+			message: '#^Variable \$_hdr_nonce might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: admin/systeme/translations.php
+
+		-
+			message: '#^Variable \$rootPrefix might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: admin/systeme/translations.php
+
+		-
+			message: '#^Variable \$type in empty\(\) always exists and is not falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: admin/users/profile_ajax.php
+
+		-
+			message: '#^Variable \$error in empty\(\) always exists and is always falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: admin/users/sessions.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/absences/absences.php
+
+		-
+			message: '#^Variable \$user might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/absences/absences.php
+
+		-
+			message: '#^Variable \$user_role might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/absences/absences.php
+
+		-
+			message: '#^Variable \$message in empty\(\) always exists and is always falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: modules/absences/ajouter_absence.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/absences/includes/header.php
+
+		-
+			message: '#^Variable \$absences might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/absences/views/calendar_view.php
+
+		-
+			message: '#^Variable \$classe might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/absences/views/calendar_view.php
+
+		-
+			message: '#^Variable \$date_debut might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: modules/absences/views/calendar_view.php
+
+		-
+			message: '#^Variable \$date_fin might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/absences/views/calendar_view.php
+
+		-
+			message: '#^Variable \$justifie might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/absences/views/calendar_view.php
+
+		-
+			message: '#^Variable \$retards might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/absences/views/retards_list_view.php
+
+		-
+			message: '#^Variable \$absences might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/absences/views/stats_view.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/accessibilite/accessibilite.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/agenda/agenda.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/agenda/includes/header.php
+
+		-
+			message: '#^Variable \$date might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/agenda/views/day_view.php
+
+		-
+			message: '#^Variable \$events might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/agenda/views/day_view.php
+
+		-
+			message: '#^Variable \$events might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/agenda/views/list_view.php
+
+		-
+			message: '#^Variable \$user_role might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/agenda/views/list_view.php
+
+		-
+			message: '#^Variable \$date might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/agenda/views/week_view.php
+
+		-
+			message: '#^Variable \$day_names_full might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/agenda/views/week_view.php
+
+		-
+			message: '#^Variable \$events might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/agenda/views/week_view.php
+
+		-
+			message: '#^Anonymous function has an unused use \$classeNom\.$#'
+			identifier: closure.unusedUse
+			count: 1
+			path: modules/annonces/includes/AnnonceService.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/annonces/includes/header.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/appel/includes/header.php
+
+		-
+			message: '#^Variable \$archiveService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 6
+			path: modules/archivage/archivage.php
+
+		-
+			message: '#^Variable \$archiveService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/archivage/creer.php
+
+		-
+			message: '#^Variable \$path might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/archivage/includes/ArchiveService.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/archivage/includes/header.php
+
+		-
+			message: '#^Variable \$archiveService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/archivage/telecharger.php
+
+		-
+			message: '#^Variable \$besoinService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 5
+			path: modules/besoins/besoins.php
+
+		-
+			message: '#^Variable \$besoinService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/besoins/creer.php
+
+		-
+			message: '#^Variable \$besoinService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: modules/besoins/detail.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/besoins/includes/header.php
+
+		-
+			message: '#^Variable \$biblioService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/bibliotheque/ajouter.php
+
+		-
+			message: '#^Variable \$biblioService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/bibliotheque/catalogue.php
+
+		-
+			message: '#^Variable \$biblioService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 6
+			path: modules/bibliotheque/emprunts.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/bibliotheque/includes/header.php
+
+		-
+			message: '#^Variable \$biblioService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/bibliotheque/livre.php
+
+		-
+			message: '#^Variable \$_hdr_csrf_token might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/bourses/bourses.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/bourses/bourses.php
+
+		-
+			message: '#^Variable \$user might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/bulletins/bulletins.php
+
+		-
+			message: '#^Variable \$user_fullname might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/bulletins/bulletins.php
+
+		-
+			message: '#^Variable \$user_role might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/bulletins/bulletins.php
+
+		-
+			message: '#^Variable \$user_role might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/bulletins/detail_bulletin.php
+
+		-
+			message: '#^Variable \$user might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/bulletins/editer_bulletin.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/bulletins/includes/header.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/cahierdetextes/cahierdetextes.php
+
+		-
+			message: '#^Variable \$user_fullname might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/cahierdetextes/corriger.php
+
+		-
+			message: '#^Call to static method formatBytes\(\) on an unknown class FileUploader\.$#'
+			identifier: class.notFound
+			count: 1
+			path: modules/cahierdetextes/form_devoir.php
+
+		-
+			message: '#^Call to static method getFileIcon\(\) on an unknown class FileUploader\.$#'
+			identifier: class.notFound
+			count: 1
+			path: modules/cahierdetextes/form_devoir.php
+
+		-
+			message: '#^Call to an undefined method DevoirService\:\:getDevoirs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: modules/cahierdetextes/includes/DevoirService.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/cahierdetextes/includes/header.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/cahierdetextes/includes/header_rendus.php
+
+		-
+			message: '#^Variable \$user might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/cahierdetextes/mes_devoirs.php
+
+		-
+			message: '#^Variable \$user_fullname might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/cahierdetextes/mes_devoirs.php
+
+		-
+			message: '#^Variable \$user_role might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/cahierdetextes/mes_devoirs.php
+
+		-
+			message: '#^Variable \$user might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/cahierdetextes/rendre.php
+
+		-
+			message: '#^Variable \$user might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/cahierdetextes/voir_rendu.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/cantine/includes/header.php
+
+		-
+			message: '#^Variable \$cantineService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/cantine/menus.php
+
+		-
+			message: '#^Variable \$isGestionnaire might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/cantine/menus.php
+
+		-
+			message: '#^Variable \$cantineService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/cantine/pointage.php
+
+		-
+			message: '#^Variable \$isGestionnaire might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/cantine/pointage.php
+
+		-
+			message: '#^Variable \$user might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/cantine/pointage.php
+
+		-
+			message: '#^Variable \$cantineService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: modules/cantine/reservations.php
+
+		-
+			message: '#^Variable \$isGestionnaire might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/cantine/reservations.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/cantine/reservations.php
+
+		-
+			message: '#^Variable \$cantineService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/cantine/statistiques.php
+
+		-
+			message: '#^Variable \$isGestionnaire might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/cantine/statistiques.php
+
+		-
+			message: '#^Variable \$clubService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/clubs/clubs.php
+
+		-
+			message: '#^Variable \$clubService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/clubs/creer.php
+
+		-
+			message: '#^Variable \$clubService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 7
+			path: modules/clubs/detail.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/clubs/includes/header.php
+
+		-
+			message: '#^Variable \$clubService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/clubs/mes_clubs.php
+
+		-
+			message: '#^Variable \$compService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/competences/bilan.php
+
+		-
+			message: '#^Variable \$ffRadarGraph might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/competences/bilan.php
+
+		-
+			message: '#^Variable \$compService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/competences/competences.php
+
+		-
+			message: '#^Variable \$compService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 6
+			path: modules/competences/evaluer.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/competences/includes/header.php
+
+		-
+			message: '#^Variable \$compService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 6
+			path: modules/competences/referentiel_admin.php
+
+		-
+			message: '#^Variable \$colors might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/competences/stats_classe.php
+
+		-
+			message: '#^Variable \$compService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/competences/stats_classe.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/conseil_classe/conseil_classe.php
+
+		-
+			message: '#^Variable \$diplService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/diplomes/creer.php
+
+		-
+			message: '#^Variable \$diplService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/diplomes/detail.php
+
+		-
+			message: '#^Variable \$diplService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: modules/diplomes/diplomes.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/diplomes/includes/header.php
+
+		-
+			message: '#^Variable \$diplService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/diplomes/telecharger.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/diplomes/telecharger.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/discipline/includes/header.php
+
+		-
+			message: '#^Variable \$docService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/documents/ajouter.php
+
+		-
+			message: '#^Variable \$docService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/documents/documents.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/documents/includes/header.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/echanges/echanges.php
+
+		-
+			message: '#^Call to an undefined static method API\\Core\\Facades\\CSRF\:\:check\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: modules/emploi_du_temps/ajax_generate.php
+
+		-
+			message: '#^Call to an undefined static method API\\Core\\Facades\\CSRF\:\:check\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: modules/emploi_du_temps/ajax_move_cours.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/emploi_du_temps/conflits.php
+
+		-
+			message: '#^Variable \$classes might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/emploi_du_temps/emploi_du_temps.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/emploi_du_temps/includes/header.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/enquetes/enquetes.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/evaluations/evaluations.php
+
+		-
+			message: '#^Variable \$examenService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/examens/creer.php
+
+		-
+			message: '#^Variable \$examenService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 7
+			path: modules/examens/detail.php
+
+		-
+			message: '#^Variable \$examenService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 9
+			path: modules/examens/epreuve.php
+
+		-
+			message: '#^Variable \$examenService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/examens/examens.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/examens/includes/header.php
+
+		-
+			message: '#^Variable \$examenService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/examens/mes_convocations.php
+
+		-
+			message: '#^Variable \$factService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/facturation/creer.php
+
+		-
+			message: '#^Variable \$factService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 5
+			path: modules/facturation/detail.php
+
+		-
+			message: '#^Variable \$factService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/facturation/export.php
+
+		-
+			message: '#^Variable \$factService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: modules/facturation/factures.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/facturation/includes/header.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/formations/formations.php
+
+		-
+			message: '#^Variable \$garderieService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/garderie/creneaux.php
+
+		-
+			message: '#^Variable \$isGestionnaire might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/garderie/creneaux.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/garderie/includes/header.php
+
+		-
+			message: '#^Variable \$garderieService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: modules/garderie/inscriptions.php
+
+		-
+			message: '#^Variable \$isGestionnaire might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/garderie/inscriptions.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/garderie/inscriptions.php
+
+		-
+			message: '#^Variable \$garderieService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/garderie/presences.php
+
+		-
+			message: '#^Variable \$isGestionnaire might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/garderie/presences.php
+
+		-
+			message: '#^Variable \$infirmerieService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: modules/infirmerie/fiche_sante.php
+
+		-
+			message: '#^Variable \$infirmerieService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/infirmerie/fiches.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/infirmerie/includes/header.php
+
+		-
+			message: '#^Variable \$infirmerieService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 5
+			path: modules/infirmerie/infirmerie.php
+
+		-
+			message: '#^Variable \$passagesParEnfant might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/infirmerie/infirmerie.php
+
+		-
+			message: '#^Variable \$infirmerieService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/infirmerie/passage.php
+
+		-
+			message: '#^Variable \$inscriptionService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: modules/inscriptions/detail.php
+
+		-
+			message: '#^Variable \$inscriptionService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/inscriptions/export.php
+
+		-
+			message: '#^Variable \$inscriptionService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/inscriptions/formulaire.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/inscriptions/includes/header.php
+
+		-
+			message: '#^Variable \$inscriptionService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: modules/inscriptions/inscriptions.php
+
+		-
+			message: '#^Variable \$_hdr_csrf_token might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/intelligence/intelligence.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/intelligence/intelligence.php
+
+		-
+			message: '#^Variable \$internatService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: modules/internat/affectations.php
+
+		-
+			message: '#^Variable \$isGestionnaire might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/internat/affectations.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/internat/affectations.php
+
+		-
+			message: '#^Variable \$internatService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: modules/internat/chambres.php
+
+		-
+			message: '#^Variable \$isGestionnaire might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/internat/chambres.php
+
+		-
+			message: '#^Variable \$internatService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: modules/internat/incidents.php
+
+		-
+			message: '#^Variable \$isGestionnaire might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/internat/incidents.php
+
+		-
+			message: '#^Variable \$user might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/internat/incidents.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/internat/includes/header.php
+
+		-
+			message: '#^Variable \$internatService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/internat/mouvements.php
+
+		-
+			message: '#^Variable \$isGestionnaire might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/internat/mouvements.php
+
+		-
+			message: '#^Variable \$user might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/internat/mouvements.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/inventaire/inventaire.php
+
+		-
+			message: '#^Call to an undefined static method API\\Core\\Facades\\CSRF\:\:validate\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 2
+			path: modules/marketplace/marketplace.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/mediatheque/mediatheque.php
+
+		-
+			message: '#^Variable \$hasMoreMessages might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/messagerie/conversation.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/messagerie/download.php
+
+		-
+			message: '#^Variable \$contenu might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/messagerie/new_announcement.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 6
+			path: modules/messagerie/new_announcement.php
+
+		-
+			message: '#^Variable \$titre might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/messagerie/new_announcement.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 5
+			path: modules/messagerie/new_message.php
+
+		-
+			message: '#^Variable \$currentFolder might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/messagerie/templates/components/conversation-item.php
+
+		-
+			message: '#^Variable \$user might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/messagerie/templates/components/message-item.php
+
+		-
+			message: '#^Variable \$isAdmin might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: modules/messagerie/templates/components/participant-list.php
+
+		-
+			message: '#^Variable \$isDeleted might not be defined\.$#'
+			identifier: variable.undefined
+			count: 5
+			path: modules/messagerie/templates/components/participant-list.php
+
+		-
+			message: '#^Variable \$isModerator might not be defined\.$#'
+			identifier: variable.undefined
+			count: 5
+			path: modules/messagerie/templates/components/participant-list.php
+
+		-
+			message: '#^Variable \$user might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: modules/messagerie/templates/components/participant-list.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/messagerie/templates/header.php
+
+		-
+			message: '#^Variable \$currentFolder in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.variable
+			count: 1
+			path: modules/messagerie/templates/header.php
+
+		-
+			message: '#^Variable \$user might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/messagerie/templates/header.php
+
+		-
+			message: '#^Variable \$wsUrl might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/messagerie/templates/header.php
+
+		-
+			message: '#^Variable \$selectedClasse might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/notes/form_note.php
+
+		-
+			message: '#^Variable \$selectedMatiere might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/notes/form_note.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/notes/includes/subnav_items.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/notes/notes.php
+
+		-
+			message: '#^Variable \$rootPrefix might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/notes/notes.php
+
+		-
+			message: '#^Variable \$user might not be defined\.$#'
+			identifier: variable.undefined
+			count: 6
+			path: modules/notes/notes.php
+
+		-
+			message: '#^Variable \$user_role might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/notes/notes.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/notifications/includes/header.php
+
+		-
+			message: '#^Variable \$notifService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 5
+			path: modules/notifications/notifications.php
+
+		-
+			message: '#^Variable \$notifService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/notifications/preferences.php
+
+		-
+			message: '#^Variable \$_hdr_csrf_token might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/onboarding/index.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/onboarding/index.php
+
+		-
+			message: '#^Variable \$orientationService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 5
+			path: modules/orientation/fiche.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/orientation/includes/header.php
+
+		-
+			message: '#^Variable \$orientationService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 5
+			path: modules/orientation/orientation.php
+
+		-
+			message: '#^Variable \$orientationService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: modules/orientation/voir.php
+
+		-
+			message: '#^Variable \$parcoursService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: modules/parcours_educatifs/ajouter.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/parcours_educatifs/includes/header.php
+
+		-
+			message: '#^Variable \$parcoursService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/parcours_educatifs/parcours.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/parcours_educatifs/parcours.php
+
+		-
+			message: '#^Variable \$periService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 6
+			path: modules/periscolaire/detail_service.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/periscolaire/includes/header.php
+
+		-
+			message: '#^Variable \$periService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/periscolaire/mes_inscriptions.php
+
+		-
+			message: '#^Variable \$periService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/periscolaire/presences.php
+
+		-
+			message: '#^Variable \$periService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/periscolaire/services.php
+
+		-
+			message: '#^Variable \$personnelService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 6
+			path: modules/personnel/absences.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/personnel/includes/header.php
+
+		-
+			message: '#^Variable \$personnelService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 6
+			path: modules/personnel/remplacements.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/portail_parents/portail.php
+
+		-
+			message: '#^Variable \$projetService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/projets_pedagogiques/creer.php
+
+		-
+			message: '#^Variable \$projetService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 10
+			path: modules/projets_pedagogiques/detail.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/projets_pedagogiques/includes/header.php
+
+		-
+			message: '#^Variable \$projetService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/projets_pedagogiques/projets.php
+
+		-
+			message: '#^Variable \$reportService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/reporting/exporter.php
+
+		-
+			message: '#^Variable \$reportService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 7
+			path: modules/reporting/global.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/reporting/includes/header.php
+
+		-
+			message: '#^Variable \$reportService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/reporting/reporting.php
+
+		-
+			message: '#^Variable \$resService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/ressources/creer.php
+
+		-
+			message: '#^Variable \$resService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: modules/ressources/detail.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/ressources/includes/header.php
+
+		-
+			message: '#^Variable \$resService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/ressources/mes_ressources.php
+
+		-
+			message: '#^Variable \$resService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/ressources/ressources.php
+
+		-
+			message: '#^Variable \$reunionService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/reunions/convocations.php
+
+		-
+			message: '#^Variable \$reunionService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: modules/reunions/creer.php
+
+		-
+			message: '#^Variable \$reunionService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/reunions/detail.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/reunions/includes/header.php
+
+		-
+			message: '#^Variable \$reunionService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/reunions/mes_rdv.php
+
+		-
+			message: '#^Variable \$reunionService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/reunions/reserver.php
+
+		-
+			message: '#^Variable \$reunionService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/reunions/reunions.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/salles/includes/header.php
+
+		-
+			message: '#^Variable \$smService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: modules/salles/materiels.php
+
+		-
+			message: '#^Variable \$smService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: modules/salles/prets.php
+
+		-
+			message: '#^Variable \$smService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 5
+			path: modules/salles/reservations.php
+
+		-
+			message: '#^Variable \$signalementService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/signalements/detail.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/signalements/includes/header.php
+
+		-
+			message: '#^Variable \$signalementService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/signalements/mes_signalements.php
+
+		-
+			message: '#^Variable \$signalementService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/signalements/signalements.php
+
+		-
+			message: '#^Variable \$signalementService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/signalements/signaler.php
+
+		-
+			message: '#^Variable \$stageService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/stages/creer.php
+
+		-
+			message: '#^Variable \$pdo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/stages/detail.php
+
+		-
+			message: '#^Variable \$stageService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/stages/detail.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/stages/includes/header.php
+
+		-
+			message: '#^Variable \$stageService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 5
+			path: modules/stages/stages.php
+
+		-
+			message: '#^Variable \$supportService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/support/aide.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/support/includes/header.php
+
+		-
+			message: '#^Variable \$supportService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/support/nouveau_ticket.php
+
+		-
+			message: '#^Variable \$supportService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/support/tickets.php
+
+		-
+			message: '#^Variable \$supportService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 9
+			path: modules/support/voir_ticket.php
+
+		-
+			message: '#^Variable \$tiService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: modules/transports/detail_ligne.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/transports/includes/header.php
+
+		-
+			message: '#^Variable \$tiService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/transports/lignes.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/trombinoscope/includes/header.php
+
+		-
+			message: '#^Variable \$trombiService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 7
+			path: modules/trombinoscope/trombinoscope.php
+
+		-
+			message: '#^Variable \$vieAssoService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/vie_associative/associations.php
+
+		-
+			message: '#^Variable \$vieAssoService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: modules/vie_associative/creer.php
+
+		-
+			message: '#^Variable \$vieAssoService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 9
+			path: modules/vie_associative/detail.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/vie_associative/includes/header.php
+
+		-
+			message: '#^Function renderModuleSubnav not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: modules/vie_scolaire/includes/header.php
+
+		-
+			message: '#^Variable \$rgpdService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: rgpd/anonymiser.php
+
+		-
+			message: '#^Variable \$rgpdService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: rgpd/audit.php
+
+		-
+			message: '#^Variable \$rgpdService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: rgpd/consentements.php
+
+		-
+			message: '#^Variable \$rgpdService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: rgpd/demandes.php
+
+		-
+			message: '#^Variable \$rgpdService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: rgpd/mes_donnees.php
+
+		-
+			message: '#^Variable \$rgpdService might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: rgpd/retention.php
+
+		-
+			message: '#^Variable \$base might not be defined\.$#'
+			identifier: variable.undefined
+			count: 6
+			path: tenant/admin.php
+
+		-
+			message: '#^Variable \$establishment might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: tenant/admin.php
+
+		-
+			message: '#^Variable \$slug might not be defined\.$#'
+			identifier: variable.undefined
+			count: 5
+			path: tenant/admin.php
+
+		-
+			message: '#^Variable \$base might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: tenant/dashboard.php
+
+		-
+			message: '#^Variable \$establishment might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: tenant/dashboard.php
+
+		-
+			message: '#^Variable \$slug might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: tenant/dashboard.php
+
+		-
+			message: '#^Variable \$base might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: tenant/login.php
+
+		-
+			message: '#^Variable \$establishment might not be defined\.$#'
+			identifier: variable.undefined
+			count: 7
+			path: tenant/login.php
+
+		-
+			message: '#^Variable \$slug might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: tenant/login.php
+
+		-
+			message: '#^Variable \$base might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: tenant/support.php
+
+		-
+			message: '#^Variable \$establishment might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: tenant/support.php
+
+		-
+			message: '#^Variable \$slug might not be defined\.$#'
+			identifier: variable.undefined
+			count: 4
+			path: tenant/support.php
+
+		-
+			message: '#^Variable \$base might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: tenant/support_report.php
+
+		-
+			message: '#^Variable \$establishment might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: tenant/support_report.php
+
+		-
+			message: '#^Variable \$slug might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: tenant/support_report.php

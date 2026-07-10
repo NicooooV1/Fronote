@@ -1,6 +1,9 @@
 # Analyse statique Fronote (advisory dans la CI le temps de figer une baseline).
 # Monter le niveau progressivement (0 → 6) puis générer la baseline :
 #   phpstan analyse --generate-baseline phpstan-baseline.neon
+includes:
+    - phpstan-baseline.neon
+
 parameters:
     level: 3
     paths:
