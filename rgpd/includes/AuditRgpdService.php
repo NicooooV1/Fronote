@@ -64,7 +64,9 @@ class AuditRgpdService
             $col = ($alias !== '' ? $alias . '.' : '') . 'etablissement_id';
             return [' AND ' . $col . ' = ?', [$eid]];
         } catch (\Throwable $e) {
-            return ['', []];
+            // FAIL-CLOSED : contexte établissement non résolu (ambigu/absent) pour un
+            // non-super-admin → ne rien exposer plutôt que de retirer le cloisonnement.
+            return [' AND 1 = 0', []];
         }
     }
 
@@ -171,6 +173,36 @@ class AuditRgpdService
             ];
         }
         return $result;
+    }
+
+    /**
+     * Point d'application des consentements. Un traitement conditionné (photo, géoloc,
+     * données médicales) doit consulter ces méthodes AVANT d'agir.
+     * consentementRefuse() = l'utilisateur a EXPLICITEMENT retiré son consentement
+     * (enregistrement consenti=0). On honore les refus explicites sans bloquer par défaut
+     * les comptes sans enregistrement (rétro-compat) — c'est le cas qui a une valeur juridique.
+     */
+    public function consentementRefuse(int $userId, string $userType, string $type): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare("SELECT 1 FROM rgpd_consentements WHERE user_id = ? AND user_type = ? AND type_consentement = ? AND consenti = 0 LIMIT 1");
+            $stmt->execute([$userId, $userType, $type]);
+            return (bool) $stmt->fetchColumn();
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /** Vrai seulement si le consentement est ACCORDÉ (enregistrement consenti=1). */
+    public function aConsentement(int $userId, string $userType, string $type): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare("SELECT consenti FROM rgpd_consentements WHERE user_id = ? AND user_type = ? AND type_consentement = ? LIMIT 1");
+            $stmt->execute([$userId, $userType, $type]);
+            return (bool) $stmt->fetchColumn();
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     public function sauvegarderConsentement(int $userId, string $userType, string $type, bool $consenti, ?string $ip = null): void
@@ -438,6 +470,14 @@ class AuditRgpdService
             // Garderie / périscolaire
             $data['garderie_inscriptions'] = $this->collecte('garderie_inscriptions',
                 "SELECT * FROM garderie_inscriptions WHERE eleve_id = ? ORDER BY id DESC", [$userId]);
+            // Cantine, bourses, stages (données personnelles de l'élève). collecte() tolère
+            // les tables absentes du déploiement (retourne []).
+            $data['cantine_reservations'] = $this->collecte('cantine_reservations',
+                "SELECT * FROM cantine_reservations WHERE eleve_id = ? ORDER BY id DESC", [$userId]);
+            $data['bourses_demandes'] = $this->collecte('bourses_demandes',
+                "SELECT * FROM bourses_demandes WHERE eleve_id = ? ORDER BY id DESC", [$userId]);
+            $data['stages'] = $this->collecte('stages',
+                "SELECT * FROM stages WHERE eleve_id = ? ORDER BY id DESC", [$userId]);
         }
 
         if ($userType === 'parent') {
@@ -613,24 +653,28 @@ class AuditRgpdService
             $stmt->execute([$userId, $userType]);
             $actions[] = "Consentements supprimés";
 
+            // Suivi fail-safe : tout échec d'effacement d'une donnée personnelle rend
+            // l'anonymisation PARTIELLE → success=false (l'ancien code renvoyait toujours
+            // true en laissant potentiellement des données en clair).
+            $hadFailure = false;
+
             // 3. Supprimer messages
             try {
                 $stmt = $pdo->prepare("UPDATE messages SET body = '[Message supprimé - RGPD]', is_deleted = 1 WHERE sender_id = ? AND sender_type = ?");
                 $stmt->execute([$userId, $userType]);
                 $actions[] = "Messages anonymisés";
             } catch (\Exception $e) {
-                // Droit à l'oubli (Art.17) : l'échec doit être TRACÉ et remonté, jamais
-                // avalé — sinon on retourne success=true en laissant des données en clair.
+                $hadFailure = true;
                 error_log('[rgpd anonymisation] échec messages user=' . $userId . ' : ' . $e->getMessage());
                 $actions[] = "ÉCHEC anonymisation messages : " . $e->getMessage();
             }
 
-            // 3b. Effacement du DOSSIER MÉDICAL / MDPH (Art.9 + Art.17) pour un élève :
-            // le droit à l'oubli doit SUPPRIMER les données de santé, pas seulement
-            // anonymiser l'identité (l'ancienne version les laissait intactes). Ordre
-            // FK-safe (enfants d'abord). Chaque échec est tracé et remonté (fail-safe).
+            // 3b. Effacement du DOSSIER MÉDICAL / MDPH + données périscolaires (Art.9 + Art.17)
+            // pour un élève. Ordre FK-safe (enfants d'abord). Chaque échec est tracé ET rend
+            // l'opération partielle (fail-safe). Les DELETE sur tables absentes sont tolérés
+            // (catch par requête) sans marquer d'échec.
             if ($userType === 'eleve') {
-                $healthDeletes = [
+                $eleveDeletes = [
                     "DELETE FROM infirmerie_prises WHERE traitement_id IN (SELECT id FROM infirmerie_traitements WHERE eleve_id = ?)",
                     "DELETE FROM infirmerie_traitements WHERE eleve_id = ?",
                     "DELETE FROM passages_infirmerie WHERE eleve_id = ?",
@@ -638,18 +682,29 @@ class AuditRgpdService
                     "DELETE FROM accessibilite_amenagements WHERE eleve_id = ?",
                     "DELETE FROM accessibilite_mdph WHERE eleve_id = ?",
                     "DELETE FROM accessibilite_ess WHERE eleve_id = ?",
+                    // Périscolaire (données personnelles de mineurs) :
+                    "DELETE FROM garderie_presences WHERE inscription_id IN (SELECT id FROM garderie_inscriptions WHERE eleve_id = ?)",
+                    "DELETE FROM garderie_inscriptions WHERE eleve_id = ?",
+                    "DELETE FROM cantine_reservations WHERE eleve_id = ?",
+                    // Pièces jointes / justificatifs de l'élève :
+                    "DELETE FROM justificatifs WHERE id_eleve = ?",
                 ];
-                $healthOk = true;
-                foreach ($healthDeletes as $sql) {
+                $eleveOk = true;
+                foreach ($eleveDeletes as $sql) {
                     try {
                         $pdo->prepare($sql)->execute([$userId]);
                     } catch (\Throwable $e) {
-                        $healthOk = false;
-                        error_log('[rgpd anonymisation] échec effacement santé user=' . $userId . ' : ' . $e->getMessage());
-                        $actions[] = "ÉCHEC effacement santé : " . $e->getMessage();
+                        $msg = $e->getMessage();
+                        // Table simplement absente du déploiement → tolérer sans échec.
+                        if (stripos($msg, "doesn't exist") !== false || stripos($msg, 'Unknown column') !== false) {
+                            continue;
+                        }
+                        $eleveOk = false; $hadFailure = true;
+                        error_log('[rgpd anonymisation] échec effacement élève user=' . $userId . ' : ' . $msg);
+                        $actions[] = "ÉCHEC effacement donnée élève : " . $msg;
                     }
                 }
-                $actions[] = $healthOk ? "Dossier médical / MDPH supprimé (Art.9/Art.17)" : "Effacement santé PARTIEL — voir échecs";
+                $actions[] = $eleveOk ? "Dossier médical/MDPH + périscolaire + PJ supprimés (Art.9/Art.17)" : "Effacement élève PARTIEL — voir échecs";
             }
 
             // 4. Supprimer sessions
@@ -658,22 +713,23 @@ class AuditRgpdService
                 $stmt->execute([$userId, $userType]);
                 $actions[] = "Sessions supprimées";
             } catch (\Exception $e) {
+                $hadFailure = true;
                 error_log('[rgpd anonymisation] échec sessions user=' . $userId . ' : ' . $e->getMessage());
                 $actions[] = "ÉCHEC suppression sessions : " . $e->getMessage();
             }
 
             // 5. Log l'action
-            $this->logAudit($adminId, 'administrateur', 'rgpd_anonymisation', 
-                "Anonymisation de {$userType} #{$userId} → {$anonymId}");
+            $this->logAudit($adminId, 'administrateur', 'rgpd_anonymisation',
+                "Anonymisation de {$userType} #{$userId} → {$anonymId}" . ($hadFailure ? ' [PARTIEL]' : ''));
 
             $pdo->commit();
-            $actions[] = "Anonymisation complète";
+            $actions[] = $hadFailure ? "Anonymisation PARTIELLE (échecs ci-dessus)" : "Anonymisation complète";
         } catch (\Exception $e) {
             $pdo->rollBack();
             return ['error' => $e->getMessage()];
         }
 
-        return ['success' => true, 'anonym_id' => $anonymId, 'actions' => $actions];
+        return ['success' => !$hadFailure, 'partial' => $hadFailure, 'anonym_id' => $anonymId, 'actions' => $actions];
     }
 
     /* ───────── RÉTENTION DES DONNÉES ───────── */
@@ -689,6 +745,13 @@ class AuditRgpdService
             'messages'              => ['label' => 'Messages supprimés', 'duree' => 180, 'obligatoire' => false],
             'notifications_globales' => ['label' => 'Notifications lues', 'duree' => 90, 'obligatoire' => false],
             'rate_limits'           => ['label' => 'Logs rate limiting', 'duree' => 30, 'obligatoire' => false],
+            // Rétention scolaire (RGPD Art.5§1e — limitation de conservation). OPT-IN
+            // (actif=false par défaut) : l'établissement fixe sa durée légale et l'active
+            // sciemment. Ne JAMAIS auto-purger des données scolaires par défaut.
+            'notes'                 => ['label' => 'Notes (scolarité)', 'duree' => 1825, 'obligatoire' => false, 'optin' => true],
+            'absences'              => ['label' => 'Absences (scolarité)', 'duree' => 1825, 'obligatoire' => false, 'optin' => true],
+            'retards'               => ['label' => 'Retards (scolarité)', 'duree' => 1825, 'obligatoire' => false, 'optin' => true],
+            'incidents'             => ['label' => 'Incidents disciplinaires', 'duree' => 1825, 'obligatoire' => false, 'optin' => true],
         ];
     }
 
@@ -707,14 +770,16 @@ class AuditRgpdService
                     $def['actif'] = (bool)$existing[$key]['actif'];
                     $def['derniere_purge'] = $existing[$key]['derniere_purge'];
                 } else {
-                    $def['actif'] = true;
+                    // Défaut : actif sauf pour les politiques OPT-IN (scolarité) qui exigent
+                    // une activation explicite par l'établissement.
+                    $def['actif'] = !($def['optin'] ?? false);
                     $def['derniere_purge'] = null;
                 }
             }
         } catch (\Exception $e) {
             // Table doesn't exist yet, use defaults
             foreach ($defaults as &$def) {
-                $def['actif'] = true;
+                $def['actif'] = !($def['optin'] ?? false);
                 $def['derniere_purge'] = null;
             }
         }
@@ -756,6 +821,11 @@ class AuditRgpdService
             'messages' => 'created_at',
             'notifications_globales' => 'date_creation',
             'rate_limits' => 'attempted_at',
+            // Scolarité (opt-in) :
+            'notes' => 'date_note',
+            'absences' => 'date_debut',
+            'retards' => 'date_retard',
+            'incidents' => 'date_incident',
         ];
         $conditionMap = [
             'messages' => 'is_deleted = 1 AND',

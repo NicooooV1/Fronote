@@ -20,6 +20,33 @@ class AccessibiliteService
         $this->pdo = $pdo;
     }
 
+    // ─── Chiffrement at-rest des données de santé/handicap (RGPD Art.9) ───
+    // Champs libres sensibles : contenu de décision MDPH, comptes rendus/décisions ESS.
+    private const ENC_FIELDS = ['contenu', 'compte_rendu', 'decisions'];
+
+    private function enc(): ?\API\Core\Encryption
+    {
+        return \API\Core\Encryption::available() ? new \API\Core\Encryption() : null;
+    }
+    private function encField(?string $v): ?string
+    {
+        if ($v === null || $v === '') return $v;
+        $e = $this->enc();
+        return $e ? $e->encryptIfPlain($v) : $v;
+    }
+    private function decRow(?array $row): ?array
+    {
+        if ($row === null) return null;
+        $e = $this->enc();
+        if (!$e) return $row;
+        foreach (self::ENC_FIELDS as $f) {
+            if (isset($row[$f]) && is_string($row[$f]) && $e->isEncrypted($row[$f])) {
+                try { $row[$f] = $e->decrypt($row[$f]); } catch (\Throwable $x) {}
+            }
+        }
+        return $row;
+    }
+
     // ─── Aménagements ─────────────────────────────────────────────
 
     public function creerAmenagement(int $etabId, int $eleveId, string $type, string $description, string $dateDebut, ?string $dateFin = null, string $prescripteur = '', string $documentRef = ''): int
@@ -84,7 +111,7 @@ class AccessibiliteService
     public function enregistrerDecisionMdph(int $eleveId, string $typeDecision, string $dateDecision, string $dateExpiration, string $contenu, string $numeroDossier = ''): int
     {
         $stmt = $this->pdo->prepare("INSERT INTO accessibilite_mdph (eleve_id, type_decision, date_decision, date_expiration, contenu, numero_dossier, statut) VALUES (:eid, :td, :dd, :de, :c, :nd, 'actif')");
-        $stmt->execute([':eid' => $eleveId, ':td' => $typeDecision, ':dd' => $dateDecision, ':de' => $dateExpiration, ':c' => $contenu, ':nd' => $numeroDossier]);
+        $stmt->execute([':eid' => $eleveId, ':td' => $typeDecision, ':dd' => $dateDecision, ':de' => $dateExpiration, ':c' => $this->encField($contenu), ':nd' => $numeroDossier]);
         return (int)$this->pdo->lastInsertId();
     }
 
@@ -92,14 +119,14 @@ class AccessibiliteService
     {
         $stmt = $this->pdo->prepare("SELECT * FROM accessibilite_mdph WHERE eleve_id = :eid ORDER BY date_decision DESC");
         $stmt->execute([':eid' => $eleveId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map([$this, 'decRow'], $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     public function getDecisionsExpirant(int $etabId, int $joursAvant = 60): array
     {
         $stmt = $this->pdo->prepare("SELECT md.*, CONCAT(e.prenom,' ',e.nom) AS eleve_nom, e.classe FROM accessibilite_mdph md JOIN eleves e ON md.eleve_id = e.id WHERE e.actif = 1 AND e.etablissement_id = :etab AND md.statut = 'actif' AND md.date_expiration BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL :j DAY) ORDER BY md.date_expiration ASC");
         $stmt->execute([':j' => $joursAvant, ':etab' => \API\Core\EstablishmentContext::id()]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map([$this, 'decRow'], $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     // ─── ESS (Equipe de Suivi de Scolarisation) ──────────────────
@@ -114,14 +141,14 @@ class AccessibiliteService
     public function completerEss(int $essId, string $compteRendu, string $decisions, string $prochaineDateEss = ''): void
     {
         $this->pdo->prepare("UPDATE accessibilite_ess SET statut = 'realise', compte_rendu = :cr, decisions = :d, prochaine_date = :pd WHERE id = :id AND etablissement_id = :etab")
-            ->execute([':cr' => $compteRendu, ':d' => $decisions, ':pd' => $prochaineDateEss ?: null, ':id' => $essId, ':etab' => \API\Core\EstablishmentContext::id()]);
+            ->execute([':cr' => $this->encField($compteRendu), ':d' => $this->encField($decisions), ':pd' => $prochaineDateEss ?: null, ':id' => $essId, ':etab' => \API\Core\EstablishmentContext::id()]);
     }
 
     public function getEssEleve(int $eleveId): array
     {
         $stmt = $this->pdo->prepare("SELECT * FROM accessibilite_ess WHERE eleve_id = :eid AND etablissement_id = :etab ORDER BY date_ess DESC");
         $stmt->execute([':eid' => $eleveId, ':etab' => \API\Core\EstablishmentContext::id()]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map([$this, 'decRow'], $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     // ─── Audit accessibilité numérique (RGAA) ────────────────────

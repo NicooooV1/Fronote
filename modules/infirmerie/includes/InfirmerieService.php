@@ -131,6 +131,14 @@ class InfirmerieService
     {
         $etabId = $this->etabId();
         if ($etabId === null) return [];
+        // Audit RGPD (Art.9 + Art.5 accountability) : la consultation EN MASSE des fiches
+        // santé est journalisée (qui, quand, quel établissement) — best-effort.
+        try {
+            $uid   = function_exists('getUserId') ? (int) getUserId() : 0;
+            $utype = function_exists('getUserRole') ? (string) getUserRole() : '';
+            $this->pdo->prepare("INSERT INTO audit_log (user_id, user_type, action, details, etablissement_id, created_at) VALUES (?, ?, 'infirmerie_acces_masse_fiches', ?, ?, NOW())")
+                ->execute([$uid, $utype, 'Consultation en masse des fiches santé' . ($recherche ? ' (recherche filtrée)' : ''), $etabId]);
+        } catch (\Throwable $e) { /* journalisation best-effort, ne bloque pas l'accès */ }
         $sql = "
             SELECT fs.*, fs.contact_urgence AS contacts_urgence, fs.observations AS remarques,
                    e.prenom, e.nom AS eleve_nom, cl.nom AS classe_nom

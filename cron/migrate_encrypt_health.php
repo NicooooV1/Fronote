@@ -56,6 +56,9 @@ $plan = [
     'fiches_sante'          => ['allergies', 'traitements', 'contact_urgence', 'pai', 'pai_details', 'observations', 'pathologies', 'antecedents'],
     'passages_infirmerie'   => ['symptomes', 'soins_prodigues', 'observations'],
     'infirmerie_traitements'=> ['medicament', 'posologie'],
+    // Handicap / MDPH / ESS (Art.9) — cf. AccessibiliteService.
+    'accessibilite_mdph'    => ['contenu'],
+    'accessibilite_ess'     => ['compte_rendu', 'decisions'],
 ];
 
 $totalVals = 0;
