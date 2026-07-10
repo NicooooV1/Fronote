@@ -50,6 +50,23 @@ class TranslationService
         'reset'    => 'auth',
         'password' => 'auth',
         '2fa'      => 'auth',
+        // Modules : le préfixe de clé = nom du module → domaine "modules/<nom>" (charge
+        // modules/<nom>/lang/<locale>.json). Permet d'appeler __('notes.title') directement.
+        'absences' => 'modules/absences', 'agenda' => 'modules/agenda', 'annonces' => 'modules/annonces',
+        'appel' => 'modules/appel', 'archivage' => 'modules/archivage', 'besoins' => 'modules/besoins',
+        'bibliotheque' => 'modules/bibliotheque', 'bulletins' => 'modules/bulletins',
+        'cahierdetextes' => 'modules/cahierdetextes', 'cantine' => 'modules/cantine', 'clubs' => 'modules/clubs',
+        'competences' => 'modules/competences', 'diplomes' => 'modules/diplomes', 'discipline' => 'modules/discipline',
+        'documents' => 'modules/documents', 'emploi_du_temps' => 'modules/emploi_du_temps', 'examens' => 'modules/examens',
+        'facturation' => 'modules/facturation', 'garderie' => 'modules/garderie', 'infirmerie' => 'modules/infirmerie',
+        'inscriptions' => 'modules/inscriptions', 'internat' => 'modules/internat', 'messagerie' => 'modules/messagerie',
+        'notes' => 'modules/notes', 'notifications' => 'modules/notifications', 'orientation' => 'modules/orientation',
+        'parcours_educatifs' => 'modules/parcours_educatifs', 'periscolaire' => 'modules/periscolaire',
+        'personnel' => 'modules/personnel', 'profil' => 'modules/profil', 'projets_pedagogiques' => 'modules/projets_pedagogiques',
+        'reporting' => 'modules/reporting', 'ressources' => 'modules/ressources', 'reunions' => 'modules/reunions',
+        'salles' => 'modules/salles', 'signalements' => 'modules/signalements', 'stages' => 'modules/stages',
+        'support' => 'modules/support', 'transports' => 'modules/transports', 'trombinoscope' => 'modules/trombinoscope',
+        'vie_associative' => 'modules/vie_associative', 'vie_scolaire' => 'modules/vie_scolaire',
     ];
 
     public function __construct(string $langPath, string $defaultLocale = 'fr', string $fallbackLocale = 'fr')
@@ -335,9 +352,11 @@ class TranslationService
 
         // Per-module translations: modules/{key} → {basePath}/{key}/lang/{locale}.json
         if (strpos($domain, 'modules/') === 0) {
-            $moduleKey = substr($domain, 8); // Remove 'modules/' prefix
+            // $domain vaut déjà "modules/<clé>" → construire {BASE_PATH}/modules/<clé>/lang/…
+            // (l'ancien code retirait "modules/" sans le remettre → chemin {BASE_PATH}/<clé>/lang
+            // inexistant → AUCUNE traduction de module n'était jamais chargée).
             $basePath = defined('BASE_PATH') ? BASE_PATH : dirname($this->langPath);
-            $modulePath = $basePath . '/' . $moduleKey . '/lang/' . $locale . '.json';
+            $modulePath = $basePath . '/' . $domain . '/lang/' . $locale . '.json';
             if (file_exists($modulePath)) {
                 $path = $modulePath;
             }
