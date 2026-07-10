@@ -36,11 +36,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_reset'])) {
         $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
         $userType = isset($_POST['user_type']) ? $_POST['user_type'] : '';
 
-        // Anti-brute-force : plafonner par COMPTE CIBLE (identifiant), pas par IP — derrière
-        // un proxy/NAT toutes les requêtes partagent REMOTE_ADDR, donc 5 tentatives
-        // bloqueraient TOUS les utilisateurs (et un attaquant qui tourne ses IP passerait au
-        // travers). La clé est posée AVANT toute vérification d'existence → identique que le
-        // compte existe ou non (pas d'oracle d'énumération). Fail-open si le limiteur casse.
+        // Anti-brute-force : la clé inclut le COMPTE CIBLE (identifiant) et non REMOTE_ADDR.
+        // Ainsi, derrière un proxy/NAT où tous partagent la même IP, l'identifiant distingue
+        // les seaux → 5 tentatives ne bloquent plus TOUS les utilisateurs (le défaut corrigé).
+        // NB : RateLimiter mêle aussi l'IP client au seau stocké → la limite effective est par
+        // (identifiant, IP) ; un attaquant multi-IP n'est donc que borné par IP, pas globalement.
+        // Compromis acceptable ici (reset validé par un admin, faible fréquence). La clé est
+        // posée AVANT toute vérification d'existence → identique que le compte existe ou non
+        // (pas d'oracle d'énumération). Fail-open si le limiteur casse.
         try {
             $rl = app('rate_limiter');
             $rl->setMaxAttempts(5)->setDecayMinutes(15);
