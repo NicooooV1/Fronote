@@ -580,6 +580,8 @@ HTML;
             'username'     => 'MAIL_USERNAME',
             'password'     => 'MAIL_PASSWORD',
             'from_address' => 'MAIL_FROM_ADDRESS',
+            'from_name'    => 'MAIL_FROM_NAME',
+            'reply_to'     => 'MAIL_REPLY_TO',
             'encryption'   => 'MAIL_ENCRYPTION',
         ];
 

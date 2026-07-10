@@ -265,6 +265,9 @@ class FileUploadService
         header('Content-Length: ' . filesize($real));
         header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . $asciiName . '"; filename*=UTF-8\'\'' . $utf8Name);
         header('X-Content-Type-Options: nosniff');
+        // Neutralise tout contenu actif (JS dans un PDF/SVG servi inline) : la ressource
+        // s'exécute dans un bac à sable sans scripts, même origine bloquée.
+        header("Content-Security-Policy: default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox");
         header('Cache-Control: no-store');
 
         readfile($real);
