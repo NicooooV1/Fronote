@@ -87,21 +87,40 @@ class GarderieService
 
     public function getInscriptionsEleve(int $eleveId): array
     {
+        // Cloisonnement multi-tenant : défense en profondeur contre un eleve_id falsifié.
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $stmt = $this->pdo->prepare(
             "SELECT gi.*, gc.nom AS creneau_nom, gc.type AS creneau_type, gc.heure_debut, gc.heure_fin
              FROM garderie_inscriptions gi
              JOIN garderie_creneaux gc ON gi.creneau_id = gc.id
-             WHERE gi.eleve_id = ? AND gi.statut = 'actif'
+             WHERE gi.eleve_id = ? AND gi.etablissement_id = ? AND gi.statut = 'actif'
              ORDER BY FIELD(gi.jour, 'lundi','mardi','mercredi','jeudi','vendredi'), gc.heure_debut"
         );
-        $stmt->execute([$eleveId]);
+        $stmt->execute([$eleveId, $etabId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /* ==================== PRÉSENCES ==================== */
 
+    /**
+     * Cloisonnement multi-tenant : vrai seulement si l'inscription appartient à
+     * l'établissement courant. Utilisé pour garder les écritures de pointage
+     * (l'inscription_id provient du client → jamais de confiance implicite).
+     */
+    private function inscriptionInEtab(int $inscriptionId): bool
+    {
+        $etabId = $this->etabId();
+        if ($etabId === null) return false;
+        $stmt = $this->pdo->prepare("SELECT 1 FROM garderie_inscriptions WHERE id = ? AND etablissement_id = ? LIMIT 1");
+        $stmt->execute([$inscriptionId, $etabId]);
+        return (bool) $stmt->fetchColumn();
+    }
+
     public function pointerPresence(int $inscriptionId, string $date, bool $present = true, ?string $remarques = null): bool
     {
+        // garderie_presences n'a pas de colonne etablissement_id : on garde par l'inscription.
+        if (!$this->inscriptionInEtab($inscriptionId)) return false;
         $stmt = $this->pdo->prepare(
             "INSERT INTO garderie_presences (inscription_id, date_presence, present, remarques, heure_arrivee)
              VALUES (?, ?, ?, ?, NOW())
@@ -112,14 +131,18 @@ class GarderieService
 
     public function getPresencesJour(string $date, ?int $creneauId = null): array
     {
+        // Cloisonnement multi-tenant : ne jamais exposer les présences (PII de mineurs)
+        // d'un autre établissement.
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $sql = "SELECT gp.*, gi.eleve_id, gi.jour, gi.creneau_id, e.nom, e.prenom, e.classe,
                        gc.nom AS creneau_nom, gc.type AS creneau_type
                 FROM garderie_inscriptions gi
                 JOIN eleves e ON gi.eleve_id = e.id
                 JOIN garderie_creneaux gc ON gi.creneau_id = gc.id
                 LEFT JOIN garderie_presences gp ON gi.id = gp.inscription_id AND gp.date_presence = ?
-                WHERE gi.statut = 'actif' AND gi.jour = LOWER(DATE_FORMAT(?, '%W'))";
-        $params = [$date, $date];
+                WHERE gi.statut = 'actif' AND gi.etablissement_id = ? AND gi.jour = LOWER(DATE_FORMAT(?, '%W'))";
+        $params = [$date, $etabId, $date];
         if ($creneauId) { $sql .= " AND gi.creneau_id = ?"; $params[] = $creneauId; }
         $sql .= " ORDER BY gc.type, e.nom";
         $stmt = $this->pdo->prepare($sql);
@@ -134,9 +157,11 @@ class GarderieService
      */
     public function pointerArrivee(int $inscriptionId, string $date): void
     {
+        // Cloisonnement multi-tenant : ne pointer qu'une inscription de l'établissement courant.
+        if (!$this->inscriptionInEtab($inscriptionId)) return;
         $this->pdo->prepare("
-            UPDATE garderie_inscriptions SET pointage_arrivee = NOW() WHERE id = ?
-        ")->execute([$inscriptionId]);
+            UPDATE garderie_inscriptions SET pointage_arrivee = NOW() WHERE id = ? AND etablissement_id = ?
+        ")->execute([$inscriptionId, $this->etabId()]);
 
         $this->pointerPresence($inscriptionId, $date, true);
     }
@@ -146,9 +171,11 @@ class GarderieService
      */
     public function pointerDepart(int $inscriptionId): void
     {
+        // Cloisonnement multi-tenant : ne pointer qu'une inscription de l'établissement courant.
+        if (!$this->inscriptionInEtab($inscriptionId)) return;
         $this->pdo->prepare("
-            UPDATE garderie_inscriptions SET pointage_depart = NOW() WHERE id = ?
-        ")->execute([$inscriptionId]);
+            UPDATE garderie_inscriptions SET pointage_depart = NOW() WHERE id = ? AND etablissement_id = ?
+        ")->execute([$inscriptionId, $this->etabId()]);
     }
 
     /**
@@ -156,13 +183,15 @@ class GarderieService
      */
     public function calculerHeuresMois(int $eleveId, string $mois): float
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) return 0.0;
         $stmt = $this->pdo->prepare("
             SELECT SUM(TIMESTAMPDIFF(MINUTE, gi.pointage_arrivee, COALESCE(gi.pointage_depart, gi.pointage_arrivee))) / 60 AS heures
             FROM garderie_inscriptions gi
-            WHERE gi.eleve_id = ? AND DATE_FORMAT(gi.pointage_arrivee, '%Y-%m') = ?
+            WHERE gi.eleve_id = ? AND gi.etablissement_id = ? AND DATE_FORMAT(gi.pointage_arrivee, '%Y-%m') = ?
               AND gi.pointage_arrivee IS NOT NULL
         ");
-        $stmt->execute([$eleveId, $mois]);
+        $stmt->execute([$eleveId, $etabId, $mois]);
         return round((float)$stmt->fetchColumn(), 2);
     }
 
@@ -170,11 +199,19 @@ class GarderieService
 
     public function getStats(): array
     {
-        $stats = [];
-        $stats['total_creneaux'] = (int) $this->pdo->query("SELECT COUNT(*) FROM garderie_creneaux WHERE actif = 1")->fetchColumn();
-        $stats['total_inscrits'] = (int) $this->pdo->query("SELECT COUNT(*) FROM garderie_inscriptions WHERE statut = 'actif'")->fetchColumn();
-        $stats['nb_eleves'] = (int) $this->pdo->query("SELECT COUNT(DISTINCT eleve_id) FROM garderie_inscriptions WHERE statut = 'actif'")->fetchColumn();
-        return $stats;
+        // Cloisonnement multi-tenant : compteurs bornés à l'établissement courant.
+        $etabId = $this->etabId();
+        if ($etabId === null) return ['total_creneaux' => 0, 'total_inscrits' => 0, 'nb_eleves' => 0];
+        $q = function (string $sql) use ($etabId): int {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([$etabId]);
+            return (int) $stmt->fetchColumn();
+        };
+        return [
+            'total_creneaux' => $q("SELECT COUNT(*) FROM garderie_creneaux WHERE actif = 1 AND etablissement_id = ?"),
+            'total_inscrits' => $q("SELECT COUNT(*) FROM garderie_inscriptions WHERE statut = 'actif' AND etablissement_id = ?"),
+            'nb_eleves'      => $q("SELECT COUNT(DISTINCT eleve_id) FROM garderie_inscriptions WHERE statut = 'actif' AND etablissement_id = ?"),
+        ];
     }
 
     /* ==================== EXPORT ==================== */
@@ -211,15 +248,19 @@ class GarderieService
 
     public function getPresentsActuellement(?int $creneauId = null): array
     {
+        // Cloisonnement multi-tenant : présents en direct de l'établissement courant uniquement.
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
         $sql = "SELECT gi.id, gi.eleve_id, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, e.classe,
                        gc.nom AS creneau_nom, gi.pointage_arrivee, gi.pointage_depart
                 FROM garderie_inscriptions gi
                 JOIN eleves e ON gi.eleve_id = e.id
                 JOIN garderie_creneaux gc ON gi.creneau_id = gc.id
                 WHERE gi.statut = 'actif'
+                  AND gi.etablissement_id = :etab
                   AND DATE(gi.pointage_arrivee) = CURDATE()
                   AND gi.pointage_depart IS NULL";
-        $params = [];
+        $params = [':etab' => $etabId];
         if ($creneauId) { $sql .= " AND gi.creneau_id = :c"; $params[':c'] = $creneauId; }
         $sql .= " ORDER BY gi.pointage_arrivee DESC";
         $stmt = $this->pdo->prepare($sql);
@@ -236,6 +277,8 @@ class GarderieService
 
     public function creerActivite(array $d): int
     {
+        // Cloisonnement multi-tenant : le créneau ciblé doit appartenir à l'établissement courant.
+        if ($this->getCreneau((int) $d['creneau_id']) === null) return 0;
         $stmt = $this->pdo->prepare("
             INSERT INTO garderie_activites (creneau_id, titre, description, date_activite, animateur)
             VALUES (:c, :t, :d, :da, :a)
@@ -247,8 +290,11 @@ class GarderieService
 
     public function getActivites(?int $creneauId = null, ?string $dateDebut = null, ?string $dateFin = null): array
     {
-        $sql = "SELECT ga.*, gc.nom AS creneau_nom FROM garderie_activites ga LEFT JOIN garderie_creneaux gc ON ga.creneau_id = gc.id WHERE 1=1";
-        $params = [];
+        // Cloisonnement multi-tenant : les activités sont rattachées à un créneau de l'établissement courant.
+        $etabId = $this->etabId();
+        if ($etabId === null) return [];
+        $sql = "SELECT ga.*, gc.nom AS creneau_nom FROM garderie_activites ga JOIN garderie_creneaux gc ON ga.creneau_id = gc.id AND gc.etablissement_id = :etab WHERE 1=1";
+        $params = [':etab' => $etabId];
         if ($creneauId) { $sql .= " AND ga.creneau_id = :c"; $params[':c'] = $creneauId; }
         if ($dateDebut) { $sql .= " AND ga.date_activite >= :dd"; $params[':dd'] = $dateDebut; }
         if ($dateFin) { $sql .= " AND ga.date_activite <= :df"; $params[':df'] = $dateFin; }
@@ -286,15 +332,19 @@ class GarderieService
 
     public function getBilanMensuel(int $eleveId, string $mois): array
     {
+        $etabId = $this->etabId();
+        if ($etabId === null) {
+            return ['mois' => $mois, 'presences' => [], 'total_jours_present' => 0, 'total_jours_absent' => 0, 'heures_totales' => 0.0];
+        }
         $stmt = $this->pdo->prepare("
             SELECT gp.date_presence, gp.present, gp.remarques, gc.nom AS creneau_nom, gc.type
             FROM garderie_presences gp
             JOIN garderie_inscriptions gi ON gp.inscription_id = gi.id
             JOIN garderie_creneaux gc ON gi.creneau_id = gc.id
-            WHERE gi.eleve_id = :e AND DATE_FORMAT(gp.date_presence, '%Y-%m') = :m
+            WHERE gi.eleve_id = :e AND gi.etablissement_id = :etab AND DATE_FORMAT(gp.date_presence, '%Y-%m') = :m
             ORDER BY gp.date_presence
         ");
-        $stmt->execute([':e' => $eleveId, ':m' => $mois]);
+        $stmt->execute([':e' => $eleveId, ':etab' => $etabId, ':m' => $mois]);
         $presences = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         $heures = $this->calculerHeuresMois($eleveId, $mois);

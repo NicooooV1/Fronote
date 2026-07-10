@@ -206,9 +206,25 @@ class NoteService
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
             ");
 
+            // Idempotence : le submit final ne doit PAS re-créer une note déjà écrite par
+            // l'auto-save (même (élève, matière, prof, trimestre, date)) — sinon double
+            // comptage et moyennes faussées. On aligne bulkInsert sur autoSaveBatch :
+            // on met à jour la ligne existante au lieu d'en insérer une seconde.
+            $checkStmt = $this->pdo->prepare("
+                SELECT n.id FROM notes n
+                JOIN eleves e ON n.id_eleve = e.id AND e.etablissement_id = ?
+                WHERE n.id_eleve = ? AND n.id_matiere = ? AND n.id_professeur = ? AND n.trimestre = ? AND n.date_note = ?
+                LIMIT 1
+            ");
+            $updateStmt = $this->pdo->prepare("
+                UPDATE notes SET note = ?, note_sur = ?, coefficient = ?, type_evaluation = ?, commentaire = ?, date_modification = NOW()
+                WHERE id = ?
+            ");
+
             // Anti-IDOR : seuls les élèves de l'établissement courant peuvent recevoir une note.
             $scopeStmt = $this->pdo->prepare("SELECT 1 FROM eleves WHERE id = ? AND etablissement_id = ? LIMIT 1");
             $etabId = \API\Core\EstablishmentContext::id();
+            $dateNote = $common['date_note'] ?? date('Y-m-d');
 
             $count = 0;
             $insertedEleveIds = [];
@@ -220,19 +236,40 @@ class NoteService
                 if (!$scopeStmt->fetchColumn()) {
                     continue; // élève hors établissement → ignoré
                 }
-                $stmt->execute([
+                $checkStmt->execute([
+                    $etabId,
                     $data['id_eleve'],
                     $common['id_matiere'],
                     $common['id_professeur'],
-                    $data['note'],
-                    $common['note_sur'] ?? 20,
-                    $common['coefficient'] ?? 1,
-                    $common['type_evaluation'] ?? 'Contrôle',
-                    $data['commentaire'] ?? null,
                     $common['trimestre'],
-                    $common['date_note'] ?? date('Y-m-d'),
-                    $etabId,
+                    $dateNote,
                 ]);
+                $existingId = $checkStmt->fetchColumn();
+                if ($existingId) {
+                    // Note déjà présente (auto-save) → mise à jour, pas de doublon.
+                    $updateStmt->execute([
+                        $data['note'],
+                        $common['note_sur'] ?? 20,
+                        $common['coefficient'] ?? 1,
+                        $common['type_evaluation'] ?? 'Contrôle',
+                        $data['commentaire'] ?? null,
+                        $existingId,
+                    ]);
+                } else {
+                    $stmt->execute([
+                        $data['id_eleve'],
+                        $common['id_matiere'],
+                        $common['id_professeur'],
+                        $data['note'],
+                        $common['note_sur'] ?? 20,
+                        $common['coefficient'] ?? 1,
+                        $common['type_evaluation'] ?? 'Contrôle',
+                        $data['commentaire'] ?? null,
+                        $common['trimestre'],
+                        $dateNote,
+                        $etabId,
+                    ]);
+                }
                 $insertedEleveIds[] = (int) $data['id_eleve'];
                 $count++;
             }

@@ -28,6 +28,10 @@ final class AccessControl
         'install_guard.php',
         'API/endpoints/health.php',
         'API/endpoints/cookie_consent.php',
+        // Autorisation de rooms WebSocket : appel SERVEUR→SERVEUR (Node → PHP), authentifié
+        // par le secret partagé X-WS-Secret (temps constant) + JWT WS dans le corps. Sans
+        // session utilisateur → doit être exempté du garde de session (il porte sa propre auth).
+        'API/endpoints/ws_authorize.php',
         'rgpd/mentions_legales.php',
         'rgpd/confidentialite.php',
     ];
