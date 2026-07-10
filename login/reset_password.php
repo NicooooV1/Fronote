@@ -31,13 +31,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_reset'])) {
     if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
         $error = __('login.error.csrf');
     } else {
+        // Anti-brute-force : plafonner les tentatives de réinitialisation par IP.
+        // Fail-open si le limiteur est indisponible (ne jamais bloquer un usage légitime sur incident infra).
+        try {
+            $rl = app('rate_limiter');
+            $rl->setMaxAttempts(5)->setDecayMinutes(15);
+            $rlKey = 'pwd_reset.' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+            if ($rl->tooManyAttempts($rlKey)) {
+                $error = "Trop de demandes de réinitialisation. Veuillez réessayer dans quelques minutes.";
+            } else {
+                $rl->hit($rlKey);
+            }
+        } catch (\Throwable $e) { error_log('[reset_password] rate limiter indisponible: ' . $e->getMessage()); }
+
         $username = isset($_POST['username']) ? trim($_POST['username']) : '';
         $email = isset($_POST['email']) ? trim($_POST['email']) : '';
         $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
         $userType = isset($_POST['user_type']) ? $_POST['user_type'] : '';
 
-        // Validation de base
-        if (empty($username) || empty($email) || empty($phone)) {
+        // Validation de base (ignorée si déjà bloqué par le rate-limit ci-dessus)
+        if ($error !== '') {
+            // message de rate-limit déjà positionné → ne rien traiter
+        } elseif (empty($username) || empty($email) || empty($phone)) {
             $error = "Veuillez remplir tous les champs.";
         } else if ($userType === 'administrateur') {
             $error = "Les administrateurs ne peuvent pas réinitialiser leur mot de passe par cette méthode.";
@@ -50,20 +65,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_reset'])) {
             // Utilisation exclusive de l'API centralisée
             $user = findUserByCredentials($username, $email, $phone, $userType);
 
+            // Anti-énumération : réponse UNIFORME que le compte existe ou non. On ne
+            // révèle jamais si le triplet identifiant+email+téléphone correspond à un
+            // utilisateur. La demande n'est réellement créée que si un compte matche ;
+            // dans tous les cas on redirige vers la même page de confirmation neutre.
             if ($user) {
-                // Créer une demande de réinitialisation
-                if (createResetRequest($user['id'], $userType)) {
-                    // Rediriger vers la page de confirmation
-                    $_SESSION['reset_requested'] = true;
-                    $_SESSION['reset_username'] = $username;
-                    header("Location: reset_confirmation.php");
-                    exit;
-                } else {
-                    $error = getErrorMessage();
-                }
-            } else {
-                $error = "Les informations fournies ne correspondent à aucun utilisateur.";
+                createResetRequest($user['id'], $userType);
             }
+            $_SESSION['reset_requested'] = true;
+            $_SESSION['reset_username']  = $username;
+            header("Location: reset_confirmation.php");
+            exit;
         }
     }
 }

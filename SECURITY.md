@@ -42,9 +42,10 @@ Fronote implements the following security measures:
 - For concurrent AJAX sharing the meta-tag token, endpoints use the **non-destructive** `check()` instead of `validate()` to avoid 403 on parallel requests
 
 ### Content Security Policy
-- Enforced CSP still allows `'unsafe-inline'` for `script-src`/`style-src` (inline handlers/styles not yet externalized); `'unsafe-eval'` and `http:` sources removed, `object-src 'none'`
-- Strict nonce-based CSP (`'nonce-…'` + `'strict-dynamic'`) shipped in **Report-Only** to measure remaining inline surface — migration in progress before switching to enforce
-- `frame-ancestors 'none'` (no iframing)
+- **Enforced** nonce-based CSP: `script-src 'self' 'nonce-…' 'strict-dynamic' https:` — **no `'unsafe-inline'` on `script-src`** (inline handlers converted to a delegated `data-fr-*` dispatcher, every inline `<script>` carries the per-request nonce). `'unsafe-eval'` and `http:` removed, `object-src 'none'`
+- `style-src` still allows `'unsafe-inline'` (inline styles not yet externalized — low risk, documented)
+- A Report-Only policy mirrors the enforce policy to keep surfacing any residual inline script (no `report-uri` sink wired yet)
+- `frame-ancestors 'none'` (no iframing); the legacy `X-Frame-Options` header is `DENY` (PHP and `.htaccess` aligned)
 - `form-action 'self'`
 
 ### Input Validation

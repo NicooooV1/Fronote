@@ -16,13 +16,13 @@ $error = $_GET['error'] ?? '';
 
 // Erreur du provider
 if ($error) {
-	$_SESSION['login_error'] = 'SSO authentication cancelled or failed: ' . htmlspecialchars($error);
+	$_SESSION['error_message'] = 'SSO authentication cancelled or failed: ' . htmlspecialchars($error);
 	header('Location: index.php');
 	exit;
 }
 
 if (empty($code) || empty($state)) {
-	$_SESSION['login_error'] = 'Invalid OAuth callback parameters.';
+	$_SESSION['error_message'] = 'Invalid OAuth callback parameters.';
 	header('Location: index.php');
 	exit;
 }
@@ -31,7 +31,7 @@ try {
 	$guard = new \API\Auth\OAuthGuard(getPDO());
 
 	if (!$guard->isConfigured()) {
-		$_SESSION['login_error'] = 'SSO is not configured. Contact your administrator.';
+		$_SESSION['error_message'] = 'SSO is not configured. Contact your administrator.';
 		header('Location: index.php');
 		exit;
 	}
@@ -40,7 +40,7 @@ try {
 
 	if ($result['user'] === null) {
 		// Pas d'utilisateur local trouvé
-		$_SESSION['login_error'] = $result['error'] ?? 'No local account found for this email.';
+		$_SESSION['error_message'] = $result['error'] ?? 'No local account found for this email.';
 		header('Location: index.php');
 		exit;
 	}
@@ -53,7 +53,7 @@ try {
 	$isLocked = !empty($user['locked_until']) && strtotime((string) $user['locked_until']) > time();
 	if ((int) ($user['actif'] ?? 1) !== 1 || $isLocked) {
 		try { app('audit')->logAuth('sso_login', $user['mail'] ?? '', false, ['reason' => 'account_disabled_or_locked']); } catch (\Throwable $e) {}
-		$_SESSION['login_error'] = 'Ce compte est désactivé ou verrouillé.';
+		$_SESSION['error_message'] = 'Ce compte est désactivé ou verrouillé.';
 		header('Location: index.php');
 		exit;
 	}
@@ -92,12 +92,12 @@ try {
 	exit;
 
 } catch (\RuntimeException $e) {
-	$_SESSION['login_error'] = 'SSO error: ' . $e->getMessage();
+	$_SESSION['error_message'] = 'SSO error: ' . $e->getMessage();
 	header('Location: index.php');
 	exit;
 } catch (\Throwable $e) {
 	error_log('OAuth callback error: ' . $e->getMessage());
-	$_SESSION['login_error'] = 'An unexpected error occurred during SSO authentication.';
+	$_SESSION['error_message'] = 'An unexpected error occurred during SSO authentication.';
 	header('Location: index.php');
 	exit;
 }

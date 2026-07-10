@@ -33,7 +33,7 @@ if (!$attachment) {
 $role   = getUserRole();
 $userId = (int) getCurrentUser()['id'];
 
-if (!in_array($role, ['admin', 'vie_scolaire'])) {
+if (!in_array($role, ['administrateur', 'admin', 'vie_scolaire'])) {
     // Récupérer le justificatif lié
     $justificatif = $repo->getJustificatifById((int) $attachment['id_justificatif']);
     if (!$justificatif) {
