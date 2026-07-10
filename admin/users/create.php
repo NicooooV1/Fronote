@@ -48,7 +48,7 @@ $tierLabels = [
 ];
 
 // Traitement du formulaire
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['csrf_token']) && $_POST['csrf_token'] === $csrf_token) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && hash_equals($csrf_token, $_POST['csrf_token'] ?? '')) {
     $profil = $_POST['profil'] ?? '';
     
     $data = [

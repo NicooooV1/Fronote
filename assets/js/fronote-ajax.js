@@ -195,7 +195,7 @@ var FronoteAjax = (function() {
         if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.dataset.originalText = submitBtn.innerHTML;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Chargement...';
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + (window.__ ? window.__('loading', 'Chargement...') : 'Chargement...');
         }
 
         return post(url, fd, options)
@@ -208,7 +208,7 @@ var FronoteAjax = (function() {
         .finally(function() {
             if (submitBtn) {
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = submitBtn.dataset.originalText || 'Envoyer';
+                submitBtn.innerHTML = submitBtn.dataset.originalText || (window.__ ? window.__('send', 'Envoyer') : 'Envoyer');
             }
         });
     }
@@ -217,7 +217,7 @@ var FronoteAjax = (function() {
      * Show a confirmation modal, then delete on confirm.
      */
     function confirmDelete(url, data, message, options) {
-        message = message || 'Etes-vous sur de vouloir supprimer cet element ?';
+        message = message || (window.__ ? window.__('confirm_delete', 'Etes-vous sur de vouloir supprimer cet element ?') : 'Etes-vous sur de vouloir supprimer cet element ?');
         options = options || {};
 
         if (!confirm(message)) {
@@ -225,7 +225,7 @@ var FronoteAjax = (function() {
         }
 
         return post(url, Object.assign({ _method: 'DELETE' }, data || {}), {
-            successMessage: options.successMessage || 'Supprime avec succes.'
+            successMessage: options.successMessage || (window.__ ? window.__('delete_success', 'Supprime avec succes.') : 'Supprime avec succes.')
         }).then(function(result) {
             if (options.onSuccess) options.onSuccess(result);
             if (options.removeElement) {

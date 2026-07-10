@@ -179,7 +179,7 @@
     t.setAttribute('role', 'status');
     t.innerHTML = '<span class="ds-toast__icon"><i class="fas ' + (ICONS[type] || ICONS.info) + '"></i></span>' +
       '<div class="ds-toast__content"><div class="ds-toast__message"></div></div>' +
-      '<button class="ds-toast__close" aria-label="Fermer">&times;</button>' +
+      '<button class="ds-toast__close" aria-label="' + (window.__ ? window.__('close', 'Fermer') : 'Fermer') + '">&times;</button>' +
       '<span class="ds-toast__progress"></span>';
     t.querySelector('.ds-toast__message').textContent = message;
     c.appendChild(t);

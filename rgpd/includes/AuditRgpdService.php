@@ -813,6 +813,17 @@ class AuditRgpdService
     {
         $policies = $this->getRetentionPolicies();
         $results = [];
+        // PLANCHER SERVEUR (minimum légal de conservation). Une table marquée
+        // 'obligatoire' (ex. audit_log : 365 j) ne peut JAMAIS être purgée en-deçà
+        // de la durée par défaut définie dans le code, même si une policy en base
+        // configure une durée plus courte. On applique donc max(durée, plancher)
+        // ci-dessous. Les tables non-obligatoires ne sont pas affectées.
+        $planchers = [];
+        foreach (self::retentionDefaults() as $tbl => $def) {
+            if (!empty($def['obligatoire'])) {
+                $planchers[$tbl] = (int)$def['duree'];
+            }
+        }
         // Colonne de date réelle par table (le schéma livré diffère des noms
         // « génériques » : rate_limits.attempted_at, notifications_globales.date_creation).
         $dateColumnMap = [
@@ -836,7 +847,13 @@ class AuditRgpdService
             if (!$policy['actif']) continue;
             $col = $dateColumnMap[$table] ?? 'created_at';
             $extra = $conditionMap[$table] ?? '';
-            $cutoff = date('Y-m-d H:i:s', strtotime("-{$policy['duree']} days"));
+            // Table obligatoire : ne jamais purger sous le plancher légal, même si la
+            // policy DB configure une durée plus courte (max(durée, plancher)).
+            $duree = (int)$policy['duree'];
+            if (isset($planchers[$table]) && $duree < $planchers[$table]) {
+                $duree = $planchers[$table];
+            }
+            $cutoff = date('Y-m-d H:i:s', strtotime("-{$duree} days"));
 
             try {
                 $params = [$cutoff];

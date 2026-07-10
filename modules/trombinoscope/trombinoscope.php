@@ -10,6 +10,11 @@ $classes  = $trombiService->getClasses();
 $matieres = $trombiService->getMatieres();
 $stats    = $trombiService->getStats();
 
+// RGPD : honorer un refus explicite de consentement « photo » d'un élève —
+// on n'affiche alors pas d'image identifiante, seulement un avatar anonyme.
+require_once __DIR__ . '/../../rgpd/includes/AuditRgpdService.php';
+$rgpdService = new \AuditRgpdService(getPDO());
+
 $vue = $_GET['vue'] ?? 'eleves';
 $classeId = isset($_GET['classe_id']) ? (int)$_GET['classe_id'] : ($classes[0]['id'] ?? 0);
 $matiereId = isset($_GET['matiere_id']) ? (int)$_GET['matiere_id'] : 0;
@@ -112,10 +117,14 @@ if ($search) {
                     $color = TrombinoscopeService::avatarColor($p['nom'] . $p['prenom']);
                     $type = $p['type'] ?? ($vue === 'profs' ? 'professeur' : ($vue === 'vie_scolaire' ? 'vie_scolaire' : 'eleve'));
                     $detail = $p['detail'] ?? $p['classe_nom'] ?? $p['specialite'] ?? $p['matiere_nom'] ?? '';
+                    // RGPD : élève ayant explicitement refusé le consentement « photo » →
+                    // avatar anonyme (aucune image/identité affichée), sinon rendu inchangé.
+                    $photoRefusee = ($type === 'eleve' && !empty($p['id']))
+                        && $rgpdService->consentementRefuse((int)$p['id'], 'eleve', 'photo');
                 ?>
                 <div class="trombi-card" data-type="<?= $type ?>">
-                    <div class="trombi-avatar" style="background:<?= $color ?>">
-                        <?= $initials ?>
+                    <div class="trombi-avatar" style="background:<?= $color ?>"<?= $photoRefusee ? ' title="Photo masquée (consentement retiré)"' : '' ?>>
+                        <?php if ($photoRefusee): ?><i class="fas fa-user-slash"></i><?php else: ?><?= $initials ?><?php endif; ?>
                     </div>
                     <div class="trombi-name"><?= h($p['prenom'] . ' ' . $p['nom']) ?></div>
                     <div class="trombi-detail">

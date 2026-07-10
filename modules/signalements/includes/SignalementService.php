@@ -65,12 +65,15 @@ class SignalementService
      */
     public function resoudre(int $id, string $resolutionNote, int $resolvedBy): void
     {
+        // Cloisonnement multi-tenant : fail-closed si aucun établissement courant.
+        $etab = $this->etabId();
+        if ($etab === null) return;
         $stmt = $this->pdo->prepare("
             UPDATE signalements
             SET statut = 'traite', date_traitement = NOW(), actions_prises = ?, traite_par = ?
-            WHERE id = ?
+            WHERE id = ? AND etablissement_id = ?
         ");
-        $stmt->execute([$resolutionNote, $resolvedBy, $id]);
+        $stmt->execute([$resolutionNote, $resolvedBy, $id, $etab]);
     }
 
     /**
@@ -149,22 +152,29 @@ class SignalementService
 
     public function changerStatut(int $id, string $statut, int $traitePar = null): void
     {
+        // Cloisonnement multi-tenant : fail-closed si aucun établissement courant.
+        $etab = $this->etabId();
+        if ($etab === null) return;
         $sql = 'UPDATE signalements SET statut = ?, date_traitement = NOW()';
         $params = [$statut];
         if ($traitePar) {
             $sql .= ', traite_par = ?';
             $params[] = $traitePar;
         }
-        $sql .= ' WHERE id = ?';
+        $sql .= ' WHERE id = ? AND etablissement_id = ?';
         $params[] = $id;
+        $params[] = $etab;
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
     }
 
     public function ajouterNote(int $id, string $notes): void
     {
-        $stmt = $this->pdo->prepare('UPDATE signalements SET suivi = CONCAT(COALESCE(suivi, ""), ?) WHERE id = ?');
-        $stmt->execute(["\n[" . date('d/m/Y H:i') . "] " . $notes, $id]);
+        // Cloisonnement multi-tenant : fail-closed si aucun établissement courant.
+        $etab = $this->etabId();
+        if ($etab === null) return;
+        $stmt = $this->pdo->prepare('UPDATE signalements SET suivi = CONCAT(COALESCE(suivi, ""), ?) WHERE id = ? AND etablissement_id = ?');
+        $stmt->execute(["\n[" . date('d/m/Y H:i') . "] " . $notes, $id, $etab]);
     }
 
     public function getStats(): array

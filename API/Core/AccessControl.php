@@ -28,6 +28,8 @@ final class AccessControl
         'install_guard.php',
         'API/endpoints/health.php',
         'API/endpoints/cookie_consent.php',
+        // Rapports CSP : POST navigateur (report-uri), sans session, autonome.
+        'API/endpoints/csp_report.php',
         // Autorisation de rooms WebSocket : appel SERVEUR→SERVEUR (Node → PHP), authentifié
         // par le secret partagé X-WS-Secret (temps constant) + JWT WS dans le corps. Sans
         // session utilisateur → doit être exempté du garde de session (il porte sa propre auth).

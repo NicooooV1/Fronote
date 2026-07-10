@@ -32,7 +32,7 @@ try {
 $periodes    = app('periodes')->getAll();
 
 // POST Actions
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $csrf_token) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && hash_equals($csrf_token, $_POST['csrf_token'] ?? '')) {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'edit_note') {

@@ -343,6 +343,29 @@ try {
     <script src="<?= $_assetVersion('assets/js/fronote-ajax.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>
     <script src="<?= $_assetVersion('assets/js/ws-global.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>
     <script src="<?= $_assetVersion('assets/js/push-manager.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>
+    <?php
+    // ─── Pont i18n côté client ───────────────────────────────────────────────
+    // Expose quelques clés d'UI communes traduites côté PHP à la couche JS via
+    // window.I18N + le helper window.__(clé, fallback). Chaque clé fournit un
+    // fallback FR : si la traduction est absente, le rendu reste identique.
+    $_hdr_tr = static function (string $key, string $default): string {
+        return function_exists('__') ? __($key, ['default' => $default]) : $default;
+    };
+    $_hdr_i18n = [
+        'save'           => $_hdr_tr('btn.save', 'Enregistrer'),
+        'cancel'         => $_hdr_tr('btn.cancel', 'Annuler'),
+        'close'          => $_hdr_tr('common.close', 'Fermer'),
+        'send'           => $_hdr_tr('btn.send', 'Envoyer'),
+        'loading'        => $_hdr_tr('btn.loading', 'Chargement...'),
+        'error'          => $_hdr_tr('common.error', 'Erreur'),
+        'confirm_delete' => $_hdr_tr('common.confirm_delete', 'Êtes-vous sûr de vouloir supprimer cet élément ?'),
+        'delete_success' => $_hdr_tr('common.delete_success', 'Supprimé avec succès.'),
+    ];
+    ?>
+    <script nonce="<?= $_hdr_nonce ?>">
+    window.I18N = <?= json_encode($_hdr_i18n, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;
+    window.__ = function (k, def) { return (window.I18N && window.I18N[k]) || def; };
+    </script>
     <script nonce="<?= $_hdr_nonce ?>">
     window.FRONOTE_BASE_URL = <?= json_encode(rtrim($rootPrefix, '/') . '/') ?>;
     if ('serviceWorker' in navigator) {
