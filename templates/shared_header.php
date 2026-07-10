@@ -185,7 +185,14 @@ if (!headers_sent()) {
     // portent un nonce, tous les handlers inline ont été convertis en data-fr-* via le
     // dispatcher délégué). 'strict-dynamic' : seuls les scripts noncés (et ceux qu'ils
     // chargent) s'exécutent ; l'allowlist d'hôtes est ignorée → un CDN nonce-é passe.
-    // style-src garde 'unsafe-inline' (les nombreux style= inline restent, faible risque).
+    // style-src : 'unsafe-inline' est CONSERVÉ VOLONTAIREMENT. De très nombreuses vues
+    // legacy portent des attributs style="…" inline (largeurs de barres, couleurs
+    // calculées côté serveur, display:none/block toggles). Les noncer un par un
+    // exigerait un refactor massif et risquerait de casser le rendu FR. Le risque
+    // résiduel est FAIBLE et ACCEPTÉ : sans 'unsafe-eval', avec object-src 'none',
+    // base-uri/form-action 'self' et un script-src strict (nonce + strict-dynamic),
+    // l'injection de style seule n'ouvre pas d'exécution de code. NE PAS retirer
+    // 'unsafe-inline' de style-src sans avoir d'abord externalisé tous les style= inline.
     $_hdr_csp = "default-src 'self'; "
         . "script-src 'self' 'nonce-{$_hdr_nonce}' 'strict-dynamic' https:; "
         . "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "

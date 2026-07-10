@@ -51,8 +51,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canEdit && validateCSRFToken()) {
         'traitements' => trim($_POST['traitements'] ?? ''),
         'contacts_urgence' => trim($_POST['contacts_urgence'] ?? ''),
         'pai' => trim($_POST['pai'] ?? ''),
+        'pai_details' => trim($_POST['pai_details'] ?? ''),
         'groupe_sanguin' => $_POST['groupe_sanguin'] ?? null,
         'remarques' => trim($_POST['remarques'] ?? ''),
+        'pathologies' => trim($_POST['pathologies'] ?? ''),
+        'antecedents' => trim($_POST['antecedents'] ?? ''),
     ];
     $infirmerieService->sauvegarderFiche($eleveId, $data);
     if (function_exists('app') && ($__audit = app('audit'))) {
@@ -102,6 +105,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canEdit && validateCSRFToken()) {
                         <label>Contacts d'urgence</label>
                         <textarea name="contacts_urgence" class="form-control" rows="2" placeholder="Nom, lien, téléphone"><?= htmlspecialchars($fiche['contacts_urgence'] ?? '') ?></textarea>
                     </div>
+                    <div class="form-group full-width">
+                        <label>Pathologies</label>
+                        <textarea name="pathologies" class="form-control" rows="2" placeholder="Asthme, diabète, épilepsie…"><?= htmlspecialchars($fiche['pathologies'] ?? '') ?></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Antécédents médicaux</label>
+                        <textarea name="antecedents" class="form-control" rows="2" placeholder="Interventions, hospitalisations…"><?= htmlspecialchars($fiche['antecedents'] ?? '') ?></textarea>
+                    </div>
                     <div class="form-group">
                         <label>Groupe sanguin</label>
                         <select name="groupe_sanguin" class="form-control">
@@ -112,6 +123,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canEdit && validateCSRFToken()) {
                     <div class="form-group">
                         <label>PAI (Projet d'Accueil Individualisé)</label>
                         <textarea name="pai" class="form-control" rows="2"><?= htmlspecialchars($fiche['pai'] ?? '') ?></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Détails du PAI</label>
+                        <textarea name="pai_details" class="form-control" rows="2" placeholder="Conduite à tenir, protocole associé…"><?= htmlspecialchars($fiche['pai_details'] ?? '') ?></textarea>
                     </div>
                     <div class="form-group full-width">
                         <label>Remarques</label>

@@ -23,7 +23,7 @@ if (!isset($_SESSION['csrf_token'])) {
 $csrf_token = $_SESSION['csrf_token'];
 
 // ---------- Actions POST ----------
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['csrf_token']) && $_POST['csrf_token'] === $csrf_token) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && hash_equals($csrf_token, $_POST['csrf_token'] ?? '')) {
     $action = $_POST['action'] ?? '';
 
     // Cloisonnement multi-tenant : toute action ciblant un utilisateur par id DOIT viser un

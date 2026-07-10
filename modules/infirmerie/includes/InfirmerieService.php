@@ -103,26 +103,31 @@ class InfirmerieService
         $contact = $this->encField($data['contacts_urgence'] ?? null);
         $pai = $this->encField($data['pai'] ?? null);
         $observations = $this->encField($data['remarques'] ?? null);
+        $pathologies = $this->encField($data['pathologies'] ?? null);
+        $antecedents = $this->encField($data['antecedents'] ?? null);
+        $paiDetails = $this->encField($data['pai_details'] ?? null);
         $etabId = $this->etabId();
         $existing = $this->getFiche($eleveId);
         if ($existing) {
             $stmt = $this->pdo->prepare("
-                UPDATE fiches_sante SET allergies=?, traitements=?, contact_urgence=?, pai=?, groupe_sanguin=?, observations=?
+                UPDATE fiches_sante SET allergies=?, traitements=?, contact_urgence=?, pai=?, groupe_sanguin=?, observations=?, pathologies=?, antecedents=?, pai_details=?
                 WHERE eleve_id=? AND etablissement_id=?
             ");
             $stmt->execute([
                 $allergies, $traitements, $contact,
                 $pai, $data['groupe_sanguin'] ?? null, $observations,
+                $pathologies, $antecedents, $paiDetails,
                 $eleveId, $etabId,
             ]);
         } else {
             $stmt = $this->pdo->prepare("
-                INSERT INTO fiches_sante (eleve_id, etablissement_id, allergies, traitements, contact_urgence, pai, groupe_sanguin, observations)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO fiches_sante (eleve_id, etablissement_id, allergies, traitements, contact_urgence, pai, groupe_sanguin, observations, pathologies, antecedents, pai_details)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $eleveId, $etabId, $allergies, $traitements, $contact,
                 $pai, $data['groupe_sanguin'] ?? null, $observations,
+                $pathologies, $antecedents, $paiDetails,
             ]);
         }
     }

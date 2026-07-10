@@ -145,6 +145,78 @@ class EmailService
         return $this->send($to, $subject, $html, '', $options);
     }
 
+    /**
+     * Envoi d'emails de COMMUNICATION / NEWSLETTER (non transactionnel, opt-in RGPD).
+     *
+     * Contrairement à send()/sendTemplate() — utilisés aussi pour les emails
+     * transactionnels (réinitialisation MDP, 2FA, sécurité) qui ne doivent JAMAIS
+     * être bloqués — cette méthode honore le consentement RGPD « email_marketing ».
+     * Tout destinataire ayant EXPLICITEMENT retiré son consentement
+     * (AuditRgpdService::consentementRefuse) est écarté de l'envoi.
+     *
+     * @param array $recipients Liste de destinataires, chacun sous la forme
+     *                          ['email' => string, 'user_id' => int, 'user_type' => string].
+     * @return array ['success' => bool, 'sent' => int, 'skipped' => int, 'message' => string]
+     */
+    public function sendMarketing(array $recipients, string $subject, string $bodyHtml, string $bodyText = '', array $options = []): array
+    {
+        $rgpd = $this->rgpdService();
+        $allowed = [];
+        $skipped = 0;
+
+        foreach ($recipients as $r) {
+            $email = is_array($r) ? (string)($r['email'] ?? '') : (string)$r;
+            if ($email === '') {
+                continue;
+            }
+            $userId   = is_array($r) ? (int)($r['user_id'] ?? 0) : 0;
+            $userType = is_array($r) ? (string)($r['user_type'] ?? '') : '';
+
+            // Écarter les refus explicites du consentement « email_marketing ».
+            if ($rgpd !== null && $userId > 0 && $userType !== ''
+                && $rgpd->consentementRefuse($userId, $userType, 'email_marketing')) {
+                $skipped++;
+                continue;
+            }
+            $allowed[] = $email;
+        }
+
+        if (empty($allowed)) {
+            return ['success' => true, 'sent' => 0, 'skipped' => $skipped,
+                'message' => 'Aucun destinataire éligible (consentements retirés)'];
+        }
+
+        $result = $this->send($allowed, $subject, $bodyHtml, $bodyText, $options);
+        return [
+            'success' => (bool)($result['success'] ?? false),
+            'sent'    => (bool)($result['success'] ?? false) ? count($allowed) : 0,
+            'skipped' => $skipped,
+            'message' => (string)($result['message'] ?? ''),
+        ];
+    }
+
+    /**
+     * Instancie le service RGPD (classe globale hors espace de noms), si disponible.
+     * Fail-open : en l'absence du service, l'envoi n'est pas bloqué.
+     */
+    private function rgpdService(): ?\AuditRgpdService
+    {
+        if (!class_exists('\AuditRgpdService')) {
+            $file = __DIR__ . '/../../rgpd/includes/AuditRgpdService.php';
+            if (is_file($file)) {
+                require_once $file;
+            }
+        }
+        if (!class_exists('\AuditRgpdService')) {
+            return null;
+        }
+        try {
+            return new \AuditRgpdService($this->pdo);
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
     // ─── Templates ───────────────────────────────────────────────────────
 
     /**

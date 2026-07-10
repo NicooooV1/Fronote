@@ -107,8 +107,11 @@ class SallesMaterielService
      */
     public function setEquipementsSalle(int $salleId, array $equipements): void
     {
+        // Cloisonnement multi-tenant : on ne modifie que la salle de l'etablissement courant (fail-closed).
+        $etabId = $this->etabId();
+        if ($etabId === null) return;
         $json = json_encode($equipements, JSON_UNESCAPED_UNICODE);
-        $this->pdo->prepare("UPDATE salles SET equipements = ? WHERE id = ?")->execute([$json, $salleId]);
+        $this->pdo->prepare("UPDATE salles SET equipements = ? WHERE id = ? AND etablissement_id = ?")->execute([$json, $salleId, $etabId]);
     }
 
     /**

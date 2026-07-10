@@ -291,7 +291,7 @@ try {
     </form>
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 // Afficher/masquer la section sondage
 document.getElementById('type').addEventListener('change', function() {
     document.getElementById('section-sondage').style.display = this.value === 'sondage' ? 'block' : 'none';
