@@ -462,10 +462,14 @@ class AuditRgpdService
             // Accessibilité / handicap (Art.9) : aménagements, dossier MDPH, réunions ESS
             $data['accessibilite_amenagements'] = $this->collecte('accessibilite_amenagements',
                 "SELECT * FROM accessibilite_amenagements WHERE eleve_id = ?", [$userId]);
-            $data['accessibilite_mdph'] = $this->collecte('accessibilite_mdph',
+            // Dossier handicap (Art.9) : contenu MDPH + comptes rendus/décisions ESS sont
+            // chiffrés at-rest (AccessibiliteService) → les déchiffrer pour l'export du sujet.
+            $mdph = $this->collecte('accessibilite_mdph',
                 "SELECT * FROM accessibilite_mdph WHERE eleve_id = ?", [$userId]);
-            $data['accessibilite_ess'] = $this->collecte('accessibilite_ess',
+            $data['accessibilite_mdph'] = $decryptFields($mdph, ['contenu']);
+            $ess = $this->collecte('accessibilite_ess',
                 "SELECT * FROM accessibilite_ess WHERE eleve_id = ?", [$userId]);
+            $data['accessibilite_ess'] = $decryptFields($ess, ['compte_rendu', 'decisions']);
 
             // Garderie / périscolaire
             $data['garderie_inscriptions'] = $this->collecte('garderie_inscriptions',

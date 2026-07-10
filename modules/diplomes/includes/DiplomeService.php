@@ -45,6 +45,12 @@ class DiplomeService
 
     public function creerDiplome(array $d): int
     {
+        // Cloisonnement multi-tenant : l'élève ciblé doit appartenir à l'établissement courant
+        // (diplomes n'a pas de colonne etablissement_id → scope via eleves).
+        $etab = \API\Core\EstablishmentContext::id();
+        $chk = $this->pdo->prepare("SELECT 1 FROM eleves WHERE id = ? AND etablissement_id = ? LIMIT 1");
+        $chk->execute([(int) $d['eleve_id'], $etab]);
+        if (!$chk->fetchColumn()) return 0;
         $numero = strtoupper(substr($d['type'], 0, 3)) . '-' . date('Y') . '-' . str_pad((string) mt_rand(1, 99999), 5, '0', STR_PAD_LEFT);
         $stmt = $this->pdo->prepare("INSERT INTO diplomes (eleve_id, intitule, type, mention, date_obtention, numero_diplome, fichier_path, description)
                 VALUES (?,?,?,?,?,?,?,?)");
@@ -55,13 +61,16 @@ class DiplomeService
 
     public function modifierDiplome(int $id, array $d): void
     {
-        $stmt = $this->pdo->prepare("UPDATE diplomes SET intitule=?, type=?, mention=?, date_obtention=?, description=? WHERE id=?");
-        $stmt->execute([$d['intitule'], $d['type'], $d['mention'] ?? null, $d['date_obtention'], $d['description'] ?? null, $id]);
+        // Anti-IDOR : ne modifier qu'un diplôme d'un élève de l'établissement courant.
+        $stmt = $this->pdo->prepare("UPDATE diplomes SET intitule=?, type=?, mention=?, date_obtention=?, description=?
+            WHERE id=? AND eleve_id IN (SELECT id FROM eleves WHERE etablissement_id = ?)");
+        $stmt->execute([$d['intitule'], $d['type'], $d['mention'] ?? null, $d['date_obtention'], $d['description'] ?? null, $id, \API\Core\EstablishmentContext::id()]);
     }
 
     public function supprimerDiplome(int $id): void
     {
-        $this->pdo->prepare("DELETE FROM diplomes WHERE id = ?")->execute([$id]);
+        $this->pdo->prepare("DELETE FROM diplomes WHERE id = ? AND eleve_id IN (SELECT id FROM eleves WHERE etablissement_id = ?)")
+            ->execute([$id, \API\Core\EstablishmentContext::id()]);
     }
 
     /* ───── ACCÈS PAR RÔLE ───── */

@@ -44,7 +44,7 @@ Fronote implements the following security measures:
 ### Content Security Policy
 - **Enforced** nonce-based CSP: `script-src 'self' 'nonce-…' 'strict-dynamic' https:` — **no `'unsafe-inline'` on `script-src`** (inline handlers converted to a delegated `data-fr-*` dispatcher, every inline `<script>` carries the per-request nonce). `'unsafe-eval'` and `http:` removed, `object-src 'none'`
 - `style-src` still allows `'unsafe-inline'` (inline styles not yet externalized — low risk, documented)
-- A Report-Only policy mirrors the enforce policy to keep surfacing any residual inline script (no `report-uri` sink wired yet)
+- A Report-Only policy mirrors the enforce policy to keep surfacing any residual inline script; violations are collected via `report-uri /API/endpoints/csp_report.php` (rate-limited, non-sensitive)
 - `frame-ancestors 'none'` (no iframing); the legacy `X-Frame-Options` header is `DENY` (PHP and `.htaccess` aligned)
 - `form-action 'self'`
 
