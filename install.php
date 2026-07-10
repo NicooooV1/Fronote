@@ -877,6 +877,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     try {
                         $sdk     = $appInstance->make('module_sdk');
                         $sync    = $sdk->syncAll();
+                        // 5f-pré — Réconciliation déclarative du schéma AVANT le provisioning.
+                        // Le socle pronote.sql et certains modules définissent la MÊME table avec des
+                        // colonnes divergentes ; le socle étant importé en premier, le CREATE TABLE
+                        // IF NOT EXISTS du module est un no-op → colonnes du module absentes. Or les
+                        // INSERT de données de référence des modules (ex. bourses_types.code,
+                        // intelligence_config) s'exécutent DANS provisionSql : sans cette fusion
+                        // préalable (union, additive), ces INSERT échouent sur des colonnes encore
+                        // absentes et les données de référence ne sont jamais chargées à l'install.
+                        try {
+                            (new \API\Services\SchemaSyncService($pdo, $installDir))->sync();
+                        } catch (Throwable $e) {
+                            $log[] = ['warn', 'Réconciliation schéma (pré-provisioning) : ' . $e->getMessage()];
+                        }
                         $provDone = 0;
                         $migErrs = $sync['errors'] ?? [];
                         // Provisionne le schéma de TOUS les modules (install.sql ; pas de migrations),
