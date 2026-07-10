@@ -58,7 +58,7 @@ $html = '
     <tr><td style="font-weight:bold">Épreuve :</td><td>' . htmlspecialchars(trim(($exam['intitule'] ?? '') . ($exam['matiere_nom'] ? ' — ' . $exam['matiere_nom'] : ''))) . '</td></tr>
     <tr><td style="font-weight:bold">Date :</td><td>' . ($exam['date_epreuve'] ? date('d/m/Y à H:i', strtotime($exam['date_epreuve'])) : '—') . '</td></tr>
     <tr><td style="font-weight:bold">Lieu / Salle :</td><td>' . htmlspecialchars($exam['salle_nom'] ?? '—') . '</td></tr>
-    <tr><td style="font-weight:bold">Durée :</td><td>' . ($exam['duree_minutes'] ? htmlspecialchars($exam['duree_minutes']) . ' min' : '—') . '</td></tr>
+    <tr><td style="font-weight:bold">Durée :</td><td>' . ($exam['duree_minutes'] ? htmlspecialchars((string) $exam['duree_minutes']) . ' min' : '—') . '</td></tr>
     <tr><td style="font-weight:bold">Place :</td><td>' . htmlspecialchars($exam['place'] ?? '—') . '</td></tr>
 </table>
 <div style="margin:30px 0;padding:15px;border:1px solid #ccc;border-radius:4px;background:#f9f9f9">
