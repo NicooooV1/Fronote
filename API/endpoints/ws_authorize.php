@@ -102,9 +102,12 @@ try {
         $q->execute($etab > 0 ? [$userId, $classe, $etab] : [$userId, $classe]);
         $allow = (bool) $q->fetchColumn();
     } elseif ($userType === 'parent') {
+        // Cloisonnement multi-tenant : l'enfant doit être dans une classe de CET établissement.
+        // Sans e.etablissement_id, un parent dont un enfant est dans une classe homonyme
+        // (« 6A ») d'un autre établissement obtiendrait l'accès à la room de la classe locale.
         $q = $pdo->prepare("SELECT 1 FROM parent_eleve pe JOIN eleves e ON pe.id_eleve = e.id
-                            WHERE pe.id_parent = ? AND e.classe = ?");
-        $q->execute([$userId, $classe]);
+                            WHERE pe.id_parent = ? AND e.classe = ?" . ($etab > 0 ? " AND e.etablissement_id = ?" : ""));
+        $q->execute($etab > 0 ? [$userId, $classe, $etab] : [$userId, $classe]);
         $allow = (bool) $q->fetchColumn();
     }
     echo json_encode(['allow' => $allow]);

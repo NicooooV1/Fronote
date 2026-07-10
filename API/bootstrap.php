@@ -131,6 +131,15 @@ try {
 // Sécurité : forcer display_errors off en production
 $_appEnv = strtolower(trim(getenv('APP_ENV') ?: 'production'));
 if ($_appEnv === 'prod') { $_appEnv = 'production'; } // 'prod' ≡ 'production' (normalisation)
+// Propager la valeur normalisée à TOUS les lecteurs : health.php, Environment.php et
+// Database.php comparent getenv('APP_ENV') === 'production' en dur. Sans cette propagation,
+// APP_ENV=prod devient « production » ici (display_errors off) mais « non-production »
+// ailleurs → le health endpoint sert ses diagnostics détaillés sans authentification.
+if (getenv('APP_ENV') !== $_appEnv) {
+    putenv('APP_ENV=' . $_appEnv);
+    $_ENV['APP_ENV'] = $_appEnv;
+    $_SERVER['APP_ENV'] = $_appEnv;
+}
 $_isDebug = $_appEnv !== 'production' || getenv('APP_DEBUG') === 'true';
 if ($_appEnv === 'production') {
 	ini_set('display_errors', '0');

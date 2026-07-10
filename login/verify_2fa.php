@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($userService->checkLoginRateLimit($ip, $twofaKey) > 0
             || (int) ($_SESSION['twofa_fails'] ?? 0) >= 5) {
             unset($_SESSION['pending_2fa'], $_SESSION['twofa_fails']);
-            $_SESSION['login_error'] = 'Trop de tentatives. Veuillez vous reconnecter plus tard.';
+            $_SESSION['error_message'] = 'Trop de tentatives. Veuillez vous reconnecter plus tard.';
             redirect('login/index.php');
         }
         $backupCode  = trim($_POST['backup_code'] ?? '');

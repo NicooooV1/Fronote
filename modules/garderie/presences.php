@@ -21,14 +21,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pointer'])) {
     } else {
         $presents = $_POST['present'] ?? [];
         $remarques = $_POST['remarques'] ?? [];
+        $ok = 0; $ko = 0;
         foreach ($_POST['inscription_ids'] as $insId) {
-            $garderieService->pointerPresence(
+            // pointerPresence renvoie false si l'inscription n'appartient pas à
+            // l'établissement courant (garde anti-IDOR) : ne pas prétendre succès.
+            $done = $garderieService->pointerPresence(
                 (int)$insId, $dateVue,
                 in_array($insId, $presents),
                 $remarques[$insId] ?? null
             );
+            $done ? $ok++ : $ko++;
         }
-        $message = 'Présences enregistrées.';
+        $message = $ko === 0
+            ? "Présences enregistrées ({$ok})."
+            : "{$ok} présence(s) enregistrée(s), {$ko} ignorée(s).";
     }
 }
 

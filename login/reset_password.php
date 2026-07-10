@@ -31,23 +31,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_reset'])) {
     if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
         $error = __('login.error.csrf');
     } else {
-        // Anti-brute-force : plafonner les tentatives de réinitialisation par IP.
-        // Fail-open si le limiteur est indisponible (ne jamais bloquer un usage légitime sur incident infra).
-        try {
-            $rl = app('rate_limiter');
-            $rl->setMaxAttempts(5)->setDecayMinutes(15);
-            $rlKey = 'pwd_reset.' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-            if ($rl->tooManyAttempts($rlKey)) {
-                $error = "Trop de demandes de réinitialisation. Veuillez réessayer dans quelques minutes.";
-            } else {
-                $rl->hit($rlKey);
-            }
-        } catch (\Throwable $e) { error_log('[reset_password] rate limiter indisponible: ' . $e->getMessage()); }
-
         $username = isset($_POST['username']) ? trim($_POST['username']) : '';
         $email = isset($_POST['email']) ? trim($_POST['email']) : '';
         $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
         $userType = isset($_POST['user_type']) ? $_POST['user_type'] : '';
+
+        // Anti-brute-force : plafonner par COMPTE CIBLE (identifiant), pas par IP — derrière
+        // un proxy/NAT toutes les requêtes partagent REMOTE_ADDR, donc 5 tentatives
+        // bloqueraient TOUS les utilisateurs (et un attaquant qui tourne ses IP passerait au
+        // travers). La clé est posée AVANT toute vérification d'existence → identique que le
+        // compte existe ou non (pas d'oracle d'énumération). Fail-open si le limiteur casse.
+        try {
+            $rl = app('rate_limiter');
+            $rl->setMaxAttempts(5)->setDecayMinutes(15);
+            $rlKey = 'pwd_reset.' . strtolower($username !== '' ? $username : 'unknown');
+            if ($rl->tooManyAttempts($rlKey)) {
+                $error = "Trop de demandes de réinitialisation pour cet identifiant. Veuillez réessayer dans quelques minutes.";
+            } else {
+                $rl->hit($rlKey);
+            }
+        } catch (\Throwable $e) { error_log('[reset_password] rate limiter indisponible: ' . $e->getMessage()); }
 
         // Validation de base (ignorée si déjà bloqué par le rate-limit ci-dessus)
         if ($error !== '') {

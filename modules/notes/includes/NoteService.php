@@ -210,10 +210,13 @@ class NoteService
             // l'auto-save (même (élève, matière, prof, trimestre, date)) — sinon double
             // comptage et moyennes faussées. On aligne bulkInsert sur autoSaveBatch :
             // on met à jour la ligne existante au lieu d'en insérer une seconde.
+            // La clé d'idempotence DOIT inclure type_evaluation : deux évaluations distinctes
+            // (« Contrôle » puis « Oral ») le même jour, même classe/matière, sont légitimes et
+            // ne doivent pas se recouvrir. Sans type_evaluation la 2e écraserait la 1re (perte de notes).
             $checkStmt = $this->pdo->prepare("
                 SELECT n.id FROM notes n
                 JOIN eleves e ON n.id_eleve = e.id AND e.etablissement_id = ?
-                WHERE n.id_eleve = ? AND n.id_matiere = ? AND n.id_professeur = ? AND n.trimestre = ? AND n.date_note = ?
+                WHERE n.id_eleve = ? AND n.id_matiere = ? AND n.id_professeur = ? AND n.trimestre = ? AND n.date_note = ? AND n.type_evaluation = ?
                 LIMIT 1
             ");
             $updateStmt = $this->pdo->prepare("
@@ -225,8 +228,11 @@ class NoteService
             $scopeStmt = $this->pdo->prepare("SELECT 1 FROM eleves WHERE id = ? AND etablissement_id = ? LIMIT 1");
             $etabId = \API\Core\EstablishmentContext::id();
             $dateNote = $common['date_note'] ?? date('Y-m-d');
+            $typeEval = $common['type_evaluation'] ?? 'Contrôle';
+            $profId   = (int) ($common['id_professeur'] ?? 0);
 
-            $count = 0;
+            $inserted = 0;   // notes réellement créées
+            $updated  = 0;   // notes existantes mises à jour (re-submit / après auto-save)
             $insertedEleveIds = [];
             foreach ($notesData as $data) {
                 if (!isset($data['note']) || $data['note'] === '') {
@@ -240,21 +246,30 @@ class NoteService
                     $etabId,
                     $data['id_eleve'],
                     $common['id_matiere'],
-                    $common['id_professeur'],
+                    $profId,
                     $common['trimestre'],
                     $dateNote,
+                    $typeEval,
                 ]);
                 $existingId = $checkStmt->fetchColumn();
                 if ($existingId) {
-                    // Note déjà présente (auto-save) → mise à jour, pas de doublon.
+                    // Note déjà présente (même évaluation, auto-save) → mise à jour, pas de doublon.
+                    // Journaliser l'historique comme updateNote() (audit des modifications). Le
+                    // verrou est vérifié EN AMONT dans form_note.php via isMatiereVerrouillee
+                    // (notes_verrous, là où la classe est connue) — isNoteLocked s'appuie sur une
+                    // colonne notes.locked absente du schéma et ne convient pas ici.
+                    if ($profId > 0) {
+                        $this->saveNoteHistory((int) $existingId, $profId, 'Saisie par lot');
+                    }
                     $updateStmt->execute([
                         $data['note'],
                         $common['note_sur'] ?? 20,
                         $common['coefficient'] ?? 1,
-                        $common['type_evaluation'] ?? 'Contrôle',
+                        $typeEval,
                         $data['commentaire'] ?? null,
                         $existingId,
                     ]);
+                    $updated++;
                 } else {
                     $stmt->execute([
                         $data['id_eleve'],
@@ -263,25 +278,26 @@ class NoteService
                         $data['note'],
                         $common['note_sur'] ?? 20,
                         $common['coefficient'] ?? 1,
-                        $common['type_evaluation'] ?? 'Contrôle',
+                        $typeEval,
                         $data['commentaire'] ?? null,
                         $common['trimestre'],
                         $dateNote,
                         $etabId,
                     ]);
+                    $insertedEleveIds[] = (int) $data['id_eleve'];
+                    $inserted++;
                 }
-                $insertedEleveIds[] = (int) $data['id_eleve'];
-                $count++;
             }
 
             $this->pdo->commit();
 
-            // --- Notification auto-trigger ---
-            if ($count > 0) {
+            // Notifier UNIQUEMENT les notes réellement créées : un re-submit (ou un submit
+            // après auto-save) ne doit pas renotifier toute la classe et ses parents.
+            if ($inserted > 0) {
                 $this->notifyNewNotes($insertedEleveIds, $common);
             }
 
-            return $count;
+            return $inserted + $updated;
         } catch (\Exception $e) {
             $this->pdo->rollBack();
             throw $e;
@@ -402,9 +418,16 @@ class NoteService
      */
     public function isNoteLocked(int $id): bool
     {
-        $stmt = $this->pdo->prepare("SELECT locked FROM notes WHERE id = ?");
-        $stmt->execute([$id]);
-        return (bool) $stmt->fetchColumn();
+        // Résilience : la colonne notes.locked n'existe pas dans tous les schémas (le
+        // verrouillage réel passe par notes_verrous / isMatiereVerrouillee). Une colonne
+        // absente ne doit jamais jeter et casser l'appelant (updateNote, saisie par lot…).
+        try {
+            $stmt = $this->pdo->prepare("SELECT locked FROM notes WHERE id = ?");
+            $stmt->execute([$id]);
+            return (bool) $stmt->fetchColumn();
+        } catch (\PDOException $e) {
+            return false;
+        }
     }
 
     // ─── Historique des modifications ────────────────────────────────
@@ -873,10 +896,12 @@ class NoteService
             $etabId = \API\Core\EstablishmentContext::id();
 
             // Check existing notes for this evaluation (scopé à l'établissement via jointure élève)
+            // Clé alignée sur bulkInsert : inclure type_evaluation pour ne pas écraser une
+            // autre évaluation du même jour.
             $checkStmt = $this->pdo->prepare("
                 SELECT n.id FROM notes n
                 JOIN eleves e ON n.id_eleve = e.id AND e.etablissement_id = ?
-                WHERE n.id_eleve = ? AND n.id_matiere = ? AND n.id_professeur = ? AND n.trimestre = ? AND n.date_note = ?
+                WHERE n.id_eleve = ? AND n.id_matiere = ? AND n.id_professeur = ? AND n.trimestre = ? AND n.date_note = ? AND n.type_evaluation = ?
                 LIMIT 1
             ");
 
@@ -906,6 +931,7 @@ class NoteService
                     $common['id_professeur'],
                     $common['trimestre'],
                     $common['date_note'],
+                    $common['type_evaluation'] ?? 'Contrôle',
                 ]);
                 $existingId = $checkStmt->fetchColumn();
 

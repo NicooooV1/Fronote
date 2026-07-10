@@ -157,6 +157,17 @@ if ($isEdit) {
             }
         }
 
+        // Verrou trimestriel : refuser la saisie par lot si la matière/classe/trimestre est
+        // verrouillée (notes_verrous). Contrôle placé ici car la classe n'est connue qu'au
+        // niveau du formulaire ; bulkInsert ne la reçoit pas.
+        if (empty($errors) && $id_matiere && $targetClasse !== '') {
+            try {
+                if ($noteService->isMatiereVerrouillee((int) $id_matiere, $targetClasse, (int) $trimestre, \API\Core\EstablishmentContext::id())) {
+                    $errors[] = "Cette matière est verrouillée pour ce trimestre : la saisie est impossible.";
+                }
+            } catch (\Throwable $e) { /* contexte/table absent → pas de verrou applicable */ }
+        }
+
         if (empty($errors)) {
             try {
                 $notesData = [];

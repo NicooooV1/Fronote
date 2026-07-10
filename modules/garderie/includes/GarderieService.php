@@ -52,12 +52,26 @@ class GarderieService
 
     public function inscrire(int $creneauId, int $eleveId, string $jour, string $dateDebut, ?string $par = null): int
     {
+        // Cloisonnement multi-tenant : le créneau ET l'élève doivent appartenir à
+        // l'établissement courant. La clé unique uk_creneau_eleve_jour ne contient PAS
+        // etablissement_id → sans ce garde, un ON DUPLICATE KEY pourrait réactiver /
+        // écraser l'inscription d'un autre établissement, ou injecter un élève tiers.
+        // (Un créneau validé comme mien borne la collision ON DUPLICATE à mes propres lignes.)
+        $etabId = $this->etabId();
+        if ($etabId === null) return 0;
+        $chk = $this->pdo->prepare("SELECT 1 FROM garderie_creneaux WHERE id = ? AND etablissement_id = ? LIMIT 1");
+        $chk->execute([$creneauId, $etabId]);
+        if (!$chk->fetchColumn()) return 0;
+        $chk = $this->pdo->prepare("SELECT 1 FROM eleves WHERE id = ? AND etablissement_id = ? LIMIT 1");
+        $chk->execute([$eleveId, $etabId]);
+        if (!$chk->fetchColumn()) return 0;
+
         $stmt = $this->pdo->prepare(
             "INSERT INTO garderie_inscriptions (etablissement_id, creneau_id, eleve_id, jour, date_debut, inscrit_par)
              VALUES (?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE statut = 'actif', date_debut = VALUES(date_debut)"
         );
-        $stmt->execute([\API\Core\EstablishmentContext::id(), $creneauId, $eleveId, $jour, $dateDebut, $par]);
+        $stmt->execute([$etabId, $creneauId, $eleveId, $jour, $dateDebut, $par]);
         return (int) $this->pdo->lastInsertId();
     }
 
@@ -135,13 +149,18 @@ class GarderieService
         // d'un autre établissement.
         $etabId = $this->etabId();
         if ($etabId === null) return [];
-        $sql = "SELECT gp.*, gi.eleve_id, gi.jour, gi.creneau_id, e.nom, e.prenom, e.classe,
+        // gi.id AS inscription_id (placé après gp.* pour l'emporter) : sans lui, un élève
+        // jamais pointé n'a pas d'identifiant d'inscription côté UI → le pointage no-op.
+        // Comparaison du jour indépendante de la locale MySQL : DATE_FORMAT('%W') rend un
+        // libellé anglais ('monday') selon lc_time_names, jamais égal à l'enum français.
+        $sql = "SELECT gp.*, gi.id AS inscription_id, gi.eleve_id, gi.jour, gi.creneau_id, e.nom, e.prenom, e.classe,
                        gc.nom AS creneau_nom, gc.type AS creneau_type
                 FROM garderie_inscriptions gi
                 JOIN eleves e ON gi.eleve_id = e.id
                 JOIN garderie_creneaux gc ON gi.creneau_id = gc.id
                 LEFT JOIN garderie_presences gp ON gi.id = gp.inscription_id AND gp.date_presence = ?
-                WHERE gi.statut = 'actif' AND gi.etablissement_id = ? AND gi.jour = LOWER(DATE_FORMAT(?, '%W'))";
+                WHERE gi.statut = 'actif' AND gi.etablissement_id = ?
+                  AND gi.jour = ELT(WEEKDAY(?) + 1, 'lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche')";
         $params = [$date, $etabId, $date];
         if ($creneauId) { $sql .= " AND gi.creneau_id = ?"; $params[] = $creneauId; }
         $sql .= " ORDER BY gc.type, e.nom";
@@ -277,13 +296,20 @@ class GarderieService
 
     public function creerActivite(array $d): int
     {
-        // Cloisonnement multi-tenant : le créneau ciblé doit appartenir à l'établissement courant.
-        if ($this->getCreneau((int) $d['creneau_id']) === null) return 0;
+        // Cloisonnement multi-tenant FAIL-CLOSED : passer par etabId() (try/catch) et non par
+        // getCreneau() qui appelle EstablishmentContext::id() en direct (throw → 500 au lieu de
+        // return 0). Le créneau doit être mien, et l'activité doit porter etablissement_id
+        // (colonne DEFAULT 1 → sinon toute activité d'un établissement ≠ 1 est mal attribuée).
+        $etabId = $this->etabId();
+        if ($etabId === null) return 0;
+        $chk = $this->pdo->prepare("SELECT 1 FROM garderie_creneaux WHERE id = ? AND etablissement_id = ? LIMIT 1");
+        $chk->execute([(int) $d['creneau_id'], $etabId]);
+        if (!$chk->fetchColumn()) return 0;
         $stmt = $this->pdo->prepare("
-            INSERT INTO garderie_activites (creneau_id, titre, description, date_activite, animateur)
-            VALUES (:c, :t, :d, :da, :a)
+            INSERT INTO garderie_activites (creneau_id, etablissement_id, titre, description, date_activite, animateur)
+            VALUES (:c, :etab, :t, :d, :da, :a)
         ");
-        $stmt->execute([':c' => $d['creneau_id'], ':t' => $d['titre'], ':d' => $d['description'] ?? null,
+        $stmt->execute([':c' => $d['creneau_id'], ':etab' => $etabId, ':t' => $d['titre'], ':d' => $d['description'] ?? null,
                         ':da' => $d['date_activite'], ':a' => $d['animateur'] ?? null]);
         return (int)$this->pdo->lastInsertId();
     }
@@ -308,14 +334,19 @@ class GarderieService
 
     public function notifierArriveeParent(int $eleveId): void
     {
+        // Cloisonnement multi-tenant : ne notifier que pour un élève de l'établissement
+        // courant (défense en profondeur contre un eleve_id falsifié par un futur appelant).
+        $etabId = $this->etabId();
+        if ($etabId === null) return;
+        $eleve = $this->pdo->prepare("SELECT prenom, nom FROM eleves WHERE id = ? AND etablissement_id = ?");
+        $eleve->execute([$eleveId, $etabId]);
+        $el = $eleve->fetch(\PDO::FETCH_ASSOC);
+        if (!$el) return; // élève hors établissement → ne rien notifier
+        $nom = $el['prenom'] . ' ' . $el['nom'];
+
         $stmt = $this->pdo->prepare("SELECT pe.id_parent AS parent_id FROM parent_eleve pe WHERE pe.id_eleve = :e");
         $stmt->execute([':e' => $eleveId]);
         $parentIds = $stmt->fetchAll(\PDO::FETCH_COLUMN);
-
-        $eleve = $this->pdo->prepare("SELECT prenom, nom FROM eleves WHERE id = ?");
-        $eleve->execute([$eleveId]);
-        $el = $eleve->fetch(\PDO::FETCH_ASSOC);
-        $nom = $el ? $el['prenom'] . ' ' . $el['nom'] : 'Votre enfant';
 
         try {
             require_once __DIR__ . '/../../notifications/includes/NotificationService.php';

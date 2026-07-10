@@ -12,11 +12,13 @@ require_once dirname(__DIR__) . '/API/bootstrap.php';
 
 $code  = $_GET['code'] ?? '';
 $state = $_GET['state'] ?? '';
-$error = $_GET['error'] ?? '';
+// (string) : un ?error[]=x rendrait $error un tableau → htmlspecialchars(array) = TypeError (500).
+$error = (string) ($_GET['error'] ?? '');
 
-// Erreur du provider
-if ($error) {
-	$_SESSION['error_message'] = 'SSO authentication cancelled or failed: ' . htmlspecialchars($error);
+// Erreur du provider. On stocke le message BRUT : login/index.php l'échappe déjà à
+// l'affichage (htmlspecialchars) — pré-échapper ici produirait un double-encodage.
+if ($error !== '') {
+	$_SESSION['error_message'] = 'SSO authentication cancelled or failed: ' . $error;
 	header('Location: index.php');
 	exit;
 }
