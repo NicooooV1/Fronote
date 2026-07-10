@@ -432,6 +432,14 @@ class ModuleService
     {
         if ($this->topbarColsEnsured) return;
         $this->topbarColsEnsured = true;
+        // Sentinelle PERSISTANTE (APCu) : une fois les colonnes garanties, éviter le
+        // SHOW COLUMNS à CHAQUE requête (introspection sur le chemin chaud du topbar).
+        // Repli sur la mémoïsation per-request si APCu indisponible.
+        if (function_exists('apcu_fetch')) {
+            $ok = false;
+            apcu_fetch('fronote_topbar_cols_ok', $ok);
+            if ($ok === true) return;
+        }
         // On vérifie l'existence des colonnes AVANT d'altérer : "ADD COLUMN IF NOT EXISTS"
         // n'est pas supporté par toutes les versions MySQL/MariaDB (erreur de syntaxe à
         // chaque page sinon).
@@ -452,6 +460,11 @@ class ModuleService
             } catch (\Throwable $e) {
                 error_log('[ModuleService] ensureTopbarColumns ALTER ' . $col . ': ' . $e->getMessage());
             }
+        }
+        // Colonnes garanties : mémoriser de façon persistante (1 h) pour court-circuiter
+        // le SHOW COLUMNS des prochaines requêtes.
+        if (function_exists('apcu_store')) {
+            apcu_store('fronote_topbar_cols_ok', true, 3600);
         }
     }
 

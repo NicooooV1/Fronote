@@ -86,6 +86,10 @@ class SchemaSyncService
         foreach (glob($this->basePath . '/modules/*/Database/install.sql') ?: [] as $f) {
             $sources[] = $f;
         }
+        // Le schéma RGPD (rgpd/Database/install.sql) était hors périmètre du scan.
+        foreach (glob($this->basePath . '/rgpd/Database/*.sql') ?: [] as $f) {
+            $sources[] = $f;
+        }
 
         $tables = [];
         foreach ($sources as $file) {
@@ -118,7 +122,9 @@ class SchemaSyncService
         // corps parenthésé (profondeur équilibrée) + le suffixe jusqu'au ';'.
         $len = strlen($sql);
         $offset = 0;
-        $re = '/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`([a-zA-Z0-9_]+)`\s*\(/i';
+        // Backticks OPTIONNELS autour du nom de table (certaines tables de pronote.sql
+        // sont définies sans backticks — elles étaient invisibles au parseur).
+        $re = '/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?([a-zA-Z0-9_]+)`?\s*\(/i';
         while (preg_match($re, $sql, $m, PREG_OFFSET_CAPTURE, $offset)) {
             $name = $m[1][0];
             $parenStart = $m[0][1] + strlen($m[0][0]) - 1; // position du '('
@@ -158,11 +164,17 @@ class SchemaSyncService
         foreach ($items as $item) {
             $item = trim($item);
             if ($item === '') continue;
-            // Une colonne commence par un identifiant entre backticks suivi d'un type.
-            if (preg_match('/^`([a-zA-Z0-9_]+)`\s+\S/', $item, $m)) {
+            // 1) Écarter EXPLICITEMENT les clés/contraintes par mot-clé de tête. C'est
+            //    indispensable AVANT d'assouplir les backticks : sinon une ligne
+            //    « KEY idx (col) » serait prise pour une colonne nommée « KEY » (bug
+            //    qui cassait platform_roles lors d'une tentative précédente).
+            if (preg_match('/^\s*(PRIMARY|UNIQUE|KEY|INDEX|FULLTEXT|SPATIAL|CONSTRAINT|FOREIGN|CHECK)\b/i', $item)) {
+                continue;
+            }
+            // 2) Colonne : identifiant (backtické OU non) suivi d'un type.
+            if (preg_match('/^`?([a-zA-Z0-9_]+)`?\s+\S/', $item, $m)) {
                 $cols[$m[1]] = $item;
             }
-            // sinon : clé/contrainte → ignorée (le CREATE complet la gère à la création).
         }
         return $cols;
     }
