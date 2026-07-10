@@ -129,7 +129,8 @@ try {
 }
 
 // Sécurité : forcer display_errors off en production
-$_appEnv = getenv('APP_ENV') ?: 'production';
+$_appEnv = strtolower(trim(getenv('APP_ENV') ?: 'production'));
+if ($_appEnv === 'prod') { $_appEnv = 'production'; } // 'prod' ≡ 'production' (normalisation)
 $_isDebug = $_appEnv !== 'production' || getenv('APP_DEBUG') === 'true';
 if ($_appEnv === 'production') {
 	ini_set('display_errors', '0');

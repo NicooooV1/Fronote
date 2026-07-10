@@ -54,6 +54,7 @@ final class ProductionReadinessChecker
         $keys = [
             'APP_ENV', 'APP_DEBUG', 'APP_URL', 'APP_KEY', 'JWT_SECRET',
             'WEBSOCKET_ENABLED', 'WEBSOCKET_API_SECRET', 'WEBSOCKET_ALLOWED_ORIGINS',
+            'WS_PHP_AUTHORIZE_URL', 'ALLOW_DEMO_ACCOUNTS',
             'SESSION_SECURE', 'HEALTH_TOKEN', 'DB_PASS',
         ];
         $env = [];
