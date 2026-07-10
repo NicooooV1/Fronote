@@ -6,8 +6,13 @@ namespace API\Core;
 /**
  * Encryption — Chiffrement AES-256-GCM pour données sensibles at-rest.
  *
- * Utilise APP_KEY comme clé maître, dérive une clé par contexte via HKDF.
- * Supporte le versioning de clé pour la rotation.
+ * Clé maître = APP_KEY (repli JWT_SECRET). La clé de chiffrement effective est dérivée
+ * PAR VERSION, ce qui permet la rotation :
+ *   - v1 (legacy) : SHA-256 du matériel de clé (données chiffrées avant l'ajout de HKDF).
+ *   - v2+         : HKDF-SHA256 (RFC 5869) avec un `info` versionné.
+ * Le déchiffrement lit la version dans le payload et applique la bonne dérivation, donc
+ * les données v1 existantes restent lisibles pendant/après la rotation. Écriture = version
+ * courante (KEY_VERSION). Pour tourner la clé : bumper KEY_VERSION + ré-encoder à la volée.
  *
  * Usage :
  *   $enc = new Encryption();
@@ -16,9 +21,10 @@ namespace API\Core;
  */
 class Encryption
 {
-    private string $masterKey;
+    private string $keyMaterial;
     private const CIPHER = 'aes-256-gcm';
-    private const KEY_VERSION = 1;
+    private const KEY_VERSION = 2;              // version d'écriture courante (HKDF)
+    private const HKDF_INFO = 'fronote-at-rest';
 
     public function __construct(?string $masterKey = null)
     {
@@ -26,8 +32,19 @@ class Encryption
         if ($key === null || $key === '') {
             throw new \RuntimeException('Aucune clé applicative (APP_KEY ou JWT_SECRET) configurée pour le chiffrement.');
         }
-        // Dériver une clé 256 bits depuis le matériel de clé.
-        $this->masterKey = hash('sha256', $key, true);
+        $this->keyMaterial = $key;
+    }
+
+    /**
+     * Clé de chiffrement 256 bits pour une VERSION donnée (support rotation).
+     * v1 = SHA-256 du matériel (compat des données déjà chiffrées) ; v2+ = HKDF-SHA256.
+     */
+    private function keyForVersion(int $version): string
+    {
+        if ($version <= 1) {
+            return hash('sha256', $this->keyMaterial, true); // legacy — NE PAS modifier
+        }
+        return hash_hkdf('sha256', $this->keyMaterial, 32, self::HKDF_INFO . '-v' . $version, '');
     }
 
     /**
@@ -66,7 +83,7 @@ class Encryption
         $ciphertext = openssl_encrypt(
             $plaintext,
             self::CIPHER,
-            $this->masterKey,
+            $this->keyForVersion(self::KEY_VERSION),
             OPENSSL_RAW_DATA,
             $nonce,
             $tag,
@@ -104,10 +121,11 @@ class Encryption
             throw new \RuntimeException('Invalid base64 in encrypted payload.');
         }
 
+        // Sélection de la clé selon la version inscrite dans le payload (rotation).
         $plaintext = openssl_decrypt(
             $ciphertext,
             self::CIPHER,
-            $this->masterKey,
+            $this->keyForVersion((int) $version),
             OPENSSL_RAW_DATA,
             $nonce,
             $tag

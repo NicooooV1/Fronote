@@ -104,21 +104,41 @@ class TwoFactorService
      */
     public function verifyCode(string $secret, string $code): bool
     {
+        return $this->matchStep($secret, $code) >= 0;
+    }
+
+    /** Retourne le pas de temps (compteur TOTP) qui valide le code, ou -1 si aucun. */
+    private function matchStep(string $secret, string $code): int
+    {
         if (strlen($code) !== self::DIGITS || !ctype_digit($code)) {
-            return false;
+            return -1;
         }
 
         $secretBytes = $this->decodeBase32($secret);
         $now = (int) floor(time() / self::PERIOD);
 
         for ($i = -self::WINDOW; $i <= self::WINDOW; $i++) {
-            $expected = $this->generateTOTP($secretBytes, $now + $i);
+            $step = $now + $i;
+            $expected = $this->generateTOTP($secretBytes, $step);
             if (hash_equals($expected, $code)) {
-                return true;
+                return $step;
             }
         }
 
-        return false;
+        return -1;
+    }
+
+    private bool $replayTableReady = false;
+    /** Crée si besoin le magasin anti-rejeu (dernier pas de temps consommé par utilisateur). */
+    private function ensureReplayTable(): void
+    {
+        if ($this->replayTableReady) return;
+        // Définition portable (MySQL et SQLite) : pas de suffixe ENGINE/CHARSET.
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS two_factor_last_step (
+            user_id INT NOT NULL, user_type VARCHAR(32) NOT NULL, last_step BIGINT NOT NULL,
+            PRIMARY KEY (user_id, user_type)
+        )");
+        $this->replayTableReady = true;
     }
 
     /**
@@ -233,7 +253,35 @@ class TwoFactorService
         $secret = $this->getSecret($userId, $userType);
         if (!$secret) return false;
 
-        return $this->verifyCode($secret, $code);
+        $step = $this->matchStep($secret, $code);
+        if ($step < 0) return false;
+
+        // Anti-rejeu (RFC 6238 §5.2) : un pas de temps ne peut être consommé qu'UNE fois.
+        // Refuser tout code dont le pas est <= au dernier pas validé pour ce compte
+        // (empêche le rejeu d'un code intercepté dans la fenêtre ±1).
+        try {
+            $this->ensureReplayTable();
+            $stmt = $this->pdo->prepare("SELECT last_step FROM two_factor_last_step WHERE user_id = ? AND user_type = ?");
+            $stmt->execute([$userId, $userType]);
+            $last = $stmt->fetchColumn();
+            if ($last !== false && (int) $last >= $step) {
+                return false; // rejeu détecté
+            }
+            // Upsert PORTABLE (MySQL + SQLite) : le SELECT ci-dessus indique déjà s'il faut
+            // insérer ou mettre à jour (évite ON DUPLICATE KEY, spécifique MySQL).
+            if ($last === false) {
+                $this->pdo->prepare("INSERT INTO two_factor_last_step (user_id, user_type, last_step) VALUES (?, ?, ?)")
+                          ->execute([$userId, $userType, $step]);
+            } else {
+                $this->pdo->prepare("UPDATE two_factor_last_step SET last_step = ? WHERE user_id = ? AND user_type = ?")
+                          ->execute([$step, $userId, $userType]);
+            }
+        } catch (\Throwable $e) {
+            // Fail-open sur incident infra du store anti-rejeu : ne pas bloquer un login
+            // légitime, mais tracer pour supervision.
+            error_log('[2FA anti-rejeu] ' . $e->getMessage());
+        }
+        return true;
     }
 
     // ─── Codes de secours (recovery) ─────────────────────────────
@@ -252,7 +300,7 @@ class TwoFactorService
         for ($i = 0; $i < $count; $i++) {
             $raw = bin2hex(random_bytes(5)); // 10 caractères hex, haute entropie
             $codes[] = strtoupper(substr($raw, 0, 5) . '-' . substr($raw, 5, 5));
-            $hashes[] = hash('sha256', $this->normalizeBackupCode($raw));
+            $hashes[] = $this->backupHash($this->normalizeBackupCode($raw));
         }
 
         try {
@@ -283,15 +331,18 @@ class TwoFactorService
         $norm = $this->normalizeBackupCode($code);
         if ($norm === '') return false;
 
-        $hash = hash('sha256', $norm);
+        // Vérifie le HMAC peppéré (nouveau) ET le SHA-256 legacy (codes générés avant le
+        // pepper) pour ne pas invalider les codes de secours existants.
+        $hmac   = $this->backupHash($norm);
+        $legacy = hash('sha256', $norm);
         try {
             // Consommation atomique : le filtre used_at IS NULL dans l'UPDATE garantit
             // l'usage unique même sous requêtes concurrentes (pas de race SELECT→UPDATE).
             $stmt = $this->pdo->prepare(
                 "UPDATE user_backup_codes SET used_at = NOW()
-                 WHERE user_id = ? AND user_type = ? AND code_hash = ? AND used_at IS NULL"
+                 WHERE user_id = ? AND user_type = ? AND code_hash IN (?, ?) AND used_at IS NULL"
             );
-            $stmt->execute([$userId, $userType, $hash]);
+            $stmt->execute([$userId, $userType, $hmac, $legacy]);
             return $stmt->rowCount() === 1;
         } catch (\PDOException $e) {
             error_log("TwoFactorService::verifyBackupCode error: " . $e->getMessage());
@@ -313,6 +364,15 @@ class TwoFactorService
         } catch (\PDOException $e) {
             return 0;
         }
+    }
+
+    /** Hachage des codes de secours : HMAC-SHA256 poivré par APP_KEY (anti brute-force
+     *  hors-ligne en cas de fuite DB). Dégrade en SHA-256 nu si aucune clé (comme le
+     *  reste du chiffrement) pour ne pas casser sur un déploiement non configuré. */
+    private function backupHash(string $norm): string
+    {
+        $pepper = getenv('APP_KEY') ?: (getenv('JWT_SECRET') ?: '');
+        return $pepper !== '' ? hash_hmac('sha256', $norm, $pepper) : hash('sha256', $norm);
     }
 
     private function normalizeBackupCode(string $code): string
