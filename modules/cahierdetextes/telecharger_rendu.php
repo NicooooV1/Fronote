@@ -38,8 +38,7 @@ $isOwnerEleve = isStudent() && (int)$rendu['eleve_id'] === (int)($user['id'] ?? 
 $isOwnerProf  = $service->profOwnsRendu($id, $userFullname, $isPrivileged);
 
 if (!$isOwnerEleve && !$isOwnerProf) {
-    http_response_code(403);
-    exit('Accès refusé.');
+    deny_access(false, 'Accès refusé.');
 }
 
 // Servir le fichier via le service centralisé (chemin relatif à uploads/)

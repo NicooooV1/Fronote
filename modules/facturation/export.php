@@ -6,8 +6,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/header.php';
 
 if (!isAdmin() && !isPersonnelVS()) {
-    http_response_code(403);
-    exit('Accès refusé');
+    deny_access(false, 'Accès refusé.');
 }
 
 $exportService = new \API\Services\ExportService(getPDO());

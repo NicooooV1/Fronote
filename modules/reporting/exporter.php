@@ -13,7 +13,7 @@ $go = isset($_GET['go']);
 if ($go && $type && $classeId) {
     require_once __DIR__ . '/../../API/bootstrap.php';
     requireAuth();
-    if (!isAdmin() && !isTeacher() && !isVieScolaire()) { die('Accès refusé'); }
+    if (!isAdmin() && !isTeacher() && !isVieScolaire()) { deny_access(false, 'Accès refusé.'); }
 
     require_once __DIR__ . '/includes/ReportingService.php';
     $reportService = new ReportingService(getPDO());

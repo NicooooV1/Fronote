@@ -5,7 +5,7 @@ declare(strict_types=1);
  */
 require_once __DIR__ . '/../../API/bootstrap.php';
 requireAuth();
-if (!isAdmin() && !isVieScolaire()) { die('Accès refusé'); }
+if (!isAdmin() && !isVieScolaire()) { deny_access(false, 'Accès refusé.'); }
 
 require_once __DIR__ . '/includes/DiplomeService.php';
 $service = new DiplomeService(getPDO());

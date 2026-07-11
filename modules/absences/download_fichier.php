@@ -9,8 +9,7 @@ require_once __DIR__ . '/../../API/core.php';
 require_once __DIR__ . '/includes/AbsenceRepository.php';
 
 if (!isLoggedIn()) {
-    http_response_code(403);
-    exit('Accès refusé');
+    deny_access(false, 'Accès refusé.');
 }
 
 $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
@@ -53,8 +52,7 @@ if (!in_array($role, ['administrateur', 'admin', 'vie_scolaire'])) {
     }
 
     if (!$autorise) {
-        http_response_code(403);
-        exit('Accès refusé');
+        deny_access(false, 'Accès refusé.');
     }
 }
 

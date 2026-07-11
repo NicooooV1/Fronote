@@ -31,13 +31,13 @@ $eleveId = (int) ($stage['eleve_id'] ?? 0);
 if (isAdmin() || isVieScolaire() || isProfesseur()) {
     // accès autorisé
 } elseif (isEleve()) {
-    if ($eleveId !== (int) getUserId()) { http_response_code(403); die('Accès refusé.'); }
+    if ($eleveId !== (int) getUserId()) { deny_access(false, 'Accès refusé.'); }
 } elseif (isParent()) {
     $chk = $pdo->prepare("SELECT 1 FROM parent_eleve WHERE id_parent = ? AND id_eleve = ? LIMIT 1");
     $chk->execute([getUserId(), $eleveId]);
-    if (!$chk->fetchColumn()) { http_response_code(403); die('Accès refusé.'); }
+    if (!$chk->fetchColumn()) { deny_access(false, 'Accès refusé.'); }
 } else {
-    http_response_code(403); die('Accès refusé.');
+    deny_access(false, 'Accès refusé.');
 }
 
 $etab = [];

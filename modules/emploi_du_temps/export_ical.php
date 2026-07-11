@@ -56,21 +56,20 @@ if ($role === 'professeur') {
     if ($requested > 0) {
         $chk = $pdo->prepare("SELECT COUNT(*) FROM parent_eleve WHERE id_parent = ? AND id_eleve = ?");
         $chk->execute([(int) $user['id'], $requested]);
-        if (!$chk->fetchColumn()) { http_response_code(403); exit('Accès refusé'); }
+        if (!$chk->fetchColumn()) { deny_access(false, 'Accès refusé.'); }
         $childId = $requested;
     } else {
         $stmt = $pdo->prepare("SELECT id_eleve FROM parent_eleve WHERE id_parent = ? LIMIT 1");
         $stmt->execute([(int) $user['id']]);
         $childId = (int) $stmt->fetchColumn();
     }
-    if (!$childId) { http_response_code(403); exit('Accès refusé'); }
+    if (!$childId) { deny_access(false, 'Accès refusé.'); }
     // ANTI-LOCKOUT : la classe non résolue ne bloque pas l'accès au calendrier
     // de l'enfant légitime ; $classeId=0 -> calendrier vide (cf. garde plus bas).
     $classeId = $resolveClasseIdForEleve($childId);
 } elseif (!isAdmin() && !isVieScolaire()) {
     // Tout autre rôle non-staff : pas d'accès au filtrage libre.
-    http_response_code(403);
-    exit('Accès refusé');
+    deny_access(false, 'Accès refusé.');
 }
 // Admin / vie scolaire : conservent le filtrage libre par classe_id / prof_id.
 

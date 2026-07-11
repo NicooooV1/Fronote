@@ -8,7 +8,7 @@ declare(strict_types=1);
  */
 require_once __DIR__ . '/../../API/bootstrap.php';
 requireAuth();
-if (!isAdmin() && !isVieScolaire() && !isProfesseur()) { die('Accès refusé'); }
+if (!isAdmin() && !isVieScolaire() && !isProfesseur()) { deny_access(false, 'Accès refusé.'); }
 
 require_once __DIR__ . '/includes/CompetenceService.php';
 $service = new CompetenceService(getPDO());

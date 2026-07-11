@@ -40,8 +40,7 @@ try {
     $attachment = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$attachment) {
-        http_response_code(403);
-        die('Accès refusé : vous n\'êtes pas participant à cette conversation ou la pièce jointe n\'existe pas.');
+        deny_access(false, 'Accès refusé : vous n\'êtes pas participant à cette conversation ou la pièce jointe n\'existe pas.');
     }
 
     // Servir le fichier via le service centralisé

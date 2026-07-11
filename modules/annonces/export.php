@@ -8,8 +8,7 @@ require_once __DIR__ . '/../../API/core.php';
 requireAuth();
 
 if (!isAdmin() && !isVieScolaire()) {
-    http_response_code(403);
-    exit('Accès refusé');
+    deny_access(false, 'Accès refusé.');
 }
 
 $pdo = getPDO();

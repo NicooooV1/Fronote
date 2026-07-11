@@ -5,7 +5,7 @@ declare(strict_types=1);
  */
 require_once __DIR__ . '/../../API/bootstrap.php';
 requireAuth();
-if (!isAdmin() && !isVieScolaire() && !isTeacher()) { die('Accès refusé'); }
+if (!isAdmin() && !isVieScolaire() && !isTeacher()) { deny_access(false, 'Accès refusé.'); }
 
 require_once __DIR__ . '/includes/SallesMaterielService.php';
 $service = new SallesMaterielService(getPDO());

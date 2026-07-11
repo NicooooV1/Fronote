@@ -46,8 +46,7 @@ $role    = getUserRole();
 $vis     = json_decode($doc['visibilite'] ?? '[]', true) ?: [];
 $isStaff = in_array($role, ['administrateur', 'professeur', 'vie_scolaire'], true);
 if (!$isStaff && !empty($vis) && !in_array($role, $vis, true)) {
-    http_response_code(403);
-    die('Accès non autorisé.');
+    deny_access(false, 'Accès non autorisé.');
 }
 
 $docService->incrementerTelechargements($id);

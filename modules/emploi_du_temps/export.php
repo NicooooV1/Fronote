@@ -9,8 +9,7 @@ require_once __DIR__ . '/includes/EdtService.php';
 requireAuth();
 
 if (!isAdmin() && !isVieScolaire() && !isTeacher()) {
-    http_response_code(403);
-    exit('Accès refusé');
+    deny_access(false, 'Accès refusé.');
 }
 
 $pdo = getPDO();

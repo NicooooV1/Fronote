@@ -10,7 +10,7 @@ requireAuth();
 
 // Document nominatif (élève + date de naissance + classe) signé par le chef d'établissement.
 // Réservé au personnel : empêche un élève/parent de tirer la convocation d'un autre via ?id=.
-if (!isAdmin() && !isVieScolaire() && !isTeacher()) { die('Accès refusé'); }
+if (!isAdmin() && !isVieScolaire() && !isTeacher()) { deny_access(false, 'Accès refusé.'); }
 
 $pdo = getPDO();
 
