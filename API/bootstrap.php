@@ -364,9 +364,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 // couvre les 3 mondes (établissement `user_id`, plateforme `platform.account_id`,
 // tenant `tenant.account_id`). Auparavant seul le monde établissement était protégé,
 // laissant les sessions plateforme/tenant sans expiration ni révocation.
-$_hasIdentity = !empty($_SESSION['user_id'])
-	|| !empty($_SESSION['platform']['account_id'])
-	|| !empty($_SESSION['tenant']['account_id']);
+$_hasIdentity = session_has_identity();
 if (php_sapi_name() !== 'cli' && $_hasIdentity) {
 	$_sessTtl = (int) (getenv('SESSION_LIFETIME') ?: 7200);
 	$_now     = time();
@@ -548,9 +546,7 @@ require_once API_PATH . '/Legacy/Bridge.php';
 // impersonifié resterait en cache pour la requête après une révocation.
 \API\Support\SupportImpersonation::enforce();
 
-$_revokeIdentity = !empty($_SESSION['user_id'])
-	|| !empty($_SESSION['platform']['account_id'])
-	|| !empty($_SESSION['tenant']['account_id']);
+$_revokeIdentity = session_has_identity();
 if (php_sapi_name() !== 'cli' && $_revokeIdentity) {
 	$_forceLogout = false;
 	// (1) Session révoquée côté serveur (session_security). Keyé sur session_id() → couvre les

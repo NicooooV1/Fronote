@@ -123,6 +123,16 @@ if (!function_exists('request_wants_json')) {
     }
 }
 
+if (!function_exists('session_has_identity')) {
+    /** Une identité authentifiée est-elle en session, quel que soit le monde (établissement/plateforme/tenant) ? */
+    function session_has_identity(): bool
+    {
+        return !empty($_SESSION['user_id'])
+            || !empty($_SESSION['platform']['account_id'])
+            || !empty($_SESSION['tenant']['account_id']);
+    }
+}
+
 if (!function_exists('app_is_debug')) {
     /** Mode debug applicatif (config('app.debug') si dispo, sinon APP_DEBUG / APP_ENV dev). */
     function app_is_debug(): bool
@@ -154,18 +164,6 @@ if (!function_exists('json_error')) {
     }
 }
 
-if (!function_exists('json_ok')) {
-    /** Réponse JSON de succès normalisée {ok:true, ...data}. */
-    function json_ok(array $data = [], int $status = 200): void
-    {
-        if (!headers_sent()) {
-            http_response_code($status);
-            header('Content-Type: application/json; charset=utf-8');
-        }
-        echo json_encode(array_merge(['ok' => true], $data));
-    }
-}
-
 if (!function_exists('deny_access')) {
     /**
      * Refus d'accès unifié : 401/403 en JSON si l'appelant attend du JSON, sinon redirection HTML
@@ -193,22 +191,3 @@ if (!function_exists('deny_access')) {
     }
 }
 
-if (!function_exists('app_log_error')) {
-    /**
-     * Journalisation d'erreur applicative via le Logger structuré (singleton 'log') si disponible,
-     * sinon repli error_log(). Point d'entrée à préférer aux error_log() bruts dispersés.
-     */
-    function app_log_error(string $message, array $context = []): void
-    {
-        try {
-            if (function_exists('app')) {
-                $log = app('log');
-                if (is_object($log) && method_exists($log, 'error')) {
-                    $log->error($message, $context);
-                    return;
-                }
-            }
-        } catch (\Throwable $e) { /* repli ci-dessous */ }
-        error_log('[Fronote] ' . $message . ($context ? ' ' . json_encode($context) : ''));
-    }
-}

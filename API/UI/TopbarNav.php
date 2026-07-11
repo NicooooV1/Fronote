@@ -49,7 +49,7 @@ final class TopbarNav
             'notif_count'    => self::notifCount($userId, $userType),
             'etab_name'      => self::etabName(),
             'is_parent'      => ($userType === 'parent'),
-            'children'       => ($children = self::children($userId, $userType, $selectedChild)),
+            'children'       => self::children($userId, $userType, $selectedChild),
             'selected_child' => $selectedChild,
             'role'           => $role,
         ];
