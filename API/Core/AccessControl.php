@@ -45,7 +45,12 @@ final class AccessControl
         'templates/maintenance.php',
     ];
 
-    /** Répertoires dont l'accès est protégé (authentification obligatoire). */
+    /**
+     * Répertoires dont l'accès est protégé (authentification obligatoire).
+     * NOTE : depuis la bascule DENY-BY-DEFAULT, cette liste n'est plus le seul périmètre protégé
+     * (tout ce qui n'est ni public ni self-guarded exige une auth). Elle sert à documenter les
+     * zones protégées connues et à la vérification de classement (test).
+     */
     private const ENFORCED_PREFIX = [
         'admin/',
         'modules/',
@@ -55,6 +60,19 @@ final class AccessControl
         'tutorat/',
         'securite/',
         'API/endpoints/',
+    ];
+
+    /**
+     * Mondes à AUTHENTIFICATION PROPRE : plateforme et établissement (tenant) gèrent leur session
+     * (`platform.account_id` / `tenant.account_id`), pas le `user_id` legacy. AccessControl ne leur
+     * applique donc pas la garde de rôle legacy (leurs gardes de page font foi) mais les reconnaît
+     * comme CLASSÉS (pas « oubliés » sous le deny-by-default).
+     */
+    private const SELF_GUARDED_PREFIX = [
+        'platform/',
+        'tenant/',
+        'impersonation/',
+        'director/',
     ];
 
     /** Réservé au super_admin (opérations infrastructure / cross-établissement). */
@@ -86,12 +104,14 @@ final class AccessControl
             return;
         }
 
-        // 2) Hors zone protégée (racine, etc.) → délégué aux gardes par page.
-        if (!self::isEnforced($rel)) {
+        // 2) Mondes à AUTHENTIFICATION PROPRE (plateforme/tenant/…) → leurs gardes de page font foi.
+        if (self::isSelfGuarded($rel)) {
             return;
         }
 
-        // 3) Zone protégée : authentification obligatoire.
+        // 3) DENY-BY-DEFAULT : tout le reste exige une authentification. Auparavant, un chemin hors
+        //    ENFORCED_PREFIX était laissé passer (délégué aux gardes de page) → un nouveau dossier de
+        //    haut niveau mal classé était exposé par défaut. Désormais : protégé sauf allow-list.
         $role = self::currentRole();
         if ($role === null) {
             self::deny(true, $basePath);
@@ -158,6 +178,32 @@ final class AccessControl
             }
         }
         return false;
+    }
+
+    /** Le chemin relève-t-il d'un monde à authentification propre (plateforme/tenant/…) ? */
+    private static function isSelfGuarded(string $rel): bool
+    {
+        foreach (self::SELF_GUARDED_PREFIX as $p) {
+            if (self::startsWith($rel, $p)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Liste des préfixes/exacts explicitement classés (pour le test de classement). Un dossier de
+     * haut niveau contenant des points d'entrée web DOIT tomber dans l'une de ces catégories,
+     * sinon il serait protégé par le deny-by-default sans intention explicite (à classer).
+     * @return array{public:string[],enforced:string[],self_guarded:string[]}
+     */
+    public static function classification(): array
+    {
+        return [
+            'public'       => array_merge(self::PUBLIC_EXACT, self::PUBLIC_PREFIX),
+            'enforced'     => self::ENFORCED_PREFIX,
+            'self_guarded' => self::SELF_GUARDED_PREFIX,
+        ];
     }
 
     /**
