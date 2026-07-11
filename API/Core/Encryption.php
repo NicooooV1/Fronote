@@ -170,9 +170,11 @@ class Encryption
         $nonce = base64_decode($nonceB64, true);
         $tag   = base64_decode($tagB64, true);
         $ct    = base64_decode($ciphertextB64, true);
+        // $ct valide en base64 suffit : un chiffré GCM de clair VIDE a un ciphertext de longueur 0
+        // (le tag de 16 o est séparé). Exiger strlen($ct) >= 1 classait à tort ce cas comme NON chiffré.
         return $nonce !== false && strlen($nonce) === 12
             && $tag !== false && strlen($tag) === 16
-            && $ct !== false && strlen($ct) >= 1;
+            && $ct !== false;
     }
 
     /**

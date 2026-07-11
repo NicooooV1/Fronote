@@ -226,27 +226,26 @@ final class Authorization
      *  sur le catalogue : c'est ce qui rend les permissions réellement gérables côté admin. */
     private function roleGrants(string $role, string $permission): bool
     {
-        // Normalise la clé de rôle vers sa forme canonique (alias tenant/variantes) AVANT tout :
-        // ainsi une éventuelle surcharge admin (rbac_permissions) posée sur le rôle canonique
-        // s'applique aussi à ses alias, et le catalogue résout correctement les rôles aliasés.
-        $role = RoleCatalog::canonical($role);
+        // Forme canonique du rôle (alias tenant/variantes → clé canonique du catalogue).
+        $canon = RoleCatalog::canonical($role);
         // 1) Override explicite en base (matrice éditée par l'admin) : granted=1 → autorisé,
-        //    granted=0 → refusé. Une ligne présente fait autorité sur le catalogue.
+        //    granted=0 → refusé. Cherché sur le rôle ORIGINAL ET sa forme canonique — une surcharge
+        //    posée sur une clé aliasée reste ainsi honorée. Le refus (MIN=0) l'emporte sur l'octroi.
         try {
             $stmt = $this->pdo->prepare(
-                "SELECT granted FROM rbac_permissions WHERE role = ? AND permission = ? LIMIT 1"
+                "SELECT MIN(granted) FROM rbac_permissions WHERE role IN (?, ?) AND permission = ?"
             );
-            $stmt->execute([$role, $permission]);
-            $row = $stmt->fetchColumn();
-            if ($row !== false) {
-                return (int) $row === 1;
+            $stmt->execute([$role, $canon, $permission]);
+            $g = $stmt->fetchColumn();
+            if ($g !== false && $g !== null) {
+                return (int) $g === 1;
             }
         } catch (\PDOException $e) {
             // table absente → on retombe sur le catalogue
         }
-        // 2) Défaut : catalogue en code (RoleCatalog).
+        // 2) Défaut : catalogue en code (RoleCatalog, résolu canonique).
         if (class_exists(RoleCatalog::class)) {
-            $grants = RoleCatalog::grantsFor($role);
+            $grants = RoleCatalog::grantsFor($canon);
             if (WildcardGrants::granted($grants, $permission)) return true;
             // Compat legacy : hasPermission('notes') interroge 'notes.manage'. Un rôle
             // "gère" un domaine s'il détient une action d'écriture du domaine (le wildcard

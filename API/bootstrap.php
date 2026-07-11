@@ -570,9 +570,13 @@ if (php_sapi_name() !== 'cli' && $_revokeIdentity) {
 		if ($_ssRow !== false && ((int) $_ssRow['is_active'] === 0 || (int) $_ssRow['expired'] === 1)) {
 			$_forceLogout = true;
 		} elseif ($_ssRow !== false) {
-			// Throttle : au plus une écriture par minute (au lieu d'un UPDATE à CHAQUE
-			// requête). La précision minute suffit au suivi d'activité de session.
-			$_ssPdo->prepare("UPDATE session_security SET last_activity = NOW() WHERE id = ? AND (last_activity IS NULL OR last_activity < (NOW() - INTERVAL 60 SECOND))")->execute([session_id()]);
+			// Throttle : au plus une écriture par minute (au lieu d'un UPDATE à CHAQUE requête).
+			// On PROLONGE aussi expires_at (fenêtre GLISSANTE = SESSION_LIFETIME) : sans ça,
+			// expires_at restait figé à login+2h et révoquait une session ACTIVE au bout de 2h,
+			// en contradiction avec le garde d'inactivité (qui tolère l'activité jusqu'au plafond
+			// absolu). Le plafond absolu (24h) reste imposé par le bloc d'expiration d'inactivité.
+			$_ssTtl = (int) (getenv('SESSION_LIFETIME') ?: 7200);
+			$_ssPdo->prepare("UPDATE session_security SET last_activity = NOW(), expires_at = DATE_ADD(NOW(), INTERVAL {$_ssTtl} SECOND) WHERE id = ? AND (last_activity IS NULL OR last_activity < (NOW() - INTERVAL 60 SECOND))")->execute([session_id()]);
 		}
 	} catch (\Throwable $e) { /* fail-open */ error_log('[bootstrap.php] ' . $e->getMessage()); }
 
@@ -582,6 +586,28 @@ if (php_sapi_name() !== 'cli' && $_revokeIdentity) {
 	if (!$_forceLogout && !empty($_SESSION['user_id'])) {
 		try { if (app('auth')->user() === null) { $_forceLogout = true; } }
 		catch (\Throwable $e) { /* fail-open */ error_log('[bootstrap.php] ' . $e->getMessage()); }
+	}
+
+	// (2b) Mondes PLATEFORME/TENANT (auth propre, hors app('auth')) : compte desactive ou
+	//      verrouille -> logout immediat, sans attendre l'expiration de session_security.
+	//      Fail-open sur erreur DB, fail-closed si le compte a disparu. Table = litteral sur.
+	if (!$_forceLogout) {
+		$_pw = !empty($_SESSION['platform']['account_id']) ? ['platform_accounts', (int) $_SESSION['platform']['account_id']]
+			: (!empty($_SESSION['tenant']['account_id']) ? ['tenant_accounts', (int) $_SESSION['tenant']['account_id']] : null);
+		if ($_pw !== null) {
+			try {
+				$_pwStmt = $app->make('db')->getConnection()->prepare(
+					"SELECT status, (locked_until IS NOT NULL AND locked_until > NOW()) AS locked FROM `{$_pw[0]}` WHERE id = ? LIMIT 1"
+				);
+				$_pwStmt->execute([$_pw[1]]);
+				$_pwRow = $_pwStmt->fetch(\PDO::FETCH_ASSOC);
+				if ($_pwRow === false || ($_pwRow['status'] ?? '') !== 'active' || (int) ($_pwRow['locked'] ?? 0) === 1) {
+					$_forceLogout = true;
+				}
+				unset($_pwStmt, $_pwRow);
+			} catch (\Throwable $e) { /* fail-open */ error_log('[bootstrap.php] ' . $e->getMessage()); }
+		}
+		unset($_pw);
 	}
 
 	if ($_forceLogout) {

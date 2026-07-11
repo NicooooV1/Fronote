@@ -180,11 +180,12 @@ final class AccountService
      * (id/identifiant/mail/hash/statut/2FA), sans rien retirer. Les tables héritées restent la source
      * de DONNÉES (classe, matière…) et de vérité tant que la bascule n'est pas validée.
      *
-     * @return array{synced:int,errors:string[]}
+     * @return array{synced:int,conflicts:int,errors:string[]}
      */
     public function syncFromLegacy(): array
     {
         $synced = 0;
+        $conflicts = 0;
         $errors = [];
         $sql = "INSERT INTO accounts
                     (account_type, username, email, password_hash, first_name, last_name, display_name,
@@ -198,24 +199,51 @@ final class AccountService
                     etablissement_id=VALUES(etablissement_id), two_factor_enabled=VALUES(two_factor_enabled),
                     last_login_at=VALUES(last_login_at), locked_until=VALUES(locked_until), updated_at=NOW()";
         $ins = $this->pdo->prepare($sql);
+        // Garde anti-corruption d'identité : (username, etablissement_id NON NULL) déjà occupé par
+        // une AUTRE identité héritée ? Sinon l'upsert collisionnerait sur uk_acc_username_etab (au
+        // lieu de uk_acc_legacy) et ÉCRASERAIT le compte miroir de l'autre identité (usurpation).
+        $conflictStmt = $this->pdo->prepare(
+            "SELECT 1 FROM accounts WHERE username = ? AND etablissement_id = ?
+                AND NOT (legacy_type = ? AND legacy_id = ?) LIMIT 1"
+        );
+        // Transaction unique (idempotence + un seul commit au lieu d'un par ligne). Best-effort :
+        // si un appelant a déjà ouvert une transaction (install), on ne l'enveloppe pas.
+        $inTx = false;
+        try { $inTx = $this->pdo->beginTransaction(); } catch (\Throwable $e) { $inTx = false; }
         foreach (self::LEGACY_TABLES as $table => [$accType, $legacyType]) {
             try {
                 $rows = $this->pdo->query(
                     "SELECT id, etablissement_id, nom, prenom, mail, identifiant, mot_de_passe, actif,
                             last_login, locked_until, two_factor_enabled FROM `{$table}`"
                 )->fetchAll(PDO::FETCH_ASSOC);
-                foreach ($rows as $r) {
+            } catch (\Throwable $e) {
+                $errors[] = "{$table}: " . $e->getMessage();
+                continue;
+            }
+            foreach ($rows as $r) {
+                // Un échec sur une ligne ne doit PAS interrompre la synchro des lignes suivantes.
+                try {
+                    $username = (string) ($r['identifiant'] ?? '');
+                    $etab = $r['etablissement_id'] ?? null;
+                    if ($etab !== null && $username !== '') {
+                        $conflictStmt->execute([$username, (int) $etab, $legacyType, (int) $r['id']]);
+                        if ($conflictStmt->fetchColumn() !== false) {
+                            $conflicts++;
+                            $errors[] = "{$table}#{$r['id']}: identifiant '{$username}' déjà pris (etab {$etab}) par une autre identité — miroir ignoré";
+                            continue;
+                        }
+                    }
                     $display = trim(((string) ($r['prenom'] ?? '')) . ' ' . ((string) ($r['nom'] ?? '')));
                     $ins->execute([
                         $accType,
-                        (string) ($r['identifiant'] ?? ''),
+                        $username,
                         ($r['mail'] ?? '') !== '' ? $r['mail'] : null,
                         $r['mot_de_passe'] ?? null,
                         $r['prenom'] ?? null,
                         $r['nom'] ?? null,
                         $display !== '' ? $display : null,
                         ((int) ($r['actif'] ?? 1) === 1) ? 'active' : 'inactive',
-                        $r['etablissement_id'] ?? null,
+                        $etab,
                         $legacyType,
                         (int) $r['id'],
                         (int) ($r['two_factor_enabled'] ?? 0),
@@ -223,12 +251,16 @@ final class AccountService
                         $r['locked_until'] ?? null,
                     ]);
                     $synced++;
+                } catch (\Throwable $e) {
+                    $errors[] = "{$table}#" . ($r['id'] ?? '?') . ': ' . $e->getMessage();
                 }
-            } catch (\Throwable $e) {
-                $errors[] = "{$table}: " . $e->getMessage();
             }
         }
-        return ['synced' => $synced, 'errors' => $errors];
+        if ($inTx) {
+            try { $this->pdo->commit(); }
+            catch (\Throwable $e) { try { $this->pdo->rollBack(); } catch (\Throwable $e2) {} $errors[] = 'commit: ' . $e->getMessage(); }
+        }
+        return ['synced' => $synced, 'conflicts' => $conflicts, 'errors' => $errors];
     }
 
     private function setStatus(int $id, string $status): bool

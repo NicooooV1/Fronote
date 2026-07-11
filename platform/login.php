@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($acc && !empty($acc['password_hash']) && password_verify($password, $acc['password_hash'])) {
             session_regenerate_id(true);
             $_SESSION['platform'] = ['account_id' => (int) $acc['id'], 'username' => $acc['username']];
-            unset($_SESSION['user'], $_SESSION['tenant']); // jamais de session établissement en parallèle
+            unset($_SESSION['user'], $_SESSION['user_id'], $_SESSION['user_type'], $_SESSION['logged_in'], $_SESSION['etablissement_id'], $_SESSION['tenant']); // jamais de session établissement en parallèle
             // Ancre le cycle de vie de session (idle/absolu + révocation) — cf. bootstrap 3-mondes.
             $_SESSION['last_activity'] = time();
             $_SESSION['session_started'] = time();
