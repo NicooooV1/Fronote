@@ -22,11 +22,48 @@ class SchemaSyncService
 {
     private PDO $pdo;
     private string $basePath;
+    /** @var array<string,array<string,string[]>> table => (fichier source => colonnes) */
+    private array $occurrences = [];
 
     public function __construct(PDO $pdo, string $basePath)
     {
         $this->pdo = $pdo;
         $this->basePath = rtrim($basePath, '/\\');
+    }
+
+    /**
+     * Tables déclarées dans PLUSIEURS sources .sql avec des jeux de colonnes DIVERGENTS.
+     * SchemaSyncService fusionne ces doublons silencieusement (union, 1er CREATE gagne) — cette
+     * méthode fait REMONTER la divergence pour ne pas la masquer. Cible : une seule source par table.
+     * @return array<string,array{sources:string[],divergent_columns:string[]}>
+     */
+    public function duplicateTables(): array
+    {
+        if (empty($this->occurrences)) {
+            $this->collectDesiredTables();
+        }
+        $dups = [];
+        foreach ($this->occurrences as $name => $bySrc) {
+            if (count($bySrc) < 2) {
+                continue;
+            }
+            $all = [];
+            foreach ($bySrc as $cols) {
+                foreach ($cols as $c) {
+                    $all[$c] = true;
+                }
+            }
+            $divergent = [];
+            foreach ($bySrc as $cols) {
+                foreach (array_diff(array_keys($all), $cols) as $mc) {
+                    $divergent[$mc] = true;
+                }
+            }
+            if ($divergent) {
+                $dups[$name] = ['sources' => array_keys($bySrc), 'divergent_columns' => array_keys($divergent)];
+            }
+        }
+        return $dups;
     }
 
     /**
@@ -69,6 +106,9 @@ class SchemaSyncService
 
         try { $this->pdo->exec('SET FOREIGN_KEY_CHECKS=1'); } catch (\Throwable $e) { error_log('[SchemaSyncService.php] ' . $e->getMessage()); }
 
+        // Surface (au lieu de masquer) les tables dupliquées à colonnes divergentes entre sources.
+        $report['duplicates'] = $this->duplicateTables();
+
         return $report;
     }
 
@@ -92,10 +132,14 @@ class SchemaSyncService
         }
 
         $tables = [];
+        $this->occurrences = [];
         foreach ($sources as $file) {
             $sql = (string) @file_get_contents($file);
             if ($sql === '') continue;
             foreach ($this->parseCreateTables($sql) as $name => $parsed) {
+                // Trace la provenance (pour duplicateTables() : détection de dérive multi-sources).
+                $rel = str_replace($this->basePath . DIRECTORY_SEPARATOR, '', $file);
+                $this->occurrences[$name][$rel] = array_keys($parsed['columns']);
                 if (!isset($tables[$name])) {
                     $tables[$name] = $parsed;
                 } else {
