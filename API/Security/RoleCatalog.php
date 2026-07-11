@@ -970,25 +970,7 @@ final class RoleCatalog
      */
     public static function permissionsFor(string $role): array
     {
-        $grants = self::grantsFor($role);
-        if (in_array('*', $grants, true)) {
-            return array_keys(self::PERMISSIONS);
-        }
-        $out = [];
-        $permKeys = array_keys(self::PERMISSIONS);
-        foreach ($grants as $g) {
-            if (str_ends_with($g, '.*')) {
-                $domain = substr($g, 0, -2);
-                foreach ($permKeys as $pk) {
-                    if (str_starts_with($pk, $domain . '.')) {
-                        $out[$pk] = true;
-                    }
-                }
-            } else {
-                $out[$g] = true;
-            }
-        }
-        return array_keys($out);
+        return WildcardGrants::expand(self::grantsFor($role), array_keys(self::PERMISSIONS));
     }
 
     /**

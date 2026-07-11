@@ -243,15 +243,13 @@ final class Authorization
         // 2) Défaut : catalogue en code (RoleCatalog).
         if (class_exists(RoleCatalog::class)) {
             $grants = RoleCatalog::grantsFor($role);
-            if (in_array('*', $grants, true)) return true;
-            if (in_array($permission, $grants, true)) return true;
-            $domain = explode('.', $permission)[0];
-            if (in_array($domain . '.*', $grants, true)) return true;
+            if (WildcardGrants::granted($grants, $permission)) return true;
             // Compat legacy : hasPermission('notes') interroge 'notes.manage'. Un rôle
-            // "gère" un domaine s'il détient le wildcard (déjà traité) OU une action
-            // d'écriture du domaine. Permet aux rôles catalogue (et attribués) de
-            // satisfaire canManageX() sans dépendre du repli RBAC.
+            // "gère" un domaine s'il détient une action d'écriture du domaine (le wildcard
+            // 'domaine.*' est déjà couvert par WildcardGrants). Permet aux rôles catalogue
+            // (et attribués) de satisfaire canManageX() sans dépendre du repli RBAC.
             if (str_ends_with($permission, '.manage')) {
+                $domain = explode('.', $permission)[0];
                 foreach (['create', 'edit', 'delete', 'validate', 'publish'] as $act) {
                     if (in_array($domain . '.' . $act, $grants, true)) return true;
                 }

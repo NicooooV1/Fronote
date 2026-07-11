@@ -109,24 +109,7 @@ final class PlatformRoleCatalog
     /** Permissions effectives d'un rôle, wildcards résolus contre le catalogue. */
     public static function permissionsFor(string $role): array
     {
-        $grants = self::grantsFor($role);
-        if (in_array('*', $grants, true)) {
-            return array_keys(self::PERMISSIONS);
-        }
-        $out = [];
-        foreach ($grants as $g) {
-            if (str_ends_with($g, '.*')) {
-                $prefix = substr($g, 0, -1); // garde le point final → "platform.support."
-                foreach (array_keys(self::PERMISSIONS) as $p) {
-                    if (str_starts_with($p, $prefix)) {
-                        $out[$p] = true;
-                    }
-                }
-            } elseif (isset(self::PERMISSIONS[$g])) {
-                $out[$g] = true;
-            }
-        }
-        return array_keys($out);
+        return \API\Security\WildcardGrants::expand(self::grantsFor($role), array_keys(self::PERMISSIONS));
     }
 
     /** Union des permissions d'un ensemble de rôles. */
@@ -144,18 +127,6 @@ final class PlatformRoleCatalog
     /** Un rôle accorde-t-il une permission (wildcards inclus) ? */
     public static function roleGrants(string $role, string $permission): bool
     {
-        $grants = self::grantsFor($role);
-        if (in_array('*', $grants, true) || in_array($permission, $grants, true)) {
-            return true;
-        }
-        // domaine.* sur n'importe quel préfixe pointé du chemin de permission.
-        $parts = explode('.', $permission);
-        for ($i = count($parts) - 1; $i >= 1; $i--) {
-            $wild = implode('.', array_slice($parts, 0, $i)) . '.*';
-            if (in_array($wild, $grants, true)) {
-                return true;
-            }
-        }
-        return false;
+        return \API\Security\WildcardGrants::granted(self::grantsFor($role), $permission);
     }
 }

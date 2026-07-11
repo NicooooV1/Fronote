@@ -155,17 +155,7 @@ final class TenantRoleCatalog
     /** Un rôle accorde-t-il une permission (wildcards 'domaine.*' / '*') ? */
     public static function roleGrants(string $role, string $permission): bool
     {
-        $grants = self::grantsFor($role);
-        if (in_array('*', $grants, true) || in_array($permission, $grants, true)) {
-            return true;
-        }
-        $parts = explode('.', $permission);
-        for ($i = count($parts) - 1; $i >= 1; $i--) {
-            if (in_array(implode('.', array_slice($parts, 0, $i)) . '.*', $grants, true)) {
-                return true;
-            }
-        }
-        return false;
+        return \API\Security\WildcardGrants::granted(self::grantsFor($role), $permission);
     }
 
     /** Rôles compatibles avec un type de compte (filtre l'assistant de création). */
