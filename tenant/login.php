@@ -48,6 +48,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['etablissement_id'] = (int) $establishment['id'];
             try { \API\Core\EstablishmentContext::set((int) $establishment['id']); } catch (\Throwable $e) {}
 
+            // Ancre le cycle de vie de session (idle/absolu + révocation) — cf. bootstrap 3-mondes.
+            $_SESSION['last_activity'] = time();
+            $_SESSION['session_started'] = time();
+            // Le chemin legacy (loginUser) a déjà écrit session_security ; sinon on l'enregistre en tant que tenant.
+            if (!$legacyEstablished) {
+                \API\Auth\SessionGuard::recordActiveSession('tenant', (int) $acc['id']);
+            }
+
             try { getPDO()->prepare("UPDATE tenant_accounts SET last_login_at = NOW() WHERE id = ?")->execute([(int) $acc['id']]); }
             catch (\Throwable $e) { error_log('[tenant login] ' . $e->getMessage()); }
             header("Location: {$base}/tenant/dashboard.php?e=" . urlencode($slug));

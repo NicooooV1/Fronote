@@ -151,10 +151,28 @@ class Encryption
 
     /**
      * Vérifie si une valeur a le format chiffré.
+     *
+     * Test STRUCTUREL (pas seulement une regex de forme) : l'enveloppe AES-256-GCM impose un
+     * nonce de 12 octets et un tag de 16 octets, et une version connue (≤ KEY_VERSION). Une
+     * valeur métier en clair qui ressemblerait à « v:b64:b64:b64 » échouera sur ces longueurs —
+     * ce qui évite qu'encryptIfPlain() prenne un plaintext pour un chiffré et le stocke en clair.
      */
     public function isEncrypted(string $value): bool
     {
-        return (bool) preg_match('/^\d+:[A-Za-z0-9+\/=]+:[A-Za-z0-9+\/=]+:[A-Za-z0-9+\/=]+$/', $value);
+        $parts = explode(':', $value, 4);
+        if (count($parts) !== 4) {
+            return false;
+        }
+        [$version, $nonceB64, $ciphertextB64, $tagB64] = $parts;
+        if ($version === '' || !ctype_digit($version) || (int) $version < 1 || (int) $version > self::KEY_VERSION) {
+            return false;
+        }
+        $nonce = base64_decode($nonceB64, true);
+        $tag   = base64_decode($tagB64, true);
+        $ct    = base64_decode($ciphertextB64, true);
+        return $nonce !== false && strlen($nonce) === 12
+            && $tag !== false && strlen($tag) === 16
+            && $ct !== false && strlen($ct) >= 1;
     }
 
     /**

@@ -360,13 +360,21 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 // Expiration de session : inactivité (SESSION_LIFETIME) + plafond absolu. Sinon la durée
 // réelle ne dépend que de gc_maxlifetime de php.ini. On purge l'identité sans rediriger
 // (les guards requireAuth()/endpoints renvoient ensuite une redirection HTML ou un 401 JSON).
-if (php_sapi_name() !== 'cli' && !empty($_SESSION['user_id'])) {
+// Le cycle de vie de session est keyé sur la PRÉSENCE d'une identité, pas sur sa forme :
+// couvre les 3 mondes (établissement `user_id`, plateforme `platform.account_id`,
+// tenant `tenant.account_id`). Auparavant seul le monde établissement était protégé,
+// laissant les sessions plateforme/tenant sans expiration ni révocation.
+$_hasIdentity = !empty($_SESSION['user_id'])
+	|| !empty($_SESSION['platform']['account_id'])
+	|| !empty($_SESSION['tenant']['account_id']);
+if (php_sapi_name() !== 'cli' && $_hasIdentity) {
 	$_sessTtl = (int) (getenv('SESSION_LIFETIME') ?: 7200);
 	$_now     = time();
 	$_idle    = $_now - (int) ($_SESSION['last_activity'] ?? $_now);
 	$_age     = $_now - (int) ($_SESSION['session_started'] ?? $_now);
 	if ($_idle > $_sessTtl || $_age > ($_sessTtl * 12)) {
-		unset($_SESSION['user_id'], $_SESSION['user_type'], $_SESSION['user'], $_SESSION['logged_in']);
+		unset($_SESSION['user_id'], $_SESSION['user_type'], $_SESSION['user'], $_SESSION['logged_in'],
+			$_SESSION['platform'], $_SESSION['tenant']);
 		$_SESSION['session_expired'] = true;
 	} else {
 		$_SESSION['last_activity'] = $_now;
@@ -376,6 +384,7 @@ if (php_sapi_name() !== 'cli' && !empty($_SESSION['user_id'])) {
 	}
 	unset($_sessTtl, $_now, $_idle, $_age);
 }
+unset($_hasIdentity);
 
 // Créer l'application et enregistrer les providers
 $app = new \API\Core\Application(BASE_PATH);
@@ -539,10 +548,14 @@ require_once API_PATH . '/Legacy/Bridge.php';
 // impersonifié resterait en cache pour la requête après une révocation.
 \API\Support\SupportImpersonation::enforce();
 
-if (php_sapi_name() !== 'cli' && !empty($_SESSION['user_id'])) {
+$_revokeIdentity = !empty($_SESSION['user_id'])
+	|| !empty($_SESSION['platform']['account_id'])
+	|| !empty($_SESSION['tenant']['account_id']);
+if (php_sapi_name() !== 'cli' && $_revokeIdentity) {
 	$_forceLogout = false;
-	// (1) Session révoquée côté serveur (session_security). Fail-OPEN sur erreur DB :
-	//     une indisponibilité base ne doit JAMAIS déconnecter tout le monde.
+	// (1) Session révoquée côté serveur (session_security). Keyé sur session_id() → couvre les
+	//     3 mondes (établissement/plateforme/tenant). Fail-OPEN sur erreur DB : une
+	//     indisponibilité base ne doit JAMAIS déconnecter tout le monde.
 	try {
 		// Comparaison expires_at <= NOW() faite DANS MySQL (même fuseau que NOW()) :
 		// comparer en PHP via strtotime() casserait sur le décalage UTC/Europe-Paris.
@@ -564,19 +577,23 @@ if (php_sapi_name() !== 'cli' && !empty($_SESSION['user_id'])) {
 	} catch (\Throwable $e) { /* fail-open */ error_log('[bootstrap.php] ' . $e->getMessage()); }
 
 	// (2) Compte désactivé/verrouillé : UserProvider::retrieveById() renvoie null si
-	//     actif=0 → universel, indépendamment du fait que la page appelle requireAuth().
-	if (!$_forceLogout) {
+	//     actif=0. Spécifique au monde ÉTABLISSEMENT (app('auth') ne connaît que celui-ci) ;
+	//     les mondes plateforme/tenant s'appuient sur la révocation session_security ci-dessus.
+	if (!$_forceLogout && !empty($_SESSION['user_id'])) {
 		try { if (app('auth')->user() === null) { $_forceLogout = true; } }
 		catch (\Throwable $e) { /* fail-open */ error_log('[bootstrap.php] ' . $e->getMessage()); }
 	}
 
 	if ($_forceLogout) {
+		// app('auth')->logout() détruit la session (session_id-based) → couvre les 3 mondes ;
+		// on purge en plus les clés plateforme/tenant par sécurité si logout() échoue.
 		try { app('auth')->logout(); }
-		catch (\Throwable $e) { unset($_SESSION['user_id'], $_SESSION['user_type'], $_SESSION['user'], $_SESSION['logged_in']); }
+		catch (\Throwable $e) { unset($_SESSION['user_id'], $_SESSION['user_type'], $_SESSION['user'], $_SESSION['logged_in'], $_SESSION['platform'], $_SESSION['tenant']); }
 		$_SESSION['session_expired'] = true;
 	}
 	unset($_forceLogout, $_ss, $_ssRow);
 }
+unset($_revokeIdentity);
 
 \API\Core\ReadOnlyGuard::enforce();
 \API\Core\AccessControl::enforce(BASE_PATH);

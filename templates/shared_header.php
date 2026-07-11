@@ -203,11 +203,13 @@ if (!headers_sent()) {
         . "report-uri /API/endpoints/csp_report.php;"
         . ($_hdr_isHttps ? ' upgrade-insecure-requests;' : '');
     header("Content-Security-Policy: {$_hdr_csp}");
-    // Politique STRICTE en Report-Only : mesure la surface de scripts/handlers inline
-    // restants (violations rapportées mais non bloquantes) avant de passer en enforce.
+    // Report-Only STRICTEMENT PLUS DUR que l'enforce : sans lui, une politique RO identique à
+    // l'enforce ne mesure rien. Ici on RETIRE 'unsafe-inline' de style-src → chaque style inline
+    // restant génère une violation (rapportée, non bloquante) : on quantifie ainsi la dette de
+    // styles inline à externaliser avant de pouvoir durcir l'enforce à son tour.
     $_hdr_cspRO = "default-src 'self'; "
         . "script-src 'self' 'nonce-{$_hdr_nonce}' 'strict-dynamic' https:; "
-        . "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+        . "style-src 'self' https://cdnjs.cloudflare.com; "
         . "font-src 'self' https://cdnjs.cloudflare.com data:; "
         . "img-src 'self' data: blob: https:; "
         . "connect-src 'self' ws: wss:; "

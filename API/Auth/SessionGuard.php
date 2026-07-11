@@ -88,20 +88,29 @@ class SessionGuard {
             error_log('last_login update failed: ' . $e->getMessage());
         }
 
-        // Enregistrer la session active pour l'outil admin « Sessions actives »
-        // (la table session_security n'était jamais alimentée → page toujours vide).
-        // Best-effort : ne JAMAIS bloquer la connexion si l'écriture échoue.
+        // Enregistrer la session active (session_security) — mutualisé avec les mondes
+        // plateforme/tenant via recordActiveSession(). Best-effort.
+        self::recordActiveSession($user['type'], (int) $user['id']);
+    }
+
+    /**
+     * Enregistre/rafraîchit la session courante dans session_security : alimente l'outil admin
+     * « Sessions actives » ET permet la révocation côté serveur (bootstrap la relit par session_id()).
+     * Mutualisé par les 3 mondes (établissement, plateforme, tenant) pour ne pas dupliquer le REPLACE.
+     * Best-effort : ne JAMAIS bloquer une connexion si l'écriture échoue.
+     */
+    public static function recordActiveSession(string $userType, int $userId, int $lifetime = 7200): void
+    {
         try {
             if (function_exists('getPDO') && session_status() === PHP_SESSION_ACTIVE) {
-                $lifetime = 7200;
                 getPDO()->prepare(
                     "REPLACE INTO session_security
                        (id, user_id, user_type, ip_address, user_agent, created_at, last_activity, expires_at, is_active)
                      VALUES (?, ?, ?, ?, ?, NOW(), NOW(), DATE_ADD(NOW(), INTERVAL ? SECOND), 1)"
                 )->execute([
                     session_id(),
-                    (int) $user['id'],
-                    $user['type'],
+                    $userId,
+                    $userType,
                     $_SERVER['REMOTE_ADDR'] ?? '',
                     substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 1000),
                     $lifetime,

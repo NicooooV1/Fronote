@@ -29,6 +29,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             session_regenerate_id(true);
             $_SESSION['platform'] = ['account_id' => (int) $acc['id'], 'username' => $acc['username']];
             unset($_SESSION['user'], $_SESSION['tenant']); // jamais de session établissement en parallèle
+            // Ancre le cycle de vie de session (idle/absolu + révocation) — cf. bootstrap 3-mondes.
+            $_SESSION['last_activity'] = time();
+            $_SESSION['session_started'] = time();
+            \API\Auth\SessionGuard::recordActiveSession('platform', (int) $acc['id']);
             try { getPDO()->prepare("UPDATE platform_accounts SET last_login_at = NOW() WHERE id = ?")->execute([(int) $acc['id']]); }
             catch (\Throwable $e) { error_log('[platform login] ' . $e->getMessage()); }
             header("Location: {$base}/platform/dashboard.php");
