@@ -226,6 +226,10 @@ final class Authorization
      *  sur le catalogue : c'est ce qui rend les permissions réellement gérables côté admin. */
     private function roleGrants(string $role, string $permission): bool
     {
+        // Normalise la clé de rôle vers sa forme canonique (alias tenant/variantes) AVANT tout :
+        // ainsi une éventuelle surcharge admin (rbac_permissions) posée sur le rôle canonique
+        // s'applique aussi à ses alias, et le catalogue résout correctement les rôles aliasés.
+        $role = RoleCatalog::canonical($role);
         // 1) Override explicite en base (matrice éditée par l'admin) : granted=1 → autorisé,
         //    granted=0 → refusé. Une ligne présente fait autorité sur le catalogue.
         try {

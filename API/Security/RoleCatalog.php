@@ -950,7 +950,26 @@ final class RoleCatalog
 
     public static function grants(): array { return self::GRANTS; }
 
-    public static function grantsFor(string $role): array { return self::GRANTS[$role] ?? []; }
+    /**
+     * Alias canoniques : normalisent les clés de rôle DIVERGENTES (issues du monde tenant ou de
+     * variantes de nommage) vers la clé CANONIQUE de ce catalogue — source de vérité unique des
+     * rôles d'établissement. Résout la fragmentation « catalogues aux vocabulaires incompatibles »
+     * (revue de design) : un compte porteur d'une clé aliasée obtient bien les grants du rôle
+     * canonique, ce qui met fin aux « comptes de seconde classe ». Choix arbitraires assumés.
+     */
+    public const ROLE_ALIASES = [
+        'directeur'                   => 'direction',
+        'inspecteur'                  => 'inspecteur_academie',
+        'responsable_emploi_du_temps' => 'responsable_edt',
+    ];
+
+    /** Normalise une clé de rôle vers sa forme canonique (résout les alias ci-dessus). */
+    public static function canonical(string $role): string
+    {
+        return self::ROLE_ALIASES[$role] ?? $role;
+    }
+
+    public static function grantsFor(string $role): array { return self::GRANTS[self::canonical($role)] ?? []; }
 
     public static function baseRoleForAccount(string $type): string { return self::ACCOUNT_BASE_ROLE[$type] ?? $type; }
 
