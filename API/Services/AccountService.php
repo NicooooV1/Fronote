@@ -157,6 +157,74 @@ final class AccountService
         }
     }
 
+    /** Mapping table héritée → account_type unifié. */
+    private const LEGACY_ACCOUNT_TYPE = [
+        'eleves'          => 'student',
+        'parents'         => 'family',
+        'professeurs'     => 'personnel',
+        'vie_scolaire'    => 'personnel',
+        'administrateurs' => 'personnel',
+    ];
+
+    /**
+     * Peuple/rafraîchit la table `accounts` comme MIROIR (lecture) des 5 tables d'auth héritées.
+     * Idempotent (upsert sur uk_acc_legacy = legacy_type+legacy_id). N'altère PAS l'authentification :
+     * tant que FEATURE_ACCOUNTS est faux, l'app lit toujours les tables héritées. Ceci est le
+     * premier pas SÛR de l'unification d'identité : `accounts` devient une image complète et courante
+     * (id/identifiant/mail/hash/statut/2FA), sans rien retirer. Les tables héritées restent la source
+     * de DONNÉES (classe, matière…) et de vérité tant que la bascule n'est pas validée.
+     *
+     * @return array{synced:int,errors:string[]}
+     */
+    public function syncFromLegacy(): array
+    {
+        $synced = 0;
+        $errors = [];
+        $sql = "INSERT INTO accounts
+                    (account_type, username, email, password_hash, first_name, last_name, display_name,
+                     status, etablissement_id, legacy_type, legacy_id, two_factor_enabled,
+                     last_login_at, locked_until, must_change_password)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)
+                ON DUPLICATE KEY UPDATE
+                    account_type=VALUES(account_type), username=VALUES(username), email=VALUES(email),
+                    password_hash=VALUES(password_hash), first_name=VALUES(first_name),
+                    last_name=VALUES(last_name), display_name=VALUES(display_name), status=VALUES(status),
+                    etablissement_id=VALUES(etablissement_id), two_factor_enabled=VALUES(two_factor_enabled),
+                    last_login_at=VALUES(last_login_at), locked_until=VALUES(locked_until), updated_at=NOW()";
+        $ins = $this->pdo->prepare($sql);
+        foreach (self::LEGACY_ACCOUNT_TYPE as $table => $accType) {
+            try {
+                $rows = $this->pdo->query(
+                    "SELECT id, etablissement_id, nom, prenom, mail, identifiant, mot_de_passe, actif,
+                            last_login, locked_until, two_factor_enabled FROM `{$table}`"
+                )->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($rows as $r) {
+                    $display = trim(((string) ($r['prenom'] ?? '')) . ' ' . ((string) ($r['nom'] ?? '')));
+                    $ins->execute([
+                        $accType,
+                        (string) ($r['identifiant'] ?? ''),
+                        ($r['mail'] ?? '') !== '' ? $r['mail'] : null,
+                        $r['mot_de_passe'] ?? null,
+                        $r['prenom'] ?? null,
+                        $r['nom'] ?? null,
+                        $display !== '' ? $display : null,
+                        ((int) ($r['actif'] ?? 1) === 1) ? 'active' : 'inactive',
+                        $r['etablissement_id'] ?? null,
+                        $table,
+                        (int) $r['id'],
+                        (int) ($r['two_factor_enabled'] ?? 0),
+                        $r['last_login'] ?? null,
+                        $r['locked_until'] ?? null,
+                    ]);
+                    $synced++;
+                }
+            } catch (\Throwable $e) {
+                $errors[] = "{$table}: " . $e->getMessage();
+            }
+        }
+        return ['synced' => $synced, 'errors' => $errors];
+    }
+
     private function setStatus(int $id, string $status): bool
     {
         return $this->pdo->prepare("UPDATE accounts SET status = ? WHERE id = ?")->execute([$status, $id]);

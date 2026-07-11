@@ -10,6 +10,7 @@
  *   5. Nettoyage du cache expiré (CacheManager::gc)
  *   6. Nettoyage de storage/tmp (fichiers > 24h)
  *   7. Nettoyage des reliquats de quarantaine (storage/quarantine, > 30 j)
+ *   8. Rafraîchit le miroir d'identité `accounts` depuis les tables héritées (additif, sans bascule d'auth)
  *
  * Configurer dans crontab :
  *   0 2 * * * php /chemin/vers/fronote/cron/daily_maintenance.php >> /chemin/vers/fronote/API/logs/cron.log 2>&1
@@ -130,6 +131,15 @@ try {
 	$log("Quarantine: removed {$cleaned} stale entries from storage/quarantine");
 } catch (\Throwable $e) {
 	$log('Quarantine cleanup error: ' . $e->getMessage());
+}
+
+// 8. Rafraîchit le miroir d'identité `accounts` depuis les 5 tables d'auth héritées
+//    (unification d'identité, pas-à-pas). Additif/idempotent : n'altère PAS l'auth courante.
+try {
+	$acc = (new \API\Services\AccountService(getPDO()))->syncFromLegacy();
+	$log("Accounts mirror: synced {$acc['synced']} accounts" . ($acc['errors'] ? ' (' . count($acc['errors']) . ' errors)' : ''));
+} catch (\Throwable $e) {
+	$log('Accounts mirror error: ' . $e->getMessage());
 }
 
 $duration = round(microtime(true) - $startTime, 2);
