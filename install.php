@@ -972,6 +972,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $log[] = ['warn', iT('label.three_worlds', 'Initialisation 3-mondes : ') . $e->getMessage()];
                     }
 
+                    // 5g-ter — Peupler le miroir d'identité `accounts` depuis les tables héritées
+                    // (unification d'identité : additif, sans bascule d'auth).
+                    try {
+                        $acc = (new \API\Services\AccountService($pdo))->syncFromLegacy();
+                        $log[] = ['ok', "Miroir accounts : {$acc['synced']} compte(s)"];
+                    } catch (Throwable $e) {
+                        $log[] = ['warn', 'Miroir accounts : ' . $e->getMessage()];
+                    }
+
                 } catch (Throwable $e) {
                     $log[] = ['warn', iT('label.bootstrap_api', 'Bootstrap API : ') . $e->getMessage()];
                 }

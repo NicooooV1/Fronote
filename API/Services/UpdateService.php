@@ -231,6 +231,15 @@ class UpdateService
             $steps[] = 'Sync rôles RBAC : échec — ' . $e->getMessage();
         }
 
+        // 4c) Rafraîchir le miroir d'identité `accounts` depuis les tables héritées (unification
+        //     d'identité : additif/idempotent, N'altère PAS l'authentification courante).
+        try {
+            $acc = (new AccountService(getPDO()))->syncFromLegacy();
+            $steps[] = "Miroir accounts : {$acc['synced']} compte(s) synchronisé(s)";
+        } catch (\Throwable $e) {
+            $steps[] = 'Miroir accounts : échec — ' . $e->getMessage();
+        }
+
         // 5) Vider le cache applicatif.
         try { app('cache')->flush(); $steps[] = 'Cache vidé'; } catch (\Throwable $e) { error_log('[UpdateService.php] ' . $e->getMessage()); }
 
