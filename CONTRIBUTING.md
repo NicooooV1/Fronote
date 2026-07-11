@@ -1,4 +1,4 @@
-# Contribuer à Fronote (v3.2.4)
+# Contribuer à Fronote (v3.3.0)
 
 Merci de votre intérêt pour Fronote ! Ce guide explique comment contribuer au code,
 quelles conventions respecter, et comment ajouter un module, une table ou une chaîne
@@ -107,8 +107,8 @@ modules/<clé>/    # Modules métier (notes, agenda, messagerie, …) — ~61 mo
 assets/           # CSS, JS, images (CSS unifié, cf. plus bas)
 lang/             # Traductions cœur (8 locales : ar, de, en, es, fr, nl, ru, th)
 templates/        # Templates PHP partagés (shared_header, shared_topbar, …)
-cron/             # Tâches planifiées (daily/hourly/weekly + rappels modules)
-scripts/          # Scripts CLI (worker.php, build/sign .fmod, install-module.php)
+cron/             # Tâche planifiée unique : daily_maintenance.php
+database/         # migrations/ — migrations de données versionnées (MigrationRunner)
 websocket/        # Serveur Socket.IO (Node.js)
 ```
 
@@ -118,17 +118,25 @@ websocket/        # Serveur Socket.IO (Node.js)
 
 ---
 
-## Schéma de base de données — **AUCUNE MIGRATION**
+## Schéma de base de données — déclaratif + migrations versionnées
 
-> ⚠️ **Il n'y a plus de système de migrations** (supprimé le 2026-06-17). N'écrivez
-> **jamais** de migration, de table `module_migrations`/`core_migrations`, de dossier
-> `Database/migrations/`, ni de clé `migrations` dans `module.json`. Tout cela a disparu.
+Le **DDL est déclaratif** ; il vit dans les `.sql` du dépôt et est réconcilié de façon
+**ADDITIVE** par `SchemaSyncService` (`CREATE TABLE` + `ADD COLUMN` uniquement). Un
+système de **migrations DE DONNÉES versionnées** couvre les cas non additifs. Guide de
+référence : **[docs/UPDATING.md](docs/UPDATING.md)**.
 
-Le schéma est **déclaratif et final** :
+> ⚠️ **L'ancien système de migrations PAR MODULE n'existe plus** : n'écrivez **jamais** de
+> table `module_migrations`/`core_migrations`, de dossier `modules/*/Database/migrations/`,
+> ni de clé `migrations` dans `module.json`. En revanche, le système de migrations
+> **versionnées au niveau du dépôt** (`database/migrations/` + `MigrationRunner`) est bien
+> **vivant** — voir « Effectuer une transformation non-additive » ci-dessous.
+
+Le schéma désiré est **déclaratif et final** :
 
 - **Cœur** : `pronote.sql` (importé à l'installation).
 - **Par module** : `modules/<clé>/Database/install.sql` — le **schéma final complet**,
   idempotent (`CREATE TABLE IF NOT EXISTS`, colonnes avec valeurs par défaut).
+- **RGPD** : `rgpd/Database/*.sql`.
 
 À l'**activation** d'un module, `ModuleSDK::provisionSql($clé)` exécute uniquement son
 `install.sql` (chemin par défaut, surchargeable via `module.json` → `database.install`).
@@ -136,32 +144,50 @@ L'exécution désactive temporairement `FOREIGN_KEY_CHECKS`, joue chaque instruc
 séparément et **ignore** les erreurs « table déjà présente » (1050) / « colonne en double »
 (1060), ce qui rend la ré-activation sûre.
 
-### Modifier le schéma d'un module
+### Modifier le schéma d'un module (ajout de table / colonne)
 
 1. Éditez directement `modules/<clé>/Database/install.sql` pour refléter l'**état final**
-   voulu (ajoutez la table ou la colonne avec sa valeur par défaut).
-2. **Ne** créez **pas** de fichier de migration séparé.
+   voulu (ajoutez la table ou la colonne avec sa valeur par défaut). Déclarez l'index et
+   la FK `etablissement_id` **dans** le `CREATE TABLE` (SchemaSync n'ajoute pas d'index/FK
+   sur une table existante).
+2. Pour un **ajout** de table/colonne, **aucun** fichier de migration n'est nécessaire.
 3. En production, la mise à jour réconcilie le schéma automatiquement (voir ci-dessous).
+
+### Effectuer une transformation non-additive / de données
+
+`SchemaSyncService` étant **additif**, il ne fait **ni** rename, **ni** changement de type,
+**ni** index/FK sur une table déjà installée, **ni** backfill, **ni** suppression. Pour ces
+cas, écrivez une **migration versionnée** :
+`database/migrations/<AAAA_MM_JJ_HHMMSS>_<nom>.php` — un objet exposant `up(\PDO)` et
+`down(\PDO)`, **idempotent** (le DDL MySQL committe implicitement : vérifiez l'état avant
+d'agir). Elle est jouée une seule fois par `MigrationRunner` (journal `schema_migrations`),
+juste après `SchemaSyncService`. Modèle complet et pièges dans **[docs/UPDATING.md](docs/UPDATING.md)**.
 
 ### Mise à jour applicative = un seul bouton
 
 `admin/systeme/update.php` appelle `app('updates')->applyUpdate()`
 (`API/Services/UpdateService.php`), qui enchaîne :
 
-1. `git fetch origin <GITHUB_BRANCH>`
-2. `git reset --hard origin/<GITHUB_BRANCH>` (le serveur reflète exactement le dépôt ;
-   le `.env` est sauvegardé/restauré au cas où)
-3. **`API\Services\SchemaSyncService::sync()`** — réconciliation **déclarative et
-   idempotente** : lit les `install.sql` + `pronote.sql`, `CREATE` les tables manquantes
-   et `ADD COLUMN` les colonnes manquantes. **Jamais de migration, jamais de `DROP`.**
-4. `app('module_sdk')->syncAll()` — resynchronise les manifestes (permissions, widgets, routes)
-5. Vidage du cache applicatif
+1. **Garde-fous** : branche servie = `GITHUB_BRANCH`, arbre de travail propre, HEAD git
+   lisible (sinon la mise à jour est refusée).
+2. **Filet de sécurité** : passage en **mode maintenance**, **sauvegarde de la base**,
+   capture du HEAD courant.
+3. `git fetch origin <GITHUB_BRANCH>` puis `git reset --hard origin/<GITHUB_BRANCH>` (le
+   serveur reflète exactement le dépôt ; le `.env` est sauvegardé/restauré au cas où).
+4. **`SchemaSyncService::sync()`** — réconciliation déclarative additive (`CREATE TABLE` +
+   `ADD COLUMN`, jamais de `DROP`), lue depuis `pronote.sql` + `install.sql` + `rgpd/`.
+5. **`MigrationRunner::migrate()`** — migrations versionnées en attente.
+6. **Toute erreur schéma/migration ⇒ ROLLBACK COMPLET** (base + code restaurés).
+7. `app('module_sdk')->syncAll()` (manifestes) → `RoleSync::sync()` (catalogue RBAC) →
+   vidage du cache → **sortie de maintenance**.
 
 Config `.env` : `GITHUB_BRANCH` (défaut `main`), `GIT_BINARY` (chemin de `git` s'il est
 hors du `PATH` d'Apache, ex. Windows).
 
-> Concrètement : **votre seule obligation côté schéma est de garder `install.sql` à jour.**
-> `SchemaSyncService` se charge d'appliquer le delta sur les installations existantes.
+> Concrètement : pour un **ajout** de table/colonne, votre seule obligation côté schéma est
+> de garder `install.sql` à jour — `SchemaSyncService` applique le delta sur les
+> installations existantes. Pour un **changement non additif** (rename, retype, index/FK sur
+> une base existante, backfill), ce n'est **pas** suffisant : écrivez une migration versionnée.
 
 ---
 
@@ -284,7 +310,9 @@ sont posés par `shared_header.php`.
 3. Les nouvelles fonctionnalités basculables passent par un *feature flag*
    (`app('features')->isEnabled('module.feature')`).
 4. Les requêtes sur tables scopées filtrent bien `etablissement_id`.
-5. Le schéma modifié est reflété dans `install.sql` (pas de migration).
+5. Le schéma modifié est reflété dans `install.sql` (ajout de table/colonne) ; les
+   changements **non additifs** (rename, retype, index/FK sur base existante, backfill)
+   passent par une migration versionnée `database/migrations/`.
 6. Testez l'écran concerné en `fr` et `en` ; vérifiez que la topbar et le CSS s'affichent
    (page de module = `header.php` → `footer.php`).
 7. Activez/désactivez le module concerné pour valider l'idempotence de `install.sql`.

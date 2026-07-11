@@ -6,7 +6,7 @@ versionnée : la quasi-totalité du code applicatif consomme directement les ser
 du conteneur et les helpers globaux. Les seuls points d'entrée HTTP « API » sont les
 endpoints AJAX de `API/endpoints/` (consommés par le front).
 
-> Version applicative : `version.json` → 3.2.4 (build 2026‑05‑31). PHP ≥ 8.0, PDO
+> Version applicative : `version.json` → 3.3.0 (build 2026‑07‑11). PHP ≥ 8.0, PDO
 > MySQL 8.0+ / MariaDB 10.3+. Pas de framework.
 
 ---
@@ -59,7 +59,7 @@ dans son `module.json`).
 | `validator` | `API\Security\Validator` | Validation de données (`validate($data, $rules)`). |
 | `rbac` | `API\Security\RBAC` | Permissions : `can()`, `authorize()`, `canModule()`, `requireRole()`, `setUser()`. |
 | `password_policy` | `API\Security\PasswordPolicy` | Règles mot de passe (longueur, casse, chiffres, spéciaux). |
-| `translator` | `API\I18n\Translator` | i18n : `get()`, `choice()`, `locale()`. |
+| `translator` | `API\Services\TranslationService` | i18n : `get()`, `choice()`, `locale()`. |
 | `hooks` | `API\Core\HookManager` | Bus d'événements pour modules. |
 | `features` | `API\Services\FeatureFlagService` | Feature flags par type d'établissement. |
 | `queue` | `API\Services\QueueService` | File de jobs générique. |
@@ -272,16 +272,23 @@ app('updates')->applyUpdate();
 Séquence : `git fetch` + `git reset --hard origin/<GITHUB_BRANCH>` →
 `API\Services\SchemaSyncService::sync()` (réconciliation déclarative idempotente :
 CREATE des tables manquantes + ADD COLUMN des colonnes manquantes, lues depuis les
-`install.sql`/`pronote.sql` — **jamais de migration, jamais de DROP**) →
+`install.sql`/`pronote.sql` — additif : **jamais de DROP**) →
+`API\Services\MigrationRunner::migrate()` (migrations de données versionnées) →
 `module_sdk->syncAll()` → flush cache.
 
 Config `.env` : `GITHUB_BRANCH` (défaut `main`), `GIT_BINARY` (chemin git si hors
 PATH).
 
-> Il n'existe **plus** de système de migrations : pas de `ModuleSDK::migrate`, pas
-> de table `module_migrations`/`core_migrations`, pas de `scripts/migrate.php`. Le
-> schéma final vit dans `modules/<m>/Database/install.sql` (+ `pronote.sql` pour le
-> cœur). `module_sdk->provisionSql($key)` exécute `install.sql` à l'activation.
+> Deux mécanismes complémentaires cohabitent. Le **schéma** est déclaratif
+> (`modules/<m>/Database/install.sql` + `pronote.sql`, réconcilié **additivement**
+> par `SchemaSyncService` ; `module_sdk->provisionSql($key)` exécute `install.sql`
+> à l'activation). Les **transformations de données** que SchemaSync ne sait pas
+> faire passent par des migrations versionnées (`database/migrations/*.php` +
+> `API\Services\MigrationRunner`, journal `schema_migrations`), jouées par
+> `MigrationRunner::migrate()` juste après la réconciliation du schéma. Ce runner
+> n'a **pas** de wrapper CLI : il ne tourne que via le bouton de mise à jour. Il
+> n'existe ni `scripts/migrate.php`, ni table `module_migrations`/`core_migrations`.
+> Guide de référence : [docs/UPDATING.md](UPDATING.md).
 
 ---
 

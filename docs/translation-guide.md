@@ -403,9 +403,7 @@ Une whitelist anti-traversée valide le domaine
 > sous `modules/<clé>/lang/`. En l'état, la page admin **ne liste donc que les domaines
 > globaux** (`common`, `auth`, `admin`) et n'édite pas les fichiers de module via
 > l'interface. Pour traduire un module, éditez directement
-> `modules/<clé>/lang/<locale>.json`. (Même remarque pour le « rapport de couverture i18n »
-> du cron `cron/daily_maintenance.php`, qui compte `lang/<locale>/modules/*.json` et
-> renvoie donc 0 — métrique à recalibrer sur la nouvelle arborescence.)
+> `modules/<clé>/lang/<locale>.json`.
 
 ---
 

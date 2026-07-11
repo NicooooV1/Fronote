@@ -1,10 +1,10 @@
 # Fronote — Système de gestion scolaire
 
-![PHP 8+](https://img.shields.io/badge/PHP-8%2B-blue) ![MySQL 8+](https://img.shields.io/badge/MySQL-8%2B-orange) ![Version](https://img.shields.io/badge/version-3.2.4_Marketplace-green) ![Licence](https://img.shields.io/badge/licence-proprietary-lightgrey) ![i18n](https://img.shields.io/badge/i18n-8%20locales-blueviolet) ![Modules](https://img.shields.io/badge/modules-~61-brightgreen)
+![PHP 8+](https://img.shields.io/badge/PHP-8%2B-blue) ![MySQL 8+](https://img.shields.io/badge/MySQL-8%2B-orange) ![Version](https://img.shields.io/badge/version-3.3.0_Durcissement-green) ![Licence](https://img.shields.io/badge/licence-proprietary-lightgrey) ![i18n](https://img.shields.io/badge/i18n-8%20locales-blueviolet) ![Modules](https://img.shields.io/badge/modules-62-brightgreen)
 
-> Fronote est une application **PHP pure, sans framework**, de gestion d'établissement scolaire (notes, absences, emploi du temps, messagerie, vie scolaire, facturation, etc.). Architecture modulaire (~61 modules découverts dynamiquement), conteneur d'injection de dépendances maison, multi-établissement, design system à thèmes et internationalisation (8 langues).
+> Fronote est une application **PHP pure, sans framework**, de gestion d'établissement scolaire (notes, absences, emploi du temps, messagerie, vie scolaire, facturation, etc.). Architecture modulaire (62 modules découverts dynamiquement), conteneur d'injection de dépendances maison, multi-établissement, design system à thèmes et internationalisation (8 langues).
 >
-> Version courante : **3.2.4** (« Marketplace », build 2026-05-31). Voir `version.json`.
+> Version courante : **3.3.0** (« Durcissement », build 2026-07-11). Voir `version.json`.
 
 ---
 
@@ -19,7 +19,7 @@
   - [Multi-établissement](#multi-établissement)
 - [Démarrage rapide](#démarrage-rapide)
 - [Mise à jour : un seul bouton](#mise-à-jour--un-seul-bouton)
-- [Base de données : pas de migrations](#base-de-données--pas-de-migrations)
+- [Base de données : schéma déclaratif](#base-de-données--schéma-déclaratif)
 - [Rôles & authentification](#rôles--authentification)
 - [Internationalisation (i18n)](#internationalisation-i18n)
 - [Modules](#modules)
@@ -140,7 +140,7 @@ Pronote/
 │   ├── onboarding_gate.php
 │   ├── Core/  Auth/  Security/  Services/  Providers/  Middleware/  endpoints/  Legacy/
 │
-├── modules/             ← ~61 modules métier (un dossier par module, module.json)
+├── modules/             ← 62 modules métier (un dossier par module, module.json)
 │   ├── notes/  absences/  agenda/  messagerie/  bulletins/  emploi_du_temps/ …
 │   └── <clé>/
 │       ├── module.json          ← Manifeste (clé, nom, icône, catégorie, routes, permissions, widgets)
@@ -158,7 +158,7 @@ Pronote/
 ├── parametres/          ← Préférences utilisateur (core)
 ├── rgpd/  securite/  tutorat/
 │
-├── login/  cron/  scripts/  websocket/
+├── login/  cron/  database/  websocket/
 ├── install.php          ← Assistant d'installation
 ├── pronote.sql          ← Schéma cœur (utilisateurs, classes, périodes, modules_config…)
 ├── version.json  composer.json  .env.example
@@ -232,15 +232,18 @@ L'assistant `install.php` est un wizard en **5 étapes** (l'accès est restreint
 
 ## Mise à jour : un seul bouton
 
-La mise à jour se fait depuis **`admin/systeme/update.php`** — un unique bouton. Aucun zip, aucune release, aucune migration : **le dépôt Git EST la source**.
+La mise à jour se fait depuis **`admin/systeme/update.php`** — un unique bouton. Aucun zip, aucune release : **le dépôt Git EST la source**. Propriété de sûreté maîtresse : **toute erreur de schéma ou de migration annule intégralement la mise à jour** (base **et** code restaurés).
 
 `app('updates')->applyUpdate()` (`API\Services\UpdateService`) enchaîne :
 
-1. `git fetch origin <branche>`
-2. `git reset --hard origin/<branche>` — le serveur reflète exactement le dépôt (le `.env` est sauvegardé/restauré par précaution)
-3. **`API\Services\SchemaSyncService::sync()`** — réconciliation **déclarative, idempotente, non destructive** : lit les définitions désirées dans les `install.sql`/`pronote.sql`, **crée les tables manquantes** (`CREATE TABLE`) et **ajoute les colonnes manquantes** (`ADD COLUMN`). **Jamais** de migration, jamais de `DROP`, jamais de modification de type.
-4. `app('module_sdk')->syncAll()` — re-synchronise les manifestes (permissions, widgets, routes)
-5. Vidage du cache applicatif
+1. **Garde-fous** : branche servie = `GITHUB_BRANCH`, arbre de travail propre, HEAD git lisible — sinon la mise à jour est refusée.
+2. **Filet de sécurité** : passage en **mode maintenance**, **sauvegarde de la base**, capture du HEAD courant.
+3. `git fetch origin <branche>` puis `git reset --hard origin/<branche>` — le serveur reflète exactement le dépôt (le `.env` est sauvegardé/restauré par précaution).
+4. **`SchemaSyncService::sync()`** — réconciliation **déclarative et additive** : lit `pronote.sql` + `modules/*/Database/install.sql` + `rgpd/Database/*.sql`, **crée les tables manquantes** (`CREATE TABLE`) et **ajoute les colonnes manquantes** (`ADD COLUMN`). Jamais de `DROP`, ni de changement de type, ni d'index/FK sur table existante.
+5. **`MigrationRunner::migrate()`** — joue les migrations **versionnées** en attente (`database/migrations/`, journal `schema_migrations`) pour les cas non additifs. En cas d'erreur (schéma **ou** migration) ⇒ **ROLLBACK COMPLET**.
+6. `app('module_sdk')->syncAll()` (manifestes) → `RoleSync::sync()` (catalogue RBAC) → vidage du cache → **sortie de maintenance**.
+
+Détails et workflow d'évolution de schéma : **[docs/UPDATING.md](docs/UPDATING.md)**.
 
 Configuration `.env` :
 
@@ -251,18 +254,21 @@ Configuration `.env` :
 
 ---
 
-## Base de données : pas de migrations
+## Base de données : schéma déclaratif
 
-> ⚠️ **Il n'y a plus de système de migrations** (retiré le 2026-06-17). Plus de `ModuleSDK::migrate`, plus de tables `module_migrations`/`core_migrations`, plus de dossiers `Database/migrations`, plus de `CoreMigrator` ni `scripts/migrate.php`, plus de clé `migrations` dans `module.json`.
+Le **DDL est déclaratif** et réconcilié de façon **additive** par `SchemaSyncService` ; un système de **migrations de données versionnées** couvre les cas non additifs. Guide de référence : **[docs/UPDATING.md](docs/UPDATING.md)**.
 
-Le schéma est **déclaratif** :
+> ⚠️ **L'ancien système de migrations PAR MODULE a été retiré** : plus de `ModuleSDK::migrate`, plus de tables `module_migrations`/`core_migrations`, plus de dossiers `modules/*/Database/migrations`, plus de `CoreMigrator` ni `scripts/migrate.php`, plus de clé `migrations` dans `module.json`. En revanche, un système de migrations **versionnées au niveau du dépôt** (`database/migrations/` + `MigrationRunner`, journal `schema_migrations`) subsiste pour ce que le déclaratif ne sait pas exprimer.
+
+Le schéma désiré est **déclaratif** :
 
 - **Cœur** : `pronote.sql` crée le socle (`administrateurs`, `eleves`, `professeurs`, `parents`, `classes`, `matieres`, `periodes`, `etablissements`, `modules_config`, sécurité, file de tâches…).
 - **Par module** : `modules/<clé>/Database/install.sql` — schéma **final complet**, idempotent (`CREATE TABLE IF NOT EXISTS`), avec la colonne `etablissement_id`.
+- **RGPD** : `rgpd/Database/*.sql`.
 - **Provisionnement** : `ModuleSDK::provisionSql($clé)` exécute **uniquement** `install.sql` (FK désactivées le temps de l'exécution) — à l'installation et à chaque activation de module.
-- **Réconciliation** : à chaque mise à jour, `SchemaSyncService` rend la base conforme aux `.sql` (ajout seulement).
+- **Réconciliation** : à chaque mise à jour, `SchemaSyncService` rend la base conforme aux `.sql` (**`CREATE TABLE` + `ADD COLUMN` uniquement** — jamais de `DROP`, de changement de type, ni d'index/FK sur table existante), puis `MigrationRunner` joue les migrations versionnées en attente.
 
-> **Modifier le schéma** d'un module = éditer son `Database/install.sql`. Modifier le socle = éditer `pronote.sql`. Penser à bumper `version.json`.
+> **Ajouter** une table/colonne = éditer le `install.sql` du module (ou `pronote.sql` pour le socle) ; `SchemaSyncService` applique le delta. Un changement **non additif** (rename, retype, index/FK sur base existante, backfill) exige une **migration versionnée** dans `database/migrations/` (`up()/down()`, idempotente). Penser à bumper `version.json`.
 
 > **Installé ≠ activé.** Tous les modules découverts sont enregistrés dans `modules_config`. Seuls les modules `core: true` sont activés d'office ; les autres restent désactivés (`enabled = 0`) et invisibles en navigation jusqu'à activation par l'admin (`admin/modules/`). L'activation appelle `provisionSql()` puis bascule `enabled = 1`. Modules core actuels : `accueil`, `admin`, `parametres`, `notifications`, `profil`, `support`, `onboarding`.
 
@@ -303,7 +309,7 @@ echo __('messagerie.bonjour', ['nom' => $n]); // interpolation de {nom}
 
 ## Modules
 
-~61 modules métier sous `modules/<clé>/`, plus les essentiels à la racine. Catégories valides (`ModuleSDK::VALID_CATEGORIES`) : `navigation`, `scolaire`, `vie_scolaire`, `communication`, `etablissement`, `logistique`, `outils`, `administration`, `systeme`, `sante`, `custom`.
+62 modules métier sous `modules/<clé>/`, plus les essentiels à la racine. Catégories valides (`ModuleSDK::VALID_CATEGORIES`) : `navigation`, `scolaire`, `vie_scolaire`, `communication`, `etablissement`, `logistique`, `outils`, `administration`, `systeme`, `sante`, `custom`.
 
 | Domaine | Modules (extrait) |
 |---------|-------------------|
@@ -393,4 +399,4 @@ UPLOADS_PATH=
 
 ---
 
-*Fronote 3.2.4 « Marketplace » — PHP pur · PSR-4 · conteneur DI maison · ~61 modules · multi-établissement · topbar · 8 locales · schéma déclaratif (sans migrations) · mise à jour Git un-bouton.*
+*Fronote 3.3.0 « Durcissement » — PHP pur · PSR-4 · conteneur DI maison · 62 modules · multi-établissement · topbar · 8 locales · schéma déclaratif additif + migrations versionnées · mise à jour Git un-bouton.*

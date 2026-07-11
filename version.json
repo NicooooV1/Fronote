@@ -1,8 +1,8 @@
 {
-  "version": "3.2.4",
-  "build": "2026-05-31",
+  "version": "3.3.0",
+  "build": "2026-07-11",
   "channel": "stable",
-  "codename": "Marketplace",
+  "codename": "Durcissement",
   "min_php": "8.0",
   "min_mysql": "8.0",
   "modules": 62,

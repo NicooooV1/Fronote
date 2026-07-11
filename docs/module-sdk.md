@@ -1,4 +1,4 @@
-# Module SDK — Guide du Développeur (v3.2.4)
+# Module SDK — Guide du Développeur (v3.3.0)
 
 ## Introduction
 
@@ -6,7 +6,7 @@ Fronote utilise une architecture modulaire. Chaque module métier est un dossier
 
 Le SDK est implémenté dans `API/Services/ModuleSDK.php` et accessible via `app('module_sdk')`. La gestion d'état (activation, favoris, sidebar/topbar) est dans `API/Services/ModuleService.php`, accessible via `app('modules')`.
 
-> ⚠️ **Pas de migrations.** Depuis le 2026-06-17, Fronote n'utilise **plus** de fichiers de migration ni de table de suivi. Le schéma d'un module est décrit en entier dans **un seul** fichier `Database/install.sql` (CREATE TABLE IF NOT EXISTS, schéma final complet). Voir [Schéma & provisionnement SQL](#schéma--provisionnement-sql).
+> ⚠️ **Un module n'embarque jamais de migration.** Le schéma d'un module est décrit en entier dans **un seul** fichier `Database/install.sql` (CREATE TABLE IF NOT EXISTS, schéma final complet) — plus de fichiers de migration *par module* ni de clé `module.json "migrations"` depuis le 2026-06-17. En revanche, **au niveau du dépôt**, les mises à jour applicatives exécutent des migrations de données versionnées (`database/migrations/*.php` via `MigrationRunner`) juste après `SchemaSyncService`. Voir [Schéma & provisionnement SQL](#schéma--provisionnement-sql) et [`docs/UPDATING.md`](UPDATING.md).
 
 ---
 
@@ -320,7 +320,7 @@ discover → validate → syncModule (modules_config + widgets + settings + perm
 |---|---|
 | `discover(): array` | Scanne `modules/*/module.json` **et** `*/module.json` (essentiels racine). Retourne `[key => manifest]` (avec `_path` / `_json_path` ajoutés). Résultat mis en cache mémoire. |
 | `validate(array $manifest): array` | `['valid' => bool, 'errors' => string[]]`. Champs requis + format key + catégorie + name.fr + widgets + permissions + establishment_types. |
-| `syncAll(): array` | Valide puis `syncModule()` chaque manifeste découvert. Retourne `['synced' => int, 'errors' => string[]]`. |
+| `syncAll(): array` | Valide puis `syncModule()` chaque manifeste découvert, **puis purge les modules fantômes** (`pruneGhostModules()`, voir note ci-dessous). Retourne `['synced' => int, 'pruned' => string[], 'errors' => string[]]`. |
 | `syncModule(array $manifest): void` | Upsert dans `modules_config`, et synchronise `dashboard_widgets`, `module_settings_schema`, `module_permissions`. Calcule `route_path` depuis `routes.main`. |
 | `provisionSql(string $key): array` | Exécute **uniquement** `Database/install.sql` (idempotent). `['success' => bool, 'errors' => string[]]`. **Pas de migrations.** |
 | `getManifest(string $key): ?array` | Manifeste d'un module. |
@@ -328,6 +328,8 @@ discover → validate → syncModule (modules_config + widgets + settings + perm
 | `resolveWidgetProvider($widgetKey)` / `resolveWidgetTemplate($widgetKey)` | Résout le `WidgetDataProvider` / le template d'un widget. |
 | `bootActiveModuleProviders($app): void` | Charge les ServiceProviders des modules actifs (appelé dans `bootstrap.php`). |
 | `clearCache(): void` | Vide le cache mémoire des manifestes. |
+
+> **Purge des modules fantômes** (`syncAll()` → `pruneGhostModules()`) : un module dont le dossier ou le `module.json` a disparu du disque voit sa ligne `modules_config` **et ses lignes filles** (`module_permissions`, `module_settings_schema`, `dashboard_widgets`) supprimées, et sa clé listée dans `pruned`. Les modules `core` ne sont **jamais** purgés automatiquement (ligne conservée + erreur signalée). Une découverte vide (anomalie disque) ne purge rien.
 
 ### Activation / désactivation (`app('modules')`)
 
@@ -341,7 +343,7 @@ La page d'administration des modules est `admin/modules/index.php`.
 
 ## Schéma & provisionnement SQL
 
-> **Source de vérité = `modules/<m>/Database/install.sql`** (+ `pronote.sql` pour le cœur). Il n'y a **plus aucune migration** : pas de `module_migrations`, pas de `Database/migrations/`, pas de clé `module.json "migrations"`.
+> **Source de vérité du schéma d'un module = `modules/<m>/Database/install.sql`** (+ `pronote.sql` pour le cœur). Un module n'embarque **aucune migration** : plus de `module_migrations`, plus de `modules/*/Database/migrations/`, plus de clé `module.json "migrations"`. (Les migrations de données versionnées existent uniquement **au niveau du dépôt** — `database/migrations/*.php` via `MigrationRunner` — et ne font pas partie du packaging d'un module. Voir [`docs/UPDATING.md`](UPDATING.md).)
 
 ### Où placer le schéma
 
@@ -380,17 +382,18 @@ Règles à respecter :
 - `SET FOREIGN_KEY_CHECKS=0` (références croisées inter-modules, ordre d'activation arbitraire), restauré en `finally`.
 - Découpage en instructions individuelles (`API\Core\SqlSplitter`), exécutées **une par une** — un échec isolé n'arrête pas les suivantes.
 - **Pas de transaction** : le DDL provoque un commit implicite.
-- Les codes `1050` (table déjà existante) et `1060` (colonne dupliquée) sont **ignorés** (sûr en ré-exécution). Tout autre échec agrège un message d'erreur ⇒ `success = false` ⇒ activation refusée.
+- Les codes `1050` (table déjà existante), `1060` (colonne dupliquée) et `1061` (index dupliqué) sont **ignorés** (sûr en ré-exécution). Tout autre échec agrège un message d'erreur ⇒ `success = false` ⇒ activation refusée.
 
 ### Mise à jour de l'application (un seul bouton)
 
-La mise à jour passe par `admin/systeme/update.php` → `app('updates')->applyUpdate()` (`API/Services/UpdateService.php`) :
+La mise à jour passe par `admin/systeme/update.php` → `app('updates')->applyUpdate()` (`API/Services/UpdateService.php`). Le flux (garde-fous, mode maintenance, sauvegarde base et **rollback complet** en cas d'erreur détaillés dans [`docs/UPDATING.md`](UPDATING.md)) :
 
 1. `git fetch origin <GITHUB_BRANCH>`
-2. `git reset --hard origin/<GITHUB_BRANCH>` (le serveur reflète exactement le dépôt ; le `.env` est sauvegardé/restauré)
-3. **`SchemaSyncService::sync()`** — réconciliation **déclarative et idempotente** : `CREATE` des tables manquantes + `ADD COLUMN` des colonnes manquantes, lues depuis les `install.sql` / `pronote.sql`. **Jamais de migration, jamais de DROP, jamais de modification de type existant** (« ajout seulement »).
-4. `app('module_sdk')->syncAll()` — re-synchronise permissions, widgets, routes…
-5. `app('cache')->flush()`
+2. `git reset --hard origin/<GITHUB_BRANCH>` (le serveur reflète exactement le dépôt)
+3. **`SchemaSyncService::sync()`** — réconciliation **déclarative, additive et idempotente** : `CREATE` des tables manquantes + `ADD COLUMN` des colonnes manquantes, lues depuis les `install.sql` / `pronote.sql` / `rgpd/Database/*.sql`. **Jamais de DROP, jamais de modification de type existant** (« ajout seulement »).
+4. **`MigrationRunner::migrate()`** — migrations de données versionnées `database/migrations/*.php` (les transformations que le déclaratif ne couvre pas : retype, index/FK sur table existante, backfill…). C'est le **niveau dépôt**, distinct du packaging d'un module (un module n'embarque jamais de migration).
+5. `app('module_sdk')->syncAll()` — re-synchronise permissions, widgets, routes…
+6. `RoleSync::sync()` puis `app('cache')->flush()`.
 
 Config `.env` : `GITHUB_BRANCH` (défaut `main`), `GIT_BINARY` (chemin de git s'il est hors du PATH d'Apache).
 
@@ -531,12 +534,15 @@ class MonWidgetProvider extends AbstractWidgetProvider
 
 ### Types de widgets
 
+Valeurs de l'ENUM `dashboard_widgets.type` : `('stats','list','chart','calendar','shortcut','custom')`.
+
 | Type | Description |
 |---|---|
-| `list` | Liste d'éléments (défaut) |
+| `stats` | Statistique avec icône |
+| `list` | Liste d'éléments (défaut appliqué par le SDK si `type` absent) |
 | `chart` | Graphique (Chart.js) |
-| `stat` | Statistique avec icône |
 | `calendar` | Mini-calendrier |
+| `shortcut` | Raccourci / lien |
 | `custom` | Template personnalisé |
 
 ## Internationalisation (i18n)
@@ -711,7 +717,7 @@ Le script `tests/validate_manifests.php` charge tous les `module.json` via `Modu
 ## Bonnes pratiques
 
 1. **Nommage** : préfixez vos tables SQL, clés de cache et clés de traduction par le `key` du module.
-2. **Schéma** : tout dans un seul `Database/install.sql` en `CREATE TABLE IF NOT EXISTS`. **Aucune migration.**
+2. **Schéma** : tout dans un seul `Database/install.sql` en `CREATE TABLE IF NOT EXISTS`. **Un module n'embarque jamais de migration** (les migrations versionnées sont au niveau du dépôt : `database/migrations/*.php`).
 3. **Multi-établissement** : colonne `etablissement_id` + FK ; filtrez toujours sur `EstablishmentContext::id()`.
 4. **Sécurité** : requêtes préparées, validation des entrées, `csrf_verify()` sur les mutations.
 5. **RBAC** : vérifiez les permissions avant chaque action sensible.

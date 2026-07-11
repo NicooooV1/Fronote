@@ -5,6 +5,16 @@
 > chaîne d'outils (PHP/Composer/npm) absente de la machine d'édition · 🌐 nécessite le réseau ·
 > 🧱 reporté volontairement (refactor d'architecture — risqué sans tests, voir justification).
 
+> **✅ Mise à jour 2026-07-11 (VAGUE 4 — durcissement production).** Plusieurs points
+> marqués ⏳ / 🧱 / « à faire » plus bas sont désormais **livrés**. Le corps historique
+> ci-dessous n'est **pas** réécrit ; l'état réel à retenir est :
+> - **CSP** : `script-src` en `nonce` + `strict-dynamic`, **sans `unsafe-inline`**, avec `report-uri`.
+> - **Lockfiles présents** : `composer.lock` et `websocket/package-lock.json`.
+> - **PHPUnit opérationnel** (127 tests) ; **PHPStan bloquant en CI** + `npm audit`.
+> - `declare(strict_types=1)` **généralisé**.
+> - **Chiffrement at-rest** AES-256-GCM v2 (dérivation HKDF) ; schéma déclaratif + colonnes chiffrées élargies.
+> - **Anti-rejeu TOTP** (2FA).
+
 ## 1. Vulnérabilités critiques (toutes corrigées ✅)
 
 | # | Problème | Correctif | Fichiers |

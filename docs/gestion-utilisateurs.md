@@ -116,27 +116,28 @@ La désactivation révoque aussi automatiquement les sessions actives du compte.
 
 ## 8. Comptes de démonstration (tests)
 
-```bash
-php scripts/seed_demo_users.php        # crée ~50 comptes fictifs (rôles variés)
-php scripts/seed_demo_users.php clean  # les supprime
-```
-
-- E-mails `@demo.fronote.test`, **mot de passe commun** affiché en fin d'exécution.
-- Connexion avec l'**identifiant** (affiché) + ce mot de passe.
-- Récapitulatif : `/opt/pronote2-db/demo-users.txt`.
+> ⚠️ **Plus disponible.** Le script `scripts/seed_demo_users.php` (qui créait ~50
+> comptes fictifs `@demo.fronote.test` avec un mot de passe commun) a été supprimé
+> avec le répertoire `scripts/`. Il n'existe plus de workflow de peuplement de comptes
+> de démonstration : créez des comptes de test via **Admin → Utilisateurs → Ajouter**
+> ou un import CSV.
 
 ---
 
 ## 9. Migrations de schéma
 
-Les changements de schéma versionnés passent par le runner de migrations :
+Deux mécanismes, joués **automatiquement** par le bouton de mise à jour
+(`UpdateService::applyUpdate()`, cf. [docs/UPDATING.md](UPDATING.md)) — il n'y a **pas
+de CLI** :
 
-```bash
-php scripts/migrate.php status     # état
-php scripts/migrate.php migrate    # applique les migrations en attente
-php scripts/migrate.php rollback   # annule la dernière fournée
-```
+1. `SchemaSyncService` réconcilie le schéma déclaratif de façon **additive** (création
+   des tables/colonnes manquantes lues depuis les `install.sql`/`pronote.sql`, jamais
+   de DROP).
+2. `API\Services\MigrationRunner::migrate()` applique ensuite les migrations de données
+   versionnées présentes dans `database/migrations/` (`up()`/`down()`), en tenant à
+   jour le journal `schema_migrations`.
 
-Migrations dans `database/migrations/` (up/down), journal `schema_migrations`.
-`SchemaSyncService` reste un outil de réparation additif (création de tables/colonnes
-manquantes), pas le système principal.
+`MigrationRunner` expose aussi `status()` et `rollback()`, mais **en interne
+uniquement** : il n'existe aucun wrapper `scripts/migrate.php` (le répertoire
+`scripts/` a été supprimé). `SchemaSyncService` reste additif — il ne remplace pas les
+migrations versionnées, il les précède.

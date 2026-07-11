@@ -1,4 +1,4 @@
-# Marketplace — Guide (v3.2.4)
+# Marketplace — Guide (v3.3.0)
 
 Module `marketplace` v1.5.2 — installation et désinstallation de modules Fronote.
 
@@ -24,8 +24,8 @@ Deux chemins d'installation coexistent :
 - [Installation depuis le catalogue distant](#installation-depuis-le-catalogue-distant)
 - [Désinstallation et rollback](#désinstallation-et-rollback)
 - [Infrastructure PKI](#infrastructure-pki)
-- [CLI et scripts](#cli-et-scripts)
-- [Module de référence hello_world](#module-de-référence-hello_world)
+- [Packaging et vérification (API PHP)](#packaging-et-vérification-api-php)
+- [Module de référence (illustratif)](#module-de-référence-illustratif)
 - [Tables de base de données](#tables-de-base-de-données)
 - [Variables d'environnement](#variables-denvironnement)
 - [Sécurité](#sécurité)
@@ -121,7 +121,7 @@ La signature couvre `sha256(MANIFEST.sha256)` — le hash du fichier de hashes. 
 - La version du cœur ne satisfait pas `min_core`/`max_core` (`FmodService::semverSatisfies` : `>=`, `<=`, `>`, `<`, `=`, `^`, `~`, wildcards `X.Y.*`, conjonctions séparées par espace)
 - La version est yankée (`marketplace_advisories_seen`, sévérité `high`/`critical` — hook `isYanked`)
 
-La contrainte du semver du cœur est lue depuis le manifeste (`publish.min_core`/`max_core`). La version courante vient de `version.json` (`3.2.4`).
+La contrainte du semver du cœur est lue depuis le manifeste (`publish.min_core`/`max_core`). La version courante vient de `version.json` (`3.3.0`).
 
 ---
 
@@ -343,66 +343,74 @@ Une ligne base64, 32 bytes une fois décodés. Fichier public, destiné à être
 
 ---
 
-## CLI et scripts
+## Packaging et vérification (API PHP)
 
-### Générer l'infrastructure PKI de test
+> **Pas de CLI ni de scripts.** Le répertoire `scripts/` a été supprimé : il n'y a
+> ni générateur de PKI, ni installeur en ligne de commande. La génération de clés,
+> la construction/signature et la vérification d'un `.fmod` passent par l'API PHP
+> `\API\Services\FmodService` ; l'**installation** se fait par le sideload dans l'UI
+> (`modules/marketplace/marketplace.php` → `MarketplaceService::installFromFmod()`).
 
-```bash
-bash scripts/pki/generate-test-ca.sh [output_dir]   # défaut: ./pki-test
-# Génère Root CA test, Intermediate CA, cert éditeur fronote-team, keypair libsodium.
-# Copie fronote-test-root.pub dans config/marketplace/roots/ automatiquement.
-# Prérequis : OpenSSL 3.x + PHP 8.0+ avec ext-sodium.
+### Générer une paire de clés Ed25519
+
+```php
+[$secretKeyB64, $publicKeyB64, $fingerprint] = \API\Services\FmodService::generateKeypair();
+// $publicKeyB64 : à publier (Root CA → config/marketplace/roots/*.pub, ou clé éditeur)
+// $secretKeyB64 : secret de signature (jamais committé)
+// $fingerprint  : sha256 hex de la clé publique
 ```
 
-### Installer un module en CLI
-
-```bash
-php scripts/install-module.php ./module-1.0.0.fmod [--allow-test] [--dry-run]
-# --allow-test  → équivaut à ALLOW_TEST_MODULES=true (autorise les modules test_only)
-# --dry-run     → vérifie signature + intégrité sans installer
-```
-
-Le script charge les Root CA depuis `config/marketplace/roots/*.pub` et délègue à `MarketplaceService::installFromFmod()` (consentement demandé en interactif si nécessaire).
-
-### Construire un `.fmod` (PHP)
+### Construire un `.fmod` (build + signature)
 
 ```php
 $fmod = new \API\Services\FmodService([]);  // aucune Root CA requise pour signer
 $fmod->buildPackage(
     './modules/mon_module',
     './dist/mon_module-1.0.0.fmod',
-    trim(file_get_contents('pki-test/fmod-secret.key')),   // clé éditeur Ed25519 base64
+    $secretKeyB64,          // clé éditeur Ed25519 base64
     'fronote-team',
-    [base64_encode(file_get_contents('pki-test/publisher.crt'))]  // chaîne éditeur→intermédiaire
+    [$certEditeurB64]       // chaîne éditeur→intermédiaire (certs base64)
 );
 ```
 
-### Vérifier un `.fmod` (PHP)
+`buildPackage()` assemble le `MANIFEST.sha256` (`buildManifest()`), le signe
+(`signManifest()`) et empaquette la source dans le ZIP `.fmod`.
+
+### Vérifier un `.fmod` (offline)
 
 ```php
 $pubKeyB64 = trim(file_get_contents('config/marketplace/roots/fronote-test-root.pub'));
 $roots     = [\API\Services\FmodService::fingerprint($pubKeyB64) => $pubKeyB64];
 $fmod      = new \API\Services\FmodService($roots);
-$result    = $fmod->verifyPackage('./module.fmod', '3.2.4');
+$result    = $fmod->verifyPackage('./module.fmod', '3.3.0');
 // $result['ok'], $result['errors'], $result['manifest'], $result['signature']
 ```
 
-### Scripts bas niveau
+### Méthodes `FmodService`
 
-| Script | Rôle |
+| Méthode | Rôle |
 |--------|------|
-| `scripts/fmod_keygen.php <nom> [out_dir]` | Génère une paire Ed25519 (`.sk`, `.pub`, `.fp`) ; défaut `config/marketplace/keys/` |
-| `scripts/fmod_cert.php <subject.pub> <issuer.sk> <publisher_id> <jours> [out]` | Émet un certificat Fronote signé |
-| `scripts/fmod_build.php <src> <out.fmod> <editor.sk> <publisher_id> <cert1> [cert2…]` | Build + signature (cert éditeur en premier) |
-| `scripts/fmod_verify.php <pkg.fmod> [root.pub…]` | Vérification offline |
+| `FmodService::generateKeypair()` (static) | Paire Ed25519 `[secretB64, publicB64, fingerprint]` |
+| `FmodService::fingerprint($pubB64)` (static) | Empreinte sha256 d'une clé publique |
+| `FmodService::certFingerprint($certB64)` (static) | Empreinte sha256 d'un certificat |
+| `FmodService::canonicalCertBytes($cert)` (static) | Octets canoniques d'un certificat à signer |
+| `->buildManifest($src)` / `->parseManifest($m)` | Construire / lire le `MANIFEST.sha256` |
+| `->signManifest($manifest, $secretB64, $publisherId, $chain)` | Signature Ed25519 détachée + chaîne |
+| `->buildPackage(...)` / `->verifyPackage(...)` | Empaquetage / vérification offline |
+| `->verifyAndExtract(...)` / `->extract(...)` | Vérification + extraction atomique |
 
 ---
 
-## Module de référence hello_world
+## Module de référence (illustratif)
 
-Module test officiel (`modules/hello_world/`, v1.0.0), `test_only: true`, `channel: test`.
+> ⚠️ **Illustratif — non livré.** Le module `hello_world` décrit ci-dessous **n'est
+> pas présent dans le dépôt** (`modules/hello_world/` n'existe pas). Il sert
+> uniquement d'exemple de squelette pour un module test `.fmod`. Le catalogue de
+> test (`test_catalog.php`) l'inclut automatiquement **s'il existe**, sinon il est
+> simplement absent.
 
-**Objectif** : valider l'intégralité du pipeline `.fmod` sans logique métier.
+Squelette type d'un module test (`test_only: true`, `channel: test`), qui valide le
+pipeline `.fmod` sans logique métier :
 
 ```
 modules/hello_world/
@@ -414,16 +422,10 @@ modules/hello_world/
 └── lang/{fr,en}.json
 ```
 
-**Activation** :
+**Activation** : empaqueter le squelette en `.fmod` (cf. « Packaging et vérification »)
+avec `ALLOW_TEST_MODULES=true` dans `.env`, puis le sideloader depuis l'UI marketplace.
 
-```bash
-# .env
-ALLOW_TEST_MODULES=true
-
-php scripts/install-module.php ./hello_world-1.0.0.fmod --allow-test
-```
-
-**API** :
+**API** (une fois le provider enregistré) :
 
 ```php
 $hw = app('hello_world');

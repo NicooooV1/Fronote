@@ -358,9 +358,11 @@ changement de mot de passe (`login/change_password.php`).
 authentifié.
 
 - clé maître = `APP_KEY` (`.env`), repli sur `JWT_SECRET` ; dérivée en 256 bits par
-  `hash('sha256', $key, true)` ;
+  version : le chemin d'écriture courant est **HKDF-SHA256** (`hash_hkdf`,
+  `KEY_VERSION=2`), rétrocompatible avec la v1 legacy (`hash('sha256', $key, true)`,
+  toujours lisible en déchiffrement) ;
 - format de sortie : `version:nonce_b64:ciphertext_b64:tag_b64` (nonce 96 bits, tag
-  128 bits) ; versionné pour la rotation ;
+  128 bits) ; la version inscrite dans le payload sélectionne la dérivation (rotation) ;
 - `Encryption::available()` indique si une clé est configurée.
 
 ```php
@@ -397,23 +399,29 @@ CSP **réellement émise** par `shared_header.php` :
 
 ```
 default-src 'self';
-script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.socket.io https://code.jquery.com;
+script-src 'self' 'nonce-{…}' 'strict-dynamic' https:;
 style-src  'self' 'unsafe-inline' https://cdnjs.cloudflare.com;
 font-src   'self' https://cdnjs.cloudflare.com data:;
 img-src    'self' data: blob: https:;
-connect-src 'self' ws: wss: https:;
+connect-src 'self' ws: wss:;
 object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';
+report-uri /API/endpoints/csp_report.php;
 upgrade-insecure-requests;   (HTTPS uniquement)
 ```
 
-> ⚠️ État réel : `'unsafe-inline'` est **encore présent** pour `script-src` et
-> `style-src` (durcissement planifié : externaliser les handlers/styles inline puis
-> basculer sur nonce). `'unsafe-eval'` et les sources `http://` ont été retirés
+> ⚠️ État réel : `'unsafe-inline'` a été **retiré de `script-src`**. Tous les
+> `<script>` portent désormais un **nonce** (`$_hdr_nonce`) et `'strict-dynamic'`
+> autorise, en cascade, les scripts chargés par un script déjà noncé — l'allowlist
+> d'hôtes de `script-src` n'a donc plus d'effet. `'unsafe-inline'` n'est **conservé
+> que sur `style-src`** (nombreux attributs `style="…"` inline en legacy ;
+> durcissement planifié). `'unsafe-eval'` et les sources `http://` ont été retirés
 > (anti-MITM CDN), `object-src 'none'`, embedding interdit (`frame-ancestors 'none'`).
+> Une politique **identique en Report-Only** est émise en parallèle, avec
+> `report-uri /API/endpoints/csp_report.php`.
 >
-> Un **nonce CSP** est néanmoins généré à chaque requête (`$_hdr_nonce`) et utilisé
-> sur les scripts inline injectés par le header (config WS, service worker, dark
-> mode). Vous **pouvez** l'utiliser pour vos propres scripts inline :
+> Le **nonce CSP** est généré à chaque requête (`$_hdr_nonce`) et utilisé sur les
+> scripts inline injectés par le header (config WS, service worker, dark mode). Sous
+> `'strict-dynamic'`, vous **devez** l'utiliser pour vos propres scripts inline :
 >
 > ```php
 > <script nonce="<?= $_hdr_nonce ?>"> /* autorisé */ </script>
@@ -421,11 +429,13 @@ upgrade-insecure-requests;   (HTTPS uniquement)
 
 ### Conséquences pour les modules
 
-1. **Pas de CDN non listé** : seuls `cdnjs.cloudflare.com`, `cdn.socket.io` et
-   `code.jquery.com` sont autorisés pour les scripts. Demandez à l'admin pour en
-   ajouter (et fournissez un hash SRI).
-2. Les ressources CDN doivent porter un attribut **SRI** (`integrity="sha384-…"
-   crossorigin="anonymous"`).
+1. **Le nonce autorise les scripts, pas l'allowlist d'hôtes** : sous
+   `'strict-dynamic'`, l'allowlist d'hôtes de `script-src` est **inopérante**. Tout
+   script chargé dynamiquement (inline, local ou CDN) doit porter le **nonce** de la
+   requête (`csp_nonce()` / `$_hdr_nonce`), ou être chargé par un script déjà noncé.
+2. Un script CDN se déclare donc avec `nonce="<?= csp_nonce() ?>"` — inutile de
+   demander l'ajout d'un hôte à l'allowlist. Un attribut SRI (`integrity="sha384-…"`)
+   reste possible en défense supplémentaire mais n'est pas requis par la CSP.
 3. Préférez les fichiers CSS/JS externes ; pour un script inline indispensable,
    utilisez le `nonce`.
 

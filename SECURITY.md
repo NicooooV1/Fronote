@@ -26,7 +26,7 @@ We will acknowledge your report within 48 hours and provide a timeline for a fix
 Fronote implements the following security measures:
 
 ### Authentication & Authorization
-- RBAC (Role-Based Access Control) with 7 user types: `administrateur`, `professeur`, `eleve`, `parent`, `personnel`, `vie_scolaire`, `technicien`
+- RBAC (Role-Based Access Control) with 7 user types: `administrateur`, `professeur`, `eleve`, `parent`, `personnel`, `vie_scolaire`, `technicien`. The static `API\Security\RBAC::PERMISSIONS` matrix enumerates 5 of these (`administrateur`, `professeur`, `vie_scolaire`, `eleve`, `parent`); `super_admin` and `technicien` are handled outside the matrix.
 - Multi-establishment isolation enforced via `API\Core\EstablishmentContext::id()` on every business query
 - Progressive rate limiting on login (exponential backoff)
 - Optional 2FA (TOTP-based)
@@ -76,7 +76,7 @@ Fronote implements the following security measures:
 
 ## Dependencies
 
-- Font Awesome (CDN with SRI)
-- Socket.IO client (CDN with SRI)
+- Font Awesome (nonce-gated CDN, no SRI)
+- Socket.IO client (nonce-gated CDN, no SRI)
 - **Server-side**: Composer is used to autoload classes; production dependencies are kept intentionally minimal (`composer install --no-dev --optimize-autoloader`). See `composer.json` for the exact list and run `composer audit` regularly.
 - **Marketplace scanner caveat**: `API/Security/ModuleScanner.php` performs static `token_get_all()` checks that block a denylist of dangerous calls. It is a **layered defense, not a sandbox** — dynamic invocation (variable functions, `assert($code)`, reflection, string concat to bypass denylist) can defeat it. Trust marketplace modules only from sources you control.

@@ -1,12 +1,19 @@
 # Base de données — Conventions, schéma déclaratif et scoping
 
-Fronote n'utilise **pas** de framework ORM ni de système de migrations. Le schéma
-est **déclaratif** : deux couches de fichiers `.sql` décrivent l'état désiré de la
-base, et un service de réconciliation idempotent (`SchemaSyncService`) rend la base
-conforme à ces fichiers lors des mises à jour. **Il n'y a plus aucune migration**
-(supprimées le 2026-06-17 : plus de `ModuleSDK::migrate`, plus de tables
-`module_migrations`/`core_migrations`, plus de dossier `Database/migrations`, plus de
-`CoreMigrator` ni de `scripts/migrate.php`).
+Fronote n'utilise **pas** de framework ORM. Le schéma est **déclaratif** : des fichiers
+`.sql` décrivent l'état désiré de la base, et un service de réconciliation idempotent
+(`SchemaSyncService`) rend la base conforme à ces fichiers **de façon additive** lors des
+mises à jour (`CREATE TABLE` + `ADD COLUMN` uniquement — jamais de `DROP`, ni de changement de
+type, ni d'index/FK sur une table existante). Pour ces transformations hors périmètre additif,
+un système de **migrations de données versionnées** subsiste : fichier
+`database/migrations/<horodatage>_<nom>.php` (objet `up(\PDO)/down(\PDO)`, journalisé dans la
+table `schema_migrations`), exécuté par `MigrationRunner` juste après `SchemaSyncService`.
+
+L'ancien système de migrations **par module** n'existe **plus** (supprimé le 2026-06-17 : plus
+de `ModuleSDK::migrate`, plus de tables `module_migrations`/`core_migrations`, plus de dossier
+`modules/*/Database/migrations/`, plus de clé `module.json["migrations"]`, plus de `CoreMigrator`
+ni de `scripts/migrate.php`). `MigrationRunner` n'a d'ailleurs **pas de wrapper CLI** : il tourne
+via le bouton de mise à jour. Guide de référence : [`docs/UPDATING.md`](UPDATING.md).
 
 Moteur : MySQL 8.0+ / MariaDB 10.3+, PHP ≥ 8.0 (PDO). Tout en `utf8mb4`.
 
@@ -40,7 +47,7 @@ Le schéma désiré est l'**union** de deux sources, toutes deux importées tell
 Chaque `install.sql` est **idempotent** : `CREATE TABLE IF NOT EXISTS …`, schéma final
 complet (et non incrémental). Il est exécuté par `ModuleSDK::provisionSql($key)` **à
 l'activation du module** (et réexécutable sans dommage : les erreurs 1050 « table
-existe » et 1060 « colonne dupliquée » sont ignorées ; les FK sont désactivées le
+existe », 1060 « colonne dupliquée » et 1061 « index dupliqué » sont ignorées ; les FK sont désactivées le
 temps de l'exécution, car les modules se référencent mutuellement dans un ordre
 d'activation arbitraire).
 
@@ -50,17 +57,25 @@ d'activation arbitraire).
 
 ---
 
-## Mise à jour : réconciliation, jamais de migration
+## Mise à jour : réconciliation déclarative + migrations versionnées
 
 La mise à jour de l'application se fait par **un seul bouton** (`admin/systeme/update.php`),
 qui appelle `app('updates')->applyUpdate()` (`API\Services\UpdateService`). Le flux,
-synchrone, est :
+synchrone, est (voir aussi [`docs/UPDATING.md`](UPDATING.md)) :
 
-1. `git fetch origin <branche>`
-2. `git reset --hard origin/<branche>` — le serveur reflète exactement le dépôt.
-3. **`API\Services\SchemaSyncService::sync()`** — réconciliation déclarative du schéma.
-4. `app('module_sdk')->syncAll()` — re-synchronise les manifestes (permissions, widgets, routes).
-5. `app('cache')->flush()`.
+1. **Garde-fous** : branche servie = `GITHUB_BRANCH`, arbre de travail propre, `HEAD` git
+   lisible — sinon refus **avant** toute opération destructive.
+2. **Mode maintenance** + **sauvegarde de la base** + capture du `HEAD` courant (pour rollback).
+3. `git fetch` origin.
+4. `git reset --hard origin/<branche>` — le serveur reflète exactement le dépôt.
+5. **`SchemaSyncService::sync()`** — réconciliation déclarative (additive) du schéma.
+6. **`MigrationRunner::migrate()`** — migrations de données versionnées.
+7. `app('module_sdk')->syncAll()` — re-synchronise les manifestes (permissions, widgets, routes).
+8. `RoleSync::sync()` — synchronise les rôles.
+9. `app('cache')->flush()`, puis **sortie du mode maintenance**.
+
+> Toute erreur de schéma ou de migration déclenche un **ROLLBACK COMPLET** : la base est
+> restaurée depuis la sauvegarde et le code repositionné (`git reset`) sur l'ancien `HEAD`.
 
 Configuration `.env` :
 
@@ -75,8 +90,9 @@ GIT_BINARY=git          # chemin de git si absent du PATH d'Apache (ex. Windows)
 
 ### Ce que fait (et ne fait pas) `SchemaSyncService`
 
-`SchemaSyncService` lit `pronote.sql` + tous les `modules/*/Database/install.sql`,
-en extrait les blocs `CREATE TABLE`, et **ajout seulement**, de façon idempotente :
+`SchemaSyncService` lit `pronote.sql` + tous les `modules/*/Database/install.sql` +
+`rgpd/Database/*.sql`, en extrait les blocs `CREATE TABLE`, et **ajout seulement**, de façon
+idempotente :
 
 - table absente → `CREATE TABLE` (le statement complet du `.sql`) ;
 - table présente → `ADD COLUMN` pour chaque colonne **manquante** (comparé à
@@ -96,6 +112,12 @@ réinitialisation de base après un commit de schéma.
 > qu'une nouvelle colonne soit propagée par les MAJ, elle doit figurer **dans le bloc
 > `CREATE TABLE` lui-même** (cas des `install.sql` de modules, qui déclarent
 > `etablissement_id` directement dans le `CREATE`).
+>
+> **Remède pour les transformations non additives** (changement de type, index/FK sur une
+> table déjà installée, backfill, `DROP` contrôlé, colonne ajoutée hors `CREATE`) : écrivez une
+> **migration versionnée** `database/migrations/<horodatage>_<nom>.php` (objet `up(\PDO)/down(\PDO)`).
+> `MigrationRunner` l'exécute à la MAJ suivante, juste après `SchemaSyncService`. Voir
+> [`docs/UPDATING.md`](UPDATING.md).
 
 ---
 
@@ -129,6 +151,14 @@ conventions **ne sont pas uniformes**. Documentez/codez selon la table réelle.
   suivent la même logique « par nom / par chaîne ».
 - **`identifiant`** = login `nom.prenom`. Il est UNIQUE **par établissement**
   (`uk_eleve_ident_etab (identifiant, etablissement_id)`, etc.), pas globalement.
+
+### Colonnes chiffrées au repos
+
+Certaines colonnes sensibles sont **chiffrées au repos** via `\API\Core\Encryption`
+(AES-256-GCM, `KEY_VERSION = 2`, dérivation HKDF-SHA256). Le format stocké est
+`version:b64(nonce):b64(chiffré):b64(tag)`. Une colonne chiffrée doit donc être typée **`TEXT`**
+ou au minimum **`VARCHAR(255)`** (ex. `two_factor_secret VARCHAR(255)`) : un type trop court
+**tronque** le payload et **corrompt** le déchiffrement.
 
 ---
 
@@ -238,7 +268,9 @@ $pdo->query("SELECT * FROM notes WHERE id_eleve = $eleveId");
 | `feature_flags` | Feature flags (scopés par établissement, unicité `uk_flag_etab`). |
 | `marketplace_installs`, `themes`, `theme_token_overrides` | Marketplace et thèmes. |
 
-> ⚠️ **Plus de table `module_migrations`** : ne pas la documenter ni s'y référer.
+> ⚠️ **Plus de table `module_migrations`** : ne pas la documenter ni s'y référer. Le seul
+> journal de migrations est désormais `schema_migrations` (auto-créée par `MigrationRunner`,
+> pour les migrations de données versionnées `database/migrations/*.php`).
 
 ### Sécurité
 
@@ -279,9 +311,12 @@ $pdo->query("SELECT * FROM notes WHERE id_eleve = $eleveId");
    ou laisser la MAJ (`SchemaSyncService`) réconcilier en prod.
 5. Bumpez `version.json` à tout changement de schéma.
 
-> Il n'y a **aucun** mécanisme de `DROP COLUMN`/`MODIFY` automatique. Un changement de
-> type ou une suppression de colonne se fait **manuellement** en base (hors périmètre
-> du sync « ajout seulement »).
+> `SchemaSyncService` est « ajout seulement » : **aucun** `DROP COLUMN`/`MODIFY` automatique.
+> Pour un changement de type, une suppression de colonne ou l'ajout d'un index/FK sur une table
+> existante, écrivez une **migration versionnée** `database/migrations/<horodatage>_<nom>.php`
+> (objet `up(\PDO)/down(\PDO)`) : `MigrationRunner` l'exécute à la prochaine MAJ, juste après
+> `SchemaSyncService`. **Ne pas** éditer la base de production à la main. Voir
+> [`docs/UPDATING.md`](UPDATING.md).
 
 ---
 

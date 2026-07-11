@@ -2,7 +2,7 @@
 
 > Ce document s'adresse aux **administrateurs système** et **responsables informatiques** qui déploient Fronote sur un serveur, ainsi qu'aux **développeurs** qui veulent comprendre ce que fait l'assistant d'installation.
 >
-> Version documentée : **Fronote 3.2.4** (build 2026-05-31). Source de vérité : `install.php`, `.env.example`, `pronote.sql`, `API/Services/UpdateService.php`, `API/Services/SchemaSyncService.php`.
+> Version documentée : **Fronote 3.3.0** (build 2026-07-11). Source de vérité : `install.php`, `.env.example`, `pronote.sql`, `API/Services/UpdateService.php`, `API/Services/SchemaSyncService.php`, `API/Services/MigrationRunner.php`. Pour tout ce qui touche au schéma et aux mises à jour, le guide de référence est **[docs/UPDATING.md](docs/UPDATING.md)**.
 
 ---
 
@@ -119,18 +119,21 @@ L'assistant, dans l'ordre :
 10. **Purge les secrets en clair** de la session (mots de passe admin/DB/SMTP).
 11. **Neutralise l'installateur** : tente de renommer `install.php` en `install.php.disabled-AAAAMMJJ` (best‑effort ; sous Windows le rename peut échouer → repli `chmod 0400` + avertissement de le faire à la main).
 
-### Provisionnement du schéma des modules (PAS de migrations)
+### Provisionnement du schéma des modules & des rôles
 
-> **Important.** Fronote n'utilise **aucun système de migration**. Il n'existe ni table `module_migrations`/`core_migrations`, ni dossier `Database/migrations`, ni `scripts/migrate.php`.
-
-Le schéma se compose de deux sources **déclaratives** (toutes en `CREATE TABLE IF NOT EXISTS`, schéma final complet) :
+Le schéma DDL est **déclaratif** (toutes les définitions en `CREATE TABLE IF NOT EXISTS`, schéma final complet), réparti sur trois sources :
 
 - **`pronote.sql`** — le cœur (importé à l'étape 5.4 ci‑dessus) ;
-- **`modules/<clé>/Database/install.sql`** — le schéma de chaque module.
+- **`modules/<clé>/Database/install.sql`** — le schéma de chaque module ;
+- **`rgpd/Database/*.sql`** — le schéma RGPD.
 
-À l'étape 5.8, l'assistant appelle `ModuleSDK::syncAll()` (enregistre chaque module dans `modules_config`, ses widgets, permissions et routes) puis `provisionSql()` pour **tous les modules découverts** — leurs tables sont créées **même si le module reste désactivé** (l'activation gère la *visibilité*, pas le *schéma*). Les modules essentiels (`core`) sont activés ; les autres restent à activer dans l'admin.
+Ces sources sont réconciliées de façon **ADDITIVE** par `SchemaSyncService` (`CREATE TABLE` + `ADD COLUMN` uniquement — jamais de `DROP`, ni changement de type, ni index/FK sur table existante). L'assistant appelle `SchemaSyncService::sync()` pendant l'étape 5 pour rendre la base conforme aux `.sql` du dépôt.
 
-> `ModuleSDK::discover()` scanne `modules/*/module.json` **et** `racine/*/module.json` (~61 modules : les modules métier vivent sous `modules/<clé>/`, les essentiels restent à la racine).
+> **Migrations.** L'ancien système de migrations **PAR MODULE** n'existe plus (ni table `module_migrations`/`core_migrations`, ni dossier `modules/*/Database/migrations`, ni clé `migrations` dans `module.json`, ni `scripts/migrate.php`). Un système de migrations **DE DONNÉES versionnées** subsiste pour les cas que le déclaratif ne couvre pas (rename, retype, index/FK sur base existante, backfill) : `database/migrations/<horodatage>_<nom>.php` (objet `up(\PDO)`/`down(\PDO)`, journal `schema_migrations`), joué par `MigrationRunner` lors des mises à jour. Détails dans **[docs/UPDATING.md](docs/UPDATING.md)**.
+
+À l'étape 5.8, l'assistant appelle `ModuleSDK::syncAll()` (enregistre chaque module dans `modules_config`, ses widgets, permissions et routes) puis `provisionSql()` pour **tous les modules découverts** — leurs tables sont créées **même si le module reste désactivé** (l'activation gère la *visibilité*, pas le *schéma*). Les modules essentiels (`core`) sont activés ; les autres restent à activer dans l'admin. L'assistant synchronise enfin le catalogue de rôles (`PlatformRoleSync`, `TenantRoleSync`) et initialise la **cohérence 3-mondes** (rôles, établissement, miroir tenant, super-admin plateforme).
+
+> `ModuleSDK::discover()` scanne `modules/*/module.json` **et** `racine/*/module.json` (les modules métier vivent sous `modules/<clé>/`, les essentiels restent à la racine).
 
 À la fin, l'écran de succès affiche le **journal d'installation** complet et les informations de connexion.
 
@@ -246,13 +249,18 @@ Fronote se met à jour depuis l'interface d'administration : **Administration �
 
 `app('updates')->applyUpdate()` (classe `API\Services\UpdateService`) exécute, dans l'ordre :
 
-1. `git fetch origin <branche>`
-2. `git reset --hard origin/<branche>` — le serveur reflète **exactement** le dépôt distant (le `.env` est sauvegardé puis restauré s'il venait à disparaître) ;
-3. **`SchemaSyncService::sync()`** — réconciliation **déclarative, idempotente et non destructive** du schéma : lit `pronote.sql` + tous les `install.sql`, **crée les tables manquantes** et **ajoute les colonnes manquantes** (`ADD COLUMN`). **Jamais** de migration, jamais de `DROP`, jamais de modification de type existant ;
-4. `module_sdk->syncAll()` — re‑synchronise les manifestes (permissions, widgets, routes) ;
-5. **vide le cache** applicatif.
+1. **Garde-fous** : refus si la branche servie ≠ `GITHUB_BRANCH`, si l'arbre de travail est *dirty* (`git reset --hard` détruirait des modifs non commitées) ou si le HEAD git est illisible (rollback impossible) ;
+2. **Filet de sécurité** : passage en **mode maintenance** (refus si indisponible), **sauvegarde de la base** et capture du HEAD courant ;
+3. `git fetch origin <branche>` ;
+4. `git reset --hard origin/<branche>` — le serveur reflète **exactement** le dépôt distant (le `.env` est sauvegardé puis restauré s'il venait à disparaître) ;
+5. **`SchemaSyncService::sync()`** — réconciliation **déclarative et ADDITIVE** du schéma (`CREATE TABLE` + `ADD COLUMN` uniquement ; jamais de `DROP`, de changement de type ni d'index/FK sur table existante), lue depuis `pronote.sql` + `modules/*/Database/install.sql` + `rgpd/Database/*.sql` ;
+6. **`MigrationRunner::migrate()`** — joue les migrations **versionnées** en attente (`database/migrations/`, journal `schema_migrations`) pour les cas non additifs ;
+7. **Toute erreur schéma/migration ⇒ ROLLBACK COMPLET** : base restaurée depuis la sauvegarde **et** code remis au HEAD précédent, puis sortie de maintenance ;
+8. `module_sdk->syncAll()` — re‑synchronise les manifestes (permissions, widgets, routes) ;
+9. `RoleSync::sync()` — resynchronise le catalogue de rôles RBAC ;
+10. **vide le cache** applicatif, puis **sort du mode maintenance**.
 
-Le bouton **Vérifier** liste les commits en attente sur `origin/<branche>` sans rien appliquer.
+Le bouton **Vérifier** liste les commits en attente sur `origin/<branche>` sans rien appliquer. Le déroulé complet et le workflow d'évolution de schéma sont détaillés dans **[docs/UPDATING.md](docs/UPDATING.md)**.
 
 ### Configuration
 
@@ -399,7 +407,7 @@ gunzip < fronote_AAAAMMJJ.sql.gz | mysql -h 127.0.0.1 -u fronote_user -p nom_bas
 
 ## Annexe — version & dépendances
 
-- **Version** : `version.json` → `3.2.4` (build 2026-05-31, codename *Marketplace*).
+- **Version** : `version.json` → `3.3.0` (build 2026-07-11, codename *Durcissement*).
 - **Architecture** : PHP sans framework, conteneur DI maison (`API/bootstrap.php`, services via `app('clé')`), autoload PSR‑4 (`API\ → API/`, `Pronote\ → API/`, `Modules\ → modules/`).
 - **Dépendance Composer** : `firebase/php-jwt ^7.0` ; extensions `sodium`, `json`, `zip`, `pdo`.
-- **Schéma** : déclaratif (`pronote.sql` + `modules/<m>/Database/install.sql`) — **aucune migration**.
+- **Schéma** : DDL déclaratif (`pronote.sql` + `modules/<m>/Database/install.sql` + `rgpd/Database/*.sql`) réconcilié de façon additive par `SchemaSyncService` ; migrations **de données versionnées** (`database/migrations/` + `MigrationRunner`) pour les cas non additifs. L'ancien système de migrations **par module** n'existe plus. Voir [docs/UPDATING.md](docs/UPDATING.md).

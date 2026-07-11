@@ -6,11 +6,59 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.3.0] — Durcissement production & schéma déclaratif — 2026-07-11
+
+### Sécurité
+- **Cloisonnement multi-tenant** généralisé : `etablissement_id` + `\API\Core\EstablishmentContext::id()`
+  (fail-closed) sur l'ensemble des modules et endpoints ; index + clé étrangère `etablissement_id`
+  déclarés dans le `CREATE TABLE`. Nombreux IDOR / fuites cross-tenant corrigés.
+- **Chiffrement au repos** AES-256-GCM (`\API\Core\Encryption`), dérivation de clé versionnée
+  `KEY_VERSION=2` (HKDF-SHA256), rétro-compatible v1. Données de santé (infirmerie, accessibilité)
+  et `two_factor_secret` chiffrés ; colonnes chiffrées élargies (`TEXT` / `VARCHAR(255)`).
+- **2FA** : anti-rejeu TOTP (pas-de-temps consommé, table `two_factor_last_step`), codes de secours
+  poivrés HMAC-SHA256.
+- **CSP** en mode *enforce* sans `'unsafe-inline'` sur `script-src` (nonce + `strict-dynamic`),
+  `report-uri /API/endpoints/csp_report.php`, handlers inline convertis en dispatcher délégué
+  `data-fr-*`. **CSRF** à jetons rotatifs à usage unique. En-tête CSP *sandbox* sur les fichiers
+  servis inline.
+- `declare(strict_types=1)` généralisé sur les points d'entrée (+ casts défensifs).
+
+### RGPD
+- Rétention scolaire (opt-in) + purges plancher ; export Art.15 et effacement Art.17 complets et
+  **déchiffrés** (santé, MDPH, ESS) ; consentements appliqués ; audit des accès santé de masse.
+
+### Schéma & base de données
+- **Schéma DDL 100 % déclaratif** : `pronote.sql` + `modules/*/Database/install.sql` +
+  `rgpd/Database/*.sql`, réconciliés par `SchemaSyncService` (additif : CREATE TABLE + ADD COLUMN).
+  Les migrations de schéma one-shot (`cron/migrate_*.php`) sont **supprimées** — plus aucun script à
+  exécuter pour le schéma. Index + clés étrangères de cloisonnement bakés dans le schéma.
+- **Précision migrations** : un système de **migrations de données versionnées** subsiste pour les
+  transformations que le déclaratif ne sait pas faire (`database/migrations/` + `MigrationRunner`,
+  journal `schema_migrations`), exécuté par `UpdateService::applyUpdate()` après `SchemaSyncService`.
+  Voir [docs/UPDATING.md](docs/UPDATING.md).
+- **Correctif d'ordre à l'install** : `SchemaSyncService::sync()` s'exécute désormais **avant** les
+  INSERT de données de référence des modules — les données de référence (ex. types de bourses) se
+  chargent correctement à l'install neuve.
+
+### Internationalisation
+- `__()` câblé sur les 58 modules en 8 langues (ar/de/en/es/fr/nl/ru/th) ; installeur et flux
+  d'authentification entièrement traduits.
+
+### Qualité / CI
+- PHPStan **bloquant** (`phpstan-baseline.neon`) + `npm audit` bloquant + service MySQL pour les
+  tests d'intégration dans `.github/workflows/validate.yml`. PHPUnit : 29 fichiers, 127 tests.
+
+### Documentation
+- Nouveau guide [docs/UPDATING.md](docs/UPDATING.md) (mise à jour & évolution du schéma) ;
+  documentation alignée sur le schéma déclaratif + `MigrationRunner`, `tests/README.md` régénéré.
+
+---
+
 ## [Unreleased] — Durcissement développement — 2026-06-17
 
 ### Changed
 
-- **Suppression complète des migrations SQL.** Plus de `ModuleSDK::migrate()`, de tables `module_migrations` / `core_migrations`, de dossiers `*/Database/migrations/`, de `CoreMigrator`, de `scripts/migrate.php`, ni de clé `module.json["migrations"]`. Le schéma vit entièrement dans `pronote.sql` (cœur) + `modules/<m>/Database/install.sql` (`CREATE TABLE IF NOT EXISTS`, schéma final complet). `ModuleSDK::provisionSql()` n'exécute plus que `install.sql`.
+- **Suppression du système de migrations _par module_.** Plus de `ModuleSDK::migrate()`, de tables `module_migrations` / `core_migrations`, de dossiers `*/Database/migrations/`, de `CoreMigrator`, de `scripts/migrate.php`, ni de clé `module.json["migrations"]`. Le schéma DDL vit entièrement dans `pronote.sql` (cœur) + `modules/<m>/Database/install.sql` (`CREATE TABLE IF NOT EXISTS`, schéma final complet). `ModuleSDK::provisionSql()` n'exécute plus que `install.sql`. _(Depuis 3.3.0, un système de migrations **de données** versionnées au niveau du dépôt — `database/migrations/` + `MigrationRunner`, journal `schema_migrations` — subsiste pour les rares transformations que le schéma déclaratif ne sait pas exprimer ; voir [docs/UPDATING.md](docs/UPDATING.md).)_
 - **Mise à jour en un seul bouton.** `admin/systeme/update.php` → `app('updates')->applyUpdate()` = `git fetch` + `git reset --hard origin/<GITHUB_BRANCH>` + `API\Services\SchemaSyncService::sync()` (réconciliation déclarative idempotente : création des tables et ajout des colonnes manquantes lues depuis les `install.sql`/`pronote.sql`, **sans migration ni DROP**) + `module_sdk->syncAll()` + vidage du cache. Remplace l'ancien système (GitHub Releases + zip + `scripts/update.php` + webhook + cron).
 - **Restructuration vers la topbar.** 28 pages (22 modules + 6 pages d'administration) migrées de l'ancienne sidebar vers le layout topbar unifié (`shared_header` + `shared_topbar` + `.content-container`). CSS modules corrigé (`$extraCss` page-relatif).
 

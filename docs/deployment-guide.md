@@ -1,11 +1,13 @@
 # Guide de déploiement
 
 Ce guide couvre l'installation initiale de Fronote puis sa mise à jour **en un seul
-bouton** (pull Git + réconciliation déclarative du schéma SQL). Il n'y a **aucune
-migration** dans Fronote : le schéma désiré vit dans les fichiers `*.sql` du dépôt et
-est appliqué de façon idempotente.
+bouton** (pull Git + réconciliation du schéma). Le schéma DDL est **déclaratif** (les
+fichiers `*.sql` du dépôt), réconcilié de façon **additive** par `SchemaSyncService` ;
+un système de migrations **de données versionnées** (`database/migrations/` +
+`MigrationRunner`) couvre les cas non additifs. Guide de référence :
+**[UPDATING.md](UPDATING.md)**.
 
-> Version documentée : **3.2.4** (`version.json`). Tous les chemins sont relatifs à la
+> Version documentée : **3.3.0** (`version.json`). Tous les chemins sont relatifs à la
 > racine du projet (ex. `/var/www/fronote`).
 
 ---
@@ -268,44 +270,40 @@ sudo systemctl start fronote-ws
 
 ## 6. Tâches planifiées (cron)
 
+Fronote regroupe **toute** la maintenance dans **un seul** script :
+`cron/daily_maintenance.php`. Il n'existe **aucun** autre cron (pas de
+`hourly_maintenance.php`, pas de crons métier par module).
+
 ```cron
 # Maintenance quotidienne à 02:00
-0 2 * * * php /var/www/fronote/cron/daily_maintenance.php >> /var/www/fronote/logs/cron.log 2>&1
-
-# Maintenance horaire
-0 * * * * php /var/www/fronote/cron/hourly_maintenance.php >> /var/www/fronote/logs/cron_hourly.log 2>&1
+0 2 * * * php /var/www/fronote/cron/daily_maintenance.php >> /var/www/fronote/API/logs/cron.log 2>&1
 ```
 
 ### Ce que fait `daily_maintenance.php` (02:00)
 
-- Purge des audit logs expirés (respecte `AUDIT_RETENTION_DAYS`)
-- Sauvegarde de la base (`app('backup')->createDatabaseBackup()`) + rotation
-  (conserve `BACKUP_RETENTION`, défaut 5)
-- Purge des tokens API expirés
-- Nettoyage du rate-limiting
-- Nettoyage des fichiers temporaires (> 24 h dans `storage/tmp`)
-- Purge des sessions expirées
-- Purge des notifications lues anciennes (> 90 jours)
-- Nettoyage des uploads orphelins
+Chaque tâche est *best-effort* : un échec n'interrompt jamais les suivantes, et la
+sortie est journalisée.
 
-### `hourly_maintenance.php`
-
-- Rafraîchissement du health check
-- Surveillance de l'espace disque
-- Nettoyage du rate-limiting
-
-> Autres crons métier présents (à planifier selon les modules activés) :
-> `weekly_digest.php`, `bourses_rappels.php`, `formations_expirations.php`,
-> `inventaire_maintenance.php`, `intelligence_calcul.php`.
+- **Sauvegarde complète** (`app('backup')->createFullBackup()` = base + uploads),
+  avec copie hors-hôte optionnelle si `BACKUP_OFFSITE_DIR` est configuré ;
+- **Rotation des sauvegardes** : conserve les `BACKUP_RETENTION` plus récentes par
+  type (défaut 5) ;
+- **Purge de l'audit** : entrées plus vieilles que `AUDIT_RETENTION_DAYS` (défaut 180) ;
+- **File d'e-mails** : envoi des e-mails en attente puis purge des entrées traitées
+  (`email_log` + corps `storage/email_queue/`) ;
+- **GC du cache** applicatif expiré ;
+- **Nettoyage de `storage/tmp`** (fichiers > 24 h) ;
+- **Nettoyage de `storage/quarantine`** (reliquats > 30 jours).
 
 ---
 
 ## 7. Mise à jour de Fronote — **un seul bouton**
 
-La mise à jour ne se fait **pas** par script CLI, ni par téléchargement d'archive, ni
-par migrations. Il n'y a **aucune** des choses suivantes : `scripts/update.php`,
-`scripts/check_update.php`, `API/endpoints/webhook_update.php`, cron de vérification,
-GitHub Releases / zip. Le **dépôt Git est la source**.
+La mise à jour ne se fait **pas** par téléchargement d'archive : il n'y a **aucune** des
+choses suivantes : `scripts/update.php`, `scripts/check_update.php`,
+`API/endpoints/webhook_update.php`, cron de vérification, GitHub Releases / zip. Le
+**dépôt Git est la source**. La réconciliation du schéma (déclaratif additif +
+migrations versionnées) est jouée automatiquement par le bouton — voir ci-dessous.
 
 ### Interface
 
@@ -321,41 +319,60 @@ GitHub Releases / zip. Le **dépôt Git est la source**.
 
 Flux synchrone, dans l'ordre :
 
-1. Vérifie que `git` est disponible (sinon erreur — installez-le ou renseignez
-   `GIT_BINARY`).
-2. Sauvegarde en mémoire le contenu de `.env` (sécurité).
+1. **Garde-fous** : `git` disponible ; la branche servie **doit** être `GITHUB_BRANCH` ;
+   l'arbre de travail doit être **propre** (un `reset --hard` écraserait les modifs non
+   commitées) ; le HEAD git doit être lisible (sinon rollback impossible → refus).
+2. **Filet de sécurité** : passage en **mode maintenance** (refus si indisponible),
+   **sauvegarde de la base** (`app('backup')->createDatabaseBackup()`), capture du HEAD
+   courant ; le contenu de `.env` est aussi gardé en mémoire.
 3. `git fetch origin <branche>`.
 4. **`git reset --hard origin/<branche>`** — le serveur reflète **exactement** le dépôt
-   distant. ⚠️ Toute modification locale non commitée est **écrasée**.
-5. Restaure `.env` s'il avait disparu (cas où il aurait été suivi par erreur).
-6. **Réconciliation du schéma** via `API\Services\SchemaSyncService::sync()` (voir
+   distant. ⚠️ Toute modification locale non commitée est **écrasée**. `.env` est restauré
+   s'il avait disparu.
+5. **`SchemaSyncService::sync()`** — réconciliation déclarative additive du schéma (voir
    ci-dessous).
-7. `app('module_sdk')->syncAll()` — re-synchronise les manifestes des modules
+6. **`MigrationRunner::migrate()`** — joue les migrations **versionnées** en attente
+   (`database/migrations/`, journal `schema_migrations`).
+7. **Toute erreur de schéma OU de migration ⇒ ROLLBACK COMPLET** : base restaurée depuis
+   la sauvegarde **et** code remis au HEAD précédent (`git reset --hard <ancien HEAD>`),
+   puis sortie de maintenance.
+8. `app('module_sdk')->syncAll()` — re-synchronise les manifestes des modules
    (permissions, widgets, routes…).
-8. `app('cache')->flush()` — vide le cache applicatif.
-9. Relit `version.json`.
+9. `RoleSync::sync()` — resynchronise le catalogue de rôles RBAC (`rbac_roles` + grants).
+10. `app('cache')->flush()` — vide le cache applicatif.
+11. **Sortie du mode maintenance** et relecture de `version.json`.
 
 La page affiche le détail des étapes et `ancienne_version → nouvelle_version`. Le
-succès est conditionné à l'absence d'erreur de schéma.
+succès est conditionné à l'absence d'erreur de schéma **ou** de migration (sinon la mise
+à jour est intégralement annulée et restaurée).
 
-### `SchemaSyncService` — réconciliation déclarative (PAS de migration)
+### `SchemaSyncService` — réconciliation déclarative additive
 
 `API/Services/SchemaSyncService.php` rend la base conforme aux fichiers `*.sql` du
 dépôt, de façon **non destructive et idempotente** :
 
 - **Source du schéma désiré** : `pronote.sql` (cœur) + tous les
-  `modules/*/Database/install.sql`. Les définitions de colonnes sont fusionnées en cas
-  de table déclarée à plusieurs endroits.
+  `modules/*/Database/install.sql` + `rgpd/Database/*.sql`. Les définitions de colonnes
+  sont fusionnées en cas de table déclarée à plusieurs endroits.
 - **Table absente** → `CREATE TABLE` (le statement complet du `.sql`).
 - **Table présente** → `ADD COLUMN` pour chaque colonne **manquante** uniquement.
 - **Jamais** de `DROP`, jamais de changement de type, jamais de suppression de
-  colonne/table — c'est de l'« ajout seulement ». Les `FOREIGN_KEY_CHECKS` sont
-  désactivés le temps de la passe (ordre d'activation des modules arbitraire).
+  colonne/table, **ni d'index/FK sur une table existante** — c'est de l'« ajout
+  seulement ». Les `FOREIGN_KEY_CHECKS` sont désactivés le temps de la passe (ordre
+  d'activation des modules arbitraire).
 
-Conséquence : après un commit qui ajoute une table ou une colonne, **aucune action
-manuelle** sur la base n'est nécessaire — le bouton suffit. Pour un changement
-destructif (renommer/supprimer une colonne), il faut intervenir manuellement en SQL :
-`SchemaSyncService` ne le fera pas.
+Conséquence : après un commit qui **ajoute une table ou une colonne**, **aucune action
+manuelle** sur la base n'est nécessaire — le bouton suffit.
+
+### `MigrationRunner` — migrations versionnées (cas non additifs)
+
+Pour ce que `SchemaSyncService` ne sait **pas** exprimer (renommage, changement de type,
+index/FK sur une base existante, backfill de données, suppression contrôlée), on écrit
+une **migration versionnée** : `database/migrations/<horodatage>_<nom>.php` (objet
+`up(\PDO)`/`down(\PDO)`, idempotent). `MigrationRunner` les joue dans l'ordre
+lexicographique juste après `SchemaSyncService`, en tenant le journal `schema_migrations`
+(une migration ne rejoue jamais). L'ancien système de migrations **par module** a
+disparu. Le workflow complet est décrit dans **[UPDATING.md](UPDATING.md)**.
 
 ### Procédure recommandée pour une montée de version
 
@@ -455,9 +472,8 @@ Renvoie un JSON sur l'état des sous-systèmes (base, disque, cache, etc.).
 ### Fichiers de logs
 
 ```
-logs/
+API/logs/
 ├── cron.log            ← sortie de la maintenance quotidienne
-├── cron_hourly.log     ← sortie de la maintenance horaire
 ├── error.log           ← erreurs PHP (production)
 └── audit.log           ← événements d'audit de sécurité
 ```
