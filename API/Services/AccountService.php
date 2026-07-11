@@ -157,13 +157,19 @@ final class AccountService
         }
     }
 
-    /** Mapping table héritée → account_type unifié. */
-    private const LEGACY_ACCOUNT_TYPE = [
-        'eleves'          => 'student',
-        'parents'         => 'family',
-        'professeurs'     => 'personnel',
-        'vie_scolaire'    => 'personnel',
-        'administrateurs' => 'personnel',
+    /**
+     * Mapping table héritée → [account_type unifié, legacy_type CANONIQUE].
+     * legacy_type = le TYPE d'utilisateur (eleve/parent/…), PAS le nom de table — c'est ce
+     * qu'attend la voie d'auth (UserProvider::loadLegacyForAuth → getTableForUserType) et ce que
+     * stocke la session (user_type). Cohérent avec retrieveById($id, $userType).
+     */
+    private const LEGACY_TABLES = [
+        // table => [account_type, legacy_type]
+        'eleves'          => ['student',   'eleve'],
+        'parents'         => ['family',    'parent'],
+        'professeurs'     => ['personnel', 'professeur'],
+        'vie_scolaire'    => ['personnel', 'vie_scolaire'],
+        'administrateurs' => ['personnel', 'administrateur'],
     ];
 
     /**
@@ -192,7 +198,7 @@ final class AccountService
                     etablissement_id=VALUES(etablissement_id), two_factor_enabled=VALUES(two_factor_enabled),
                     last_login_at=VALUES(last_login_at), locked_until=VALUES(locked_until), updated_at=NOW()";
         $ins = $this->pdo->prepare($sql);
-        foreach (self::LEGACY_ACCOUNT_TYPE as $table => $accType) {
+        foreach (self::LEGACY_TABLES as $table => [$accType, $legacyType]) {
             try {
                 $rows = $this->pdo->query(
                     "SELECT id, etablissement_id, nom, prenom, mail, identifiant, mot_de_passe, actif,
@@ -210,7 +216,7 @@ final class AccountService
                         $display !== '' ? $display : null,
                         ((int) ($r['actif'] ?? 1) === 1) ? 'active' : 'inactive',
                         $r['etablissement_id'] ?? null,
-                        $table,
+                        $legacyType,
                         (int) $r['id'],
                         (int) ($r['two_factor_enabled'] ?? 0),
                         $r['last_login'] ?? null,
