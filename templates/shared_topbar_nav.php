@@ -17,138 +17,19 @@ $user_initials = $user_initials ?? '';
 $user_fullname = $user_fullname ?? '';
 $isAdmin = $isAdmin ?? false;
 
-// Get modules grouped by topbar category
-$_topbar_modules = [];
-$_topbar_role = getUserRole() ?? 'eleve';
-// Rôles effectifs (base + attribués) : un compte avec un rôle attribué (infirmerie,
-// cpe, professeur_principal…) doit voir les modules de ce rôle dans la topbar.
-$_topbar_roles = function_exists('getEffectiveRoles') ? getEffectiveRoles() : [$_topbar_role];
-if (empty($_topbar_roles)) { $_topbar_roles = [$_topbar_role]; }
-$_topbar_favorites = [];
-$_topbar_fav_keys = [];
-try {
-    $moduleService = app('modules');
-    $_topbar_modules = $moduleService->getForTopbar($_topbar_roles);
-    if (!empty($_SESSION['user_id'])) {
-        $_topbar_favorites = $moduleService->getFavorites(
-            (int) $_SESSION['user_id'],
-            $_SESSION['user_type'] ?? '',
-            $_topbar_role
-        );
-        foreach ($_topbar_favorites as $_fav) {
-            $_topbar_fav_keys[$_fav['module_key']] = true;
-        }
-    }
-} catch (\Throwable $e) {
-    error_log('[topbar] getForTopbar failed (' . get_class($e) . '): ' . $e->getMessage());
-}
+// Modèle de navigation (modules groupés, favoris, badge notifs, établissement, enfants)
+// — toute la logique/SQL est extraite dans \API\UI\TopbarNav ; le template n'itère et n'échappe plus.
+$__nav = \API\UI\TopbarNav::build();
+$_topbar_modules        = $__nav['modules'];
+$_topbar_favorites      = $__nav['favorites'];
+$_topbar_fav_keys       = $__nav['fav_keys'];
+$_topbar_notif_count    = $__nav['notif_count'];
+$_topbar_etab_name      = $__nav['etab_name'];
+$_topbar_is_parent      = $__nav['is_parent'];
+$_topbar_children       = $__nav['children'];
+$_topbar_selected_child = $__nav['selected_child'];
+$_topbar_role           = $__nav['role'];
 
-// Fallback: direct DB query when service layer returns nothing
-// (guards against stale singleton cache, missing columns, or boot-time errors)
-if (empty($_topbar_modules)) {
-    try {
-        $_tb_pdo = getPDO();
-        $_tb_stmt = $_tb_pdo->query("SELECT module_key, label, icon, category, sort_order FROM modules_config WHERE enabled = 1 AND sidebar_hidden = 0 ORDER BY sort_order, label");
-        $_tb_rows = $_tb_stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        // Category meta for fallback grouping
-        $_tb_meta = [
-            'scolaire'      => ['label' => 'Pédagogie',    'icon' => 'fas fa-graduation-cap', 'order' => 1],
-            'vie_scolaire'  => ['label' => 'Vie scol.',    'icon' => 'fas fa-school',         'order' => 2],
-            'communication' => ['label' => 'Communication','icon' => 'fas fa-comments',       'order' => 3],
-            'sante'         => ['label' => 'Santé',        'icon' => 'fas fa-heartbeat',      'order' => 4],
-            'etablissement' => ['label' => 'Établissement','icon' => 'fas fa-building',       'order' => 5],
-            'logistique'    => ['label' => 'Logistique',   'icon' => 'fas fa-cogs',           'order' => 6],
-            'systeme'       => ['label' => 'Outils',       'icon' => 'fas fa-tools',          'order' => 7],
-        ];
-        $_tb_overrides = ['messagerie' => 'communication', 'notifications' => 'communication', 'infirmerie' => 'sante', 'vie_associative' => 'systeme'];
-        $_tb_exclude = ['accueil', 'parametres', 'profil', 'notifications'];
-
-        foreach ($_tb_rows as $_tb_mod) {
-            $_tb_key = $_tb_mod['module_key'];
-            if (in_array($_tb_key, $_tb_exclude)) continue;
-            $_tb_cat = $_tb_overrides[$_tb_key] ?? $_tb_mod['category'];
-            if ($_tb_cat === 'navigation') continue;
-            if (!isset($_tb_meta[$_tb_cat])) continue;
-            if (!isset($_topbar_modules[$_tb_cat])) {
-                $_topbar_modules[$_tb_cat] = [
-                    'label'   => $_tb_meta[$_tb_cat]['label'],
-                    'icon'    => $_tb_meta[$_tb_cat]['icon'],
-                    'order'   => $_tb_meta[$_tb_cat]['order'],
-                    'modules' => [],
-                ];
-            }
-            // Determine route: try modules/<key>/<key>.php, fall back to <key>/<key>.php
-            $_tb_route = 'modules/' . $_tb_key . '/' . $_tb_key . '.php';
-            $_topbar_modules[$_tb_cat]['modules'][] = array_merge($_tb_mod, ['route' => $_tb_route, 'module_key' => $_tb_key]);
-        }
-        uasort($_topbar_modules, fn($a, $b) => ($a['order'] ?? 99) <=> ($b['order'] ?? 99));
-    } catch (\Throwable $_tb_ex) {
-        error_log('[topbar] direct-DB fallback failed: ' . $_tb_ex->getMessage());
-    }
-    unset($_tb_pdo, $_tb_stmt, $_tb_rows, $_tb_meta, $_tb_overrides, $_tb_exclude, $_tb_mod, $_tb_key, $_tb_cat, $_tb_route, $_tb_ex);
-}
-
-// Notification badge count
-$_topbar_notif_count = 0;
-try {
-    if (!empty($_SESSION['user_id'])) {
-        $pdo_tb = getPDO();
-        // Table socle = notifications_globales, colonne non-lu = `lu` (et non la
-        // table `notifications`/`is_read` qui n'existe pas → badge toujours à 0).
-        $stmt = $pdo_tb->prepare("SELECT COUNT(*) FROM notifications_globales WHERE user_id = ? AND user_type = ? AND lu = 0");
-        $stmt->execute([$_SESSION['user_id'], $_SESSION['user_type'] ?? '']);
-        $_topbar_notif_count = (int) $stmt->fetchColumn();
-    }
-} catch (\Throwable $e) {}
-
-// Establishment info
-$_topbar_etab_name = '';
-try {
-    $etab = app('etablissement')->getCurrent();
-    $_topbar_etab_name = $etab['nom'] ?? '';
-} catch (\Throwable $e) {}
-
-// Parent child selector
-$_topbar_children = [];
-$_topbar_selected_child = null;
-$_topbar_is_parent = (($_SESSION['user_type'] ?? '') === 'parent');
-
-if ($_topbar_is_parent && !empty($_SESSION['user_id'])) {
-    try {
-        $pdo_tb = getPDO();
-        if (!empty($_REQUEST['switch_child'])) {
-            $switchId = (int)$_REQUEST['switch_child'];
-            $stmtCheck = $pdo_tb->prepare("SELECT COUNT(*) FROM parent_eleve WHERE id_parent = ? AND id_eleve = ?");
-            $stmtCheck->execute([$_SESSION['user_id'], $switchId]);
-            if ((int)$stmtCheck->fetchColumn() > 0) {
-                $_SESSION['selected_child_id'] = $switchId;
-            }
-        }
-        $stmtChildren = $pdo_tb->prepare("
-            SELECT e.id, e.nom, e.prenom, c.nom AS classe_nom
-            FROM parent_eleve pe JOIN eleves e ON e.id = pe.id_eleve
-            LEFT JOIN classes c ON e.classe = c.nom
-            WHERE pe.id_parent = ? AND e.actif = 1
-            ORDER BY e.nom, e.prenom
-        ");
-        $stmtChildren->execute([$_SESSION['user_id']]);
-        $_topbar_children = $stmtChildren->fetchAll(PDO::FETCH_ASSOC);
-        if (!empty($_topbar_children)) {
-            $selectedId = $_SESSION['selected_child_id'] ?? null;
-            foreach ($_topbar_children as $child) {
-                if ((int)$child['id'] === (int)$selectedId) {
-                    $_topbar_selected_child = $child;
-                    break;
-                }
-            }
-            if (!$_topbar_selected_child) {
-                $_topbar_selected_child = $_topbar_children[0];
-                $_SESSION['selected_child_id'] = (int)$_topbar_children[0]['id'];
-            }
-        }
-    } catch (\Throwable $e) {}
-}
 ?>
 
 <nav class="topbar-nav" role="navigation" aria-label="Navigation principale">
