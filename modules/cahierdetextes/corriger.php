@@ -60,10 +60,10 @@ if ($devoirId) {
     $stmt = $pdo->prepare("
         SELECT d.*, (SELECT COUNT(*) FROM devoirs_rendus WHERE devoir_id = d.id) AS nb_rendus,
                (SELECT COUNT(*) FROM devoirs_rendus WHERE devoir_id = d.id AND statut = 'corrige') AS nb_corriges
-        FROM devoirs d WHERE nom_professeur = ? AND EXISTS (SELECT 1 FROM devoirs_rendus WHERE devoir_id = d.id)
+        FROM devoirs d WHERE nom_professeur = ? AND d.etablissement_id = ? AND EXISTS (SELECT 1 FROM devoirs_rendus WHERE devoir_id = d.id)
         ORDER BY d.date_rendu DESC
     ");
-    $stmt->execute([$user_fullname]);
+    $stmt->execute([$user_fullname, \API\Core\EstablishmentContext::id()]);
     $devoirsAvecRendus = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 ?>

@@ -1070,7 +1070,9 @@ class AuditRgpdService
             $eid = \API\Core\EstablishmentContext::id();
             return [' AND etablissement_id = :etab_scope', [':etab_scope' => $eid]];
         } catch (\Throwable $e) {
-            return ['', []];
+            // FAIL-CLOSED : contexte établissement non résolu pour un non-super-admin → ne rien
+            // exposer (aligné sur etablissementScope() ; registres de violations Art.33/34 inclus).
+            return [' AND 1 = 0', []];
         }
     }
 
@@ -1084,7 +1086,11 @@ class AuditRgpdService
         $stmtD->execute($demParams);
         $demandes = $stmtD->fetchAll(\PDO::FETCH_KEY_PAIR);
 
-        $consentements = $this->pdo->query("SELECT COUNT(*) AS total, SUM(consenti) AS consented FROM rgpd_consentements")->fetch(\PDO::FETCH_ASSOC);
+        // Cloisonnement du taux de consentement par établissement (comme demandes/violations).
+        [$conClause, $conParams] = $this->etablissementScope('rgpd_consentements');
+        $stmtC = $this->pdo->prepare("SELECT COUNT(*) AS total, SUM(consenti) AS consented FROM rgpd_consentements WHERE 1=1" . $conClause);
+        $stmtC->execute($conParams);
+        $consentements = $stmtC->fetch(\PDO::FETCH_ASSOC);
 
         [$vioClause, $vioParams] = $this->etablissementScope('rgpd_violations');
         $stmtV = $this->pdo->prepare("SELECT COUNT(*) FROM rgpd_violations WHERE statut != 'resolue'" . $vioClause);

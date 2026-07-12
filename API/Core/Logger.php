@@ -51,8 +51,24 @@ class Logger
         $this->log('CRITICAL', $message, $context);
     }
 
+    /**
+     * Masque récursivement la valeur des clés sensibles (secrets/PII) avant journalisation,
+     * pour le fichier de log ET le relais error_log. Filtre par NOM de clé.
+     */
+    private static function redact(array $data): array
+    {
+        foreach ($data as $k => $v) {
+            if (is_array($v)) { $data[$k] = self::redact($v); continue; }
+            if (is_string($k) && preg_match('/pass|secret|token|authorization|mot_de_passe|csrf|cookie|api[_-]?key/i', $k)) {
+                $data[$k] = '***';
+            }
+        }
+        return $data;
+    }
+
     private function log(string $level, string $message, array $context): void
     {
+        $context = self::redact($context);
         $entry = [
             'timestamp' => date('c'),
             'level' => $level,

@@ -41,7 +41,7 @@ if (isAdmin() || isVieScolaire() || isProfesseur()) {
 }
 
 $etab = [];
-try { $etab = $pdo->query("SELECT * FROM etablissement LIMIT 1")->fetch(PDO::FETCH_ASSOC) ?: []; } catch (\Exception $e) { error_log('[export_convention.php] ' . $e->getMessage()); }
+try { $etab = (static function($pdo){ $s = $pdo->prepare("SELECT * FROM etablissements WHERE id = ? LIMIT 1"); $s->execute([\API\Core\EstablishmentContext::id()]); return $s->fetch(PDO::FETCH_ASSOC); })($pdo) ?: []; } catch (\Exception $e) { error_log('[export_convention.php] ' . $e->getMessage()); }
 $nomEtab = $etab['nom'] ?? 'Établissement';
 $adresse = trim(($etab['adresse'] ?? '') . ' ' . ($etab['code_postal'] ?? '') . ' ' . ($etab['ville'] ?? ''));
 

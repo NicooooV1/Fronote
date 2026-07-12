@@ -160,10 +160,24 @@ final class ProductionReadinessChecker
         }
 
         // ── Comptes de démonstration autorisés : mot de passe public exploitable. ──
+        // CRITICAL (comme APP_DEBUG) → refuse le démarrage en production (shouldBlockBoot).
         if ($this->boolish($this->get('ALLOW_DEMO_ACCOUNTS'), false)) {
-            $issues[] = $this->issue(self::WARNING, 'ALLOW_DEMO_ACCOUNTS',
+            $issues[] = $this->issue(self::CRITICAL, 'ALLOW_DEMO_ACCOUNTS',
                 'ALLOW_DEMO_ACCOUNTS=true : les comptes de démonstration (@demo.fronote.test, '
-                . 'mot de passe public) peuvent se connecter. À passer à false avant la production.');
+                . 'mot de passe public) peuvent se connecter. Interdit en production (mettre à false).');
+        }
+
+        // ── Secrets sous la racine web : protégés uniquement par .htaccess. ──
+        // Détection sans requête HTTP : la racine web == la racine applicative + présence de .env.
+        $appRoot = \dirname(__DIR__, 2);
+        $docroot = isset($_SERVER['DOCUMENT_ROOT']) ? realpath($_SERVER['DOCUMENT_ROOT']) : '';
+        // Uniquement pertinent sous un serveur web (pas en CLI/tests : aucune racine servie).
+        if (PHP_SAPI !== 'cli' && $docroot && realpath($appRoot) === $docroot && is_file($appRoot . '/.env')) {
+            $issues[] = $this->issue(self::WARNING, 'DOCROOT_EXPOSURE',
+                'La racine web est la racine applicative : .env, .git et *.sql ne sont protégés que par '
+                . '.htaccess. Sur un Apache en AllowOverride None, ils deviennent téléchargeables (fuite de '
+                . 'APP_KEY / JWT_SECRET / mot de passe MySQL). Recommandé : servir depuis un docroot public/ '
+                . 'dédié, avec .env, vendor/, database/, logs/ HORS de l\'arborescence servie.');
         }
 
         return $this->cachedIssues = $issues;

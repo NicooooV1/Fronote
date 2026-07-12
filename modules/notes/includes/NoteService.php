@@ -129,15 +129,23 @@ class NoteService
      */
     public function getMoyenneGenerale(int $eleveId, int $trimestre): ?float
     {
-        $moyennes = $this->getMoyennesParMatiere($eleveId, $trimestre);
-        if (empty($moyennes)) {
-            return null;
-        }
-        $total = 0;
-        foreach ($moyennes as $m) {
-            $total += $m['moyenne'];
-        }
-        return round((float) ($total / count($moyennes)), 2);
+        // Moyenne générale PONDÉRÉE par le coefficient de matière (matieres.coefficient), calcul
+        // IDENTIQUE à BulletinService → cohérence notes ↔ bulletin (avant : moyenne plate non pondérée
+        // qui divergeait du document officiel remis aux familles).
+        $stmt = $this->pdo->prepare("
+            SELECT SUM(avg_mat * coef) / SUM(coef) AS moyenne
+            FROM (
+                SELECT SUM(n.note * 20 / n.note_sur * n.coefficient) / SUM(n.coefficient) AS avg_mat,
+                       m.coefficient AS coef
+                FROM notes n
+                JOIN matieres m ON n.id_matiere = m.id
+                WHERE n.id_eleve = ? AND n.trimestre = ? AND n.coefficient > 0
+                GROUP BY n.id_matiere, m.coefficient
+            ) t
+        ");
+        $stmt->execute([$eleveId, $trimestre]);
+        $moy = $stmt->fetch(\PDO::FETCH_ASSOC);
+        return (isset($moy['moyenne']) && $moy['moyenne'] !== null) ? round((float) $moy['moyenne'], 2) : null;
     }
 
     // ─── CRUD ────────────────────────────────────────────────────────
@@ -399,17 +407,21 @@ class NoteService
      */
     public function bulkLockNotes(int $matiereId, string $classe, int $trimestre, int $lockedBy): int
     {
-        $stmt = $this->pdo->prepare(
-            "UPDATE notes n
+        // Verrouillage EFFECTIF via notes_verrous / verrouillerMatiere — le mécanisme réellement
+        // respecté à la saisie (isMatiereVerrouillee). L'ancien UPDATE ciblait des colonnes
+        // notes.locked INEXISTANTES → il échouait toujours (fonction 100 % cassée).
+        $etabId = \API\Core\EstablishmentContext::id();
+        $this->verrouillerMatiere($matiereId, $classe, $trimestre, $lockedBy, $etabId);
+
+        // Nombre de notes désormais couvertes par le verrou (pour le message utilisateur).
+        $cnt = $this->pdo->prepare(
+            "SELECT COUNT(*) FROM notes n
              JOIN eleves e ON n.id_eleve = e.id
-             SET n.locked = 1, n.locked_by = ?, n.locked_at = NOW()
-             WHERE n.id_matiere = ? AND e.classe = ? AND n.trimestre = ? AND e.etablissement_id = ? AND (n.locked IS NULL OR n.locked = 0)"
+             WHERE n.id_matiere = ? AND e.classe = ? AND n.trimestre = ? AND e.etablissement_id = ?"
         );
-        $stmt->execute([$lockedBy, $matiereId, $classe, $trimestre, \API\Core\EstablishmentContext::id()]);
-        $count = $stmt->rowCount();
-        if ($count > 0) {
-            $this->logNoteAction('note.bulk_locked', 0, $lockedBy, "matiere=$matiereId, classe=$classe, trimestre=$trimestre, count=$count");
-        }
+        $cnt->execute([$matiereId, $classe, $trimestre, $etabId]);
+        $count = (int) $cnt->fetchColumn();
+        $this->logNoteAction('note.bulk_locked', 0, $lockedBy, "matiere=$matiereId, classe=$classe, trimestre=$trimestre, count=$count");
         return $count;
     }
 

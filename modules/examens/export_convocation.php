@@ -38,7 +38,7 @@ if (!$exam) { die('Convocation introuvable.'); }
 // Charger l'établissement
 $etab = [];
 try {
-    $etab = $pdo->query("SELECT * FROM etablissement LIMIT 1")->fetch(PDO::FETCH_ASSOC) ?: [];
+    $etab = (static function($pdo){ $s = $pdo->prepare("SELECT * FROM etablissements WHERE id = ? LIMIT 1"); $s->execute([\API\Core\EstablishmentContext::id()]); return $s->fetch(PDO::FETCH_ASSOC); })($pdo) ?: [];
 } catch (\Exception $e) { error_log('[export_convocation.php] ' . $e->getMessage()); }
 
 $nomEtab = $etab['nom'] ?? 'Établissement';

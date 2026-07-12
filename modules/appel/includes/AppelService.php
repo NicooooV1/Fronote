@@ -156,13 +156,17 @@ class AppelService
      */
     public function validerAppel(int $appelId): bool
     {
+        // Idempotence : ne bascule que si l'appel n'est PAS déjà validé (AND statut <> 'valide').
         $stmt = $this->pdo->prepare(
-            "UPDATE appels SET statut = 'valide', date_validation = NOW() WHERE id = ? AND etablissement_id = ?"
+            "UPDATE appels SET statut = 'valide', date_validation = NOW()
+             WHERE id = ? AND etablissement_id = ? AND statut <> 'valide'"
         );
         $ok = $stmt->execute([$appelId, \API\Core\EstablishmentContext::id()]);
 
-        // Créer automatiquement les absences/retards dans le module absences
-        if ($ok) {
+        // Ne créer les absences/retards QUE si l'appel vient RÉELLEMENT de passer à 'valide'
+        // (rowCount>0). Une re-validation (double-clic, refresh POST) ne re-synchronise plus →
+        // fin des doublons d'absences/retards dans le module absences.
+        if ($ok && $stmt->rowCount() > 0) {
             $this->synchroniserAbsences($appelId);
         }
 
