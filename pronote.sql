@@ -2634,7 +2634,10 @@ ALTER TABLE `user_profiles`
 ALTER TABLE `rbac_permissions`
   ADD COLUMN `etablissement_id` INT NOT NULL DEFAULT 1 AFTER `id`,
   ADD INDEX `idx_etab` (`etablissement_id`),
-  ADD CONSTRAINT `fk_rbac_perm_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`);
+  ADD CONSTRAINT `fk_rbac_perm_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`),
+  -- Régionalisation (finding #2) : la clé unique inclut l'établissement → surcharges par établissement.
+  DROP INDEX `uk_role_permission`,
+  ADD UNIQUE KEY `uk_role_permission_etab` (`role`, `permission`, `etablissement_id`);
 
 ALTER TABLE `notification_preferences`
   ADD COLUMN `etablissement_id` INT NOT NULL DEFAULT 1 AFTER `id`,

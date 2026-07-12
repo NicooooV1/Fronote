@@ -231,11 +231,24 @@ final class Authorization
         // 1) Override explicite en base (matrice éditée par l'admin) : granted=1 → autorisé,
         //    granted=0 → refusé. Cherché sur le rôle ORIGINAL ET sa forme canonique — une surcharge
         //    posée sur une clé aliasée reste ainsi honorée. Le refus (MIN=0) l'emporte sur l'octroi.
+        // Cloisonnement de la matrice PAR ÉTABLISSEMENT (finding #2) : une surcharge posée pour
+        // l'établissement A ne s'applique qu'aux utilisateurs de A. On lit donc les lignes de
+        // l'établissement de l'utilisateur. Résilient : si la colonne etablissement_id n'existe pas
+        // encore (schéma non migré), on retombe sur la lecture globale historique.
+        $etab = isset($this->user['etablissement_id']) ? (int) $this->user['etablissement_id'] : 0;
         try {
-            $stmt = $this->pdo->prepare(
-                "SELECT MIN(granted) FROM rbac_permissions WHERE role IN (?, ?) AND permission = ?"
-            );
-            $stmt->execute([$role, $canon, $permission]);
+            try {
+                $stmt = $this->pdo->prepare(
+                    "SELECT MIN(granted) FROM rbac_permissions WHERE role IN (?, ?) AND permission = ? AND etablissement_id = ?"
+                );
+                $stmt->execute([$role, $canon, $permission, $etab]);
+            } catch (\PDOException $eCol) {
+                // Colonne etablissement_id absente → compat : lecture non scopée.
+                $stmt = $this->pdo->prepare(
+                    "SELECT MIN(granted) FROM rbac_permissions WHERE role IN (?, ?) AND permission = ?"
+                );
+                $stmt->execute([$role, $canon, $permission]);
+            }
             $g = $stmt->fetchColumn();
             if ($g !== false && $g !== null) {
                 return (int) $g === 1;
