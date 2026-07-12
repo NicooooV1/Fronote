@@ -13,8 +13,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   scopée (`Authorization::roleGrants`, `RBAC::checkDynamicPermission`, résilientes), écriture scopée
   (`role_permissions.php`), clé unique `(role, permission, etablissement_id)` (migration idempotente
   `2026_07_12_000001`, appliquée). Rétrocompatible (lignes existantes à `etablissement_id=1`).
+- **`scopeAllows` — fin du fail-open** (finding #23) : un rôle scopé établissement sans cible explicite
+  déduit désormais le scope de requête résolu (`EstablishmentContext`) et refuse s'il diffère de son
+  périmètre ; contexte non résolu → permissif (aucune régression).
 - **Harness d'autorisation** (`AuthorizationMatrixScopeTest`, SQLite) : prouve qu'un grant/deny d'un
-  établissement ne fuit pas vers un autre — c'est ce banc qui a rendu ce changement d'authz vérifiable.
+  établissement ne fuit pas vers un autre, et couvre les 3 cas de #23 — c'est ce banc qui a rendu ces
+  changements d'authz vérifiables.
 - **`.env` hors docroot** supporté (`EnvLoader`) + `docs/SECURITY.md` (checklist de durcissement prod).
 - **Bancs de régression sécurité** : `SecurityRemediationTest` (csv_safe, js_json, allowlist SSRF push)
   et `RoleAssignmentIsolationTest` (anti-IDOR d'attribution de rôle).
