@@ -83,6 +83,13 @@ final class RoleManagementService
             throw new \RuntimeException("Auto-attribution d'un rôle non détenu interdite.");
         }
 
+        // Anti-IDOR cross-établissement : la CIBLE doit appartenir à l'établissement de l'acteur
+        // (sauf super_admin). Résolu côté serveur, jamais depuis les paramètres de requête.
+        if (!in_array('super_admin', $actorRoleKeys, true)
+            && !$this->targetInActorEstablishment($userType, $userId)) {
+            throw new \RuntimeException("Utilisateur cible hors de votre établissement.");
+        }
+
         // Securite (anti-escalade inter-etablissement) : seul super_admin peut viser un
         // etablissement_id arbitraire ; un acteur normal est borne a SON etablissement courant,
         // quelle que soit la valeur fournie en opts.
@@ -144,6 +151,29 @@ final class RoleManagementService
         return $id;
     }
 
+    /**
+     * La cible (user_type, user_id) appartient-elle à l'établissement courant de l'acteur ?
+     * Anti-IDOR cross-établissement. Fail-closed (type inconnu / erreur → refus).
+     */
+    private function targetInActorEstablishment(string $userType, int $userId): bool
+    {
+        static $map = [
+            'eleve' => 'eleves', 'parent' => 'parents', 'professeur' => 'professeurs',
+            'vie_scolaire' => 'vie_scolaire', 'administrateur' => 'administrateurs',
+        ];
+        $table = $map[$userType] ?? null;
+        if ($table === null || $userId <= 0) {
+            return false;
+        }
+        try {
+            $stmt = $this->pdo->prepare("SELECT 1 FROM `$table` WHERE id = ? AND etablissement_id = ? LIMIT 1");
+            $stmt->execute([$userId, \API\Core\EstablishmentContext::id()]);
+            return (bool) $stmt->fetchColumn();
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
     /** Révoque une attribution par son id. */
     public function revoke(array $actor, array $actorRoleKeys, int $rowId): bool
     {
@@ -158,6 +188,11 @@ final class RoleManagementService
         }
         if (!in_array($row['role_key'], $this->assignableRoles($actorRoleKeys), true)) {
             throw new \RuntimeException("Rôle hors de votre périmètre d'attribution.");
+        }
+        // Anti-IDOR : ne pas révoquer une attribution d'un utilisateur hors de son établissement.
+        if (!in_array('super_admin', $actorRoleKeys, true)
+            && !$this->targetInActorEstablishment((string) $row['user_type'], (int) $row['user_id'])) {
+            throw new \RuntimeException("Attribution hors de votre établissement.");
         }
         $ok = $this->pdo->prepare("DELETE FROM user_roles WHERE id = ?")->execute([$rowId]);
         if ($ok) {

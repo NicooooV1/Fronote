@@ -395,11 +395,22 @@ class ThemeService
             'url(data:text/html',
             'behavior:',
             '-moz-binding:',
+            '@import',          // peut charger une feuille distante
         ];
         $lower = strtolower($css);
         foreach ($dangerous as $pattern) {
             if (str_contains($lower, $pattern)) {
                 return true;
+            }
+        }
+        // Liste BLANCHE des url() : seules les images inline (data:image/...) sont tolérées.
+        // Toute autre url() (http(s), //, chemins, data:text…) permet l'exfiltration de données
+        // (fuite referrer/timing, tracking cross-établissement) → thème rejeté.
+        if (preg_match_all('/url\(\s*([\'"]?)([^)\'"]+)\1\s*\)/i', $css, $m)) {
+            foreach ($m[2] as $u) {
+                if (stripos(trim($u), 'data:image/') !== 0) {
+                    return true;
+                }
             }
         }
         return false;

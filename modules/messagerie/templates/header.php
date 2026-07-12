@@ -61,10 +61,10 @@ ob_start();
     <script src="<?= asset_bust($rootPrefix . 'modules/messagerie/assets/js/websocket-client.js') ?>" nonce="<?= csp_nonce() ?>"></script>
     <?php if (isset($wsToken)): ?>
     <script nonce="<?= csp_nonce() ?>">
-        window.currentUserId = <?= json_encode($user['id']) ?>;
-        window.currentUserType = <?= json_encode($user['type']) ?>;
+        window.currentUserId = <?= js_json($user['id']) ?>;
+        window.currentUserType = <?= js_json($user['type']) ?>;
         document.addEventListener('DOMContentLoaded', () => {
-            window.wsClient.init(<?= json_encode($wsUrl) ?>, <?= json_encode($wsToken) ?>);
+            window.wsClient.init(<?= js_json($wsUrl) ?>, <?= js_json($wsToken) ?>);
         });
     </script>
     <?php endif; ?>

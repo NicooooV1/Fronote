@@ -167,6 +167,31 @@ if (!function_exists('csv_safe')) {
     }
 }
 
+if (!function_exists('js_json')) {
+    /**
+     * Encode une valeur pour injection SÛRE dans un bloc <script> : applique les flags qui
+     * neutralisent </script>, ', ", & — défense en profondeur si la CSP venait à régresser.
+     */
+    function js_json($value): string
+    {
+        return (string) json_encode(
+            $value,
+            JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE
+        );
+    }
+}
+
+if (!function_exists('json_success')) {
+    /** Réponse JSON de succès normalisée {ok:true, success:true, ...$data} — contrat uniforme des endpoints. */
+    function json_success(array $data = []): void
+    {
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        echo json_encode(array_merge(['ok' => true, 'success' => true], $data));
+    }
+}
+
 if (!function_exists('request_wants_json')) {
     /**
      * L'appelant attend-il une réponse JSON plutôt qu'une page HTML ? Unifie les ~9

@@ -61,13 +61,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && hash_equals($csrf, $_POST['csrf_tok
         $message = 'Le super-administrateur a un accès total non modifiable.'; $messageType = 'danger';
     } else {
         $checked = $_POST['perm'] ?? [];
+        // Anti-escalade de privilège : un admin d'ÉTABLISSEMENT (non super_admin) ne peut ni toucher
+        // aux permissions sensibles/plateforme (self-escalade vers admin.systeme, roles.manage, rgpd…,
+        // platform.*/tenant.*), ni ACCORDER une permission qu'il ne détient pas lui-même. Ces
+        // permissions sont laissées inchangées (continue) plutôt que réécrites. La régionalisation
+        // complète (etablissement_id sur rbac_permissions) reste un chantier séparé (migration de clé).
+        $isSuper = function_exists('isSuperAdmin') && isSuperAdmin();
+        $isSensitive = static function (string $pk): bool {
+            return (bool) preg_match('#^(platform|tenant|impersonation)\.#', $pk)
+                || in_array($pk, ['admin.systeme', 'roles.manage', 'permissions.manage', 'rgpd.manage'], true);
+        };
         try {
             $up = $pdo->prepare(
                 "INSERT INTO rbac_permissions (role, permission, granted) VALUES (?, ?, ?)
                  ON DUPLICATE KEY UPDATE granted = VALUES(granted), updated_at = NOW()"
             );
             foreach (array_keys($permsMeta) as $pk) {
-                $up->execute([$role, $pk, isset($checked[$pk]) ? 1 : 0]);
+                $want = isset($checked[$pk]) ? 1 : 0;
+                if (!$isSuper) {
+                    if ($isSensitive($pk)) {
+                        continue; // permission sensible/plateforme : réservée au super_admin
+                    }
+                    if ($want === 1 && !(function_exists('can') && can($pk))) {
+                        continue; // plafond de privilège : ne pas accorder ce qu'on ne détient pas
+                    }
+                }
+                $up->execute([$role, $pk, $want]);
             }
             try { app('audit')->logAuth('rbac.permissions.update', $role, true, ['count' => count($permsMeta)]); } catch (\Throwable $e) {}
             $message = 'Permissions enregistrées pour « ' . ($rolesMeta[$role]['label'] ?? $role) . ' ».';
