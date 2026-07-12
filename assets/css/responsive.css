@@ -1,0 +1,116 @@
+/**
+ * FRONOTE — Couche RESPONSIVE centrale (chargée EN DERNIER, après modernize.css).
+ *
+ * Mobile-first. Corrige ~80 % des défauts d'adaptation via les CLASSES PARTAGÉES existantes,
+ * sans toucher au HTML des pages. Chargée en dernier pour primer sur admin.css (chargé par page)
+ * par l'ordre de source, sans course de spécificité ni !important (sauf neutralisation sidebar).
+ *
+ * Seuils canoniques :
+ *   • téléphone  : < 640px      (media max-width: 639.98px)
+ *   • tablette   : 640–1023.98  (les grilles se replient seules via auto-fit)
+ *   • ordinateur : >= 1024px
+ *
+ * Priorités : (1) champs pleine largeur + 16px sur mobile (anti-zoom iOS) + cibles tactiles 44px,
+ * (2) tout s'empile en 1 colonne sur téléphone, (3) modales et tables qui tiennent dans l'écran.
+ */
+
+:root {
+  --gutter: clamp(12px, 3vw, 20px);
+  --field-min-h: 44px;
+}
+
+/* ── 0. Filet anti-débordement horizontal ─────────────────────────────────── */
+img, svg, video, canvas, iframe, table, pre { max-width: 100%; }
+/* min-width:0 CIBLÉ sur les conteneurs flex/grid (pas *{} global : éviterait de rétrécir
+   des éléments qui comptent sur leur min-content). */
+.main-content, .form-row, .form-grid, .form-grid-2, .form-grid-3, .filters-bar { min-width: 0; }
+.form-row > *, .form-grid > *, .form-grid-2 > *, .form-grid-3 > *, .filters-bar > * { min-width: 0; }
+
+/* ── 1. Neutralisation du layout « sidebar » disparu (nav passée en topbar) ── */
+.main-content { margin-left: 0 !important; min-width: 0; }
+@media (max-width: 639.98px) {
+  .main-content { padding: var(--gutter); }
+}
+
+/* ── 2. CHAMPS DE SAISIE ───────────────────────────────────────────────────── */
+/* 2a. Pleine largeur sur TOUTES les tailles : corrige le bug du thème classic où un <input>
+   nu dans un simple .form-group n'était pas full-width (largeur intrinsèque ~150px). */
+.form-control, .form-select, .form-input, .form-textarea,
+.ds-input, .ds-select, .ds-textarea,
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+/* 2b. Sur TÉLÉPHONE seulement : 16px (jamais < 16px sur un éditable → pas de zoom auto iOS)
+   + hauteur tactile 44px. Le desktop garde ses tailles denses (admin 13px inchangé). */
+@media (max-width: 639.98px) {
+  .form-control, .form-select, .form-input, .form-textarea,
+  .ds-input, .ds-select, .ds-textarea,
+  .form-group input, .form-group select, .form-group textarea,
+  input[type="text"], input[type="email"], input[type="password"],
+  input[type="number"], input[type="search"], input[type="date"],
+  input[type="time"], input[type="tel"], input[type="url"], select, textarea {
+    font-size: 16px;
+    min-height: var(--field-min-h);
+  }
+  textarea { min-height: 88px; }
+}
+
+/* ── 3. .form-row : empilement pleine largeur sur téléphone ─────────────────── */
+@media (max-width: 639.98px) {
+  .form-row { flex-direction: column; gap: var(--space-3, 12px); }
+  .form-row .form-group { min-width: 0; width: 100%; flex: 1 1 auto; }
+}
+
+/* ── 4. Grilles de formulaire : reflow automatique + garantie 1 col téléphone ─ */
+.form-grid, .form-grid-2 {
+  display: grid; gap: var(--space-4, 16px);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.form-grid-3 {
+  display: grid; gap: var(--space-4, 16px);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+@media (max-width: 639.98px) {
+  .form-grid, .form-grid-2, .form-grid-3 { grid-template-columns: 1fr; }
+}
+.form-full, .form-grid-full { grid-column: 1 / -1; }
+
+/* ── 5. Actions de formulaire / modale : empilées full-width sur téléphone ──── */
+@media (max-width: 639.98px) {
+  .form-actions, .modal-actions {
+    flex-direction: column-reverse; align-items: stretch; gap: 10px;
+  }
+  .form-actions .btn, .modal-actions .btn,
+  .form-actions button, .modal-actions button { width: 100%; }
+}
+
+/* ── 6. Boutons : cible tactile 44px sur téléphone ─────────────────────────── */
+@media (max-width: 639.98px) {
+  .btn { min-height: var(--field-min-h); }
+  .btn-icon, .icon-btn { min-width: var(--field-min-h); min-height: var(--field-min-h); }
+}
+
+/* ── 7. TABLES : défilement horizontal au lieu de déborder la page ─────────── */
+.table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+@media (max-width: 639.98px) {
+  .data-table, .admin-table, table.table {
+    display: block; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    white-space: nowrap; max-width: 100%;
+  }
+}
+
+/* ── 8. MODALES : tenir dans le viewport (largeur + hauteur + scroll) ───────── */
+@media (max-width: 639.98px) {
+  .modal-overlay, .ui-modal-overlay, .legal-modal-overlay { padding: var(--gutter); }
+  .modal-box, .ui-modal, .modal-content, .legal-modal, .modal-customize {
+    width: 100%; max-width: 100%; max-height: 88vh; overflow-y: auto;
+  }
+  .ui-modal__footer { flex-direction: column-reverse; align-items: stretch; }
+}
+
+/* ── 9. Barres de filtres : empilées sur téléphone ─────────────────────────── */
+@media (max-width: 639.98px) {
+  .filters-bar { flex-direction: column; align-items: stretch; }
+  .filters-bar input, .filters-bar select { min-width: 0; width: 100%; }
+}

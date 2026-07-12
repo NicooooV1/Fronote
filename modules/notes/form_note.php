@@ -234,7 +234,7 @@ include 'includes/header.php';
                     <form method="post" action="" novalidate>
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
 
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:15px; margin-bottom:15px;">
                             <div>
                                 <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;">Élève</label>
                                 <input type="text" value="<?= htmlspecialchars(($note['prenom_eleve'] ?? '') . ' ' . ($note['nom_eleve'] ?? '')) ?>" readonly class="form-control" style="background:#f7fafc;">
@@ -245,7 +245,7 @@ include 'includes/header.php';
                             </div>
                         </div>
 
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:15px; margin-bottom:15px;">
                             <div>
                                 <label for="note" style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;">Note * <span style="color:#a0aec0;">/<?= $note['note_sur'] ?? 20 ?></span></label>
                                 <input type="number" id="note" name="note" step="0.25" min="0" max="<?= $note['note_sur'] ?? 20 ?>"
@@ -258,7 +258,7 @@ include 'includes/header.php';
                             </div>
                         </div>
 
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:15px; margin-bottom:15px;">
                             <div>
                                 <label for="date_note" style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;">Date d'évaluation</label>
                                 <input type="date" id="date_note" name="date_note"
@@ -292,7 +292,7 @@ include 'includes/header.php';
                 <div style="background:white; border-radius:10px; padding:30px; box-shadow:0 2px 8px rgba(0,0,0,0.06); max-width:600px;">
                     <h2 style="font-size:1.1em; color:#2d3748; margin-bottom:20px;">Sélection de la classe et matière</h2>
                     <form method="get" action="">
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:20px;">
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:15px; margin-bottom:20px;">
                             <div>
                                 <label style="display:block; font-size:13px; font-weight:600; color:#4a5568; margin-bottom:6px;"><?= __('label.classe') ?> <span style="color:#e53e3e;">*</span></label>
                                 <select name="classe" class="form-control" required>

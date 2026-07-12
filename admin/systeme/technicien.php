@@ -283,7 +283,7 @@ ob_start();
 .btn-revoke{background:#e53e3e;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:.82em;font-weight:600;cursor:pointer;transition:.15s}
 .btn-revoke:hover{background:#c53030}
 .form-card{background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.06);padding:24px 28px}
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
 .form-group{display:flex;flex-direction:column;gap:4px}
 .form-group.full{grid-column:1/-1}
 .form-group label{font-size:.85em;font-weight:600;color:#4a5568}

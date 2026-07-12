@@ -340,8 +340,10 @@ try {
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/dark-overrides.css') ?>">
     <!-- Design System (refonte UX) : tokens + thèmes (clair/sombre/liquide) + composants .ds-* (additif). -->
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/design-system.css') ?>">
-    <!-- Couche de modernisation (refonte 2026) : polish transverse façon Apple — EN DERNIER pour primer. -->
+    <!-- Couche de modernisation (refonte 2026) : polish transverse façon Apple. -->
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/modernize.css') ?>">
+    <!-- Couche RESPONSIVE centrale : adaptation ordinateur/tablette/téléphone — EN TOUT DERNIER. -->
+    <link rel="stylesheet" href="<?= $_assetVersion('assets/css/responsive.css') ?>">
     <?= $extraHeadHtml ?>
     <!-- WebSocket global -->
     <script nonce="<?= $_hdr_nonce ?>">window.FRONOTE_WS = <?= $_hdr_ws_config ?>;</script>

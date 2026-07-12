@@ -6,6 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.4.1] — Adaptation multi-appareils (responsive) — 2026-07-12
+
+Adaptation ordinateur / tablette / téléphone, priorité aux **formulaires** (le point douloureux).
+Réalisée par une couche CSS centrale agissant sur les classes partagées — sans toucher au HTML.
+
+### Responsive
+- **Couche `responsive.css`** (chargée en tout dernier, mobile-first, 3 seuils canoniques :
+  téléphone < 640, tablette 640–1024, ordinateur ≥ 1024) qui corrige l'essentiel via les classes
+  existantes :
+  - **Formulaires** : champs en **pleine largeur** (corrige un bug du thème classic où un `<input>`
+    nu n'était pas étiré), **16 px sur téléphone** (supprime le zoom automatique iOS au focus) et
+    **cibles tactiles ≥ 44 px** ; `.form-row` et les grilles `.form-grid*` passent en **1 colonne**
+    sur téléphone (les grilles se replient toutes seules via `auto-fit` sur tablette) ; actions de
+    formulaire **empilées pleine largeur** ; barres de filtres empilées.
+  - **Modales** : tiennent dans l'écran (largeur + hauteur `88vh` + défilement) ; **tables** en
+    défilement horizontal au lieu de déborder ; filet anti-débordement horizontal ciblé.
+- **Page de connexion** : champs (identifiant, mot de passe, code 2FA) passés à 16 px (fin du zoom
+  iOS dès le premier écran).
+- Grilles de formulaire figées converties en repli automatique (`admin/systeme/technicien.php`,
+  `modules/notes/form_note.php`).
+
+### Connu / à suivre
+- Unification du seuil de bascule de navigation (768 vs 1024), déduplication des classes de
+  formulaire, et pattern « cartes » pour les très grands tableaux restent des chantiers.
+
+---
+
 ## [3.4.0] — Refonte visuelle (direction sobre) — 2026-07-12
 
 Modernisation transverse de l'interface, dans un langage sobre inspiré de l'écosystème Apple :
