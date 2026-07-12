@@ -1,6 +1,6 @@
 /* Fronote Design System — TOKENS / TYPOGRAPHIE (réutilise l'échelle fluide --font-* existante). */
 :root {
-  --font-sans: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Inter', Roboto, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', 'Inter', Roboto, sans-serif;
   --font-mono: ui-monospace, 'SFMono-Regular', 'Cascadia Code', Consolas, monospace;
 
   /* Échelle (alias vers tokens.css si présents, sinon repli). */

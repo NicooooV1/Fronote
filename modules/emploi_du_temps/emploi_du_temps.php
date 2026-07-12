@@ -259,7 +259,7 @@ include 'includes/header.php';
 <?php endif; ?>
 
 <?php if (isAdmin() || isVieScolaire()): ?>
-<script src="assets/js/dragdrop.js" nonce="<?= csp_nonce() ?>"></script>
+<script src="<?= asset_url('modules/emploi_du_temps/assets/js/dragdrop.js') ?>" nonce="<?= csp_nonce() ?>"></script>
 <?php endif; ?>
 
 <?php include 'includes/footer.php'; ?>

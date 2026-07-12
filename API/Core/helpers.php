@@ -104,6 +104,53 @@ if (!function_exists('csp_nonce')) {
     }
 }
 
+if (!function_exists('asset_url')) {
+    /**
+     * URL versionnée (?v=mtime) d'un asset LOCAL, ancrée à la racine de l'app.
+     * $path est relatif à la racine du dépôt (ex. 'assets/lib/chartjs/chart.umd.min.js').
+     * Respecte BASE_URL (déploiement en sous-chemin) ; le ?v=mtime assure le cache-busting
+     * malgré l'Expires 1-an du .htaccess. Point unique de versionnage réutilisable hors
+     * du closure local de shared_header.php.
+     */
+    function asset_url(string $path): string
+    {
+        $path = ltrim($path, '/');
+        $base = defined('BASE_URL') ? rtrim((string) BASE_URL, '/') : '';
+        $abs = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $path);
+        $v = @filemtime($abs) ?: null;
+        return $base . '/' . $path . ($v ? '?v=' . $v : '');
+    }
+}
+
+if (!function_exists('asset_bust')) {
+    /**
+     * Ajoute ?v=<mtime> à une URL d'asset LOCAL déjà construite (avec son rootPrefix), pour le
+     * cache-busting du JS des modules chargé via $extraJs / <script src>. Les URL externes
+     * (http(s)://, //) ou déjà versionnées sont renvoyées inchangées. Le fichier est localisé
+     * sur le disque à partir de la 1re occurrence d'un dossier d'asset connu (assets|modules),
+     * quel que soit le préfixe de l'URL.
+     */
+    function asset_bust(string $href): string
+    {
+        if ($href === '' || preg_match('#^(?:[a-z]+:)?//#i', $href)) {
+            return $href;                       // URL externe : inchangée
+        }
+        if (strpos($href, 'v=') !== false && preg_match('/[?&]v=/', $href)) {
+            return $href;                       // déjà versionnée
+        }
+        $urlPath = parse_url($href, PHP_URL_PATH);
+        if (!is_string($urlPath) || !preg_match('#(?:assets|modules)/.+$#', $urlPath, $m)) {
+            return $href;
+        }
+        $abs = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $m[0]);
+        $mtime = @filemtime($abs);
+        if (!$mtime) {
+            return $href;
+        }
+        return $href . (strpos($href, '?') === false ? '?v=' : '&v=') . $mtime;
+    }
+}
+
 if (!function_exists('request_wants_json')) {
     /**
      * L'appelant attend-il une réponse JSON plutôt qu'une page HTML ? Unifie les ~9

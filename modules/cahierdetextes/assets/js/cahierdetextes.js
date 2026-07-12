@@ -145,9 +145,18 @@ const CahierTextes = {
     _renderPreview(files, container) {
         container.innerHTML = '';
         for (const f of files) {
+            // Construction en DOM : le nom de fichier (saisie utilisateur) passe par
+            // textContent — pas d'injection HTML possible (anti-XSS).
             const div = document.createElement('div');
             div.className = 'fichier-item';
-            div.innerHTML = `<i class="fas fa-file"></i><span>${f.name}</span><span class="fichier-taille">${this._formatSize(f.size)}</span>`;
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-file';
+            const name = document.createElement('span');
+            name.textContent = f.name;
+            const size = document.createElement('span');
+            size.className = 'fichier-taille';
+            size.textContent = this._formatSize(f.size);
+            div.append(icon, name, size);
             container.appendChild(div);
         }
     },

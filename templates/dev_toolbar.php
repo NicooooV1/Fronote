@@ -44,5 +44,5 @@ try {
     <span title="WebSocket">WS: <b><?= $_dtWsStatus ?></b></span>
     <span title="Request ID">Req: <b style="color:#64748b;"><?= substr($_dtRequestId, 0, 8) ?></b></span>
     <span title="User ID">User: <b><?= $_dtUser ?></b></span>
-    <button onclick="this.parentElement.style.display='none'" style="margin-left:auto;background:none;border:none;color:#64748b;cursor:pointer;font-size:14px;">&times;</button>
+    <button type="button" data-fr-click="hide" data-fr-args='["fronote-dev-toolbar"]' style="margin-left:auto;background:none;border:none;color:#64748b;cursor:pointer;font-size:14px;" title="Masquer">&times;</button>
 </div>

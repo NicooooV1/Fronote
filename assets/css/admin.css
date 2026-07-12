@@ -198,17 +198,8 @@
 .stats-bar .stat-card .val { font-size: 22px; font-weight: 700; display: block; }
 .stats-bar .stat-card .lbl { font-size: 12px; color: #888; display: block; }
 
-/* Micro action buttons */
-.btn-xs {
-    padding: 4px 8px; font-size: 11px; border: none; border-radius: 4px;
-    cursor: pointer; color: white; text-decoration: none; display: inline-block;
-    transition: opacity 0.15s;
-}
-.btn-xs:hover { opacity: 0.85; }
-.btn-xs.primary { background: #0f4c81; }
-.btn-xs.success { background: #059669; }
-.btn-xs.warning { background: #d97706; }
-.btn-xs.danger  { background: #dc2626; }
+/* Micro action buttons — définis dans theme-classic.css (chargé globalement avant admin.css).
+   Copie identique supprimée ici pour éviter la redéfinition d'un même composant (audit front, m5). */
 
 /* Top bar (actions toolbar) */
 .top-bar { display: flex; justify-content: flex-end; margin-bottom: 15px; gap: 8px; }

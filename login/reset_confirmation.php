@@ -20,7 +20,7 @@ unset($_SESSION['reset_username']);
 
 // En-têtes de sécurité (page du flux d'auth) : CSP + X-Frame-Options.
 if (!headers_sent()) {
-    header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' cdnjs.cloudflare.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self';");
+    header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';");
     header("X-Frame-Options: DENY");
 }
 ?>
@@ -31,7 +31,7 @@ if (!headers_sent()) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Demande envoyée - FRONOTE</title>
     <link rel="stylesheet" href="assets/css/login.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="../assets/lib/fontawesome/css/all.min.css">
 </head>
 <body>
     <div class="auth-container">

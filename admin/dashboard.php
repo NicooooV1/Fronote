@@ -75,7 +75,7 @@ $action = function (string $icon, string $title, string $href) use ($rp, $h) {
   </div>
 
   <!-- Actions rapides -->
-  <h3 style="margin:0 0 var(--space-3)">Actions rapides</h3>
+  <h2 style="margin:0 0 var(--space-3);font-size:var(--fs-lg, 1.125rem)">Actions rapides</h2>
   <div class="ds-quick-actions">
     <?php
       $action('fa-user-plus',      'Créer un utilisateur',      'admin/users/create.php');
@@ -90,7 +90,7 @@ $action = function (string $icon, string $title, string $href) use ($rp, $h) {
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:var(--space-4)">
     <!-- Alertes -->
     <section class="ds-card">
-      <div class="ds-card__header"><h3 class="ds-card__title"><i class="fas fa-triangle-exclamation"></i> Alertes <?php if ($alertTotal): ?><span class="ds-badge ds-badge--warning"><?= $alertTotal ?></span><?php endif; ?></h3></div>
+      <div class="ds-card__header"><h2 class="ds-card__title"><i class="fas fa-triangle-exclamation"></i> Alertes <?php if ($alertTotal): ?><span class="ds-badge ds-badge--warning"><?= $alertTotal ?></span><?php endif; ?></h2></div>
       <div class="ds-card__body ds-stack" style="gap:var(--space-2)">
         <?php if ($alertTotal === 0): ?>
           <div class="ds-alert ds-alert--success"><i class="fas fa-circle-check"></i><div>Aucune alerte. Tout est en ordre.</div></div>
@@ -105,7 +105,7 @@ $action = function (string $icon, string $title, string $href) use ($rp, $h) {
 
     <!-- Dernières connexions -->
     <section class="ds-card">
-      <div class="ds-card__header"><h3 class="ds-card__title"><i class="fas fa-clock-rotate-left"></i> Dernières connexions</h3></div>
+      <div class="ds-card__header"><h2 class="ds-card__title"><i class="fas fa-clock-rotate-left"></i> Dernières connexions</h2></div>
       <div class="ds-card__body">
         <?php if (empty($logins)): ?>
           <p class="ds-muted">Aucune connexion récente.</p>

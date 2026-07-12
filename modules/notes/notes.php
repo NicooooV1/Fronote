@@ -156,7 +156,7 @@ $ffLock       = $features ? $features->isEnabled('notes.lock_after_deadline') : 
 // Extra JS for graphs
 $extraHeadHtml = '';
 if ($ffGraphs) {
-    $extraHeadHtml = '<script src="' . $rootPrefix . 'modules/notes/assets/js/notes-graphs.js" defer nonce="' . csp_nonce() . '"></script>';
+    $extraHeadHtml = '<script src="' . asset_bust($rootPrefix . 'modules/notes/assets/js/notes-graphs.js') . '" defer nonce="' . csp_nonce() . '"></script>';
 }
 
 // Navigation secondaire du module (rendue en bandeau par shared_topbar.php).

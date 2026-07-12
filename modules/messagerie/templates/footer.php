@@ -8,14 +8,18 @@ declare(strict_types=1);
     </div><!-- Fin content-container -->
             
 <?php
-// JS supplémentaires (shared.js toujours chargé en premier)
-$extraJs = ['assets/js/shared.js', 'assets/js/inbox.js'];
+// JS supplémentaires (shared.js toujours chargé en premier). Chemins ancrés à la racine de
+// l'app + versionnés (?v=mtime) via asset_url : cache-busting fiable malgré l'Expires 1-an.
+$extraJs = [
+    asset_url('modules/messagerie/assets/js/shared.js'),
+    asset_url('modules/messagerie/assets/js/inbox.js'),
+];
 
 if (basename($_SERVER['PHP_SELF']) === 'conversation.php') {
-    $extraJs[] = 'assets/js/conversation.js';
+    $extraJs[] = asset_url('modules/messagerie/assets/js/conversation.js');
 }
 if (in_array(basename($_SERVER['PHP_SELF']), ['new_message.php', 'new_announcement.php', 'class_message.php'])) {
-    $extraJs[] = 'assets/js/forms.js';
+    $extraJs[] = asset_url('modules/messagerie/assets/js/forms.js');
 }
 
 // Scripts spécifiques messagerie

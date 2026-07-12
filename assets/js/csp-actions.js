@@ -69,9 +69,14 @@
         for (var i = 0; i < boxes.length; i++) { boxes[i].checked = el.checked; }
     };
 
+    // Noms globaux interdits au dispatcher : primitives qui exécutent une chaîne comme du code
+    // ou déclenchent une navigation/IO. Défense en profondeur — les valeurs data-fr-* sont rendues
+    // côté serveur, mais on refuse par principe de résoudre ces globales via un attribut.
+    var BLOCKED = { eval: 1, Function: 1, setTimeout: 1, setInterval: 1, execScript: 1, alert: 1, open: 1, write: 1 };
+
     function resolve(name) {
         if (Object.prototype.hasOwnProperty.call(A, name)) return A[name];
-        if (typeof window[name] === 'function') return window[name];
+        if (!Object.prototype.hasOwnProperty.call(BLOCKED, name) && typeof window[name] === 'function') return window[name];
         return null;
     }
 

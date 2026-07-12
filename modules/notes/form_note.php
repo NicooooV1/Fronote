@@ -503,7 +503,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <?php
     $extraScriptHtml = ob_get_clean();
     // Add batch auto-save script
-    $extraScriptHtml .= '<script src="assets/js/notes-batch.js" defer nonce="' . csp_nonce() . '"></script>';
+    $extraScriptHtml .= '<script src="' . asset_url('modules/notes/assets/js/notes-batch.js') . '" defer nonce="' . csp_nonce() . '"></script>';
 endif;
 
 include 'includes/footer.php';

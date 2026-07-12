@@ -22,6 +22,8 @@
     var failedAttempts = 0;
     var pollingTimer   = null;
     var heartbeatTimer = null;
+    var tokenRefreshTimer = null;   // handle de la chaîne scheduleTokenRefresh (une seule active)
+    var tokenRefreshGen = 0;        // génération : invalide les chaînes de refresh en vol (anti-race)
 
     var MAX_FAILS   = 3;
     var POLL_DELAY  = 30000;
@@ -128,13 +130,24 @@
             clearInterval(heartbeatTimer);
             heartbeatTimer = null;
         }
+        // Annule aussi la chaîne de refresh de token : sans cela, chaque reconnexion en
+        // empilait une nouvelle et elles fetchaient toutes en parallèle indéfiniment.
+        if (tokenRefreshTimer) {
+            clearTimeout(tokenRefreshTimer);
+            tokenRefreshTimer = null;
+        }
+        tokenRefreshGen++;   // invalide toute chaîne dont un fetch est en vol (son .finally ne re-planifiera pas)
     }
 
     function scheduleTokenRefresh() {
-        // Refresh token via AJAX when near expiry
+        // Refresh token via AJAX when near expiry. Une SEULE chaîne active, identifiée par sa
+        // génération : un fetch en vol au moment d'un cycle déconnexion/reconnexion ne peut plus
+        // ré-armer par-dessus la nouvelle chaîne (son gen devient périmé → son .finally s'abstient).
         var baseUrl = window.FRONOTE_BASE_URL || '/';
-        setTimeout(function refreshLoop() {
-            if (!connected) return;
+        if (tokenRefreshTimer) { clearTimeout(tokenRefreshTimer); }
+        var gen = ++tokenRefreshGen;
+        tokenRefreshTimer = setTimeout(function refreshLoop() {
+            if (!connected || gen !== tokenRefreshGen) { return; }
             fetch(baseUrl + 'API/endpoints/ws_token_refresh.php', {
                 credentials: 'same-origin',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -148,8 +161,10 @@
             })
             .catch(function() {})
             .finally(function() {
-                // Refresh every 20 minutes
-                setTimeout(refreshLoop, 20 * 60 * 1000);
+                // Refresh every 20 minutes — uniquement si toujours connecté ET toujours la chaîne courante.
+                if (connected && gen === tokenRefreshGen) {
+                    tokenRefreshTimer = setTimeout(refreshLoop, 20 * 60 * 1000);
+                }
             });
         }, 20 * 60 * 1000); // First refresh after 20 min
     }

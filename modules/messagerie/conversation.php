@@ -277,7 +277,7 @@ include 'templates/header.php';
         </div>
         <?php endif; ?>
         
-        <div class="messages-container" data-conv-id="<?= $convId ?>" data-has-more="<?= $hasMoreMessages ? '1' : '0' ?>">
+        <div class="messages-container" data-conv-id="<?= $convId ?>" data-has-more="<?= $hasMoreMessages ? '1' : '0' ?>" role="log" aria-live="polite" aria-relevant="additions" aria-atomic="false">
             <?php foreach ($messages as $message): ?>
                 <?php include 'templates/components/message-item.php'; ?>
             <?php endforeach; ?>

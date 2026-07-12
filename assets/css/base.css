@@ -18,14 +18,18 @@
 .modal-overlay.is-visible { display: flex !important; }
 
 /* ======= System font stack ======= */
+/* SF Pro d'abord (macOS/iOS) → dégrade proprement vers Segoe UI (Windows) puis Roboto.
+   Léger resserrement du crénage + interlignage 1.47 : sobriété typographique façon Apple. */
 html, body {
   height: 100%;
-  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'SF Pro Display',
-               Roboto, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display',
+               'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: 16px;
-  line-height: 1.5;
+  line-height: 1.47;
+  letter-spacing: -0.011em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 /* ======= Base elements ======= */

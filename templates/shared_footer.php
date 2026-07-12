@@ -13,16 +13,16 @@ $extraScriptHtml = $extraScriptHtml ?? '';
 ?>
 
         <!-- Footer -->
-        <div class="footer">
+        <footer class="footer">
             <div class="footer-content">
                 <div class="footer-links">
-                    <a href="#" id="openLegalModal">Mentions Légales</a>
+                    <button type="button" id="openLegalModal" class="footer-legal-btn">Mentions Légales</button>
                 </div>
                 <div class="footer-copyright">
                     &copy; <?= date('Y') ?> FRONOTE - Tous droits réservés
                 </div>
             </div>
-        </div>
+        </footer>
     </div><!-- Fin main-content -->
 </div><!-- Fin app-container -->
 
@@ -91,7 +91,7 @@ if ($_bb_role !== ''):
 </div>
 
 <?php foreach ($extraJs as $js): ?>
-<script src="<?= htmlspecialchars($js) ?>" nonce="<?= csp_nonce() ?>"></script>
+<script src="<?= htmlspecialchars(asset_bust($js)) ?>" nonce="<?= csp_nonce() ?>"></script>
 <?php endforeach; ?>
 
 <script nonce="<?= $_hdr_nonce ?? '' ?>">

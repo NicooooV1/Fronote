@@ -6,6 +6,78 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.4.0] — Refonte visuelle (direction sobre) — 2026-07-12
+
+Modernisation transverse de l'interface, dans un langage sobre inspiré de l'écosystème Apple :
+gris froids, bleu système retenu, coins continus, ombres douces, barre supérieure translucide.
+Appliquée par la couche de tokens partagée + une couche de *polish* — sans modifier le HTML,
+réversible, et respectant le branding par établissement.
+
+### Design
+- **Tokens** (`tokens.css`, source unique) retouchés : typographie **SF Pro** en tête de pile
+  (`-apple-system…`, crénage resserré, interlignage 1.47), neutres froids (fond `#f5f5f7`, encre
+  `#1d1d1f`, filet `#e5e5ea`), accent **bleu système** `#0071e3` (`#0a84ff` en sombre), rayons
+  continus (8/12/18), ombres diffuses à faible opacité. Le sombre passe du slate bleuté à un
+  **graphite neutre** (`#161618` / `#1f1f21`). Le branding établissement reste prioritaire.
+- **Couche `modernize.css`** (chargée en dernier) : **barre supérieure translucide et floutée**
+  (toolbar façon macOS/iOS), **transitions entre pages** via l'API *View Transitions* (fondu
+  inter-pages, amélioration progressive), entrée de page en fondu, transitions d'interaction
+  douces, léger soulèvement des cartes au survol, liseré de focus net, barres de défilement fines.
+  Tout le mouvement respecte `prefers-reduced-motion`.
+- **Cohérence tous portails** : la page de **connexion** (`login.css`) et les portails
+  **plateforme/tenant** (valeurs de repli des tokens DS + surfaces sombres) adoptent la même
+  direction. Thème **verre** préservé (dégradé intact — surcharge sombre scopée hors glass).
+
+---
+
+## [3.3.1] — Audit qualité front (HTML/CSS/JS) — 2026-07-11
+
+Suite à l'audit front (note 58/100, 55 findings). Corrige les 8 findings majeurs + la majorité
+des mineurs actionnables ; les chantiers structurants (fusion des deux design systems, chaîne de
+build, migration des ~1571 styles inline, px→rem) restent documentés comme travaux de fond.
+
+### Sécurité / CSP
+- **Dépendances tierces vendorisées** sous `assets/lib/` (Font Awesome 6.5.2, Socket.IO 4.7.5,
+  Chart.js 4.4.1), servies **same-origin** et versionnées : plus aucune ressource CDN externe
+  (l'app tourne en LAN — les icônes/WebSocket/graphes ne cassent plus hors ligne, et l'absence de
+  SRI n'est plus un risque). Chart.js unifié (finissait sur 2 hôtes CDN divergents).
+- **CSP resserrée** : `cdnjs.cloudflare.com` retiré de `style-src`/`font-src` (socle + 6 en-têtes
+  des pages login/reset/2FA), désormais `'self'`.
+- **Menu Favoris (JS)** reconstruit sans `onclick` inline → `data-fr-click` (était cassé sous la CSP
+  stricte). Barre de dev (`dev_toolbar`) idem. Dispatcher `csp-actions.js` : liste noire des globales
+  d'exécution de code (`eval`, `Function`, `setTimeout`…) refusées à la résolution par nom.
+- **Aperçu de fichiers** (cahier de textes) et **badges de réaction** (messagerie) : rendu passé de
+  `innerHTML` à une construction DOM (`textContent`) — anti-XSS DOM.
+
+### Performance / robustesse JS
+- **Cache-busting du JS des modules** : `?v=mtime` désormais appliqué au JS chargé via `$extraJs`
+  et aux `<script src>` embarqués (messagerie, notes, agenda, EDT, compétences) — helpers globaux
+  `asset_url()` / `asset_bust()`. Corrige le JS servi périmé jusqu'à 1 an après déploiement.
+- **Fuites de timers/écouteurs** corrigées : `setupUnifiedPolling` (messagerie) rendu idempotent
+  avec `stopUnifiedPolling()` (timer + `visibilitychange` détachés) ; chaîne de refresh de token
+  `ws-global` réduite à une seule instance annulée à la déconnexion.
+
+### Accessibilité
+- **Modale de recherche (Ctrl+K)** : `aria-modal`, nom accessible, piège de focus, restauration du
+  focus au déclencheur. **Panneau mobile** : `aria-controls`/`aria-expanded`, dialog, focus géré,
+  fermeture Échap.
+- Menus déroulants topbar : `aria-haspopup` + `aria-controls` ; icônes décoratives `aria-hidden` ;
+  sélecteur d'enfant et bouton de fermeture mobile nommés.
+- **Labels de formulaire** associés (`for`/`id`) dans les paramètres ; hiérarchie de titres du
+  dashboard admin corrigée (h1→h2) ; **live region** (`role="log"`) sur le fil de conversation ;
+  indicateurs de **focus visibles** rétablis (recherche topbar/sidebar) ; `<footer>` sémantique +
+  bouton (au lieu de `<a href="#">`) pour les mentions légales.
+
+### CSS
+- `dark-overrides`/`theme-glass` : bloc `@media prefers-color-scheme` mort supprimé (le thème est
+  toujours résolu en `data-theme` côté serveur) ; composant `.btn-xs` dédupliqué (`admin.css`).
+
+### Tests
+- `FrontendHygieneTest` : cliquet CI verrouillant l'absence de CDN externe et de handlers `on*=`
+  inline dans le socle (144 tests au total, verts).
+
+---
+
 ## [3.3.0] — Durcissement production & schéma déclaratif — 2026-07-11
 
 ### Sécurité

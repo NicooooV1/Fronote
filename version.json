@@ -1,8 +1,8 @@
 {
-  "version": "3.3.0",
-  "build": "2026-07-11",
+  "version": "3.4.0",
+  "build": "2026-07-12",
   "channel": "stable",
-  "codename": "Durcissement",
+  "codename": "Refonte",
   "min_php": "8.0",
   "min_mysql": "8.0",
   "modules": 62,

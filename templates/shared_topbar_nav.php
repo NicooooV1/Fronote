@@ -53,10 +53,10 @@ $_topbar_role           = $__nav['role'];
         <!-- Favoris (masqué s'il n'y en a aucun) -->
         <?php if (!empty($_topbar_favorites)): ?>
         <div class="topbar-dropdown topbar-dropdown--favorites" data-category="favorites">
-            <button class="topbar-dropdown__trigger" type="button" aria-expanded="false" title="<?= __('nav.favorites') ?>">
-                <i class="fas fa-star"></i>
+            <button class="topbar-dropdown__trigger" type="button" aria-expanded="false" aria-haspopup="true" aria-controls="topbar-favorites-menu" title="<?= __('nav.favorites') ?>">
+                <i class="fas fa-star" aria-hidden="true"></i>
                 <span><?= __('nav.favorites') ?></span>
-                <i class="fas fa-chevron-down topbar-dropdown__arrow"></i>
+                <i class="fas fa-chevron-down topbar-dropdown__arrow" aria-hidden="true"></i>
             </button>
             <div class="topbar-dropdown__menu" id="topbar-favorites-menu">
                 <?php foreach ($_topbar_favorites as $fav): ?>
@@ -114,12 +114,12 @@ $_topbar_role           = $__nav['role'];
 
         <?php foreach ($_topbar_modules as $catKey => $category): ?>
         <div class="topbar-dropdown" data-category="<?= htmlspecialchars($catKey) ?>">
-            <button class="topbar-dropdown__trigger" type="button" aria-expanded="false">
-                <i class="<?= htmlspecialchars($category['icon']) ?>"></i>
+            <button class="topbar-dropdown__trigger" type="button" aria-expanded="false" aria-haspopup="true" aria-controls="topbar-menu-<?= htmlspecialchars($catKey) ?>">
+                <i class="<?= htmlspecialchars($category['icon']) ?>" aria-hidden="true"></i>
                 <span><?= htmlspecialchars($category['label']) ?></span>
-                <i class="fas fa-chevron-down topbar-dropdown__arrow"></i>
+                <i class="fas fa-chevron-down topbar-dropdown__arrow" aria-hidden="true"></i>
             </button>
-            <div class="topbar-dropdown__menu">
+            <div class="topbar-dropdown__menu" id="topbar-menu-<?= htmlspecialchars($catKey) ?>">
                 <?php foreach ($category['modules'] as $mod):
                     $_mk = $mod['module_key'] ?? '';
                     $_isFav = isset($_topbar_fav_keys[$_mk]);
@@ -127,14 +127,14 @@ $_topbar_role           = $__nav['role'];
                 <div class="topbar-dropdown__item-wrap">
                     <a href="<?= $rootPrefix . htmlspecialchars($mod['route']) ?>"
                        class="topbar-dropdown__item <?= ($activePage === $_mk) ? 'active' : '' ?>">
-                        <i class="<?= htmlspecialchars($mod['icon'] ?? 'fas fa-circle') ?>"></i>
+                        <i class="<?= htmlspecialchars($mod['icon'] ?? 'fas fa-circle') ?>" aria-hidden="true"></i>
                         <span><?= htmlspecialchars($mod['label'] ?? $_mk) ?></span>
                     </a>
                     <button class="topbar-fav-toggle <?= $_isFav ? 'is-favorite' : '' ?>" type="button"
                             data-module-key="<?= htmlspecialchars($_mk) ?>"
                             title="<?= __('nav.favorite_toggle', ['default' => 'Épingler/retirer des favoris']) ?>"
                             aria-pressed="<?= $_isFav ? 'true' : 'false' ?>">
-                        <i class="<?= $_isFav ? 'fas' : 'far' ?> fa-star"></i>
+                        <i class="<?= $_isFav ? 'fas' : 'far' ?> fa-star" aria-hidden="true"></i>
                     </button>
                 </div>
                 <?php endforeach; ?>
@@ -168,7 +168,7 @@ $_topbar_role           = $__nav['role'];
         <!-- Parent child selector -->
         <?php if ($_topbar_is_parent && count($_topbar_children) > 1): ?>
         <div class="topbar-child-selector">
-            <select data-fr-change="switchChild" data-fr-pass="value" class="topbar-child-select">
+            <select data-fr-change="switchChild" data-fr-pass="value" class="topbar-child-select" aria-label="<?= __('nav.select_child', ['default' => 'Choisir un enfant']) ?>">
                 <?php foreach ($_topbar_children as $_ch): ?>
                 <option value="<?= (int)$_ch['id'] ?>" <?= ($_topbar_selected_child && (int)$_ch['id'] === (int)$_topbar_selected_child['id']) ? 'selected' : '' ?>>
                     <?= htmlspecialchars($_ch['prenom'] . ' ' . $_ch['nom']) ?>
@@ -194,37 +194,37 @@ $_topbar_role           = $__nav['role'];
 
         <!-- User dropdown -->
         <div class="topbar-dropdown topbar-user-dropdown">
-            <button class="topbar-user-avatar" type="button" aria-expanded="false" aria-haspopup="menu" aria-label="<?= __('nav.user_menu', ['default' => 'Menu utilisateur']) ?> — <?= htmlspecialchars($user_fullname) ?>" title="<?= htmlspecialchars($user_fullname) ?>">
+            <button class="topbar-user-avatar" type="button" aria-expanded="false" aria-haspopup="true" aria-controls="topbar-user-menu" aria-label="<?= __('nav.user_menu', ['default' => 'Menu utilisateur']) ?> — <?= htmlspecialchars($user_fullname) ?>" title="<?= htmlspecialchars($user_fullname) ?>">
                 <?= htmlspecialchars($user_initials) ?>
             </button>
-            <div class="topbar-dropdown__menu topbar-dropdown__menu--right">
+            <div class="topbar-dropdown__menu topbar-dropdown__menu--right" id="topbar-user-menu">
                 <a href="<?= $rootPrefix ?>modules/profil/index.php" class="topbar-dropdown__item">
-                    <i class="fas fa-user"></i> <span><?= __('nav.profile') ?></span>
+                    <i class="fas fa-user" aria-hidden="true"></i> <span><?= __('nav.profile') ?></span>
                 </a>
                 <a href="<?= $rootPrefix ?>parametres/parametres.php" class="topbar-dropdown__item">
-                    <i class="fas fa-cog"></i> <span><?= __('nav.settings') ?></span>
+                    <i class="fas fa-cog" aria-hidden="true"></i> <span><?= __('nav.settings') ?></span>
                 </a>
                 <hr class="topbar-dropdown__divider">
                 <a href="<?= $rootPrefix ?>login/logout.php" class="topbar-dropdown__item topbar-dropdown__item--danger">
-                    <i class="fas fa-sign-out-alt"></i> <span><?= __('nav.logout') ?></span>
+                    <i class="fas fa-sign-out-alt" aria-hidden="true"></i> <span><?= __('nav.logout') ?></span>
                 </a>
             </div>
         </div>
 
         <!-- Mobile hamburger -->
-        <button class="topbar-hamburger" id="topbar-hamburger" type="button" aria-label="Menu">
-            <i class="fas fa-bars"></i>
+        <button class="topbar-hamburger" id="topbar-hamburger" type="button" aria-label="<?= __('nav.open_menu', ['default' => 'Ouvrir le menu']) ?>" aria-haspopup="true" aria-controls="topbar-mobile-panel" aria-expanded="false">
+            <i class="fas fa-bars" aria-hidden="true"></i>
         </button>
     </div>
 </nav>
 
 <!-- Search modal -->
-<div class="search-modal" id="search-modal" role="dialog" aria-hidden="true">
+<div class="search-modal" id="search-modal" role="dialog" aria-modal="true" aria-label="<?= __('nav.search', ['default' => 'Recherche']) ?>" aria-hidden="true">
     <div class="search-modal__backdrop"></div>
     <div class="search-modal__content">
         <div class="search-modal__input-wrap">
-            <i class="fas fa-search"></i>
-            <input type="text" id="search-modal-input" placeholder="<?= __('nav.search_placeholder', ['default' => 'Rechercher un module, un eleve, une page...']) ?>" autocomplete="off">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <input type="text" id="search-modal-input" aria-label="<?= __('nav.search_placeholder', ['default' => 'Rechercher un module, un eleve, une page...']) ?>" placeholder="<?= __('nav.search_placeholder', ['default' => 'Rechercher un module, un eleve, une page...']) ?>" autocomplete="off">
             <kbd>Esc</kbd>
         </div>
         <div class="search-modal__results" id="search-modal-results"></div>
@@ -232,11 +232,11 @@ $_topbar_role           = $__nav['role'];
 </div>
 
 <!-- Mobile slide-out panel -->
-<div class="topbar-mobile-panel" id="topbar-mobile-panel">
+<div class="topbar-mobile-panel" id="topbar-mobile-panel" role="dialog" aria-modal="true" aria-label="<?= __('nav.mobile_menu', ['default' => 'Menu de navigation']) ?>">
     <div class="topbar-mobile-panel__header">
-        <span class="topbar-brand__icon">F</span>
+        <span class="topbar-brand__icon" aria-hidden="true">F</span>
         <span>FRONOTE</span>
-        <button class="topbar-mobile-panel__close" id="topbar-mobile-close" type="button">&times;</button>
+        <button class="topbar-mobile-panel__close" id="topbar-mobile-close" type="button" aria-label="<?= __('common.close', ['default' => 'Fermer']) ?>">&times;</button>
     </div>
     <div class="topbar-mobile-panel__body">
         <a href="<?= $rootPrefix ?>accueil/accueil.php" class="topbar-mobile-link <?= $activePage === 'accueil' ? 'active' : '' ?>">

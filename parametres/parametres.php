@@ -235,7 +235,7 @@ $roleWidgets = match ($userType) {
 
                     <hr>
                     <div class="form-group">
-                        <label class="form-label">Bio</label>
+                        <label class="form-label" for="param-bio">Bio</label>
                         <form method="post">
                             <?= csrfField() ?>
                             <input type="hidden" name="action" value="preferences">
@@ -244,7 +244,7 @@ $roleWidgets = match ($userType) {
                             <input type="hidden" name="taille_police" value="<?= htmlspecialchars($settings['taille_police']) ?>">
                             <?php if ($settings['notifications_email']): ?><input type="hidden" name="notifications_email" value="1"><?php endif; ?>
                             <?php if ($settings['notifications_web']): ?><input type="hidden" name="notifications_web" value="1"><?php endif; ?>
-                            <textarea name="bio" class="form-control" rows="3" placeholder="Décrivez-vous en quelques mots..."><?= htmlspecialchars($settings['bio'] ?? '') ?></textarea>
+                            <textarea id="param-bio" name="bio" class="form-control" rows="3" placeholder="Décrivez-vous en quelques mots..."><?= htmlspecialchars($settings['bio'] ?? '') ?></textarea>
                             <button type="submit" class="btn btn-primary btn-sm mt-1"><i class="fas fa-save"></i> Enregistrer</button>
                         </form>
                     </div>
@@ -352,8 +352,8 @@ $roleWidgets = match ($userType) {
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">Taille de police</label>
-                            <select name="taille_police" class="form-select" data-fr-change="previewFontSize" data-fr-pass="value">
+                            <label class="form-label" for="taille_police">Taille de police</label>
+                            <select id="taille_police" name="taille_police" class="form-select" data-fr-change="previewFontSize" data-fr-pass="value">
                                 <?php foreach ($fontSizes as $k => $v): ?>
                                     <option value="<?= $k ?>" <?= $settings['taille_police'] === $k ? 'selected' : '' ?>><?= $v ?></option>
                                 <?php endforeach; ?>
@@ -361,8 +361,8 @@ $roleWidgets = match ($userType) {
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">Langue</label>
-                            <select name="langue" class="form-select">
+                            <label class="form-label" for="param-langue">Langue</label>
+                            <select id="param-langue" name="langue" class="form-select">
                                 <option value="fr" <?= ($settings['langue'] ?? 'fr') === 'fr' ? 'selected' : '' ?>>Français</option>
                                 <option value="en" <?= ($settings['langue'] ?? 'fr') === 'en' ? 'selected' : '' ?>>English</option>
                             </select>
@@ -560,11 +560,11 @@ $roleWidgets = match ($userType) {
                         <input type="hidden" name="action" value="password">
 
                         <div class="form-group">
-                            <label class="form-label">Mot de passe actuel</label>
-                            <input type="password" name="ancien" class="form-control" required autocomplete="current-password">
+                            <label class="form-label" for="pwd-current">Mot de passe actuel</label>
+                            <input type="password" id="pwd-current" name="ancien" class="form-control" required autocomplete="current-password">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Nouveau mot de passe</label>
+                            <label class="form-label" for="newPwd">Nouveau mot de passe</label>
                             <input type="password" name="nouveau" class="form-control" required minlength="8" autocomplete="new-password" id="newPwd">
                             <small class="form-text">Min. 8 caractères, 1 majuscule, 1 minuscule, 1 chiffre, 1 caractère spécial</small>
                             <div id="pwdStrength" style="margin-top:6px;height:4px;border-radius:2px;background:#e2e8f0;overflow:hidden">
@@ -572,8 +572,8 @@ $roleWidgets = match ($userType) {
                             </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Confirmer le nouveau mot de passe</label>
-                            <input type="password" name="confirmer" class="form-control" required autocomplete="new-password">
+                            <label class="form-label" for="pwd-confirm">Confirmer le nouveau mot de passe</label>
+                            <input type="password" id="pwd-confirm" name="confirmer" class="form-control" required autocomplete="new-password">
                         </div>
 
                         <button type="submit" class="btn btn-primary"><i class="fas fa-lock"></i> Modifier le mot de passe</button>

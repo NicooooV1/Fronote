@@ -451,6 +451,12 @@
     background: transparent;
     color: var(--text-primary, #1a202c);
 }
+/* Indicateur de focus visible : l'outline est retiré sur l'input, le ring est porté
+   par le conteneur au focus clavier (contraste ≥ 3:1). */
+.search-modal__input-wrap:focus-within {
+    box-shadow: 0 0 0 2px var(--primary-color, #4f46e5);
+    border-radius: 8px;
+}
 
 .search-modal__input-wrap kbd {
     padding: 2px 6px;

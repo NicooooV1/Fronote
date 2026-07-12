@@ -9,7 +9,7 @@ require_once __DIR__ . '/../API/core.php';
 // Security headers — CSP à nonce (plus de 'unsafe-inline' sur script-src).
 $cspNonce = base64_encode(random_bytes(16));
 if (!headers_sent()) {
-    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-{$cspNonce}'; style-src 'self' 'unsafe-inline' cdnjs.cloudflare.com; font-src cdnjs.cloudflare.com; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self';");
+    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-{$cspNonce}'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self';");
     header("X-Frame-Options: DENY");
     header("X-Content-Type-Options: nosniff");
     header("Referrer-Policy: strict-origin-when-cross-origin");
@@ -129,7 +129,7 @@ $csrfToken = generateCSRFToken();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vérification 2FA - FRONOTE</title>
     <link rel="stylesheet" href="assets/css/login.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="../assets/lib/fontawesome/css/all.min.css">
     <script nonce="<?= $cspNonce ?>">
     (function() {
         if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {

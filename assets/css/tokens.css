@@ -3,26 +3,30 @@
  * Single source of truth for colors, spacing, typography, shadows, and radii.
  * Imported by both theme-classic.css and theme-glass.css.
  * Override in each theme only when the theme needs a different value.
+ *
+ * Direction « refonte 2026 » : sobriété façon écosystème Apple — gris froids, bleu système
+ * retenu, coins continus généreux, ombres douces et diffuses. Le branding établissement
+ * surcharge --primary-color / --primary / --ds-primary APRÈS ce fichier (voir shared_header).
  */
 
 /* ===================================================================
    LIGHT TOKENS (default)
    =================================================================== */
 :root {
-  /* ── Primary palette ── */
-  --primary-color: #0f4c81;
-  --primary-light: #2d7dd2;
-  --primary-dark: #0a3962;
+  /* ── Primary palette (bleu système, sobre) ── */
+  --primary-color: #0071e3;
+  --primary-light: #3898ec;
+  --primary-dark: #0062c4;
 
-  /* ── Neutral palette ── */
-  --background-color: #f5f6fa;
-  --text-color: #333;
-  --text-light: #666;
-  --text-muted: #5f6b7a;
+  /* ── Neutral palette (gris froids) ── */
+  --background-color: #f5f5f7;
+  --text-color: #1d1d1f;
+  --text-light: #6e6e73;
+  --text-muted: #86868b;
   --white: #fff;
-  --border-color: #eee;
+  --border-color: #e5e5ea;
 
-  /* ── Module accent colors ── */
+  /* ── Module accent colors (couleurs système) ── */
   --accent-notes: #ff9500;
   --accent-agenda: #007aff;
   --accent-cahier: #34c759;
@@ -30,11 +34,11 @@
   --accent-absences: #ff3b30;
 
   /* ── Pastel backgrounds ── */
-  --pastel-notes: rgba(255, 149, 0, 0.15);
-  --pastel-agenda: rgba(0, 122, 255, 0.15);
-  --pastel-cahier: rgba(52, 199, 89, 0.15);
-  --pastel-messagerie: rgba(88, 86, 214, 0.15);
-  --pastel-absences: rgba(255, 59, 48, 0.15);
+  --pastel-notes: rgba(255, 149, 0, 0.14);
+  --pastel-agenda: rgba(0, 122, 255, 0.14);
+  --pastel-cahier: rgba(52, 199, 89, 0.14);
+  --pastel-messagerie: rgba(88, 86, 214, 0.14);
+  --pastel-absences: rgba(255, 59, 48, 0.14);
 
   /* ── Feedback / semantic ── */
   --success-color: #34c759;
@@ -42,10 +46,10 @@
   --error-color: #ff3b30;
   --info-color: #007aff;
 
-  /* ── Shadows ── */
-  --shadow-light: 0 2px 6px rgba(0, 0, 0, 0.05);
-  --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --shadow-hover: 0 8px 16px rgba(0, 0, 0, 0.1);
+  /* ── Shadows (douces, diffuses, à faible opacité) ── */
+  --shadow-light: 0 1px 2px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-medium: 0 2px 8px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.05);
+  --shadow-hover: 0 6px 20px rgba(0, 0, 0, 0.08), 0 14px 40px rgba(0, 0, 0, 0.06);
 
   /* ── Spacing scale ── */
   --space-xs: 5px;
@@ -54,10 +58,10 @@
   --space-lg: 30px;
   --space-xl: 40px;
 
-  /* ── Border radii ── */
-  --radius-sm: 4px;
-  --radius-md: 10px;
-  --radius-lg: 20px;
+  /* ── Border radii (coins continus, généreux) ── */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
   --radius-circle: 50%;
 
   /* ── Layout dimensions ── */
@@ -65,31 +69,31 @@
   --header-height: 70px;
 
   /* ── Design System (DS) palette ── */
-  --ds-primary: #2563eb;
-  --ds-primary-hover: #1d4ed8;
-  --ds-primary-light: #dbeafe;
-  --ds-success: #16a34a;
-  --ds-success-light: #dcfce7;
-  --ds-warning: #d97706;
-  --ds-warning-light: #fef3c7;
-  --ds-danger: #dc2626;
-  --ds-danger-light: #fee2e2;
-  --ds-info: #0891b2;
-  --ds-info-light: #cffafe;
-  --ds-bg: #f8fafc;
+  --ds-primary: #0071e3;
+  --ds-primary-hover: #0062c4;
+  --ds-primary-light: #e8f2fd;
+  --ds-success: #1a9e4b;
+  --ds-success-light: #e3f7e9;
+  --ds-warning: #c8730a;
+  --ds-warning-light: #fdefd6;
+  --ds-danger: #e0362b;
+  --ds-danger-light: #fde4e2;
+  --ds-info: #007aff;
+  --ds-info-light: #e3f0ff;
+  --ds-bg: #f5f5f7;
   --ds-surface: #ffffff;
-  --ds-border: #e2e8f0;
-  --ds-text: #1e293b;
-  --ds-text-muted: #64748b;
-  --ds-text-light: #94a3b8;
-  --ds-radius: 8px;
-  --ds-radius-sm: 4px;
-  --ds-radius-lg: 12px;
-  --ds-shadow: 0 1px 3px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06);
-  --ds-shadow-md: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -2px rgba(0,0,0,.1);
-  --ds-shadow-lg: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.1);
-  --ds-transition: 0.2s ease;
-  --ds-font: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  --ds-border: #e5e5ea;
+  --ds-text: #1d1d1f;
+  --ds-text-muted: #6e6e73;
+  --ds-text-light: #86868b;
+  --ds-radius: 12px;
+  --ds-radius-sm: 8px;
+  --ds-radius-lg: 18px;
+  --ds-shadow: 0 1px 2px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.05);
+  --ds-shadow-md: 0 2px 8px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.05);
+  --ds-shadow-lg: 0 8px 30px rgba(0,0,0,.08), 0 20px 50px rgba(0,0,0,.06);
+  --ds-transition: 0.25s cubic-bezier(0.2, 0, 0, 1);
+  --ds-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
 
   /* ── Fluid typography scale ── */
   --font-xs: clamp(0.6875rem, 0.65rem + 0.15vw, 0.75rem);     /* 11-12px */
@@ -108,17 +112,17 @@
   --text: var(--ds-text);
   --text-muted: var(--ds-text-muted);
   --border-color: var(--ds-border);
-  --primary-bg: rgba(37, 99, 235, 0.04);
+  --primary-bg: rgba(0, 113, 227, 0.05);
 
   /* ── Surfaces & textes : alias largement utilisés par le CSS des modules
         (étaient non définis → repli clair en thème sombre = surfaces blanches). ── */
   --bg-card: #ffffff;
-  --bg-secondary: #f1f5f9;
-  --bg-tertiary: #e2e8f0;
-  --bg-hover: #f1f5f9;
-  --text-primary: #1e293b;
-  --text-secondary: #64748b;
-  --border: #e2e8f0;
+  --bg-secondary: #f0f0f2;
+  --bg-tertiary: #e8e8ed;
+  --bg-hover: #f0f0f2;
+  --text-primary: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --border: #e5e5ea;
 
   /* ── Spacing (4px grid, used by utility classes) ── */
   --sp-1: 4px;
@@ -133,48 +137,48 @@
 }
 
 /* ===================================================================
-   DARK TOKENS
+   DARK TOKENS — gris neutres profonds (moins bleutés que l'ancien slate)
    =================================================================== */
 [data-theme="dark"] {
-  --primary-color: #2563eb;
-  --primary-light: #3b82f6;
-  --primary-dark: #1d4ed8;
-  --background-color: #0f172a;
-  --text-color: #e2e8f0;
-  --text-light: #94a3b8;
-  --text-muted: #64748b;
-  --white: #1e293b;
-  --border-color: #334155;
+  --primary-color: #0a84ff;
+  --primary-light: #409cff;
+  --primary-dark: #0071e3;
+  --background-color: #161618;
+  --text-color: #f5f5f7;
+  --text-light: #98989d;
+  --text-muted: #86868b;
+  --white: #1f1f21;
+  --border-color: #38383a;
 
-  --success-color: #22c55e;
-  --warning-color: #f59e0b;
-  --error-color: #ef4444;
-  --info-color: #3b82f6;
+  --success-color: #30d158;
+  --warning-color: #ff9f0a;
+  --error-color: #ff453a;
+  --info-color: #0a84ff;
 
-  --shadow-light: 0 2px 8px rgba(0,0,0,0.3);
-  --shadow-medium: 0 4px 16px rgba(0,0,0,0.4);
-  --shadow-hover: 0 8px 24px rgba(0,0,0,0.5);
+  --shadow-light: 0 1px 2px rgba(0,0,0,0.5), 0 2px 10px rgba(0,0,0,0.4);
+  --shadow-medium: 0 4px 16px rgba(0,0,0,0.5);
+  --shadow-hover: 0 10px 34px rgba(0,0,0,0.6);
 
-  --ds-primary: #3b82f6;
-  --ds-primary-hover: #60a5fa;
-  --ds-primary-light: #1e3a5f;
-  --ds-success: #22c55e;
-  --ds-success-light: #14532d;
-  --ds-warning: #f59e0b;
-  --ds-warning-light: #451a03;
-  --ds-danger: #ef4444;
-  --ds-danger-light: #450a0a;
-  --ds-info: #06b6d4;
-  --ds-info-light: #164e63;
-  --ds-bg: #0f172a;
-  --ds-surface: #1e293b;
-  --ds-border: #334155;
-  --ds-text: #f1f5f9;
-  --ds-text-muted: #94a3b8;
-  --ds-text-light: #64748b;
-  --ds-shadow: 0 1px 3px rgba(0,0,0,.3);
-  --ds-shadow-md: 0 4px 6px rgba(0,0,0,.3);
-  --ds-shadow-lg: 0 10px 15px rgba(0,0,0,.4);
+  --ds-primary: #0a84ff;
+  --ds-primary-hover: #409cff;
+  --ds-primary-light: #0a2540;
+  --ds-success: #30d158;
+  --ds-success-light: #0f2e1a;
+  --ds-warning: #ff9f0a;
+  --ds-warning-light: #3a2a05;
+  --ds-danger: #ff453a;
+  --ds-danger-light: #3a1210;
+  --ds-info: #64d2ff;
+  --ds-info-light: #06344a;
+  --ds-bg: #161618;
+  --ds-surface: #1f1f21;
+  --ds-border: #38383a;
+  --ds-text: #f5f5f7;
+  --ds-text-muted: #98989d;
+  --ds-text-light: #6e6e73;
+  --ds-shadow: 0 1px 2px rgba(0,0,0,.5);
+  --ds-shadow-md: 0 4px 12px rgba(0,0,0,.5);
+  --ds-shadow-lg: 0 12px 34px rgba(0,0,0,.6);
 
   /* ── Semantic aliases (dark) ── */
   --primary: var(--ds-primary);
@@ -184,14 +188,14 @@
   --text: var(--ds-text);
   --text-muted: var(--ds-text-muted);
   --border-color: var(--ds-border);
-  --primary-bg: rgba(59, 130, 246, 0.06);
+  --primary-bg: rgba(10, 132, 255, 0.10);
 
   /* ── Surfaces & textes (sombre) — corrige les modules qui utilisaient ces alias ── */
-  --bg-card: #1e293b;
-  --bg-secondary: #273449;
-  --bg-tertiary: #334155;
-  --bg-hover: #273449;
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --border: #334155;
+  --bg-card: #1f1f21;
+  --bg-secondary: #2c2c2e;
+  --bg-tertiary: #38383a;
+  --bg-hover: #2c2c2e;
+  --text-primary: #f5f5f7;
+  --text-secondary: #98989d;
+  --border: #38383a;
 }

@@ -365,7 +365,7 @@ include 'includes/header.php';
     </div>
 </div>
 
-<script src="assets/js/event_form.js" nonce="<?= csp_nonce() ?>"></script>
+<script src="<?= asset_url('modules/agenda/assets/js/event_form.js') ?>" nonce="<?= csp_nonce() ?>"></script>
 <script nonce="<?= csp_nonce() ?>">
 // Récurrence toggle
 document.getElementById('recurrence_freq').addEventListener('change', function() {

@@ -170,7 +170,19 @@ function updateReadStatus(readStatus) {
 function setupUnifiedPolling() {
     const convId = new URLSearchParams(window.location.search).get('id');
     if (!convId) return;
-    
+
+    // Idempotence : une seule boucle active à la fois. Sans cette garde, chaque appel
+    // (démarrage direct ligne 26, fallback WS 5s, handler 'disconnect') empilait un timer ET
+    // un écouteur visibilitychange jamais retirés → requêtes /messagerie.php dupliquées et
+    // fantômes après un cycle déconnexion/reconnexion WebSocket.
+    if (window.unifiedPollingActive) return;
+    window.unifiedPollingActive = true;
+    // (Ré)active le drapeau de polling : stopUnifiedPolling() le met à false quand le WebSocket
+    // prend la main ; sans ce rétablissement, un redémarrage (déconnexion après reconnexion)
+    // verrait poll() sortir immédiatement (garde ligne « !messagePolling »).
+    window.activeConnections = window.activeConnections || {};
+    window.activeConnections.messagePolling = true;
+
     let lastTimestamp = 0;
     let readVersionSum = 0;
     let lastReadMessageId = 0;
@@ -248,8 +260,9 @@ function setupUnifiedPolling() {
         if (pollTimerId) { clearInterval(pollTimerId); pollTimerId = null; }
     }
 
-    // Adapter l'intervalle quand la visibilité change
-    document.addEventListener('visibilitychange', () => {
+    // Adapter l'intervalle quand la visibilité change. Référence NOMMÉE conservée pour
+    // pouvoir la retirer au stop (une closure anonyme serait un écouteur orphelin).
+    function onVisibilityChange() {
         if (document.visibilityState === 'visible') {
             window.activeConnections.messagePolling = true;
             poll(); // MAJ immédiate au retour
@@ -257,8 +270,19 @@ function setupUnifiedPolling() {
         } else {
             startPollingTimer(); // repasser à 30s
         }
-    });
-    
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    // Arrêt propre : appelé quand le WebSocket (re)prend la main (handler 'connect').
+    // Retire le timer ET l'écouteur, et libère la garde d'idempotence pour un futur redémarrage.
+    window.stopUnifiedPolling = function () {
+        stopPollingTimer();
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+        window.unifiedPollingId = null;
+        window.unifiedPollingActive = false;
+        if (window.activeConnections) window.activeConnections.messagePolling = false;
+    };
+
     // Démarrage initial après 1s
     setTimeout(poll, 1000);
     startPollingTimer();
@@ -544,7 +568,12 @@ function appendMessageToDOM(message, container) {
         message.reactions.forEach(r => {
             const btn = document.createElement('button');
             btn.className = `reaction-badge ${r.user_reacted ? 'active' : ''}`;
-            btn.innerHTML = `${r.emoji} <span class="reaction-count">${r.count}</span>`;
+            // Construction en DOM (pas d'innerHTML) : ne pas dépendre du seul whitelist serveur.
+            btn.append(r.emoji + ' ');
+            const cnt = document.createElement('span');
+            cnt.className = 'reaction-count';
+            cnt.textContent = r.count;
+            btn.appendChild(cnt);
             btn.addEventListener('click', () => toggleReaction(message.id, r.emoji));
             reactDiv.appendChild(btn);
         });
@@ -1000,7 +1029,12 @@ function toggleReaction(messageId, emoji) {
             data.reactions.forEach(r => {
                 const btn = document.createElement('button');
                 btn.className = `reaction-badge ${r.user_reacted ? 'active' : ''}`;
-                btn.innerHTML = `${r.emoji} <span class="reaction-count">${r.count}</span>`;
+                // Construction en DOM (pas d'innerHTML) : ne pas dépendre du seul whitelist serveur.
+                btn.append(r.emoji + ' ');
+                const cnt = document.createElement('span');
+                cnt.className = 'reaction-count';
+                cnt.textContent = r.count;
+                btn.appendChild(cnt);
                 btn.addEventListener('click', () => toggleReaction(messageId, r.emoji));
                 reactDiv.appendChild(btn);
             });
@@ -1248,11 +1282,10 @@ function setupWebSocketForConversation() {
         }
     });
 
-    // Si WS se (re)connecte, arrêter le polling
+    // Si WS se (re)connecte, arrêter proprement le polling (timer + écouteur visibilitychange).
     window.wsClient.on?.('connect', () => {
-        if (window.unifiedPollingId) {
-            clearInterval(window.unifiedPollingId);
-            window.unifiedPollingId = null;
+        if (window.unifiedPollingActive) {
+            window.stopUnifiedPolling?.();
             console.log('WebSocket connecté — polling désactivé');
         }
     });

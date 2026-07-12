@@ -195,8 +195,8 @@ if (!headers_sent()) {
     // 'unsafe-inline' de style-src sans avoir d'abord externalisé tous les style= inline.
     $_hdr_csp = "default-src 'self'; "
         . "script-src 'self' 'nonce-{$_hdr_nonce}' 'strict-dynamic' https:; "
-        . "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
-        . "font-src 'self' https://cdnjs.cloudflare.com data:; "
+        . "style-src 'self' 'unsafe-inline'; "
+        . "font-src 'self' data:; "
         . "img-src 'self' data: blob: https:; "
         . "connect-src 'self' ws: wss:; "
         . "object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; "
@@ -209,8 +209,8 @@ if (!headers_sent()) {
     // styles inline à externaliser avant de pouvoir durcir l'enforce à son tour.
     $_hdr_cspRO = "default-src 'self'; "
         . "script-src 'self' 'nonce-{$_hdr_nonce}' 'strict-dynamic' https:; "
-        . "style-src 'self' https://cdnjs.cloudflare.com; "
-        . "font-src 'self' https://cdnjs.cloudflare.com data:; "
+        . "style-src 'self'; "
+        . "font-src 'self' data:; "
         . "img-src 'self' data: blob: https:; "
         . "connect-src 'self' ws: wss:; "
         . "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; "
@@ -320,7 +320,7 @@ try {
     <?php if ($_hdr_dir === 'rtl'): ?>
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/rtl.css') ?>">
     <?php endif; ?>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="<?= $_assetVersion('assets/lib/fontawesome/css/all.min.css') ?>">
     <?php foreach ($extraCss as $css):
         // Append ?v=<mtime> when the file resolves to a local asset
         $_cssHref = $css;
@@ -340,12 +340,14 @@ try {
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/dark-overrides.css') ?>">
     <!-- Design System (refonte UX) : tokens + thèmes (clair/sombre/liquide) + composants .ds-* (additif). -->
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/design-system.css') ?>">
+    <!-- Couche de modernisation (refonte 2026) : polish transverse façon Apple — EN DERNIER pour primer. -->
+    <link rel="stylesheet" href="<?= $_assetVersion('assets/css/modernize.css') ?>">
     <?= $extraHeadHtml ?>
     <!-- WebSocket global -->
     <script nonce="<?= $_hdr_nonce ?>">window.FRONOTE_WS = <?= $_hdr_ws_config ?>;</script>
     <!-- Pont d'actions CSP (délégué, sans eval) : permet de retirer 'unsafe-inline'. -->
     <script src="<?= $_assetVersion('assets/js/csp-actions.js') ?>" nonce="<?= $_hdr_nonce ?>"></script>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous" nonce="<?= $_hdr_nonce ?>" defer></script>
+    <script src="<?= $_assetVersion('assets/lib/socketio/socket.io.min.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>
     <script src="<?= $_assetVersion('assets/js/topbar.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>
     <script src="<?= $_assetVersion('assets/js/components.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>
     <script src="<?= $_assetVersion('assets/js/ui/interactions.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>

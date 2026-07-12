@@ -98,7 +98,7 @@ $card = function (string $label, string $value, string $status = 'ok', ?string $
     try{ el.setAttribute('data-reduce-motion',localStorage.getItem('fronote_reduce_motion')==='true'?'true':'false'); el.setAttribute('data-reduce-transparency',localStorage.getItem('fronote_reduce_transparency')==='true'?'true':'false'); }catch(e){}
   })();
   </script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="../assets/lib/fontawesome/css/all.min.css">
   <link rel="stylesheet" href="<?= $h($v('assets/css/design-system.css')) ?>">
   <style>
     body { margin:0; background:var(--surface-app); color:var(--text-primary); font-family:var(--font-sans); }

@@ -94,8 +94,24 @@
         return s;
     }
 
+    // Accessibilité des boîtes de dialogue : éléments focusables + piège de focus (Tab bouclé) +
+    // restauration du focus sur le déclencheur à la fermeture. Partagé modale de recherche / panneau mobile.
+    function focusablesIn(container) {
+        return container.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])');
+    }
+    function trapTab(container, e) {
+        if (e.key !== 'Tab') return;
+        var f = focusablesIn(container);
+        if (!f.length) return;
+        var first = f[0], last = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+
+    var lastFocusBeforeSearch = null;
     function openSearch() {
         if (!searchModal) return;
+        lastFocusBeforeSearch = document.activeElement;
         searchModal.classList.add('open');
         searchModal.setAttribute('aria-hidden', 'false');
         if (searchInput) {
@@ -109,6 +125,10 @@
         if (!searchModal) return;
         searchModal.classList.remove('open');
         searchModal.setAttribute('aria-hidden', 'true');
+        // Restaure le focus sur le déclencheur (dialog accessible : pas de focus perdu sur <body>).
+        var back = lastFocusBeforeSearch || searchBtn;
+        if (back && back.focus) back.focus();
+        lastFocusBeforeSearch = null;
     }
 
     if (searchBtn) {
@@ -130,6 +150,10 @@
         if (backdrop) {
             backdrop.addEventListener('click', closeSearch);
         }
+        // Piège de focus tant que la modale est ouverte (Tab ne sort plus vers l'arrière-plan).
+        searchModal.addEventListener('keydown', function (e) {
+            if (searchModal.classList.contains('open')) trapTab(searchModal, e);
+        });
     }
 
     // Met à jour le surlignage du résultat sélectionné au clavier
@@ -223,15 +247,38 @@
     var mobilePanel = document.getElementById('topbar-mobile-panel');
     var mobileClose = document.getElementById('topbar-mobile-close');
 
+    var lastFocusBeforeMobile = null;
+    function openMobilePanel() {
+        if (!mobilePanel) return;
+        lastFocusBeforeMobile = document.activeElement;
+        mobilePanel.classList.add('open');
+        if (hamburger) hamburger.setAttribute('aria-expanded', 'true');
+        var f = focusablesIn(mobilePanel);
+        if (f.length) f[0].focus();
+    }
+    function closeMobilePanel() {
+        if (!mobilePanel || !mobilePanel.classList.contains('open')) return;
+        mobilePanel.classList.remove('open');
+        if (hamburger) hamburger.setAttribute('aria-expanded', 'false');
+        var back = lastFocusBeforeMobile || hamburger;
+        if (back && back.focus) back.focus();
+        lastFocusBeforeMobile = null;
+    }
+
     if (hamburger && mobilePanel) {
-        hamburger.addEventListener('click', function () {
-            mobilePanel.classList.add('open');
-        });
+        hamburger.addEventListener('click', function (e) { e.stopPropagation(); openMobilePanel(); });
     }
 
     if (mobileClose && mobilePanel) {
-        mobileClose.addEventListener('click', function () {
-            mobilePanel.classList.remove('open');
+        mobileClose.addEventListener('click', closeMobilePanel);
+    }
+
+    // Esc ferme le panneau + piège de focus (dialog mobile accessible)
+    if (mobilePanel) {
+        mobilePanel.addEventListener('keydown', function (e) {
+            if (!mobilePanel.classList.contains('open')) return;
+            if (e.key === 'Escape') { closeMobilePanel(); return; }
+            trapTab(mobilePanel, e);
         });
     }
 
@@ -239,7 +286,7 @@
     document.addEventListener('click', function (e) {
         if (mobilePanel && mobilePanel.classList.contains('open')) {
             if (!mobilePanel.contains(e.target) && e.target !== hamburger && !hamburger.contains(e.target)) {
-                mobilePanel.classList.remove('open');
+                closeMobilePanel();
             }
         }
     });
@@ -313,9 +360,11 @@
             var f = favorites[i];
             var isPage = f.type === 'page';
             var href = isPage ? esc(f.route) : (base + esc(f.route));
+            // CSP stricte : pas d'on*= inline. On génère le même markup délégué que le rendu
+            // serveur (shared_topbar_nav.php) — data-fr-click résolu par csp-actions.js.
             var removeBtn = isPage
                 ? '<button class="topbar-fav-toggle is-favorite" type="button" title="Retirer des favoris"'
-                  + ' onclick="fronoteFavRemove(\'' + esc(f.module_key) + '\')"><i class="fas fa-star"></i></button>'
+                  + ' data-fr-click="fronoteFavRemove" data-fr-args=\'["' + esc(f.module_key) + '"]\'><i class="fas fa-star"></i></button>'
                 : '<button class="topbar-fav-toggle is-favorite" type="button" data-module-key="' + esc(f.module_key) + '"'
                   + ' title="Retirer des favoris" aria-pressed="true"><i class="fas fa-star"></i></button>';
             html += '<div class="topbar-dropdown__item-wrap">'

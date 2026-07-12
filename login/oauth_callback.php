@@ -12,7 +12,7 @@ require_once dirname(__DIR__) . '/API/bootstrap.php';
 
 // En-têtes de sécurité (page du flux d'auth) : CSP + X-Frame-Options.
 if (!headers_sent()) {
-	header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' cdnjs.cloudflare.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self';");
+	header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';");
 	header("X-Frame-Options: DENY");
 }
 

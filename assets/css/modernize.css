@@ -1,0 +1,142 @@
+/**
+ * FRONOTE — Couche de modernisation « refonte 2026 » (chargée EN DERNIER).
+ *
+ * Sobriété façon écosystème Apple, appliquée SANS toucher au HTML : une barre supérieure
+ * translucide et floutée (toolbar macOS/iOS), une entrée de page calme, des transitions
+ * d'interaction douces et cohérentes, des ombres/relief discrets. La couleur, la typo, les
+ * rayons et les ombres viennent des tokens (tokens.css) ; ce fichier ne fait que le *polish*
+ * transverse. Tout le mouvement respecte prefers-reduced-motion.
+ *
+ * Les valeurs de repli (background solide avant color-mix, easing en dur) garantissent un rendu
+ * correct sur les navigateurs sans color-mix()/backdrop-filter.
+ */
+
+/* ── Courbes de mouvement (repli si les tokens DS ne sont pas chargés) ── */
+:root {
+  --ease-ios: var(--ease-standard, cubic-bezier(0.2, 0, 0, 1));
+  --ease-ios-out: var(--ease-emphasized, cubic-bezier(0.16, 1, 0.3, 1));
+  --dur-ui: var(--motion-normal, 180ms);
+  --dur-press: var(--motion-fast, 120ms);
+}
+
+/* ============================================================
+   1. TYPOGRAPHIE — titres au crénage resserré (grandes tailles)
+   ============================================================ */
+h1, h2, h3, h4,
+.page-title h1,
+.ds-card__title {
+  letter-spacing: -0.021em;
+}
+h1, .page-title h1 { letter-spacing: -0.026em; }
+
+/* ============================================================
+   2. SIGNATURE — barre supérieure translucide et floutée
+   ============================================================ */
+.topbar-nav {
+  background: var(--bg-card, #fff);                                  /* repli opaque */
+  background: color-mix(in srgb, var(--bg-card, #fff) 72%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--border-color, #e5e5ea);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color, #e5e5ea) 65%, transparent);
+  box-shadow: none;
+}
+/* Barre du bas mobile (design system) : même traitement translucide. */
+.ds-bottom-bar {
+  background: var(--bg-card, #fff);
+  background: color-mix(in srgb, var(--bg-card, #fff) 80%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+
+/* ============================================================
+   3. RELIEF — surfaces, cartes, séparateurs discrets
+   ============================================================ */
+/* En sombre, le thème classic codait un slate (#0f172a) en dur sur .main-content : on rétablit le
+   fond « canvas » neutre depuis le token. Le thème verre garde son .main-content TRANSPARENT pour
+   laisser voir son dégradé → on l'exclut explicitement (data-css-theme="glass"). */
+html:not([data-css-theme="glass"])[data-theme="dark"] .main-content {
+  background-color: var(--background-color);
+}
+
+/* ============================================================
+   4. TRANSITIONS D'INTERACTION — douces et cohérentes
+   ============================================================ */
+a,
+button,
+.btn, .ds-btn,
+input, select, textarea,
+.card, .ds-card,
+.topbar-dropdown__trigger,
+.topbar-action-btn,
+.topbar-user-avatar,
+.topbar-fav-toggle {
+  transition:
+    background-color var(--dur-ui) var(--ease-ios),
+    border-color var(--dur-ui) var(--ease-ios),
+    color var(--dur-ui) var(--ease-ios),
+    box-shadow var(--dur-ui) var(--ease-ios),
+    transform var(--dur-press) var(--ease-ios);
+}
+
+/* ── Focus clavier : liseré système net (complète l'a11y existante) ── */
+:focus-visible {
+  outline: 2px solid var(--primary, #0071e3);
+  outline-offset: 2px;
+}
+
+/* ── Barres de défilement fines, façon overlay ── */
+* { scrollbar-width: thin; scrollbar-color: rgba(120,120,128,0.45) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(120,120,128,0.40);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(120,120,128,0.62); background-clip: padding-box; }
+
+/* ============================================================
+   5. TRANSITIONS ENTRE PAGES — API View Transitions (multi-page)
+   ============================================================ */
+/* Navigation multi-page classique (rechargement complet) : les navigateurs compatibles
+   (Chromium récent) réalisent un fondu enchaîné doux d'une page à l'autre ; les autres
+   naviguent normalement (amélioration progressive, zéro risque). */
+@view-transition { navigation: auto; }
+
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 260ms;
+    animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+}
+
+/* ============================================================
+   6. MOUVEMENT — entrée de page + micro-interactions (opt-in mouvement)
+   ============================================================ */
+@media (prefers-reduced-motion: no-preference) {
+  /* Révélation calme du contenu à chaque chargement (la toolbar, elle, reste stable). */
+  .main-content {
+    animation: fr-content-in var(--motion-slow, 280ms) var(--ease-ios-out) both;
+  }
+  @keyframes fr-content-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* Cartes du design system : léger soulèvement au survol. */
+  .ds-card:hover { transform: translateY(-2px); box-shadow: var(--ds-shadow-lg); }
+
+  /* Retour tactile discret à l'appui. */
+  .btn:active, .ds-btn:active,
+  .topbar-action-btn:active, .topbar-dropdown__trigger:active {
+    transform: scale(0.975);
+  }
+}
+
+/* Sécurité : aucune animation résiduelle si l'utilisateur réduit le mouvement. */
+@media (prefers-reduced-motion: reduce) {
+  .main-content { animation: none; }
+}

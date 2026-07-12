@@ -15,7 +15,7 @@ if (isset($_SESSION['user'])) {
 // afin que cette page sensible ne soit pas servie sans CSP.
 $cspNonce = base64_encode(random_bytes(16));
 if (!headers_sent()) {
-    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-{$cspNonce}'; style-src 'self' 'unsafe-inline' cdnjs.cloudflare.com; font-src cdnjs.cloudflare.com; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self';");
+    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-{$cspNonce}'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self';");
     header("X-Frame-Options: DENY");
     header("X-Content-Type-Options: nosniff");
     header("Referrer-Policy: strict-origin-when-cross-origin");
@@ -110,7 +110,7 @@ function formatPhoneNumber($phone) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Réinitialisation de mot de passe - FRONOTE</title>
     <link rel="stylesheet" href="assets/css/login.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="../assets/lib/fontawesome/css/all.min.css">
 </head>
 <body>
     <div class="auth-container">

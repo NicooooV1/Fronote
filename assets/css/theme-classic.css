@@ -340,6 +340,8 @@ a {
 .sidebar-search input:focus {
   background: rgba(255,255,255,0.14);
   border-color: rgba(255,255,255,0.22);
+  /* Ring visible au clavier (l'outline natif est retiré) */
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.4);
 }
 .sidebar-search-icon {
   position: absolute;
@@ -833,12 +835,19 @@ a {
   align-items: center;
 }
 .footer-links { display: flex; gap: 15px; }
-.footer-links a {
+.footer-links a,
+.footer-links .footer-legal-btn {
   color: var(--primary-color);
   text-decoration: none;
   font-size: 13px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
 }
-.footer-links a:hover { text-decoration: underline; }
+.footer-links a:hover,
+.footer-links .footer-legal-btn:hover { text-decoration: underline; }
 .footer-copyright { text-align: right; font-size: 13px; }
 
 /* ===================================================================

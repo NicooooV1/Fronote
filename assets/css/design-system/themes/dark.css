@@ -1,25 +1,42 @@
 /* ============================================================================
  * Fronote Design System — THÈME SOMBRE
- * Les tokens aliasés (--surface-*, --text-*, --border-light, --shadow-*) héritent
- * automatiquement des valeurs sombres de assets/css/tokens.css ([data-theme=dark]).
- * Ici : seulement les tokens NOUVEAUX de la refonte qui ont besoin d'une valeur sombre.
- * Ambiance : premium, confortable, technique. Pas de noir pur massif.
+ * Sur le socle, les surfaces sombres viennent de assets/css/tokens.css
+ * ([data-theme=dark]). Mais les portails (plateforme, tenant) chargent
+ * design-system.css SANS tokens.css : on redéfinit donc ici les valeurs brutes
+ * sombres pour qu'ils soient cohérents. Sur le socle, ces définitions sont
+ * IDENTIQUES à tokens.css → idempotentes.
+ * NB : on ne redéfinit PAS --ds-primary ici, pour ne pas écraser le branding
+ * établissement (injecté en ligne avant design-system.css).
+ * Ambiance : gris neutres profonds (pas de noir pur massif).
  * ========================================================================== */
 html[data-theme="dark"] {
   color-scheme: dark;
 
-  --surface-raised:  #243044;
-  --surface-overlay: rgba(2, 6, 16, 0.62);
-  --surface-hover:   #273449;
+  /* Valeurs brutes sombres (portails sans tokens.css ; idempotent sur le socle). */
+  --ds-bg: #161618;
+  --ds-surface: #1f1f21;
+  --ds-border: #38383a;
+  --ds-text: #f5f5f7;
+  --ds-text-muted: #98989d;
+  --ds-text-light: #6e6e73;
 
-  --border-medium:   #475569;
-  --border-strong:   #64748b;
+  --bg-card: #1f1f21;
+  --bg-secondary: #2c2c2e;
+  --bg-tertiary: #38383a;
+  --bg-hover: #2c2c2e;
 
-  --switch-bg-off:   #374151;
-  --switch-thumb:    #f9fafb;
+  --surface-raised:  #2c2c2e;
+  --surface-overlay: rgba(0, 0, 0, 0.55);
+  --surface-hover:   #2c2c2e;
 
-  --shadow-xs:       0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-focus:    0 0 0 3px rgba(96, 165, 250, 0.4);
+  --border-medium:   #48484a;
+  --border-strong:   #6e6e73;
+
+  --switch-bg-off:   #48484a;
+  --switch-thumb:    #f5f5f7;
+
+  --shadow-xs:       0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-focus:    0 0 0 3px rgba(10, 132, 255, 0.4);
 
   --glass-blur:      0px;
   --glass-bg:        var(--surface-card);
