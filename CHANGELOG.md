@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.5.1] — Régionalisation RBAC + harness d'autorisation — 2026-07-12
+
+- **Matrice RBAC cloisonnée par établissement** (finding #2, précédemment en chantier) : une surcharge
+  de permission (`rbac_permissions`) ne s'applique plus qu'à l'établissement qui l'a posée — lecture
+  scopée (`Authorization::roleGrants`, `RBAC::checkDynamicPermission`, résilientes), écriture scopée
+  (`role_permissions.php`), clé unique `(role, permission, etablissement_id)` (migration idempotente
+  `2026_07_12_000001`, appliquée). Rétrocompatible (lignes existantes à `etablissement_id=1`).
+- **Harness d'autorisation** (`AuthorizationMatrixScopeTest`, SQLite) : prouve qu'un grant/deny d'un
+  établissement ne fuit pas vers un autre — c'est ce banc qui a rendu ce changement d'authz vérifiable.
+- **`.env` hors docroot** supporté (`EnvLoader`) + `docs/SECURITY.md` (checklist de durcissement prod).
+- **Bancs de régression sécurité** : `SecurityRemediationTest` (csv_safe, js_json, allowlist SSRF push)
+  et `RoleAssignmentIsolationTest` (anti-IDOR d'attribution de rôle).
+
 ## [3.5.0] — Remédiation de l'audit complet (sécurité renforcée) — 2026-07-12
 
 Suite à l'audit complet (posture 58/100). ~26 des 33 findings vérifiés corrigés ; les 7 restants
