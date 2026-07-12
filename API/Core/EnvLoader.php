@@ -24,14 +24,24 @@ class EnvLoader
             return true;
         }
 
-        $envFile = $this->path . '/.env';
-
-        if (!file_exists($envFile)) {
-            throw new \RuntimeException("Impossible de charger la configuration environnement. Le fichier .env est introuvable.");
+        // Cherche .env HORS de la racine web d'ABORD (répertoire parent = non servi par Apache) :
+        // permet de sortir les secrets de l'arborescence servie sans changer de code, éliminant la
+        // dépendance à .htaccess (cf. finding « secrets protégés seulement par .htaccess »). Repli
+        // sur .env à la racine de l'app (protégé par .htaccess) pour l'installation actuelle.
+        $candidates = [
+            \dirname($this->path) . '/.env',   // hors docroot (recommandé)
+            $this->path . '/.env',             // racine app (repli)
+        ];
+        $envFile = null;
+        foreach ($candidates as $candidate) {
+            if (is_file($candidate) && is_readable($candidate)) {
+                $envFile = $candidate;
+                break;
+            }
         }
 
-        if (!is_readable($envFile)) {
-            throw new \RuntimeException("Impossible de charger la configuration environnement. Le fichier .env n'est pas accessible en lecture.");
+        if ($envFile === null) {
+            throw new \RuntimeException("Impossible de charger la configuration environnement. Le fichier .env est introuvable.");
         }
 
         $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
