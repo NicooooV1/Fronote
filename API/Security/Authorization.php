@@ -285,7 +285,15 @@ final class Authorization
             case 'establishment':
             case 'establishments':
                 if (empty($ctx['etablissement_id'])) {
-                    return true; // action non scopée à un établissement précis → autorisée au niveau rôle
+                    // Pas de cible explicite : si le scope d'établissement de la requête est RÉSOLU
+                    // (EstablishmentContext posé pendant l'auth), on le déduit et on le compare au
+                    // périmètre du rôle → un rôle scopé établissement A ne peut agir dans un scope B
+                    // (finding #23). Contexte NON résolu → comportement permissif conservé (le
+                    // cloisonnement est de toute façon appliqué par la couche données).
+                    if (!\API\Core\EstablishmentContext::isSet()) {
+                        return true;
+                    }
+                    $ctx['etablissement_id'] = \API\Core\EstablishmentContext::id();
                 }
                 $target = (int) $ctx['etablissement_id'];
                 if ($scopeType === 'establishments' && !empty($r['scope']['etablissement_ids'])) {

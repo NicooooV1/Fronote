@@ -6,6 +6,7 @@ namespace Tests\Unit;
 use PHPUnit\Framework\TestCase;
 use PDO;
 use API\Security\Authorization;
+use API\Core\EstablishmentContext;
 
 /**
  * Harness d'autorisation (SQLite) exerçant Authorization::can() via la matrice éditable
@@ -38,6 +39,12 @@ final class AuthorizationMatrixScopeTest extends TestCase
         // UNIQUEMENT pour l'établissement 1.
         $this->pdo->exec("INSERT INTO rbac_permissions (role, permission, etablissement_id, granted)
                           VALUES ('professeur', 'zzz.harness_only', 1, 1)");
+        EstablishmentContext::reset(); // état global propre pour ce test
+    }
+
+    protected function tearDown(): void
+    {
+        EstablishmentContext::reset();
     }
 
     private function authFor(int $etab): Authorization
@@ -70,5 +77,30 @@ final class AuthorizationMatrixScopeTest extends TestCase
                           VALUES ('professeur', 'zzz.harness_two', 2, 0)");
         $this->assertTrue($this->authFor(1)->can('zzz.harness_two'), 'établissement 1 : accordé');
         $this->assertFalse($this->authFor(2)->can('zzz.harness_two'), 'établissement 2 : refusé (deny scopé)');
+    }
+
+    // ── Finding #23 : scopeAllows déduit le scope de requête au lieu de fail-open ──
+
+    public function testScopeMatchesResolvedRequestEstablishment(): void
+    {
+        // Requête résolue sur l'établissement 1, rôle scopé établissement 1 → autorisé (cas légitime).
+        EstablishmentContext::set(1);
+        $this->assertTrue($this->authFor(1)->can('zzz.harness_only'));
+    }
+
+    public function testScopeDeniesWhenRequestEstablishmentDiffersFromRole(): void
+    {
+        // Scope de requête résolu sur l'établissement 2 mais rôle de l'établissement 1 (sans cible
+        // explicite dans le ctx) → REFUS : un rôle scopé établissement A n'agit pas dans le scope B.
+        EstablishmentContext::set(2);
+        $this->assertFalse($this->authFor(1)->can('zzz.harness_only'));
+    }
+
+    public function testScopeStaysPermissiveWhenContextUnresolved(): void
+    {
+        // Contexte d'établissement NON posé → comportement permissif conservé (pas de régression ;
+        // le cloisonnement reste appliqué par la couche données).
+        EstablishmentContext::reset();
+        $this->assertTrue($this->authFor(1)->can('zzz.harness_only'));
     }
 }
