@@ -151,6 +151,22 @@ if (!function_exists('asset_bust')) {
     }
 }
 
+if (!function_exists('csv_safe')) {
+    /**
+     * Neutralise l'injection de formule CSV (OWASP « CSV Injection ») : préfixe d'une apostrophe
+     * toute valeur commençant par = + - @ (ou tab/CR), sinon interprétée comme formule par
+     * Excel/LibreOffice à l'ouverture. Helper unique réutilisé par tous les exporteurs.
+     */
+    function csv_safe($value): string
+    {
+        $value = (string) $value;
+        if ($value !== '' && in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
+            return "'" . $value;
+        }
+        return $value;
+    }
+}
+
 if (!function_exists('request_wants_json')) {
     /**
      * L'appelant attend-il une réponse JSON plutôt qu'une page HTML ? Unifie les ~9

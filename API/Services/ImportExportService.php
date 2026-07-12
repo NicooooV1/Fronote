@@ -120,7 +120,7 @@ class ImportExportService
             foreach ($allRows as $row) {
                 $line = [];
                 foreach ($headers as $h) {
-                    $line[] = $row[$h] ?? '';
+                    $line[] = \csv_safe($row[$h] ?? ''); // anti-injection de formule CSV
                 }
                 fputcsv($fp, $line, ';');
             }

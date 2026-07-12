@@ -44,12 +44,15 @@ function markConversationAsRead($convId, $userId, $userType) {
 function getMessages($convId, $userId, $userType, $limit = 50, $before = 0) {
     global $pdo;
     
-    // Vérifier que l'utilisateur est participant
+    // Vérifier que l'utilisateur est participant ET que la conversation appartient à son
+    // établissement (défense en profondeur du cloisonnement tenant — cohérent avec getConversationInfo).
     $checkParticipant = $pdo->prepare("
-        SELECT id FROM conversation_participants 
-        WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND is_deleted = 0
+        SELECT cp.id FROM conversation_participants cp
+        JOIN conversations c ON c.id = cp.conversation_id
+        WHERE cp.conversation_id = ? AND cp.user_id = ? AND cp.user_type = ? AND cp.is_deleted = 0
+          AND c.etablissement_id = ?
     ");
-    $checkParticipant->execute([$convId, $userId, $userType]);
+    $checkParticipant->execute([$convId, $userId, $userType, \API\Core\EstablishmentContext::id()]);
     if (!$checkParticipant->fetch()) {
         throw new Exception("Vous n'êtes pas autorisé à accéder à cette conversation");
     }

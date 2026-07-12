@@ -4294,3 +4294,13 @@ UNION ALL
 SELECT `id`, 'professeur' AS `type`, `nom`, `prenom` FROM `professeurs`
 UNION ALL
 SELECT `id`, 'administrateur' AS `type`, `nom`, `prenom` FROM `administrateurs`;
+
+-- [2FA] Anti-rejeu TOTP : dernier pas de temps consommé par compte (RFC 6238 §5.2).
+-- Provisionné au schéma déclaratif ; le service TwoFactorService échoue FERMÉ si le store
+-- est indisponible (refus du login 2FA) plutôt que d'ouvrir la porte au rejeu d'un code.
+CREATE TABLE IF NOT EXISTS `two_factor_last_step` (
+  `user_id` INT NOT NULL,
+  `user_type` VARCHAR(32) NOT NULL,
+  `last_step` BIGINT NOT NULL,
+  PRIMARY KEY (`user_id`, `user_type`)
+);

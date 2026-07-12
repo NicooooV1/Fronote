@@ -586,7 +586,7 @@ class ReportingService {
         fwrite($out, "\xEF\xBB\xBF");
         fputcsv($out, $headers, ';');
         foreach ($rows as $row) {
-            fputcsv($out, array_values($row), ';');
+            fputcsv($out, array_map('\\csv_safe', array_values($row)), ';'); // anti-injection de formule CSV
         }
         fclose($out);
         exit;

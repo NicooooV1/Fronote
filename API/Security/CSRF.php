@@ -14,7 +14,7 @@ class CSRF {
     private $lifetime;
     private $maxTokens;
     
-    public function __construct($lifetime = 3600, $maxTokens = 10) {
+    public function __construct($lifetime = 3600, $maxTokens = 50) {
         $this->lifetime = $lifetime;
         $this->maxTokens = $maxTokens;
         

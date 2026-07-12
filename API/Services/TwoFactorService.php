@@ -83,18 +83,8 @@ class TwoFactorService
         );
     }
 
-    /**
-     * @deprecated L'API Google Charts (chart.googleapis.com) est fermée depuis 2019.
-     *             Ne plus utiliser : l'UI affiche désormais la clé en saisie manuelle
-     *             + lien otpauth://, et peut rendre un QR côté client si une librairie
-     *             QR locale est chargée (window.QRCode). Envoyer le secret TOTP à un
-     *             service tiers de QR constituerait une fuite de secret.
-     */
-    public function getQrCodeUrl(string $otpauthUri, int $size = 200): string
-    {
-        return 'https://chart.googleapis.com/chart?chs=' . $size . 'x' . $size
-            . '&chld=M|0&cht=qr&chl=' . urlencode($otpauthUri);
-    }
+    // (getQrCodeUrl() supprimé : envoyait le secret TOTP à chart.googleapis.com — fuite de secret,
+    //  API tierce fermée depuis 2019. L'UI affiche la clé + otpauth:// + QR rendu côté client.)
 
     // ─── TOTP verification ───────────────────────────────────────
 
@@ -277,9 +267,11 @@ class TwoFactorService
                           ->execute([$step, $userId, $userType]);
             }
         } catch (\Throwable $e) {
-            // Fail-open sur incident infra du store anti-rejeu : ne pas bloquer un login
-            // légitime, mais tracer pour supervision.
-            error_log('[2FA anti-rejeu] ' . $e->getMessage());
+            // FAIL-CLOSED : si le store anti-rejeu est indisponible, on ne peut pas garantir qu'un code
+            // n'est pas rejoué → on REFUSE le login 2FA (sécurité avant disponibilité) et on alerte.
+            error_log('[2FA anti-rejeu] CRITICAL store indisponible, login refusé : ' . $e->getMessage());
+            try { \API\Core\Alerting::notify('2FA anti-rejeu indisponible (login refusé)', $e->getMessage()); } catch (\Throwable $ignore) {}
+            return false;
         }
         return true;
     }

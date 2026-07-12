@@ -66,7 +66,8 @@ switch ($action) {
 
     case 'unsubscribe':
         $endpoint = $input['endpoint'] ?? '';
-        $ok = $pushService->unsubscribe($endpoint);
+        // Borné au propriétaire (identité de session) — anti-IDOR.
+        $ok = $pushService->unsubscribe($endpoint, $userId, $userType);
         echo json_encode(['success' => $ok]);
         break;
 

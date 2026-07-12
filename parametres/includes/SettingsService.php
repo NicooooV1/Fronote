@@ -173,6 +173,21 @@ class SettingsService {
             // Synchronise le miroir accounts.password_hash (basculement complet).
             try { (new \API\Services\AccountService($this->pdo))->syncPassword($userType, (int) $userId, $newHash); }
             catch (\Throwable $e) { error_log('[changerMotDePasse] sync accounts: ' . $e->getMessage()); }
+            // Révocation de session : ce changement (self-service, ancien mdp déjà vérifié) expulse
+            // les AUTRES sessions du compte et régénère l'ID courant (anti-fixation). bootstrap force
+            // le logout des sessions is_active=0 à la requête suivante.
+            try {
+                if (session_status() === \PHP_SESSION_ACTIVE) {
+                    $sid = session_id();
+                    $this->pdo->prepare(
+                        "UPDATE session_security SET is_active = 0, expires_at = NOW()
+                         WHERE user_id = ? AND user_type = ? AND id <> ?"
+                    )->execute([$userId, $userType, $sid]);
+                    session_regenerate_id(true);
+                    $this->pdo->prepare("UPDATE session_security SET id = ? WHERE id = ?")
+                              ->execute([session_id(), $sid]);
+                }
+            } catch (\Throwable $e) { error_log('[changerMotDePasse] révocation session: ' . $e->getMessage()); }
         }
         return $ok;
     }

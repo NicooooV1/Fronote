@@ -107,6 +107,12 @@ class WebSocket {
      */
     public static function generateToken($userId, $userType): ?string
     {
+        // Ne pas émettre de jeton temps réel si le WebSocket est désactivé.
+        $wsEnabled = getenv('WEBSOCKET_ENABLED');
+        if ($wsEnabled === 'false' || $wsEnabled === '0') {
+            return null;
+        }
+
         $jwtSecret = getenv('JWT_SECRET') ?: getenv('WEBSOCKET_API_SECRET');
 
         if (!$jwtSecret) {
@@ -114,13 +120,20 @@ class WebSocket {
             return null;
         }
 
+        // TTL court (30 min par défaut, était 24 h) : borne la durée pendant laquelle un jeton reste
+        // valable APRÈS révocation de session. Le client rafraîchit via ws_token_refresh (rate-limité),
+        // et ce refresh passe par bootstrap → une session révoquée (session_security is_active=0) ne
+        // peut plus obtenir de nouveau jeton. Réglable via WS_TOKEN_TTL.
+        $ttl = (int) (getenv('WS_TOKEN_TTL') ?: 1800);
+        if ($ttl < 300) { $ttl = 300; }
+
         $payload = [
             'iss'      => 'fronote',
             'sub'      => (int) $userId,
             'userId'   => (int) $userId,
             'userType' => $userType,
             'iat'      => time(),
-            'exp'      => time() + 86400,
+            'exp'      => time() + $ttl,
         ];
 
         // Cloisonnement multi-établissement : porter l'établissement dans le jeton

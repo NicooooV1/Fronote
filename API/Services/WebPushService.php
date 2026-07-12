@@ -50,9 +50,43 @@ class WebPushService
     /**
      * Enregistre une souscription push pour un utilisateur.
      */
+    /**
+     * Un endpoint push est-il légitime ? Anti-SSRF : on refuse tout ce qui n'est pas un service push
+     * connu en HTTPS (le serveur fera plus tard un curl vers cet endpoint). Bloque IP littérales,
+     * loopback/privé/link-local et hôtes arbitraires.
+     */
+    private function isAllowedEndpoint(string $endpoint): bool
+    {
+        $p = parse_url($endpoint);
+        if (!$p || ($p['scheme'] ?? '') !== 'https' || empty($p['host'])) {
+            return false;
+        }
+        $host = strtolower($p['host']);
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            return false; // pas d'IP littérale (empêche 127.0.0.1, 169.254.169.254, 10.x…)
+        }
+        $suffixes = [
+            'fcm.googleapis.com', 'android.googleapis.com',
+            '.push.services.mozilla.com', 'push.services.mozilla.com',
+            'web.push.apple.com', '.push.apple.com', '.notify.windows.com',
+        ];
+        foreach ($suffixes as $s) {
+            if ($s[0] === '.') {
+                if (str_ends_with($host, $s)) return true;
+            } elseif ($host === $s || str_ends_with($host, '.' . $s)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public function subscribe(int $userId, string $userType, string $endpoint, string $p256dh, string $auth): bool
     {
         try {
+            if (!$this->isAllowedEndpoint($endpoint)) {
+                error_log('WebPushService::subscribe rejected non-push endpoint host');
+                return false;
+            }
             // Supprimer l'ancienne souscription pour le même endpoint
             $this->pdo->prepare("DELETE FROM push_subscriptions WHERE endpoint = ?")->execute([$endpoint]);
 
@@ -77,9 +111,17 @@ class WebPushService
     /**
      * Supprime une souscription push.
      */
-    public function unsubscribe(string $endpoint): bool
+    public function unsubscribe(string $endpoint, ?int $userId = null, ?string $userType = null): bool
     {
         try {
+            // Anti-IDOR : quand une identité est fournie (appel depuis un endpoint utilisateur), la
+            // suppression est bornée au propriétaire. Sans identité (nettoyage interne des souscriptions
+            // mortes dans sendPush), on supprime par endpoint — action serveur légitime.
+            if ($userId !== null && $userType !== null) {
+                return $this->pdo->prepare(
+                    "DELETE FROM push_subscriptions WHERE endpoint = ? AND user_id = ? AND user_type = ?"
+                )->execute([$endpoint, $userId, $userType]);
+            }
             return $this->pdo->prepare("DELETE FROM push_subscriptions WHERE endpoint = ?")->execute([$endpoint]);
         } catch (\Throwable $e) {
             return false;

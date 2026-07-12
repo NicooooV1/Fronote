@@ -5,6 +5,7 @@ declare(strict_types=1);
  */
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../core/utils.php';
+require_once __DIR__ . '/participant.php'; // participantInEstablishment() — cloisonnement tenant
 
 /**
  * Sous-requête réutilisable pour obtenir le nom complet d'un utilisateur
@@ -219,8 +220,16 @@ function createConversation($titre, $type, $createurId, $createurType, $particip
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$convId, $createurId, $createurType]);
         
-        $sql = "INSERT INTO conversation_participants 
-                (conversation_id, user_id, user_type, joined_at) 
+        // Cloisonnement tenant : valider TOUS les participants AVANT insertion. Un seul participant
+        // hors établissement fait échouer (et rollback) toute la création — anti-injection cross-tenant.
+        foreach ($participants as $p) {
+            if (!participantInEstablishment((int) $p['id'], (string) $p['type'])) {
+                throw new Exception("Participant hors de votre établissement.");
+            }
+        }
+
+        $sql = "INSERT INTO conversation_participants
+                (conversation_id, user_id, user_type, joined_at)
                 VALUES (?, ?, ?, NOW())";
         $stmt = $pdo->prepare($sql);
         foreach ($participants as $p) {
@@ -385,9 +394,16 @@ function restoreConversation($convId, $userId, $userType) {
             ");
             $deleteOthersStmt->execute([$convId, $userId, $userType, $recordId]);
         } else {
+            // Anti-IDOR tenant : ne pas créer un participant « frais » (jamais membre) pour une
+            // conversation d'un autre établissement — sinon on rejoindrait une conversation étrangère.
+            $etabChk = $pdo->prepare("SELECT 1 FROM conversations WHERE id = ? AND etablissement_id = ? LIMIT 1");
+            $etabChk->execute([$convId, \API\Core\EstablishmentContext::id()]);
+            if (!$etabChk->fetchColumn()) {
+                throw new Exception("Conversation hors de votre établissement.");
+            }
             // Créer un nouveau participant
             $insertStmt = $pdo->prepare("
-                INSERT INTO conversation_participants 
+                INSERT INTO conversation_participants
                 (conversation_id, user_id, user_type, joined_at, is_deleted, is_archived)
                 VALUES (?, ?, ?, NOW(), 0, 0)
             ");

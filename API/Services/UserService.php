@@ -255,6 +255,10 @@ class UserService
                     // Synchronise le miroir accounts.password_hash (basculement complet).
                     try { (new AccountService($this->pdo))->syncPassword($profil, (int) $userId, $hash); }
                     catch (\Throwable $e) { error_log('[changePassword] sync accounts: ' . $e->getMessage()); }
+                    // Révocation de session : un changement de mot de passe doit expulser les sessions
+                    // actives (dont celle d'un éventuel attaquant). bootstrap force le logout des lignes
+                    // session_security is_active=0 dès la requête suivante → la révocation est effective.
+                    $this->revokeSessionsAfterPasswordChange((int) $userId, $profil);
                     return ['success' => true, 'message' => 'Mot de passe changé avec succès.'];
                 }
             } catch (\Throwable $e) {
@@ -263,6 +267,43 @@ class UserService
         }
 
         return ['success' => false, 'message' => 'Utilisateur non trouvé.'];
+    }
+
+    /**
+     * Révoque les sessions actives après un changement de mot de passe.
+     *  - self-change : révoque toutes les AUTRES sessions du compte, garde la courante, et régénère
+     *    son ID (défense anti-fixation) en re-pointant la ligne session_security.
+     *  - réinitialisation par un admin (acteur ≠ cible) ou hors session : révoque TOUTES les sessions
+     *    de la cible.
+     * Fail-soft : une erreur n'empêche pas le changement de mot de passe (déjà commité).
+     */
+    private function revokeSessionsAfterPasswordChange(int $userId, string $userType): void
+    {
+        try {
+            $active = session_status() === \PHP_SESSION_ACTIVE;
+            $selfChange = $active
+                && (int) ($_SESSION['user_id'] ?? 0) === $userId
+                && ($_SESSION['user_type'] ?? '') === $userType;
+
+            if ($selfChange) {
+                $sid = session_id();
+                $this->pdo->prepare(
+                    "UPDATE session_security SET is_active = 0, expires_at = NOW()
+                     WHERE user_id = ? AND user_type = ? AND id <> ?"
+                )->execute([$userId, $userType, $sid]);
+                // Anti-fixation : nouvel ID de session, et on re-pointe la ligne session_security.
+                session_regenerate_id(true);
+                $this->pdo->prepare("UPDATE session_security SET id = ? WHERE id = ?")
+                          ->execute([session_id(), $sid]);
+            } else {
+                $this->pdo->prepare(
+                    "UPDATE session_security SET is_active = 0, expires_at = NOW()
+                     WHERE user_id = ? AND user_type = ?"
+                )->execute([$userId, $userType]);
+            }
+        } catch (\Throwable $e) {
+            error_log('[changePassword] révocation de session: ' . $e->getMessage());
+        }
     }
 
     /**

@@ -6,6 +6,33 @@ declare(strict_types=1);
 require_once __DIR__ . '/../config/config.php';
 
 /**
+ * Cloisonnement tenant : un (user_id, user_type) appartient-il à l'établissement courant ?
+ * Utilisé AVANT toute insertion de participant (création de conversation ou ajout ultérieur)
+ * pour empêcher l'injection de destinataires d'un autre établissement (rupture d'isolation).
+ * Fail-closed : toute erreur ou type inconnu → refus.
+ */
+function participantInEstablishment(int $userId, string $userType): bool {
+    global $pdo;
+    static $map = [
+        'eleve' => 'eleves', 'parent' => 'parents', 'professeur' => 'professeurs',
+        'vie_scolaire' => 'vie_scolaire', 'administrateur' => 'administrateurs',
+    ];
+    $table = $map[$userType] ?? null;
+    if ($table === null || $userId <= 0) {
+        return false;
+    }
+    try {
+        // $table provient d'une liste blanche fixe → interpolation sûre.
+        $stmt = $pdo->prepare("SELECT 1 FROM `$table` WHERE id = ? AND etablissement_id = ? LIMIT 1");
+        $stmt->execute([$userId, \API\Core\EstablishmentContext::id()]);
+        return (bool) $stmt->fetchColumn();
+    } catch (\Throwable $e) {
+        error_log('[messagerie] participant scope check failed: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
  * Récupère les participants d'une conversation
  * @param int $convId
  * @return array
@@ -187,7 +214,12 @@ function addParticipantToConversation($conversationId, $userId, $userType, $adde
     if (!isConversationModerator($adderId, $adderType, $conversationId)) {
         throw new Exception("Vous n'êtes pas autorisé à ajouter des participants");
     }
-    
+
+    // Cloisonnement tenant : refuser tout participant hors de l'établissement courant.
+    if (!participantInEstablishment((int) $userId, (string) $userType)) {
+        throw new Exception("Participant hors de votre établissement.");
+    }
+
     // Vérifier que l'utilisateur n'est pas déjà participant
     $check = $pdo->prepare("
         SELECT id FROM conversation_participants 
