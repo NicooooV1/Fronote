@@ -6,6 +6,46 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.5.0] — Remédiation de l'audit complet (sécurité renforcée) — 2026-07-12
+
+Suite à l'audit complet (posture 58/100). ~26 des 33 findings vérifiés corrigés ; les 7 restants
+sont des chantiers structurants documentés ci-dessous. 144 tests verts.
+
+### Sécurité — Isolation multi-tenant
+- **Messagerie cross-établissement (CRITIQUE)** : validation d'appartenance à l'établissement de
+  chaque participant avant insertion (création + ajout), `getMessages` joint `conversations` et exige
+  `etablissement_id`, anti-IDOR sur le re-join. Fin de la lecture des échanges d'un autre tenant.
+- **Attribution de rôle** : la cible doit appartenir à l'établissement de l'acteur (`assign`/`revoke`,
+  fail-closed). Scoping tenant ajouté à `corriger.php` et aux en-têtes PDF officiels (convention,
+  convocation, diplôme, désormais sur la vraie table `etablissements`).
+- **RBAC** : un admin d'établissement ne peut plus (dé)accorder de permission sensible/plateforme ni
+  au-delà de son propre privilège (anti-escalade).
+- **RGPD** : registres de violations fail-CLOSED, taux de consentement du dashboard scopé.
+
+### Sécurité — Sessions, secrets, injections
+- **Révocation de session** : le changement de mot de passe expulse les autres sessions
+  (`session_security` + logout forcé par le bootstrap) et régénère l'ID ; jeton WebSocket 24 h → 30 min.
+- **Secrets/logs** : masquage des clés sensibles dans le Logger ; `ALLOW_DEMO_ACCOUNTS` bloque le boot
+  en prod ; alerte d'exposition des secrets sous la racine web.
+- **2FA** : anti-rejeu TOTP fail-closed + table au schéma ; suppression d'une méthode fuyant le secret.
+- **Push** : anti-SSRF (allowlist d'hôtes) + désabonnement borné au propriétaire.
+- **Exports CSV** : neutralisation d'injection de formule sur tous les exporteurs.
+- **Thème CSS** : liste blanche des `url()` (anti-exfiltration). CSRF : bucket 10 → 50.
+
+### Intégrité des données pédagogiques
+- Moyenne générale pondérée par coefficient (cohérence notes ↔ bulletin) ; verrouillage des notes
+  réparé (via `notes_verrous`) ; validation d'appel idempotente (fin des doublons d'absences) ;
+  comptage d'absences par chevauchement de période.
+
+### Chantiers documentés (non traités — nécessitent migration/décision de déploiement)
+- Régionalisation complète de `rbac_permissions` (colonne `etablissement_id` + migration de clé).
+- Docroot `public/` dédié (sortir `.env`/`vendor`/`database`/`logs` de l'arborescence servie).
+- `scopeAllows()` fail-closed et garde module-niveau (`enforceModuleAccess`) : risque de régression
+  d'accès large → à valider par tests d'autorisation dédiés.
+- Unification des deux architectures de modules ; complétion du module médiathèque.
+
+---
+
 ## [3.4.1] — Adaptation multi-appareils (responsive) — 2026-07-12
 
 Adaptation ordinateur / tablette / téléphone, priorité aux **formulaires** (le point douloureux).
