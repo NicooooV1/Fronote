@@ -95,6 +95,25 @@ class InternatService
     public function affecterEleve(int $chambreId, int $eleveId, string $dateDebut): int
     {
         $annee = $this->getAnneeScolaire();
+
+        // Contrôle de capacité : refuser l'affectation si la chambre est déjà pleine.
+        // On récupère la capacité de la chambre (scopée à l'établissement courant).
+        $chambre = $this->getChambre($chambreId);
+        if (!$chambre) {
+            throw new \RuntimeException('Chambre introuvable pour cet établissement.');
+        }
+        // Occupants actifs de la chambre pour l'année, hors l'élève en cours (ré-affectation possible).
+        $occ = $this->pdo->prepare(
+            "SELECT COUNT(*) FROM internat_affectations
+             WHERE chambre_id = ? AND annee_scolaire = ? AND statut = 'actif'
+               AND eleve_id <> ? AND etablissement_id = ?"
+        );
+        $occ->execute([$chambreId, $annee, $eleveId, \API\Core\EstablishmentContext::id()]);
+        $nbOccupants = (int) $occ->fetchColumn();
+        if ($nbOccupants >= (int) $chambre['capacite']) {
+            throw new \RuntimeException('La chambre a atteint sa capacité maximale.');
+        }
+
         $stmt = $this->pdo->prepare(
             "INSERT INTO internat_affectations (etablissement_id, chambre_id, eleve_id, annee_scolaire, date_debut)
              VALUES (?, ?, ?, ?, ?)

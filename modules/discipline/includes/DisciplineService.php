@@ -104,13 +104,13 @@ class DisciplineService
     // ─── Workflow transitions ─────────────────────────────────
 
     /**
-     * Machine à états : signale → en_cours → traite → classe
+     * Machine à états : signale → en_traitement → traite → classe
      */
     private const VALID_TRANSITIONS = [
-        'signale'  => ['en_cours', 'traite', 'classe'],
-        'en_cours' => ['traite', 'classe', 'signale'],
-        'traite'   => ['classe', 'en_cours'],
-        'classe'   => [],  // terminal
+        'signale'       => ['en_traitement', 'traite', 'classe'],
+        'en_traitement' => ['traite', 'classe', 'signale'],
+        'traite'        => ['classe', 'en_traitement'],
+        'classe'        => [],  // terminal
     ];
 
     /**
@@ -231,6 +231,13 @@ class DisciplineService
 
     public function createSanction(array $data): int
     {
+        // Sécurité : n'accepter qu'un type de sanction connu (anti-XSS stocké).
+        // Toute valeur hors liste blanche est ramenée à 'autre'.
+        $typeSanction = (string)($data['type_sanction'] ?? '');
+        if (!array_key_exists($typeSanction, self::getTypesSanction())) {
+            $typeSanction = 'autre';
+        }
+
         $stmt = $this->pdo->prepare(
             "INSERT INTO sanctions (incident_id, eleve_id, type_sanction, motif, date_sanction,
                 date_debut, date_fin, duree, lieu_retenue, convocation_parent,
@@ -239,7 +246,7 @@ class DisciplineService
         );
         $stmt->execute([
             $data['incident_id'] ?? null, $data['eleve_id'],
-            $data['type_sanction'], $data['motif'], $data['date_sanction'],
+            $typeSanction, $data['motif'], $data['date_sanction'],
             $data['date_debut'] ?? null, $data['date_fin'] ?? null,
             $data['duree'] ?? null, $data['lieu_retenue'] ?? null,
             $data['convocation_parent'] ?? 0,

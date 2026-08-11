@@ -128,7 +128,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     $_SESSION['success_message'] = "Votre justificatif a été soumis avec succès.";
-                    header('Location: justificatifs.php');
+                    // justificatifs.php est réservé au personnel : on renvoie les élèves/parents
+                    // vers leur vue des absences (qui affiche le message de succès).
+                    if (in_array($role, ['eleve', 'parent'], true)) {
+                        header('Location: absences.php');
+                    } else {
+                        header('Location: justificatifs.php');
+                    }
                     exit;
                 } else {
                     $erreur = "Une erreur est survenue lors de la soumission.";

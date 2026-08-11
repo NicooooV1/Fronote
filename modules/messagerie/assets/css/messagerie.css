@@ -1,0 +1,1206 @@
+/* ============================================================================
+ * messagerie.css — Feuille de style PARTAGÉE de la messagerie (refonte 2026)
+ * ----------------------------------------------------------------------------
+ * Un outil de communication scolaire : plus chaleureux, plus calme, plus
+ * aéré que le reste de la plateforme. Deux volets (liste + conversation),
+ * bulles groupées par expéditeur, avatars-initiales colorés par palier de
+ * rôle, carte de citation propre.
+ *
+ * VOCABULAIRE (utilisé par les DEUX agents — liste + conversation) :
+ *   .msg-app            coquille 2 volets
+ *   .conv-list          volet gauche (liste des conversations)
+ *   .conv-folders       onglets de dossiers
+ *   .conv-item          ligne de conversation
+ *   .msg-thread         volet droit (fil actif)
+ *   .msg-group          bulles consécutives d'un même expéditeur
+ *   .msg-bubble(.is-self)   bulle de message
+ *   .msg-avatar         pastille-initiale colorée par rôle
+ *   .msg-sender / .msg-body / .msg-meta
+ *   .msg-quote(.msg-jump-parent)  carte de réponse
+ *   .msg-inline-img     vignette image
+ *   .msg-reactions .reaction-chip(.is-mine)
+ *   .msg-receipt        « Vu » + avatars
+ *   .msg-reply-count    badge « N réponses »
+ *   .typing-indicator   points animés
+ *   .unread-divider     séparateur nouveaux messages
+ *   .msg-composer(.drag-over)  zone de rédaction
+ *
+ * NOTE CONTRAT JS (conversation.js / ws-global.js) : les classes historiques
+ * (.message, .message-content, .message-meta, .message-reactions,
+ * .reaction-badge, .message-read-status, .attachments, .msg-inline-img, …)
+ * restent des points d'ancrage. Elles sont STYLÉES ICI en parallèle des alias
+ * .msg-* afin que les messages rendus côté serveur ET ceux injectés en direct
+ * par le JS partagent la même apparence.
+ * ==========================================================================*/
+
+/* ---------------------------------------------------------------------------
+ * 1. Jetons (palette aérée) — clair par défaut, sombre via [data-theme="dark"]
+ * -------------------------------------------------------------------------*/
+.msg-app,
+.conversation-page {
+  --mc-bg:        #f8fafc;   /* fond application            */
+  --mc-panel:     #ffffff;   /* panneaux / cartes           */
+  --mc-panel-2:   #f8fafc;   /* panneau secondaire          */
+  --mc-border:    #e2e8f0;   /* bordures                    */
+  --mc-border-2:  #eef2f7;   /* bordures très douces        */
+  --mc-text:      #0f172a;   /* texte principal             */
+  --mc-muted:     #64748b;   /* texte secondaire / méta     */
+  --mc-accent:    #7c3aed;   /* violet marque (liens/envoi) */
+  --mc-accent-ink:#ffffff;
+  --mc-accent-weak:#f5f3ff;  /* fond violet très pâle       */
+  --mc-other-bg:  #f1f5f9;   /* bulle des autres            */
+  --mc-other-ink: #0f172a;
+  --mc-ok:        #16a34a;
+  --mc-warn:      #d97706;
+  --mc-danger:    #dc2626;
+  --mc-shadow:    0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.06);
+  --mc-shadow-sm: 0 1px 2px rgba(15,23,42,.06);
+  --mc-radius:    16px;
+  --mc-radius-sm: 10px;
+  --mc-read-max:  760px;     /* largeur de lecture confortable */
+
+  /* Paliers de rôle (avatars + pastilles) — autoritaires (cf. design) */
+  --tier-plateforme:    #7c3aed;
+  --tier-direction:     #2563eb;
+  --tier-administratif: #0891b2;
+  --tier-vie_scolaire:  #16a34a;
+  --tier-pedagogique:   #ca8a04;
+  --tier-enseignant:    #ea580c;
+  --tier-famille:       #db2777;
+  --tier-eleve:         #64748b;
+}
+
+[data-theme="dark"] .msg-app,
+[data-theme="dark"] .conversation-page {
+  --mc-bg:        #0b1220;
+  --mc-panel:     #0f172a;
+  --mc-panel-2:   #0b1220;
+  --mc-border:    #1e293b;
+  --mc-border-2:  #172033;
+  --mc-text:      #e2e8f0;
+  --mc-muted:     #94a3b8;
+  --mc-accent:    #8b5cf6;
+  --mc-accent-ink:#ffffff;
+  --mc-accent-weak:#1e1b34;
+  --mc-other-bg:  #1e293b;
+  --mc-other-ink: #e2e8f0;
+  --mc-shadow:    0 1px 2px rgba(0,0,0,.35), 0 12px 32px rgba(0,0,0,.45);
+  --mc-shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+}
+
+/* ---------------------------------------------------------------------------
+ * 2. Coquille 2 volets — .msg-app
+ * -------------------------------------------------------------------------*/
+.msg-app {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  height: calc(100vh - var(--topbar-h, 64px));
+  min-height: 0;
+  background: var(--mc-bg);
+  color: var(--mc-text);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Volet liste (rempli par l'agent liste — index.php) */
+.conv-list {
+  flex: 0 0 340px;
+  max-width: 340px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--mc-panel);
+  border-right: 1px solid var(--mc-border);
+}
+
+/* Volet conversation (rempli par conversation.php) */
+.msg-app > .conversation-page,
+.msg-app > .msg-thread {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * 3. Liste des conversations — .conv-folders / .conv-item
+ *    (stylé ici pour que l'agent liste dispose du vocabulaire complet)
+ * -------------------------------------------------------------------------*/
+.conv-folders {
+  display: flex;
+  gap: 4px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--mc-border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.conv-folders::-webkit-scrollbar { display: none; }
+.conv-folders a,
+.conv-folders button,
+.conv-folders .conv-folder {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--mc-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s ease, color .15s ease;
+}
+.conv-folders a:hover,
+.conv-folders button:hover,
+.conv-folders .conv-folder:hover { background: var(--mc-panel-2); color: var(--mc-text); }
+.conv-folders .active,
+.conv-folders [aria-current="page"] {
+  background: var(--mc-accent-weak);
+  color: var(--mc-accent);
+}
+
+.conv-list-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 6px; }
+
+.conv-item {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  grid-template-rows: auto auto;
+  column-gap: 12px;
+  row-gap: 2px;
+  align-items: center;
+  padding: 11px 12px;
+  border-radius: var(--mc-radius-sm);
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+.conv-item:hover { background: var(--mc-panel-2); }
+.conv-item.is-active { background: var(--mc-accent-weak); }
+.conv-item .msg-avatar { grid-row: 1 / span 2; width: 44px; height: 44px; font-size: 15px; }
+.conv-item .conv-name {
+  grid-column: 2; grid-row: 1;
+  font-weight: 600; color: var(--mc-text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.conv-item .conv-preview {
+  grid-column: 2; grid-row: 2;
+  color: var(--mc-muted); font-size: 13px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.conv-item .conv-time { grid-column: 3; grid-row: 1; color: var(--mc-muted); font-size: 12px; }
+.conv-item .conv-icons { grid-column: 3; grid-row: 2; display: inline-flex; gap: 6px; justify-content: flex-end; color: var(--mc-muted); font-size: 12px; }
+.conv-item.is-unread .conv-name { font-weight: 700; }
+.conv-item.is-unread .conv-preview { color: var(--mc-text); }
+.conv-item .conv-unread-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 6px;
+  background: var(--mc-accent); color: var(--mc-accent-ink);
+  border-radius: 999px; font-size: 11px; font-weight: 700;
+}
+
+/* ---------------------------------------------------------------------------
+ * 4. Avatars-initiales colorés par palier de rôle — .msg-avatar
+ * -------------------------------------------------------------------------*/
+.msg-avatar {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--tier-eleve);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  user-select: none;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.14);
+}
+.msg-avatar--plateforme    { background: var(--tier-plateforme); }
+.msg-avatar--direction     { background: var(--tier-direction); }
+.msg-avatar--administratif { background: var(--tier-administratif); }
+.msg-avatar--vie_scolaire  { background: var(--tier-vie_scolaire); }
+.msg-avatar--pedagogique   { background: var(--tier-pedagogique); }
+.msg-avatar--enseignant    { background: var(--tier-enseignant); }
+.msg-avatar--famille       { background: var(--tier-famille); }
+.msg-avatar--eleve         { background: var(--tier-eleve); }
+
+/* Pastille de rôle (libellé) à côté du nom */
+.msg-role,
+.message-header .sender-type {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--mc-panel-2);
+  color: var(--mc-muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.7;
+}
+.msg-role--plateforme    { background: color-mix(in srgb, var(--tier-plateforme) 14%, transparent); color: var(--tier-plateforme); }
+.msg-role--direction     { background: color-mix(in srgb, var(--tier-direction) 14%, transparent); color: var(--tier-direction); }
+.msg-role--administratif { background: color-mix(in srgb, var(--tier-administratif) 14%, transparent); color: var(--tier-administratif); }
+.msg-role--vie_scolaire  { background: color-mix(in srgb, var(--tier-vie_scolaire) 14%, transparent); color: var(--tier-vie_scolaire); }
+.msg-role--pedagogique   { background: color-mix(in srgb, var(--tier-pedagogique) 16%, transparent); color: #a16207; }
+.msg-role--enseignant    { background: color-mix(in srgb, var(--tier-enseignant) 14%, transparent); color: var(--tier-enseignant); }
+.msg-role--famille       { background: color-mix(in srgb, var(--tier-famille) 14%, transparent); color: var(--tier-famille); }
+.msg-role--eleve         { background: color-mix(in srgb, var(--tier-eleve) 16%, transparent); color: var(--tier-eleve); }
+
+/* ---------------------------------------------------------------------------
+ * 5. Volet conversation — coquille du fil (.conversation-page / .msg-thread)
+ * -------------------------------------------------------------------------*/
+.conversation-page {
+  display: flex;
+  flex-direction: row-reverse;   /* fil à gauche, panneau info à droite */
+  align-items: stretch;
+  min-height: 0;
+  height: 100%;
+  background: var(--mc-bg);
+  color: var(--mc-text);
+  overflow: hidden;
+  position: relative;
+}
+
+/* Le fil de discussion : colonne principale, centrée, aérée */
+.conversation-main,
+.msg-thread {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--mc-bg);
+}
+
+/* En-tête slim de conversation */
+.conv-thread-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: color-mix(in srgb, var(--mc-panel) 82%, transparent);
+  -webkit-backdrop-filter: saturate(1.4) blur(10px);
+  backdrop-filter: saturate(1.4) blur(10px);
+  border-bottom: 1px solid var(--mc-border);
+}
+.conv-thread-head-main { min-width: 0; flex: 1 1 auto; }
+.conv-thread-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--mc-text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.conv-thread-sub {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 1px;
+  color: var(--mc-muted); font-size: 12.5px;
+}
+.conv-thread-avatars { display: inline-flex; }
+.conv-thread-avatars .msg-avatar {
+  width: 26px; height: 26px; font-size: 11px;
+  margin-left: -7px;
+  box-shadow: 0 0 0 2px var(--mc-panel);
+}
+.conv-thread-avatars .msg-avatar:first-child { margin-left: 0; }
+.conv-thread-tools { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; }
+.conv-thread-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 600;
+}
+.conv-thread-badge.is-annonce { background: color-mix(in srgb, var(--mc-warn) 15%, transparent); color: var(--mc-warn); }
+
+/* Zone de défilement des messages */
+.messages-container,
+.msg-thread-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px clamp(12px, 4vw, 40px) 8px;
+  scroll-behavior: smooth;
+  display: flex;
+  flex-direction: column;
+}
+/* Bloc de messages centré à largeur de lecture */
+.messages-container > *,
+.msg-thread-scroll > * {
+  width: 100%;
+  max-width: var(--mc-read-max);
+  margin-inline: auto;
+}
+
+/* ---------------------------------------------------------------------------
+ * 6. Système de bulles groupées — .message / .msg-bubble
+ *    (le .message rendu serveur porte .msg-grouped + avatar ; les messages
+ *     injectés en direct par le JS n'ont pas .msg-grouped → repli en colonne)
+ * -------------------------------------------------------------------------*/
+.message,
+.msg-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 4px 0;
+  position: relative;
+  scroll-margin-top: 16px;
+  animation: mc-fade-in .22s ease both;
+}
+
+/* Variante groupée (rendu serveur) : gouttière avatar + colonne */
+.message.msg-grouped {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+}
+.message.msg-grouped.self { flex-direction: row-reverse; }
+.message.msg-grouped .msg-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  max-width: min(100%, 620px);
+}
+.message.msg-grouped.self .msg-col { align-items: flex-end; }
+
+/* Gouttière avatar */
+.message .msg-avatar { margin-top: 18px; }
+.message.is-group-start .msg-avatar { margin-top: 22px; }
+.message.is-group-cont .msg-avatar { visibility: hidden; height: 0; margin: 0; }
+.message.is-group-cont { margin-top: 1px; }
+.message.is-group-start { margin-top: 16px; }
+.message:first-child { margin-top: 6px; }
+
+/* En-tête (nom + méta) */
+.message-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 2px;
+}
+.message.self .message-header,
+.message.msg-grouped.self .message-header { flex-direction: row-reverse; }
+.message.is-group-cont .message-header .sender { display: none; }
+
+.sender { display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; }
+.msg-sender,
+.sender strong {
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--mc-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Méta (horodatage, badges, menu) */
+.message-meta,
+.msg-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--mc-muted);
+  font-size: 11.5px;
+}
+.message-meta .date { color: var(--mc-muted); white-space: nowrap; }
+.message.is-group-cont .message-meta .date { opacity: 0; transition: opacity .15s ease; }
+.message.is-group-cont:hover .message-meta .date { opacity: 1; }
+
+.importance-tag {
+  padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .3px;
+}
+.importance-tag.important { background: color-mix(in srgb, var(--mc-warn) 16%, transparent); color: var(--mc-warn); }
+.importance-tag.urgent    { background: color-mix(in srgb, var(--mc-danger) 16%, transparent); color: var(--mc-danger); }
+.edited-tag { color: var(--mc-muted); font-size: 11px; font-style: italic; }
+
+/* La bulle = .message-content (présent en rendu serveur ET injection JS) */
+.message-content,
+.msg-body {
+  position: relative;
+  padding: 9px 13px;
+  border-radius: var(--mc-radius);
+  background: var(--mc-other-bg);
+  color: var(--mc-other-ink);
+  font-size: 15px;
+  line-height: 1.5;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+  width: fit-content;
+  box-shadow: var(--mc-shadow-sm);
+}
+.message-content a { color: var(--mc-accent); text-decoration: underline; text-underline-offset: 2px; }
+.message.self .message-content,
+.message.self .msg-body {
+  background: var(--mc-accent);
+  color: var(--mc-accent-ink);
+  margin-left: auto;
+}
+.message.self .message-content a { color: #fff; text-decoration: underline; }
+
+/* Coins « queue » : la 1re bulle d'un groupe pointe vers l'avatar */
+.message.is-group-start:not(.self) .message-content { border-top-left-radius: 6px; }
+.message.is-group-start.self .message-content { border-top-right-radius: 6px; }
+
+/* Message supprimé */
+.message.deleted .message-content {
+  background: transparent;
+  color: var(--mc-muted);
+  font-style: italic;
+  box-shadow: none;
+  border: 1px dashed var(--mc-border);
+}
+
+/* Épinglé + surbrillance (saut) */
+.message.pinned .message-content { box-shadow: var(--mc-shadow-sm), 0 0 0 2px color-mix(in srgb, var(--mc-warn) 45%, transparent); }
+.pinned-badge {
+  align-self: flex-start;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 8px; margin: 0 2px 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mc-warn) 15%, transparent);
+  color: var(--mc-warn); font-size: 11px; font-weight: 600;
+}
+.message.self .pinned-badge { align-self: flex-end; }
+.message.highlight .message-content {
+  animation: mc-flash 2s ease;
+}
+
+/* ---------------------------------------------------------------------------
+ * 7. Carte de citation (réponse) — .msg-quote / .reply-quote
+ * -------------------------------------------------------------------------*/
+.msg-jump-parent { text-decoration: none; display: block; width: fit-content; max-width: 100%; }
+.message.self .msg-jump-parent { margin-left: auto; }
+.msg-quote,
+.reply-quote {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0 0 2px;
+  padding: 6px 11px;
+  border-left: 3px solid var(--mc-accent);
+  border-radius: 8px;
+  background: var(--mc-accent-weak);
+  color: var(--mc-text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .15s ease;
+  max-width: 100%;
+}
+.msg-quote:hover,
+.reply-quote:hover { background: color-mix(in srgb, var(--mc-accent) 12%, var(--mc-panel)); }
+.msg-quote-author { color: var(--mc-accent); font-weight: 600; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; }
+.msg-quote-snippet { color: var(--mc-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------------------------------------------------------------------------
+ * 8. Pièces jointes + images inline — .attachments / .msg-inline-img
+ * -------------------------------------------------------------------------*/
+.attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+  max-width: 100%;
+}
+.message.self .attachments { justify-content: flex-end; }
+.attachments-header { flex: 0 0 100%; color: var(--mc-muted); font-size: 12px; font-weight: 600; }
+.message.self .attachments-header { text-align: right; }
+.attachment-item { display: inline-flex; }
+.attachment-link,
+.attachment {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--mc-border);
+  border-radius: var(--mc-radius-sm);
+  background: var(--mc-panel);
+  color: var(--mc-text);
+  text-decoration: none;
+  font-size: 13px;
+  max-width: 260px;
+  transition: border-color .15s ease, background .15s ease;
+}
+.attachment-link:hover,
+.attachment:hover { border-color: var(--mc-accent); background: var(--mc-accent-weak); }
+.attachment-link i,
+.attachment i { color: var(--mc-accent); }
+
+.msg-inline-img {
+  display: block;
+  max-width: 260px;
+  max-height: 240px;
+  width: auto;
+  height: auto;
+  border-radius: var(--mc-radius-sm);
+  border: 1px solid var(--mc-border);
+  cursor: zoom-in;
+  object-fit: cover;
+  transition: filter .15s ease, transform .15s ease;
+}
+.msg-inline-img:hover { filter: brightness(1.03); }
+
+.msg-lightbox-overlay { animation: mc-fade-in .15s ease both; }
+
+/* ---------------------------------------------------------------------------
+ * 9. Réactions — .message-reactions / .msg-reactions + puces
+ * -------------------------------------------------------------------------*/
+.message-reactions,
+.msg-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 3px;
+}
+.message.self .message-reactions,
+.message.self .msg-reactions { justify-content: flex-end; }
+.reaction-badge,
+.reaction-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid var(--mc-border);
+  border-radius: 999px;
+  background: var(--mc-panel);
+  color: var(--mc-text);
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background .12s ease, border-color .12s ease, transform .08s ease;
+}
+.reaction-badge:hover,
+.reaction-chip:hover { border-color: var(--mc-accent); }
+.reaction-badge:active,
+.reaction-chip:active { transform: scale(.94); }
+.reaction-badge.active,
+.reaction-chip.is-mine {
+  background: var(--mc-accent-weak);
+  border-color: color-mix(in srgb, var(--mc-accent) 45%, transparent);
+  color: var(--mc-accent);
+  font-weight: 600;
+}
+.reaction-count { font-size: 12px; color: inherit; font-variant-numeric: tabular-nums; }
+
+/* Bouton « ajouter une réaction » (apparaît au survol) */
+.message-reactions-add { margin-top: 2px; }
+.message.self .message-reactions-add { text-align: right; }
+.reaction-add-btn {
+  width: 28px; height: 28px;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--mc-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s ease, background .15s ease, color .15s ease;
+}
+.message:hover .reaction-add-btn,
+.reaction-add-btn:focus-visible { opacity: 1; }
+.reaction-add-btn:hover { background: var(--mc-panel-2); color: var(--mc-accent); }
+
+/* Sélecteur d'emoji (injecté par le JS) */
+.reaction-picker {
+  position: absolute;
+  z-index: 30;
+  display: inline-flex;
+  gap: 2px;
+  margin-top: 4px;
+  padding: 5px;
+  background: var(--mc-panel);
+  border: 1px solid var(--mc-border);
+  border-radius: 999px;
+  box-shadow: var(--mc-shadow);
+}
+.reaction-picker-btn {
+  width: 34px; height: 34px;
+  border: 0; border-radius: 50%;
+  background: transparent; font-size: 18px; cursor: pointer;
+  transition: background .12s ease, transform .1s ease;
+}
+.reaction-picker-btn:hover { background: var(--mc-panel-2); transform: scale(1.15); }
+
+/* ---------------------------------------------------------------------------
+ * 10. Badge « N réponses » — .msg-reply-count
+ * -------------------------------------------------------------------------*/
+.msg-reply-count-wrap { margin-top: 3px; }
+.message.self .msg-reply-count-wrap { text-align: right; }
+.msg-reply-count {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--mc-accent);
+  font-size: 12.5px; font-weight: 600;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+.msg-reply-count:hover { background: var(--mc-accent-weak); }
+
+/* ---------------------------------------------------------------------------
+ * 11. Accusé de lecture — .message-read-status / .msg-receipt
+ * -------------------------------------------------------------------------*/
+.message-footer { display: flex; margin-top: 1px; padding: 0 2px; }
+.message.self .message-footer { justify-content: flex-end; }
+.message-status { display: inline-flex; }
+.message-read-status,
+.msg-receipt { display: inline-flex; align-items: center; font-size: 11.5px; color: var(--mc-muted); }
+.msg-receipt .all-read,
+.message-read-status .all-read {
+  display: inline-flex; align-items: center; gap: 4px; color: var(--mc-ok); font-weight: 600;
+}
+.msg-receipt .partial-read,
+.message-read-status .partial-read { display: inline-flex; align-items: center; gap: 4px; }
+.read-count { font-variant-numeric: tabular-nums; }
+.read-tooltip { margin-left: 3px; cursor: help; }
+
+/* Bouton « Répondre » en pied (messages des autres, injection JS) */
+.message-actions .btn-icon,
+.message-footer .js-reply {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 8px;
+  border: 0; border-radius: 999px;
+  background: transparent; color: var(--mc-muted);
+  font-size: 12px; cursor: pointer;
+  opacity: 0; transition: opacity .15s ease, color .15s ease, background .15s ease;
+}
+.message:hover .message-actions .btn-icon,
+.message:hover .message-footer .js-reply { opacity: 1; }
+.message-actions .btn-icon:hover,
+.message-footer .js-reply:hover { color: var(--mc-accent); background: var(--mc-accent-weak); }
+
+/* ---------------------------------------------------------------------------
+ * 12. Menu déroulant d'actions d'un message — .message-dropdown
+ * -------------------------------------------------------------------------*/
+.message-dropdown { position: relative; display: inline-flex; }
+.message-menu-btn {
+  width: 26px; height: 26px;
+  border: 0; border-radius: 50%;
+  background: transparent; color: var(--mc-muted);
+  cursor: pointer;
+  opacity: 0; transition: opacity .15s ease, background .15s ease, color .15s ease;
+}
+.message:hover .message-menu-btn,
+.message-menu-btn:focus-visible { opacity: 1; }
+.message-menu-btn:hover { background: var(--mc-panel-2); color: var(--mc-text); }
+.message-dropdown-content {
+  display: none;
+  position: absolute;
+  top: 100%; right: 0;
+  z-index: 40;
+  min-width: 180px;
+  margin-top: 4px;
+  padding: 6px;
+  background: var(--mc-panel);
+  border: 1px solid var(--mc-border);
+  border-radius: var(--mc-radius-sm);
+  box-shadow: var(--mc-shadow);
+}
+.message.self .message-dropdown-content { right: auto; left: 0; }
+.message-dropdown-content.show { display: block; animation: mc-fade-in .12s ease both; }
+.message-dropdown-content button {
+  display: flex; align-items: center; gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0; border-radius: 8px;
+  background: transparent; color: var(--mc-text);
+  font: inherit; font-size: 13.5px; text-align: left; cursor: pointer;
+}
+.message-dropdown-content button:hover { background: var(--mc-panel-2); }
+.message-dropdown-content button i { width: 16px; color: var(--mc-muted); text-align: center; }
+
+/* Édition inline */
+.edit-message-textarea {
+  width: 100%;
+  min-width: 260px;
+  padding: 9px 12px;
+  border: 1px solid var(--mc-border);
+  border-radius: var(--mc-radius-sm);
+  background: var(--mc-panel);
+  color: var(--mc-text);
+  font: inherit; resize: vertical;
+}
+.edit-message-textarea:focus-visible { outline: 2px solid var(--mc-accent); outline-offset: 1px; }
+.edit-message-actions { display: flex; gap: 8px; margin-top: 8px; }
+
+/* ---------------------------------------------------------------------------
+ * 13. Séparateur « nouveaux messages » — .unread-divider
+ * -------------------------------------------------------------------------*/
+.unread-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px auto;
+  color: var(--mc-danger);
+}
+.unread-divider::before,
+.unread-divider::after {
+  content: ""; flex: 1 1 auto; height: 1px;
+  background: color-mix(in srgb, var(--mc-danger) 35%, transparent);
+}
+.unread-divider-label {
+  flex: 0 0 auto;
+  padding: 2px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mc-danger) 12%, transparent);
+  color: var(--mc-danger);
+  font-size: 12px; font-weight: 700;
+}
+
+/* ---------------------------------------------------------------------------
+ * 14. Indicateur de frappe — .typing-indicator (points animés)
+ * -------------------------------------------------------------------------*/
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: var(--mc-read-max);
+  margin: 0 auto;
+  padding: 4px clamp(12px, 4vw, 40px) 8px;
+  color: var(--mc-muted);
+  font-size: 13px;
+  font-style: italic;
+}
+.typing-indicator::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 34px; height: 12px;
+  background:
+    radial-gradient(circle 3px at 6px 6px,  var(--mc-muted) 95%, transparent) 0 0,
+    radial-gradient(circle 3px at 17px 6px, var(--mc-muted) 95%, transparent) 0 0,
+    radial-gradient(circle 3px at 28px 6px, var(--mc-muted) 95%, transparent) 0 0;
+  background-repeat: no-repeat;
+  animation: mc-typing 1.2s infinite ease-in-out;
+}
+
+/* ---------------------------------------------------------------------------
+ * 15. Barre des messages épinglés (haut du fil)
+ * -------------------------------------------------------------------------*/
+.pinned-messages-bar {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: var(--mc-read-max);
+  margin: 10px auto 0;
+  padding: 0 clamp(12px, 4vw, 40px);
+}
+.pinned-header {
+  display: flex; align-items: center; gap: 8px;
+  color: var(--mc-warn); font-size: 12.5px; font-weight: 700;
+}
+.pinned-header .toggle-pinned { margin-left: auto; background: transparent; border: 0; color: inherit; cursor: pointer; }
+.pinned-messages-list { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+.pinned-messages-list.collapsed { display: none; }
+.pinned-message-preview {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 11px;
+  border-radius: var(--mc-radius-sm);
+  background: color-mix(in srgb, var(--mc-warn) 8%, var(--mc-panel));
+  border: 1px solid color-mix(in srgb, var(--mc-warn) 22%, transparent);
+  font-size: 13px; color: var(--mc-text);
+}
+.pinned-message-preview strong { color: var(--mc-text); }
+.pinned-message-preview .jump-to-msg { margin-left: auto; color: var(--mc-warn); text-decoration: none; }
+
+.load-more-messages { text-align: center; padding: 8px 0; }
+
+/* ---------------------------------------------------------------------------
+ * 16. Composeur — .reply-box (.msg-composer) + drag-over
+ * -------------------------------------------------------------------------*/
+.reply-box,
+.msg-composer {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: var(--mc-read-max);
+  margin: 0 auto;
+  padding: 12px clamp(12px, 4vw, 40px) 16px;
+}
+.reply-box form,
+.msg-composer form {
+  border: 1px solid var(--mc-border);
+  border-radius: var(--mc-radius);
+  background: var(--mc-panel);
+  box-shadow: var(--mc-shadow);
+  padding: 8px 8px 8px 14px;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.reply-box form:focus-within,
+.msg-composer form:focus-within {
+  border-color: color-mix(in srgb, var(--mc-accent) 55%, var(--mc-border));
+  box-shadow: var(--mc-shadow), 0 0 0 3px var(--mc-accent-weak);
+}
+.reply-box.drag-over form,
+.msg-composer.drag-over form {
+  border-color: var(--mc-accent);
+  border-style: dashed;
+  background: var(--mc-accent-weak);
+}
+.reply-box textarea,
+.msg-composer textarea {
+  width: 100%;
+  min-height: 44px;
+  max-height: 220px;
+  padding: 6px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--mc-text);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.reply-box textarea:focus,
+.msg-composer textarea:focus { outline: none; }
+.reply-box textarea::placeholder { color: var(--mc-muted); }
+
+/* Bandeau « réponse à … » */
+#reply-interface { padding: 2px 2px 8px; }
+.reply-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 11px;
+  border-left: 3px solid var(--mc-accent);
+  border-radius: 8px;
+  background: var(--mc-accent-weak);
+}
+.reply-to { flex: 1 1 auto; color: var(--mc-accent); font-size: 13px; font-weight: 600; }
+.reply-header .btn-icon { background: transparent; border: 0; color: var(--mc-muted); cursor: pointer; }
+
+/* Options (importance) */
+.reply-options { padding: 4px 0 6px; }
+.importance-select {
+  padding: 5px 10px;
+  border: 1px solid var(--mc-border);
+  border-radius: 999px;
+  background: var(--mc-panel-2);
+  color: var(--mc-text);
+  font: inherit; font-size: 12.5px;
+}
+
+/* Pied du composeur : joindre + envoyer */
+.form-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+.file-upload { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.file-upload input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.file-upload label {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--mc-panel-2);
+  color: var(--mc-muted);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.file-upload label:hover { background: var(--mc-accent-weak); color: var(--mc-accent); }
+#file-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.file-info {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--mc-border);
+  border-radius: 999px;
+  background: var(--mc-panel);
+  color: var(--mc-text); font-size: 12px;
+}
+.file-info i { color: var(--mc-accent); }
+
+/* Bouton d'envoi (violet, accent) */
+.reply-box .btn.primary,
+.msg-composer .btn.primary,
+.form-footer button[type="submit"] {
+  display: inline-flex; align-items: center; gap: 8px;
+  flex: 0 0 auto;
+  padding: 9px 18px;
+  border: 0; border-radius: 999px;
+  background: var(--mc-accent);
+  color: var(--mc-accent-ink);
+  font: inherit; font-size: 14px; font-weight: 600;
+  cursor: pointer;
+  transition: filter .15s ease, transform .08s ease;
+}
+.form-footer button[type="submit"]:hover { filter: brightness(1.06); }
+.form-footer button[type="submit"]:active { transform: translateY(1px); }
+.form-footer button[type="submit"]:disabled { opacity: .55; cursor: not-allowed; }
+
+/* Avis lecture seule / corbeille */
+.conversation-deleted {
+  width: 100%;
+  max-width: var(--mc-read-max);
+  margin: 8px auto 16px;
+  padding: 14px clamp(12px, 4vw, 40px);
+}
+.conversation-deleted p {
+  margin: 0 0 10px;
+  padding: 12px 16px;
+  border: 1px solid var(--mc-border);
+  border-radius: var(--mc-radius);
+  background: var(--mc-panel);
+  color: var(--mc-muted);
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------------------
+ * 17. Panneau d'information (participants + actions) — .conversation-sidebar
+ * -------------------------------------------------------------------------*/
+.conversation-sidebar {
+  flex: 0 0 300px;
+  width: 300px;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--mc-panel);
+  border-left: 1px solid var(--mc-border);
+  padding: 18px 16px;
+  transition: width .2s ease, padding .2s ease, opacity .2s ease;
+}
+.conversation-page[data-sidebar-collapsed="true"] .conversation-sidebar {
+  width: 0; flex-basis: 0; padding: 0; opacity: 0; overflow: hidden; border-left: 0;
+}
+.conversation-info h3 {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 0 12px;
+  font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
+  color: var(--mc-muted);
+}
+.conversation-info h3 .btn-icon { margin-left: auto; background: transparent; border: 0; color: var(--mc-accent); cursor: pointer; }
+
+.participants-list { list-style: none; margin: 0 0 18px; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.participant-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 8px; border-radius: var(--mc-radius-sm);
+  position: relative;
+}
+.participant-item:hover { background: var(--mc-panel-2); }
+.participant-item.left { opacity: .5; }
+.participant-avatar {
+  flex: 0 0 auto;
+  width: 34px; height: 34px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--tier-eleve); color: #fff; font-size: 12px; font-weight: 700;
+}
+.participant-details { min-width: 0; flex: 1 1 auto; }
+.participant-name { font-size: 13.5px; font-weight: 600; color: var(--mc-text); display: flex; align-items: center; gap: 6px; }
+.participant-type { font-size: 12px; color: var(--mc-muted); display: flex; align-items: center; gap: 6px; }
+.participant-item .badge {
+  padding: 0 7px; border-radius: 999px; font-size: 10px; font-weight: 700;
+  background: var(--mc-panel-2); color: var(--mc-muted);
+}
+.participant-item .badge.current { background: var(--mc-accent-weak); color: var(--mc-accent); }
+.participant-item .badge.admin { background: color-mix(in srgb, var(--mc-danger) 14%, transparent); color: var(--mc-danger); }
+.participant-item .badge.moderator { background: color-mix(in srgb, var(--tier-direction) 14%, transparent); color: var(--tier-direction); }
+.participant-divider { margin: 8px 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--mc-muted); }
+.no-participants { color: var(--mc-muted); font-size: 13px; padding: 6px 8px; }
+
+.participant-actions { margin-left: auto; position: relative; }
+.participant-actions > .btn-icon { background: transparent; border: 0; color: var(--mc-muted); cursor: pointer; padding: 4px; border-radius: 6px; }
+.participant-actions > .btn-icon:hover { background: var(--mc-panel); color: var(--mc-text); }
+.participant-actions-menu {
+  display: none; position: absolute; right: 0; top: 100%; z-index: 40;
+  min-width: 190px; margin-top: 4px; padding: 6px;
+  background: var(--mc-panel); border: 1px solid var(--mc-border);
+  border-radius: var(--mc-radius-sm); box-shadow: var(--mc-shadow);
+}
+.participant-actions-menu.show { display: block; }
+.participant-actions-menu a {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 10px; border-radius: 8px;
+  color: var(--mc-text); text-decoration: none; font-size: 13.5px;
+}
+.participant-actions-menu a:hover { background: var(--mc-panel-2); }
+.participant-actions-menu a.danger { color: var(--mc-danger); }
+.participant-actions-menu a i { width: 16px; text-align: center; }
+
+/* Actions de conversation (archiver / supprimer / sourdine / épingle injectés JS) */
+.conversation-actions { display: flex; flex-direction: column; gap: 4px; }
+.conv-rt-actions { display: flex; flex-direction: column; gap: 4px; }
+.action-button {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 11px;
+  border-radius: var(--mc-radius-sm);
+  color: var(--mc-text); text-decoration: none; font-size: 13.5px;
+  cursor: pointer; transition: background .15s ease;
+}
+.action-button:hover { background: var(--mc-panel-2); }
+.action-button i { width: 16px; text-align: center; color: var(--mc-muted); }
+#delete-btn:hover, .action-button.danger:hover { background: color-mix(in srgb, var(--mc-danger) 10%, transparent); color: var(--mc-danger); }
+.conv-mute-menu button:hover { background: var(--mc-panel-2); }
+
+/* Bouton de repli du panneau (injecté par le JS) */
+.sidebar-toggle {
+  position: absolute;
+  top: 12px; right: 12px;
+  z-index: 20;
+  width: 34px; height: 34px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--mc-border);
+  border-radius: 10px;
+  background: var(--mc-panel);
+  color: var(--mc-muted);
+  cursor: pointer;
+  box-shadow: var(--mc-shadow-sm);
+}
+.sidebar-toggle:hover { color: var(--mc-text); }
+
+/* ---------------------------------------------------------------------------
+ * 18. Modale d'ajout de participant
+ * -------------------------------------------------------------------------*/
+.modal {
+  display: none;
+  position: fixed; inset: 0; z-index: 2000;
+  align-items: center; justify-content: center;
+  padding: 20px;
+  background: rgba(15,23,42,.5);
+}
+.modal.show,
+.modal[style*="block"] { display: flex; }
+.modal-content {
+  width: 100%; max-width: 440px;
+  background: var(--mc-panel);
+  color: var(--mc-text);
+  border: 1px solid var(--mc-border);
+  border-radius: var(--mc-radius);
+  box-shadow: var(--mc-shadow);
+  padding: 22px;
+  position: relative;
+}
+.modal-content h3 { margin: 0 0 16px; font-size: 17px; }
+.modal-content .close { position: absolute; top: 14px; right: 16px; font-size: 22px; line-height: 1; color: var(--mc-muted); cursor: pointer; }
+.modal-content .form-group { margin-bottom: 14px; }
+.modal-content label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--mc-muted); }
+.modal-content select {
+  width: 100%; padding: 9px 11px;
+  border: 1px solid var(--mc-border); border-radius: var(--mc-radius-sm);
+  background: var(--mc-panel-2); color: var(--mc-text); font: inherit;
+}
+
+/* Indicateur « nouveaux messages » flottant (injecté JS) */
+.new-messages-indicator {
+  position: fixed;
+  left: 50%; bottom: 96px;
+  transform: translateX(-50%);
+  z-index: 900;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--mc-accent);
+  color: var(--mc-accent-ink);
+  font-size: 13px; font-weight: 600;
+  box-shadow: var(--mc-shadow);
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------------------------
+ * 19. Alertes
+ * -------------------------------------------------------------------------*/
+.conversation-page .alert,
+.msg-app .alert {
+  width: 100%;
+  max-width: var(--mc-read-max);
+  margin: 12px auto 0;
+  padding: 11px 16px;
+  border-radius: var(--mc-radius-sm);
+  font-size: 14px;
+}
+.conversation-page .alert.error,
+.msg-app .alert.error { background: color-mix(in srgb, var(--mc-danger) 12%, transparent); color: var(--mc-danger); }
+.conversation-page .alert.success,
+.msg-app .alert.success { background: color-mix(in srgb, var(--mc-ok) 12%, transparent); color: var(--mc-ok); }
+
+/* ---------------------------------------------------------------------------
+ * 20. Boutons secondaires génériques du module
+ * -------------------------------------------------------------------------*/
+.btn.secondary, .btn-sm.secondary {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 14px; border-radius: 999px;
+  border: 1px solid var(--mc-border);
+  background: var(--mc-panel); color: var(--mc-text);
+  font: inherit; font-size: 13px; cursor: pointer;
+}
+.btn.secondary:hover { border-color: var(--mc-accent); color: var(--mc-accent); }
+
+/* ---------------------------------------------------------------------------
+ * 21. Accessibilité : focus visible
+ * -------------------------------------------------------------------------*/
+.msg-app a:focus-visible,
+.msg-app button:focus-visible,
+.msg-app textarea:focus-visible,
+.msg-app select:focus-visible,
+.conversation-page a:focus-visible,
+.conversation-page button:focus-visible,
+.conversation-page textarea:focus-visible,
+.conversation-page select:focus-visible,
+.msg-inline-img:focus-visible {
+  outline: 2px solid var(--mc-accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ---------------------------------------------------------------------------
+ * 22. Animations (respect de prefers-reduced-motion)
+ * -------------------------------------------------------------------------*/
+@keyframes mc-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes mc-flash {
+  0%, 100% { box-shadow: var(--mc-shadow-sm); }
+  15%      { box-shadow: var(--mc-shadow-sm), 0 0 0 3px color-mix(in srgb, var(--mc-accent) 55%, transparent); }
+}
+@keyframes mc-typing {
+  0%, 100% { opacity: .35; }
+  20%      { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message, .msg-bubble,
+  .message-dropdown-content.show,
+  .msg-lightbox-overlay,
+  .typing-indicator::before,
+  .message.highlight .message-content {
+    animation: none !important;
+  }
+  .messages-container, .msg-thread-scroll { scroll-behavior: auto; }
+}
+
+/* ---------------------------------------------------------------------------
+ * 23. Responsive — pile mono-volet (< 1024) ; téléphone (< 640)
+ * -------------------------------------------------------------------------*/
+@media (max-width: 1024px) {
+  .msg-app { flex-direction: column; height: auto; min-height: calc(100vh - var(--topbar-h, 64px)); }
+  .conv-list { flex-basis: auto; max-width: none; width: 100%; border-right: 0; border-bottom: 1px solid var(--mc-border); }
+
+  .conversation-page { flex-direction: column; height: auto; min-height: calc(100vh - var(--topbar-h, 64px)); overflow: visible; }
+  .conversation-sidebar {
+    flex-basis: auto; width: 100%; border-left: 0; border-top: 1px solid var(--mc-border);
+    order: 2;
+  }
+  .conversation-page[data-sidebar-collapsed="true"] .conversation-sidebar { width: 100%; flex-basis: auto; opacity: 1; padding: 18px 16px; overflow: auto; height: auto; }
+  .conversation-main, .msg-thread { order: 1; }
+  .messages-container, .msg-thread-scroll { max-height: 60vh; }
+}
+
+@media (max-width: 640px) {
+  .msg-app { font-size: 14px; }
+  .messages-container, .msg-thread-scroll { padding: 14px 12px 6px; }
+  .message.msg-grouped .msg-col { max-width: calc(100% - 48px); }
+  .message-content, .msg-body { max-width: 100%; font-size: 15px; }
+  .msg-inline-img { max-width: 200px; max-height: 200px; }
+  .conv-thread-header { padding: 10px 14px; }
+  .reply-box, .msg-composer { padding: 10px 12px 14px; }
+  .form-footer { flex-wrap: wrap; }
+  .form-footer button[type="submit"] { width: 100%; justify-content: center; }
+  .attachment-link, .attachment { max-width: 100%; }
+  /* Sous 640, garder l'action « répondre » visible (pas de survol au doigt) */
+  .message-menu-btn, .reaction-add-btn,
+  .message-actions .btn-icon, .message-footer .js-reply { opacity: 1; }
+}

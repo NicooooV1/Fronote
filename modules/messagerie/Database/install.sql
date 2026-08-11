@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS `conversation_participants` (
   `is_archived` tinyint(1) NOT NULL DEFAULT 0,
   `is_deleted` tinyint(1) NOT NULL DEFAULT 0,
   `version` int(11) NOT NULL DEFAULT 1,
+  `muted_until` datetime DEFAULT NULL COMMENT 'Notifications coupées jusqu-a cette date (NULL = non mute)',
+  `is_pinned` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Conversation epinglee en tete de liste pour ce participant',
   PRIMARY KEY (`id`),
   KEY `idx_cp_conv_user` (`conversation_id`, `user_id`, `user_type`),
   KEY `idx_cp_deleted_archived` (`is_deleted`, `is_archived`),

@@ -126,8 +126,8 @@ $types = AnnonceService::getTypes();
 
     <?php if (!empty($annonce['cible_roles'])): ?>
     <div class="annonce-detail-cible">
-        <i class="fas fa-crosshairs"></i> Ciblée pour : 
-        <?= implode(', ', array_map('ucfirst', $annonce['cible_roles'])) ?>
+        <i class="fas fa-crosshairs"></i> Ciblée pour :
+        <?= e(implode(', ', array_map('ucfirst', $annonce['cible_roles']))) ?>
     </div>
     <?php endif; ?>
 </article>

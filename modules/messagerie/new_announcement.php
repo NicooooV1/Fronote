@@ -20,7 +20,7 @@ $user = requireAuth();
 // Vérifier que l'utilisateur a le droit de créer des annonces
 $canSendAnnouncement = in_array($user['type'], ['vie_scolaire', 'administrateur']);
 if (!$canSendAnnouncement) {
-    redirect('index.php');
+    redirect('modules/messagerie/index.php');
 }
 
 // Définir le titre de la page
@@ -28,6 +28,11 @@ $pageTitle = 'Nouvelle annonce';
 
 $error = '';
 $success = '';
+
+// Variables de repopulation du formulaire (initialisées pour le rendu GET
+// et le réaffichage après erreur — évite « Undefined variable » / htmlspecialchars(null)).
+$titre = $_POST['titre'] ?? '';
+$contenu = $_POST['contenu'] ?? '';
 
 /**
  * Récupère les classes disponibles depuis la base de données

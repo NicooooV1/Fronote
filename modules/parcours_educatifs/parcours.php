@@ -111,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($role, ['admin', 'professe
                     <td class="small"><?= date('d/m/Y', strtotime($p['date_activite'])) ?></td>
                     <td class="small"><?= htmlspecialchars($p['competences_visees'] ?? '—') ?></td>
                     <td>
-                        <?php if ($p['validation']): ?>
+                        <?php if ($p['validation'] === 'valide'): ?>
                             <span class="badge bg-success"><i class="fas fa-check"></i></span>
                         <?php else: ?>
                             <span class="badge bg-secondary">Non</span>
@@ -119,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($role, ['admin', 'professe
                     </td>
                     <?php if (in_array($role, ['admin', 'professeur'])): ?>
                     <td>
-                        <?php if (!$p['validation']): ?>
+                        <?php if ($p['validation'] !== 'valide'): ?>
                             <form method="post" class="d-inline"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>"><input type="hidden" name="entry_id" value="<?= $p['id'] ?>"><button class="btn btn-sm btn-outline-success">Valider</button></form>
                         <?php endif; ?>
                     </td>

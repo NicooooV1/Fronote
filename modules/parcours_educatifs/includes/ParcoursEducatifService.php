@@ -30,7 +30,7 @@ class ParcoursEducatifService
         if (!empty($filters['eleve_id']))       { $sql .= " AND pe.eleve_id = ?";       $params[] = $filters['eleve_id']; }
         if (!empty($filters['type_parcours']))   { $sql .= " AND pe.type_parcours = ?";  $params[] = $filters['type_parcours']; }
         if (!empty($filters['annee_scolaire']))  { $sql .= " AND pe.annee_scolaire = ?"; $params[] = $filters['annee_scolaire']; }
-        if (isset($filters['validation']) && $filters['validation'] !== '') { $sql .= " AND pe.validation = ?"; $params[] = (int)$filters['validation']; }
+        if (isset($filters['validation']) && $filters['validation'] !== '') { $sql .= " AND pe.validation = ?"; $params[] = (string)$filters['validation']; }
         $sql .= " ORDER BY pe.date_activite DESC";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
@@ -66,7 +66,7 @@ class ParcoursEducatifService
             \API\Core\EstablishmentContext::id(),
             $data['eleve_id'], $data['type_parcours'], $data['titre'],
             $data['description'] ?? null, $data['date_activite'] ?? date('Y-m-d'),
-            $data['competences_visees'] ?? null, $data['validation'] ?? 0,
+            $data['competences_visees'] ?? null, $data['validation'] ?? 'non_valide',
             $data['annee_scolaire'] ?? $this->anneeScolaire(),
         ]);
         return (int) $this->pdo->lastInsertId();
@@ -82,15 +82,17 @@ class ParcoursEducatifService
         return $stmt->execute([
             $data['titre'], $data['description'] ?? null, $data['type_parcours'],
             $data['date_activite'] ?? date('Y-m-d'), $data['competences_visees'] ?? null,
-            $data['validation'] ?? 0, $data['annee_scolaire'] ?? $this->anneeScolaire(), $id,
+            $data['validation'] ?? 'non_valide', $data['annee_scolaire'] ?? $this->anneeScolaire(), $id,
             \API\Core\EstablishmentContext::id(),
         ]);
     }
 
     public function valider(int $id, bool $valide = true): bool
     {
+        // Colonne enum('non_valide','en_cours','valide') : écrire la CHAÎNE, pas un int
+        // (insérer 0/1 dans un enum stocke l'index — ici 1 = 'non_valide' → sémantique inversée).
         $stmt = $this->pdo->prepare("UPDATE parcours_educatifs SET validation = ? WHERE id = ? AND etablissement_id = ?");
-        return $stmt->execute([$valide ? 1 : 0, $id, \API\Core\EstablishmentContext::id()]);
+        return $stmt->execute([$valide ? 'valide' : 'non_valide', $id, \API\Core\EstablishmentContext::id()]);
     }
 
     public function supprimer(int $id): bool
@@ -116,7 +118,9 @@ class ParcoursEducatifService
 
     public function getStatsByType(?int $eleveId = null): array
     {
-        $sql = "SELECT type_parcours, COUNT(*) AS total, SUM(validation) AS valides
+        // validation est un enum : compter les 'valide' via une somme booléenne
+        // (SUM(validation) sommerait les index d'enum → total incohérent).
+        $sql = "SELECT type_parcours, COUNT(*) AS total, SUM(validation = 'valide') AS valides
                 FROM parcours_educatifs WHERE 1=1 AND etablissement_id = ?";
         $params = [\API\Core\EstablishmentContext::id()];
         if ($eleveId) { $sql .= " AND eleve_id = ?"; $params[] = $eleveId; }

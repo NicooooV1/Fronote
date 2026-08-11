@@ -19,6 +19,16 @@ class ReunionService
 
     // ── Réunions ──
 
+    /**
+     * Vérifie qu'un créneau appartient bien à la réunion indiquée (anti cross-tenant).
+     */
+    public function creneauAppartientReunion(int $creneauId, int $reunionId): bool
+    {
+        $stmt = $this->pdo->prepare("SELECT 1 FROM reunion_creneaux WHERE id = ? AND reunion_id = ?");
+        $stmt->execute([$creneauId, $reunionId]);
+        return (bool) $stmt->fetchColumn();
+    }
+
     public function getReunions(array $filters = []): array
     {
         $sql = "SELECT r.*, c.nom AS classe_nom FROM reunions r LEFT JOIN classes c ON r.classe_id = c.id WHERE r.etablissement_id <=> ?";
@@ -111,6 +121,10 @@ class ReunionService
 
     public function genererCreneaux(int $reunionId, int $profId, string $heureDebut, string $heureFin, int $dureeMinutes = 15, ?string $salle = null): int
     {
+        // Une durée nulle ou négative ne fait jamais avancer $debut : boucle infinie. On rejette.
+        if ($dureeMinutes <= 0) {
+            throw new \InvalidArgumentException('La durée d\'un créneau doit être strictement positive.');
+        }
         $count = 0;
         $debut = strtotime($heureDebut);
         $fin = strtotime($heureFin);

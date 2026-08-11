@@ -56,3 +56,41 @@ CREATE TABLE IF NOT EXISTS `paiements` (
   KEY `idx_etab` (`etablissement_id`),
   CONSTRAINT `fk_paiements_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Avoirs / notes de crédit (FacturationService::creerAvoir / getAvoirs).
+-- etablissement_id : DEFAULT 1 car le service n'insère pas la colonne (cloisonnement via facture_id).
+CREATE TABLE IF NOT EXISTS `avoirs` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `etablissement_id` int(11) NOT NULL DEFAULT 1,
+  `facture_id` int(11) NOT NULL,
+  `numero` varchar(50) NOT NULL,
+  `montant` decimal(10,2) NOT NULL,
+  `motif` text DEFAULT NULL,
+  `parent_id` int(11) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `numero` (`numero`),
+  KEY `idx_facture` (`facture_id`),
+  KEY `idx_parent` (`parent_id`),
+  KEY `idx_etab` (`etablissement_id`),
+  CONSTRAINT `fk_avoir_facture` FOREIGN KEY (`facture_id`) REFERENCES `factures` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_avoirs_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Échéancier de paiement en plusieurs fois (FacturationService::creerEcheancier / getEcheancier).
+-- etablissement_id : DEFAULT 1 car le service n'insère pas la colonne (cloisonnement via facture_id).
+CREATE TABLE IF NOT EXISTS `facture_echeancier` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `etablissement_id` int(11) NOT NULL DEFAULT 1,
+  `facture_id` int(11) NOT NULL,
+  `numero_echeance` int(11) NOT NULL,
+  `montant` decimal(10,2) NOT NULL,
+  `date_echeance` date NOT NULL,
+  `statut` enum('en_attente','paye','annule') NOT NULL DEFAULT 'en_attente',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_facture` (`facture_id`),
+  KEY `idx_etab` (`etablissement_id`),
+  CONSTRAINT `fk_echeancier_facture` FOREIGN KEY (`facture_id`) REFERENCES `factures` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_echeancier_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

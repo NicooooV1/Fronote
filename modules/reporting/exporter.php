@@ -15,6 +15,20 @@ if ($go && $type && $classeId) {
     requireAuth();
     if (!isAdmin() && !isTeacher() && !isVieScolaire()) { deny_access(false, 'Accès refusé.'); }
 
+    // Un professeur (hors admin/vie scolaire) ne peut exporter que pour une classe qu'il enseigne.
+    // Admin / vie scolaire conservent la portée établissement (scoping fait dans ReportingService).
+    if (isTeacher() && !isAdmin() && !isVieScolaire()) {
+        $currentUser = getCurrentUser();
+        $resolver = new \API\Security\ScopeResolver(getPDO(), [
+            'id'               => (int)($currentUser['id'] ?? 0),
+            'type'             => 'professeur',
+            'etablissement_id' => \API\Core\EstablishmentContext::id(),
+        ]);
+        if (!$resolver->teachesClass($classeId)) {
+            deny_access(false, "Vous n'enseignez pas dans cette classe.");
+        }
+    }
+
     require_once __DIR__ . '/includes/ReportingService.php';
     $reportService = new ReportingService(getPDO());
 

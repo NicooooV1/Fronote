@@ -39,24 +39,35 @@ function handleSendMessage($convId, $user, $contenu, $importance = 'normal', $pa
         return ['success' => false, 'message' => 'Trop de messages envoyés. Réessayez dans ' . $info['reset_in'] . 's'];
     }
     
-    $uploadedFiles = []; // Initialiser avant utilisation
-    
-    try {
-        // Commencer une transaction
-        $pdo->beginTransaction();
-        
-        try {
-            // Traitement des fichiers via FileUploadService centralisé
-            if (!empty($filesData) && isset($filesData['name']) && is_array($filesData['name']) && !empty($filesData['name'][0])) {
-                $fileUploader = new \API\Services\FileUploadService('messagerie');
-                $uploadResults = $fileUploader->uploadMultiple($filesData);
-                foreach ($uploadResults as $r) {
-                    if ($r['success']) {
-                        $uploadedFiles[] = ['name' => $r['nom_original'], 'path' => $r['chemin']];
-                    }
-                }
+    // Traitement des fichiers via FileUploadService centralisé — effectué UNE SEULE
+    // fois, EN DEHORS de la boucle de retry, pour ne pas ré-uploader les fichiers à
+    // chaque nouvelle tentative de transaction.
+    $uploadedFiles = [];
+    $rejectedAttachments = []; // pièces jointes refusées (oversize / type / nombre max)
+    if (!empty($filesData) && isset($filesData['name']) && is_array($filesData['name']) && !empty($filesData['name'][0])) {
+        $fileUploader = new \API\Services\FileUploadService('messagerie');
+        $uploadResults = $fileUploader->uploadMultiple($filesData);
+        foreach ($uploadResults as $r) {
+            if ($r['success']) {
+                $uploadedFiles[] = ['name' => $r['nom_original'], 'path' => $r['chemin']];
+            } else {
+                // Ne pas faire échouer tout le message : on remonte l'échec au client
+                // afin qu'il sache que le fichier n'a PAS été joint.
+                $rejectedAttachments[] = ($r['nom_original'] ?? 'Pièce jointe')
+                    . ' : ' . ($r['error'] ?? $r['message'] ?? 'refusée');
             }
-            
+        }
+    }
+
+    // Boucle de retry anti-deadlock InnoDB (erreur 1213 / SQLSTATE 40001) : deux envois
+    // concurrents dans la même conversation incrémentent unread_count des mêmes
+    // participants et peuvent se bloquer mutuellement, ce qui perdait le message (500).
+    // On rejoue la transaction avec un léger backoff incrémental.
+    $maxAttempts = 3;
+    for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+        try {
+            $pdo->beginTransaction();
+
             $messageId = addMessage(
                 $convId,
                 $user['id'],
@@ -69,11 +80,11 @@ function handleSendMessage($convId, $user, $contenu, $importance = 'normal', $pa
                 'standard',        // typeMessage
                 []                 // filesData — traités séparément
             );
-            
+
             if (!$messageId) {
                 throw new Exception("Échec de l'insertion du message en base de données");
             }
-            
+
             // Sauvegarder les pièces jointes en base de données
             if (!empty($uploadedFiles)) {
                 logUpload("Sauvegarde des métadonnées des pièces jointes en base de données");
@@ -84,9 +95,9 @@ function handleSendMessage($convId, $user, $contenu, $importance = 'normal', $pa
                     }
                 }
             }
-            
+
             $pdo->commit();
-            
+
             logUpload("Message #{$messageId} envoyé avec succès");
 
             // --- Push temps réel via WebSocket ---
@@ -107,26 +118,50 @@ function handleSendMessage($convId, $user, $contenu, $importance = 'normal', $pa
                 @file_get_contents('http://localhost:3001/notify/message', false, $ctx);
             } catch (\Exception $wsEx) { error_log("WS push best-effort failed: " . $wsEx->getMessage()); }
 
-            return [
+            $result = [
                 'success' => true,
                 'message' => "Message envoyé avec succès",
                 'messageId' => $messageId
             ];
+            // LOW : signaler au client toute pièce jointe refusée (le message part quand même).
+            if (!empty($rejectedAttachments)) {
+                $result['attachments_rejected'] = $rejectedAttachments;
+                $result['message'] .= ' (' . count($rejectedAttachments) . ' pièce(s) jointe(s) refusée(s) — non attachée(s))';
+            }
+            return $result;
+        } catch (PDOException $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            // Deadlock détecté : rejouer si des tentatives restent.
+            $isDeadlock = (($e->errorInfo[1] ?? null) === 1213) || ($e->getCode() === '40001');
+            if ($isDeadlock && $attempt < $maxAttempts) {
+                logUpload("Deadlock à l'envoi (tentative {$attempt}/{$maxAttempts}), nouvelle tentative");
+                usleep(50000 * $attempt); // backoff incrémental léger : 50ms, 100ms
+                continue;
+            }
+            error_log('[messagerie] handleSendMessage échec PDO' . ($isDeadlock ? ' (deadlock persistant)' : '') . ': ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => "Une erreur est survenue lors de l'envoi du message. Veuillez réessayer."
+            ];
         } catch (Exception $e) {
-            $pdo->rollBack();
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             logUpload("Exception lors de l'envoi du message: " . $e->getMessage());
             return [
                 'success' => false,
                 'message' => "Une erreur est survenue lors de l'envoi du message. Veuillez réessayer."
             ];
         }
-    } catch (Exception $e) {
-        error_log('[messagerie] handleSendMessage critique: ' . $e->getMessage());
-        return [
-            'success' => false,
-            'message' => "Une erreur technique est survenue. Veuillez réessayer plus tard."
-        ];
     }
+
+    // Sécurité : toutes les tentatives ont échoué (deadlock persistant).
+    return [
+        'success' => false,
+        'message' => "Le service est momentanément surchargé. Veuillez réessayer."
+    ];
 }
 
 /**

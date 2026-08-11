@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                 <tr>
                     <td><strong><?= htmlspecialchars($p['materiel_nom']) ?></strong></td>
                     <td><?= htmlspecialchars($p['emprunteur_nom']) ?></td>
-                    <td><?= formatDate($p['date_emprunt']) ?></td>
+                    <td><?= formatDate($p['date_pret']) ?></td>
                     <td><?= formatDate($p['date_retour_prevue']) ?></td>
                     <td><span class="badge badge-<?= $p['statut'] === 'retourne' ? 'success' : ($p['statut'] === 'en_retard' ? 'danger' : 'warning') ?>"><?= ucfirst(str_replace('_', ' ', $p['statut'])) ?></span></td>
                     <td>

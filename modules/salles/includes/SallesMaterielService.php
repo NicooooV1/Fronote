@@ -214,8 +214,17 @@ class SallesMaterielService
         $chk = $this->pdo->prepare("SELECT 1 FROM materiels WHERE id = ? AND etablissement_id = ?");
         $chk->execute([$d['materiel_id'], $etabId]);
         if (!$chk->fetchColumn()) return 0;
-        $stmt = $this->pdo->prepare("INSERT INTO prets_materiels (materiel_id, emprunteur_id, date_emprunt, date_retour_prevue, statut) VALUES (?,?,?,?,?)");
-        $stmt->execute([$d['materiel_id'], $d['emprunteur_id'], $d['date_emprunt'], $d['date_retour_prevue'], 'en_cours']);
+        // Schema : la colonne reelle est date_pret (et non date_emprunt) et emprunteur_type est NOT NULL.
+        // On accepte les deux noms de cle pour rester compatible avec les appelants existants (defaut : eleve).
+        $stmt = $this->pdo->prepare("INSERT INTO prets_materiels (materiel_id, emprunteur_id, emprunteur_type, date_pret, date_retour_prevue, statut) VALUES (?,?,?,?,?,?)");
+        $stmt->execute([
+            $d['materiel_id'],
+            $d['emprunteur_id'],
+            $d['emprunteur_type'] ?? 'eleve',
+            $d['date_pret'] ?? $d['date_emprunt'] ?? date('Y-m-d'),
+            $d['date_retour_prevue'],
+            'en_cours',
+        ]);
         return (int) $this->pdo->lastInsertId();
     }
 

@@ -325,7 +325,7 @@ class ReportingService {
      * Export incidents
      */
     public function exportIncidents(int $classeId, ?string $dateDebut = null, ?string $dateFin = null): array {
-        $sql = "SELECT e.nom, e.prenom, c.nom AS classe, i.type, i.description, i.gravite, i.date_incident, i.statut
+        $sql = "SELECT e.nom, e.prenom, c.nom AS classe, i.type_incident, i.description, i.gravite, i.date_incident, i.statut
                 FROM incidents i
                 JOIN eleves e ON i.eleve_id = e.id
                 JOIN classes c ON e.classe = c.nom

@@ -137,7 +137,7 @@ $gravites      = DisciplineService::getGravites();
                 <div class="timeline-content">
                     <div class="timeline-header">
                         <span class="badge badge-sanction">
-                            <?= $typesSanction[$s['type_sanction']] ?? $s['type_sanction'] ?>
+                            <?= e($typesSanction[$s['type_sanction']] ?? $s['type_sanction']) ?>
                         </span>
                         <?php if ($s['convocation_parent']): ?>
                         <span class="badge badge-danger"><i class="fas fa-phone"></i> Parents convoqués</span>

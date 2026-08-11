@@ -18,8 +18,8 @@ class VieScolaireService {
 
         $etab = (int)\API\Core\EstablishmentContext::id();
 
-        // Absences du jour
-        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM absences WHERE DATE(date_debut) <= ? AND DATE(date_fin) >= ? AND etablissement_id = ?");
+        // Absences du jour (on exclut les justificatifs refusés du décompte)
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM absences WHERE DATE(date_debut) <= ? AND DATE(date_fin) >= ? AND etablissement_id = ? AND (statut IS NULL OR statut <> 'refusee')");
         $stmt->execute([$date, $date, $etab]);
         $stats['absences_jour'] = (int)$stmt->fetchColumn();
 
@@ -61,18 +61,23 @@ class VieScolaireService {
 
     // ─── ÉLÈVES À SURVEILLER ───
     public function getElevesASurveiller(int $limit = 10): array {
+        // Table dérivée : filtre + tri sur des colonnes réelles (portable MySQL/MariaDB).
+        // MariaDB refuse de référencer l'alias d'une fonction d'agrégat dans une expression
+        // ORDER BY (erreur 1247) — contrairement à MySQL 8 ; le sous-select résout cela.
         $stmt = $this->pdo->prepare("
-            SELECT e.id, e.nom, e.prenom, e.classe,
-                COUNT(DISTINCT a.id) AS abs_injustifiees,
-                COUNT(DISTINCT r.id) AS nb_retards,
-                COUNT(DISTINCT i.id) AS nb_incidents
-            FROM eleves e
-            LEFT JOIN absences a ON a.id_eleve = e.id AND a.justifie = 0
-            LEFT JOIN retards r ON r.id_eleve = e.id
-            LEFT JOIN incidents i ON i.eleve_id = e.id
-            WHERE e.actif = 1 AND e.etablissement_id = ?
-            GROUP BY e.id, e.nom, e.prenom, e.classe
-            HAVING abs_injustifiees > 3 OR nb_retards > 5 OR nb_incidents > 2
+            SELECT * FROM (
+                SELECT e.id, e.nom, e.prenom, e.classe,
+                    COUNT(DISTINCT a.id) AS abs_injustifiees,
+                    COUNT(DISTINCT r.id) AS nb_retards,
+                    COUNT(DISTINCT i.id) AS nb_incidents
+                FROM eleves e
+                LEFT JOIN absences a ON a.id_eleve = e.id AND a.justifie = 0 AND (a.statut IS NULL OR a.statut <> 'refusee')
+                LEFT JOIN retards r ON r.id_eleve = e.id
+                LEFT JOIN incidents i ON i.eleve_id = e.id
+                WHERE e.actif = 1 AND e.etablissement_id = ?
+                GROUP BY e.id, e.nom, e.prenom, e.classe
+            ) t
+            WHERE abs_injustifiees > 3 OR nb_retards > 5 OR nb_incidents > 2
             ORDER BY (abs_injustifiees * 3 + nb_retards + nb_incidents * 2) DESC
             LIMIT ?
         ");
@@ -115,7 +120,7 @@ class VieScolaireService {
         $stmt = $this->pdo->query("
             SELECT e.classe,
                 COUNT(DISTINCT e.id) AS nb_eleves,
-                (SELECT COUNT(*) FROM absences a WHERE a.id_eleve IN (SELECT id FROM eleves WHERE classe = e.classe AND etablissement_id = {$etab})) AS nb_absences,
+                (SELECT COUNT(*) FROM absences a WHERE a.id_eleve IN (SELECT id FROM eleves WHERE classe = e.classe AND etablissement_id = {$etab}) AND (a.statut IS NULL OR a.statut <> 'refusee')) AS nb_absences,
                 (SELECT COUNT(*) FROM retards r WHERE r.id_eleve IN (SELECT id FROM eleves WHERE classe = e.classe AND etablissement_id = {$etab})) AS nb_retards
             FROM eleves e
             WHERE e.actif = 1 AND e.etablissement_id = {$etab}
@@ -402,7 +407,7 @@ class VieScolaireService {
         $alertes = [];
 
         // Absences non justifiées > 3 jours
-        $abs = $this->pdo->prepare("SELECT a.id_eleve, CONCAT(e.prenom,' ',e.nom) AS eleve, e.classe, COUNT(*) AS nb FROM absences a JOIN eleves e ON a.id_eleve = e.id WHERE a.justifie = 0 AND a.date_debut >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND e.actif = 1 AND a.etablissement_id = ? GROUP BY a.id_eleve HAVING nb >= 3 ORDER BY nb DESC");
+        $abs = $this->pdo->prepare("SELECT a.id_eleve, CONCAT(e.prenom,' ',e.nom) AS eleve, e.classe, COUNT(*) AS nb FROM absences a JOIN eleves e ON a.id_eleve = e.id WHERE a.justifie = 0 AND (a.statut IS NULL OR a.statut <> 'refusee') AND a.date_debut >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND e.actif = 1 AND a.etablissement_id = ? GROUP BY a.id_eleve HAVING nb >= 3 ORDER BY nb DESC");
         $abs->execute([\API\Core\EstablishmentContext::id()]);
         foreach ($abs as $a) $alertes[] = ['type' => 'absences_repetees', 'eleve' => $a['eleve'], 'classe' => $a['classe'], 'detail' => $a['nb'] . ' absences non justifiées'];
 

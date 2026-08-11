@@ -45,7 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $heureDebut = $_POST['heure_debut'] ?? date('H:i:s');
             $heureFin = $_POST['heure_fin'] ?? date('H:i:s', strtotime('+1 hour'));
 
-            if ($classeId > 0) {
+            // Anti cross-tenant : la classe doit appartenir à l'établissement courant.
+            if ($classeId > 0 && $service->classeAppartientEtablissement($classeId)) {
                 $appelId = $service->createAppel([
                     'classe_id'     => $classeId,
                     'professeur_id' => $user['id'],
@@ -62,20 +63,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        if ($action === 'sauvegarder') {
+        if ($action === 'sauvegarder' || $action === 'valider') {
             $appelId = (int)($_POST['appel_id'] ?? 0);
             $statuts = $_POST['eleves'] ?? [];
-            if ($appelId > 0 && !empty($statuts)) {
-                $service->sauvegarderAppel($appelId, $statuts);
-                $success = 'Appel enregistré avec succès.';
-            }
-        }
 
-        if ($action === 'valider') {
-            $appelId = (int)($_POST['appel_id'] ?? 0);
-            if ($appelId > 0) {
-                $service->validerAppel($appelId);
-                $success = 'Appel validé. Les absences et retards ont été enregistrés.';
+            // getAppel est déjà cloisonné à l'établissement courant.
+            $appelCible = $appelId > 0 ? $service->getAppel($appelId) : null;
+            $isGestion  = isAdmin() || isVieScolaire();
+
+            if (!$appelCible) {
+                $errors[] = 'Appel introuvable.';
+            } elseif (!$isGestion && (int)$appelCible['professeur_id'] !== (int)$user['id']) {
+                // Un professeur ne peut modifier/valider que ses propres appels.
+                $errors[] = 'Vous ne pouvez modifier que vos propres appels.';
+            } elseif ($appelCible['statut'] === 'valide') {
+                // Un appel déjà validé est en lecture seule.
+                $errors[] = 'Cet appel est déjà validé et ne peut plus être modifié.';
+            } else {
+                // Toujours persister les statuts postés avant de valider : sinon « Valider »
+                // sans « Enregistrer » au préalable laisserait tout le monde présent par défaut.
+                if (!empty($statuts)) {
+                    $service->sauvegarderAppel($appelId, $statuts);
+                }
+                if ($action === 'valider') {
+                    $service->validerAppel($appelId);
+                    $success = 'Appel validé. Les absences et retards ont été enregistrés.';
+                } else {
+                    $success = 'Appel enregistré avec succès.';
+                }
             }
         }
 

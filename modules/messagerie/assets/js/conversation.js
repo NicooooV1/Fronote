@@ -39,17 +39,34 @@ document.addEventListener('DOMContentLoaded', function() {
     // Nettoyage des ressources lors de la navigation
     setupBeforeUnloadHandler();
     
-    // Indicateur de frappe
+    // Indicateur de frappe (envoi + réception multi-utilisateurs) via MsgRealtime
     setupTypingIndicator();
-    
+
     // Dropdown menus pour actions messages
     setupMessageDropdowns();
 
-    // Délégation : boutons "Répondre" / réactions rendus côté serveur (XSS-safe)
+    // Délégation : "Répondre" / réactions + saut vers le parent / compteur de réponses (XSS-safe)
     setupDelegatedMessageActions();
 
-    // WebSocket (désactive polling si connecté)
-    setupWebSocketForConversation();
+    // Brouillons auto-sauvegardés (localStorage) du composeur
+    setupDrafts();
+
+    // Glisser-déposer + coller (image) de pièces jointes sur le composeur
+    setupComposerUploads();
+
+    // Lightbox pour les images inline (.msg-inline-img)
+    setupInlineImageLightbox();
+
+    // Actions par conversation : sourdine (mute) / épingle (pin)
+    setupConversationMuteAndPin();
+
+    // Défilement doux vers le séparateur "non lus" à l'ouverture
+    scrollToUnreadDivider();
+
+    // Temps réel via window.MsgRealtime (socket global unique) : nouveaux messages,
+    // mises à jour (edit/delete/reaction/pin) et accusés de lecture en direct.
+    // Coupe le polling quand la connexion socket est active, le relance sinon.
+    setupRealtime();
 });
 
 /**
@@ -383,7 +400,9 @@ function setupAjaxMessageSending() {
             if (data.success) {
                 // Vider le formulaire
                 textarea.value = '';
-                
+                // Effacer le brouillon sauvegardé pour cette conversation
+                if (typeof window.clearMessageDraft === 'function') window.clearMessageDraft();
+
                 // Vider l'aperçu des pièces jointes
                 const fileList = document.getElementById('file-list');
                 if (fileList) fileList.innerHTML = '';
@@ -548,15 +567,30 @@ function appendMessageToDOM(message, container) {
         const attachDiv = document.createElement('div');
         attachDiv.className = 'attachments';
         message.pieces_jointes.forEach(piece => {
-            const link = document.createElement('a');
-            link.href = `download.php?id=${piece.id || 0}`;
-            link.className = 'attachment';
-            link.target = '_blank';
-            link.innerHTML = '<i class="fas fa-paperclip"></i> ';
-            const nameSpan = document.createElement('span');
-            nameSpan.textContent = piece.nom_fichier || piece.file_name || 'Fichier';
-            link.appendChild(nameSpan);
-            attachDiv.appendChild(link);
+            const fileName = piece.nom_fichier || piece.file_name || 'Fichier';
+            const url = `download.php?id=${piece.id || 0}`;
+            const mime = (piece.mime_type || piece.type || '') + '';
+            const isImage = /\.(png|jpe?g|gif|webp|bmp)$/i.test(fileName) || mime.indexOf('image/') === 0 || piece.is_image === true;
+            if (isImage) {
+                // Vignette inline cliquable (lightbox). src interne (download.php) — pas de HTML.
+                const img = document.createElement('img');
+                img.className = 'msg-inline-img';
+                img.src = url;
+                img.setAttribute('data-full', url);
+                img.alt = fileName;
+                img.loading = 'lazy';
+                attachDiv.appendChild(img);
+            } else {
+                const link = document.createElement('a');
+                link.href = url;
+                link.className = 'attachment';
+                link.target = '_blank';
+                link.innerHTML = '<i class="fas fa-paperclip"></i> ';
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = fileName;
+                link.appendChild(nameSpan);
+                attachDiv.appendChild(link);
+            }
         });
         messageElement.appendChild(attachDiv);
     }
@@ -1150,48 +1184,103 @@ function buildMessageElement(message) {
 }
 
 /**
- * Indicateur de frappe (typing indicator)
+ * Indicateur de frappe (typing indicator) — via window.MsgRealtime (socket global unique).
+ * Émission débouncée sur input, arrêt à l'inactivité et au blur ; réception multi-utilisateurs.
  */
 function setupTypingIndicator() {
+    const convId = getConvId();
+    if (!convId) return;
+    setupTypingSender(convId);
+    setupTypingReceiver(convId);
+}
+
+function setupTypingSender(convId) {
     const textarea = document.querySelector('textarea[name="contenu"]');
-    const convId = new URLSearchParams(window.location.search).get('id');
-    if (!textarea || !convId || !window.wsClient) return;
-    
+    if (!textarea) return;
+
     let typingTimeout = null;
     let isTyping = false;
-    
+
+    function sendStop() {
+        clearTimeout(typingTimeout);
+        if (isTyping) {
+            isTyping = false;
+            window.MsgRealtime?.emitTyping?.(convId, false);
+        }
+    }
+
     textarea.addEventListener('input', () => {
+        if (!window.MsgRealtime || typeof window.MsgRealtime.emitTyping !== 'function') return;
         if (!isTyping) {
             isTyping = true;
-            window.wsClient.emit?.('typing', { conversationId: convId, isTyping: true });
+            window.MsgRealtime.emitTyping(convId, true);
         }
-        
         clearTimeout(typingTimeout);
-        typingTimeout = setTimeout(() => {
-            isTyping = false;
-            window.wsClient.emit?.('typing', { conversationId: convId, isTyping: false });
-        }, 2000);
+        typingTimeout = setTimeout(sendStop, 2500);
     });
-    
-    // Écouter les indicateurs des autres
-    window.wsClient.on?.('typing', (data) => {
-        if (data.userId == window.currentUserId && data.userType == window.currentUserType) return;
-        
-        let indicator = document.getElementById('typing-indicator');
-        if (data.isTyping) {
-            if (!indicator) {
-                indicator = document.createElement('div');
-                indicator.id = 'typing-indicator';
-                indicator.className = 'typing-indicator';
-                const container = document.querySelector('.reply-box') || document.querySelector('.messages-container');
-                if (container) container.parentNode.insertBefore(indicator, container.nextSibling);
+
+    textarea.addEventListener('blur', sendStop);
+}
+
+// Suivi des utilisateurs en train d'écrire (clé userType:userId → {name, timeout})
+const _typingUsers = new Map();
+
+function setupTypingReceiver(convId) {
+    whenMsgRealtime((rt) => {
+        rt.on('typing', (data) => {
+            if (!data || String(data.conversationId) !== String(convId)) return;
+            // Ignorer son propre indicateur
+            if (String(data.userId) === String(window.currentUserId) &&
+                String(data.userType) === String(window.currentUserType)) return;
+
+            const key = `${data.userType}:${data.userId}`;
+            const existing = _typingUsers.get(key);
+            if (existing) clearTimeout(existing.timeout);
+
+            if (data.isTyping) {
+                // Filet de sécurité : retirer si aucun "stop" n'arrive
+                const timeout = setTimeout(() => { _typingUsers.delete(key); renderTypingIndicator(); }, 6000);
+                _typingUsers.set(key, { name: data.userName || 'Quelqu\'un', timeout });
+            } else {
+                _typingUsers.delete(key);
             }
-            indicator.textContent = `${data.userName || 'Quelqu\'un'} est en train d'écrire...`;
-            indicator.style.display = 'block';
-        } else {
-            if (indicator) indicator.style.display = 'none';
-        }
+            renderTypingIndicator();
+        });
     });
+}
+
+function renderTypingIndicator() {
+    let indicator = document.getElementById('typing-indicator');
+    const names = Array.from(_typingUsers.values()).map(u => u.name);
+
+    if (names.length === 0) {
+        if (indicator) { indicator.textContent = ''; indicator.style.display = 'none'; }
+        return;
+    }
+
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'typing-indicator';
+        indicator.className = 'typing-indicator';
+        indicator.setAttribute('aria-live', 'polite');
+        const replyBox = document.querySelector('.reply-box');
+        if (replyBox && replyBox.parentNode) {
+            replyBox.parentNode.insertBefore(indicator, replyBox);
+        } else {
+            const container = document.querySelector('.messages-container');
+            if (container && container.parentNode) container.parentNode.insertBefore(indicator, container.nextSibling);
+            else document.body.appendChild(indicator);
+        }
+    }
+
+    let text;
+    if (names.length === 1) text = `${names[0]} est en train d'écrire…`;
+    else if (names.length === 2) text = `${names[0]} et ${names[1]} écrivent…`;
+    else text = 'Plusieurs personnes écrivent…';
+
+    // textContent → aucune interpolation HTML (noms d'utilisateurs = texte non fiable)
+    indicator.textContent = text;
+    indicator.style.display = 'block';
 }
 
 /**
@@ -1222,6 +1311,30 @@ function setupMessageDropdowns() {
  */
 function setupDelegatedMessageActions() {
     document.addEventListener('click', (e) => {
+        // Quote-reply → sauter vers le message parent + flash (contrat: .msg-quote / .msg-jump-parent)
+        const jump = e.target.closest('.msg-jump-parent, .msg-quote');
+        if (jump) {
+            e.preventDefault();
+            const msg = jump.closest('.message');
+            const parentId = jump.dataset.parentId
+                || msg?.dataset.parentId
+                || msg?.getAttribute('data-parent-id');
+            if (parentId) scrollToMessage(parseInt(parentId, 10));
+            return;
+        }
+        // Badge "N réponses" → sauter vers la première réponse à ce message
+        const replyCount = e.target.closest('.msg-reply-count');
+        if (replyCount) {
+            e.preventDefault();
+            const msg = replyCount.closest('.message');
+            const msgId = msg?.getAttribute('data-id');
+            if (msgId) {
+                const firstReply = document.querySelector(`.message[data-parent-id="${msgId}"]`);
+                if (firstReply) scrollToMessage(parseInt(firstReply.getAttribute('data-id'), 10));
+            }
+            return;
+        }
+
         const replyBtn = e.target.closest('.js-reply');
         if (replyBtn) {
             replyToMessage(parseInt(replyBtn.dataset.messageId, 10), replyBtn.dataset.sender || '');
@@ -1234,60 +1347,571 @@ function setupDelegatedMessageActions() {
     });
 }
 
+// ═══════════════════════════════════════════════════
+// TEMPS RÉEL (window.MsgRealtime — socket global unique)
+// ═══════════════════════════════════════════════════
+
 /**
- * Configure WebSocket pour la conversation en temps réel
- * WebSocket-first: si WS connecté → pas de polling. Sinon, fallback polling après 5s.
+ * Récupère l'ID de conversation depuis l'URL.
  */
-function setupWebSocketForConversation() {
-    const convId = new URLSearchParams(window.location.search).get('id');
-    if (!convId || !window.wsClient) return;
-    
-    // Rejoindre le canal de la conversation
-    window.wsClient.joinConversation?.(convId);
-    
-    // Écouter les nouveaux messages
-    window.wsClient.on?.('newMessage', (message) => {
-        const isOwnMessage = message.sender_id == window.currentUserId && 
-                            message.sender_type == window.currentUserType;
-        
-        if (!isOwnMessage) {
+function getConvId() {
+    return new URLSearchParams(window.location.search).get('id');
+}
+
+/**
+ * Exécute cb(MsgRealtime) dès que window.MsgRealtime est disponible.
+ * MsgRealtime est fourni par l'agent temps réel et peut se charger après ce fichier ;
+ * on l'attend brièvement (max ~20s) sans bloquer le fallback polling.
+ */
+function whenMsgRealtime(cb) {
+    if (window.MsgRealtime) { cb(window.MsgRealtime); return; }
+    let tries = 0;
+    const iv = setInterval(() => {
+        if (window.MsgRealtime) { clearInterval(iv); cb(window.MsgRealtime); }
+        else if (++tries > 100) clearInterval(iv);
+    }, 200);
+}
+
+/**
+ * Configure le temps réel de la conversation via window.MsgRealtime.
+ * - message           → nouveau message (append live, retire le polling pour ça)
+ * - message:updated   → edit / delete / reaction / pin sur un message existant
+ * - read              → accusé de lecture (met à jour les reçus des messages "self")
+ * Le polling reste le filet de sécurité : coupé quand le socket global est connecté,
+ * relancé sinon (et à chaque déconnexion).
+ */
+function setupRealtime() {
+    const convId = getConvId();
+    if (!convId) return;
+
+    let wired = false;
+    whenMsgRealtime((rt) => {
+        if (wired) return;
+        wired = true;
+        try { rt.join(convId); } catch (e) { /* non bloquant */ }
+
+        rt.on('message', (payload) => {
+            if (!payload || String(payload.conversationId) !== String(convId)) return;
+            const message = payload.message;
+            if (!message || !message.id) return;
+            if (document.querySelector(`.message[data-id="${message.id}"]`)) return; // dédup
             const container = document.querySelector('.messages-container');
-            if (container && !document.querySelector(`.message[data-id="${message.id}"]`)) {
-                appendMessageToDOM(message, container);
-                
-                if (isScrolledToBottom(container)) scrollToBottom(container);
-                else showNewMessagesIndicator(1);
+            if (!container) return;
+            const isOwn = String(message.sender_id) === String(window.currentUserId) &&
+                          String(message.sender_type) === String(window.currentUserType);
+            const wasAtBottom = isScrolledToBottom(container);
+            appendMessageToDOM(message, container);
+            if (isOwn || wasAtBottom) scrollToBottom(container);
+            else showNewMessagesIndicator(1);
+        });
+
+        rt.on('message:updated', (payload) => {
+            if (!payload || String(payload.conversationId) !== String(convId)) return;
+            applyMessageUpdate(payload.messageId, payload.kind, payload.data || {});
+        });
+
+        rt.on('read', (payload) => {
+            if (!payload || String(payload.conversationId) !== String(convId)) return;
+            if (String(payload.userId) === String(window.currentUserId) &&
+                String(payload.userType) === String(window.currentUserType)) return;
+            applyReadReceipt(payload);
+        });
+    });
+
+    // ── Coordination polling ↔ socket global (source unique de vérité de connexion) ──
+    const g = window.wsGlobal;
+    function syncPolling() {
+        const connected = !!window.MsgRealtime && g && typeof g.isConnected === 'function' && g.isConnected();
+        if (connected) window.stopUnifiedPolling?.();
+        else window._setupUnifiedPolling?.();
+    }
+    if (g && typeof g.on === 'function') {
+        g.on('connect', () => {
+            // Re-rejoindre la room après (re)connexion (les rooms ne survivent pas à un reconnect socket.io)
+            if (window.MsgRealtime) { try { window.MsgRealtime.join(convId); } catch (e) {} }
+            syncPolling();
+        });
+        g.on('disconnect', syncPolling);
+    }
+    syncPolling();
+    // Filet : si le socket était déjà connecté avant l'abonnement, ou si MsgRealtime tarde.
+    setTimeout(syncPolling, 6000);
+}
+
+/**
+ * Applique une mise à jour distante sur un message DÉJÀ présent dans le DOM.
+ * @param {number|string} messageId
+ * @param {string} kind  'edit' | 'delete' | 'reaction' | 'pin'
+ * @param {Object} data  charge utile spécifique au type
+ */
+function applyMessageUpdate(messageId, kind, data) {
+    const msgEl = document.querySelector(`.message[data-id="${messageId}"]`);
+    if (!msgEl) return;
+
+    switch (kind) {
+        case 'edit': {
+            const contentEl = document.getElementById(`msg-content-${messageId}`) || msgEl.querySelector('.message-content');
+            const body = (data.body ?? data.contenu ?? '') + '';
+            if (contentEl) contentEl.innerHTML = nl2br(escapeHTML(body));
+            const meta = msgEl.querySelector('.message-meta');
+            if (meta && !meta.querySelector('.edited-tag')) {
+                const editTag = document.createElement('span');
+                editTag.className = 'edited-tag';
+                editTag.innerHTML = '<i class="fas fa-pencil-alt"></i> modifié';
+                meta.insertBefore(editTag, meta.querySelector('.date'));
             }
+            break;
+        }
+        case 'delete': {
+            msgEl.classList.add('deleted');
+            const content = msgEl.querySelector('.message-content');
+            if (content) content.textContent = '[Message supprimé]';
+            msgEl.querySelector('.message-dropdown')?.remove();
+            msgEl.querySelector('.message-reactions')?.remove();
+            msgEl.querySelector('.message-reactions-add')?.remove();
+            msgEl.querySelector('.attachments')?.remove();
+            break;
+        }
+        case 'reaction': {
+            renderReactions(msgEl, messageId, data.reactions || []);
+            break;
+        }
+        case 'pin': {
+            const pinned = !!(data.is_pinned ?? data.pinned);
+            if (pinned) {
+                msgEl.classList.add('pinned');
+                if (!msgEl.querySelector('.pinned-badge')) {
+                    const badge = document.createElement('div');
+                    badge.className = 'pinned-badge';
+                    badge.innerHTML = '<i class="fas fa-thumbtack"></i> Épinglé';
+                    msgEl.prepend(badge);
+                }
+            } else {
+                msgEl.classList.remove('pinned');
+                msgEl.querySelector('.pinned-badge')?.remove();
+            }
+            break;
+        }
+    }
+}
+
+/**
+ * (Re)construit la barre de réactions d'un message (XSS-safe, DOM API).
+ */
+function renderReactions(msgEl, messageId, reactions) {
+    let reactDiv = msgEl.querySelector('.message-reactions');
+    if (!reactions.length) { reactDiv?.remove(); return; }
+    if (!reactDiv) {
+        reactDiv = document.createElement('div');
+        reactDiv.className = 'message-reactions';
+        const reactAdd = msgEl.querySelector('.message-reactions-add');
+        if (reactAdd) msgEl.insertBefore(reactDiv, reactAdd);
+        else msgEl.appendChild(reactDiv);
+    }
+    reactDiv.innerHTML = '';
+    reactions.forEach(r => {
+        const btn = document.createElement('button');
+        btn.className = `reaction-badge ${r.user_reacted ? 'active' : ''}`;
+        btn.append(r.emoji + ' ');
+        const cnt = document.createElement('span');
+        cnt.className = 'reaction-count';
+        cnt.textContent = r.count;
+        btn.appendChild(cnt);
+        btn.addEventListener('click', () => toggleReaction(messageId, r.emoji));
+        reactDiv.appendChild(btn);
+    });
+}
+
+/**
+ * Applique un accusé de lecture live : marque "Vu" tous les messages "self"
+ * dont l'ID est ≤ lastReadMessageId.
+ */
+function applyReadReceipt(payload) {
+    const lastId = parseInt(payload.lastReadMessageId, 10);
+    if (!lastId) return;
+    document.querySelectorAll('.message.self').forEach(el => {
+        const id = parseInt(el.getAttribute('data-id'), 10);
+        if (!id || id > lastId) return;
+        el.classList.add('read');
+        const statusEl = el.querySelector('.message-read-status');
+        if (statusEl && !statusEl.querySelector('.all-read')) {
+            statusEl.textContent = '';
+            const div = document.createElement('div');
+            div.className = 'all-read';
+            div.innerHTML = '<i class="fas fa-check-double"></i> Vu'; // icône statique — pas de donnée user
+            statusEl.appendChild(div);
         }
     });
-    
-    // Écouter les mises à jour de read status
-    window.wsClient.on?.('messageRead', (data) => {
-        updateReadStatus(data);
+}
+
+// ═══════════════════════════════════════════════════
+// BROUILLONS (localStorage)
+// ═══════════════════════════════════════════════════
+
+function setupDrafts() {
+    const textarea = document.querySelector('#messageForm textarea[name="contenu"]');
+    const convId = getConvId();
+    if (!textarea || !convId) return;
+    const key = `msg_draft_${convId}`;
+
+    // Restaurer seulement si vide (ne pas écraser un contenu conservé après erreur serveur)
+    try {
+        const saved = localStorage.getItem(key);
+        if (saved && !textarea.value.trim()) {
+            textarea.value = saved;
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    } catch (e) { /* localStorage indisponible */ }
+
+    let saveTimer = null;
+    textarea.addEventListener('input', () => {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+            try {
+                const v = textarea.value;
+                if (v.trim()) localStorage.setItem(key, v);
+                else localStorage.removeItem(key);
+            } catch (e) { /* quota / mode privé */ }
+        }, 400);
     });
-    
-    // Après 5s, si WS pas connecté → démarrer le polling en fallback
+
+    window.clearMessageDraft = function () { try { localStorage.removeItem(key); } catch (e) {} };
+}
+
+// ═══════════════════════════════════════════════════
+// UPLOAD : glisser-déposer + coller (image)
+// ═══════════════════════════════════════════════════
+
+function setupComposerUploads() {
+    const form = document.getElementById('messageForm');
+    const input = document.getElementById('attachments');
+    if (!form || !input) return;
+    const dropZone = document.querySelector('.reply-box') || form;
+    const textarea = form.querySelector('textarea[name="contenu"]');
+
+    // forms.js n'est pas chargé sur conversation.php : gérer l'aperçu ici (sélection native + D&D)
+    input.addEventListener('change', () => renderAttachmentPreview(input));
+
+    ['dragenter', 'dragover'].forEach(ev => dropZone.addEventListener(ev, (e) => {
+        if (e.dataTransfer && Array.from(e.dataTransfer.types || []).indexOf('Files') !== -1) {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.add('drag-over');
+        }
+    }));
+    ['dragleave', 'dragend'].forEach(ev => dropZone.addEventListener(ev, (e) => {
+        if (e.target === dropZone) dropZone.classList.remove('drag-over');
+    }));
+    dropZone.addEventListener('drop', (e) => {
+        if (!e.dataTransfer || !e.dataTransfer.files || !e.dataTransfer.files.length) return;
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove('drag-over');
+        addFilesToInput(input, e.dataTransfer.files);
+    });
+
+    if (textarea) {
+        textarea.addEventListener('paste', (e) => {
+            const items = e.clipboardData && e.clipboardData.items;
+            if (!items) return;
+            const files = [];
+            for (const it of items) {
+                if (it.kind === 'file') {
+                    const f = it.getAsFile();
+                    if (f) files.push(f);
+                }
+            }
+            if (files.length) {
+                e.preventDefault(); // ne pas coller le binaire comme texte
+                addFilesToInput(input, files);
+            }
+        });
+    }
+}
+
+/**
+ * Fusionne de nouveaux fichiers dans l'input file existant (préserve la sélection courante).
+ */
+function addFilesToInput(input, files) {
+    try {
+        const dt = new DataTransfer();
+        Array.from(input.files || []).forEach(f => dt.items.add(f));
+        Array.from(files).forEach(f => dt.items.add(f));
+        input.files = dt.files;
+    } catch (e) {
+        if (typeof afficherNotificationErreur === 'function') {
+            afficherNotificationErreur("Votre navigateur ne permet pas d'ajouter les fichiers de cette façon.");
+        }
+        return;
+    }
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function renderAttachmentPreview(input) {
+    const fileList = document.getElementById('file-list');
+    if (!fileList) return;
+    fileList.innerHTML = '';
+    Array.from(input.files || []).forEach(file => {
+        const info = document.createElement('div');
+        info.className = 'file-info';
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-file';
+        info.appendChild(icon);
+        const span = document.createElement('span');
+        const size = (typeof formatFileSize === 'function') ? formatFileSize(file.size) : `${file.size} o`;
+        span.textContent = `${file.name} (${size})`;
+        info.appendChild(span);
+        fileList.appendChild(info);
+    });
+}
+
+// ═══════════════════════════════════════════════════
+// LIGHTBOX images inline
+// ═══════════════════════════════════════════════════
+
+function setupInlineImageLightbox() {
+    document.addEventListener('click', (e) => {
+        const img = e.target.closest('.msg-inline-img');
+        if (!img) return;
+        const full = img.getAttribute('data-full') || img.getAttribute('src');
+        if (full) openImageLightbox(full);
+    });
+}
+
+function openImageLightbox(src) {
+    document.getElementById('msg-lightbox')?.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'msg-lightbox';
+    overlay.className = 'msg-lightbox-overlay';
+    // Styles appliqués via propriétés CSSOM (compatibles CSP, pas d'attribut style inline)
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.right = '0';
+    overlay.style.bottom = '0';
+    overlay.style.background = 'rgba(0,0,0,0.85)';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.zIndex = '3000';
+    overlay.style.cursor = 'zoom-out';
+    overlay.style.padding = '24px';
+
+    const big = document.createElement('img');
+    big.className = 'msg-lightbox-img';
+    big.src = src; // URL interne (download.php) — aucun HTML injecté
+    big.alt = '';
+    big.style.maxWidth = '92%';
+    big.style.maxHeight = '92%';
+    big.style.objectFit = 'contain';
+    big.style.borderRadius = '8px';
+    big.style.boxShadow = '0 8px 40px rgba(0,0,0,0.5)';
+    overlay.appendChild(big);
+
+    function close() {
+        overlay.remove();
+        document.removeEventListener('keydown', onKey);
+    }
+    function onKey(ev) { if (ev.key === 'Escape') close(); }
+
+    overlay.addEventListener('click', close);
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(overlay);
+}
+
+// ═══════════════════════════════════════════════════
+// SÉPARATEUR NON LUS
+// ═══════════════════════════════════════════════════
+
+function scrollToUnreadDivider() {
+    const divider = document.querySelector(
+        '.unread-divider, #unread-divider, [data-unread-divider], .messages-unread-separator, .new-messages-separator'
+    );
+    if (!divider) return;
+    // Après le scroll-en-bas initial (synchrone) : amener en douceur au séparateur.
+    setTimeout(() => { divider.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 200);
+}
+
+// ═══════════════════════════════════════════════════
+// ACTIONS CONVERSATION : sourdine (mute) / épingle (pin)
+// ═══════════════════════════════════════════════════
+
+function setupConversationMuteAndPin() {
+    const convId = getConvId();
+    const actions = document.querySelector('.conversation-actions');
+    if (!convId || !actions) return;
+    if (actions.querySelector('.conv-rt-actions')) return; // anti double-injection
+
+    const wrap = document.createElement('div');
+    wrap.className = 'conv-rt-actions';
+
+    // ── Sourdine ──
+    const muted = actions.getAttribute('data-muted') === '1';
+    const muteBtn = document.createElement('a');
+    muteBtn.href = '#';
+    muteBtn.className = 'action-button conv-mute-btn';
+    muteBtn.dataset.muted = muted ? '1' : '0';
+    setMuteBtnLabel(muteBtn, muted);
+    muteBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (muteBtn.dataset.muted === '1') doUnmute(convId, muteBtn);
+        else toggleMuteMenu(convId, muteBtn);
+    });
+
+    // ── Épingle ──
+    const pinned = actions.getAttribute('data-pinned') === '1';
+    const pinBtn = document.createElement('a');
+    pinBtn.href = '#';
+    pinBtn.className = 'action-button conv-pin-btn';
+    pinBtn.dataset.pinned = pinned ? '1' : '0';
+    setPinBtnLabel(pinBtn, pinned);
+    pinBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        doPinConversation(convId, pinBtn.dataset.pinned !== '1', pinBtn);
+    });
+
+    wrap.appendChild(muteBtn);
+    wrap.appendChild(pinBtn);
+    actions.prepend(wrap);
+}
+
+function setMuteBtnLabel(btn, muted) {
+    btn.innerHTML = muted
+        ? '<i class="fas fa-bell"></i> Réactiver les notifications'
+        : '<i class="fas fa-bell-slash"></i> Mettre en sourdine';
+}
+
+function setPinBtnLabel(btn, pinned) {
+    btn.innerHTML = pinned
+        ? '<i class="fas fa-thumbtack"></i> Désépingler la conversation'
+        : '<i class="fas fa-thumbtack"></i> Épingler la conversation';
+}
+
+function toggleMuteMenu(convId, anchor) {
+    document.querySelectorAll('.conv-mute-menu').forEach(m => m.remove());
+
+    const menu = document.createElement('div');
+    menu.className = 'conv-mute-menu';
+    menu.style.position = 'absolute';
+    menu.style.zIndex = '2000';
+    menu.style.background = 'var(--surface, #fff)';
+    menu.style.border = '1px solid rgba(0,0,0,0.12)';
+    menu.style.borderRadius = '8px';
+    menu.style.boxShadow = '0 6px 24px rgba(0,0,0,0.18)';
+    menu.style.padding = '4px';
+    menu.style.marginTop = '4px';
+    menu.style.display = 'flex';
+    menu.style.flexDirection = 'column';
+
+    const options = [
+        { label: '1 heure', secs: 3600 },
+        { label: '8 heures', secs: 8 * 3600 },
+        { label: "Jusqu'à demain", tomorrow: true },
+        { label: 'Toujours', forever: true },
+    ];
+
+    options.forEach(opt => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'conv-mute-option btn-icon';
+        b.textContent = opt.label;
+        b.style.textAlign = 'left';
+        b.style.padding = '8px 12px';
+        b.style.whiteSpace = 'nowrap';
+        b.addEventListener('click', () => {
+            let until;
+            if (opt.forever) {
+                until = null; // sourdine permanente (action=unmute pour lever)
+            } else if (opt.tomorrow) {
+                const d = new Date();
+                d.setHours(24, 0, 0, 0); // minuit prochain
+                until = Math.floor(d.getTime() / 1000);
+            } else {
+                until = Math.floor(Date.now() / 1000) + opt.secs;
+            }
+            doMute(convId, until, anchor);
+            menu.remove();
+        });
+        menu.appendChild(b);
+    });
+
+    anchor.parentNode.appendChild(menu);
+
     setTimeout(() => {
-        if (!window.wsClient.connected && !window.unifiedPollingId) {
-            console.log('WebSocket non connecté — démarrage du polling fallback');
-            window._setupUnifiedPolling?.();
-        }
-    }, 5000);
+        document.addEventListener('click', function closeM(ev) {
+            if (!menu.contains(ev.target) && ev.target !== anchor) {
+                menu.remove();
+                document.removeEventListener('click', closeM);
+            }
+        });
+    }, 0);
+}
 
-    // Réactiver le polling si WebSocket se déconnecte
-    window.wsClient.on?.('disconnect', () => {
-        console.log('WebSocket déconnecté — réactivation du polling');
-        if (!window.unifiedPollingId) {
-            window._setupUnifiedPolling?.();
-        }
+function doMute(convId, until, btn) {
+    const prevHtml = btn.innerHTML;
+    const prevMuted = btn.dataset.muted;
+    // Optimiste
+    btn.dataset.muted = '1';
+    setMuteBtnLabel(btn, true);
+
+    apiFetch(`${getApiBase()}/messagerie.php?resource=conversations&action=mute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: parseInt(convId, 10), until })
+    })
+    .then(data => {
+        if (!data || !data.success) throw new Error((data && data.error) || 'Erreur lors de la mise en sourdine');
+        afficherNotification('Conversation mise en sourdine', 'success');
+    })
+    .catch(e => {
+        btn.dataset.muted = prevMuted;
+        btn.innerHTML = prevHtml;
+        if (e.name !== 'AbortError') afficherNotificationErreur(e.message);
     });
+}
 
-    // Si WS se (re)connecte, arrêter proprement le polling (timer + écouteur visibilitychange).
-    window.wsClient.on?.('connect', () => {
-        if (window.unifiedPollingActive) {
-            window.stopUnifiedPolling?.();
-            console.log('WebSocket connecté — polling désactivé');
-        }
+function doUnmute(convId, btn) {
+    const prevHtml = btn.innerHTML;
+    const prevMuted = btn.dataset.muted;
+    btn.dataset.muted = '0';
+    setMuteBtnLabel(btn, false);
+
+    apiFetch(`${getApiBase()}/messagerie.php?resource=conversations&action=unmute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: parseInt(convId, 10) })
+    })
+    .then(data => {
+        if (!data || !data.success) throw new Error((data && data.error) || 'Erreur lors de la réactivation');
+        afficherNotification('Notifications réactivées', 'success');
+    })
+    .catch(e => {
+        btn.dataset.muted = prevMuted;
+        btn.innerHTML = prevHtml;
+        if (e.name !== 'AbortError') afficherNotificationErreur(e.message);
+    });
+}
+
+function doPinConversation(convId, pin, btn) {
+    const prevHtml = btn.innerHTML;
+    const prevPinned = btn.dataset.pinned;
+    btn.dataset.pinned = pin ? '1' : '0';
+    setPinBtnLabel(btn, pin);
+
+    apiFetch(`${getApiBase()}/messagerie.php?resource=conversations&action=${pin ? 'pin' : 'unpin'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: parseInt(convId, 10) })
+    })
+    .then(data => {
+        if (!data || !data.success) throw new Error((data && data.error) || 'Erreur');
+        afficherNotification(pin ? 'Conversation épinglée' : 'Conversation désépinglée', 'success');
+    })
+    .catch(e => {
+        btn.dataset.pinned = prevPinned;
+        btn.innerHTML = prevHtml;
+        if (e.name !== 'AbortError') afficherNotificationErreur(e.message);
     });
 }
 

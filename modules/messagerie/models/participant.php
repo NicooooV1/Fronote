@@ -119,8 +119,9 @@ function isConversationModerator($userId, $userType, $conversationId) {
     
     $stmt = $pdo->prepare("
         SELECT id FROM conversation_participants
-        WHERE conversation_id = ? AND user_id = ? AND user_type = ? 
+        WHERE conversation_id = ? AND user_id = ? AND user_type = ?
         AND (is_moderator = 1 OR is_admin = 1)
+        AND is_deleted = 0
     ");
     $stmt->execute([$conversationId, $userId, $userType]);
     
@@ -140,6 +141,7 @@ function isConversationCreator($userId, $userType, $conversationId) {
     $stmt = $pdo->prepare("
         SELECT id FROM conversation_participants
         WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND is_admin = 1
+        AND is_deleted = 0
     ");
     $stmt->execute([$conversationId, $userId, $userType]);
     
@@ -159,7 +161,7 @@ function promoteToModerator($participantId, $promoterId, $promoterType, $convers
     
     // Vérifier que le promoteur est admin de la conversation
     if (!isConversationCreator($promoterId, $promoterType, $conversationId)) {
-        throw new Exception("Vous n'êtes pas autorisé à promouvoir des modérateurs");
+        throw new \RuntimeException("Vous n'êtes pas autorisé à promouvoir des modérateurs");
     }
     
     $stmt = $pdo->prepare("
@@ -185,7 +187,7 @@ function demoteFromModerator($participantId, $demoterId, $demoterType, $conversa
     
     // Vérifier que la personne qui rétrograde est admin de la conversation
     if (!isConversationCreator($demoterId, $demoterType, $conversationId)) {
-        throw new Exception("Vous n'êtes pas autorisé à rétrograder des modérateurs");
+        throw new \RuntimeException("Vous n'êtes pas autorisé à rétrograder des modérateurs");
     }
     
     $stmt = $pdo->prepare("
@@ -212,12 +214,12 @@ function addParticipantToConversation($conversationId, $userId, $userType, $adde
     
     // Vérifier que l'ajouteur est participant à la conversation
     if (!isConversationModerator($adderId, $adderType, $conversationId)) {
-        throw new Exception("Vous n'êtes pas autorisé à ajouter des participants");
+        throw new \RuntimeException("Vous n'êtes pas autorisé à ajouter des participants");
     }
 
     // Cloisonnement tenant : refuser tout participant hors de l'établissement courant.
     if (!participantInEstablishment((int) $userId, (string) $userType)) {
-        throw new Exception("Participant hors de votre établissement.");
+        throw new \RuntimeException("Participant hors de votre établissement.");
     }
 
     // Vérifier que l'utilisateur n'est pas déjà participant
@@ -228,7 +230,7 @@ function addParticipantToConversation($conversationId, $userId, $userType, $adde
     $check->execute([$conversationId, $userId, $userType]);
     
     if ($check->fetch()) {
-        throw new Exception("Cet utilisateur est déjà participant à la conversation");
+        throw new \InvalidArgumentException("Cet utilisateur est déjà participant à la conversation");
     }
     
     // Ajouter le participant
@@ -255,7 +257,7 @@ function removeParticipant($participantId, $removerId, $removerType, $conversati
     
     // Vérifier que la personne qui supprime est admin ou modérateur
     if (!isConversationModerator($removerId, $removerType, $conversationId)) {
-        throw new Exception("Vous n'êtes pas autorisé à supprimer des participants");
+        throw new \RuntimeException("Vous n'êtes pas autorisé à supprimer des participants");
     }
     
     // Récupérer les informations du participant à supprimer
@@ -267,7 +269,7 @@ function removeParticipant($participantId, $removerId, $removerType, $conversati
     $participant = $stmt->fetch();
     
     if (!$participant) {
-        throw new Exception("Participant introuvable");
+        throw new \OutOfBoundsException("Participant introuvable");
     }
     
     // Vérifier qu'on ne supprime pas un admin (sauf si on est admin soi-même)
@@ -279,7 +281,7 @@ function removeParticipant($participantId, $removerId, $removerType, $conversati
     $isAdmin = $checkAdmin->fetch();
     
     if ($isAdmin && !isConversationCreator($removerId, $removerType, $conversationId)) {
-        throw new Exception("Vous ne pouvez pas supprimer l'administrateur de la conversation");
+        throw new \RuntimeException("Vous ne pouvez pas supprimer l'administrateur de la conversation");
     }
     
     // Marquer comme supprimé pour l'utilisateur

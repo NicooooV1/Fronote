@@ -37,7 +37,10 @@ function getConversations($userId, $userType, $dossier = 'reception', $limit = 2
                c.updated_at as dernier_message,
                lm.body as apercu,
                lm.status as status,
-               cp.unread_count as non_lus
+               cp.unread_count as non_lus,
+               cp.is_pinned as is_pinned,
+               cp.muted_until as muted_until,
+               CASE WHEN cp.muted_until IS NOT NULL AND cp.muted_until > NOW() THEN 1 ELSE 0 END as is_muted
         FROM conversations c
         JOIN conversation_participants cp ON c.id = cp.conversation_id
         LEFT JOIN messages lm ON lm.id = c.last_message_id
@@ -79,7 +82,8 @@ function getConversations($userId, $userType, $dossier = 'reception', $limit = 2
                           AND NOT EXISTS (SELECT 1 FROM messages WHERE conversation_id = c.id AND status = 'annonce')";
     }
     
-    $baseQuery .= $folderCondition . " ORDER BY c.updated_at DESC LIMIT ? OFFSET ?";
+    // Épinglées d'abord (par participant), puis par récence du dernier message.
+    $baseQuery .= $folderCondition . " ORDER BY cp.is_pinned DESC, c.updated_at DESC LIMIT ? OFFSET ?";
     $countQuery .= $folderCondition;
     
     // Compter le total
@@ -158,9 +162,37 @@ function searchConversations($userId, $userType, $query, $limit = 20, $offset = 
         ORDER BY (COALESCE(relevance_subject, 0) * 2 + COALESCE(relevance_body, 0)) DESC
         LIMIT ? OFFSET ?
     ");
-    $searchTerm = '*' . str_replace(' ', '* *', trim($query)) . '*';
-    $stmt->execute([$searchTerm, $searchTerm, $userId, $userType, $searchTerm, $searchTerm, $limit, $offset]);
-    $conversations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Neutraliser les opérateurs du mode booléen fulltext (+ - < > ( ) ~ * " @) : laissés bruts,
+    // ils forment une syntaxe invalide et provoquent une erreur 1064. On les remplace par des espaces
+    // puis on normalise les blancs avant de construire le terme booléen.
+    $clean = preg_replace('/[+\-<>()~*"@]+/u', ' ', (string) $query);
+    $clean = trim(preg_replace('/\s+/u', ' ', $clean));
+    $searchTerm = $clean === '' ? '' : '*' . str_replace(' ', '* *', $clean) . '*';
+
+    try {
+        $stmt->execute([$searchTerm, $searchTerm, $userId, $userType, $searchTerm, $searchTerm, $limit, $offset]);
+        $conversations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (\PDOException $e) {
+        // Repli sûr : si le fulltext échoue malgré tout (syntaxe booléenne, index absent…),
+        // basculer sur une recherche LIKE qui ne peut pas provoquer d'erreur de syntaxe.
+        $like = '%' . addcslashes($clean, '%_\\') . '%';
+        $fallback = $pdo->prepare("
+            SELECT DISTINCT c.id, c.subject as titre,
+                   c.type,
+                   c.created_at as date_creation,
+                   c.updated_at as dernier_message,
+                   cp.unread_count as non_lus
+            FROM conversations c
+            JOIN conversation_participants cp ON c.id = cp.conversation_id
+            LEFT JOIN messages m ON m.conversation_id = c.id
+            WHERE cp.user_id = ? AND cp.user_type = ? AND cp.is_deleted = 0
+              AND (c.subject LIKE ? OR m.body LIKE ?)
+            ORDER BY c.updated_at DESC
+            LIMIT ? OFFSET ?
+        ");
+        $fallback->execute([$userId, $userType, $like, $like, $limit, $offset]);
+        $conversations = $fallback->fetchAll(PDO::FETCH_ASSOC);
+    }
     
     // Batch-charger les participants
     if (!empty($conversations)) {
@@ -224,7 +256,7 @@ function createConversation($titre, $type, $createurId, $createurType, $particip
         // hors établissement fait échouer (et rollback) toute la création — anti-injection cross-tenant.
         foreach ($participants as $p) {
             if (!participantInEstablishment((int) $p['id'], (string) $p['type'])) {
-                throw new Exception("Participant hors de votre établissement.");
+                throw new \RuntimeException("Participant hors de votre établissement.");
             }
         }
 
@@ -312,9 +344,133 @@ function unarchiveConversation($convId, $userId, $userType) {
  * @param string $userType
  * @return bool
  */
+/**
+ * Sentinelle « mute permanent » : muted_until fixé très loin dans le futur.
+ * Un simple SELECT muted_until > NOW() suffit alors partout (liste, notify),
+ * sans colonne booléenne supplémentaire.
+ */
+const MUTE_FOREVER = '2099-12-31 23:59:59';
+
+/**
+ * Coupe les notifications d'une conversation pour le participant courant.
+ * Le participant continue de RECEVOIR les messages ; seule la notification
+ * push/desktop est supprimée (cf. notify path dans models/message.php).
+ *
+ * @param int         $convId
+ * @param int         $userId
+ * @param string      $userType
+ * @param string|null $mutedUntil DATETIME 'Y-m-d H:i:s' déjà résolu, ou NULL = mute permanent (sentinelle far-future)
+ * @return bool true si la ligne participant a été mise à jour
+ */
+function muteConversation($convId, $userId, $userType, $mutedUntil = null) {
+    global $pdo;
+
+    // NULL / "forever" → sentinelle far-future : la conversation reste muette
+    // tant que l'utilisateur ne l'a pas réactivée explicitement.
+    $value = ($mutedUntil === null || $mutedUntil === '') ? MUTE_FOREVER : $mutedUntil;
+
+    $stmt = $pdo->prepare("
+        UPDATE conversation_participants
+        SET muted_until = ?
+        WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND is_deleted = 0
+    ");
+    $stmt->execute([$value, $convId, $userId, $userType]);
+
+    return $stmt->rowCount() > 0;
+}
+
+/**
+ * Réactive les notifications d'une conversation pour le participant courant.
+ * @return bool true si la ligne participant a été mise à jour
+ */
+function unmuteConversation($convId, $userId, $userType) {
+    global $pdo;
+
+    $stmt = $pdo->prepare("
+        UPDATE conversation_participants
+        SET muted_until = NULL
+        WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND is_deleted = 0
+    ");
+    $stmt->execute([$convId, $userId, $userType]);
+
+    return $stmt->rowCount() > 0;
+}
+
+/**
+ * Épingle une conversation en tête de liste pour le participant courant.
+ * L'épinglage est PROPRE à chaque participant (colonne sur conversation_participants).
+ * @return bool
+ */
+function pinConversation($convId, $userId, $userType) {
+    global $pdo;
+
+    $stmt = $pdo->prepare("
+        UPDATE conversation_participants
+        SET is_pinned = 1
+        WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND is_deleted = 0
+    ");
+    $stmt->execute([$convId, $userId, $userType]);
+
+    return $stmt->rowCount() > 0;
+}
+
+/**
+ * Désépingle une conversation pour le participant courant.
+ * @return bool
+ */
+function unpinConversation($convId, $userId, $userType) {
+    global $pdo;
+
+    $stmt = $pdo->prepare("
+        UPDATE conversation_participants
+        SET is_pinned = 0
+        WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND is_deleted = 0
+    ");
+    $stmt->execute([$convId, $userId, $userType]);
+
+    return $stmt->rowCount() > 0;
+}
+
+/**
+ * Résout un mot-clé de durée de mute en DATETIME 'Y-m-d H:i:s'.
+ * Accepte : '1h', '8h', 'tomorrow', 'forever'/'' /null, ou un datetime ISO/SQL.
+ * Retourne NULL pour un mute permanent (le modèle applique alors la sentinelle).
+ *
+ * @param string|null $until
+ * @return string|null  DATETIME résolu, ou NULL pour permanent
+ * @throws \InvalidArgumentException si la valeur est non reconnue / dans le passé
+ */
+function resolveMuteUntil($until) {
+    if ($until === null || $until === '' || $until === 'forever') {
+        return null; // permanent
+    }
+
+    $now = new \DateTimeImmutable('now');
+    switch ($until) {
+        case '1h':
+            return $now->modify('+1 hour')->format('Y-m-d H:i:s');
+        case '8h':
+            return $now->modify('+8 hours')->format('Y-m-d H:i:s');
+        case 'tomorrow':
+            return $now->modify('+1 day')->setTime(8, 0, 0)->format('Y-m-d H:i:s');
+    }
+
+    // Datetime explicite (ISO 8601 ou 'Y-m-d H:i:s'). On le normalise et on
+    // refuse une date déjà passée (mute sans effet) pour éviter les valeurs absurdes.
+    try {
+        $dt = new \DateTimeImmutable((string) $until);
+    } catch (\Exception $e) {
+        throw new \InvalidArgumentException("Date de mise en sourdine invalide");
+    }
+    if ($dt <= $now) {
+        throw new \InvalidArgumentException("La date de mise en sourdine doit être dans le futur");
+    }
+    return $dt->format('Y-m-d H:i:s');
+}
+
 function deleteConversation($convId, $userId, $userType) {
     global $pdo;
-    
+
     // Marquer les notifications comme lues d'abord
     $stmt = $pdo->prepare("
         UPDATE message_notifications AS mn
@@ -365,6 +521,14 @@ function restoreConversation($convId, $userId, $userType) {
         $exists = $checkStmt->fetchColumn() > 0;
         
         if ($exists) {
+            // Un participant actif existe déjà : le sortir des archives. Restaurer une conversation
+            // archivée-mais-non-supprimée doit la désarchiver, sinon 'restore' ne fait rien.
+            $unarchiveStmt = $pdo->prepare("
+                UPDATE conversation_participants
+                SET is_archived = 0
+                WHERE conversation_id = ? AND user_id = ? AND user_type = ? AND is_deleted = 0
+            ");
+            $unarchiveStmt->execute([$convId, $userId, $userType]);
             $pdo->commit();
             return true;
         }
@@ -399,7 +563,7 @@ function restoreConversation($convId, $userId, $userType) {
             $etabChk = $pdo->prepare("SELECT 1 FROM conversations WHERE id = ? AND etablissement_id = ? LIMIT 1");
             $etabChk->execute([$convId, \API\Core\EstablishmentContext::id()]);
             if (!$etabChk->fetchColumn()) {
-                throw new Exception("Conversation hors de votre établissement.");
+                throw new \RuntimeException("Conversation hors de votre établissement.");
             }
             // Créer un nouveau participant
             $insertStmt = $pdo->prepare("

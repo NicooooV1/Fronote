@@ -77,7 +77,7 @@ $types = AnnonceService::getTypes();
             <tr>
                 <td>#<?= $a['id'] ?></td>
                 <td><?= htmlspecialchars(mb_substr($a['titre'], 0, 50)) ?></td>
-                <td><span class="badge <?= AnnonceService::getTypeBadgeClass($a['type']) ?>"><?= $types[$a['type']] ?? $a['type'] ?></span></td>
+                <td><span class="badge <?= AnnonceService::getTypeBadgeClass($a['type']) ?>"><?= e($types[$a['type']] ?? $a['type']) ?></span></td>
                 <td><?= $a['publie'] ? '<i class="fas fa-check text-success"></i>' : '<i class="fas fa-times text-muted"></i>' ?></td>
                 <td><?= $a['epingle'] ? '<i class="fas fa-thumbtack text-primary"></i>' : '-' ?></td>
                 <td><?= $a['nb_lues'] ?? 0 ?></td>

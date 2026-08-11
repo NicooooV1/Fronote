@@ -43,11 +43,11 @@ class PortailParentsService
         $absences->execute([':eid' => $eleveId]);
 
         // Incidents
-        $incidents = $this->pdo->prepare("SELECT type, description, date_incident FROM incidents WHERE eleve_id = :eid ORDER BY date_incident DESC LIMIT 5");
+        $incidents = $this->pdo->prepare("SELECT type_incident AS type, description, date_incident FROM incidents WHERE eleve_id = :eid ORDER BY date_incident DESC LIMIT 5");
         $incidents->execute([':eid' => $eleveId]);
 
         // Emploi du temps du jour
-        $edt = $this->pdo->prepare("SELECT e.heure_debut, e.heure_fin, m.nom AS matiere, e.salle, CONCAT(p.prenom,' ',p.nom) AS professeur FROM emploi_du_temps e JOIN matieres m ON e.id_matiere = m.id LEFT JOIN professeurs p ON e.id_professeur = p.id WHERE e.classe = :c AND e.jour = LOWER(DAYNAME(CURDATE())) ORDER BY e.heure_debut");
+        $edt = $this->pdo->prepare("SELECT e.heure_debut, e.heure_fin, m.nom AS matiere, s.nom AS salle, CONCAT(p.prenom,' ',p.nom) AS professeur FROM emploi_du_temps e JOIN matieres m ON e.matiere_id = m.id LEFT JOIN professeurs p ON e.professeur_id = p.id LEFT JOIN salles s ON e.salle_id = s.id LEFT JOIN classes c ON e.classe_id = c.id WHERE c.nom = :c AND e.jour = LOWER(DAYNAME(CURDATE())) ORDER BY e.heure_debut");
         $edt->execute([':c' => $eleve['classe']]);
 
         // Moyenne générale
@@ -180,7 +180,7 @@ class PortailParentsService
 
     public function getHistoriquePaiements(int $parentId): array
     {
-        $stmt = $this->pdo->prepare("SELECT f.id, f.reference, f.montant, f.statut, f.date_emission, f.date_echeance, f.description FROM factures f WHERE f.parent_id = :pid ORDER BY f.date_emission DESC");
+        $stmt = $this->pdo->prepare("SELECT f.id, f.numero AS reference, f.montant_ttc AS montant, f.statut, f.date_emission, f.date_echeance, f.intitule AS description FROM factures f WHERE f.parent_id = :pid ORDER BY f.date_emission DESC");
         $stmt->execute([':pid' => $parentId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

@@ -32,29 +32,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
             'etablissement_precedent' => trim($_POST['etablissement_precedent'] ?? ''),
             'observations' => trim($_POST['observations'] ?? ''),
         ];
-        $inscId = $inscriptionService->creerInscription($data);
+        try {
+            $inscId = $inscriptionService->creerInscription($data);
 
-        // Upload documents
-        if (!empty($_FILES['documents'])) {
-            $typesDoc = $_POST['type_document'] ?? [];
-            foreach ($_FILES['documents']['name'] as $i => $name) {
-                if ($_FILES['documents']['error'][$i] === UPLOAD_ERR_OK) {
-                    $fichier = [
-                        'name' => $name,
-                        'type' => $_FILES['documents']['type'][$i] ?? '',
-                        'tmp_name' => $_FILES['documents']['tmp_name'][$i],
-                        'error' => $_FILES['documents']['error'][$i],
-                        'size' => $_FILES['documents']['size'][$i] ?? 0,
-                    ];
-                    $typeDoc = $typesDoc[$i] ?? 'autre';
-                    $inscriptionService->ajouterDocument($inscId, $typeDoc, $fichier);
+            // Upload documents
+            if (!empty($_FILES['documents'])) {
+                $typesDoc = $_POST['type_document'] ?? [];
+                foreach ($_FILES['documents']['name'] as $i => $name) {
+                    if ($_FILES['documents']['error'][$i] === UPLOAD_ERR_OK) {
+                        $fichier = [
+                            'name' => $name,
+                            'type' => $_FILES['documents']['type'][$i] ?? '',
+                            'tmp_name' => $_FILES['documents']['tmp_name'][$i],
+                            'error' => $_FILES['documents']['error'][$i],
+                            'size' => $_FILES['documents']['size'][$i] ?? 0,
+                        ];
+                        $typeDoc = $typesDoc[$i] ?? 'autre';
+                        $inscriptionService->ajouterDocument($inscId, $typeDoc, $fichier);
+                    }
                 }
             }
-        }
 
-        $_SESSION['success_message'] = 'Inscription soumise avec succès. Vous serez notifié de la décision.';
-        header('Location: inscriptions.php');
-        exit;
+            $_SESSION['success_message'] = 'Inscription soumise avec succès. Vous serez notifié de la décision.';
+            header('Location: inscriptions.php');
+            exit;
+        } catch (\Throwable $ex) {
+            // Échec d'enregistrement : on ré-affiche le formulaire avec les données saisies.
+            error_log('[inscriptions/formulaire.php] creerInscription: ' . $ex->getMessage());
+            $errors[] = "Une erreur est survenue lors de l'enregistrement de l'inscription. Veuillez réessayer.";
+        }
     }
 }
 ?>

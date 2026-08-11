@@ -39,7 +39,7 @@ $currentPageNum = $pagination['current_page'];
                     <?= date('d/m/Y H:i', strtotime($retard['date_retard'] ?? $retard['date'] ?? '')) ?>
                 </div>
                 <div class="list-cell">
-                    <?= intval($retard['duree'] ?? 0) ?> min
+                    <?= intval($retard['duree_minutes'] ?? 0) ?> min
                 </div>
                 <div class="list-cell">
                     <?= !empty($retard['motif']) ? htmlspecialchars($retard['motif']) : '<em>Non spécifié</em>' ?>
@@ -53,11 +53,8 @@ $currentPageNum = $pagination['current_page'];
                 </div>
                 <div class="list-actions">
                     <div class="action-buttons">
-                        <?php if (canManageAbsences()): ?>
-                        <a href="modifier_retard.php?id=<?= $retard['id'] ?>" class="btn-icon" title="Modifier">
-                            <i class="fas fa-edit"></i>
-                        </a>
-                        <?php endif; ?>
+                        <?php // Pas de page d'édition dédiée aux retards (modifier_retard.php inexistant) :
+                              // la gestion se fait via retards.php. Bouton masqué pour éviter un 404. ?>
                     </div>
                 </div>
             </div>

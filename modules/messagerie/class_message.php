@@ -21,7 +21,7 @@ $user = requireAuth();
 
 // Vérifier que l'utilisateur est un professeur
 if ($user['type'] !== 'professeur') {
-    redirect('index.php');
+    redirect('modules/messagerie/index.php');
 }
 
 // Définir le titre de la page

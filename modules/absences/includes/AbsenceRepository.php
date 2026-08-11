@@ -82,10 +82,12 @@ class AbsenceRepository
 
     private function getAbsencesAdmin(string $dateDebut, string $dateFin, string $classe, string $justifie): array
     {
-        $sql = "SELECT a.*, e.nom, e.prenom, e.classe 
-                FROM absences a 
-                JOIN eleves e ON a.id_eleve = e.id 
+        $sql = "SELECT a.*, e.nom, e.prenom, e.classe
+                FROM absences a
+                JOIN eleves e ON a.id_eleve = e.id
                 WHERE " . $this->buildDateFilter('a', $dateDebut, $dateFin);
+        // Les absences refusées ne comptent pas dans les listes/stats (NULL-safe pour l'historique).
+        $sql .= " AND (a.statut IS NULL OR a.statut <> 'refusee')";
         $params = $this->buildDateParams($dateDebut, $dateFin);
 
         if (!empty($classe)) {
@@ -115,6 +117,7 @@ class AbsenceRepository
                 JOIN eleves e ON a.id_eleve = e.id
                 WHERE e.classe IN ($placeholders)
                 AND " . $this->buildDateFilter('a', $dateDebut, $dateFin);
+        $sql .= " AND (a.statut IS NULL OR a.statut <> 'refusee')";
         $params = array_merge($profClasses, $this->buildDateParams($dateDebut, $dateFin));
         $sql .= $this->buildJustifieFilter($justifie, $params);
         $sql .= " AND e.etablissement_id = ?";
@@ -131,6 +134,7 @@ class AbsenceRepository
                 JOIN eleves e ON a.id_eleve = e.id 
                 WHERE a.id_eleve = ?
                 AND " . $this->buildDateFilter('a', $dateDebut, $dateFin);
+        $sql .= " AND (a.statut IS NULL OR a.statut <> 'refusee')";
         $params = array_merge([$userId], $this->buildDateParams($dateDebut, $dateFin));
         $sql .= " ORDER BY a.date_debut DESC";
 
@@ -148,6 +152,7 @@ class AbsenceRepository
                 JOIN eleves e ON a.id_eleve = e.id 
                 WHERE a.id_eleve IN ($placeholders)
                 AND " . $this->buildDateFilter('a', $dateDebut, $dateFin);
+        $sql .= " AND (a.statut IS NULL OR a.statut <> 'refusee')";
         $params = array_merge($enfants, $this->buildDateParams($dateDebut, $dateFin));
         $sql .= $this->buildJustifieFilter($justifie, $params);
         $sql .= " ORDER BY e.nom, e.prenom, a.date_debut DESC";
@@ -417,23 +422,27 @@ class AbsenceRepository
 
     public function createJustificatif(array $data): int|false
     {
-        $required = ['id_eleve', 'date_soumission', 'date_debut_absence', 'date_fin_absence', 'type', 'motif'];
+        // date_soumission a un DEFAULT (CURRENT_DATE) en base : inutile de l'exiger côté appelant.
+        // type est optionnel (défaut 'absence') ; la colonne 'fichier' n'existe pas (pièces jointes
+        // gérées via justificatif_fichiers). On enregistre les champs réellement transmis par le formulaire.
+        $required = ['id_eleve', 'date_debut_absence', 'date_fin_absence', 'motif'];
         foreach ($required as $field) {
             if (empty($data[$field])) return false;
         }
 
-        $sql = "INSERT INTO justificatifs (etablissement_id, id_eleve, date_soumission, date_debut_absence, date_fin_absence, type, fichier, motif, commentaire)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO justificatifs (etablissement_id, id_eleve, date_debut_absence, date_fin_absence, type, motif, description, soumis_par, id_absence, commentaire)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->pdo->prepare($sql);
         $success = $stmt->execute([
             \API\Core\EstablishmentContext::id(),
             $data['id_eleve'],
-            $data['date_soumission'],
             $data['date_debut_absence'],
             $data['date_fin_absence'],
-            $data['type'],
-            $data['fichier'] ?? null,
+            $data['type'] ?? 'absence',
             $data['motif'],
+            $data['description'] ?? null,
+            $data['soumis_par'] ?? null,
+            $data['id_absence'] ?? null,
             $data['commentaire'] ?? null
         ]);
         return $success ? (int) $this->pdo->lastInsertId() : false;
@@ -482,11 +491,11 @@ class AbsenceRepository
         $sql = "SELECT a.*, e.nom, e.prenom, e.classe
                 FROM absences a
                 JOIN eleves e ON a.id_eleve = e.id
-                WHERE a.id_eleve = ? 
+                WHERE a.id_eleve = ?
                 AND (
-                    (a.date_debut BETWEEN ? AND ?) OR
-                    (a.date_fin BETWEEN ? AND ?) OR
-                    (a.date_debut <= ? AND a.date_fin >= ?)
+                    (DATE(a.date_debut) BETWEEN ? AND ?) OR
+                    (DATE(a.date_fin) BETWEEN ? AND ?) OR
+                    (DATE(a.date_debut) <= ? AND DATE(a.date_fin) >= ?)
                 )
                 ORDER BY a.date_debut DESC";
         return $this->executeQuery($sql, [
@@ -545,7 +554,10 @@ class AbsenceRepository
         $dateFin   = $filters['date_fin']   ?? date('Y-m-d');
         $classe    = $filters['classe']     ?? '';
 
-        $baseWhere = $this->buildDateFilter('a', $dateDebut, $dateFin) . " AND a.etablissement_id = ?";
+        // Les absences refusées ne sont pas comptabilisées dans les statistiques.
+        $baseWhere = $this->buildDateFilter('a', $dateDebut, $dateFin)
+            . " AND a.etablissement_id = ?"
+            . " AND (a.statut IS NULL OR a.statut <> 'refusee')";
         $baseParams = $this->buildDateParams($dateDebut, $dateFin);
 
         // Contrainte de classe
@@ -997,6 +1009,7 @@ class AbsenceRepository
             FROM absences a
             JOIN eleves e ON a.id_eleve = e.id
             WHERE a.date_debut BETWEEN ? AND ? AND e.etablissement_id = ?
+              AND (a.statut IS NULL OR a.statut <> 'refusee')
             GROUP BY e.classe
             ORDER BY nb_absences DESC
         ";
@@ -1007,10 +1020,13 @@ class AbsenceRepository
 
     private function buildDateFilter(string $alias, string $dateDebut, string $dateFin): string
     {
+        // date_debut/date_fin sont des DATETIME ; les bornes sont des dates seules.
+        // On compare via DATE() pour que la borne de fin couvre toute la journée
+        // (sinon une absence de l'après-midi du dernier jour serait exclue).
         return "(
-            ({$alias}.date_debut BETWEEN ? AND ?) OR
-            ({$alias}.date_fin BETWEEN ? AND ?) OR
-            ({$alias}.date_debut <= ? AND {$alias}.date_fin >= ?)
+            (DATE({$alias}.date_debut) BETWEEN ? AND ?) OR
+            (DATE({$alias}.date_fin) BETWEEN ? AND ?) OR
+            (DATE({$alias}.date_debut) <= ? AND DATE({$alias}.date_fin) >= ?)
         )";
     }
 

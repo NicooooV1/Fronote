@@ -45,14 +45,31 @@ class BulletinService {
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
-    public function getBulletinEleve(int $eleveId, int $periodeId): ?array {
-        $stmt = $this->pdo->prepare("
+    /**
+     * Année scolaire courante au format 'YYYY-YYYY' (identique au défaut de la colonne).
+     * Rentrée en septembre : de sept. à déc. → AAAA-(AAAA+1), sinon (AAAA-1)-AAAA.
+     */
+    public function anneeScolaireCourante(): string {
+        $y = (int) date('Y');
+        $m = (int) date('n');
+        return $m >= 9 ? $y . '-' . ($y + 1) : ($y - 1) . '-' . $y;
+    }
+
+    public function getBulletinEleve(int $eleveId, int $periodeId, ?string $anneeScolaire = null): ?array {
+        // annee_scolaire incluse dans la déduplication : la clé UNIQUE porte sur
+        // (eleve_id, periode_id, annee_scolaire) → un bulletin se versionne par année.
+        $sql = "
             SELECT b.*, p.nom AS periode_nom
             FROM bulletins b
             JOIN periodes p ON b.periode_id = p.id
-            WHERE b.eleve_id = ? AND b.periode_id = ? AND b.etablissement_id = ?
-        ");
-        $stmt->execute([$eleveId, $periodeId, \API\Core\EstablishmentContext::id()]);
+            WHERE b.eleve_id = ? AND b.periode_id = ? AND b.etablissement_id = ?";
+        $params = [$eleveId, $periodeId, \API\Core\EstablishmentContext::id()];
+        if ($anneeScolaire !== null) {
+            $sql .= " AND b.annee_scolaire = ?";
+            $params[] = $anneeScolaire;
+        }
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
@@ -170,8 +187,12 @@ class BulletinService {
     }
 
     private function genererBulletinEleve(int $eleveId, int $classeId, int $periodeId, int $trimestre, ?array $statsClasse = null): bool {
-        // Vérifier si déjà existant
-        $existing = $this->getBulletinEleve($eleveId, $periodeId);
+        // Année scolaire courante : versionne le bulletin par année (clé UNIQUE).
+        $anneeScolaire = $this->anneeScolaireCourante();
+
+        // Vérifier si déjà existant POUR CETTE ANNÉE (sinon on écraserait le bulletin
+        // d'une année antérieure au lieu d'en créer un nouveau).
+        $existing = $this->getBulletinEleve($eleveId, $periodeId, $anneeScolaire);
         
         // Calculer moyenne générale (moyenne pondérée par coefficient de matière
         // des moyennes par matière, et non une moyenne plate de toutes les notes).
@@ -216,7 +237,7 @@ class BulletinService {
                 INSERT INTO bulletins (etablissement_id, eleve_id, classe_id, periode_id, annee_scolaire, moyenne_generale, nb_absences, nb_retards)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            $stmt->execute([\API\Core\EstablishmentContext::id(), $eleveId, $classeId, $periodeId, '2025-2026', $moyenne, $nbAbsences, $nbRetards]);
+            $stmt->execute([\API\Core\EstablishmentContext::id(), $eleveId, $classeId, $periodeId, $anneeScolaire, $moyenne, $nbAbsences, $nbRetards]);
             $bulletinId = (int)$this->pdo->lastInsertId();
         }
 

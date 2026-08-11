@@ -72,8 +72,9 @@ if ($isEdit) {
         if ($data['note'] === false || $data['note'] < 0 || $data['note'] > ($note['note_sur'] ?? 20)) {
             $errors[] = "La note doit être comprise entre 0 et " . ($note['note_sur'] ?? 20) . ".";
         }
-        if ($data['coefficient'] === false || $data['coefficient'] <= 0 || $data['coefficient'] > 10) {
-            $errors[] = "Le coefficient doit être compris entre 0.25 et 10.";
+        // coefficient : colonne decimal(3,2) → maximum 9.99 (au-delà : échec insert strict-mode).
+        if ($data['coefficient'] === false || $data['coefficient'] <= 0 || $data['coefficient'] > 9.99) {
+            $errors[] = "Le coefficient doit être compris entre 0.25 et 9.99.";
         }
         if ($data['trimestre'] === false || $data['trimestre'] < 1 || $data['trimestre'] > 3) {
             $errors[] = "Le trimestre doit être compris entre 1 et 3.";
@@ -128,8 +129,9 @@ if ($isEdit) {
         if (!$id_matiere)                                 $errors[] = "Matière invalide.";
         if (!$date_note)                                  $errors[] = "Date d'évaluation requise.";
         if (!$trimestre || $trimestre < 1 || $trimestre > 3) $errors[] = "Trimestre invalide.";
-        if (!$coefficient || $coefficient <= 0)           $errors[] = "Coefficient invalide.";
-        if (!$note_sur || $note_sur <= 0)                 $errors[] = "Barème invalide.";
+        // Bornes alignées sur les colonnes : coefficient decimal(3,2) ≤ 9.99, note_sur decimal(4,2) ≤ 99.99.
+        if (!$coefficient || $coefficient <= 0 || $coefficient > 9.99) $errors[] = "Coefficient invalide (max 9.99).";
+        if (!$note_sur || $note_sur <= 0 || $note_sur > 99.99)         $errors[] = "Barème invalide (max 99).";
         if (empty($type_evaluation))                      $errors[] = "Type d'évaluation requis.";
 
         $hasNote = false;
@@ -253,7 +255,7 @@ include 'includes/header.php';
                             </div>
                             <div>
                                 <label for="coefficient" style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;">Coefficient *</label>
-                                <input type="number" id="coefficient" name="coefficient" step="0.25" min="0.25" max="10"
+                                <input type="number" id="coefficient" name="coefficient" step="0.25" min="0.25" max="9.99"
                                        value="<?= htmlspecialchars($note['coefficient'] ?? '1') ?>" required class="form-control">
                             </div>
                         </div>
@@ -364,11 +366,11 @@ include 'includes/header.php';
                             </div>
                             <div>
                                 <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;"><?= __('label.coefficient') ?></label>
-                                <input type="number" name="coefficient" class="form-control" min="0.25" max="10" step="0.25" value="<?= htmlspecialchars($_POST['coefficient'] ?? '1') ?>" required>
+                                <input type="number" name="coefficient" class="form-control" min="0.25" max="9.99" step="0.25" value="<?= htmlspecialchars($_POST['coefficient'] ?? '1') ?>" required>
                             </div>
                             <div>
                                 <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;">Barème (note sur)</label>
-                                <input type="number" name="note_sur" class="form-control" min="1" max="100" step="1" value="<?= htmlspecialchars($_POST['note_sur'] ?? '20') ?>" required>
+                                <input type="number" name="note_sur" class="form-control" min="1" max="99" step="1" value="<?= htmlspecialchars($_POST['note_sur'] ?? '20') ?>" required>
                             </div>
                         </div>
 

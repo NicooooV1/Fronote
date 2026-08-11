@@ -35,6 +35,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     $creneauId = (int)$_POST['creneau_id'];
     $eleveId = (int)$_POST['eleve_id'];
 
+    // Anti cross-tenant : le créneau doit appartenir à la réunion déjà validée/cloisonnée
+    // ($reunion est chargé plus haut via getReunion(); un créneau d'une autre réunion est refusé).
+    if (!$reunionService->creneauAppartientReunion($creneauId, $reunionId)) {
+        $_SESSION['error_message'] = "Créneau invalide.";
+        header('Location: reunions.php');
+        exit;
+    }
+
     // Anti-IDOR : refuse l'accès à un élève hors périmètre de l'utilisateur.
     if (!assertUserCanReadEleve((int) $eleveId)) {
         $_SESSION['error_message'] = "Vous n'avez pas accès à cet élève.";

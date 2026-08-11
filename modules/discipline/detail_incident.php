@@ -74,7 +74,7 @@ $typesSanction = DisciplineService::getTypesSanction();
                 <h3>Sanctions associées</h3>
                 <?php foreach ($sanctionsIncident as $s): ?>
                 <div class="sanction-mini-card">
-                    <span class="badge badge-sanction"><?= $typesSanction[$s['type_sanction']] ?? $s['type_sanction'] ?></span>
+                    <span class="badge badge-sanction"><?= e($typesSanction[$s['type_sanction']] ?? $s['type_sanction']) ?></span>
                     <span><?= htmlspecialchars(mb_substr($s['motif'], 0, 80)) ?></span>
                     <span class="text-muted"><?= date('d/m/Y', strtotime($s['date_sanction'])) ?></span>
                 </div>

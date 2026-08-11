@@ -580,6 +580,30 @@ class NoteService
     }
 
     /**
+     * Verrou trimestriel : refuse toute écriture/suppression d'une note dont la
+     * matière/classe/trimestre est verrouillée (notes_verrous). Le vrai mécanisme de
+     * verrouillage passe par isMatiereVerrouillee — il n'existe PAS de colonne notes.locked.
+     * On résout ici la classe/matière/trimestre à partir de la note, la table notes ne les
+     * connaissant pas directement (la classe vient de l'élève). Fail closed.
+     */
+    private function assertNoteModifiable(int $id): void
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT n.id_matiere, n.trimestre, e.classe
+             FROM notes n JOIN eleves e ON n.id_eleve = e.id
+             WHERE n.id = ? AND e.etablissement_id = ? LIMIT 1"
+        );
+        $stmt->execute([$id, \API\Core\EstablishmentContext::id()]);
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        if (!$row) {
+            return; // hors périmètre : déjà rejeté par assertNoteInScope en amont
+        }
+        if ($this->isMatiereVerrouillee((int) $row['id_matiere'], (string) $row['classe'], (int) $row['trimestre'], \API\Core\EstablishmentContext::id())) {
+            throw new \RuntimeException("Cette matière est verrouillée pour ce trimestre : la note ne peut pas être modifiée.");
+        }
+    }
+
+    /**
      * Met à jour une note existante (avec vérification du verrouillage + historique).
      */
     public function updateNote(int $id, array $data): bool
@@ -587,10 +611,8 @@ class NoteService
         // Anti-IDOR : la note doit appartenir à un élève de l'établissement courant.
         $this->assertNoteInScope($id);
 
-        // Vérifier le verrouillage
-        if ($this->isNoteLocked($id)) {
-            throw new \RuntimeException("Cette note est verrouillée et ne peut pas être modifiée.");
-        }
+        // Verrou trimestriel (notes_verrous) : une matière verrouillée n'est plus modifiable.
+        $this->assertNoteModifiable($id);
 
         // Sauvegarder l'historique avant modification
         $modifiedBy = $data['modified_by'] ?? 0;
@@ -625,6 +647,9 @@ class NoteService
     {
         // Anti-IDOR : la note doit appartenir à un élève de l'établissement courant.
         $this->assertNoteInScope($id);
+
+        // Verrou trimestriel : on ne supprime pas une note d'une matière verrouillée.
+        $this->assertNoteModifiable($id);
 
         $stmt = $this->pdo->prepare("DELETE FROM notes WHERE id = ?");
         return $stmt->execute([$id]);
@@ -904,8 +929,13 @@ class NoteService
         $this->pdo->beginTransaction();
         try {
             // Anti-IDOR : seuls les élèves de l'établissement courant peuvent recevoir une note.
-            $scopeStmt = $this->pdo->prepare("SELECT 1 FROM eleves WHERE id = ? AND etablissement_id = ? LIMIT 1");
+            // On récupère aussi la classe de l'élève pour contrôler le verrou trimestriel
+            // (notes_verrous) : l'auto-save ne doit pas contourner un verrouillage de matière.
+            $scopeStmt = $this->pdo->prepare("SELECT classe FROM eleves WHERE id = ? AND etablissement_id = ? LIMIT 1");
             $etabId = \API\Core\EstablishmentContext::id();
+            $matId  = (int) ($common['id_matiere'] ?? 0);
+            $trim   = (int) ($common['trimestre'] ?? 0);
+            $verrouCache = []; // classe => bool (verrouillée ?) — évite N requêtes identiques
 
             // Check existing notes for this evaluation (scopé à l'établissement via jointure élève)
             // Clé alignée sur bulkInsert : inclure type_evaluation pour ne pas écraser une
@@ -932,8 +962,18 @@ class NoteService
                 if (!isset($data['note']) || $data['note'] === '') continue;
 
                 $scopeStmt->execute([(int) $data['id_eleve'], $etabId]);
-                if (!$scopeStmt->fetchColumn()) {
+                $classeEleve = $scopeStmt->fetchColumn();
+                if ($classeEleve === false) {
                     continue; // élève hors établissement → ignoré
+                }
+
+                // Verrou trimestriel : fail closed si la matière/classe/trimestre est verrouillée.
+                $classeEleve = (string) $classeEleve;
+                if (!isset($verrouCache[$classeEleve])) {
+                    $verrouCache[$classeEleve] = $this->isMatiereVerrouillee($matId, $classeEleve, $trim, $etabId);
+                }
+                if ($verrouCache[$classeEleve]) {
+                    throw new \RuntimeException("Cette matière est verrouillée pour ce trimestre : la sauvegarde est impossible.");
                 }
 
                 $checkStmt->execute([
@@ -1158,10 +1198,11 @@ class NoteService
      */
     public function verrouillerMatiere(int $matiereId, string $classe, int $trimestre, int $verrouillePar, int $etabId): void
     {
+        // Propriétaire UNIQUE de l'écriture du verrou (notes_verrous). Ne PAS rappeler
+        // bulkLockNotes ici : bulkLockNotes délègue déjà à cette méthode, un rappel créerait
+        // une récursion mutuelle infinie. bulkLockNotes se charge du comptage/log après coup.
         $this->pdo->prepare("INSERT INTO notes_verrous (matiere_id, trimestre, classe, verrouille_par, etablissement_id) VALUES (:mid, :t, :c, :vp, :eid) ON DUPLICATE KEY UPDATE verrouille_par = VALUES(verrouille_par), date_verrouillage = NOW()")
             ->execute([':mid' => $matiereId, ':t' => $trimestre, ':c' => $classe, ':vp' => $verrouillePar, ':eid' => $etabId]);
-
-        $this->bulkLockNotes($matiereId, $classe, $trimestre, $verrouillePar);
     }
 
     /**

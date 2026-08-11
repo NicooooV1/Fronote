@@ -113,7 +113,7 @@ $gravites = DisciplineService::getGravites();
                 <label for="statut"><?= __('label.statut') ?></label>
                 <select name="statut" id="statut" class="form-control" required>
                     <option value="signale" <?= $incident['statut'] === 'signale' ? 'selected' : '' ?>>Signalé</option>
-                    <option value="en_cours" <?= $incident['statut'] === 'en_cours' ? 'selected' : '' ?>><?= __('status.en_cours') ?></option>
+                    <option value="en_traitement" <?= $incident['statut'] === 'en_traitement' ? 'selected' : '' ?>>En traitement</option>
                     <option value="traite" <?= $incident['statut'] === 'traite' ? 'selected' : '' ?>>Traité</option>
                     <option value="classe" <?= $incident['statut'] === 'classe' ? 'selected' : '' ?>>Classé</option>
                 </select>

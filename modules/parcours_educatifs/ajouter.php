@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !validateCSRFToken($_POST['csrf_tok
         'description'       => trim($_POST['description'] ?? ''),
         'date_activite'     => $_POST['date_activite'] ?: date('Y-m-d'),
         'competences_visees' => trim($_POST['competences_visees'] ?? ''),
-        'validation'        => isset($_POST['validation']) ? 1 : 0,
+        'validation'        => isset($_POST['validation']) ? 'valide' : 'non_valide',
         'annee_scolaire'    => $_POST['annee_scolaire'] ?? '',
     ];
     if (!$data['titre'] || !$data['eleve_id'] || !$data['type_parcours']) {
@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !validateCSRFToken($_POST['csrf_tok
         exit;
     }
 }
-$p = $entry ?? ['eleve_id' => '', 'type_parcours' => 'avenir', 'titre' => '', 'description' => '', 'date_activite' => date('Y-m-d'), 'competences_visees' => '', 'validation' => 0, 'annee_scolaire' => ''];
+$p = $entry ?? ['eleve_id' => '', 'type_parcours' => 'avenir', 'titre' => '', 'description' => '', 'date_activite' => date('Y-m-d'), 'competences_visees' => '', 'validation' => 'non_valide', 'annee_scolaire' => ''];
 ?>
 <div class="container mt-4">
     <h2><i class="fas fa-<?= $editId ? 'edit' : 'plus' ?> me-2"></i><?= $editId ? 'Modifier l\'activité' : 'Ajouter une activité au parcours' ?></h2>
@@ -97,7 +97,7 @@ $p = $entry ?? ['eleve_id' => '', 'type_parcours' => 'avenir', 'titre' => '', 'd
             </div>
             <div class="col-12">
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="validation" id="valid" <?= $p['validation'] ? 'checked' : '' ?>>
+                    <input class="form-check-input" type="checkbox" name="validation" id="valid" <?= (($p['validation'] ?? '') === 'valide') ? 'checked' : '' ?>>
                     <label class="form-check-label" for="valid"><?= __('status.valide') ?></label>
                 </div>
             </div>

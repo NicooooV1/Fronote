@@ -49,23 +49,31 @@ $extraCss = [
     'assets/css/styles.css',
     'assets/css/sidebar.css',
 ];
-if (in_array($currentPage, ['conversation'])) {
-    $extraCss[] = 'assets/css/conversation.css';
-}
+// Refonte 2026 : la feuille partagée messagerie.css (chargée en dernier via
+// asset_bust dans $extraHeadHtml ci-dessous) porte le style du fil et de la liste.
+// L'ancienne conversation.css n'est plus incluse (remplacée) pour éviter les conflits.
 
-// Head HTML supplémentaire (CSRF, WebSocket)
+// Head HTML supplémentaire (CSS refonte messagerie + CSRF, WebSocket)
 ob_start();
 ?>
-    <?= csrf_meta() ?>
-    <!-- Socket.IO client chargé par shared_header.php (4.7.5) -->
-    <script src="<?= asset_bust($rootPrefix . 'modules/messagerie/assets/js/websocket-client.js') ?>" nonce="<?= csp_nonce() ?>"></script>
+    <!-- Feuille de style PARTAGÉE de la messagerie (refonte 2026). Émise dans
+         $extraHeadHtml → chargée APRÈS responsive.css : autorité sur le module.
+         Versionnée via asset_bust (cache-busting ?v=mtime). -->
+    <link rel="stylesheet" href="<?= asset_bust($rootPrefix . 'modules/messagerie/assets/css/messagerie.css') ?>">
+    <!-- Le meta csrf-token canonique est émis par shared_header.php (source unique) -->
+    <!-- Socket.IO client + socket GLOBALE UNIQUE (ws-global.js) chargés par shared_header.php.
+         websocket-client.js n'ouvre PLUS de seconde socket : c'est un adaptateur mince
+         (window.MsgRealtime + alias window.wsClient) au-dessus de window.wsGlobal.
+         `defer` → s'exécute après le parsing, avant DOMContentLoaded (donc avant que
+         conversation.js n'appelle MsgRealtime). La résolution de wsGlobal est paresseuse. -->
+    <script src="<?= asset_bust($rootPrefix . 'modules/messagerie/assets/js/websocket-client.js') ?>" nonce="<?= csp_nonce() ?>" defer></script>
     <?php if (isset($wsToken)): ?>
     <script nonce="<?= csp_nonce() ?>">
+        // Identité courante consommée par conversation.js (filtrage de ses propres events).
+        // La connexion WS est établie une seule fois par ws-global.js (window.FRONOTE_WS) :
+        // aucun init de socket ici.
         window.currentUserId = <?= js_json($user['id']) ?>;
         window.currentUserType = <?= js_json($user['type']) ?>;
-        document.addEventListener('DOMContentLoaded', () => {
-            window.wsClient.init(<?= js_json($wsUrl) ?>, <?= js_json($wsToken) ?>);
-        });
     </script>
     <?php endif; ?>
 <?php
@@ -134,3 +142,11 @@ include __DIR__ . '/../../../templates/shared_topbar.php';
 ?>
 
             <div class="content-container">
+<?php
+// Coquille 2 volets (liste + conversation) — refonte 2026. Ouverte uniquement pour
+// les pages concernées ; refermée par la page elle-même avant templates/footer.php.
+// (Les autres pages du module — new_message, annonces… — ne sont pas encapsulées.)
+if (in_array($currentPage, ['index', 'conversation'], true)):
+?>
+            <div class="msg-app msg-app--<?= htmlspecialchars($currentPage) ?>">
+<?php endif; ?>

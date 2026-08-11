@@ -18,6 +18,16 @@ class AppelService
     // ─── Sessions d'appel ────────────────────────────────────────
 
     /**
+     * Vérifie qu'une classe appartient à l'établissement courant (anti cross-tenant).
+     */
+    public function classeAppartientEtablissement(int $classeId): bool
+    {
+        $stmt = $this->pdo->prepare("SELECT 1 FROM classes WHERE id = ? AND etablissement_id = ?");
+        $stmt->execute([$classeId, \API\Core\EstablishmentContext::id()]);
+        return (bool) $stmt->fetchColumn();
+    }
+
+    /**
      * Crée une nouvelle session d'appel.
      */
     public function createAppel(array $data): int

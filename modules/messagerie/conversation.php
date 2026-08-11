@@ -53,11 +53,36 @@ try {
     
     // Récupérer les messages et participants
     if (!$isDeleted) {
+        // Capturer le dernier message lu AVANT le marquage comme lu, afin de positionner
+        // le séparateur « nouveaux messages ». markConversationAsRead() ci-dessous fait
+        // avancer last_read_message_id ; on lit donc sa valeur pré-ouverture ici.
+        // Dernier message lu AVANT le marquage comme lu (séparateur « nouveaux messages »).
+        // Passe par le modèle (pas de SQL brut en page — cloisonnement/ratchet).
+        $lastReadMessageId = getLastReadMessageId($convId, $user['id'], $user['type']);
+
         $messagesResult = getMessages($convId, $user['id'], $user['type']);
         $messages = $messagesResult['messages'];
         $pinnedMessages = $messagesResult['pinned'] ?? [];
         $hasMoreMessages = $messagesResult['has_more'];
         $participants = getParticipants($convId);
+
+        // Nombre de réponses par message parent (badge .msg-reply-count).
+        $replyCounts = getReplyCounts($convId);
+
+        // Séparateur « nouveaux messages » : repérer le premier message (non émis par soi)
+        // dont l'id dépasse last_read_message_id, et compter les nouveaux messages.
+        $firstUnreadId = null;
+        $newMessagesCount = 0;
+        foreach ($messages as $m) {
+            $isSelfMsg = (int) ($m['is_self'] ?? 0) === 1;
+            if (!$isSelfMsg && (int) $m['id'] > $lastReadMessageId) {
+                if ($firstUnreadId === null) {
+                    $firstUnreadId = (int) $m['id'];
+                }
+                $newMessagesCount++;
+            }
+        }
+
         // Ouvrir la conversation (page complète) = intention de lecture : marquage
         // explicite ici (getMessages n'a plus cet effet de bord — cf. audit M5).
         markConversationAsRead($convId, $user['id'], $user['type']);
@@ -67,6 +92,9 @@ try {
         $pinnedMessages = [];
         $hasMoreMessages = $messagesResult['has_more'];
         $participants = getParticipants($convId);
+        $replyCounts = [];
+        $firstUnreadId = null;
+        $newMessagesCount = 0;
     }
     
     $canReply = !$isDeleted && canReplyToAnnouncement($user['id'], $user['type'], $convId, $conversation['type']);
@@ -205,6 +233,40 @@ try {
     $isAdmin = false;
     $isModerator = false;
     $canReply = false;
+    $replyCounts = [];
+    $firstUnreadId = null;
+    $newMessagesCount = 0;
+}
+
+/**
+ * Helpers d'avatar (palier de rôle + initiales), partagés par l'en-tête slim et
+ * message-item.php (défini ici en 1er → message-item saute sa propre définition).
+ */
+if (!function_exists('msgSenderTier')) {
+    function msgSenderTier(string $type): string {
+        static $map = [
+            'super_admin'    => 'plateforme',
+            'administrateur' => 'plateforme',
+            'direction'      => 'direction',
+            'administratif'  => 'administratif',
+            'vie_scolaire'   => 'vie_scolaire',
+            'professeur'     => 'enseignant',
+            'enseignant'     => 'enseignant',
+            'parent'         => 'famille',
+            'eleve'          => 'eleve',
+        ];
+        return $map[$type] ?? 'eleve';
+    }
+}
+if (!function_exists('msgInitials')) {
+    function msgInitials(string $name): string {
+        $name = trim($name);
+        if ($name === '') return '?';
+        $parts = preg_split('/\s+/', $name);
+        $first = mb_substr($parts[0], 0, 1);
+        $last  = count($parts) > 1 ? mb_substr($parts[count($parts) - 1], 0, 1) : '';
+        return mb_strtoupper($first . $last);
+    }
 }
 
 include 'templates/header.php';
@@ -221,13 +283,8 @@ include 'templates/header.php';
     
     <aside class="conversation-sidebar">
         <div class="conversation-info">
-            <h3>
-                Participants 
-                <?php if (!$isDeleted && $isModerator): ?>
-                <button id="add-participant-btn" class="btn-icon"><i class="fas fa-plus-circle"></i></button>
-                <?php endif; ?>
-            </h3>
-            <?php include 'templates/components/participant-list.php'; ?>
+            <?php // Le titre « Participants » + bouton d'ajout sont rendus par participant-list.php
+            include 'templates/components/participant-list.php'; ?>
         </div>
         
         <div class="conversation-actions">
@@ -246,7 +303,33 @@ include 'templates/header.php';
         </div>
     </aside>
     
-    <main class="conversation-main">
+    <main class="conversation-main msg-thread">
+        <header class="conv-thread-header">
+            <div class="conv-thread-head-main">
+                <h1 class="conv-thread-title"><?= h($conversation['titre'] ?? 'Conversation') ?></h1>
+                <div class="conv-thread-sub">
+                    <?php
+                    $activeParticipants = array_values(array_filter($participants ?? [], static function ($p) {
+                        return empty($p['a_quitte']);
+                    }));
+                    $partCount = count($activeParticipants);
+                    ?>
+                    <?php if ($partCount > 0): ?>
+                    <span class="conv-thread-avatars" aria-hidden="true">
+                        <?php foreach (array_slice($activeParticipants, 0, 5) as $p):
+                            $pTier = msgSenderTier((string) ($p['utilisateur_type'] ?? ''));
+                        ?>
+                        <span class="msg-avatar msg-avatar--<?= h($pTier) ?>" title="<?= h($p['nom_complet'] ?? '') ?>"><?= h(msgInitials((string) ($p['nom_complet'] ?? ''))) ?></span>
+                        <?php endforeach; ?>
+                    </span>
+                    <span><?= $partCount ?> participant<?= $partCount > 1 ? 's' : '' ?></span>
+                    <?php endif; ?>
+                    <?php if (($conversation['type'] ?? '') === 'annonce'): ?>
+                    <span class="conv-thread-badge is-annonce"><i class="fas fa-bullhorn"></i> Annonce</span>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </header>
         <?php if (!empty($pinnedMessages)): ?>
         <div class="pinned-messages-bar">
             <div class="pinned-header">
@@ -278,7 +361,29 @@ include 'templates/header.php';
         <?php endif; ?>
         
         <div class="messages-container" data-conv-id="<?= $convId ?>" data-has-more="<?= $hasMoreMessages ? '1' : '0' ?>" role="log" aria-live="polite" aria-relevant="additions" aria-atomic="false">
-            <?php foreach ($messages as $message): ?>
+            <?php
+            // Regroupement visuel : une bulle démarre un groupe si l'expéditeur change,
+            // si l'écart de temps dépasse 10 min, ou si le séparateur « non lus » l'introduit.
+            $prevSenderKey = null;
+            $prevTs = null;
+            foreach ($messages as $message):
+                $isUnreadStart = ($firstUnreadId !== null && (int) $message['id'] === $firstUnreadId);
+                $curSenderKey = ($message['sender_type'] ?? '') . ':' . ($message['sender_id'] ?? '');
+                $curTs = (int) ($message['timestamp'] ?? 0);
+                $isGroupStart = $isUnreadStart
+                    || $curSenderKey !== $prevSenderKey
+                    || ($prevTs !== null && ($curTs - $prevTs) > 600)
+                    || !empty($message['deleted_at']);
+                $prevSenderKey = $curSenderKey;
+                $prevTs = $curTs;
+            ?>
+                <?php if ($isUnreadStart): ?>
+                <div class="unread-divider" data-first-unread-id="<?= $firstUnreadId ?>" role="separator">
+                    <span class="unread-divider-label">
+                        <?= $newMessagesCount ?> nouveau<?= $newMessagesCount > 1 ? 'x' : '' ?> message<?= $newMessagesCount > 1 ? 's' : '' ?>
+                    </span>
+                </div>
+                <?php endif; ?>
                 <?php include 'templates/components/message-item.php'; ?>
             <?php endforeach; ?>
         </div>
@@ -293,7 +398,7 @@ include 'templates/header.php';
     </form>
 </div>
 <?php elseif ($canReply): ?>
-<div class="reply-box">
+<div class="reply-box msg-composer">
     <form method="post" enctype="multipart/form-data" id="messageForm">
         <?= csrf_field() ?>
         <input type="hidden" name="action" value="send_message">
@@ -408,6 +513,10 @@ include 'templates/header.php';
 </form>
 
 <?php
+// Fermer la coquille 2 volets .msg-app ouverte dans templates/header.php.
+if (in_array($currentPage ?? '', ['index', 'conversation'], true)) {
+    echo "</div><!-- /.msg-app -->\n";
+}
 // Inclure le pied de page
 include 'templates/footer.php';
 ?>

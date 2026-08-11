@@ -95,7 +95,9 @@ class CompetenceService {
             $data['matiere_id'] ?? null,
             $data['niveau_acquis'],
             $data['commentaire'] ?? '',
-            $data['periode_id'] ?? null,
+            // 0 = « Toutes périodes » : jamais NULL, sinon l'upsert ne déduplique pas
+            // (NULL != NULL dans la clé UNIQUE uniq_ce_eval).
+            (int)($data['periode_id'] ?? 0),
         ]);
         return (int)$this->pdo->lastInsertId();
     }

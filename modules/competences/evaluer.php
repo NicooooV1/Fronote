@@ -35,15 +35,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $profId = getUserId();
     $matiereId = null;
 
-    // Récupérer la matière du professeur si possible
+    // Récupérer la matière du professeur si possible.
+    // professeurs stocke la matière sous forme de libellé (colonne `matiere`),
+    // on résout l'id via la table matieres (même établissement) pour renseigner matiere_id.
     if (isTeacher()) {
-        $stmt = getPDO()->prepare("SELECT matiere_id FROM professeurs WHERE id = ?");
+        $stmt = getPDO()->prepare(
+            "SELECT m.id
+               FROM professeurs p
+               LEFT JOIN matieres m
+                 ON m.nom = p.matiere AND m.etablissement_id = p.etablissement_id
+              WHERE p.id = ?"
+        );
         $stmt->execute([$profId]);
         $matiereId = (int)$stmt->fetchColumn() ?: null;
     }
 
-    $count = $compService->evaluerLot($compId, $profId, $matiereId, $periodeId ?: null, $evals);
-    $success = "$count évaluation(s) enregistrée(s).";
+    // Un eleve_id/competence_id hors établissement lève une RuntimeException
+    // (anti-IDOR dans evaluer()) : on la capture pour renvoyer une erreur propre
+    // plutôt qu'un 500.
+    try {
+        $count = $compService->evaluerLot($compId, $profId, $matiereId, $periodeId ?: null, $evals);
+        $success = "$count évaluation(s) enregistrée(s).";
+    } catch (\RuntimeException $ex) {
+        $error = 'Enregistrement refusé : données hors de votre établissement.';
+    }
     }
 }
 ?>

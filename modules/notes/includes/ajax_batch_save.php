@@ -31,9 +31,12 @@ try {
         exit;
     }
 
-    // CSRF validation
+    // CSRF validation — endpoint d'AUTO-SAVE appelé toutes les 30 s avec le MÊME jeton.
+    // On utilise check() (validation SANS consommation) et non validate() : le bucket CSRF
+    // est à usage unique, donc valider/consommer ferait échouer (403) toutes les sauvegardes
+    // suivantes et perdrait les notes. check() reste lié à la session et vérifie l'expiration.
     $csrfToken = $input['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
-    if (!validateCSRFToken($csrfToken)) {
+    if (!app('csrf')->check($csrfToken)) {
         http_response_code(403);
         echo json_encode(['error' => 'Jeton CSRF invalide']);
         exit;
@@ -61,6 +64,10 @@ try {
         'inserted' => $result['inserted'],
         'saved_at' => date('H:i:s'),
     ]);
+} catch (\RuntimeException $e) {
+    // Matière verrouillée (verrou trimestriel) → refus explicite, pas une erreur serveur.
+    http_response_code(403);
+    echo json_encode(['error' => $e->getMessage()]);
 } catch (\Exception $e) {
     error_log("ajax_batch_save error: " . $e->getMessage());
     http_response_code(500);

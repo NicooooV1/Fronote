@@ -19,22 +19,29 @@ $role = getUserRole();
 $dateDebut = date('Y-m-d');
 $dateFin   = date('Y-m-d', strtotime('+3 months'));
 
+// Nom de la classe de l'utilisateur (visibilité 'classe' — élèves uniquement ;
+// les professeurs se rabattent sur les événements globaux ou dont ils sont créateurs).
+$classeName = '';
+if ($role === 'eleve') {
+    $stmtCls = $pdo->prepare("SELECT classe FROM eleves WHERE id = ? AND etablissement_id = ?");
+    $stmtCls->execute([$userId, \API\Core\EstablishmentContext::id()]);
+    $classeName = str_replace(' ', '', (string)($stmtCls->fetchColumn() ?: ''));
+}
+
 // Fetch events visible to the user
+// Colonnes réelles : createur (créateur), classes (CSV de noms de classe), visibilite.
 $sql = "
     SELECT e.* FROM evenements e
     WHERE e.etablissement_id = ? AND e.date_debut >= ? AND e.date_debut <= ?
     AND (
         e.visibilite = 'global'
-        OR (e.visibilite = 'classe' AND e.classe_id IN (
-            SELECT classe FROM eleves WHERE id = ? AND ? = 'eleve'
-            UNION SELECT classe_id FROM professeurs WHERE id = ? AND ? = 'professeur'
-        ))
-        OR e.createur_id = ?
+        OR e.createur = ?
+        OR (e.visibilite = 'classe' AND ? <> '' AND FIND_IN_SET(?, REPLACE(e.classes, ' ', '')))
     )
     ORDER BY e.date_debut
 ";
 $stmt = $pdo->prepare($sql);
-$stmt->execute([\API\Core\EstablishmentContext::id(), $dateDebut, $dateFin, $userId, $role, $userId, $role, $userId]);
+$stmt->execute([\API\Core\EstablishmentContext::id(), $dateDebut, $dateFin, $userId, $classeName, $classeName]);
 $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 header('Content-Type: text/calendar; charset=utf-8');

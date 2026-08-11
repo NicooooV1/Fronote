@@ -28,21 +28,33 @@ class InscriptionService
 
     public function creerInscription(array $data): int
     {
+        // annee_scolaire est NOT NULL sans défaut : calcul de l'année en cours
+        // (même logique que lancerCampagneReinscription : sept. = nouvelle année scolaire).
+        $anneeScolaire = $data['annee_scolaire'] ?? $this->anneeScolaireCourante();
         $stmt = $this->pdo->prepare("
             INSERT INTO inscriptions (
                 etablissement_id, parent_id, nom_eleve, prenom_eleve, date_naissance, sexe,
                 classe_demandee, adresse, telephone, email_contact,
-                etablissement_precedent, observations, statut, date_soumission
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'soumise', NOW())
+                etablissement_precedent, observations, annee_scolaire, statut, date_soumission
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'soumise', NOW())
         ");
         $stmt->execute([
             \API\Core\EstablishmentContext::id(),
             $data['parent_id'], $data['nom_eleve'], $data['prenom_eleve'],
             $data['date_naissance'], $data['sexe'], $data['classe_demandee'],
             $data['adresse'], $data['telephone'], $data['email_contact'],
-            $data['etablissement_precedent'] ?? null, $data['observations'] ?? null
+            $data['etablissement_precedent'] ?? null, $data['observations'] ?? null,
+            $anneeScolaire
         ]);
         return (int) $this->pdo->lastInsertId();
+    }
+
+    /** Année scolaire courante au format "YYYY-YYYY" (sept. bascule sur la nouvelle année). */
+    private function anneeScolaireCourante(): string
+    {
+        $m = (int) date('n');
+        $y = (int) date('Y');
+        return $m >= 9 ? "$y-" . ($y + 1) : ($y - 1) . "-$y";
     }
 
     public function getInscription(int $id): ?array
@@ -141,7 +153,7 @@ class InscriptionService
     {
         try {
             $stmt = $this->pdo->prepare(
-                "INSERT INTO audit_log (action, table_name, record_id, user_id, user_type, details, created_at)
+                "INSERT INTO audit_log (action, model, model_id, user_id, user_type, details, created_at)
                  VALUES (?, 'inscriptions', ?, ?, 'administrateur', ?, NOW())"
             );
             $stmt->execute([$action, $inscriptionId, $userId, $details]);

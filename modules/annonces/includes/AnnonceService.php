@@ -22,6 +22,11 @@ class AnnonceService
      */
     public function createAnnonce(array $data): int
     {
+        // Liste blanche : le type et les rôles ciblés sont réaffichés dans les vues,
+        // on rejette donc toute valeur hors référentiel avant persistance (anti-XSS stocké).
+        $type       = self::sanitizeType($data['type'] ?? 'info');
+        $cibleRoles = self::sanitizeRoles($data['cible_roles'] ?? null);
+
         $stmt = $this->pdo->prepare(
             "INSERT INTO annonces (etablissement_id, titre, contenu, type, auteur_id, auteur_type,
                 cible_roles, cible_classes, cible_niveaux, cible_matieres, publie, epingle,
@@ -32,10 +37,10 @@ class AnnonceService
             \API\Core\EstablishmentContext::id(),
             $data['titre'],
             $data['contenu'],
-            $data['type'] ?? 'info',
+            $type,
             $data['auteur_id'],
             $data['auteur_type'],
-            is_array($data['cible_roles'] ?? null) ? json_encode($data['cible_roles']) : ($data['cible_roles'] ?? null),
+            json_encode($cibleRoles),
             is_array($data['cible_classes'] ?? null) ? json_encode($data['cible_classes']) : ($data['cible_classes'] ?? null),
             is_array($data['cible_niveaux'] ?? null) ? json_encode($data['cible_niveaux']) : ($data['cible_niveaux'] ?? null),
             is_array($data['cible_matieres'] ?? null) ? json_encode($data['cible_matieres']) : ($data['cible_matieres'] ?? null),
@@ -50,7 +55,7 @@ class AnnonceService
         $publie = $data['publie'] ?? 1;
         $datePub = $data['date_publication'] ?? date('Y-m-d H:i:s');
         if ($publie && strtotime($datePub) <= time()) {
-            $this->notifyRecipients($annonceId, $data['titre'], $data['type'] ?? 'info');
+            $this->notifyRecipients($annonceId, $data['titre'], $type);
         }
 
         return $annonceId;
@@ -78,6 +83,10 @@ class AnnonceService
      */
     public function updateAnnonce(int $id, array $data): bool
     {
+        // Même liste blanche qu'à la création (anti-XSS stocké sur type / cible_roles).
+        $type       = self::sanitizeType($data['type'] ?? 'info');
+        $cibleRoles = self::sanitizeRoles($data['cible_roles'] ?? null);
+
         $stmt = $this->pdo->prepare(
             "UPDATE annonces SET titre = ?, contenu = ?, type = ?,
                 cible_roles = ?, cible_classes = ?, cible_niveaux = ?, cible_matieres = ?,
@@ -87,8 +96,8 @@ class AnnonceService
         return $stmt->execute([
             $data['titre'],
             $data['contenu'],
-            $data['type'] ?? 'info',
-            is_array($data['cible_roles'] ?? null) ? json_encode($data['cible_roles']) : ($data['cible_roles'] ?? null),
+            $type,
+            json_encode($cibleRoles),
             is_array($data['cible_classes'] ?? null) ? json_encode($data['cible_classes']) : ($data['cible_classes'] ?? null),
             is_array($data['cible_niveaux'] ?? null) ? json_encode($data['cible_niveaux']) : ($data['cible_niveaux'] ?? null),
             is_array($data['cible_matieres'] ?? null) ? json_encode($data['cible_matieres']) : ($data['cible_matieres'] ?? null),
@@ -496,6 +505,43 @@ class AnnonceService
             'evenement' => 'badge-event',
             'sondage'   => 'badge-poll',
         ][$type] ?? 'badge-info';
+    }
+
+    /**
+     * Liste blanche des rôles ciblables par une annonce.
+     */
+    public static function getRoles(): array
+    {
+        return [
+            'eleve'          => 'Élèves',
+            'parent'         => 'Parents',
+            'professeur'     => 'Professeurs',
+            'vie_scolaire'   => 'Vie scolaire',
+            'administrateur' => 'Administrateurs',
+        ];
+    }
+
+    /**
+     * Normalise le type d'annonce contre la liste blanche connue.
+     * Toute valeur inconnue retombe sur 'info' (anti-XSS stocké).
+     */
+    public static function sanitizeType(?string $type): string
+    {
+        return isset(self::getTypes()[(string)$type]) ? (string)$type : 'info';
+    }
+
+    /**
+     * Filtre les rôles ciblés contre la liste blanche.
+     * Les valeurs inconnues sont rejetées (anti-XSS stocké).
+     * @return array liste des rôles valides (éventuellement vide)
+     */
+    public static function sanitizeRoles($roles): array
+    {
+        if (!is_array($roles)) {
+            return [];
+        }
+        $allowed = array_keys(self::getRoles());
+        return array_values(array_intersect(array_map('strval', $roles), $allowed));
     }
 
     // ─── Notifications & Publication programmée ──────────────────

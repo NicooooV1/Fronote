@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS `competences` (
   `domaine` varchar(100) DEFAULT NULL,
   `parent_id` int(11) DEFAULT NULL,
   `niveau` int(11) NOT NULL DEFAULT 1,
+  -- Niveau attendu (libellé) saisi dans le référentiel (referentiel_admin.php).
+  `niveau_attendu` enum('non_evalue','non_acquis','en_cours','acquis','depasse') NOT NULL DEFAULT 'acquis',
   `ordre` int(11) NOT NULL DEFAULT 0,
   `actif` tinyint(1) NOT NULL DEFAULT 1,
   PRIMARY KEY (`id`),
@@ -31,9 +33,14 @@ CREATE TABLE IF NOT EXISTS `competence_evaluations` (
   `niveau_acquis` enum('non_evalue','non_acquis','en_cours','acquis','depasse') NOT NULL DEFAULT 'non_evalue',
   `commentaire` text DEFAULT NULL,
   `date_evaluation` date NOT NULL,
-  `periode_id` int(11) DEFAULT NULL,
+  -- 0 = « Toutes périodes » (jamais NULL) : en MySQL NULL != NULL dans une clé UNIQUE,
+  -- donc un periode_id NULL casserait la déduplication de l'upsert. On stocke 0 à la place.
+  `periode_id` int(11) NOT NULL DEFAULT 0,
   `date_creation` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
+  -- Identité naturelle d'une évaluation : un seul niveau par (élève, compétence, période).
+  -- Indispensable pour que l'upsert (ON DUPLICATE KEY UPDATE) mette à jour au lieu d'empiler.
+  UNIQUE KEY `uniq_ce_eval` (`eleve_id`,`competence_id`,`periode_id`),
   KEY `idx_ce_eleve` (`eleve_id`),
   KEY `idx_ce_competence` (`competence_id`),
   KEY `idx_ce_prof` (`professeur_id`),
