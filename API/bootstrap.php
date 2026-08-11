@@ -469,6 +469,13 @@ $app->singleton('admin_dashboard', function($app) {
 $app->singleton('classes', function($app) {
 	return new \API\Services\Scolaire\ClasseService($app->make('db')->getConnection());
 });
+// Service d'absences : le vrai service vit dans le module `absences` ; on l'expose au
+// conteneur cœur pour que les pages d'administration scolaire (admin/scolaire/absences.php)
+// le résolvent aussi — le provider du module n'étant pas chargé hors contexte module.
+$app->singleton('absences', function($app) {
+	require_once dirname(__DIR__) . '/modules/absences/Services/AbsenceService.php';
+	return new \Modules\Absences\Services\AbsenceService($app->make('db')->getConnection());
+});
 
 // Theme Service (core — theming applicatif)
 $app->singleton('themes', function($app) {
