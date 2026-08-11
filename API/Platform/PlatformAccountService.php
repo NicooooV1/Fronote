@@ -62,6 +62,21 @@ final class PlatformAccountService
         return (int) $this->pdo->lastInsertId();
     }
 
+    /**
+     * Vérification bcrypt factice (constant-time) exécutée quand AUCUN compte ne
+     * correspond, pour que le temps de réponse soit comparable à celui d'un mot de
+     * passe erroné sur un compte existant. Empêche l'énumération de comptes par canal
+     * temporel. Mutualisée par les logins plateforme ET établissement (identifiant inconnu).
+     */
+    public static function dummyVerify(): void
+    {
+        // Hash bcrypt valide de MÊME coût (10) que les mots de passe réellement stockés
+        // dans platform_accounts → password_verify consomme le même temps CPU qu'une
+        // vérification sur compte existant. Un coût différent (ex. 12) rendrait le login
+        // d'un compte inconnu ~4× plus lent, rouvrant un oracle temporel d'énumération.
+        password_verify('dummy_password', '$2y$10$dxC/SO/ZG/0EfkH.q8WwHe58dLnQ4MIiHwY3okP9zP9GLBxmTLLfC');
+    }
+
     /** Recherche un compte plateforme ACTIF par email ou username (pour le login). */
     public function findActiveByLogin(string $login): ?array
     {

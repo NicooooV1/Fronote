@@ -40,9 +40,17 @@ class SessionGuard {
     }
 
     /**
-     * Connecte un utilisateur
+     * Connecte un utilisateur.
+     *
+     * @param array $options Options de connexion :
+     *   - 'impersonating' (bool) : connexion par « agir en tant que » (Support). Dans ce cas
+     *     on NE met PAS à jour last_login de la cible (l'usurpation ne doit pas apparaître comme
+     *     une vraie connexion) et la session active est attribuée à l'acteur Support.
+     *   - 'actor_type' / 'actor_id' : identité réelle (Support) sous laquelle enregistrer la
+     *     session active (session_security), au lieu de la cible impersonifiée.
      */
-    public function login($user) {
+    public function login($user, array $options = []) {
+        $impersonating = !empty($options['impersonating']);
         // Régénérer l'ID de session pour prévenir la fixation de session
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_regenerate_id(true);
@@ -73,24 +81,34 @@ class SessionGuard {
         // Date de dernière connexion sur la table de l'utilisateur. Point de passage
         // unique (couvre 2FA, sans-2FA, remember-me). Best-effort. Avant : jamais écrit
         // pour les 5 types → la colonne restait NULL (« dernière connexion ne marche pas »).
-        try {
-            $llMap = [
-                'eleve' => 'eleves', 'parent' => 'parents', 'professeur' => 'professeurs',
-                'vie_scolaire' => 'vie_scolaire', 'administrateur' => 'administrateurs',
-                'super_admin' => 'super_admins',
-            ];
-            $llTbl = $llMap[$user['type']] ?? null;
-            if ($llTbl !== null && function_exists('getPDO')) {
-                getPDO()->prepare("UPDATE `{$llTbl}` SET last_login = NOW() WHERE id = ?")
-                    ->execute([(int) $user['id']]);
+        // En impersonation, on NE touche PAS last_login de la cible (ce n'est pas une vraie
+        // connexion de l'utilisateur usurpé).
+        if (!$impersonating) {
+            try {
+                $llMap = [
+                    'eleve' => 'eleves', 'parent' => 'parents', 'professeur' => 'professeurs',
+                    'vie_scolaire' => 'vie_scolaire', 'administrateur' => 'administrateurs',
+                    'super_admin' => 'super_admins',
+                ];
+                $llTbl = $llMap[$user['type']] ?? null;
+                if ($llTbl !== null && function_exists('getPDO')) {
+                    getPDO()->prepare("UPDATE `{$llTbl}` SET last_login = NOW() WHERE id = ?")
+                        ->execute([(int) $user['id']]);
+                }
+            } catch (\Throwable $e) {
+                error_log('last_login update failed: ' . $e->getMessage());
             }
-        } catch (\Throwable $e) {
-            error_log('last_login update failed: ' . $e->getMessage());
         }
 
         // Enregistrer la session active (session_security) — mutualisé avec les mondes
-        // plateforme/tenant via recordActiveSession(). Best-effort.
-        self::recordActiveSession($user['type'], (int) $user['id']);
+        // plateforme/tenant via recordActiveSession(). Best-effort. En impersonation, la
+        // session est attribuée à l'ACTEUR Support (actor_type/actor_id) et non à la cible,
+        // pour ne pas simuler une connexion de l'utilisateur usurpé.
+        if ($impersonating && !empty($options['actor_type']) && isset($options['actor_id'])) {
+            self::recordActiveSession((string) $options['actor_type'], (int) $options['actor_id']);
+        } else {
+            self::recordActiveSession($user['type'], (int) $user['id']);
+        }
     }
 
     /**

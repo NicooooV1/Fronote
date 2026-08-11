@@ -32,11 +32,14 @@ final class RoleSync
         }
 
         try {
+            // `sensitive` est un mot réservé MySQL : toutes les colonnes sont back-quotées,
+            // sinon l'INSERT lève une erreur 1064 (rbac_roles restait alors vide → resync à
+            // chaque requête sur role_permissions.php, ~1,3 s par appel).
             $upRole = $this->pdo->prepare(
-                "INSERT INTO rbac_roles (role_key, label, tier, is_system, sensitive, description)
+                "INSERT INTO `rbac_roles` (`role_key`, `label`, `tier`, `is_system`, `sensitive`, `description`)
                  VALUES (?, ?, ?, ?, ?, ?)
-                 ON DUPLICATE KEY UPDATE label=VALUES(label), tier=VALUES(tier),
-                   is_system=VALUES(is_system), sensitive=VALUES(sensitive), description=VALUES(description)"
+                 ON DUPLICATE KEY UPDATE `label`=VALUES(`label`), `tier`=VALUES(`tier`),
+                   `is_system`=VALUES(`is_system`), `sensitive`=VALUES(`sensitive`), `description`=VALUES(`description`)"
             );
             foreach (RoleCatalog::roles() as $key => $meta) {
                 $upRole->execute([

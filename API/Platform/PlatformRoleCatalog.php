@@ -57,6 +57,7 @@ final class PlatformRoleCatalog
         'platform.system.update'               => ['label' => 'Mettre à jour le système', 'sensitive' => true],
         'platform.backups.view'                => ['label' => 'Voir les sauvegardes'],
         'platform.backups.restore'             => ['label' => 'Restaurer une sauvegarde', 'sensitive' => true],
+        'platform.rbac.manage'                 => ['label' => 'Gouverner la matrice rôles→permissions (établissements)', 'sensitive' => true],
     ];
 
     /** role_key => liste de permissions (wildcards '*' et 'domaine.*' autorisés). */
@@ -67,6 +68,7 @@ final class PlatformRoleCatalog
             'platform.establishments.view', 'platform.establishments.suspend', 'platform.establishments.archive',
             'platform.director_invites.*', 'platform.support.*',
             'platform.audit.view', 'platform.system.view', 'platform.backups.view', 'platform.maintenance.manage',
+            'platform.rbac.manage',
         ],
         'platform_support'     => [
             'platform.dashboard.view', 'platform.establishments.view',

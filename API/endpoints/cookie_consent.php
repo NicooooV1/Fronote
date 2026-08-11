@@ -21,7 +21,9 @@ $srcHost = '';
 foreach ([$_SERVER['HTTP_ORIGIN'] ?? '', $_SERVER['HTTP_REFERER'] ?? ''] as $h) {
     if ($h !== '') { $srcHost = strtolower((string) parse_url($h, PHP_URL_HOST)); break; }
 }
-if ($srcHost !== '' && $host !== '' && $srcHost !== $host) {
+// Fail-closed : si NI Origin NI Referer n'est exploitable ($srcHost vide), ou si l'hôte
+// courant est inconnu, on ne peut pas prouver la même origine → on rejette.
+if ($srcHost === '' || $host === '' || $srcHost !== $host) {
     http_response_code(403);
     header('Content-Type: application/json');
     exit(json_encode(['ok' => false, 'error' => 'cross_origin']));

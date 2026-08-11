@@ -99,6 +99,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = __('2fa.error.user_not_found');
             } else {
                 $auth->loginUser($user);
+                // Tolérance d'1h par appareil : cet appareil ne redemandera pas le 2FA pour ce
+                // compte pendant 1 heure (exigence « à chaque nouvelle connexion, dans la limite d'1h »).
+                \API\Security\TwoFactorTrust::grant($userId, $userType);
                 try { app('audit')->logAuth('login', $userType . ':' . $userId, true, ['2fa' => true]); } catch (\Throwable $e) {}
 
                 if ($rememberMe) {

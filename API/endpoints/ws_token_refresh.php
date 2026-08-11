@@ -42,6 +42,14 @@ try {
     );
 
     if (!$token) {
+        // WebSocket désactivé : ce n'est pas une erreur serveur. On répond 200 pour
+        // que le client cesse de marteler des 500 (le temps réel est simplement off).
+        $wsEnabled = getenv('WEBSOCKET_ENABLED');
+        if ($wsEnabled === 'false' || $wsEnabled === '0') {
+            echo json_encode(['enabled' => false]);
+            exit;
+        }
+        // WS activé mais génération réellement en échec (secret manquant, etc.) : 500.
         http_response_code(500);
         echo json_encode(['error' => 'Token generation failed']);
         exit;

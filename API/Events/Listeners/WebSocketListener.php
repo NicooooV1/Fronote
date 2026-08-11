@@ -64,7 +64,8 @@ class WebSocketListener
                 'type'        => 'message_sent',
                 'messageId'   => $event->messageId,
                 'sender_type' => $event->senderType,
-            ]
+            ],
+            $event->senderType
         );
     }
 

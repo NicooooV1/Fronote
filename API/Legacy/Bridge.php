@@ -404,6 +404,14 @@ if (!function_exists('can')) {
 	function can(string $permission, array $ctx = []): bool {
 		try { if (authz()->can($permission, $ctx)) return true; }
 		catch (\Throwable $e) { error_log('[can] authz: ' . $e->getMessage()); }
+		// Anti-IDOR : si un CONTEXTE de périmètre a été fourni, le moteur scopé a évalué le
+		// scope et son refus fait autorité. On NE retombe PAS sur le RBAC legacy (aveugle au
+		// périmètre), qui re-accorderait une permission refusée pour cause de scope. Le repli
+		// legacy ne vaut que pour les vérifs SANS périmètre (clés hors catalogue : admin.*,
+		// matrice module_permissions…) → zéro régression.
+		if (!empty($ctx)) {
+			return false;
+		}
 		try { return app('rbac')->can($permission); }
 		catch (\Throwable $e) { return false; }
 	}

@@ -234,12 +234,12 @@ class BackupService
 				$this->pdo->exec($stmt);
 			}
 
-			$this->pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
 			return true;
-		} catch (\Throwable $e) {
-			$this->pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
-			throw $e;
 		} finally {
+			// Toujours réactiver les contrôles FK, même en cas d'erreur fatale à
+			// mi-restauration : la connexion PDO est persistante, sinon FOREIGN_KEY_CHECKS
+			// resterait à 0 pour toutes les requêtes suivantes de ce process.
+			try { $this->pdo->exec('SET FOREIGN_KEY_CHECKS = 1'); } catch (\Throwable $e) {}
 			if ($oldSqlMode !== null) {
 				try { $this->pdo->exec('SET SESSION sql_mode = ' . $this->pdo->quote((string) $oldSqlMode)); } catch (\Throwable $e) {}
 			}

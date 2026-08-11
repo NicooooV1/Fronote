@@ -111,20 +111,30 @@ try {
             http_response_code(404);
             echo json_encode(['success' => false, 'error' => "Ressource '{$resource}' inconnue"]);
     }
-} catch (\InvalidArgumentException $e) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 } catch (\PDOException $e) {
     // Ne pas divulguer les détails SQL au client : \PDOException hérite de
     // \RuntimeException et serait sinon attrapée plus bas en laissant fuiter
     // getMessage() (requête/erreur SQL en clair). On logge le détail côté serveur.
+    // À placer avant \OutOfBoundsException/\RuntimeException (chaîne d'héritage).
     error_log("API messagerie DB error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Erreur interne du serveur']);
-} catch (\RuntimeException $e) {
+} catch (\InvalidArgumentException $e) {
+    // Validation / entrée client invalide → 400
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-} catch (Exception $e) {
+} catch (\OutOfBoundsException $e) {
+    // Ressource introuvable → 404 (hérite de \RuntimeException : à attraper avant)
+    http_response_code(404);
+    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+} catch (\RuntimeException $e) {
+    // Refus d'autorisation / règle métier (non-participant, non-auteur, non-admin,
+    // annonce en lecture seule, cross-tenant, rôle non autorisé…) → 403
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+} catch (\Throwable $e) {
+    // Erreurs réelles/inattendues (\Error, \Exception non typée) → 500 générique,
+    // sans fuite d'internes. Le détail est journalisé côté serveur uniquement.
     error_log("API messagerie error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Erreur interne du serveur']);
@@ -177,6 +187,17 @@ function handleConversations(string $action, array $user): void {
             if (empty($participants)) throw new Exception('Au moins un participant est requis');
             
             $type = $data['type'] ?? 'standard';
+
+            // Garde de rôle : seuls les personnels (administration, vie scolaire,
+            // professeurs) peuvent créer des conversations de type privilégié
+            // (annonce/classe/information). Élèves et parents en sont limités aux
+            // échanges individuels ou de groupe.
+            $privilegedTypes = ['annonce', 'classe', 'information'];
+            $staffRoles      = ['administrateur', 'vie_scolaire', 'professeur'];
+            if (in_array($type, $privilegedTypes, true) && !in_array($user['type'], $staffRoles, true)) {
+                throw new \RuntimeException('Type de conversation non autorisé pour votre profil');
+            }
+
             $convId = createConversation($titre, $type, $user['id'], $user['type'], $participants);
             
             echo json_encode(['success' => true, 'conversation_id' => $convId]);
@@ -233,6 +254,53 @@ function handleConversations(string $action, array $user): void {
             echo json_encode(['success' => restoreConversation($convId, $user['id'], $user['type'])]);
             break;
 
+        case 'mute':
+            requirePost(); // mutation → POST + CSRF obligatoire
+            $data = getJsonBody();
+            $convId = Validator::id($data['id'] ?? $_GET['id'] ?? null);
+            if (!$convId) throw new \InvalidArgumentException('ID de conversation invalide');
+            requireConversationMembership($convId, $user);
+
+            // 'until' : mot-clé (1h/8h/tomorrow/forever) ou datetime ISO → résolu en DATETIME.
+            // resolveMuteUntil lève \InvalidArgumentException (→ 400) sur valeur invalide/passée.
+            $mutedUntil = resolveMuteUntil($data['until'] ?? null);
+            muteConversation($convId, $user['id'], $user['type'], $mutedUntil);
+            echo json_encode(['success' => true]);
+            break;
+
+        case 'unmute':
+            requirePost(); // mutation → POST + CSRF obligatoire
+            $data = getJsonBody();
+            $convId = Validator::id($data['id'] ?? $_GET['id'] ?? null);
+            if (!$convId) throw new \InvalidArgumentException('ID de conversation invalide');
+            requireConversationMembership($convId, $user);
+
+            unmuteConversation($convId, $user['id'], $user['type']);
+            echo json_encode(['success' => true]);
+            break;
+
+        case 'pin':
+            requirePost(); // mutation → POST + CSRF obligatoire
+            $data = getJsonBody();
+            $convId = Validator::id($data['id'] ?? $_GET['id'] ?? null);
+            if (!$convId) throw new \InvalidArgumentException('ID de conversation invalide');
+            requireConversationMembership($convId, $user);
+
+            pinConversation($convId, $user['id'], $user['type']);
+            echo json_encode(['success' => true]);
+            break;
+
+        case 'unpin':
+            requirePost(); // mutation → POST + CSRF obligatoire
+            $data = getJsonBody();
+            $convId = Validator::id($data['id'] ?? $_GET['id'] ?? null);
+            if (!$convId) throw new \InvalidArgumentException('ID de conversation invalide');
+            requireConversationMembership($convId, $user);
+
+            unpinConversation($convId, $user['id'], $user['type']);
+            echo json_encode(['success' => true]);
+            break;
+
         case 'bulk':
             requirePost();
             $data = getJsonBody();
@@ -249,6 +317,9 @@ function handleConversations(string $action, array $user): void {
                         break;
                     case 'archive':
                         if (archiveConversation($id, $user['id'], $user['type'])) $count++;
+                        break;
+                    case 'unarchive':
+                        if (unarchiveConversation($id, $user['id'], $user['type'])) $count++;
                         break;
                     case 'delete':
                         if (deleteConversation($id, $user['id'], $user['type'])) $count++;
@@ -349,8 +420,15 @@ function handleMessages(string $action, array $user): void {
             $messageId = Validator::id($data['message_id'] ?? null);
             if (!$messageId) throw new Exception('ID de message invalide');
             
+            // deleteMessage renvoie false quand la suppression est refusée
+            // (non-auteur / non-modérateur) OU que le message n'existe pas : dans
+            // les deux cas on retourne une erreur explicite plutôt qu'un faux
+            // succès HTTP 200 ambigu.
             $result = deleteMessage($messageId, $user['id'], $user['type']);
-            echo json_encode(['success' => $result]);
+            if (!$result) {
+                throw new \RuntimeException('Suppression impossible : message introuvable ou non autorisée');
+            }
+            echo json_encode(['success' => true]);
             break;
 
         case 'pin':
@@ -425,7 +503,8 @@ function handleMessages(string $action, array $user): void {
             $since = Validator::positiveInt($_GET['since'] ?? 0);
             
             if (!$convId_) throw new Exception('conv_id requis');
-            
+            requireConversationMembership($convId_, $user); // IDOR : seul un participant peut sonder le statut de lecture
+
             $stmt = $pdo->prepare("SELECT SUM(version) as v FROM conversation_participants WHERE conversation_id = ?");
             $stmt->execute([$convId_]);
             $currentVersion = (int) $stmt->fetch()['v'];
@@ -452,7 +531,16 @@ function handleMessages(string $action, array $user): void {
             $data = getJsonBody();
             $messageId = Validator::id($data['messageId'] ?? null);
             if (!$messageId) throw new Exception('ID de message invalide');
-            
+
+            // IDOR : on déduit la conversation du message puis on exige l'appartenance,
+            // sinon n'importe quel utilisateur pourrait marquer comme lu et lire la
+            // liste des lecteurs (getMessageReadStatus) d'un message d'un autre échange.
+            $mStmt = $pdo->prepare("SELECT conversation_id FROM messages WHERE id = ?");
+            $mStmt->execute([$messageId]);
+            $msgConvId = $mStmt->fetchColumn();
+            if (!$msgConvId) throw new Exception('Message introuvable');
+            requireConversationMembership((int)$msgConvId, $user);
+
             $result = markMessageAsRead($messageId, $user['id'], $user['type']);
             if ($result) {
                 $readStatus = getMessageReadStatus($messageId);
@@ -508,7 +596,11 @@ function handleParticipants(string $action, array $user): void {
             $partId = Validator::id($data['participant_id'] ?? null);
             if (!$cId || !$partId) throw new Exception('Paramètres invalides');
             
-            removeParticipant($partId, $user['id'], $user['type'], $cId);
+            // Retourne le booléen réel : false = 0 ligne affectée (participant
+            // introuvable), on renvoie alors 404 plutôt qu'un faux succès.
+            if (!removeParticipant($partId, $user['id'], $user['type'], $cId)) {
+                throw new \OutOfBoundsException('Aucune modification');
+            }
             echo json_encode(['success' => true]);
             break;
 
@@ -519,7 +611,10 @@ function handleParticipants(string $action, array $user): void {
             $partId = Validator::id($data['participant_id'] ?? null);
             if (!$cId || !$partId) throw new Exception('Paramètres invalides');
             
-            promoteToModerator($partId, $user['id'], $user['type'], $cId);
+            // Retourne le booléen réel : false = 0 ligne affectée → 404.
+            if (!promoteToModerator($partId, $user['id'], $user['type'], $cId)) {
+                throw new \OutOfBoundsException('Aucune modification');
+            }
             echo json_encode(['success' => true]);
             break;
 
@@ -530,7 +625,10 @@ function handleParticipants(string $action, array $user): void {
             $partId = Validator::id($data['participant_id'] ?? null);
             if (!$cId || !$partId) throw new Exception('Paramètres invalides');
             
-            demoteFromModerator($partId, $user['id'], $user['type'], $cId);
+            // Retourne le booléen réel : false = 0 ligne affectée → 404.
+            if (!demoteFromModerator($partId, $user['id'], $user['type'], $cId)) {
+                throw new \OutOfBoundsException('Aucune modification');
+            }
             echo json_encode(['success' => true]);
             break;
 

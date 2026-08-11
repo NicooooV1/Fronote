@@ -66,39 +66,72 @@ class WebSocket {
     }
     
     /**
+     * Établissement courant (cloisonnement tenant du routage temps réel).
+     * Best-effort : 0 si aucun contexte établissement n'est résolu — dans ce cas
+     * le serveur WS abandonne la notification (fail-closed) plutôt que de diffuser.
+     */
+    private static function currentEtab(): int
+    {
+        try {
+            return (int) \API\Core\EstablishmentContext::id();
+        } catch (\Throwable $e) {
+            return 0;
+        }
+    }
+
+    /**
      * Generic domain-agnostic dispatcher.
      * Each module builds its own channel name and payload in its own listener.
+     * Injecte systématiquement l'établissement courant si absent, afin que le
+     * serveur temps réel puisse cloisonner la diffusion par tenant.
      *
      * @param string $channel  WS endpoint path, e.g. '/notify/grade'
      * @param array  $payload  Arbitrary JSON-encodable payload
      */
     public static function dispatch(string $channel, array $payload): array
     {
+        if (!isset($payload['etablissement_id'])) {
+            $payload['etablissement_id'] = self::currentEtab();
+        }
         return self::sendNotification($channel, $payload);
     }
 
     /** @deprecated Use dispatch('/notify/message', [...]) from the messagerie module listener */
     public static function notifyNewMessage($convId, $messageData) {
-        return self::dispatch('/notify/message', ['convId' => $convId, 'message' => $messageData]);
+        // Routage : room 'conversation:<convId>' (participants autorisés) + tenant.
+        return self::dispatch('/notify/message', [
+            'convId' => $convId,
+            'message' => $messageData,
+        ]);
     }
 
     /** @deprecated Use dispatch('/notify/notification', [...]) from the notifications module listener */
-    public static function notifyUser($userId, $data) {
-        return self::dispatch('/notify/notification', ['userId' => $userId, 'data' => $data]);
+    public static function notifyUser($userId, $data, $userType = null) {
+        // Routage : destinataire nominatif. Si le type est connu, il est transmis
+        // (recipientType) pour cibler la room typée 'user:<id>:<type>' ; sinon le
+        // serveur borne la diffusion à 'etab:<etab>:user:<id>' (sûr par tenant).
+        $payload = ['userId' => $userId, 'data' => $data];
+        if ($userType !== null) {
+            $payload['recipientType'] = $userType;
+        }
+        return self::dispatch('/notify/notification', $payload);
     }
 
     /** @deprecated Use dispatch('/notify/grade', [...]) from the notes module listener */
     public static function notifyNewGrade($eleveId, $gradeData) {
+        // Routage : l'élève ciblé (room 'user:<eleveId>:eleve') + tenant.
         return self::dispatch('/notify/grade', ['eleveId' => $eleveId, 'gradeData' => $gradeData]);
     }
 
     /** @deprecated Use dispatch('/notify/absence', [...]) from the absences module listener */
     public static function notifyNewAbsence($eleveId, $absenceData) {
+        // Routage : l'élève ciblé (room 'user:<eleveId>:eleve') + tenant.
         return self::dispatch('/notify/absence', ['eleveId' => $eleveId, 'absenceData' => $absenceData]);
     }
 
     /** @deprecated Use dispatch('/notify/event', [...]) from the agenda module listener */
     public static function notifyNewEvent($targetType, $targetId, $eventData) {
+        // Routage : selon targetType ('all' → établissement, 'class' → classe, 'user' → nominatif).
         return self::dispatch('/notify/event', ['targetType' => $targetType, 'targetId' => $targetId, 'eventData' => $eventData]);
     }
     

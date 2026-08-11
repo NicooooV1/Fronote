@@ -36,6 +36,9 @@ class DataTable
     private int $defaultPerPage = 20;
     private int $maxPerPage = 100;
 
+    /** Borne haute de la page demandée : au-delà, l'OFFSET calculé déborderait. */
+    private const MAX_PAGE = 1000000;
+
     public function __construct(PDO $pdo, string $table)
     {
         $this->pdo = $pdo;
@@ -97,7 +100,18 @@ class DataTable
      */
     public function fetch(array $params = []): array
     {
-        $page    = max(1, (int)($params['page'] ?? 1));
+        // Un paramètre de requête à valeur tableau (?q[]=x) provoquerait un TypeError sur
+        // trim()/strtoupper()/htmlspecialchars() (→ 500 sous PHP 8) : on neutralise toute
+        // valeur non scalaire en la ramenant à '' avant les opérations chaîne.
+        foreach ($params as $k => $v) {
+            if (!is_scalar($v)) {
+                $params[$k] = '';
+            }
+        }
+
+        // Bornage de la page : un ?page= monstrueux (99999999…) doit rester dans une plage
+        // saine pour que l'OFFSET calculé ne déborde pas l'entier ni la requête SQL.
+        $page    = min(self::MAX_PAGE, max(1, (int)($params['page'] ?? 1)));
         $perPage = min($this->maxPerPage, max(1, (int)($params['per_page'] ?? $this->defaultPerPage)));
         $sort    = $params['sort'] ?? null;
         $order   = strtoupper($params['order'] ?? 'ASC');
@@ -272,8 +286,13 @@ class DataTable
         $html = '<form method="GET" action="' . $action . '" class="dt-search-form">';
         // Conserver les params existants sauf search et page
         foreach ($_GET as $k => $v) {
+            // Un param à valeur tableau (?f[]=x) ferait planter htmlspecialchars (TypeError
+            // → 500 sous PHP 8) ; on ignore ces cas non gérés par la barre de recherche.
+            if (is_array($v)) {
+                continue;
+            }
             if ($k !== 'search' && $k !== 'page') {
-                $html .= '<input type="hidden" name="' . htmlspecialchars($k) . '" value="' . htmlspecialchars($v) . '">';
+                $html .= '<input type="hidden" name="' . htmlspecialchars((string) $k) . '" value="' . htmlspecialchars((string) $v) . '">';
             }
         }
         $html .= '<div class="dt-search-group">';

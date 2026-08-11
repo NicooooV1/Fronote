@@ -23,6 +23,18 @@ final class RelationshipService
         'medical_follow_of', 'psychological_follow_of', 'social_follow_of',
     ];
 
+    /** Type de compte/ressource → table (+ colonne etablissement_id) servant à valider
+     *  l'appartenance à l'établissement courant. Liste blanche : tout type absent est
+     *  refusé (fail-closed) et le nom de table n'est jamais issu de l'entrée client. */
+    private const TYPE_TABLES = [
+        'eleve'          => 'eleves',
+        'parent'         => 'parents',
+        'professeur'     => 'professeurs',
+        'vie_scolaire'   => 'vie_scolaire',
+        'administrateur' => 'administrateurs',
+        'classe'         => 'classes',
+    ];
+
     private PDO $pdo;
 
     public function __construct(PDO $pdo)
@@ -44,6 +56,29 @@ final class RelationshipService
             throw new \RuntimeException('Source et cible doivent être des identifiants valides.');
         }
 
+        // ── Cloisonnement multi-établissement (faille : source/cible/etablissement_id
+        //    entièrement pilotés par le client). L'établissement est TOUJOURS déduit du
+        //    contexte courant ; toute valeur cliente ($opts['etablissement_id']) est ignorée.
+        //    Une relation accorde un PÉRIMÈTRE : sans ce garde-fou, on pourrait poser une
+        //    relation dans/vers n'importe quel établissement. Fail-closed sur toute incohérence.
+        $etab = 0;
+        try { $etab = (int) \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { $etab = 0; }
+        if ($etab <= 0) {
+            throw new \RuntimeException("Contexte d'établissement non résolu : création de relation refusée.");
+        }
+        // L'acteur doit être habilité à écrire les relations de CET établissement.
+        if (!$this->actorMayManage($actor, $etab)) {
+            throw new \RuntimeException("Vous n'êtes pas autorisé à créer cette relation.");
+        }
+        // La source ET la cible doivent EXISTER dans cet établissement (anti-injection de
+        // périmètre inter-établissement).
+        if (!$this->accountInEtab($sourceType, $sourceId, $etab)) {
+            throw new \RuntimeException('Compte source introuvable dans cet établissement.');
+        }
+        if (!$this->accountInEtab($targetType, $targetId, $etab)) {
+            throw new \RuntimeException('Compte cible introuvable dans cet établissement.');
+        }
+
         $stmt = $this->pdo->prepare(
             "INSERT INTO account_relationships
                 (source_type, source_id, target_type, target_id, relationship_type,
@@ -58,7 +93,7 @@ final class RelationshipService
         );
         $stmt->execute([
             $sourceType, $sourceId, $targetType, $targetId, $relType,
-            isset($opts['etablissement_id']) && $opts['etablissement_id'] !== '' ? (int) $opts['etablissement_id'] : null,
+            $etab,
             $opts['starts_at'] ?? null,
             $opts['expires_at'] ?? null,
             $actor['type'] ?? null, (int) ($actor['id'] ?? 0),
@@ -67,9 +102,51 @@ final class RelationshipService
 
         $this->audit($actor, 'relationship_added', $targetType, $targetId, [
             'relationship_type' => $relType, 'source_type' => $sourceType, 'source_id' => $sourceId,
-            'etablissement_id' => $opts['etablissement_id'] ?? null, 'expires_at' => $opts['expires_at'] ?? null,
+            'etablissement_id' => $etab, 'expires_at' => $opts['expires_at'] ?? null,
         ]);
         return $id;
+    }
+
+    /**
+     * L'acteur est-il habilité à créer une relation dans l'établissement $etab ?
+     * super_admin : périmètre global. administrateur : uniquement DANS son établissement
+     * (appartenance vérifiée via la session, à défaut en base). Tout autre type : refus.
+     */
+    private function actorMayManage(array $actor, int $etab): bool
+    {
+        $type = (string) ($actor['type'] ?? '');
+        if ($type === 'super_admin') {
+            return true;
+        }
+        if ($type !== 'administrateur') {
+            return false; // seuls administrateur/super_admin gèrent les relations
+        }
+        $actorEtab = isset($actor['etablissement_id']) ? (int) $actor['etablissement_id'] : 0;
+        if ($actorEtab > 0) {
+            return $actorEtab === $etab;
+        }
+        // Établissement non porté par la session → on confirme l'appartenance en base.
+        return $this->accountInEtab('administrateur', (int) ($actor['id'] ?? 0), $etab);
+    }
+
+    /** Le compte/ressource ($type,$id) existe-t-il dans l'établissement $etab ? Fail-closed. */
+    private function accountInEtab(string $type, int $id, int $etab): bool
+    {
+        $table = self::TYPE_TABLES[$type] ?? null;
+        if ($table === null || $id <= 0 || $etab <= 0) {
+            return false; // type non reconnu → refus
+        }
+        try {
+            // $table provient d'une liste blanche (jamais de l'entrée client) : interpolation sûre.
+            $stmt = $this->pdo->prepare(
+                "SELECT 1 FROM `{$table}` WHERE id = ? AND etablissement_id = ? LIMIT 1"
+            );
+            $stmt->execute([$id, $etab]);
+            return (bool) $stmt->fetchColumn();
+        } catch (\PDOException $e) {
+            error_log('[relationships] accountInEtab: ' . $e->getMessage());
+            return false; // toute erreur ⇒ refus
+        }
     }
 
     /** Désactive une relation (soft-delete : is_active=0) par son id. */

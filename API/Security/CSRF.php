@@ -37,16 +37,26 @@ class CSRF {
      * Génère un nouveau token
      */
     public function generate() {
+        // 1) On purge d'abord les tokens EXPIRÉS (seule éviction sûre).
         $this->cleanup();
-        
+
         $token = bin2hex(random_bytes(32));
         $_SESSION[self::SESSION_KEY][$token] = time();
-        
-        // Limiter le nombre de tokens (>= pour ne pas dépasser maxTokens)
-        if (count($_SESSION[self::SESSION_KEY]) >= $this->maxTokens) {
-            array_shift($_SESSION[self::SESSION_KEY]);
+
+        // 2) Après purge des expirés, il ne reste que des tokens encore valides.
+        //    On ne jette donc PAS le plus ancien tel quel (array_shift dropait un
+        //    token potentiellement encore valide → formulaires/onglets ouverts cassés).
+        //    On tolère jusqu'à un plafond dur généreux (maxTokens ×4) pour couvrir les
+        //    sessions multi-onglets ; ce plafond ne sert qu'à borner la mémoire en cas
+        //    d'abus, auquel cas on n'évince que les plus anciens, par ordre chronologique.
+        $hardCap = $this->maxTokens * 4;
+        if (count($_SESSION[self::SESSION_KEY]) > $hardCap) {
+            asort($_SESSION[self::SESSION_KEY]); // tri par timestamp croissant
+            $_SESSION[self::SESSION_KEY] = array_slice(
+                $_SESSION[self::SESSION_KEY], -$hardCap, null, true
+            );
         }
-        
+
         return $token;
     }
     

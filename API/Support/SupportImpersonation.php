@@ -49,7 +49,13 @@ final class SupportImpersonation
         if (!$legacy) { return ['ok' => false, 'reason' => "Identité applicative introuvable ou inactive."]; }
 
         // Pose la session legacy sur la cible SANS toucher $_SESSION['platform'] (identité réelle conservée).
-        app('auth')->loginUser($legacy);
+        // Impersonation : ne PAS écrire last_login de la cible et attribuer la session active
+        // (session_security) à l'acteur Support réel (platform_account) plutôt qu'à la cible.
+        app('auth.guard')->login($legacy, [
+            'impersonating' => true,
+            'actor_type'    => 'platform',
+            'actor_id'      => $platformAccountId,
+        ]);
         $_SESSION['etablissement_id'] = $establishmentId;
         try { \API\Core\EstablishmentContext::set($establishmentId); } catch (\Throwable $e) {}
 

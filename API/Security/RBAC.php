@@ -419,24 +419,10 @@ class RBAC
     private function checkDynamicPermission(string $permission): bool
     {
         try {
-            // Cloisonnement de la matrice par établissement (finding #2) : ne considérer que les
-            // surcharges de l'établissement courant. Résilient : établissement non résolu ou colonne
-            // absente → lecture non scopée (comportement historique).
-            $etab = null;
-            try { $etab = (int) \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { $etab = null; }
-            if ($etab !== null) {
-                try {
-                    $stmt = $this->pdo->prepare(
-                        "SELECT 1 FROM rbac_permissions WHERE role = ? AND permission = ? AND etablissement_id = ? AND granted = 1 LIMIT 1"
-                    );
-                    $stmt->execute([$this->currentRole, $permission, $etab]);
-                    return (bool) $stmt->fetchColumn();
-                } catch (\PDOException $eCol) {
-                    // colonne etablissement_id absente → repli non scopé ci-dessous
-                }
-            }
+            // Matrice GLOBALE rbac_grants (gouvernance plateforme) — cohérent avec
+            // Authorization::roleGrants(). Plus de scoping par établissement.
             $stmt = $this->pdo->prepare(
-                "SELECT 1 FROM rbac_permissions WHERE role = ? AND permission = ? AND granted = 1 LIMIT 1"
+                "SELECT 1 FROM rbac_grants WHERE role = ? AND permission = ? AND granted = 1 LIMIT 1"
             );
             $stmt->execute([$this->currentRole, $permission]);
             return (bool) $stmt->fetchColumn();

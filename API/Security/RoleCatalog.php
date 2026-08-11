@@ -177,6 +177,130 @@ final class RoleCatalog
     ];
 
     // ─────────────────────────────────────────────────────────────────────────
+    // TIER_COLORS : tier => couleur (badges « façon Discord »).
+    // Palette de design PARTAGÉE entre agents (ne pas diverger). Les clés du
+    // design partagé (plateforme, direction, administratif, vie_scolaire,
+    // pedagogique, enseignant, famille, eleve) sont AUTORITAIRES ; les autres
+    // clés couvrent les tiers propres au catalogue pour éviter le tout-gris.
+    // Toute clé absente retombe sur TIER_COLOR_DEFAULT.
+    // ─────────────────────────────────────────────────────────────────────────
+    public const TIER_COLOR_DEFAULT = '#64748b';
+    private const TIER_COLORS = [
+        // ─── design partagé (autoritaire) ───
+        'plateforme'    => '#7c3aed',
+        'direction'     => '#2563eb',
+        'administratif' => '#0891b2',
+        'vie_scolaire'  => '#16a34a',
+        'pedagogique'   => '#ca8a04',
+        'enseignant'    => '#ea580c',
+        'famille'       => '#db2777',
+        'eleve'         => '#64748b',
+        // ─── extensions pour les tiers du catalogue non nommés dans le design ───
+        'sante_social'  => '#e11d48',
+        'eleve_famille' => '#db2777',
+        'organisation'  => '#0d9488',
+        'communication' => '#c026d3',
+        'documents'     => '#6366f1',
+        'services'      => '#f59e0b',
+        'stages'        => '#0284c7',
+        'controle'      => '#78716c',
+        'systeme'       => '#475569',
+    ];
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // DESCRIPTIONS : role_key => phrase FR décrivant la finalité du rôle.
+    // Déviations volontaires du simple label ; les rôles absents retombent sur
+    // leur label (cf. roleDescription()). Sert d'info-bulle sur les badges.
+    // ─────────────────────────────────────────────────────────────────────────
+    private const DESCRIPTIONS = [
+        // ─── plateforme ───
+        'super_admin'           => 'Accès total à la plateforme et à tous les établissements.',
+        'administrateur'        => "Administration complète de l'établissement et des comptes.",
+        'technicien'            => 'Maintenance technique et support de niveau système.',
+        'support'               => 'Assistance aux utilisateurs et gestion des tickets.',
+        'auditeur'              => 'Consultation des journaux et de la conformité, sans modification.',
+        'responsable_securite'  => 'Pilotage de la sécurité et des sessions.',
+        'dpo'                   => 'Protection des données personnelles et conformité RGPD.',
+        'developpeur'           => 'Diagnostic technique et accès aux journaux applicatifs.',
+        // ─── direction ───
+        'direction'                 => "Pilotage général de l'établissement.",
+        'chef_etablissement'        => "Direction de l'établissement et validation des bulletins.",
+        'direction_adjointe'        => "Appui à la direction sur la vie de l'établissement.",
+        'directeur_multi'           => 'Supervision de plusieurs établissements.',
+        'secretariat_direction'     => 'Gestion administrative auprès de la direction.',
+        'responsable_pedagogique'   => 'Coordination pédagogique et suivi des bulletins.',
+        'responsable_administratif' => 'Gestion administrative des élèves et des dossiers.',
+        'responsable_permissions'   => 'Attribution des rôles et des permissions.',
+        // ─── administratif ───
+        'administration'             => 'Gestion administrative des élèves, classes et dossiers.',
+        'secretariat_scolaire'       => 'Secrétariat scolaire : dossiers, certificats, inscriptions.',
+        'gestionnaire_administratif' => 'Gestion documentaire et archivage administratif.',
+        'gestionnaire_comptable'     => 'Suivi de la facturation et de la comptabilité.',
+        'intendance'                 => "Gestion de l'intendance, de la cantine et des ressources.",
+        'responsable_inscriptions'   => 'Traitement des inscriptions et des admissions.',
+        'responsable_documents'      => 'Gestion et diffusion des documents.',
+        'referent_comptes'           => 'Création et gestion des comptes utilisateurs.',
+        // ─── vie scolaire ───
+        'cpe'                    => 'Suivi de la vie scolaire, des absences et de la discipline.',
+        'vie_scolaire'           => 'Gestion des absences, des retards et des appels.',
+        'aed'                    => 'Encadrement des élèves et suivi des permanences.',
+        'surveillant'            => 'Surveillance et suivi des présences.',
+        'referent_absences'      => 'Suivi et justification des absences.',
+        'referent_retards'       => 'Suivi des retards.',
+        'referent_discipline'    => 'Gestion des incidents et des sanctions.',
+        'responsable_permanence' => 'Organisation des permanences.',
+        'responsable_remplacements' => 'Gestion des remplacements de cours.',
+        'responsable_appels'     => 'Supervision des appels.',
+        // ─── pédagogique ───
+        'professeur'            => 'Enseignement, notes et appréciations de ses classes.',
+        'professeur_principal'  => 'Suivi renforcé de sa classe et coordination.',
+        'professeur_remplacant' => 'Assure les cours en remplacement.',
+        'professeur_vacataire'  => 'Enseignement ponctuel et évaluations.',
+        'coordinateur_matiere'  => "Coordination d'une matière.",
+        'coordinateur_niveau'   => "Coordination d'un niveau.",
+        'responsable_classe'    => "Suivi d'une classe.",
+        'responsable_bulletin'  => 'Génération et validation des bulletins.',
+        'responsable_conseils'  => 'Organisation des conseils de classe.',
+        'responsable_examens'   => 'Organisation des examens.',
+        'responsable_orientation' => "Accompagnement de l'orientation.",
+        'documentaliste'        => 'Gestion du CDI et des ressources documentaires.',
+        'tuteur_pedagogique'    => "Accompagnement pédagogique d'élèves assignés.",
+        // ─── santé / social / accompagnement ───
+        'infirmerie'         => 'Suivi de santé et dossier médical des élèves.',
+        'infirmier_scolaire' => 'Soins et suivi infirmier des élèves.',
+        'medecin_scolaire'   => 'Suivi médical et PAI des élèves.',
+        'psychologue'        => 'Accompagnement psychologique des élèves.',
+        'assistant_social'   => 'Suivi social des élèves et des familles.',
+        'aesh'               => 'Accompagnement des élèves en situation de handicap.',
+        'referent_handicap'  => 'Suivi des dossiers handicap et PAI.',
+        'referent_pai'       => 'Gestion des PAI.',
+        'referent_pap'       => 'Suivi des PAP.',
+        'tuteur_eleve'       => "Accompagnement individuel d'élèves assignés.",
+        'mediateur_scolaire' => 'Médiation scolaire.',
+        // ─── élèves / familles ───
+        'eleve'                 => 'Consultation de ses notes, devoirs et emploi du temps.',
+        'parent'                => 'Suivi de la scolarité de ses enfants.',
+        'responsable_legal'     => 'Représentant légal : suivi et autorisations.',
+        'responsable_financier' => 'Suivi de la facturation de ses enfants.',
+        'tuteur_legal'          => 'Tuteur légal : suivi et autorisations.',
+        'famille_lecture_seule' => 'Consultation en lecture seule.',
+        'ancien_eleve'          => 'Accès aux documents et bulletins archivés.',
+        'ancien_parent'         => 'Accès aux documents archivés.',
+        // ─── organisation / communication / documents / services / stages / contrôle ───
+        'responsable_edt'           => "Gestion de l'emploi du temps.",
+        'gestionnaire_salles'       => 'Gestion des salles.',
+        'responsable_communication' => "Communication de l'établissement.",
+        'moderateur_messagerie'     => 'Modération de la messagerie.',
+        'gestionnaire_documents'    => 'Gestion des documents.',
+        'responsable_cantine'       => 'Gestion de la cantine.',
+        'responsable_internat'      => "Gestion de l'internat.",
+        'responsable_stages'        => 'Gestion des stages.',
+        'lecteur_etablissement'     => "Consultation de l'établissement.",
+        'inspecteur_academie'       => 'Inspection académique (consultation).',
+        'systeme'                   => 'Automate système.',
+    ];
+
+    // ─────────────────────────────────────────────────────────────────────────
     // PERMISSIONS : permission_key => ['label', 'category' (=domaine), 'sensitive']
     // Déclare au minimum toutes les clés non-wildcard référencées dans GRANTS,
     // plus les clés sensibles canoniques. La sensibilité d'un domaine entier est
@@ -945,6 +1069,44 @@ final class RoleCatalog
     ];
 
     public static function roles(): array { return self::ROLES; }
+
+    /** Couleur (hex) associée à un tier pour les badges. Repli TIER_COLOR_DEFAULT. */
+    public static function tierColor(string $tier): string
+    {
+        return self::TIER_COLORS[$tier] ?? self::TIER_COLOR_DEFAULT;
+    }
+
+    /** Description FR d'un rôle (déviation) ; repli sur son label si absente. */
+    public static function roleDescription(string $role): string
+    {
+        $key = self::canonical($role);
+        if (isset(self::DESCRIPTIONS[$key])) {
+            return self::DESCRIPTIONS[$key];
+        }
+        return self::ROLES[$key]['label'] ?? $key;
+    }
+
+    /**
+     * Métadonnées d'affichage d'un rôle pour les vues (badges, poste) :
+     * ['key','label','tier','color','description'] — ou null si le rôle est inconnu.
+     * Résout les alias vers la clé canonique.
+     */
+    public static function roleView(string $role): ?array
+    {
+        $key  = self::canonical($role);
+        $meta = self::ROLES[$key] ?? null;
+        if ($meta === null) {
+            return null;
+        }
+        $tier = $meta['tier'] ?? '';
+        return [
+            'key'         => $key,
+            'label'       => $meta['label'] ?? $key,
+            'tier'        => $tier,
+            'color'       => self::tierColor($tier),
+            'description' => self::roleDescription($key),
+        ];
+    }
 
     public static function permissions(): array { return self::PERMISSIONS; }
 

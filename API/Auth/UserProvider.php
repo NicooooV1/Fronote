@@ -146,12 +146,69 @@ class UserProvider
             $ok = true;
         }
         if (!$ok) {
+            // Mot de passe erroné : incrémenter le compteur d'échecs et verrouiller au-delà
+            // du seuil. Sans cela accountUsable() (locked_until/failed_login_attempts) ne se
+            // déclenche jamais → verrouillage automatique inopérant.
+            $this->registerFailedAttempt($user);
             return false;
         }
 
         // Refuser les comptes désactivés (actif=0) ou temporairement verrouillés.
         // Sans ce contrôle, la désactivation et le verrouillage côté admin sont décoratifs.
-        return $this->accountUsable($user);
+        if (!$this->accountUsable($user)) {
+            return false;
+        }
+
+        // Succès complet : réinitialiser le compteur d'échecs et lever un éventuel verrou expiré.
+        $this->resetFailedAttempts($user);
+        return true;
+    }
+
+    /**
+     * Incrémente failed_login_attempts pour le compte et pose un verrou temporaire
+     * (locked_until) au-delà du seuil. Best-effort, par compte, sur les 5 tables métier
+     * (les tables infrastructure super_admins/technicien_access n'ont pas ces colonnes).
+     */
+    protected function registerFailedAttempt(array $user): void
+    {
+        $table = $this->getTableForUserType($user['type'] ?? '');
+        $id    = (int) ($user['id'] ?? 0);
+        if (!$table || $id <= 0) {
+            return;
+        }
+        try {
+            $this->pdo->prepare(
+                "UPDATE `{$table}` SET failed_login_attempts = failed_login_attempts + 1 WHERE id = ?"
+            )->execute([$id]);
+            // Au 5e échec : verrou de 15 min (aligné sur le rate-limit du login). Ne ré-arme pas
+            // un verrou déjà actif (évite un allongement perpétuel sous martèlement).
+            $this->pdo->prepare(
+                "UPDATE `{$table}`
+                    SET locked_until = DATE_ADD(NOW(), INTERVAL 15 MINUTE)
+                  WHERE id = ? AND failed_login_attempts >= 5
+                    AND (locked_until IS NULL OR locked_until < NOW())"
+            )->execute([$id]);
+        } catch (\PDOException $e) {
+            error_log('[UserProvider] registerFailedAttempt: ' . $e->getMessage());
+        }
+    }
+
+    /** Réinitialise le compteur d'échecs et lève le verrou après une connexion réussie. */
+    protected function resetFailedAttempts(array $user): void
+    {
+        $table = $this->getTableForUserType($user['type'] ?? '');
+        $id    = (int) ($user['id'] ?? 0);
+        if (!$table || $id <= 0) {
+            return;
+        }
+        try {
+            $this->pdo->prepare(
+                "UPDATE `{$table}` SET failed_login_attempts = 0, locked_until = NULL
+                  WHERE id = ? AND (failed_login_attempts <> 0 OR locked_until IS NOT NULL)"
+            )->execute([$id]);
+        } catch (\PDOException $e) {
+            error_log('[UserProvider] resetFailedAttempts: ' . $e->getMessage());
+        }
     }
 
     /**

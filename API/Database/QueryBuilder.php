@@ -21,6 +21,9 @@ class QueryBuilder
     /** Regex pour valider les noms de colonnes/tables (lettres, chiffres, underscores, points pour alias) */
     private const IDENTIFIER_PATTERN = '/^[a-zA-Z_][a-zA-Z0-9_.]*$/';
 
+    /** Borne haute de l'OFFSET : empêche un offset monstrueux (issu d'un ?page= géant) de déborder. */
+    private const MAX_OFFSET = 100000000;
+
     public function __construct(PDO $pdo, $table)
     {
         $this->assertValidIdentifier($table);
@@ -167,7 +170,9 @@ class QueryBuilder
      */
     public function offset($value)
     {
-        $this->offset = $value;
+        // Bornage : un offset monstrueux (issu d'un ?page= géant) déborderait l'entier ou
+        // provoquerait une erreur SQL. On caste en entier et on plafonne à une valeur saine.
+        $this->offset = max(0, min((int) $value, self::MAX_OFFSET));
         return $this;
     }
 
@@ -264,12 +269,15 @@ class QueryBuilder
             $sql .= implode(', ', $orders);
         }
 
+        // Cast en int : LIMIT/OFFSET ne peuvent pas être des placeholders liés dans
+        // toutes les versions de MySQL/PDO, donc on les concatène — mais uniquement
+        // après cast entier pour empêcher toute injection via une valeur issue de la requête.
         if ($this->limit) {
-            $sql .= ' LIMIT ' . $this->limit;
+            $sql .= ' LIMIT ' . (int) $this->limit;
         }
 
         if ($this->offset) {
-            $sql .= ' OFFSET ' . $this->offset;
+            $sql .= ' OFFSET ' . (int) $this->offset;
         }
 
         return $sql;

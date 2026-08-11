@@ -69,24 +69,33 @@ class IpFirewall
         $ip = $ip ?? $this->getClientIp();
         if (!$ip || $this->isWhitelisted($ip)) return;
 
+        // La table api_rate_limits est un compteur agrégé (1 ligne par identifiant) :
+        // colonnes (identifier UNIQUE, attempts, expires_at). On modélise donc la
+        // fenêtre de comptage par ligne : expires_at borne la fin de fenêtre, attempts
+        // le nombre d'échecs. On réinitialise dès que la fenêtre précédente a expiré.
+        $identifier = 'authfail:' . $ip;
+
         try {
-            // Compter les échecs récents via rate_limits
+            // Upsert atomique : +1 dans la fenêtre courante, ou reset à 1 si expirée.
             $stmt = $this->pdo->prepare(
-                "SELECT COUNT(*) FROM api_rate_limits
-                 WHERE ip = ? AND endpoint = 'auth_failure'
-                 AND created_at > DATE_SUB(NOW(), INTERVAL ? SECOND)"
+                "INSERT INTO api_rate_limits (identifier, attempts, expires_at)
+                 VALUES (?, 1, DATE_ADD(NOW(), INTERVAL ? SECOND))
+                 ON DUPLICATE KEY UPDATE
+                   attempts   = IF(expires_at < NOW(), 1, attempts + 1),
+                   expires_at = IF(expires_at < NOW(), DATE_ADD(NOW(), INTERVAL ? SECOND), expires_at)"
             );
-            $stmt->execute([$ip, $this->windowSeconds]);
+            $stmt->execute([$identifier, $this->windowSeconds, $this->windowSeconds]);
+
+            // Relire le compteur courant (dans la fenêtre encore active).
+            $stmt = $this->pdo->prepare(
+                "SELECT attempts FROM api_rate_limits WHERE identifier = ? AND expires_at > NOW()"
+            );
+            $stmt->execute([$identifier]);
             $count = (int) $stmt->fetchColumn();
 
-            // Enregistrer cet échec
-            $this->pdo->prepare(
-                "INSERT INTO api_rate_limits (ip, endpoint, created_at) VALUES (?, 'auth_failure', NOW())"
-            )->execute([$ip]);
-
             // Auto-ban si seuil atteint
-            if ($count + 1 >= $this->maxAttempts) {
-                $this->ban($ip, $this->banDuration, 'Auto-ban: ' . ($count + 1) . ' échecs en ' . $this->windowSeconds . 's', true);
+            if ($count >= $this->maxAttempts) {
+                $this->ban($ip, $this->banDuration, 'Auto-ban: ' . $count . ' échecs en ' . $this->windowSeconds . 's', true);
             }
         } catch (\Throwable $e) {
             error_log('IpFirewall::recordFailedAttempt: ' . $e->getMessage());
@@ -103,8 +112,8 @@ class IpFirewall
 
         try {
             $this->pdo->prepare(
-                "DELETE FROM api_rate_limits WHERE ip = ? AND endpoint = 'auth_failure'"
-            )->execute([$ip]);
+                "DELETE FROM api_rate_limits WHERE identifier = ?"
+            )->execute(['authfail:' . $ip]);
         } catch (\Throwable $e) { /* silent */ }
     }
 
@@ -185,7 +194,7 @@ class IpFirewall
             $stmt->execute();
             $count += $stmt->rowCount();
 
-            $stmt = $this->pdo->prepare("DELETE FROM api_rate_limits WHERE endpoint = 'auth_failure' AND created_at < DATE_SUB(NOW(), INTERVAL 1 DAY) LIMIT 1000");
+            $stmt = $this->pdo->prepare("DELETE FROM api_rate_limits WHERE identifier LIKE 'authfail:%' AND expires_at < NOW() LIMIT 1000");
             $stmt->execute();
             $count += $stmt->rowCount();
         } catch (\Throwable $e) { /* silent */ }

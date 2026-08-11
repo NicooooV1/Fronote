@@ -23,6 +23,9 @@ class CacheManager
 	protected string $cacheDir;
 	protected ?\Redis $redis = null;
 
+	/** Sentinelle interne : distingue « clé absente » d'une valeur null réellement cachée */
+	private const MISS = "\0__cache_miss__\0";
+
 	public function __construct(?string $driver = null, ?string $basePath = null)
 	{
 		$this->driver = $driver ?? (function_exists('env') ? (env('CACHE_DRIVER', 'file') ?: 'file') : 'file');
@@ -75,8 +78,10 @@ class CacheManager
 	 */
 	public function remember(string $key, int $ttl, callable $callback): mixed
 	{
-		$value = $this->get($key);
-		if ($value !== null) {
+		// On utilise une sentinelle comme défaut : une valeur null réellement mise en
+		// cache est ainsi distinguée d'une clé absente (sinon on recalculait à chaque appel).
+		$value = $this->get($key, self::MISS);
+		if ($value !== self::MISS) {
 			return $value;
 		}
 
@@ -163,8 +168,8 @@ class CacheManager
 
 		foreach ($files as $file) {
 			$data = $this->readCacheFile($file);
-			if ($data === null) {
-				unlink($file);
+			if ($data === self::MISS) {
+				@unlink($file);
 				$cleaned++;
 			}
 		}
@@ -182,8 +187,8 @@ class CacheManager
 		}
 
 		$data = $this->readCacheFile($file);
-		if ($data === null) {
-			unlink($file); // Expiré
+		if ($data === self::MISS) {
+			@unlink($file); // Expiré / corrompu
 			return $default;
 		}
 
@@ -205,19 +210,21 @@ class CacheManager
 
 	protected function readCacheFile(string $file): mixed
 	{
+		// Retourne self::MISS en cas d'absence/corruption/expiration, afin de ne pas
+		// confondre ces cas avec une valeur null légitimement mise en cache.
 		$content = @file_get_contents($file);
 		if ($content === false) {
-			return null;
+			return self::MISS;
 		}
 
 		$data = @unserialize($content, ['allowed_classes' => false]);
 		if (($data === false && $content !== serialize(false)) || !is_array($data) || !array_key_exists('value', $data)) {
-			return null;
+			return self::MISS;
 		}
 
 		// Vérifier expiration (0 = permanent)
 		if ($data['expires_at'] > 0 && $data['expires_at'] < time()) {
-			return null;
+			return self::MISS;
 		}
 
 		return $data['value'];

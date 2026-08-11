@@ -41,6 +41,18 @@ $_rememberCookieName = 'remember_' . (defined('INSTANCE_ID') ? INSTANCE_ID : 'to
 if (!empty($_COOKIE[$_rememberCookieName])) {
     $remembered = $userService->validateRememberToken($_COOKIE[$_rememberCookieName]);
     if ($remembered) {
+        // Le cookie « Se souvenir de moi » ne doit PAS court-circuiter le 2FA : pour un compte
+        // avec second facteur activé, on n'accorde qu'un état pending_2fa (comme le login normal)
+        // au lieu d'une session complète. Les comptes sans 2FA restent auto-connectés.
+        $twoFactor = new \API\Services\TwoFactorService(getPDO());
+        if ($twoFactor->isEnabled((int) $remembered['id'], $remembered['type'])) {
+            $_SESSION['pending_2fa'] = [
+                'user_id'     => $remembered['id'],
+                'user_type'   => $remembered['type'],
+                'remember_me' => false, // déjà mémorisé : ne pas réémettre de jeton
+            ];
+            redirect('login/verify_2fa.php');
+        }
         $auth->loginUser($remembered);
         redirect('accueil/accueil.php');
     }
@@ -110,22 +122,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
                     $_SESSION['last_username'] = $username;
 
                 } else {
-                    // Un seul compte valide → vérifier 2FA
+                    // Un seul compte valide → politique 2FA
                     $user = $result;
 
-                    $twoFactor   = new \API\Services\TwoFactorService(getPDO());
-                    $twoFAActive = $twoFactor->isEnabled((int)$user['id'], $user['type']);
+                    $twoFactor    = new \API\Services\TwoFactorService(getPDO());
+                    $twoFAEnabled = $twoFactor->isEnabled((int)$user['id'], $user['type']);
 
-                    if ($twoFAActive) {
-                        // Stocker l'état pending 2FA et rediriger
+                    // Rôles à RESPONSABILITÉ (accès aux données) : 2FA OBLIGATOIRE à chaque
+                    // nouvelle connexion (élèves/parents non concernés).
+                    $responsibilityTypes = ['professeur', 'vie_scolaire', 'administrateur', 'super_admin'];
+                    $isResponsibility = in_array($user['type'], $responsibilityTypes, true);
+
+                    // Tolérance d'1 heure PAR APPAREIL : un appareil ayant validé le 2FA pour ce
+                    // compte il y a moins d'1h n'est pas resollicité (cf. TwoFactorTrust).
+                    $trusted = \API\Security\TwoFactorTrust::isTrusted((int)$user['id'], $user['type']);
+
+                    // Contournement de TEST — comptes « sim.* » uniquement, si TEST_2FA_BYPASS=1
+                    // (harnais de charge/tests). Jamais actif en production réelle.
+                    $testBypass = getenv('TEST_2FA_BYPASS') === '1' && str_starts_with((string) $username, 'sim.');
+
+                    if (($twoFAEnabled || $isResponsibility) && !$trusted && !$testBypass) {
+                        // 2FA requis : vérification si déjà configuré, sinon ENRÔLEMENT forcé.
                         $_SESSION['pending_2fa'] = [
-                            'user_id'    => $user['id'],
-                            'user_type'  => $user['type'],
+                            'user_id'     => $user['id'],
+                            'user_type'   => $user['type'],
                             'remember_me' => $rememberMe,
+                            'enroll'      => !$twoFAEnabled,
                         ];
-                        redirect('login/verify_2fa.php');
+                        redirect($twoFAEnabled ? 'login/verify_2fa.php' : 'login/setup_2fa.php');
                     } else {
-                        // Pas de 2FA → créer la session directement
+                        // Pas de 2FA requis (ou appareil de confiance) → créer la session directement
                         $auth->loginUser($user);
                         try { app('audit')->logAuth('login', $user['type'] . ':' . $user['id'], true, []); } catch (\Throwable $e) {}
 

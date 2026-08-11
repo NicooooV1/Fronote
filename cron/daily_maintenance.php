@@ -142,6 +142,98 @@ try {
 	$log('Accounts mirror error: ' . $e->getMessage());
 }
 
+// 9. OBSERVABILITÉ — instantané de métriques + heartbeat dans app_metrics, puis
+//    alertes proactives sur seuils. Un cron/backup qui s'arrête en silence devient
+//    détectable : l'absence de battement récent est visible sur observability.php.
+//    Best-effort : ne casse jamais la maintenance.
+try {
+	$pdo = getPDO();
+	$metrics = new \API\Services\MetricsService($pdo);
+
+	// 9a. Sondes serveur (PHP pur : /proc + disk_*), identiques à observability.php.
+	$diskPct = 0;
+	$dt = @disk_total_space(BASE_PATH); $df = @disk_free_space(BASE_PATH);
+	if ($dt && $df !== false && $dt > 0) { $diskPct = (int) round((float) ((1 - $df / $dt) * 100)); }
+
+	$memPct = 0; $swapPct = 0; $swapKnown = false;
+	$mi = @file_get_contents('/proc/meminfo');
+	if ($mi) {
+		if (preg_match('/MemTotal:\s+(\d+)/', $mi, $mt) && preg_match('/MemAvailable:\s+(\d+)/', $mi, $ma)) {
+			$tot = (int) $mt[1]; $avail = (int) $ma[1];
+			if ($tot > 0) { $memPct = (int) round((float) ((1 - $avail / $tot) * 100)); }
+		}
+		if (preg_match('/SwapTotal:\s+(\d+)/', $mi, $sTot) && preg_match('/SwapFree:\s+(\d+)/', $mi, $sFree)) {
+			$swapTot = (int) $sTot[1]; $swapFree = (int) $sFree[1]; $swapKnown = true;
+			$swapPct = $swapTot > 0 ? (int) round((float) ((1 - $swapFree / $swapTot) * 100)) : 0;
+		}
+	}
+
+	$cores = 1;
+	$ci = @file('/proc/cpuinfo');
+	if ($ci) { $nc = count(array_filter($ci, static fn($l) => stripos($l, 'processor') === 0)); if ($nc > 0) { $cores = $nc; } }
+	$load = function_exists('sys_getloadavg') ? (sys_getloadavg() ?: [0, 0, 0]) : [0, 0, 0];
+	$cpuPct = (int) min(100, round((float) (($load[0] / $cores) * 100)));
+
+	// 9b. Base : disponibilité + connexions.
+	$dbUp = false; $dbConn = null;
+	try {
+		$pdo->query('SELECT 1'); $dbUp = true;
+		$r = $pdo->query("SHOW STATUS LIKE 'Threads_connected'")->fetch(PDO::FETCH_NUM);
+		if ($r) { $dbConn = (int) $r[1]; }
+	} catch (\Throwable $e) { $dbUp = false; }
+
+	// 9c. Âge de la dernière sauvegarde (h) — heure de vérité de la protection des données.
+	$backupAgeH = null;
+	try {
+		if ($backup !== null && method_exists($backup, 'listBackups')) {
+			$bks = $backup->listBackups();
+			if (!empty($bks)) {
+				$bts = strtotime((string) ($bks[0]['created_at'] ?? ''));
+				if ($bts) { $backupAgeH = (time() - $bts) / 3600; }
+			}
+		}
+	} catch (\Throwable $e) { $log('Backup age probe error: ' . $e->getMessage()); }
+
+	// 9d. Parc : établissements actifs + comptes actifs (compteurs légers).
+	$fleetEtab = 0; $fleetAccounts = 0;
+	try { $fleetEtab = (int) $pdo->query("SELECT COUNT(*) FROM etablissements WHERE status NOT IN ('deleted','purged')")->fetchColumn(); } catch (\Throwable $e) {}
+	try { $fleetAccounts = (int) $pdo->query("SELECT COUNT(*) FROM accounts WHERE status='active' AND deleted_at IS NULL AND account_type <> 'platform'")->fetchColumn(); } catch (\Throwable $e) {}
+
+	// 9e. Écrit l'instantané + le HEARTBEAT (valeur = durée du run en s).
+	$runDuration = round(microtime(true) - $startTime, 2);
+	$snapshot = [
+		'heartbeat.cron'       => $runDuration,
+		'sys.cpu_percent'      => $cpuPct,
+		'sys.mem_percent'      => $memPct,
+		'sys.disk_percent'     => $diskPct,
+		'db.connections'       => $dbConn ?? 0,
+		'fleet.etablissements' => $fleetEtab,
+		'fleet.accounts_active'=> $fleetAccounts,
+	];
+	if ($swapKnown)          { $snapshot['sys.swap_percent'] = $swapPct; }
+	if ($backupAgeH !== null){ $snapshot['backup.age_hours'] = round($backupAgeH, 2); }
+	$written = $metrics->recordMany($snapshot);
+	$log("Observability: wrote {$written} metrics + heartbeat (run {$runDuration}s)");
+
+	// 9f. Alertes proactives sur seuils (disque plein, swap élevé, sauvegarde périmée, DB down).
+	if ($diskPct > 90) {
+		fronote_alert('Disque presque plein', "Stockage à {$diskPct}% sur " . gethostname());
+	}
+	if ($swapKnown && $swapPct >= 60) {
+		fronote_alert('Swap élevé', "Swap à {$swapPct}% (boîtier contraint) sur " . gethostname());
+	}
+	if (!$dbUp) {
+		fronote_alert('MariaDB injoignable', 'SELECT 1 a échoué depuis le cron de maintenance sur ' . gethostname());
+	}
+	if ($backupAgeH === null) {
+		fronote_alert('Aucune sauvegarde détectée', 'Aucune sauvegarde listable après le run de maintenance.');
+	} elseif ($backupAgeH > 48) {
+		fronote_alert('Sauvegarde périmée', 'Dernière sauvegarde il y a ' . round($backupAgeH) . ' h (> 48 h).');
+	}
+} catch (\Throwable $e) {
+	$log('Observability snapshot error: ' . $e->getMessage());
+}
+
 $duration = round(microtime(true) - $startTime, 2);
 $log("=== Maintenance completed in {$duration}s ===");
 

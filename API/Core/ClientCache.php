@@ -29,6 +29,9 @@ class ClientCache
     private string $hmacKey;
     private bool $secure;
 
+    /** Les cookies signés sont-ils activés ? (false si aucune clé applicative fiable) */
+    private bool $signingEnabled;
+
     /** Taille max d'un cookie (4 Ko moins overhead headers) */
     private const MAX_COOKIE_SIZE = 3800;
 
@@ -48,12 +51,27 @@ class ClientCache
         $keyMaterial = \API\Core\Encryption::keyMaterial();
         if ($keyMaterial !== null) {
             $this->hmacKey = hash('sha256', $keyMaterial . ':client_cache:' . $this->instanceId, true);
+            $this->signingEnabled = true;
         } else {
-            // Aucune clé applicative configurée : repli FAIBLE (dérivé du chemin d'install).
-            // À éviter en production — on journalise pour alerter l'opérateur.
-            error_log('ClientCache: APP_KEY/JWT_SECRET absents — clé HMAC de repli faible utilisée (cookies signés potentiellement forgeables).');
-            $this->hmacKey = hash('sha256', 'fronote_cc_salt:' . $this->instanceId . ':' . realpath(defined('BASE_PATH') ? BASE_PATH : __DIR__), true);
+            // Aucune clé applicative configurée. On NE dérive PAS une clé du chemin
+            // d'install (devinable → cookies forgeables) : on ferme (fail closed) les
+            // cookies signés. Le cache client reste opérationnel via la session serveur.
+            error_log('ClientCache: APP_KEY/JWT_SECRET absents — cookies signés DÉSACTIVÉS (fail closed), cache client limité à la session serveur.');
+            $this->hmacKey = '';
+            $this->signingEnabled = false;
         }
+    }
+
+    /**
+     * Identité liée à une entrée de cache signée : id utilisateur + id de session.
+     * Empêche qu'un cookie de cache survive à une déconnexion et hydrate une autre
+     * session (la session est régénérée au login/logout → l'id change → cookie rejeté).
+     */
+    private function bindingId(): string
+    {
+        $uid = isset($_SESSION['user']['id']) ? (string) $_SESSION['user']['id'] : '';
+        $sid = (session_status() === PHP_SESSION_ACTIVE) ? (string) session_id() : '';
+        return $uid . ':' . $sid;
     }
 
     // ─── Public API ─────────────────────────────────────────────────
@@ -263,11 +281,14 @@ class ClientCache
      */
     private function writeCookie(string $key, mixed $value, int $ttl): void
     {
-        if (headers_sent()) {
+        // Fail closed : sans clé applicative fiable, on n'émet aucun cookie signé.
+        if (!$this->signingEnabled || headers_sent()) {
             return;
         }
 
-        $payload = json_encode($value, JSON_UNESCAPED_UNICODE);
+        // On lie l'entrée à l'identité courante (utilisateur + session) pour qu'un
+        // cookie ne puisse pas hydrater une autre session après déconnexion.
+        $payload = json_encode(['b' => $this->bindingId(), 'v' => $value], JSON_UNESCAPED_UNICODE);
         if ($payload === false) {
             return;
         }
@@ -298,6 +319,11 @@ class ClientCache
      */
     private function readCookie(string $key): mixed
     {
+        // Fail closed : signature désactivée → on ne fait pas confiance aux cookies.
+        if (!$this->signingEnabled) {
+            return null;
+        }
+
         $name = $this->cookieName($key);
         if (!isset($_COOKIE[$name])) {
             return null;
@@ -328,15 +354,21 @@ class ClientCache
             return null;
         }
 
-        $value = json_decode($decoded, true);
-        // json_decode retourne null pour "null" string, ce qui est OK
-        // Mais on distingue une erreur de parsing
-        if ($value === null && $decoded !== 'null') {
+        $payload = json_decode($decoded, true);
+        // Le payload signé doit être une enveloppe {b: binding, v: valeur}.
+        if (!is_array($payload) || !array_key_exists('v', $payload) || !array_key_exists('b', $payload)) {
             $this->rawDeleteCookie($name);
             return null;
         }
 
-        return $value;
+        // Vérifie que l'entrée appartient bien à la session courante (anti-hydratation
+        // après déconnexion / changement d'utilisateur).
+        if (!hash_equals($this->bindingId(), (string) $payload['b'])) {
+            $this->rawDeleteCookie($name);
+            return null;
+        }
+
+        return $payload['v'];
     }
 
     /**

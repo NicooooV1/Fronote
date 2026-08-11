@@ -235,20 +235,16 @@ final class Authorization
         // l'établissement A ne s'applique qu'aux utilisateurs de A. On lit donc les lignes de
         // l'établissement de l'utilisateur. Résilient : si la colonne etablissement_id n'existe pas
         // encore (schéma non migré), on retombe sur la lecture globale historique.
-        $etab = isset($this->user['etablissement_id']) ? (int) $this->user['etablissement_id'] : 0;
+        // GOUVERNANCE PLATEFORME : matrice rôle→permission = UNE table GLOBALE rbac_grants,
+        // éditée uniquement côté plateforme (platform/roles.php). Le « quoi » (rôle→permission)
+        // est central ; le « qui » (user_roles + scope) reste par établissement. rbac_grants ne
+        // contient que les DÉVIATIONS ; vide → le catalogue code fait foi. Refus (MIN=0) l'emporte ;
+        // recherché sur le rôle ORIGINAL et sa forme canonique.
         try {
-            try {
-                $stmt = $this->pdo->prepare(
-                    "SELECT MIN(granted) FROM rbac_permissions WHERE role IN (?, ?) AND permission = ? AND etablissement_id = ?"
-                );
-                $stmt->execute([$role, $canon, $permission, $etab]);
-            } catch (\PDOException $eCol) {
-                // Colonne etablissement_id absente → compat : lecture non scopée.
-                $stmt = $this->pdo->prepare(
-                    "SELECT MIN(granted) FROM rbac_permissions WHERE role IN (?, ?) AND permission = ?"
-                );
-                $stmt->execute([$role, $canon, $permission]);
-            }
+            $stmt = $this->pdo->prepare(
+                "SELECT MIN(granted) FROM rbac_grants WHERE role IN (?, ?) AND permission = ?"
+            );
+            $stmt->execute([$role, $canon, $permission]);
             $g = $stmt->fetchColumn();
             if ($g !== false && $g !== null) {
                 return (int) $g === 1;
