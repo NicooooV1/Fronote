@@ -58,72 +58,90 @@ try {
     )->fetchAll(PDO::FETCH_ASSOC) ?: [];
 } catch (\Throwable $e) {}
 $h = fn($s) => htmlspecialchars((string) $s);
-$sb = ['active' => '#16a34a', 'inactive' => '#64748b', 'locked' => '#d97706', 'archived' => '#dc2626'];
+/* Statut de compte → variante de pill. */
+$pill = ['active' => 'ok', 'inactive' => 'muted', 'locked' => 'warn', 'archived' => 'crit'];
+
+require_once __DIR__ . '/includes/layout.php';
+pf_layout_header('security', 'Sécurité & comptes', 'Accès');
 ?>
-<!doctype html>
-<html lang="fr">
-<head>
-    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Plateforme — Sécurité</title>
-    <style>
-        body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; }
-        header { background: #1e293b; padding: 14px 24px; } header a { color: #93c5fd; text-decoration: none; }
-        main { max-width: 980px; margin: 24px auto; padding: 0 16px; } h2 { margin-top: 26px; }
-        table { width: 100%; border-collapse: collapse; } th, td { text-align: left; padding: 7px; border-bottom: 1px solid #334155; font-size: .85rem; }
-        .badge { color: #fff; border-radius: 6px; padding: 2px 8px; font-size: .72rem; } .muted { color: #94a3b8; }
-        button { padding: 5px 9px; border: 0; border-radius: 6px; background: #dc2626; color: #fff; cursor: pointer; font-size: .8rem; }
-        .alert { padding: 10px; border-radius: 8px; } .ok-a { background: #052e16; color: #86efac; } .err-a { background: #450a0a; color: #fca5a5; }
-        form.inline { display: inline; }
-    </style>
-</head>
-<body>
-    <header><a href="<?= $base ?>/platform/dashboard.php">← Tableau de bord</a></header>
-    <main>
-        <h1>Sécurité</h1>
-        <?php if ($msg): ?><div class="alert ok-a"><?= $h($msg) ?></div><?php endif; ?>
-        <?php if ($err): ?><div class="alert err-a"><?= $h($err) ?></div><?php endif; ?>
+<?php if ($msg): ?><div class="pf-notice pf-notice--ok"><i class="fas fa-circle-check"></i><span><?= $h($msg) ?></span></div><?php endif; ?>
+<?php if ($err): ?><div class="pf-notice pf-notice--crit"><i class="fas fa-triangle-exclamation"></i><span><?= $h($err) ?></span></div><?php endif; ?>
 
-        <h2>Comptes internes Fronote</h2>
-        <table>
-            <thead><tr><th>Identifiant</th><th>Email</th><th>Rôles</th><th>Statut</th><th>Dernière connexion</th><th></th></tr></thead>
-            <tbody>
-            <?php foreach ($accounts as $a): ?>
-                <tr>
-                    <td><?= $h($a['username']) ?><?= (int) $a['id'] === $accId ? ' <span class="muted">(vous)</span>' : '' ?></td>
-                    <td class="muted"><?= $h($a['email']) ?></td>
-                    <td><?= $h($a['roles'] ?? '—') ?></td>
-                    <td><span class="badge" style="background:<?= $sb[$a['status']] ?? '#334155' ?>"><?= $h($a['status']) ?></span></td>
-                    <td class="muted"><?= $h($a['last_login_at'] ?? '—') ?></td>
-                    <td><?php if ($canManage && $a['status'] === 'active' && (int) $a['id'] !== $accId): ?>
-                        <form class="inline" method="post" onsubmit="return confirm('Désactiver ce compte interne ?')"><?= csrfField() ?><input type="hidden" name="action" value="disable_account"><input type="hidden" name="account_id" value="<?= (int) $a['id'] ?>"><button type="submit">Désactiver</button></form>
-                    <?php endif; ?></td>
-                </tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
+<div class="pf-card" style="margin-top:16px">
+    <div class="pf-card__head">
+        <h2 class="pf-card__title"><i class="fas fa-user-shield"></i> Comptes internes Fronote</h2>
+        <div class="pf-card__actions"><span class="pf-pill pf-pill--muted"><?= count($accounts) ?></span></div>
+    </div>
+    <div class="pf-card__body--flush">
+        <div class="pf-table-wrap">
+            <table class="pf-table">
+                <thead><tr><th>Identifiant</th><th>Email</th><th>Rôles</th><th>Statut</th><th>Dernière connexion</th><th></th></tr></thead>
+                <tbody>
+                <?php if (!$accounts): ?><tr><td colspan="6"><div class="pf-empty">Aucun compte interne.</div></td></tr><?php endif; ?>
+                <?php foreach ($accounts as $a): ?>
+                    <tr>
+                        <td><?= $h($a['username']) ?><?= (int) $a['id'] === $accId ? ' <span class="pf-muted">(vous)</span>' : '' ?></td>
+                        <td class="pf-mono pf-muted"><?= $h($a['email']) ?></td>
+                        <td><?php $roles = $a['roles'] ?? ''; if ($roles === '' || $roles === null): ?><span class="pf-muted">—</span><?php else: foreach (explode(',', (string) $roles) as $rk): ?><span class="pf-badge pf-badge--plateforme" style="margin:1px 2px 1px 0"><?= $h($rk) ?></span><?php endforeach; endif; ?></td>
+                        <td><span class="pf-pill pf-pill--<?= $pill[$a['status']] ?? 'muted' ?>"><?= $h($a['status']) ?></span></td>
+                        <td class="pf-mono pf-muted"><?= $h($a['last_login_at'] ?? '—') ?></td>
+                        <td><?php if ($canManage && $a['status'] === 'active' && (int) $a['id'] !== $accId): ?>
+                            <form style="display:inline" method="post" onsubmit="return confirm('Désactiver ce compte interne ?')"><?= csrfField() ?><input type="hidden" name="action" value="disable_account"><input type="hidden" name="account_id" value="<?= (int) $a['id'] ?>"><button class="pf-btn pf-btn--danger pf-btn--sm" type="submit"><i class="fas fa-user-slash"></i> Désactiver</button></form>
+                        <?php endif; ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
-        <h2>Sessions support actives (tous établissements)</h2>
-        <table>
-            <thead><tr><th>Établissement</th><th>Niveau</th><th>Expire</th><th></th></tr></thead>
-            <tbody>
-            <?php if (!$activeSessions): ?><tr><td colspan="4"><em>Aucune session active.</em></td></tr><?php endif; ?>
-            <?php foreach ($activeSessions as $s): ?>
-                <tr><td><?= $h($s['establishment_name']) ?></td><td><span class="badge" style="background:#3b82f6"><?= $h($s['access_level']) ?></span></td><td class="muted"><?= $h($s['expires_at']) ?></td>
-                    <td><?php if ($canManage): ?>
-                        <form class="inline" method="post" onsubmit="return confirm('Arrêt de sécurité de cette session ?')"><?= csrfField() ?><input type="hidden" name="action" value="force_stop"><input type="hidden" name="session_id" value="<?= (int) $s['id'] ?>"><button type="submit">Arrêt sécurité</button></form>
-                    <?php endif; ?></td></tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
+<div class="pf-card" style="margin-top:20px">
+    <div class="pf-card__head">
+        <h2 class="pf-card__title"><i class="fas fa-headset"></i> Sessions support actives</h2>
+        <div class="pf-card__actions"><span class="pf-muted">tous établissements</span><span class="pf-pill pf-pill--<?= $activeSessions ? 'warn' : 'muted' ?>"><?= count($activeSessions) ?></span></div>
+    </div>
+    <div class="pf-card__body--flush">
+        <div class="pf-table-wrap">
+            <table class="pf-table">
+                <thead><tr><th>Établissement</th><th>Niveau</th><th>Expire</th><th></th></tr></thead>
+                <tbody>
+                <?php if (!$activeSessions): ?><tr><td colspan="4"><div class="pf-empty">Aucune session active.</div></td></tr><?php endif; ?>
+                <?php foreach ($activeSessions as $s): ?>
+                    <tr>
+                        <td><?= $h($s['establishment_name']) ?></td>
+                        <td><span class="pf-pill pf-pill--info"><?= $h($s['access_level']) ?></span></td>
+                        <td class="pf-mono pf-muted"><?= $h($s['expires_at']) ?></td>
+                        <td><?php if ($canManage): ?>
+                            <form style="display:inline" method="post" onsubmit="return confirm('Arrêt de sécurité de cette session ?')"><?= csrfField() ?><input type="hidden" name="action" value="force_stop"><input type="hidden" name="session_id" value="<?= (int) $s['id'] ?>"><button class="pf-btn pf-btn--danger pf-btn--sm" type="submit"><i class="fas fa-hand"></i> Arrêt sécurité</button></form>
+                        <?php endif; ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
-        <h2>Événements sensibles récents</h2>
-        <table>
-            <thead><tr><th>Date</th><th>Acteur</th><th>Action</th></tr></thead>
-            <tbody>
-            <?php if (!$sensitive): ?><tr><td colspan="3"><em>Aucun.</em></td></tr><?php endif; ?>
-            <?php foreach ($sensitive as $l): ?><tr><td class="muted"><?= $h($l['created_at']) ?></td><td><?= $h($l['actor'] ?? ('#' . $l['platform_account_id'])) ?></td><td><?= $h($l['action']) ?></td></tr><?php endforeach; ?>
-            </tbody>
-        </table>
-    </main>
-</body>
-</html>
+<div class="pf-card" style="margin-top:20px">
+    <div class="pf-card__head"><h2 class="pf-card__title"><i class="fas fa-clock-rotate-left"></i> Événements sensibles récents</h2></div>
+    <div class="pf-card__body--flush">
+        <div class="pf-table-wrap">
+            <table class="pf-table pf-table--compact">
+                <thead><tr><th>Date</th><th>Acteur</th><th>Action</th></tr></thead>
+                <tbody>
+                <?php if (!$sensitive): ?><tr><td colspan="3"><div class="pf-empty">Aucun événement sensible récent.</div></td></tr><?php endif; ?>
+                <?php foreach ($sensitive as $l): ?>
+                    <tr>
+                        <td class="pf-mono pf-muted"><?= $h($l['created_at']) ?></td>
+                        <td><?= $h($l['actor'] ?? ('#' . $l['platform_account_id'])) ?></td>
+                        <td><span class="pf-badge pf-badge--soft"><?= $h($l['action']) ?></span></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<?php
+pf_layout_footer();

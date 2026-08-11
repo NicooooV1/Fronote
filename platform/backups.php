@@ -59,59 +59,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $list = $backup->listBackups();
 $h = fn($s) => htmlspecialchars((string) $s);
+
+require_once __DIR__ . '/includes/layout.php';
+pf_layout_header('backups', 'Sauvegardes', 'Opérations');
 ?>
-<!doctype html>
-<html lang="fr">
-<head>
-    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Plateforme — Sauvegardes</title>
-    <style>
-        body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; }
-        header { background: #1e293b; padding: 14px 24px; } header a { color: #93c5fd; text-decoration: none; }
-        main { max-width: 900px; margin: 24px auto; padding: 0 16px; }
-        table { width: 100%; border-collapse: collapse; } th, td { text-align: left; padding: 8px; border-bottom: 1px solid #334155; font-size: .85rem; }
-        button { padding: 6px 11px; border: 0; border-radius: 6px; background: #3b82f6; color: #fff; cursor: pointer; font-weight: 600; }
-        button.warn { background: #d97706; } button.danger { background: #dc2626; } button.sm { padding: 4px 8px; font-weight: 400; font-size: .8rem; background: #334155; }
-        .alert { padding: 10px; border-radius: 8px; } .ok-a { background: #052e16; color: #86efac; } .err-a { background: #450a0a; color: #fca5a5; }
-        .actions { margin: 16px 0; display: flex; gap: 8px; flex-wrap: wrap; } form.inline { display: inline; } .muted { color: #94a3b8; font-size: .82rem; }
-        input.confirm { width: 100px; padding: 4px; background: #0f172a; border: 1px solid #7f1d1d; color: #fca5a5; border-radius: 6px; }
-        .badge { background: #273449; border-radius: 6px; padding: 2px 8px; font-size: .72rem; }
-    </style>
-</head>
-<body>
-    <header><a href="<?= $base ?>/platform/dashboard.php">← Tableau de bord</a></header>
-    <main>
-        <h1>Sauvegardes</h1>
-        <?php if ($msg): ?><div class="alert ok-a"><?= $h($msg) ?></div><?php endif; ?>
-        <?php if ($err): ?><div class="alert err-a"><?= $h($err) ?></div><?php endif; ?>
-        <div class="actions">
-            <form class="inline" method="post"><?= csrfField() ?><input type="hidden" name="action" value="create_db"><button type="submit">Sauvegarde base</button></form>
-            <form class="inline" method="post"><?= csrfField() ?><input type="hidden" name="action" value="create_full"><button type="submit">Sauvegarde complète</button></form>
-            <form class="inline" method="post" onsubmit="return confirm('Supprimer les anciennes (garder 5/type) ?')"><?= csrfField() ?><input type="hidden" name="action" value="cleanup"><button class="warn" type="submit">Nettoyer (garder 5)</button></form>
-        </div>
-        <table>
-            <thead><tr><th>Fichier</th><th>Type</th><th>Taille</th><th>Créé</th><th></th></tr></thead>
-            <tbody>
-            <?php if (!$list): ?><tr><td colspan="5"><em>Aucune sauvegarde.</em></td></tr><?php endif; ?>
-            <?php foreach ($list as $b): ?>
-                <tr>
-                    <td><?= $h($b['filename']) ?></td>
-                    <td><span class="badge"><?= $h($b['type']) ?></span></td>
-                    <td class="muted"><?= $h($b['size_mb']) ?> Mo</td>
-                    <td class="muted"><?= $h($b['created_at']) ?></td>
-                    <td>
-                        <?php if ($canRestore && $b['type'] === 'database'): ?>
-                            <form class="inline" method="post" onsubmit="return confirm('RESTAURER écrase la base actuelle. Continuer ?')"><?= csrfField() ?><input type="hidden" name="action" value="restore"><input type="hidden" name="filename" value="<?= $h($b['filename']) ?>"><input class="confirm" name="confirm" placeholder="RESTAURER"><button class="danger sm" type="submit">Restaurer</button></form>
-                        <?php endif; ?>
-                        <?php if ($canRestore): ?>
-                            <form class="inline" method="post" onsubmit="return confirm('Supprimer cette sauvegarde ?')"><?= csrfField() ?><input type="hidden" name="action" value="delete"><input type="hidden" name="filename" value="<?= $h($b['filename']) ?>"><button class="sm" type="submit">Suppr.</button></form>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-            </tbody>
+
+<?php if ($msg): ?><div class="pf-section"><div class="pf-notice pf-notice--ok"><i class="fas fa-circle-check"></i><span><?= $h($msg) ?></span></div></div><?php endif; ?>
+<?php if ($err): ?><div class="pf-section"><div class="pf-notice pf-notice--crit"><i class="fas fa-triangle-exclamation"></i><span><?= $h($err) ?></span></div></div><?php endif; ?>
+
+<section class="pf-section">
+  <div class="pf-row">
+    <form method="post"><?= csrfField() ?><input type="hidden" name="action" value="create_db"><button class="pf-btn pf-btn--primary" type="submit"><i class="fas fa-database"></i> Sauvegarde base</button></form>
+    <form method="post"><?= csrfField() ?><input type="hidden" name="action" value="create_full"><button class="pf-btn pf-btn--primary" type="submit"><i class="fas fa-box-archive"></i> Sauvegarde complète</button></form>
+    <form method="post" onsubmit="return confirm('Supprimer les anciennes (garder 5/type) ?')"><?= csrfField() ?><input type="hidden" name="action" value="cleanup"><button class="pf-btn" type="submit"><i class="fas fa-broom"></i> Nettoyer (garder 5)</button></form>
+  </div>
+</section>
+
+<section class="pf-section">
+  <div class="pf-card">
+    <div class="pf-card__head">
+      <h2 class="pf-card__title"><i class="fas fa-database"></i> Sauvegardes disponibles</h2>
+    </div>
+    <div class="pf-card__body pf-card__body--flush">
+      <div class="pf-table-wrap">
+        <table class="pf-table">
+          <thead><tr><th>Fichier</th><th>Type</th><th class="pf-num">Taille</th><th>Créé</th><th></th></tr></thead>
+          <tbody>
+          <?php if (!$list): ?><tr><td colspan="5"><div class="pf-empty">Aucune sauvegarde.</div></td></tr><?php endif; ?>
+          <?php foreach ($list as $b): ?>
+            <tr>
+              <td class="pf-mono"><?= $h($b['filename']) ?></td>
+              <td><span class="pf-pill pf-pill--<?= $b['type'] === 'database' ? 'info' : 'muted' ?>"><?= $h($b['type']) ?></span></td>
+              <td class="pf-num"><?= $h($b['size_mb']) ?> Mo</td>
+              <td class="pf-mono pf-muted" style="white-space:nowrap;"><?= $h($b['created_at']) ?></td>
+              <td>
+                <div class="pf-row" style="gap:6px; justify-content:flex-end;">
+                  <?php if ($canRestore && $b['type'] === 'database'): ?>
+                    <form method="post" onsubmit="return confirm('RESTAURER écrase la base actuelle. Continuer ?')" style="display:flex; gap:6px; align-items:center;"><?= csrfField() ?><input type="hidden" name="action" value="restore"><input type="hidden" name="filename" value="<?= $h($b['filename']) ?>"><input name="confirm" placeholder="RESTAURER" style="width:120px; padding:6px 10px; background:var(--pf-surface); border:1px solid var(--pf-crit); border-radius:var(--pf-radius-sm); color:var(--pf-crit); font-family:var(--pf-mono); font-size:12px;"><button class="pf-btn pf-btn--danger pf-btn--sm" type="submit"><i class="fas fa-rotate-left"></i> Restaurer</button></form>
+                  <?php endif; ?>
+                  <?php if ($canRestore): ?>
+                    <form method="post" onsubmit="return confirm('Supprimer cette sauvegarde ?')"><?= csrfField() ?><input type="hidden" name="action" value="delete"><input type="hidden" name="filename" value="<?= $h($b['filename']) ?>"><button class="pf-btn pf-btn--sm" type="submit"><i class="fas fa-trash"></i></button></form>
+                  <?php endif; ?>
+                </div>
+              </td>
+            </tr>
+          <?php endforeach; ?>
+          </tbody>
         </table>
-        <p class="muted" style="margin-top:16px">Stockées hors web dans storage/backups. Restauration réservée à platform.backups.restore (SuperAdmin/Maintenance), confirmation « RESTAURER » exigée.</p>
-    </main>
-</body>
-</html>
+      </div>
+    </div>
+  </div>
+  <p class="pf-muted" style="margin-top:14px; font-size:12.5px;">Stockées hors web dans <span class="pf-mono">storage/backups</span>. Restauration réservée à <span class="pf-mono">platform.backups.restore</span> (SuperAdmin/Maintenance), confirmation « RESTAURER » exigée.</p>
+</section>
+
+<?php pf_layout_footer(); ?>

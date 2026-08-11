@@ -39,70 +39,77 @@ $svc->expireStale();
 $pending = $svc->listPending();
 $etabs   = $pdo->query("SELECT id, nom FROM etablissements WHERE status NOT IN ('deleted','purged') ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
 $h = fn($s) => htmlspecialchars((string) $s);
-?>
-<!doctype html>
-<html lang="fr">
-<head>
-    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Plateforme — Invitations Directeur</title>
-    <style>
-        body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; }
-        header { background: #1e293b; padding: 14px 24px; } header a { color: #93c5fd; text-decoration: none; }
-        main { max-width: 820px; margin: 24px auto; padding: 0 16px; }
-        .card { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 16px; margin: 14px 0; }
-        input, select { width: 100%; box-sizing: border-box; padding: 8px; margin: 4px 0; border: 1px solid #334155; border-radius: 6px; background: #0f172a; color: #e2e8f0; }
-        button { padding: 8px 14px; border: 0; border-radius: 6px; background: #3b82f6; color: #fff; font-weight: 600; cursor: pointer; }
-        button.danger { background: #dc2626; }
-        table { width: 100%; border-collapse: collapse; } th, td { text-align: left; padding: 8px; border-bottom: 1px solid #334155; font-size: .9rem; }
-        .alert { padding: 10px; border-radius: 8px; } .ok-a { background: #052e16; color: #86efac; } .err-a { background: #450a0a; color: #fca5a5; }
-        .link { background: #0f172a; border: 1px dashed #3b82f6; padding: 10px; border-radius: 8px; word-break: break-all; }
-    </style>
-</head>
-<body>
-    <header><a href="<?= $base ?>/platform/dashboard.php">← Tableau de bord</a></header>
-    <main>
-        <h1>Invitations Directeur</h1>
-        <?php if ($msg): ?><div class="alert ok-a"><?= $h($msg) ?></div><?php endif; ?>
-        <?php if ($err): ?><div class="alert err-a"><?= $h($err) ?></div><?php endif; ?>
-        <?php if ($link): ?><div class="card"><strong>Lien d'invitation :</strong><div class="link"><?= $h($link) ?></div></div><?php endif; ?>
 
-        <div class="card">
-            <h2>Nouvelle invitation</h2>
+/* Style de champ partagé (tokens plateforme, aucune feuille inline). */
+$fld = 'width:100%;box-sizing:border-box;padding:8px 11px;margin:4px 0;border:1px solid var(--pf-border);border-radius:var(--pf-radius-sm);background:var(--pf-surface);color:var(--pf-text);font:inherit;font-size:13px';
+
+require_once __DIR__ . '/includes/layout.php';
+pf_layout_header('director-invitations', 'Invitations Directeur', 'Parc');
+?>
+<?php if ($msg): ?><div class="pf-notice pf-notice--ok"><i class="fas fa-circle-check"></i><span><?= $h($msg) ?></span></div><?php endif; ?>
+<?php if ($err): ?><div class="pf-notice pf-notice--crit"><i class="fas fa-triangle-exclamation"></i><span><?= $h($err) ?></span></div><?php endif; ?>
+<?php if ($link): ?>
+    <div class="pf-notice pf-notice--warn" style="margin-top:12px;flex-direction:column;align-items:stretch;gap:8px">
+        <div><i class="fas fa-link"></i> <strong>Lien d'invitation</strong> — affiché une seule fois, copiez-le maintenant.</div>
+        <code class="pf-mono" style="display:block;padding:10px;border:1px dashed var(--pf-accent);border-radius:var(--pf-radius-sm);background:var(--pf-surface);color:var(--pf-text);word-break:break-all"><?= $h($link) ?></code>
+    </div>
+<?php endif; ?>
+
+<div class="pf-grid pf-grid--2" style="margin-top:16px;align-items:start">
+    <div class="pf-card">
+        <div class="pf-card__head"><h2 class="pf-card__title"><i class="fas fa-envelope-open-text"></i> Nouvelle invitation</h2></div>
+        <div class="pf-card__body">
             <form method="post"><?= csrfField() ?><input type="hidden" name="action" value="create">
-                <input name="email" type="email" placeholder="Email du Directeur" required>
-                <div style="display:flex;gap:8px"><input name="first_name" placeholder="Prénom"><input name="last_name" placeholder="Nom"></div>
-                <select name="invitation_type">
+                <label class="pf-eyebrow" for="inv-email">Email du Directeur</label>
+                <input id="inv-email" name="email" type="email" placeholder="directeur@etablissement.fr" required style="<?= $fld ?>">
+                <div style="display:flex;gap:8px">
+                    <input name="first_name" placeholder="Prénom" style="<?= $fld ?>">
+                    <input name="last_name" placeholder="Nom" style="<?= $fld ?>">
+                </div>
+                <label class="pf-eyebrow" for="inv-type" style="display:block;margin-top:8px">Type d'invitation</label>
+                <select id="inv-type" name="invitation_type" style="<?= $fld ?>">
                     <option value="create_establishment">Créer un établissement</option>
                     <option value="join_establishment">Rejoindre un établissement</option>
                     <option value="manage_multiple_establishments">Gérer plusieurs établissements</option>
                 </select>
-                <fieldset style="border:1px solid #334155;border-radius:8px">
-                    <legend>Établissements (pour rejoindre / multi)</legend>
+                <fieldset style="border:1px solid var(--pf-border);border-radius:var(--pf-radius-sm);margin-top:10px;padding:10px 12px">
+                    <legend class="pf-eyebrow" style="padding:0 6px">Établissements (rejoindre / multi)</legend>
+                    <?php if (!$etabs): ?><span class="pf-muted">Aucun établissement disponible.</span><?php endif; ?>
                     <?php foreach ($etabs as $e): ?>
-                        <label style="display:block"><input type="checkbox" name="estabs[]" value="<?= (int) $e['id'] ?>" style="width:auto"> <?= $h($e['nom']) ?> (#<?= (int) $e['id'] ?>)</label>
+                        <label style="display:flex;align-items:center;gap:8px;padding:3px 0;font-size:13px"><input type="checkbox" name="estabs[]" value="<?= (int) $e['id'] ?>"> <?= $h($e['nom']) ?> <span class="pf-mono pf-muted">#<?= (int) $e['id'] ?></span></label>
                     <?php endforeach; ?>
                 </fieldset>
-                <div style="margin-top:8px"><button type="submit">Créer l'invitation</button></div>
+                <div style="margin-top:12px"><button class="pf-btn pf-btn--primary" type="submit"><i class="fas fa-paper-plane"></i> Créer l'invitation</button></div>
             </form>
         </div>
+    </div>
 
-        <div class="card">
-            <h2>Invitations en attente</h2>
-            <table>
-                <thead><tr><th>Email</th><th>Type</th><th>Expire</th><th></th></tr></thead>
-                <tbody>
-                <?php if (!$pending): ?><tr><td colspan="4"><em>Aucune.</em></td></tr><?php endif; ?>
-                <?php foreach ($pending as $i): ?>
-                    <tr>
-                        <td><?= $h($i['email']) ?></td><td><?= $h($i['invitation_type']) ?></td><td><?= $h($i['expires_at']) ?></td>
-                        <td><?php if (platformCan('platform.director_invites.revoke')): ?>
-                            <form method="post" style="display:inline" onsubmit="return confirm('Révoquer ?')"><?= csrfField() ?><input type="hidden" name="action" value="revoke"><input type="hidden" name="invite_id" value="<?= (int) $i['id'] ?>"><button class="danger" type="submit">Révoquer</button></form>
-                        <?php endif; ?></td>
-                    </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
+    <div class="pf-card">
+        <div class="pf-card__head">
+            <h2 class="pf-card__title"><i class="fas fa-clock"></i> Invitations en attente</h2>
+            <div class="pf-card__actions"><span class="pf-pill pf-pill--muted"><?= count($pending) ?></span></div>
         </div>
-    </main>
-</body>
-</html>
+        <div class="pf-card__body--flush">
+            <div class="pf-table-wrap">
+                <table class="pf-table">
+                    <thead><tr><th>Email</th><th>Type</th><th>Expire</th><th></th></tr></thead>
+                    <tbody>
+                    <?php if (!$pending): ?><tr><td colspan="4"><div class="pf-empty">Aucune invitation en attente.</div></td></tr><?php endif; ?>
+                    <?php foreach ($pending as $i): ?>
+                        <tr>
+                            <td><?= $h($i['email']) ?></td>
+                            <td><span class="pf-badge pf-badge--soft"><?= $h($i['invitation_type']) ?></span></td>
+                            <td class="pf-mono pf-muted"><?= $h($i['expires_at']) ?></td>
+                            <td><?php if (platformCan('platform.director_invites.revoke')): ?>
+                                <form method="post" style="display:inline" onsubmit="return confirm('Révoquer ?')"><?= csrfField() ?><input type="hidden" name="action" value="revoke"><input type="hidden" name="invite_id" value="<?= (int) $i['id'] ?>"><button class="pf-btn pf-btn--danger pf-btn--sm" type="submit"><i class="fas fa-ban"></i> Révoquer</button></form>
+                            <?php endif; ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<?php
+pf_layout_footer();

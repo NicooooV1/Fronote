@@ -24,21 +24,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $login    = trim((string) ($_POST['login'] ?? ''));
         $password = (string) ($_POST['password'] ?? '');
-        $acc = (new PlatformAccountService(getPDO()))->findActiveByLogin($login);
-        if ($acc && !empty($acc['password_hash']) && password_verify($password, $acc['password_hash'])) {
-            session_regenerate_id(true);
-            $_SESSION['platform'] = ['account_id' => (int) $acc['id'], 'username' => $acc['username']];
-            unset($_SESSION['user'], $_SESSION['user_id'], $_SESSION['user_type'], $_SESSION['logged_in'], $_SESSION['etablissement_id'], $_SESSION['tenant']); // jamais de session établissement en parallèle
-            // Ancre le cycle de vie de session (idle/absolu + révocation) — cf. bootstrap 3-mondes.
-            $_SESSION['last_activity'] = time();
-            $_SESSION['session_started'] = time();
-            \API\Auth\SessionGuard::recordActiveSession('platform', (int) $acc['id']);
-            try { getPDO()->prepare("UPDATE platform_accounts SET last_login_at = NOW() WHERE id = ?")->execute([(int) $acc['id']]); }
-            catch (\Throwable $e) { error_log('[platform login] ' . $e->getMessage()); }
-            header("Location: {$base}/platform/dashboard.php");
-            exit;
+        $ip       = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+
+        // Rate limiting + verrouillage temporaire (identifiant + IP) : ce login interne est le
+        // plus privilégié, il ne doit pas être brute-forçable. Verrou aligné sur l'établissement
+        // (5 tentatives → 15 min). RateLimiter combine déjà la clé avec l'IP (getIdentifier).
+        $limiter = (new \API\Security\RateLimiter(getPDO()))->setMaxAttempts(5)->setDecayMinutes(15);
+        $rlKey   = 'platform_login:' . strtolower($login);
+
+        if ($limiter->tooManyAttempts($rlKey)) {
+            $error = 'Trop de tentatives. Veuillez réessayer plus tard.';
+            try { app('audit')->logAuth('lockout', $login, false, ['ip' => $ip, 'scope' => 'platform']); }
+            catch (\Throwable $e) { error_log('[platform login] audit lockout: ' . $e->getMessage()); }
+        } else {
+            $acc = (new PlatformAccountService(getPDO()))->findActiveByLogin($login);
+            if ($acc && !empty($acc['password_hash']) && password_verify($password, $acc['password_hash'])) {
+                $limiter->clear($rlKey);
+                session_regenerate_id(true);
+                $_SESSION['platform'] = ['account_id' => (int) $acc['id'], 'username' => $acc['username']];
+                unset($_SESSION['user'], $_SESSION['user_id'], $_SESSION['user_type'], $_SESSION['logged_in'], $_SESSION['etablissement_id'], $_SESSION['tenant']); // jamais de session établissement en parallèle
+                // Ancre le cycle de vie de session (idle/absolu + révocation) — cf. bootstrap 3-mondes.
+                $_SESSION['last_activity'] = time();
+                $_SESSION['session_started'] = time();
+                \API\Auth\SessionGuard::recordActiveSession('platform', (int) $acc['id']);
+                try { getPDO()->prepare("UPDATE platform_accounts SET last_login_at = NOW() WHERE id = ?")->execute([(int) $acc['id']]); }
+                catch (\Throwable $e) { error_log('[platform login] ' . $e->getMessage()); }
+                try { app('audit')->logAuth('login', 'platform:' . (int) $acc['id'], true, ['ip' => $ip, 'scope' => 'platform']); }
+                catch (\Throwable $e) {}
+                header("Location: {$base}/platform/dashboard.php");
+                exit;
+            }
+            // Identifiant inconnu : vérification bcrypt factice (constant-time) pour ne pas
+            // révéler l'existence du compte par le temps de réponse (anti-énumération).
+            if (!$acc) {
+                PlatformAccountService::dummyVerify();
+            }
+            // Échec : compter la tentative (verrou) + journaliser (audit anti-bruteforce).
+            $limiter->hit($rlKey);
+            try { app('audit')->logAuth('login_failed', $login, false, ['ip' => $ip, 'scope' => 'platform']); }
+            catch (\Throwable $e) {}
+            $error = 'Identifiants invalides.';
         }
-        $error = 'Identifiants invalides.';
     }
 }
 ?>

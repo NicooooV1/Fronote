@@ -33,71 +33,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $list = $svc->listAll();
 $canPurge = platformCan('platform.establishments.purge');
+
+/* Recherche globale (top bar) : filtre nom / slug côté serveur. */
+$q = trim((string) ($_GET['q'] ?? ''));
+if ($q !== '') {
+    $needle = mb_strtolower($q, 'UTF-8');
+    $list = array_values(array_filter($list, static function ($e) use ($needle) {
+        return mb_strpos(mb_strtolower((string) $e['nom'], 'UTF-8'), $needle) !== false
+            || mb_strpos(mb_strtolower((string) $e['slug'], 'UTF-8'), $needle) !== false;
+    }));
+}
+
 $h = fn($s) => htmlspecialchars((string) $s);
-$badge = ['active' => '#16a34a', 'suspended' => '#d97706', 'archived' => '#64748b', 'deleted' => '#dc2626', 'purged' => '#7f1d1d', 'onboarding' => '#2563eb', 'draft' => '#64748b'];
+/* Statut → variante de pill de statut. */
+$pill = [
+    'active' => 'ok', 'onboarding' => 'info', 'suspended' => 'warn',
+    'archived' => 'muted', 'draft' => 'muted', 'deleted' => 'crit', 'purged' => 'crit',
+];
+
+require_once __DIR__ . '/includes/layout.php';
+pf_layout_header('establishments', 'Établissements', 'Parc');
 ?>
-<!doctype html>
-<html lang="fr">
-<head>
-    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Plateforme — Établissements</title>
-    <style>
-        body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; }
-        header { background: #1e293b; padding: 14px 24px; } header a { color: #93c5fd; text-decoration: none; }
-        main { max-width: 1040px; margin: 24px auto; padding: 0 16px; }
-        table { width: 100%; border-collapse: collapse; } th, td { text-align: left; padding: 8px; border-bottom: 1px solid #334155; font-size: .88rem; vertical-align: middle; }
-        .badge { color: #fff; border-radius: 6px; padding: 2px 8px; font-size: .72rem; }
-        button { padding: 5px 9px; border: 0; border-radius: 6px; background: #334155; color: #e2e8f0; cursor: pointer; font-size: .8rem; }
-        button.warn { background: #d97706; } button.danger { background: #dc2626; } button.ok { background: #16a34a; }
-        .alert { padding: 10px; border-radius: 8px; } .ok-a { background: #052e16; color: #86efac; } .err-a { background: #450a0a; color: #fca5a5; }
-        form.inline { display: inline; } input.confirm { width: 80px; padding: 4px; background: #0f172a; border: 1px solid #7f1d1d; color: #fca5a5; border-radius: 6px; }
-        .muted { color: #94a3b8; font-size: .8rem; }
-    </style>
-</head>
-<body>
-    <header><a href="<?= $base ?>/platform/dashboard.php">← Tableau de bord</a></header>
-    <main>
-        <h1>Parc d'établissements <span class="muted">(<?= count($list) ?>)</span></h1>
-        <?php if ($msg): ?><div class="alert ok-a"><?= $h($msg) ?></div><?php endif; ?>
-        <?php if ($err): ?><div class="alert err-a"><?= $h($err) ?></div><?php endif; ?>
-        <table>
-            <thead><tr><th>#</th><th>Nom</th><th>Slug</th><th>Type</th><th>Statut</th><th>Membres</th><th>Support actif</th><th>Actions</th></tr></thead>
-            <tbody>
-            <?php if (!$list): ?><tr><td colspan="8"><em>Aucun établissement.</em></td></tr><?php endif; ?>
-            <?php foreach ($list as $e): $st = $e['status']; ?>
-                <tr>
-                    <td><?= (int) $e['id'] ?></td>
-                    <td><?= $h($e['nom']) ?></td>
-                    <td class="muted"><?= $h($e['slug']) ?></td>
-                    <td class="muted"><?= $h($e['type']) ?></td>
-                    <td><span class="badge" style="background:<?= $badge[$st] ?? '#334155' ?>"><?= $h($st) ?></span></td>
-                    <td><?= (int) $e['members'] ?></td>
-                    <td><?= (int) $e['support_sessions'] ?></td>
-                    <td>
-                        <?php if ($st !== 'purged'): ?>
-                            <?php if ($st === 'suspended'): ?>
-                                <?php if (platformCan('platform.establishments.suspend')): ?>
-                                <form class="inline" method="post"><?= csrfField() ?><input type="hidden" name="id" value="<?= (int) $e['id'] ?>"><input type="hidden" name="action" value="activate"><button class="ok" type="submit">Réactiver</button></form>
+<?php if ($msg): ?><div class="pf-notice pf-notice--ok"><i class="fas fa-circle-check"></i><span><?= $h($msg) ?></span></div><?php endif; ?>
+<?php if ($err): ?><div class="pf-notice pf-notice--crit"><i class="fas fa-triangle-exclamation"></i><span><?= $h($err) ?></span></div><?php endif; ?>
+
+<div class="pf-card" style="margin-top:16px">
+    <div class="pf-card__head">
+        <h2 class="pf-card__title"><i class="fas fa-school"></i> Parc d'établissements</h2>
+        <div class="pf-card__actions">
+            <?php if ($q !== ''): ?><a class="pf-btn pf-btn--ghost pf-btn--sm" href="<?= $h($base) ?>/platform/establishments.php"><i class="fas fa-xmark"></i> « <?= $h($q) ?> »</a><?php endif; ?>
+            <span class="pf-pill pf-pill--muted"><?= count($list) ?></span>
+        </div>
+    </div>
+    <div class="pf-card__body--flush">
+        <div class="pf-table-wrap">
+            <table class="pf-table">
+                <thead><tr><th>#</th><th>Nom</th><th>Slug</th><th>Type</th><th>Statut</th><th class="pf-num">Membres</th><th class="pf-num">Support</th><th>Actions</th></tr></thead>
+                <tbody>
+                <?php if (!$list): ?><tr><td colspan="8"><div class="pf-empty"><?= $q !== '' ? 'Aucun établissement pour « ' . $h($q) .' ».' : 'Aucun établissement.' ?></div></td></tr><?php endif; ?>
+                <?php foreach ($list as $e): $st = $e['status']; ?>
+                    <tr>
+                        <td class="pf-mono"><?= (int) $e['id'] ?></td>
+                        <td><?= $h($e['nom']) ?></td>
+                        <td class="pf-mono pf-muted"><?= $h($e['slug']) ?></td>
+                        <td class="pf-muted"><?= $h($e['type']) ?></td>
+                        <td><span class="pf-pill pf-pill--<?= $pill[$st] ?? 'muted' ?>"><?= $h($st) ?></span></td>
+                        <td class="pf-num"><?= (int) $e['members'] ?></td>
+                        <td class="pf-num"><?= (int) $e['support_sessions'] ?></td>
+                        <td>
+                            <?php if ($st !== 'purged'): ?>
+                                <div class="pf-row" style="gap:6px">
+                                <?php if ($st === 'suspended'): ?>
+                                    <?php if (platformCan('platform.establishments.suspend')): ?>
+                                    <form style="display:inline" method="post"><?= csrfField() ?><input type="hidden" name="id" value="<?= (int) $e['id'] ?>"><input type="hidden" name="action" value="activate"><button class="pf-btn pf-btn--primary pf-btn--sm" type="submit"><i class="fas fa-play"></i> Réactiver</button></form>
+                                    <?php endif; ?>
+                                <?php elseif (platformCan('platform.establishments.suspend')): ?>
+                                    <form style="display:inline" method="post" onsubmit="return confirm('Suspendre (bloque les connexions) ?')"><?= csrfField() ?><input type="hidden" name="id" value="<?= (int) $e['id'] ?>"><input type="hidden" name="action" value="suspend"><button class="pf-btn pf-btn--sm" type="submit"><i class="fas fa-pause"></i> Suspendre</button></form>
                                 <?php endif; ?>
-                            <?php elseif (platformCan('platform.establishments.suspend')): ?>
-                                <form class="inline" method="post" onsubmit="return confirm('Suspendre (bloque les connexions) ?')"><?= csrfField() ?><input type="hidden" name="id" value="<?= (int) $e['id'] ?>"><input type="hidden" name="action" value="suspend"><button class="warn" type="submit">Suspendre</button></form>
-                            <?php endif; ?>
-                            <?php if (platformCan('platform.establishments.archive') && $st !== 'archived'): ?>
-                                <form class="inline" method="post" onsubmit="return confirm('Archiver (lecture seule) ?')"><?= csrfField() ?><input type="hidden" name="id" value="<?= (int) $e['id'] ?>"><input type="hidden" name="action" value="archive"><button type="submit">Archiver</button></form>
-                            <?php endif; ?>
-                            <?php if (platformCan('platform.establishments.delete') && $st !== 'deleted'): ?>
-                                <form class="inline" method="post" onsubmit="return confirm('Supprimer (logique) ?')"><?= csrfField() ?><input type="hidden" name="id" value="<?= (int) $e['id'] ?>"><input type="hidden" name="action" value="delete"><button class="danger" type="submit">Suppr.</button></form>
-                            <?php endif; ?>
-                            <?php if ($canPurge): ?>
-                                <form class="inline" method="post" onsubmit="return confirm('PURGE DÉFINITIVE — irréversible. Continuer ?')"><?= csrfField() ?><input type="hidden" name="id" value="<?= (int) $e['id'] ?>"><input type="hidden" name="action" value="purge"><input class="confirm" name="confirm" placeholder="PURGER"><button class="danger" type="submit">Purger</button></form>
-                            <?php endif; ?>
-                        <?php else: ?><span class="muted">purgé</span><?php endif; ?>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
-        <p class="muted" style="margin-top:16px">Suspendre = connexions bloquées · Archiver = lecture seule · Supprimer = logique (réversible) · Purger = définitif (SuperAdmin), supprime les données 3-mondes de l'établissement.</p>
-    </main>
-</body>
-</html>
+                                <?php if (platformCan('platform.establishments.archive') && $st !== 'archived'): ?>
+                                    <form style="display:inline" method="post" onsubmit="return confirm('Archiver (lecture seule) ?')"><?= csrfField() ?><input type="hidden" name="id" value="<?= (int) $e['id'] ?>"><input type="hidden" name="action" value="archive"><button class="pf-btn pf-btn--sm" type="submit"><i class="fas fa-box-archive"></i> Archiver</button></form>
+                                <?php endif; ?>
+                                <?php if (platformCan('platform.establishments.delete') && $st !== 'deleted'): ?>
+                                    <form style="display:inline" method="post" onsubmit="return confirm('Supprimer (logique) ?')"><?= csrfField() ?><input type="hidden" name="id" value="<?= (int) $e['id'] ?>"><input type="hidden" name="action" value="delete"><button class="pf-btn pf-btn--danger pf-btn--sm" type="submit"><i class="fas fa-trash"></i> Suppr.</button></form>
+                                <?php endif; ?>
+                                <?php if ($canPurge): ?>
+                                    <form style="display:inline-flex;gap:6px;align-items:center" method="post" onsubmit="return confirm('PURGE DÉFINITIVE — irréversible. Continuer ?')"><?= csrfField() ?><input type="hidden" name="id" value="<?= (int) $e['id'] ?>"><input type="hidden" name="action" value="purge"><input name="confirm" placeholder="PURGER" style="width:88px;padding:5px 9px;border:1px solid var(--pf-crit);border-radius:var(--pf-radius-sm);background:var(--pf-surface);color:var(--pf-crit);font:inherit;font-family:var(--pf-mono);font-size:12px"><button class="pf-btn pf-btn--danger pf-btn--sm" type="submit"><i class="fas fa-radiation"></i> Purger</button></form>
+                                <?php endif; ?>
+                                </div>
+                            <?php else: ?><span class="pf-muted">purgé</span><?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<p class="pf-muted" style="margin-top:16px">Suspendre = connexions bloquées · Archiver = lecture seule · Supprimer = logique (réversible) · Purger = définitif (SuperAdmin), supprime les données 3-mondes de l'établissement.</p>
+<?php
+pf_layout_footer();

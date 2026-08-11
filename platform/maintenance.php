@@ -62,61 +62,60 @@ $active  = $maint->isActive();
 $status  = $maint->getStatus();
 $curIps  = $status['allowed_ips'] ?? [];
 $h = fn($s) => htmlspecialchars((string) $s);
+
+// Style partagé des champs de formulaire (aligné sur les tokens du design system).
+$fieldStyle = 'width:100%; box-sizing:border-box; padding:9px 11px; border:1px solid var(--pf-border); border-radius:var(--pf-radius-sm); background:var(--pf-surface); color:var(--pf-text); font-family:var(--pf-sans); font-size:13px;';
+$labelStyle = 'display:block; margin:14px 0 5px; font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--pf-muted);';
+
+require_once __DIR__ . '/includes/layout.php';
+pf_layout_header('maintenance', 'Maintenance', 'Opérations');
 ?>
-<!doctype html>
-<html lang="fr">
-<head>
-    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Plateforme — Maintenance</title>
-    <style>
-        body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; }
-        header { background: #1e293b; padding: 14px 24px; } header a { color: #93c5fd; text-decoration: none; }
-        main { max-width: 760px; margin: 24px auto; padding: 0 16px; }
-        .card { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 16px; margin: 14px 0; }
-        label { display: block; margin: 10px 0 4px; font-size: .85rem; color: #94a3b8; }
-        input, textarea { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #334155; border-radius: 6px; background: #0f172a; color: #e2e8f0; }
-        button { padding: 9px 16px; border: 0; border-radius: 8px; color: #fff; font-weight: 600; cursor: pointer; }
-        button.on { background: #d97706; } button.off { background: #16a34a; }
-        .alert { padding: 10px; border-radius: 8px; } .ok-a { background: #052e16; color: #86efac; } .err-a { background: #450a0a; color: #fca5a5; }
-        .pill { display: inline-block; border-radius: 999px; padding: 4px 12px; font-weight: 700; }
-        .pill.on { background: #7c2d12; color: #fdba74; } .pill.off { background: #064e3b; color: #6ee7b7; }
-        .muted { color: #94a3b8; font-size: .85rem; }
-    </style>
-</head>
-<body>
-    <header><a href="<?= $base ?>/platform/dashboard.php">← Tableau de bord</a></header>
-    <main>
-        <h1>Maintenance</h1>
-        <?php if ($msg): ?><div class="alert ok-a"><?= $h($msg) ?></div><?php endif; ?>
-        <?php if ($err): ?><div class="alert err-a"><?= $h($err) ?></div><?php endif; ?>
 
-        <div class="card">
-            État :
-            <?php if ($active): ?>
-                <span class="pill on">● MAINTENANCE ACTIVE</span>
-                <p class="muted">Message : <?= $h($status['message'] ?? '') ?><?php if (!empty($curIps)): ?> · IP autorisées : <?= $h(implode(', ', $curIps)) ?><?php endif; ?></p>
-                <form method="post"><?= csrfField() ?><input type="hidden" name="action" value="deactivate">
-                    <button class="off" type="submit">Désactiver la maintenance</button>
-                </form>
-            <?php else: ?>
-                <span class="pill off">● En ligne</span>
-            <?php endif; ?>
-        </div>
+<?php if ($msg): ?><div class="pf-section"><div class="pf-notice pf-notice--ok"><i class="fas fa-circle-check"></i><span><?= $h($msg) ?></span></div></div><?php endif; ?>
+<?php if ($err): ?><div class="pf-section"><div class="pf-notice pf-notice--crit"><i class="fas fa-triangle-exclamation"></i><span><?= $h($err) ?></span></div></div><?php endif; ?>
 
-        <div class="card">
-            <h2>Activer la maintenance</h2>
-            <p class="muted">Verrouille l'application établissement (HTTP 503). La <strong>console plateforme reste accessible</strong>.
-               Votre IP (<?= $h($myIp) ?>) est ajoutée automatiquement aux IP autorisées.</p>
-            <form method="post"><?= csrfField() ?><input type="hidden" name="action" value="activate">
-                <label>Message affiché aux utilisateurs</label>
-                <textarea name="message" rows="2" placeholder="Maintenance en cours. Merci de votre patience."><?= $h($status['message'] ?? '') ?></textarea>
-                <label>IP autorisées (séparées par des espaces/virgules, CIDR accepté)</label>
-                <input name="allowed_ips" value="<?= $h(implode(' ', $curIps ?: [$myIp])) ?>">
-                <label>Durée estimée (minutes, optionnel)</label>
-                <input name="eta_minutes" type="number" min="1" value="<?= $h((string) ($status['eta_minutes'] ?? '')) ?>">
-                <div style="margin-top:12px"><button class="on" type="submit">Activer la maintenance</button></div>
-            </form>
-        </div>
-    </main>
-</body>
-</html>
+<section class="pf-section">
+  <div class="pf-card">
+    <div class="pf-card__head">
+      <h2 class="pf-card__title"><i class="fas fa-screwdriver-wrench"></i> État du service</h2>
+      <div class="pf-card__actions">
+        <?php if ($active): ?><span class="pf-pill pf-pill--warn">Maintenance active</span><?php else: ?><span class="pf-pill pf-pill--ok">En ligne</span><?php endif; ?>
+      </div>
+    </div>
+    <div class="pf-card__body">
+      <?php if ($active): ?>
+        <p class="pf-muted" style="margin-top:0;">Message : <?= $h($status['message'] ?? '') ?><?php if (!empty($curIps)): ?> · IP autorisées : <span class="pf-mono"><?= $h(implode(', ', $curIps)) ?></span><?php endif; ?></p>
+        <form method="post"><?= csrfField() ?><input type="hidden" name="action" value="deactivate">
+          <button class="pf-btn pf-btn--primary" type="submit"><i class="fas fa-play"></i> Désactiver la maintenance</button>
+        </form>
+      <?php else: ?>
+        <p class="pf-muted" style="margin:0;">L'application établissement est en ligne et accessible.</p>
+      <?php endif; ?>
+    </div>
+  </div>
+</section>
+
+<section class="pf-section">
+  <div class="pf-card">
+    <div class="pf-card__head">
+      <h2 class="pf-card__title"><i class="fas fa-triangle-exclamation"></i> Activer la maintenance</h2>
+    </div>
+    <div class="pf-card__body">
+      <div class="pf-notice" style="margin-bottom:14px;">
+        <i class="fas fa-circle-info"></i>
+        <span>Verrouille l'application établissement (HTTP 503). La <strong>console plateforme reste accessible</strong>. Votre IP (<span class="pf-mono"><?= $h($myIp) ?></span>) est ajoutée automatiquement aux IP autorisées.</span>
+      </div>
+      <form method="post"><?= csrfField() ?><input type="hidden" name="action" value="activate">
+        <label style="<?= $labelStyle ?>">Message affiché aux utilisateurs</label>
+        <textarea name="message" rows="2" placeholder="Maintenance en cours. Merci de votre patience." style="<?= $fieldStyle ?>"><?= $h($status['message'] ?? '') ?></textarea>
+        <label style="<?= $labelStyle ?>">IP autorisées (séparées par des espaces/virgules, CIDR accepté)</label>
+        <input name="allowed_ips" value="<?= $h(implode(' ', $curIps ?: [$myIp])) ?>" style="<?= $fieldStyle ?> font-family:var(--pf-mono);">
+        <label style="<?= $labelStyle ?>">Durée estimée (minutes, optionnel)</label>
+        <input name="eta_minutes" type="number" min="1" value="<?= $h((string) ($status['eta_minutes'] ?? '')) ?>" style="<?= $fieldStyle ?> font-family:var(--pf-mono);">
+        <div style="margin-top:16px;"><button class="pf-btn pf-btn--primary" type="submit"><i class="fas fa-power-off"></i> Activer la maintenance</button></div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<?php pf_layout_footer(); ?>

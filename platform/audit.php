@@ -26,53 +26,65 @@ try {
           ORDER BY t.created_at DESC, t.id DESC LIMIT 100"
     )->fetchAll(PDO::FETCH_ASSOC) ?: [];
 } catch (\Throwable $e) { /* table peut être vide */ }
+
+require_once __DIR__ . '/includes/layout.php';
+pf_layout_header('audit', 'Audit global', 'Observabilité');
 ?>
-<!doctype html>
-<html lang="fr">
-<head>
-    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Plateforme — Audit global</title>
-    <style>
-        body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; }
-        header { background: #1e293b; padding: 14px 24px; } header a { color: #93c5fd; text-decoration: none; }
-        main { max-width: 1040px; margin: 24px auto; padding: 0 16px; }
-        h2 { margin-top: 28px; }
-        table { width: 100%; border-collapse: collapse; } th, td { text-align: left; padding: 7px; border-bottom: 1px solid #334155; font-size: .82rem; }
-        .badge { background: #273449; border-radius: 6px; padding: 2px 8px; font-size: .72rem; } .muted { color: #94a3b8; }
-        code { color: #93c5fd; }
-    </style>
-</head>
-<body>
-    <header><a href="<?= $base ?>/platform/dashboard.php">← Tableau de bord</a></header>
-    <main>
-        <h1>Audit global</h1>
 
-        <h2>Plateforme <span class="muted">(<?= count($platformLogs) ?> dernières)</span></h2>
-        <table>
-            <thead><tr><th>Date</th><th>Acteur</th><th>Action</th><th>Établ.</th><th>Détail</th></tr></thead>
-            <tbody>
-            <?php if (!$platformLogs): ?><tr><td colspan="5"><em>Aucune entrée.</em></td></tr><?php endif; ?>
-            <?php foreach ($platformLogs as $l): ?>
-                <tr><td class="muted"><?= $h($l['created_at']) ?></td><td><?= $h($l['actor'] ?? ('#' . $l['platform_account_id'])) ?></td>
-                    <td><span class="badge"><?= $h($l['action']) ?></span></td><td><?= $l['establishment_id'] ? '#' . (int) $l['establishment_id'] : '—' ?></td>
-                    <td><code><?= $h(mb_substr((string) ($l['new_value'] ?? ''), 0, 120)) ?></code></td></tr>
-            <?php endforeach; ?>
-            </tbody>
+<section class="pf-section">
+  <div class="pf-card">
+    <div class="pf-card__head">
+      <h2 class="pf-card__title"><i class="fas fa-network-wired"></i> Plateforme</h2>
+      <div class="pf-card__actions"><span class="pf-badge pf-badge--soft"><?= count($platformLogs) ?> dernières</span></div>
+    </div>
+    <div class="pf-card__body pf-card__body--flush">
+      <div class="pf-table-wrap">
+        <table class="pf-table pf-table--compact">
+          <thead><tr><th>Date</th><th>Acteur</th><th>Action</th><th>Établ.</th><th>Détail</th></tr></thead>
+          <tbody>
+          <?php if (!$platformLogs): ?><tr><td colspan="5"><div class="pf-empty">Aucune entrée.</div></td></tr><?php endif; ?>
+          <?php foreach ($platformLogs as $l): ?>
+            <tr>
+              <td class="pf-mono pf-muted" style="white-space:nowrap;"><?= $h($l['created_at']) ?></td>
+              <td><?= $h($l['actor'] ?? ('#' . $l['platform_account_id'])) ?></td>
+              <td><span class="pf-badge pf-badge--soft"><?= $h($l['action']) ?></span></td>
+              <td class="pf-mono pf-muted"><?= $l['establishment_id'] ? '#' . (int) $l['establishment_id'] : '—' ?></td>
+              <td class="pf-mono pf-muted"><?= $h(mb_substr((string) ($l['new_value'] ?? ''), 0, 120)) ?></td>
+            </tr>
+          <?php endforeach; ?>
+          </tbody>
         </table>
+      </div>
+    </div>
+  </div>
+</section>
 
-        <h2>Établissements <span class="muted">(<?= count($tenantLogs) ?> dernières)</span></h2>
-        <table>
-            <thead><tr><th>Date</th><th>Établissement</th><th>Action</th><th>Cible</th><th>Détail</th></tr></thead>
-            <tbody>
-            <?php if (!$tenantLogs): ?><tr><td colspan="5"><em>Aucune entrée.</em></td></tr><?php endif; ?>
-            <?php foreach ($tenantLogs as $l): ?>
-                <tr><td class="muted"><?= $h($l['created_at']) ?></td><td><?= $h($l['etab']) ?></td>
-                    <td><span class="badge"><?= $h($l['action']) ?></span></td>
-                    <td class="muted"><?= $h($l['target_type'] ?? '') ?> <?= $l['target_id'] ? '#' . (int) $l['target_id'] : '' ?></td>
-                    <td><code><?= $h(mb_substr((string) ($l['new_value'] ?? ''), 0, 120)) ?></code></td></tr>
-            <?php endforeach; ?>
-            </tbody>
+<section class="pf-section">
+  <div class="pf-card">
+    <div class="pf-card__head">
+      <h2 class="pf-card__title"><i class="fas fa-school"></i> Établissements</h2>
+      <div class="pf-card__actions"><span class="pf-badge pf-badge--soft"><?= count($tenantLogs) ?> dernières</span></div>
+    </div>
+    <div class="pf-card__body pf-card__body--flush">
+      <div class="pf-table-wrap">
+        <table class="pf-table pf-table--compact">
+          <thead><tr><th>Date</th><th>Établissement</th><th>Action</th><th>Cible</th><th>Détail</th></tr></thead>
+          <tbody>
+          <?php if (!$tenantLogs): ?><tr><td colspan="5"><div class="pf-empty">Aucune entrée.</div></td></tr><?php endif; ?>
+          <?php foreach ($tenantLogs as $l): ?>
+            <tr>
+              <td class="pf-mono pf-muted" style="white-space:nowrap;"><?= $h($l['created_at']) ?></td>
+              <td><?= $h($l['etab']) ?></td>
+              <td><span class="pf-badge pf-badge--soft"><?= $h($l['action']) ?></span></td>
+              <td class="pf-mono pf-muted"><?= $h($l['target_type'] ?? '') ?> <?= $l['target_id'] ? '#' . (int) $l['target_id'] : '' ?></td>
+              <td class="pf-mono pf-muted"><?= $h(mb_substr((string) ($l['new_value'] ?? ''), 0, 120)) ?></td>
+            </tr>
+          <?php endforeach; ?>
+          </tbody>
         </table>
-    </main>
-</body>
-</html>
+      </div>
+    </div>
+  </div>
+</section>
+
+<?php pf_layout_footer(); ?>

@@ -38,6 +38,89 @@
         }
     }
 
+    // ─── Notifications de bureau (messagerie) ────────────────────
+    // Demande de permission POLIE : une seule fois, et seulement après un premier
+    // geste utilisateur (clic/touche) — jamais au chargement (bannière intrusive).
+    var _notifPermAsked = false;
+    function requestNotifPermissionOnce() {
+        if (_notifPermAsked) return;
+        if (typeof Notification === 'undefined') return;
+        if (Notification.permission !== 'default') { _notifPermAsked = true; return; }
+        _notifPermAsked = true;
+        try { Notification.requestPermission(); } catch (e) { /* Safari legacy: callback form — on ignore */ }
+    }
+    var _permPromptArmed = false;
+    function armPolitePermissionPrompt() {
+        if (_permPromptArmed) return;                 // évite d'empiler des écouteurs à chaque reconnexion
+        if (typeof Notification === 'undefined') return;
+        if (Notification.permission !== 'default') return;
+        _permPromptArmed = true;
+        var handler = function () {
+            requestNotifPermissionOnce();
+            window.removeEventListener('click', handler);
+            window.removeEventListener('keydown', handler);
+        };
+        window.addEventListener('click', handler, { once: false });
+        window.addEventListener('keydown', handler, { once: false });
+    }
+
+    // Conversation en sourdine : le serveur OMET normalement les destinataires en
+    // sourdine, mais on double-vérifie côté client si l'appli a exposé la liste.
+    function isConversationMuted(convId) {
+        if (convId == null) return false;
+        var key = String(convId);
+        var m = window.__mutedConversations;
+        if (!m) return false;
+        if (typeof m.has === 'function') return m.has(key) || m.has(Number(convId));
+        if (Array.isArray(m)) return m.indexOf(key) !== -1 || m.indexOf(Number(convId)) !== -1;
+        return !!m[key];
+    }
+
+    // Son de notification court, sans asset externe (CSP-safe) via WebAudio.
+    // L'AudioContext ne peut démarrer qu'après un geste utilisateur : on le crée/
+    // reprend paresseusement et on échoue silencieusement si le navigateur bloque.
+    var _audioCtx = null;
+    function playNotificationSound() {
+        try {
+            var AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return;
+            if (!_audioCtx) _audioCtx = new AC();
+            if (_audioCtx.state === 'suspended' && _audioCtx.resume) { _audioCtx.resume(); }
+            var now = _audioCtx.currentTime;
+            var osc = _audioCtx.createOscillator();
+            var gain = _audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(660, now);
+            osc.frequency.setValueAtTime(880, now + 0.08);
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(0.12, now + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+            osc.connect(gain);
+            gain.connect(_audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.26);
+        } catch (e) { /* audio bloqué / indisponible → silencieux */ }
+    }
+
+    function showDesktopNotification(sender, body, convId) {
+        if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+        try {
+            var n = new Notification(sender || 'Nouveau message', {
+                body: body || '',
+                tag: convId != null ? ('conversation-' + convId) : undefined, // regroupe par conversation
+                renotify: false,
+            });
+            n.onclick = function () {
+                try { window.focus(); } catch (e) {}
+                if (convId != null) {
+                    var base = window.FRONOTE_BASE_URL || '/';
+                    window.location.href = base + 'modules/messagerie/conversation.php?id=' + encodeURIComponent(convId);
+                }
+                n.close();
+            };
+        } catch (e) { /* notification indisponible → silencieux */ }
+    }
+
     // ─── Connection ──────────────────────────────────────────────
 
     function connect() {
@@ -87,12 +170,16 @@
         stopPolling();
         startHeartbeat();
 
-        // Join rooms
-        socket.emit('joinUser', String(cfg.userId));
-        socket.emit('joinEtablissement');
+        // Les rooms nominatives et l'établissement sont rejointes CÔTÉ SERVEUR à
+        // partir des claims JWT vérifiés (aucun emit client 'joinUser'/'joinEtablissement' :
+        // le client ne doit pas pouvoir déclarer son établissement — anti-usurpation tenant).
         if (cfg.userRole === 'administrateur') {
             socket.emit('join:admin');
         }
+
+        // Demande POLIE (une fois, au 1er geste) de la permission de notification
+        // de bureau — pour les messages reçus hors de la conversation affichée.
+        armPolitePermissionPrompt();
 
         console.log('[WS] Connected — user=' + cfg.userId + ' role=' + cfg.userRole);
     }
@@ -208,12 +295,35 @@
     }
 
     function handleMessage(data) {
-        var sender = data.sender_name || data.from || '';
-        var msg = sender ? 'Message de ' + sender : 'Nouveau message';
-        toast(msg, 'info');
+        data = data || {};
+        var convId = (typeof data.conversationId !== 'undefined') ? data.conversationId
+                   : (typeof data.convId !== 'undefined') ? data.convId : null;
+
+        // Badge global : toujours à jour si le serveur fournit un compteur.
         if (typeof data.unread_count !== 'undefined') {
             updateBadge({ count: data.unread_count });
         }
+
+        // Conversation actuellement AFFICHÉE → la vue conversation gère l'ajout du
+        // message (aucun toast/notif/son : ce serait du bruit redondant).
+        var active = window.__activeConversationId;
+        if (convId != null && active != null && String(convId) === String(active)) {
+            return;
+        }
+
+        // En sourdine → aucune alerte (le serveur devrait déjà l'avoir omis).
+        if (isConversationMuted(convId)) return;
+
+        // Extrait lisible : nom d'expéditeur + court aperçu si disponible.
+        var m = data.message || {};
+        var sender = data.sender_name || data.from || m.sender_name || m.expediteur_nom || '';
+        var snippet = data.preview || m.preview || m.contenu || m.body || '';
+        if (typeof snippet === 'string' && snippet.length > 120) snippet = snippet.slice(0, 117) + '…';
+
+        var title = sender ? 'Message de ' + sender : 'Nouveau message';
+        toast(title + (snippet ? ' : ' + snippet : ''), 'info');
+        showDesktopNotification(title, snippet, convId);
+        playNotificationSound();
     }
 
     function handleBadgeUpdate(data) {

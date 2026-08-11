@@ -1,19 +1,20 @@
 <?php
 declare(strict_types=1);
 /**
- * Portail PLATEFORME — console de supervision (monitoring SaaS, cahier §20/§34).
- * Design system (.ds-platform) ; métriques serveur en PHP pur + compteurs DB/services.
+ * Portail PLATEFORME — CENTRE DE COMMANDE de la flotte (console opérateur).
+ * Vue « à la volée » : statut de la flotte + santé système + alertes + audit.
+ * Chrome partagée via platform/includes/layout.php ; composants .pf-* (platform.css).
+ * Métriques serveur en PHP pur (/proc + disk_*) ; compteurs DB/services.
  */
 require_once __DIR__ . '/../API/core.php';
 if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
-$base = defined('BASE_URL') ? BASE_URL : '';
 platformAuthorize('platform.dashboard.view');
 
-$auth     = \API\Security\WorldContext::platformAuth();
-$username = $_SESSION['platform']['username'] ?? '';
-$pdo      = getPDO();
-$h  = fn($s) => htmlspecialchars((string) $s);
-$v  = static fn(string $p) => $base . '/' . ltrim($p, '/') . '?v=' . (is_file(__DIR__ . '/../' . $p) ? filemtime(__DIR__ . '/../' . $p) : '1');
+$base = defined('BASE_URL') ? rtrim((string) BASE_URL, '/') : '';
+$auth = \API\Security\WorldContext::platformAuth();
+$pdo  = getPDO();
+$h    = static fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
+$can  = static function (string $p) use ($auth): bool { try { return $auth->can($p); } catch (\Throwable $e) { return false; } };
 $count = function (string $sql, array $a = []) use ($pdo): int { try { $s = $pdo->prepare($sql); $s->execute($a); return max(0, (int) $s->fetchColumn()); } catch (\Throwable $e) { return 0; } };
 $statusFor = fn(float $p) => $p >= 90 ? 'crit' : ($p >= 70 ? 'warn' : 'ok');
 
@@ -47,9 +48,9 @@ try {
     $ticketsOpen = (int) ($r['opn'] ?? 0); $ticketsCrit = (int) ($r['crit'] ?? 0);
 } catch (\Throwable $e) { error_log('[platform dashboard] ticket counts: ' . $e->getMessage()); }
 $supportSessions = $count("SELECT COUNT(*) FROM support_sessions WHERE status='active'");
-$accessPending = $count("SELECT COUNT(*) FROM support_access_requests WHERE status IN ('sent_to_direction','waiting_direction')");
-$platAccounts = $count("SELECT COUNT(*) FROM platform_accounts WHERE status='active'");
-$invitPending = $count("SELECT COUNT(*) FROM director_invitations WHERE status='pending'");
+$accessPending   = $count("SELECT COUNT(*) FROM support_access_requests WHERE status IN ('sent_to_direction','waiting_direction')");
+$platAccounts    = $count("SELECT COUNT(*) FROM platform_accounts WHERE status='active'");
+$invitPending    = $count("SELECT COUNT(*) FROM director_invitations WHERE status='pending'");
 $dbTables = 0; $dbSizeMb = 0.0;  // nb de tables + taille : une seule requête information_schema
 try {
     $r = $pdo->query("SELECT COUNT(*) AS n, ROUND(SUM(data_length+index_length)/1048576,1) AS mb FROM information_schema.tables WHERE table_schema=DATABASE()")->fetch(PDO::FETCH_ASSOC);
@@ -62,187 +63,275 @@ try { $bks = app('backup')->listBackups(); if (!empty($bks)) { $backupName = $bk
 $auditRows = []; try { $auditRows = $pdo->query("SELECT l.created_at, l.action, pa.username AS actor FROM platform_audit_logs l LEFT JOIN platform_accounts pa ON pa.id=l.platform_account_id ORDER BY l.id DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC) ?: []; } catch (\Throwable $e) { error_log('[platform dashboard] audit: ' . $e->getMessage()); }
 $activeSessions = []; try { $activeSessions = (new \API\Support\SupportSessionService($pdo))->allActive(); } catch (\Throwable $e) { error_log('[platform dashboard] sessions: ' . $e->getMessage()); }
 
-$menu = [
-    ['platform.establishments.view',    'Établissements',        'fa-school',           '/platform/establishments.php'],
-    ['platform.director_invites.create','Invitations Directeur',  'fa-envelope-open-text','/platform/director-invitations.php'],
-    ['platform.support.ticket.view',    'Support',                'fa-life-ring',        '/platform/support/tickets.php'],
-    ['platform.audit.view',             'Audit global',           'fa-list-check',       '/platform/audit.php'],
-    ['platform.security.view',          'Sécurité',               'fa-shield-halved',    '/platform/security.php'],
-    ['platform.backups.view',           'Sauvegardes',            'fa-database',         '/platform/backups.php'],
-    ['platform.maintenance.manage',     'Maintenance',            'fa-screwdriver-wrench','/platform/maintenance.php'],
-    ['platform.updates.manage',         'Mises à jour',           'fa-cloud-arrow-down', '/platform/updates.php'],
-    ['platform.system.view',            'Système',                'fa-server',           '/platform/system.php'],
-    ['platform.dashboard.view',         'Design System',          'fa-palette',          '/platform/design-system.php'],
+/* ── Flotte : liste des établissements pour la grille de statut ── */
+$fleet = [];
+if ($can('platform.establishments.view')) {
+    try { $fleet = (new \API\Platform\PlatformEstablishmentService($pdo))->listAll(); }
+    catch (\Throwable $e) { error_log('[platform dashboard] fleet: ' . $e->getMessage()); }
+}
+// Statut établissement → [variante pill, libellé, priorité de tri « à surveiller d'abord »].
+$pillMap = [
+    'suspended'  => ['warn',  'Suspendu',   0],
+    'onboarding' => ['info',  'Onboarding', 1],
+    'draft'      => ['muted', 'Brouillon',  2],
+    'active'     => ['ok',    'Actif',      3],
+    'archived'   => ['muted', 'Archivé',    4],
+    'deleted'    => ['crit',  'Supprimé',   5],
+    'purged'     => ['muted', 'Purgé',      6],
 ];
+$fleet = array_values(array_filter($fleet, fn($e) => ($e['status'] ?? '') !== 'purged'));
+usort($fleet, function ($a, $b) use ($pillMap) {
+    $pa = $pillMap[$a['status'] ?? ''][2] ?? 9;
+    $pb = $pillMap[$b['status'] ?? ''][2] ?? 9;
+    return $pa <=> $pb ?: strcasecmp((string) ($a['nom'] ?? ''), (string) ($b['nom'] ?? ''));
+});
+$fleetCap  = 12;
+$fleetMore = max(0, count($fleet) - $fleetCap);
+$fleetShow = array_slice($fleet, 0, $fleetCap);
 
-/** Carte métrique. */
-$card = function (string $label, string $value, string $status = 'ok', ?string $sub = null, ?string $href = null, ?int $gauge = null) use ($h, $base) {
+/* ── Alertes ouvertes (dérivées de l'état courant, gatées par permission) ── */
+$alerts = [];
+if ($can('platform.support.ticket.view') && $ticketsCrit > 0) {
+    $alerts[] = ['crit', 'fa-fire', $ticketsCrit . ' ticket' . ($ticketsCrit > 1 ? 's' : '') . ' critique' . ($ticketsCrit > 1 ? 's' : '') . ' ouvert' . ($ticketsCrit > 1 ? 's' : ''), '/platform/support/tickets.php'];
+}
+if ($can('platform.establishments.view') && $etabSusp > 0) {
+    $alerts[] = ['warn', 'fa-circle-pause', $etabSusp . ' établissement' . ($etabSusp > 1 ? 's' : '') . ' suspendu' . ($etabSusp > 1 ? 's' : ''), '/platform/establishments.php'];
+}
+if ($can('platform.support.ticket.view') && $accessPending > 0) {
+    $alerts[] = ['warn', 'fa-key', $accessPending . " demande" . ($accessPending > 1 ? 's' : '') . " d'accès en attente Direction", '/platform/support/tickets.php'];
+}
+if ($can('platform.backups.view')) {
+    if ($backupAge === null) {
+        $alerts[] = ['warn', 'fa-database', 'Aucune sauvegarde disponible', '/platform/backups.php'];
+    } elseif ($backupAge > 48) {
+        $alerts[] = ['warn', 'fa-database', 'Dernière sauvegarde il y a ' . round((float) $backupAge) . ' h', '/platform/backups.php'];
+    }
+}
+$obsHref = $can('platform.system.view') ? '/platform/observability.php' : null;
+foreach ([['CPU', $cpuPct], ['Mémoire', $ramPct], ['Stockage', $diskPct]] as [$rlbl, $rp]) {
+    if ($rp >= 90)      { $alerts[] = ['crit', 'fa-gauge-high', $rlbl . ' saturé (' . $rp . ' %)', $obsHref]; }
+    elseif ($rp >= 70)  { $alerts[] = ['warn', 'fa-gauge-high', $rlbl . ' élevé (' . $rp . ' %)', $obsHref]; }
+}
+if ($can('platform.security.view') && $supportSessions > 0) {
+    $alerts[] = ['info', 'fa-user-shield', $supportSessions . ' session' . ($supportSessions > 1 ? 's' : '') . ' support active' . ($supportSessions > 1 ? 's' : ''), '/platform/security.php'];
+}
+
+/* ── Rendu d'une tuile stat .pf-stat ── */
+$stat = function (string $label, string $value, string $status = 'ok', ?string $sub = null, ?string $href = null, ?int $gauge = null) use ($base, $h) {
     $tag = $href ? 'a' : 'div';
-    echo '<' . $tag . ' class="ds-stat-card is-' . $status . '"' . ($href ? ' href="' . $h($base . $href) . '" style="text-decoration:none"' : '') . '>';
-    echo '<span class="ds-stat-card-label">' . $h($label) . '</span>';
-    echo '<span class="ds-stat-card-value">' . $h($value) . '</span>';
-    if ($gauge !== null) { echo '<div class="ds-gauge"><span style="width:' . max(0, min(100, $gauge)) . '%"></span></div>'; }
-    if ($sub !== null) { echo '<span class="ds-stat-card-status">' . $h($sub) . '</span>'; }
+    echo '<' . $tag . ' class="pf-stat is-' . $h($status) . '"' . ($href ? ' href="' . $h($base . $href) . '"' : '') . '>';
+    echo '<span class="pf-stat__label">' . $h($label) . '</span>';
+    echo '<span class="pf-stat__value">' . $h($value) . '</span>';
+    if ($gauge !== null) { echo '<div class="pf-gauge"><span style="width:' . max(0, min(100, $gauge)) . '%"></span></div>'; }
+    if ($sub !== null) { echo '<span class="pf-stat__sub">' . $h($sub) . '</span>'; }
     echo '</' . $tag . '>';
 };
+
+require_once __DIR__ . '/includes/layout.php';
+pf_layout_header('dashboard', 'Centre de commande', 'Flotte');
 ?>
-<!doctype html>
-<html lang="fr" data-theme="dark" data-theme-pref="dark">
-<head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Plateforme Fronote — Supervision</title>
-  <script>
-  (function(){ var el=document.documentElement,s=null; try{s=localStorage.getItem('fronote_dark_mode');}catch(e){}
-    var p=s||'dark', t=p; if(p==='auto'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';} else if(['light','dark','liquid'].indexOf(p)<0){t='light';}
-    el.setAttribute('data-theme',t); el.setAttribute('data-theme-pref',p);
-    try{ el.setAttribute('data-reduce-motion',localStorage.getItem('fronote_reduce_motion')==='true'?'true':'false'); el.setAttribute('data-reduce-transparency',localStorage.getItem('fronote_reduce_transparency')==='true'?'true':'false'); }catch(e){}
-  })();
-  </script>
-  <link rel="stylesheet" href="../assets/lib/fontawesome/css/all.min.css">
-  <link rel="stylesheet" href="<?= $h($v('assets/css/design-system.css')) ?>">
-  <style>
-    body { margin:0; background:var(--surface-app); color:var(--text-primary); font-family:var(--font-sans); }
-    .pf-top { display:flex; align-items:center; justify-content:space-between; gap:var(--space-4); padding:var(--space-3) var(--space-5); background:var(--surface-panel); border-bottom:1px solid var(--border-light); position:sticky; top:0; z-index:var(--z-sticky); backdrop-filter:blur(var(--glass-blur)); flex-wrap:wrap; }
-    .pf-brand { font-weight:var(--fw-bold); color:var(--platform-accent); }
-    .pf-nav { display:flex; gap:var(--space-1); flex-wrap:wrap; }
-    .pf-nav a { color:var(--text-secondary); text-decoration:none; padding:6px 10px; border-radius:var(--radius-md); font-size:var(--fs-sm); }
-    .pf-nav a:hover { background:var(--surface-hover); color:var(--text-primary); }
-    .pf-main { max-width:1200px; margin:0 auto; padding:var(--space-6) var(--space-5) var(--space-12); }
-    .pf-section { margin-top:var(--space-8); }
-  </style>
-</head>
-<body class="ds-platform">
-  <header class="pf-top">
-    <span class="pf-brand">⬢ Plateforme Fronote</span>
-    <nav class="pf-nav">
-      <?php foreach ($menu as [$perm, $label, $icon, $href]): if (!$auth->can($perm)) continue; ?>
-        <a href="<?= $h($base . $href) ?>"><i class="fas <?= $h($icon) ?>"></i> <?= $h($label) ?></a>
-      <?php endforeach; ?>
-    </nav>
-    <span style="display:flex;align-items:center;gap:var(--space-3)">
-      <button class="ds-btn ds-btn--ghost ds-btn--sm" id="pfTheme" title="Thème"><i class="fas fa-circle-half-stroke"></i></button>
-      <span class="ds-muted"><?= $h($username) ?></span>
-      <a class="ds-btn ds-btn--soft ds-btn--sm" href="<?= $h($base) ?>/platform/logout.php">Déconnexion</a>
-    </span>
-  </header>
 
-  <main class="pf-main">
-    <div class="ds-platform-eyebrow">Monitoring</div>
-    <h1 class="ds-platform-heading">Console de supervision</h1>
+<!-- ═══ Rangée d'indicateurs de tête ═══ -->
+<section class="pf-section">
+  <div class="pf-grid">
+    <?php
+      if ($can('platform.establishments.view')) {
+          $stat('Établissements', (string) $etabTotal, $etabSusp > 0 ? 'warn' : 'ok',
+                $etabActifs . ' actifs' . ($etabSusp > 0 ? ' · ' . $etabSusp . ' suspendus' : ''),
+                '/platform/establishments.php');
+      }
+      if ($can('platform.security.view')) {
+          $stat('Comptes plateforme', (string) $platAccounts, 'ok', 'actifs', '/platform/security.php');
+          $stat('Sessions support', (string) $supportSessions, $supportSessions > 0 ? 'warn' : 'ok', 'actives', '/platform/security.php');
+      }
+      if ($can('platform.support.ticket.view')) {
+          $stat('Tickets ouverts', (string) $ticketsOpen, $ticketsCrit > 0 ? 'crit' : ($ticketsOpen > 5 ? 'warn' : 'ok'),
+                $ticketsCrit > 0 ? ($ticketsCrit . ' critiques') : 'support', '/platform/support/tickets.php');
+      }
+      if ($can('platform.backups.view')) {
+          if ($backupAge === null) {
+              $stat('Dernière sauvegarde', 'aucune', 'warn', 'créer une sauvegarde', '/platform/backups.php');
+          } else {
+              $stat('Dernière sauvegarde', $backupAge < 1 ? '< 1 h' : round((float) $backupAge) . ' h',
+                    $backupAge > 48 ? 'warn' : 'ok', (string) $backupName, '/platform/backups.php');
+          }
+      }
+      if ($can('platform.director_invites.create') && $invitPending > 0) {
+          $stat('Invitations Directeur', (string) $invitPending, 'info', 'en attente', '/platform/director-invitations.php');
+      }
+      $stat('Version', 'v' . $version, 'info', 'installée', $can('platform.updates.manage') ? '/platform/updates.php' : null);
+    ?>
+  </div>
+</section>
 
-    <!-- Santé serveur -->
-    <div class="ds-monitor-grid">
-      <?php
-        $card('CPU (charge 1 min)', $cpuPct . ' %', $statusFor($cpuPct), 'load ' . number_format((float) ($load[0]), 2) . ' · ' . $cores . ' cœurs', null, $cpuPct);
-        $card('Mémoire vive', $ramPct . ' %', $statusFor($ramPct), $ramTotGb ? ($ramUsedGb . ' / ' . $ramTotGb . ' Go') : 'n/d', null, $ramPct);
-        $card('Stockage', $diskPct . ' %', $statusFor($diskPct), $diskTotGb ? ($diskUsedGb . ' / ' . $diskTotGb . ' Go') : 'n/d', null, $diskPct);
-        if ($auth->can('platform.system.view')) { $card('Base de données', ($dbSizeMb ?: 0) . ' Mo', 'ok', $dbTables . ' tables', '/platform/system.php'); }
-      ?>
-    </div>
+<!-- ═══ Flotte + alertes ═══ -->
+<section class="pf-section">
+  <div class="pf-grid pf-grid--2">
 
-    <!-- Activité plateforme -->
-    <div class="ds-section pf-section">
-      <div class="ds-platform-eyebrow">Activité</div>
-      <div class="ds-monitor-grid" style="margin-top:var(--space-3)">
-        <?php
-          // Chaque métrique n'est affichée qu'avec la permission granulaire correspondante
-          // (moindre privilège : un rôle « dashboard.view » seul ne voit pas l'intelligence opérationnelle).
-          if ($auth->can('platform.establishments.view')) {
-              $card('Établissements', (string) $etabTotal, 'ok', $etabActifs . ' actifs' . ($etabSusp > 0 ? ' · ' . $etabSusp . ' suspendus' : ''), '/platform/establishments.php');
-          }
-          if ($auth->can('platform.support.ticket.view')) {
-              $card('Tickets support', (string) $ticketsOpen, $ticketsOpen > 5 ? 'warn' : 'ok', 'ouverts', '/platform/support/tickets.php');
-              $card('Tickets critiques', (string) $ticketsCrit, $ticketsCrit > 0 ? 'crit' : 'ok', 'priorité critique', '/platform/support/tickets.php');
-              $card("Demandes d'accès", (string) $accessPending, $accessPending > 0 ? 'warn' : 'ok', 'en attente Direction', '/platform/support/tickets.php');
-          }
-          if ($auth->can('platform.security.view')) {
-              $card('Sessions support', (string) $supportSessions, $supportSessions > 0 ? 'warn' : 'ok', 'actives', '/platform/security.php');
-              $card('Comptes plateforme', (string) $platAccounts, 'ok', 'actifs', '/platform/security.php');
-          }
-          if ($auth->can('platform.director_invites.create')) {
-              $card('Invitations Directeur', (string) $invitPending, 'ok', 'en attente', '/platform/director-invitations.php');
-          }
-        ?>
+    <!-- Grille de statut de la flotte -->
+    <?php if ($can('platform.establishments.view')): ?>
+    <div class="pf-card">
+      <div class="pf-card__head">
+        <h2 class="pf-card__title"><i class="fas fa-diagram-project"></i> Statut de la flotte</h2>
+        <div class="pf-card__actions">
+          <a class="pf-btn pf-btn--ghost pf-btn--sm" href="<?= $h($base) ?>/platform/establishments.php">Tout gérer <i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+      <div class="pf-card__body pf-card__body--flush">
+        <?php if (empty($fleetShow)): ?>
+          <div class="pf-empty">Aucun établissement enregistré.</div>
+        <?php else: ?>
+        <div class="pf-table-wrap">
+          <table class="pf-table pf-table--compact">
+            <thead>
+              <tr>
+                <th>Établissement</th>
+                <th>Type</th>
+                <th>Statut</th>
+                <th class="pf-num">Membres</th>
+                <th>Support</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($fleetShow as $e):
+                  $st = (string) ($e['status'] ?? '');
+                  [$variant, $label] = $pillMap[$st] ?? ['muted', $st ?: 'n/d'];
+                  $sup = (int) ($e['support_sessions'] ?? 0);
+              ?>
+              <tr>
+                <td>
+                  <div style="font-weight:600;"><?= $h($e['nom'] ?? ('#' . ($e['id'] ?? '?'))) ?></div>
+                  <?php if (!empty($e['ville'])): ?><div class="pf-muted" style="font-size:11.5px;"><?= $h($e['ville']) ?></div><?php endif; ?>
+                </td>
+                <td class="pf-mono pf-muted"><?= $h($e['type'] ?? '—') ?></td>
+                <td><span class="pf-pill pf-pill--<?= $h($variant) ?>"><?= $h($label) ?></span></td>
+                <td class="pf-num"><?= (int) ($e['members'] ?? 0) ?></td>
+                <td><?php if ($sup > 0): ?><span class="pf-pill pf-pill--info"><?= $sup ?> actif<?= $sup > 1 ? 's' : '' ?></span><?php else: ?><span class="pf-muted">—</span><?php endif; ?></td>
+                <td class="pf-num"><a class="pf-btn pf-btn--ghost pf-btn--sm" href="<?= $h($base) ?>/platform/establishments.php" title="Gérer">Gérer</a></td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+        <?php if ($fleetMore > 0): ?>
+          <div style="padding:10px 14px; border-top:1px solid var(--pf-border);">
+            <a class="pf-muted" style="font-size:12.5px; text-decoration:none;" href="<?= $h($base) ?>/platform/establishments.php">+ <?= (int) $fleetMore ?> autre<?= $fleetMore > 1 ? 's' : '' ?> — voir tout &rarr;</a>
+          </div>
+        <?php endif; ?>
+        <?php endif; ?>
       </div>
     </div>
+    <?php endif; ?>
 
-    <!-- Système : version, MAJ, sauvegarde -->
-    <div class="ds-section pf-section">
-      <div class="ds-platform-eyebrow">Système</div>
-      <div class="ds-monitor-grid" style="margin-top:var(--space-3)">
-        <?php
-          $card('Version Fronote', 'v' . $version, 'ok', 'installée', $auth->can('platform.updates.manage') ? '/platform/updates.php' : null);
-          if ($auth->can('platform.backups.view')) {
-              if ($backupAge === null) {
-                  $card('Dernière sauvegarde', 'aucune', 'warn', 'créer une sauvegarde', '/platform/backups.php');
-              } else {
-                  $card('Dernière sauvegarde', $backupAge < 1 ? "< 1 h" : round((float) ($backupAge)) . ' h', $backupAge > 48 ? 'warn' : 'ok', $h((string) $backupName), '/platform/backups.php');
-              }
-          }
-          $card('Disponibilité PHP', PHP_VERSION, 'ok', 'runtime');
-        ?>
+    <!-- Alertes ouvertes -->
+    <div class="pf-card">
+      <div class="pf-card__head">
+        <h2 class="pf-card__title"><i class="fas fa-triangle-exclamation"></i> Alertes ouvertes</h2>
+        <?php if (!empty($alerts)): ?><div class="pf-card__actions"><span class="pf-badge pf-badge--soft"><?= count($alerts) ?></span></div><?php endif; ?>
+      </div>
+      <div class="pf-card__body">
+        <?php if (empty($alerts)): ?>
+          <div class="pf-notice pf-notice--ok"><i class="fas fa-circle-check"></i><span>Tout est nominal — aucune alerte ouverte.</span></div>
+        <?php else: ?>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <?php foreach ($alerts as [$lvl, $icon, $msg, $href]):
+                $ncls = in_array($lvl, ['crit', 'warn'], true) ? ' pf-notice--' . $lvl : '';
+                $tag  = $href ? 'a' : 'div';
+            ?>
+            <<?= $tag ?> class="pf-notice<?= $ncls ?>"<?= $href ? ' href="' . $h($base . $href) . '" style="text-decoration:none;"' : '' ?>>
+              <i class="fas <?= $h($icon) ?>"></i>
+              <span style="flex:1;"><?= $h($msg) ?></span>
+              <?php if ($href): ?><i class="fas fa-chevron-right" style="font-size:11px; opacity:.6;"></i><?php endif; ?>
+            </<?= $tag ?>>
+            <?php endforeach; ?>
+          </div>
+        <?php endif; ?>
       </div>
     </div>
+  </div>
+</section>
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:var(--space-4);margin-top:var(--space-8)">
-      <!-- Sessions support actives -->
-      <?php if ($auth->can('platform.security.view')): ?>
-      <section class="ds-card">
-        <div class="ds-card__header"><h3 class="ds-card__title"><i class="fas fa-user-shield"></i> Sessions support actives</h3></div>
-        <div class="ds-card__body">
-          <?php if (empty($activeSessions)): ?>
-            <p class="ds-muted">Aucune session support en cours.</p>
-          <?php else: ?>
-            <table class="ds-table ds-table--compact"><tbody>
+<!-- ═══ Santé système ═══ -->
+<section class="pf-section">
+  <div class="pf-section__head">
+    <div>
+      <div class="pf-eyebrow">Observabilité</div>
+      <h2 class="pf-title" style="font-size:16px;">Santé système</h2>
+    </div>
+    <?php if ($can('platform.system.view')): ?>
+      <a class="pf-btn pf-btn--ghost pf-btn--sm" href="<?= $h($base) ?>/platform/observability.php">Détail <i class="fas fa-arrow-right"></i></a>
+    <?php endif; ?>
+  </div>
+  <div class="pf-grid">
+    <?php
+      $stat('CPU', $cpuPct . ' %', $statusFor($cpuPct), 'load ' . number_format((float) ($load[0]), 2) . ' · ' . $cores . ' cœurs', $obsHref, $cpuPct);
+      $stat('Mémoire vive', $ramPct . ' %', $statusFor($ramPct), $ramTotGb ? ($ramUsedGb . ' / ' . $ramTotGb . ' Go') : 'n/d', $obsHref, $ramPct);
+      $stat('Stockage', $diskPct . ' %', $statusFor($diskPct), $diskTotGb ? ($diskUsedGb . ' / ' . $diskTotGb . ' Go') : 'n/d', $obsHref, $diskPct);
+      if ($can('platform.system.view')) {
+          $stat('Base de données', ($dbSizeMb ?: 0) . ' Mo', 'info', $dbTables . ' tables', '/platform/system.php');
+      }
+      $stat('Runtime PHP', PHP_VERSION, 'info', 'moteur applicatif');
+    ?>
+  </div>
+</section>
+
+<!-- ═══ Sessions support + audit récent ═══ -->
+<section class="pf-section">
+  <div class="pf-grid pf-grid--2">
+    <?php if ($can('platform.security.view')): ?>
+    <div class="pf-card">
+      <div class="pf-card__head"><h2 class="pf-card__title"><i class="fas fa-user-shield"></i> Sessions support actives</h2></div>
+      <div class="pf-card__body pf-card__body--flush">
+        <?php if (empty($activeSessions)): ?>
+          <div class="pf-empty">Aucune session support en cours.</div>
+        <?php else: ?>
+        <div class="pf-table-wrap">
+          <table class="pf-table pf-table--compact">
+            <tbody>
             <?php foreach ($activeSessions as $s): ?>
-              <tr><td><?= $h($s['establishment_name'] ?? ('#' . ($s['establishment_id'] ?? '?'))) ?></td><td><span class="ds-badge ds-badge--info"><?= $h($s['access_level'] ?? '') ?></span></td><td class="ds-muted" style="text-align:right"><?= $h($s['expires_at'] ?? '') ?></td></tr>
+              <tr>
+                <td><?= $h($s['establishment_name'] ?? ('#' . ($s['establishment_id'] ?? '?'))) ?></td>
+                <td><span class="pf-pill pf-pill--info"><?= $h($s['access_level'] ?? '') ?></span></td>
+                <td class="pf-mono pf-muted" style="text-align:right;"><?= $h($s['expires_at'] ?? '') ?></td>
+              </tr>
             <?php endforeach; ?>
-            </tbody></table>
-          <?php endif; ?>
+            </tbody>
+          </table>
         </div>
-      </section>
-      <?php endif; ?>
-
-      <!-- Audit récent -->
-      <?php if ($auth->can('platform.audit.view')): ?>
-      <section class="ds-card">
-        <div class="ds-card__header"><h3 class="ds-card__title"><i class="fas fa-clock-rotate-left"></i> Événements récents</h3></div>
-        <div class="ds-card__body">
-          <?php if (empty($auditRows)): ?>
-            <p class="ds-muted">Aucun événement enregistré.</p>
-          <?php else: ?>
-            <table class="ds-table ds-table--compact"><tbody>
-            <?php foreach ($auditRows as $r): ?>
-              <tr><td class="ds-muted" style="white-space:nowrap"><?= $h($r['created_at'] ?? '') ?></td><td><?= $h($r['actor'] ?? '—') ?></td><td><span class="ds-badge ds-badge--neutral"><?= $h($r['action'] ?? '') ?></span></td></tr>
-            <?php endforeach; ?>
-            </tbody></table>
-          <?php endif; ?>
-        </div>
-      </section>
-      <?php endif; ?>
-    </div>
-
-    <!-- Accès rapides -->
-    <div class="ds-section pf-section">
-      <div class="ds-platform-eyebrow">Gestion</div>
-      <div class="ds-quick-actions" style="margin-top:var(--space-3)">
-        <?php foreach ($menu as [$perm, $label, $icon, $href]): if (!$auth->can($perm)) continue; ?>
-          <a class="ds-quick-action" href="<?= $h($base . $href) ?>"><span class="ds-quick-action-icon"><i class="fas <?= $h($icon) ?>"></i></span><span class="ds-quick-action-title"><?= $h($label) ?></span></a>
-        <?php endforeach; ?>
+        <?php endif; ?>
       </div>
     </div>
-  </main>
+    <?php endif; ?>
 
-  <script src="<?= $h($v('assets/js/ui/interactions.js')) ?>" defer></script>
-  <script>
-  document.addEventListener('DOMContentLoaded', function () {
-    var order = ['dark', 'liquid', 'light'], btn = document.getElementById('pfTheme');
-    if (btn) btn.addEventListener('click', function () {
-      var cur = (window.FronoteUI && FronoteUI.getTheme && FronoteUI.getTheme()) || 'dark';
-      var next = order[(order.indexOf(cur) + 1) % order.length];
-      if (window.FronoteUI) FronoteUI.setTheme(next);
-    });
-  });
-  </script>
-</body>
-</html>
+    <?php if ($can('platform.audit.view')): ?>
+    <div class="pf-card">
+      <div class="pf-card__head">
+        <h2 class="pf-card__title"><i class="fas fa-clock-rotate-left"></i> Audit récent</h2>
+        <div class="pf-card__actions"><a class="pf-btn pf-btn--ghost pf-btn--sm" href="<?= $h($base) ?>/platform/audit.php">Journal <i class="fas fa-arrow-right"></i></a></div>
+      </div>
+      <div class="pf-card__body pf-card__body--flush">
+        <?php if (empty($auditRows)): ?>
+          <div class="pf-empty">Aucun événement enregistré.</div>
+        <?php else: ?>
+        <div class="pf-table-wrap">
+          <table class="pf-table pf-table--compact">
+            <tbody>
+            <?php foreach ($auditRows as $r): ?>
+              <tr>
+                <td class="pf-mono pf-muted" style="white-space:nowrap;"><?= $h($r['created_at'] ?? '') ?></td>
+                <td><?= $h($r['actor'] ?? '—') ?></td>
+                <td><span class="pf-badge pf-badge--soft"><?= $h($r['action'] ?? '') ?></span></td>
+              </tr>
+            <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+        <?php endif; ?>
+      </div>
+    </div>
+    <?php endif; ?>
+  </div>
+</section>
+
+<?php pf_layout_footer(); ?>

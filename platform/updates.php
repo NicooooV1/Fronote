@@ -51,62 +51,79 @@ $git     = $upd->isGitAvailable();
 $h = fn($s) => htmlspecialchars((string) $s);
 // Sortie git : on masque d'éventuels identifiants intégrés dans une URL de remote.
 $redact = static fn($s) => htmlspecialchars(preg_replace('#://[^/@\s:]+:[^/@\s]+@#', '://***:***@', (string) $s));
+
+// Style partagé des blocs de sortie git (mono, fond creux, défilement).
+$preStyle = 'background:var(--pf-surface-2); border:1px solid var(--pf-border); border-radius:var(--pf-radius-sm); padding:12px; overflow:auto; font-family:var(--pf-mono); font-size:12px; margin:0;';
+
+require_once __DIR__ . '/includes/layout.php';
+pf_layout_header('updates', 'Mises à jour', 'Opérations');
 ?>
-<!doctype html>
-<html lang="fr">
-<head>
-    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Plateforme — Mises à jour</title>
-    <style>
-        body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; }
-        header { background: #1e293b; padding: 14px 24px; } header a { color: #93c5fd; text-decoration: none; }
-        main { max-width: 800px; margin: 24px auto; padding: 0 16px; }
-        .card { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 16px; margin: 14px 0; }
-        button { padding: 9px 16px; border: 0; border-radius: 8px; color: #fff; font-weight: 600; cursor: pointer; }
-        button.check { background: #3b82f6; } button.apply { background: #dc2626; }
-        input.confirm { padding: 8px; background: #0f172a; border: 1px solid #7f1d1d; color: #fca5a5; border-radius: 6px; width: 170px; }
-        .alert { padding: 10px; border-radius: 8px; } .ok-a { background: #052e16; color: #86efac; } .err-a { background: #450a0a; color: #fca5a5; }
-        .muted { color: #94a3b8; font-size: .85rem; } code { color: #93c5fd; }
-        pre { background: #0b1220; border: 1px solid #334155; border-radius: 8px; padding: 12px; overflow:auto; font-size: .82rem; }
-        .badge { background: #273449; border-radius: 6px; padding: 2px 8px; font-size: .75rem; }
-    </style>
-</head>
-<body>
-    <header><a href="<?= $base ?>/platform/dashboard.php">← Tableau de bord</a></header>
-    <main>
-        <h1>Mises à jour</h1>
-        <?php if ($msg): ?><div class="alert ok-a"><?= $h($msg) ?></div><?php endif; ?>
-        <?php if ($err): ?><div class="alert err-a"><?= $h($err) ?></div><?php endif; ?>
 
-        <div class="card">
-            <p>Version : <strong><?= $h($version) ?></strong> · Branche : <code><?= $h($branch) ?></code> ·
-               Git : <?= $git ? '<span class="badge">disponible</span>' : '<span class="badge">indisponible</span>' ?></p>
-            <?php if ($git): ?>
-            <form method="post" style="display:inline"><?= csrfField() ?><input type="hidden" name="action" value="check"><button class="check" type="submit">Vérifier les mises à jour</button></form>
-            <?php else: ?><p class="muted">Git n'est pas disponible — vérification/installation impossibles.</p><?php endif; ?>
-        </div>
+<?php if ($msg): ?><div class="pf-section"><div class="pf-notice pf-notice--ok"><i class="fas fa-circle-check"></i><span><?= $h($msg) ?></span></div></div><?php endif; ?>
+<?php if ($err): ?><div class="pf-section"><div class="pf-notice pf-notice--crit"><i class="fas fa-triangle-exclamation"></i><span><?= $h($err) ?></span></div></div><?php endif; ?>
 
-        <?php if ($check !== null): ?>
-        <div class="card">
-            <h2>Mise à jour disponible</h2>
-            <p><?= (int) ($check['behind'] ?? 0) ?> commit(s) en retard sur <code><?= $h($check['branch'] ?? $branch) ?></code>.</p>
-            <?php if (!empty($check['commits'])): ?><pre><?php foreach ($check['commits'] as $c) { echo $redact($c) . "\n"; } ?></pre><?php endif; ?>
-            <?php if ($canApply): ?>
-            <form method="post" onsubmit="return confirm('Appliquer la mise à jour ? L\'app passe en maintenance, une sauvegarde est créée, rollback automatique en cas d\'échec.')">
-                <?= csrfField() ?><input type="hidden" name="action" value="apply">
-                <input class="confirm" name="confirm" placeholder="METTRE A JOUR"> <button class="apply" type="submit">Installer maintenant</button>
-            </form>
-            <p class="muted">Sauvegarde + maintenance + rollback automatique gérés par UpdateService.</p>
-            <?php else: ?><p class="muted">Installation réservée à la permission platform.system.update.</p><?php endif; ?>
+<section class="pf-section">
+  <div class="pf-card">
+    <div class="pf-card__head">
+      <h2 class="pf-card__title"><i class="fas fa-cloud-arrow-down"></i> État applicatif</h2>
+      <div class="pf-card__actions"><span class="pf-pill pf-pill--<?= $git ? 'ok' : 'muted' ?>">Git <?= $git ? 'disponible' : 'indisponible' ?></span></div>
+    </div>
+    <div class="pf-card__body">
+      <div class="pf-row" style="gap:24px;">
+        <div>
+          <div class="pf-stat__label">Version</div>
+          <div class="pf-mono" style="font-size:18px; font-weight:600;"><?= $h($version) ?></div>
         </div>
-        <?php endif; ?>
+        <div>
+          <div class="pf-stat__label">Branche</div>
+          <div class="pf-mono" style="font-size:18px; font-weight:600;"><?= $h($branch) ?></div>
+        </div>
+      </div>
+      <?php if ($git): ?>
+        <div style="margin-top:16px;">
+          <form method="post"><?= csrfField() ?><input type="hidden" name="action" value="check"><button class="pf-btn pf-btn--primary" type="submit"><i class="fas fa-arrows-rotate"></i> Vérifier les mises à jour</button></form>
+        </div>
+      <?php else: ?>
+        <p class="pf-muted" style="margin:16px 0 0;">Git n'est pas disponible — vérification/installation impossibles.</p>
+      <?php endif; ?>
+    </div>
+  </div>
+</section>
 
-        <?php if ($apply !== null): ?>
-        <div class="card">
-            <h2>Résultat de l'installation — <?= !empty($apply['success']) ? 'succès' : 'échec' ?></h2>
-            <?php if (!empty($apply['steps'])): ?><pre><?php foreach ($apply['steps'] as $s) { echo $redact($s) . "\n"; } ?></pre><?php endif; ?>
-        </div>
-        <?php endif; ?>
-    </main>
-</body>
-</html>
+<?php if ($check !== null): ?>
+<section class="pf-section">
+  <div class="pf-card">
+    <div class="pf-card__head">
+      <h2 class="pf-card__title"><i class="fas fa-code-branch"></i> Mise à jour disponible</h2>
+    </div>
+    <div class="pf-card__body">
+      <p style="margin-top:0;"><span class="pf-mono" style="font-weight:600;"><?= (int) ($check['behind'] ?? 0) ?></span> commit(s) en retard sur <span class="pf-mono"><?= $h($check['branch'] ?? $branch) ?></span>.</p>
+      <?php if (!empty($check['commits'])): ?><pre style="<?= $preStyle ?>"><?php foreach ($check['commits'] as $c) { echo $redact($c) . "\n"; } ?></pre><?php endif; ?>
+      <?php if ($canApply): ?>
+      <form method="post" onsubmit="return confirm('Appliquer la mise à jour ? L\'app passe en maintenance, une sauvegarde est créée, rollback automatique en cas d\'échec.')" style="margin-top:14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <?= csrfField() ?><input type="hidden" name="action" value="apply">
+        <input name="confirm" placeholder="METTRE A JOUR" style="width:180px; padding:8px 10px; background:var(--pf-surface); border:1px solid var(--pf-crit); border-radius:var(--pf-radius-sm); color:var(--pf-crit); font-family:var(--pf-mono); font-size:12px;">
+        <button class="pf-btn pf-btn--danger" type="submit"><i class="fas fa-download"></i> Installer maintenant</button>
+      </form>
+      <p class="pf-muted" style="margin:12px 0 0; font-size:12.5px;">Sauvegarde + maintenance + rollback automatique gérés par UpdateService.</p>
+      <?php else: ?><p class="pf-muted" style="margin:14px 0 0;">Installation réservée à la permission <span class="pf-mono">platform.system.update</span>.</p><?php endif; ?>
+    </div>
+  </div>
+</section>
+<?php endif; ?>
+
+<?php if ($apply !== null): ?>
+<section class="pf-section">
+  <div class="pf-card">
+    <div class="pf-card__head">
+      <h2 class="pf-card__title"><i class="fas fa-list-check"></i> Résultat de l'installation</h2>
+      <div class="pf-card__actions"><span class="pf-pill pf-pill--<?= !empty($apply['success']) ? 'ok' : 'crit' ?>"><?= !empty($apply['success']) ? 'succès' : 'échec' ?></span></div>
+    </div>
+    <div class="pf-card__body">
+      <?php if (!empty($apply['steps'])): ?><pre style="<?= $preStyle ?>"><?php foreach ($apply['steps'] as $s) { echo $redact($s) . "\n"; } ?></pre><?php endif; ?>
+    </div>
+  </div>
+</section>
+<?php endif; ?>
+
+<?php pf_layout_footer(); ?>
