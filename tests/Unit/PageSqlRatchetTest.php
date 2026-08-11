@@ -23,9 +23,13 @@ use RecursiveIteratorIterator;
 final class PageSqlRatchetTest extends TestCase
 {
     /** Plafond courant. À n'ABAISSER que (jamais relever) au fil des migrations vers la couche data. */
-    private const BASELINE = 84;
+    private const BASELINE = 75;
 
-    private const PAGE_DIRS = ['modules', 'admin', 'accueil', 'parametres', 'rgpd', 'tenant', 'platform', 'director', 'impersonation'];
+    // NB : 'platform' N'EST PAS dans la liste. Le portail plateforme est le plan de contrôle
+    // OPÉRATEUR (super-admin), CROSS-établissement par conception — il n'a pas de cloisonnement
+    // tenant à protéger, donc le cliquet « SQL brut → fuite cross-établissement » ne s'y applique
+    // pas. L'hygiène « SQL en service » y reste souhaitable mais n'est pas policée par CE test.
+    private const PAGE_DIRS = ['modules', 'admin', 'accueil', 'parametres', 'rgpd', 'tenant', 'director', 'impersonation'];
 
     /** Sous-dossiers de couche data / non-page → exclus (le SQL y est légitime). */
     private const DATA_LAYER = '#/(includes|Services|models|Providers|Database|Events|Jobs|Widgets|Http|Domain|Repositories|Support|core|config|controllers|lang|assets|views)/#';

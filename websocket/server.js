@@ -1,13 +1,14 @@
 /**
  * Fronote WebSocket Server — Socket.IO avec auth JWT
  *
- * Channels :
- *   user:{userId}:{userType}  — Notifications personnelles
- *   class:{classeId}           — Notifications de classe
- *   role:{role}                — Notifications par role
- *   conversation:{convId}      — Messages / typing
- *   admin:metrics              — Live admin dashboard
- *   broadcast                  — Notifications globales
+ * Channels (rooms cloisonnées par établissement — jamais de diffusion globale) :
+ *   user:{userId}:{userType}        — Notifications personnelles (type inclus → anti-collision d'id)
+ *   etab:{etabId}:user:{userId}     — Destinataire nominatif sûr par tenant
+ *   etab:{etabId}                   — Diffusion à l'établissement
+ *   etab:{etabId}:role:{role}       — Diffusion par rôle, bornée au tenant
+ *   class:{classeId}                — Notifications de classe (jonction autorisée)
+ *   conversation:{convId}           — Messages / typing (participants autorisés)
+ *   admin:metrics[:{etabId}]        — Live admin dashboard (super_admin / par établissement)
  *
  * Endpoints HTTP internes (appeles par le PHP) :
  *   POST /notify/message       — Nouveau message
@@ -93,20 +94,28 @@ if (!JWT_SECRET) {
     process.exit(1);
 }
 
-// Allowed CORS origins — comma-separated env. When unset, falls back to '*'.
-// This is acceptable here because the Socket.IO handshake is authenticated by a
-// JWT in the handshake payload (not by ambient cookies), and `credentials` is
-// never enabled — so a permissive origin cannot be leveraged for CSRF-style
-// cookie replay. Set WEBSOCKET_ALLOWED_ORIGINS in production to lock it down.
+// Origines CORS autorisées — liste séparée par virgules dans WEBSOCKET_ALLOWED_ORIGINS.
+// On ne retombe JAMAIS sur '*', quel que soit NODE_ENV : un caractère générique laisserait
+// n'importe quel site ouvrir une poignée de main. Si la liste explicite est absente, on
+// dérive un défaut SÛR depuis l'origine de l'application (APP_URL / WEBSOCKET_CLIENT_URL) ;
+// à défaut on VERROUILLE (aucune origine cross-site) plutôt que d'ouvrir à tous.
+function originOf(url) {
+    try { return new URL(url).origin; } catch (e) { return null; }
+}
 const ALLOWED_ORIGINS = process.env.WEBSOCKET_ALLOWED_ORIGINS
     ? process.env.WEBSOCKET_ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
     : null;
 
-// Securite : en production, ne JAMAIS retomber sur '*'. Sans liste d'origines explicite, on
-// verrouille (aucune origine cross-site) plutot que d'ouvrir a tous.
-const corsOrigin = ALLOWED_ORIGINS || (process.env.NODE_ENV === 'production' ? [] : '*');
-if (!ALLOWED_ORIGINS && process.env.NODE_ENV === 'production') {
-    console.warn('[ws] WEBSOCKET_ALLOWED_ORIGINS non défini en production : CORS verrouillé.');
+const DEFAULT_ORIGINS = [process.env.APP_URL, process.env.WEBSOCKET_CLIENT_URL]
+    .map(originOf)
+    .filter(Boolean);
+
+// Jamais de '*' : liste explicite, sinon défaut dérivé de l'app, sinon liste vide (verrou).
+const corsOrigin = ALLOWED_ORIGINS || (DEFAULT_ORIGINS.length ? DEFAULT_ORIGINS : []);
+// La liste effective sert aussi au reflet d'origine des routes HTTP (handleHttp).
+const EFFECTIVE_ORIGINS = ALLOWED_ORIGINS || DEFAULT_ORIGINS;
+if (!ALLOWED_ORIGINS && !DEFAULT_ORIGINS.length) {
+    console.warn('[ws] WEBSOCKET_ALLOWED_ORIGINS/APP_URL non définis : CORS verrouillé (aucune origine cross-site).');
 }
 
 /**
@@ -173,6 +182,25 @@ setInterval(() => {
     }
 }, 30000);
 
+// ─── Plafond de connexions concurrentes (anti-abus / anti-DoS) ──
+// Un même utilisateur (userType:userId) ou une même IP ne peut ouvrir qu'un nombre
+// borné de sockets simultanées. Au-delà, la nouvelle connexion est refusée.
+const MAX_CONN_PER_USER = parseInt(process.env.WS_MAX_CONN_PER_USER || '5', 10);
+const MAX_CONN_PER_IP = parseInt(process.env.WS_MAX_CONN_PER_IP || '20', 10);
+const connByUser = new Map(); // 'userType:userId' -> count
+const connByIp = new Map();   // ip -> count
+
+function incrCount(map, key) {
+    const n = (map.get(key) || 0) + 1;
+    map.set(key, n);
+    return n;
+}
+function decrCount(map, key) {
+    const n = (map.get(key) || 0) - 1;
+    if (n <= 0) map.delete(key);
+    else map.set(key, n);
+}
+
 // ─── Metrics ───────────────────────────────────────────────────
 const metrics = {
     totalConnections: 0,
@@ -208,7 +236,7 @@ function handleHttp(req, res) {
     // CORS — only reflect explicitly whitelisted origins. The /notify and /metrics
     // routes are server-to-server (secret-gated) and need no permissive CORS.
     const origin = req.headers['origin'];
-    if (ALLOWED_ORIGINS && origin && ALLOWED_ORIGINS.includes(origin)) {
+    if (origin && EFFECTIVE_ORIGINS.includes(origin)) {
         res.setHeader('Access-Control-Allow-Origin', origin);
         res.setHeader('Vary', 'Origin');
     }
@@ -330,11 +358,51 @@ io.use((socket, next) => {
 // Connection handler
 io.on('connection', (socket) => {
     const { userId, userType } = socket;
-    const userRoom = `user:${userId}:${userType}`;
+    const etab = socket.etab || 0;
+    const ip = socket.handshake.address;
+    const userKey = `${userType}:${userId}`;
 
-    // Join personal rooms
-    socket.join(userRoom);
-    socket.join(`role:${userType}`);
+    // ─── Plafond de connexions concurrentes (par utilisateur / par IP) ───
+    // Refuser AVANT de rejoindre la moindre room et d'incrémenter les compteurs.
+    if ((connByUser.get(userKey) || 0) >= MAX_CONN_PER_USER
+        || (connByIp.get(ip) || 0) >= MAX_CONN_PER_IP) {
+        console.log(`[!] ${userType}#${userId} (${ip}) refusé — plafond de connexions atteint`);
+        socket.emit('error', { message: 'Too many concurrent connections' });
+        socket.disconnect(true);
+        return;
+    }
+    incrCount(connByUser, userKey);
+    incrCount(connByIp, ip);
+
+    // ─── Rooms cloisonnées par tenant (dérivées des claims JWT VÉRIFIÉS) ───
+    // Jamais de room globale : le ciblage passe par des rooms nominatives et par
+    // établissement, ce qui empêche toute diffusion cross-tenant (finding CRIT).
+    socket.join(`user:${userId}:${userType}`);   // destinataire nominatif (type inclus → anti-collision d'id)
+    if (etab > 0) {
+        socket.join(`etab:${etab}`);                       // diffusion à l'établissement
+        socket.join(`etab:${etab}:user:${userId}`);        // destinataire nominatif sûr par tenant
+        socket.join(`etab:${etab}:role:${userType}`);      // diffusion par rôle, bornée au tenant
+    }
+
+    // ─── Expiration JWT : déconnexion planifiée à l'échéance du jeton ───
+    let expiryTimer = null;
+    function scheduleExpiry() {
+        if (expiryTimer) { clearTimeout(expiryTimer); expiryTimer = null; }
+        const ms = (Number(socket.tokenExp) * 1000) - Date.now();
+        if (!socket.tokenExp || ms <= 0) {
+            // Jeton déjà expiré / sans échéance : fermer immédiatement (fail-closed).
+            socket.emit('token:error', 'Token expired');
+            socket.disconnect(true);
+            return;
+        }
+        // setTimeout est borné à ~24,8 jours ; nos TTL sont bien inférieurs.
+        expiryTimer = setTimeout(() => {
+            console.log(`[!] ${userType}#${userId} jeton expiré — déconnexion`);
+            socket.emit('token:error', 'Token expired');
+            socket.disconnect(true);
+        }, ms);
+    }
+    scheduleExpiry();
 
     metrics.totalConnections++;
     metrics.connectionLog.push({
@@ -362,10 +430,25 @@ io.on('connection', (socket) => {
     });
 
     // ─── Token refresh ──────────────────────────────────────
+    // Le nouveau jeton doit être valide ET appartenir au MÊME utilisateur (même
+    // userId + userType + établissement) que le socket : on n'accepte pas qu'un
+    // socket « change d'identité » via un refresh. Sinon on refuse et on ne
+    // prolonge pas l'échéance.
     socket.on('token:refresh', (newToken) => {
         try {
             const decoded = jwt.verify(newToken, JWT_SECRET);
+            const newId = decoded.userId || decoded.sub || decoded.user_id;
+            const newType = decoded.userType || decoded.role || decoded.user_type || '';
+            const newEtab = decoded.etablissement_id || 0;
+            if (String(newId) !== String(userId)
+                || newType !== userType
+                || (etab > 0 && Number(newEtab) !== Number(etab))) {
+                socket.emit('token:error', 'Token identity mismatch');
+                return;
+            }
             socket.tokenExp = decoded.exp || 0;
+            socket.rawToken = newToken;
+            scheduleExpiry();               // reprogrammer la déconnexion sur la nouvelle échéance
             socket.emit('token:refreshed');
         } catch (e) {
             socket.emit('token:error', 'Invalid refresh token');
@@ -395,13 +478,20 @@ io.on('connection', (socket) => {
     });
 
     // ─── Typing indicator ───────────────────────────────────
+    // Relais FIDÈLE au contrat partagé : on ne strippe PAS isTyping / userName /
+    // userType. userName provient du claim JWT vérifié (socket.userName), jamais
+    // d'une valeur fournie par le client (anti-usurpation d'identité d'affichage).
     socket.on('typing', (data) => {
         if (!checkRateLimit(socket.id)) return;
         metrics.totalEvents++;
         eventsThisSecond++;
-        if (data.conversationId) {
+        if (data && data.conversationId) {
             socket.to(`conversation:${data.conversationId}`).emit('typing', {
-                userId, userType, conversationId: data.conversationId,
+                conversationId: data.conversationId,
+                userId,
+                userType,
+                userName: socket.userName || '',
+                isTyping: data.isTyping === true || data.isTyping === 'true',
             });
         }
     });
@@ -432,6 +522,9 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         clearInterval(heartbeatCheck);
+        if (expiryTimer) { clearTimeout(expiryTimer); expiryTimer = null; }
+        decrCount(connByUser, userKey);
+        decrCount(connByIp, ip);
         rateLimits.delete(socket.id);
         metrics.connectionLog.push({
             userId, userType,
@@ -444,37 +537,98 @@ io.on('connection', (socket) => {
 });
 
 // ─── Notification dispatcher ────────────────────────────────────
+// Cloisonnement STRICT (fail-closed) : on n'émet QUE vers des rooms résolues à
+// partir du routage explicite fourni par le PHP (etablissement_id + userId/convId/
+// eleveId/role/class…). Il n'y a PLUS de diffusion globale io.emit() : sans room
+// résolue, la notification est ABANDONNÉE (jamais de fuite cross-tenant).
 function handleNotification(channel, data) {
-    const targets = data.targets || [];
-    const payload = {
-        type: channel,
-        ...data,
-        timestamp: new Date().toISOString(),
-    };
+    const etab = parseInt(data.etablissement_id, 10) || 0;
 
-    // Targeted send
-    if (targets.length > 0) {
-        targets.forEach((t) => {
-            const room = `user:${t.user_id}:${t.user_type}`;
-            io.to(room).emit(channel, payload);
+    // ─── Événements TEMPS RÉEL cloisonnés à une conversation (contrat partagé) ───
+    // Diffusés UNIQUEMENT à la room 'conversation:<id>' (participants autorisés,
+    // fail-closed : sans convId résolu → rien n'est émis). Formes de payload
+    // strictement alignées sur le contrat client (conversation.js / MsgRealtime).
+    const convId = data.conversationId || data.convId || null;
+
+    if (channel === 'message:updated' || channel === 'message-updated') {
+        if (!convId) {
+            console.warn("[ws] 'message:updated' abandonné : conversationId manquant.");
+            return;
+        }
+        io.to(`conversation:${convId}`).emit('message:updated', {
+            conversationId: convId,
+            messageId: data.messageId,
+            kind: data.kind,                 // 'edit' | 'delete' | 'reaction' | 'pin'
+            data: data.data || {},
         });
         return;
     }
 
-    // By role
-    if (data.role) {
-        io.to(`role:${data.role}`).emit(channel, payload);
+    if (channel === 'read') {
+        if (!convId) {
+            console.warn("[ws] 'read' abandonné : conversationId manquant.");
+            return;
+        }
+        io.to(`conversation:${convId}`).emit('read', {
+            conversationId: convId,
+            userId: data.userId,
+            userType: data.userType,
+            lastReadMessageId: data.lastReadMessageId,
+        });
         return;
     }
 
-    // By class
-    if (data.classe_id) {
-        io.to(`class:${data.classe_id}`).emit(channel, payload);
-        return;
+    const payload = {
+        type: channel,
+        ...data,
+        // Normalise : le contrat client lit toujours `conversationId`.
+        conversationId: convId || undefined,
+        timestamp: new Date().toISOString(),
+    };
+
+    const rooms = new Set();
+
+    // Aide : cible un utilisateur nominatif de façon sûre par tenant.
+    // Room typée si le type est connu (anti-collision d'id entre types) ; sinon
+    // room nominative bornée à l'établissement (jamais d'id nu, non cloisonné).
+    const addUser = (uid, utype) => {
+        if (!uid) return;
+        if (utype) rooms.add(`user:${uid}:${utype}`);
+        else if (etab > 0) rooms.add(`etab:${etab}:user:${uid}`);
+    };
+
+    // 1) Cibles explicites (tableau targets) — chacune typée.
+    if (Array.isArray(data.targets)) {
+        data.targets.forEach((t) => addUser(t.user_id, t.user_type));
     }
 
-    // Global broadcast
-    io.emit(channel, payload);
+    // 2) Destinataire nominatif (notifyUser). recipientType optionnel.
+    if (data.userId) addUser(data.userId, data.recipientType);
+
+    // 3) Élève ciblé (note / absence) : destinataire de type 'eleve'.
+    if (data.eleveId) addUser(data.eleveId, 'eleve');
+
+    // 4) Conversation (message) : participants ayant rejoint la room autorisée.
+    //    (accepte conversationId ou convId — cf. normalisation ci-dessus)
+    if (convId) rooms.add(`conversation:${convId}`);
+
+    // 5) Événement agenda : routage selon la cible.
+    if (channel === 'event') {
+        if (data.targetType === 'user') addUser(data.targetId, data.recipientType);
+        else if (data.targetType === 'class' && data.targetId) rooms.add(`class:${data.targetId}`);
+        else if (etab > 0) rooms.add(`etab:${etab}`); // 'all' → tout l'établissement (jamais tous les tenants)
+    }
+
+    // 6) Diffusion par rôle / classe — TOUJOURS bornée à l'établissement.
+    if (data.role && etab > 0) rooms.add(`etab:${etab}:role:${data.role}`);
+    if (data.classe_id) rooms.add(`class:${data.classe_id}`);
+
+    if (rooms.size === 0) {
+        // Fail-closed : aucun ciblage résolu → on n'émet rien (pas de io.emit global).
+        console.warn(`[ws] notification '${channel}' abandonnée : aucun destinataire résolu (etab=${etab}).`);
+        return;
+    }
+    io.to([...rooms]).emit(channel, payload);
 }
 
 // ─── Start ──────────────────────────────────────────────────────

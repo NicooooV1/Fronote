@@ -52,9 +52,10 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 
 # --- Installation des dépendances PHP en couche dédiée (cache build) ---
-# Le composer.lock peut manquer : '|| true' évite de casser le build dans ce cas.
+# Installation STRICTE : un échec de composer doit casser le build (pas de vendor/
+# incomplet embarqué silencieusement dans l'image).
 COPY composer.json composer.lock* ./
-RUN composer install --no-dev --no-interaction --no-scripts --prefer-dist --optimize-autoloader || true
+RUN composer install --no-dev --no-interaction --no-scripts --prefer-dist --optimize-autoloader
 
 # --- Copie du code applicatif ---
 COPY . /var/www/html

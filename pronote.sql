@@ -1004,6 +1004,24 @@ CREATE TABLE `rbac_permissions` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- RBAC : matrice GLOBALE rôle->permission gouvernée par la PLATEFORME.
+-- Contrairement à rbac_permissions (surcharge par établissement), cette table
+-- est UNIQUE pour tout le parc (pas de etablissement_id) et démarre VIDE :
+-- le catalogue en code (RoleCatalog::grantsFor) reste la source de vérité, et
+-- une ligne ici n'est qu'une DÉVIATION (force-grant granted=1 / force-deny 0).
+-- Éditée via platform/roles.php (permission platform.rbac.manage). Le deny (0)
+-- l'emporte si un même couple existe pour plusieurs rôles d'un utilisateur.
+-- ============================================================
+CREATE TABLE `rbac_grants` (
+  `role`                   VARCHAR(50)  NOT NULL,
+  `permission`             VARCHAR(100) NOT NULL,
+  `granted`                TINYINT(1)   NOT NULL DEFAULT 1,
+  `updated_by_platform_id` INT          NULL,
+  `updated_at`             DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`role`, `permission`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- RBAC : catalogue des rôles (source de vérité = RoleCatalog en code,
 -- synchronisé ici par RoleSync). Voir API/Security/Authorization.php.
 -- ============================================================
