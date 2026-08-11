@@ -25,7 +25,10 @@ $classes     = app('classes')->getAllWithStats();
 $matieres    = app('matieres')->getAll();
 $professeurs = [];
 try {
-    $professeurs = $pdo->query("SELECT id, nom, prenom FROM professeurs WHERE actif = 1 ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
+    // Cloisonnement multi-tenant : dropdown filtre borné à l'établissement courant.
+    $stmtProfs = $pdo->prepare("SELECT id, nom, prenom FROM professeurs WHERE actif = 1 AND etablissement_id = ? ORDER BY nom");
+    $stmtProfs->execute([\API\Core\EstablishmentContext::id()]);
+    $professeurs = $stmtProfs->fetchAll(PDO::FETCH_ASSOC);
 } catch (\Throwable $e) {
     error_log('[' . basename(__FILE__) . '] ' . $e->getMessage());
 }
@@ -92,7 +95,9 @@ $filterMatiere = intval($_GET['matiere'] ?? 0);
 $filterTrimestre = $_GET['trimestre'] ?? '';
 $filterProf = intval($_GET['prof'] ?? 0);
 $filterEleve = trim($_GET['eleve'] ?? '');
-$page = max(1, intval($_GET['page'] ?? 1));
+// Borne le numéro de page : une valeur énorme (?page=99999999999) ferait déborder
+// l'OFFSET (($page-1)*perPage) au-delà du BIGINT MySQL → 500. Plafonner à un maximum sain.
+$page = min(max(1, intval($_GET['page'] ?? 1)), 1000000);
 $perPage = 50;
 
 // Build filter array for service

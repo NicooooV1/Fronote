@@ -103,9 +103,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
 }
 
 // Récupérer les admins
+// Cloisonnement multi-tenant : un admin d'établissement ne voit que les administrateurs
+// de son etab ; le super_admin conserve la vue globale.
 $admins = [];
 try {
-    $stmt = $pdo->query("SELECT * FROM administrateurs ORDER BY nom, prenom");
+    if (function_exists('isSuperAdmin') && isSuperAdmin()) {
+        $stmt = $pdo->query("SELECT * FROM administrateurs ORDER BY nom, prenom");
+    } else {
+        $stmt = $pdo->prepare("SELECT * FROM administrateurs WHERE etablissement_id = ? ORDER BY nom, prenom");
+        $stmt->execute([\API\Core\EstablishmentContext::id()]);
+    }
     $admins = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { error_log("admins load failed: " . $e->getMessage()); $error = "Erreur lors du chargement des administrateurs."; }
 

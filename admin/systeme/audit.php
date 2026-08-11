@@ -7,8 +7,14 @@ require_once __DIR__ . '/../../API/core.php';
 require_once __DIR__ . '/../includes/admin_functions.php';
 
 requireAuth();
-// Bascule 3-mondes : permission établissement prioritaire, repli legacy le temps de la transition.
-tenantGate('tenant.audit.view', ['administrateur']);
+// Le journal d'audit est GLOBAL : audit_log n'a pas de colonne etablissement_id, il
+// mélange les actions/IP/PII de TOUS les établissements. Tant qu'une vue par tenant n'est
+// pas possible sans évolution de schéma, l'accès est réservé au super-administrateur
+// (rôle plateforme). Un administrateur d'établissement est refusé (anti-fuite cross-tenant).
+if (!isSuperAdmin()) {
+    $_SESSION['error_message'] = "Accès réservé au super-administrateur.";
+    redirect('accueil/accueil.php');
+}
 
 $pdo = getPDO();
 
@@ -18,14 +24,17 @@ $filterModel = trim($_GET['model'] ?? '');
 $filterUser = trim($_GET['user'] ?? '');
 $filterDateFrom = $_GET['from'] ?? '';
 $filterDateTo = $_GET['to'] ?? '';
-$page = max(1, intval($_GET['page'] ?? 1));
+// Bornage de la page : un ?page= monstrueux (99999999…) ferait déborder l'OFFSET calculé
+// (multiplication au-delà de PHP_INT_MAX → offset négatif → erreur SQL / 500).
+$page = min(1000000, max(1, intval($_GET['page'] ?? 1)));
 $perPage = 50;
 $offset = ($page - 1) * $perPage;
 
 $where = []; $params = [];
-if (!empty($filterAction)) { $where[] = "a.action LIKE ?"; $params[] = "%$filterAction%"; }
+// Échappement des métacaractères LIKE (% _ \) avant l'entourage en %…%, avec ESCAPE explicite.
+if (!empty($filterAction)) { $where[] = "a.action LIKE ? ESCAPE '\\\\'"; $params[] = '%' . addcslashes($filterAction, '%_\\') . '%'; }
 if (!empty($filterModel)) { $where[] = "a.model = ?"; $params[] = $filterModel; }
-if (!empty($filterUser)) { $where[] = "(a.user_id = ? OR a.user_type LIKE ?)"; $params[] = intval($filterUser); $params[] = "%$filterUser%"; }
+if (!empty($filterUser)) { $where[] = "(a.user_id = ? OR a.user_type LIKE ? ESCAPE '\\\\')"; $params[] = intval($filterUser); $params[] = '%' . addcslashes($filterUser, '%_\\') . '%'; }
 if (!empty($filterDateFrom)) { $where[] = "a.created_at >= ?"; $params[] = $filterDateFrom . ' 00:00:00'; }
 if (!empty($filterDateTo)) { $where[] = "a.created_at <= ?"; $params[] = $filterDateTo . ' 23:59:59'; }
 $whereSQL = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';

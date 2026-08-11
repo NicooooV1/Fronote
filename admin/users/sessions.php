@@ -20,6 +20,27 @@ if (!isset($_SESSION['csrf_token'])) {
 }
 $csrf_token = $_SESSION['csrf_token'];
 
+// Cloisonnement multi-tenant : session_security n'a pas d'etablissement_id, on rattache
+// chaque session à son établissement via le compte (user_id,user_type). Le super_admin
+// conserve la vue/action globale ; un admin d'établissement est cloisonné à son etab.
+$etab    = \API\Core\EstablishmentContext::id();
+$isSuper = function_exists('isSuperAdmin') && isSuperAdmin();
+
+// Filtre EXISTS (corrélé sur l'alias s) ne gardant que les sessions dont le compte
+// appartient à l'établissement courant. Vide pour un super_admin (portée globale).
+$scopeSql = '';
+$scopeParams = [];
+if (!$isSuper) {
+    $scopeSql = " AND EXISTS (
+        SELECT 1 FROM eleves e WHERE e.id = s.user_id AND s.user_type = 'eleve' AND e.etablissement_id = ?
+        UNION SELECT 1 FROM professeurs p WHERE p.id = s.user_id AND s.user_type = 'professeur' AND p.etablissement_id = ?
+        UNION SELECT 1 FROM parents pa WHERE pa.id = s.user_id AND s.user_type = 'parent' AND pa.etablissement_id = ?
+        UNION SELECT 1 FROM vie_scolaire v WHERE v.id = s.user_id AND s.user_type = 'vie_scolaire' AND v.etablissement_id = ?
+        UNION SELECT 1 FROM administrateurs a WHERE a.id = s.user_id AND s.user_type = 'administrateur' AND a.etablissement_id = ?
+    )";
+    $scopeParams = array_fill(0, 5, $etab);
+}
+
 // POST actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && hash_equals($csrf_token, $_POST['csrf_token'] ?? '')) {
     $action = $_POST['action'] ?? '';
@@ -27,10 +48,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && hash_equals($csrf_token, $_POST['cs
     if ($action === 'kill_session') {
         $sid = $_POST['session_id'] ?? '';
         if (!empty($sid)) {
-            $stmt = $pdo->prepare("UPDATE session_security SET is_active = 0, expires_at = NOW() WHERE id = ?");
-            $stmt->execute([$sid]);
-            logAudit('session_killed', 'session_security', 0, ['session_id' => $sid]);
-            $message = "Session déconnectée.";
+            // Vérifier que la session cible appartient à l'établissement courant (anti-IDOR)
+            $chk = $pdo->prepare("SELECT user_id, user_type FROM session_security WHERE id = ?");
+            $chk->execute([$sid]);
+            $row = $chk->fetch(PDO::FETCH_ASSOC);
+            if ($row && adminCanManageUser((int) $row['user_id'], (string) $row['user_type'])) {
+                $stmt = $pdo->prepare("UPDATE session_security SET is_active = 0, expires_at = NOW() WHERE id = ?");
+                $stmt->execute([$sid]);
+                logAudit('session_killed', 'session_security', 0, ['session_id' => $sid]);
+                $message = "Session déconnectée.";
+            } else {
+                $error = "Action non autorisée sur cette session.";
+            }
         }
     }
 
@@ -38,16 +67,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && hash_equals($csrf_token, $_POST['cs
         $uid = intval($_POST['user_id'] ?? 0);
         $utype = $_POST['user_type'] ?? '';
         if ($uid > 0 && !empty($utype)) {
-            $stmt = $pdo->prepare("UPDATE session_security SET is_active = 0, expires_at = NOW() WHERE user_id = ? AND user_type = ?");
-            $stmt->execute([$uid, $utype]);
-            logAudit('all_sessions_killed', 'session_security', $uid, ['user_type' => $utype]);
-            $message = "Toutes les sessions de l'utilisateur ont été fermées.";
+            // L'utilisateur cible doit appartenir à l'établissement courant (anti-IDOR)
+            if (!adminCanManageUser($uid, $utype)) {
+                $error = "Action non autorisée sur cet utilisateur.";
+            } else {
+                $stmt = $pdo->prepare("UPDATE session_security SET is_active = 0, expires_at = NOW() WHERE user_id = ? AND user_type = ?");
+                $stmt->execute([$uid, $utype]);
+                logAudit('all_sessions_killed', 'session_security', $uid, ['user_type' => $utype]);
+                $message = "Toutes les sessions de l'utilisateur ont été fermées.";
+            }
         }
     }
 
     if ($action === 'kill_all') {
-        $stmt = $pdo->prepare("UPDATE session_security SET is_active = 0, expires_at = NOW() WHERE NOT (user_id = ? AND user_type = 'administrateur')");
-        $stmt->execute([$admin['id']]);
+        // Ne jamais fermer les sessions d'un AUTRE établissement : on borne l'UPDATE au
+        // périmètre courant (sauf super_admin, portée globale légitime).
+        $sql = "UPDATE session_security s SET s.is_active = 0, s.expires_at = NOW() WHERE NOT (s.user_id = ? AND s.user_type = 'administrateur')" . $scopeSql;
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(array_merge([$admin['id']], $scopeParams));
         logAudit('all_sessions_killed_global', 'session_security', 0);
         $message = "Toutes les sessions (sauf la vôtre) ont été fermées.";
     }
@@ -56,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && hash_equals($csrf_token, $_POST['cs
 // Récupérer sessions actives
 $sessions = [];
 try {
-    $stmt = $pdo->query("
+    $stmt = $pdo->prepare("
         SELECT s.*,
             CASE
                 WHEN s.user_type = 'eleve' THEN (SELECT CONCAT(prenom,' ',nom) FROM eleves WHERE id = s.user_id)
@@ -67,9 +104,10 @@ try {
                 ELSE 'Inconnu'
             END AS nom_complet
         FROM session_security s
-        WHERE s.is_active = 1 AND s.expires_at > NOW()
+        WHERE s.is_active = 1 AND s.expires_at > NOW()" . $scopeSql . "
         ORDER BY s.last_activity DESC
     ");
+    $stmt->execute($scopeParams);
     $sessions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
     error_log('[' . basename(__FILE__) . '] ' . $e->getMessage());
@@ -78,13 +116,14 @@ try {
 // Détection multi-IP : utilisateurs avec session active depuis 2+ IPs distinctes
 $suspicious = [];
 try {
-    $stmt = $pdo->query("
-        SELECT user_id, user_type, COUNT(DISTINCT ip_address) AS ip_count, GROUP_CONCAT(DISTINCT ip_address) AS ips
-        FROM session_security
-        WHERE is_active = 1 AND expires_at > NOW()
-        GROUP BY user_id, user_type
+    $stmt = $pdo->prepare("
+        SELECT s.user_id, s.user_type, COUNT(DISTINCT s.ip_address) AS ip_count, GROUP_CONCAT(DISTINCT s.ip_address) AS ips
+        FROM session_security s
+        WHERE s.is_active = 1 AND s.expires_at > NOW()" . $scopeSql . "
+        GROUP BY s.user_id, s.user_type
         HAVING ip_count > 1
     ");
+    $stmt->execute($scopeParams);
     $suspicious = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
     error_log('[' . basename(__FILE__) . '] ' . $e->getMessage());

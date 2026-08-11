@@ -14,12 +14,18 @@ $admin = getCurrentUser();
 $message = '';
 $error = '';
 
+// Cloisonnement multi-tenant : toutes les listes affichées (profs, classes, élèves)
+// sont bornées à l'établissement COURANT (contexte de session).
+$etabId = \API\Core\EstablishmentContext::id();
+
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 $csrf_token = $_SESSION['csrf_token'];
 
-$professeurs = $pdo->query("SELECT id, nom, prenom FROM professeurs ORDER BY nom, prenom")->fetchAll(PDO::FETCH_ASSOC);
+$stmtProfs = $pdo->prepare("SELECT id, nom, prenom FROM professeurs WHERE etablissement_id = ? ORDER BY nom, prenom");
+$stmtProfs->execute([$etabId]);
+$professeurs = $stmtProfs->fetchAll(PDO::FETCH_ASSOC);
 
 // POST Actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $csrf_token) {
@@ -128,19 +134,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
     }
 }
 
-// Charger classes avec effectifs
-$classes = $pdo->query("
+// Charger classes avec effectifs (bornées à l'établissement courant)
+$stmtClasses = $pdo->prepare("
     SELECT c.*,
-        (SELECT COUNT(*) FROM eleves e WHERE e.classe = c.nom AND e.actif = 1) AS effectif,
+        (SELECT COUNT(*) FROM eleves e WHERE e.classe = c.nom AND e.actif = 1 AND e.etablissement_id = c.etablissement_id) AS effectif,
         (SELECT CONCAT(p.prenom, ' ', p.nom) FROM professeurs p WHERE p.id = c.professeur_principal_id) AS pp_nom
     FROM classes c
+    WHERE c.etablissement_id = ?
     ORDER BY c.actif DESC, c.niveau, c.nom
-")->fetchAll(PDO::FETCH_ASSOC);
+");
+$stmtClasses->execute([$etabId]);
+$classes = $stmtClasses->fetchAll(PDO::FETCH_ASSOC);
 
-// Stats
+// Stats (scopées établissement courant)
 $totalClasses = count($classes);
-$totalEleves = $pdo->query("SELECT COUNT(*) FROM eleves WHERE actif = 1")->fetchColumn();
+$stmtTotEleves = $pdo->prepare("SELECT COUNT(*) FROM eleves WHERE actif = 1 AND etablissement_id = ?");
+$stmtTotEleves->execute([$etabId]);
+$totalEleves = $stmtTotEleves->fetchColumn();
 $avgEffectif = $totalClasses > 0 ? round((float) ($totalEleves / $totalClasses), 1) : 0;
+
+// Liste des élèves pour le modal d'affectation (bornée à l'établissement courant)
+$stmtStudents = $pdo->prepare("SELECT id, nom, prenom, classe FROM eleves WHERE actif = 1 AND etablissement_id = ? ORDER BY nom, prenom");
+$stmtStudents->execute([$etabId]);
+$allStudentsData = $stmtStudents->fetchAll(PDO::FETCH_ASSOC);
 
 $pageTitle = 'Gestion des classes';
 $currentPage = 'classes';
@@ -266,7 +282,7 @@ include __DIR__ . '/../includes/header.php';
 </div>
 
 <script nonce="<?= csp_nonce() ?>">
-const allStudents = <?= json_encode($pdo->query("SELECT id, nom, prenom, classe FROM eleves WHERE actif = 1 ORDER BY nom, prenom")->fetchAll(PDO::FETCH_ASSOC), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
+const allStudents = <?= json_encode($allStudentsData, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
 
 function openEdit(c) {
     document.getElementById('edit_cid').value = c.id;

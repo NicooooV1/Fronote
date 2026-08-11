@@ -11,15 +11,25 @@ tenantGate('tenant.users.view', ['administrateur']);
 
 $pdo = getPDO();
 
+// Cloisonnement multi-tenant : toutes les agrégations sont bornées à l'établissement
+// COURANT (contexte de session). Sans ce scope, un admin voyait les effectifs, moyennes
+// et volumes cumulés de TOUS les établissements.
+$etabId = \API\Core\EstablishmentContext::id();
+
 // ── Données : effectifs par profil ──
-$eleves = $pdo->query("SELECT COUNT(*) FROM eleves")->fetchColumn();
-$profs = $pdo->query("SELECT COUNT(*) FROM professeurs")->fetchColumn();
-$parents = $pdo->query("SELECT COUNT(*) FROM parents")->fetchColumn();
-$vs = $pdo->query("SELECT COUNT(*) FROM vie_scolaire")->fetchColumn();
-$admins = $pdo->query("SELECT COUNT(*) FROM administrateurs")->fetchColumn();
+$countBy = function (string $table) use ($pdo, $etabId): int {
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM {$table} WHERE etablissement_id = ?");
+    $stmt->execute([$etabId]);
+    return (int) $stmt->fetchColumn();
+};
+$eleves = $countBy('eleves');
+$profs = $countBy('professeurs');
+$parents = $countBy('parents');
+$vs = $countBy('vie_scolaire');
+$admins = $countBy('administrateurs');
 
 // ── Répartition des notes ──
-$notesDistrib = $pdo->query("
+$stmt = $pdo->prepare("
     SELECT
         SUM(CASE WHEN note < 5 THEN 1 ELSE 0 END) AS n0_5,
         SUM(CASE WHEN note >= 5 AND note < 10 THEN 1 ELSE 0 END) AS n5_10,
@@ -27,44 +37,57 @@ $notesDistrib = $pdo->query("
         SUM(CASE WHEN note >= 15 THEN 1 ELSE 0 END) AS n15_20,
         COUNT(*) AS total, ROUND(AVG(note),2) AS moyenne
     FROM notes
-")->fetch(PDO::FETCH_ASSOC);
+    WHERE etablissement_id = ?
+");
+$stmt->execute([$etabId]);
+$notesDistrib = $stmt->fetch(PDO::FETCH_ASSOC);
 
 // ── Absences sur 30 jours ──
-$absencesChart = $pdo->query("
+$stmt = $pdo->prepare("
     SELECT DATE(date_debut) AS d, COUNT(*) AS c
     FROM absences
-    WHERE date_debut >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+    WHERE etablissement_id = ? AND date_debut >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
     GROUP BY DATE(date_debut) ORDER BY d
-")->fetchAll(PDO::FETCH_ASSOC);
+");
+$stmt->execute([$etabId]);
+$absencesChart = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $absLabels = json_encode(array_map(fn($r) => date('d/m', strtotime($r['d'])), $absencesChart));
 $absData = json_encode(array_column($absencesChart, 'c'));
 
-// ── Messages sur 30 jours ──
-$msgsChart = $pdo->query("
-    SELECT DATE(created_at) AS d, COUNT(*) AS c
-    FROM messages
-    WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-    GROUP BY DATE(created_at) ORDER BY d
-")->fetchAll(PDO::FETCH_ASSOC);
+// ── Messages sur 30 jours ── (messages n'a pas d'etablissement_id : scope via conversations)
+$stmt = $pdo->prepare("
+    SELECT DATE(msg.created_at) AS d, COUNT(*) AS c
+    FROM messages msg
+    JOIN conversations conv ON conv.id = msg.conversation_id
+    WHERE conv.etablissement_id = ? AND msg.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+    GROUP BY DATE(msg.created_at) ORDER BY d
+");
+$stmt->execute([$etabId]);
+$msgsChart = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $msgLabels = json_encode(array_map(fn($r) => date('d/m', strtotime($r['d'])), $msgsChart));
 $msgData = json_encode(array_column($msgsChart, 'c'));
 
 // ── Effectifs par classe ──
-$classesEff = $pdo->query("
+$stmt = $pdo->prepare("
     SELECT c.nom, COUNT(e.id) AS effectif
-    FROM classes c LEFT JOIN eleves e ON e.classe = c.nom
+    FROM classes c LEFT JOIN eleves e ON e.classe = c.nom AND e.etablissement_id = c.etablissement_id
+    WHERE c.etablissement_id = ?
     GROUP BY c.id, c.nom ORDER BY c.nom
-")->fetchAll(PDO::FETCH_ASSOC);
+");
+$stmt->execute([$etabId]);
+$classesEff = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $classLabels = json_encode(array_column($classesEff, 'nom'));
 $classData = json_encode(array_column($classesEff, 'effectif'));
 
 // ── Activité audit 7 derniers jours ──
-$auditChart = $pdo->query("
+$stmt = $pdo->prepare("
     SELECT DATE(created_at) AS d, COUNT(*) AS c
     FROM audit_log
-    WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+    WHERE etablissement_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
     GROUP BY DATE(created_at) ORDER BY d
-")->fetchAll(PDO::FETCH_ASSOC);
+");
+$stmt->execute([$etabId]);
+$auditChart = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $auditLabels = json_encode(array_map(fn($r) => date('d/m', strtotime($r['d'])), $auditChart));
 $auditData = json_encode(array_column($auditChart, 'c'));
 

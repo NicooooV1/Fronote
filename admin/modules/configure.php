@@ -297,7 +297,7 @@ include __DIR__ . '/../includes/header.php';
 
 <div class="btn-bar" style="margin-top:20px">
     <a href="index.php" class="btn-back"><i class="fas fa-arrow-left"></i> Retour aux modules</a>
-    <a href="permissions.php" class="btn-back" style="background:#f0f4ff;color:#667eea"><i class="fas fa-shield-alt"></i> Permissions CRUD</a>
+    <a href="permissions.php" class="btn-back" style="background:#f0f4ff;color:#667eea"><i class="fas fa-eye"></i> Voir les permissions</a>
 </div>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

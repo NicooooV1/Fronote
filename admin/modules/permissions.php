@@ -1,19 +1,23 @@
 <?php
 declare(strict_types=1);
 /**
- * Administration — Permissions CRUD par module et par role
- * Gere une matrice module x role avec des checkboxes pour chaque permission.
+ * Administration — Permissions par module et par rôle (VUE EN LECTURE SEULE).
+ *
+ * La configuration des permissions est désormais GÉRÉE AU NIVEAU DE LA PLATEFORME et
+ * n'est plus modifiable par les directions d'établissement. Cette page n'affiche donc
+ * plus qu'une matrice module × rôle en consultation : aucun traitement POST, aucune
+ * écriture dans module_permissions (ni enregistrement, ni réinitialisation).
  */
 require_once __DIR__ . '/../../API/core.php';
 require_once __DIR__ . '/../includes/admin_functions.php';
 
 requireAuth();
-tenantGate('tenant.users.view', ['administrateur']);
+// Lecture seule : consultation de la matrice de permissions. Même public que la page
+// utilisateurs (direction d'établissement) — plus aucune écriture.
+tenantGate('tenant.users.manage', ['administrateur', 'super_admin']);
 
 $pdo = getPDO();
 $moduleService = app('modules');
-$message = '';
-$messageType = '';
 
 // ─── Roles ──────────────────────────────────────────────────────────────────
 $roles = [
@@ -42,180 +46,7 @@ $customPermsByModule = [
     ],
 ];
 
-// ─── Permissions par defaut ──────────────────────────────────────────────────
-function getDefaultPermissions(): array {
-    return [
-        'administrateur' => [
-            'can_view' => 1, 'can_create' => 1, 'can_edit' => 1,
-            'can_delete' => 1, 'can_export' => 1, 'can_import' => 1,
-            'custom' => ['can_send' => true, 'can_moderate' => true, 'can_broadcast' => true],
-        ],
-        'professeur' => [
-            'can_view' => 1, 'can_create' => 1, 'can_edit' => 1,
-            'can_delete' => 0, 'can_export' => 1, 'can_import' => 0,
-            'custom' => ['can_send' => true, 'can_moderate' => false, 'can_broadcast' => false],
-        ],
-        'vie_scolaire' => [
-            'can_view' => 1, 'can_create' => 1, 'can_edit' => 1,
-            'can_delete' => 0, 'can_export' => 1, 'can_import' => 1,
-            'custom' => ['can_send' => true, 'can_moderate' => true, 'can_broadcast' => true],
-        ],
-        'eleve' => [
-            'can_view' => 1, 'can_create' => 0, 'can_edit' => 0,
-            'can_delete' => 0, 'can_export' => 0, 'can_import' => 0,
-            'custom' => ['can_send' => true, 'can_moderate' => false, 'can_broadcast' => false],
-        ],
-        'parent' => [
-            'can_view' => 1, 'can_create' => 0, 'can_edit' => 0,
-            'can_delete' => 0, 'can_export' => 0, 'can_import' => 0,
-            'custom' => ['can_send' => true, 'can_moderate' => false, 'can_broadcast' => false],
-        ],
-    ];
-}
-
-// ─── CSRF ────────────────────────────────────────────────────────────────────
-if (!isset($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
-$csrf_token = $_SESSION['csrf_token'];
-
-// ─── Traitement POST ─────────────────────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && hash_equals($csrf_token, $_POST['csrf_token'] ?? '')) {
-    $action = $_POST['action'] ?? '';
-
-    if ($action === 'save_permissions') {
-        try {
-            $pdo->beginTransaction();
-
-            $stmt = $pdo->prepare("
-                INSERT INTO module_permissions
-                    (module_key, role, can_view, can_create, can_edit, can_delete, can_export, can_import, custom_permissions)
-                VALUES
-                    (:module_key, :role, :can_view, :can_create, :can_edit, :can_delete, :can_export, :can_import, :custom_permissions)
-                ON DUPLICATE KEY UPDATE
-                    can_view = VALUES(can_view),
-                    can_create = VALUES(can_create),
-                    can_edit = VALUES(can_edit),
-                    can_delete = VALUES(can_delete),
-                    can_export = VALUES(can_export),
-                    can_import = VALUES(can_import),
-                    custom_permissions = VALUES(custom_permissions)
-            ");
-
-            $allModules = $moduleService->getAll();
-            $roleKeys = array_keys($GLOBALS['roles'] ?? $roles);
-
-            // La matrice complète (≈ modules × rôles × permissions) dépasse facilement
-            // php.ini max_input_vars (1000 par défaut), ce qui tronquait silencieusement
-            // le POST et ne sauvegardait que les premières catégories. Le formulaire
-            // sérialise donc tout dans un seul champ JSON `perm_data`.
-            $matrix = [];
-            if (isset($_POST['perm_data'])) {
-                $decoded = json_decode((string) $_POST['perm_data'], true);
-                if (is_array($decoded)) {
-                    $matrix = $decoded;
-                }
-            }
-
-            foreach ($allModules as $moduleKey => $mod) {
-                foreach ($roleKeys as $role) {
-                    $cell = $matrix[$moduleKey][$role] ?? [];
-                    $canView   = !empty($cell['can_view'])   ? 1 : 0;
-                    $canCreate = !empty($cell['can_create']) ? 1 : 0;
-                    $canEdit   = !empty($cell['can_edit'])   ? 1 : 0;
-                    $canDelete = !empty($cell['can_delete']) ? 1 : 0;
-                    $canExport = !empty($cell['can_export']) ? 1 : 0;
-                    $canImport = !empty($cell['can_import']) ? 1 : 0;
-
-                    // Custom permissions
-                    $customPerms = null;
-                    if (isset($customPermsByModule[$moduleKey])) {
-                        $cp = [];
-                        foreach ($customPermsByModule[$moduleKey] as $cpKey => $cpMeta) {
-                            $cp[$cpKey] = !empty($cell[$cpKey]);
-                        }
-                        $customPerms = json_encode($cp);
-                    }
-
-                    $stmt->execute([
-                        ':module_key'         => $moduleKey,
-                        ':role'               => $role,
-                        ':can_view'           => $canView,
-                        ':can_create'         => $canCreate,
-                        ':can_edit'           => $canEdit,
-                        ':can_delete'         => $canDelete,
-                        ':can_export'         => $canExport,
-                        ':can_import'         => $canImport,
-                        ':custom_permissions' => $customPerms,
-                    ]);
-                }
-            }
-
-            $pdo->commit();
-            logAudit('permissions.updated', 'module_permissions', null, null, ['action' => 'bulk_save']);
-            $message = 'Permissions enregistrees avec succes.';
-            $messageType = 'success';
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            error_log("Permissions save error: " . $e->getMessage());
-            $message = 'Erreur lors de l\'enregistrement des permissions.';
-            $messageType = 'error';
-        }
-    }
-
-    if ($action === 'reset_defaults') {
-        try {
-            $pdo->beginTransaction();
-
-            $pdo->exec("DELETE FROM module_permissions");
-
-            $defaults = getDefaultPermissions();
-            $allModules = $moduleService->getAll();
-            $roleKeys = array_keys($roles);
-
-            $stmt = $pdo->prepare("
-                INSERT INTO module_permissions
-                    (module_key, role, can_view, can_create, can_edit, can_delete, can_export, can_import, custom_permissions)
-                VALUES
-                    (:module_key, :role, :can_view, :can_create, :can_edit, :can_delete, :can_export, :can_import, :custom_permissions)
-            ");
-
-            foreach ($allModules as $moduleKey => $mod) {
-                foreach ($roleKeys as $role) {
-                    $def = $defaults[$role] ?? $defaults['eleve'];
-                    $customPerms = null;
-                    if (isset($customPermsByModule[$moduleKey]) && isset($def['custom'])) {
-                        $customPerms = json_encode($def['custom']);
-                    }
-
-                    $stmt->execute([
-                        ':module_key'         => $moduleKey,
-                        ':role'               => $role,
-                        ':can_view'           => $def['can_view'],
-                        ':can_create'         => $def['can_create'],
-                        ':can_edit'           => $def['can_edit'],
-                        ':can_delete'         => $def['can_delete'],
-                        ':can_export'         => $def['can_export'],
-                        ':can_import'         => $def['can_import'],
-                        ':custom_permissions' => $customPerms,
-                    ]);
-                }
-            }
-
-            $pdo->commit();
-            logAudit('permissions.reset', 'module_permissions', null, null, ['action' => 'reset_defaults']);
-            $message = 'Permissions reintialisees aux valeurs par defaut.';
-            $messageType = 'success';
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            error_log("Permissions reset error: " . $e->getMessage());
-            $message = 'Erreur lors de la reinitialisation des permissions.';
-            $messageType = 'error';
-        }
-    }
-}
-
-// ─── Chargement des donnees ──────────────────────────────────────────────────
+// ─── Chargement des donnees (lecture seule) ──────────────────────────────────
 $categories = $moduleService->getByCategory();
 $categoryLabels = \API\Services\ModuleService::categoryLabels();
 
@@ -252,7 +83,7 @@ function permChecked(array $permissions, string $moduleKey, string $role, string
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────
-$pageTitle = 'Permissions des modules';
+$pageTitle = 'Permissions des modules (lecture seule)';
 $currentPage = 'modules';
 $pageBack = 'admin/modules/index.php';
 $extraCss = ['../../assets/css/admin.css'];
@@ -289,12 +120,12 @@ include __DIR__ . '/../includes/header.php';
 .module-cell-key{font-size:.75em;color:#a0aec0;font-family:monospace}
 
 .perm-checks{display:flex;flex-direction:column;gap:3px;align-items:flex-start}
-.perm-check{display:flex;align-items:center;gap:5px;cursor:pointer;font-size:.82em;color:#4a5568;padding:2px 4px;border-radius:4px;transition:background .1s;white-space:nowrap}
-.perm-check:hover{background:#edf2f7}
-.perm-check input[type="checkbox"]{margin:0;cursor:pointer;accent-color:#667eea;width:14px;height:14px}
+.perm-check{display:flex;align-items:center;gap:5px;font-size:.82em;color:#4a5568;padding:2px 4px;border-radius:4px;white-space:nowrap}
+.perm-check input[type="checkbox"]{margin:0;accent-color:#667eea;width:14px;height:14px}
 .perm-check i{font-size:.75em;color:#a0aec0;width:14px;text-align:center}
 .perm-check.custom-perm{color:#667eea;font-weight:500}
 .perm-check.custom-perm i{color:#667eea}
+.perm-check.is-off{opacity:.4}
 
 .perm-divider{border-top:1px dashed #e2e8f0;margin:3px 0;width:100%}
 
@@ -307,22 +138,8 @@ include __DIR__ . '/../includes/header.php';
 .role-badge-eleve{background:#c6f6d5;color:#276749}
 .role-badge-parent{background:#fed7d7;color:#9b2c2c}
 
-.btn-save-perms{padding:10px 24px;background:#667eea;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:.92em;display:flex;align-items:center;gap:8px;transition:background .2s}
-.btn-save-perms:hover{background:#5a67d8}
-.btn-reset{padding:10px 20px;background:#fff;color:#e53e3e;border:1px solid #feb2b2;border-radius:6px;font-weight:600;cursor:pointer;font-size:.92em;display:flex;align-items:center;gap:8px;transition:all .2s}
-.btn-reset:hover{background:#fff5f5;border-color:#e53e3e}
 .btn-back{padding:10px 24px;background:#edf2f7;color:#4a5568;border:none;border-radius:6px;font-weight:600;cursor:pointer;text-decoration:none;font-size:.92em;display:inline-flex;align-items:center;gap:8px}
 .btn-back:hover{background:#e2e8f0}
-
-.msg{padding:12px 16px;border-radius:6px;margin-bottom:16px;font-size:.92em;display:flex;align-items:center;gap:8px}
-.msg-success{background:#f0fff4;border:1px solid #9ae6b4;color:#276749}
-.msg-error{background:#fff5f5;border:1px solid #feb2b2;color:#c53030}
-
-.select-all-bar{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
-.select-all-btn{font-size:.78em;padding:4px 10px;border:1px solid #e2e8f0;border-radius:4px;background:#f8f9fa;color:#4a5568;cursor:pointer;transition:all .15s}
-.select-all-btn:hover{background:#edf2f7;border-color:#cbd5e0}
-
-.sticky-save{position:sticky;bottom:0;background:#fff;border-top:2px solid #e2e8f0;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 -2px 8px rgba(0,0,0,.05);z-index:100;margin-top:20px;border-radius:0 0 8px 8px}
 
 @media(max-width:900px){
     .perm-table{font-size:.8em}
@@ -332,179 +149,98 @@ include __DIR__ . '/../includes/header.php';
 }
 </style>
 
-<?php if ($message): ?>
-<div class="msg msg-<?= $messageType ?>">
-    <i class="fas fa-<?= $messageType === 'success' ? 'check-circle' : 'exclamation-circle' ?>"></i>
-    <?= htmlspecialchars($message) ?>
+<div class="alert alert-info" style="display:flex;gap:10px;align-items:flex-start;margin-bottom:16px">
+    <i class="fas fa-info-circle" style="margin-top:2px"></i>
+    <div>
+        <strong>Les permissions des rôles sont gérées au niveau de la plateforme.</strong><br>
+        Cette matrice est affichée en lecture seule, à titre de transparence.
+        Pour consulter les permissions effectives par rôle, voir
+        « <a href="role_permissions.php">Permissions par rôle</a> ».
+    </div>
 </div>
-<?php endif; ?>
 
 <div class="perm-header">
-    <h2><i class="fas fa-shield-alt" style="color:#667eea"></i> Matrice des permissions</h2>
+    <h2><i class="fas fa-shield-alt" style="color:#667eea"></i> Matrice des permissions <span style="font-size:.7em;font-weight:500;color:#a0aec0">(lecture seule)</span></h2>
     <div class="perm-header-actions">
+        <a href="role_permissions.php" class="btn-back"><i class="fas fa-user-lock"></i> Permissions par rôle</a>
         <a href="index.php" class="btn-back"><i class="fas fa-arrow-left"></i> Modules</a>
     </div>
 </div>
 
-<form method="post" id="permissionsForm">
-    <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
-    <input type="hidden" name="action" value="save_permissions">
-    <input type="hidden" name="perm_data" id="permData" value="">
+<?php foreach ($categories as $catKey => $modules): ?>
+<div class="perm-category">
+    <div class="perm-category-title">
+        <i class="fas fa-folder"></i>
+        <?= htmlspecialchars($categoryLabels[$catKey] ?? ucfirst($catKey)) ?>
+        <span style="font-size:.78em;font-weight:400;color:#a0aec0">(<?= count($modules) ?> modules)</span>
+    </div>
 
-    <?php foreach ($categories as $catKey => $modules): ?>
-    <div class="perm-category">
-        <div class="perm-category-title">
-            <i class="fas fa-folder"></i>
-            <?= htmlspecialchars($categoryLabels[$catKey] ?? ucfirst($catKey)) ?>
-            <span style="font-size:.78em;font-weight:400;color:#a0aec0">(<?= count($modules) ?> modules)</span>
-        </div>
-
-        <div class="perm-table-wrap">
-            <table class="perm-table">
-                <thead>
-                    <tr>
-                        <th>Module</th>
-                        <?php foreach ($roles as $roleKey => $roleLabel): ?>
-                        <th class="role-col">
-                            <div class="role-header">
-                                <span class="role-header-name"><?= htmlspecialchars($roleLabel) ?></span>
-                                <span class="role-header-badge role-badge-<?= $roleKey ?>"><?= $roleKey ?></span>
-                            </div>
-                        </th>
-                        <?php endforeach; ?>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($modules as $mod):
-                        $mk = $mod['module_key'];
-                        $hasCustom = isset($customPermsByModule[$mk]);
-                    ?>
-                    <tr>
-                        <td>
-                            <div class="module-cell">
-                                <div class="module-cell-icon">
-                                    <i class="<?= htmlspecialchars($mod['icon']) ?>"></i>
-                                </div>
-                                <div class="module-cell-info">
-                                    <span class="module-cell-name"><?= htmlspecialchars($mod['label']) ?></span>
-                                    <span class="module-cell-key"><?= htmlspecialchars($mk) ?></span>
-                                </div>
-                            </div>
-                        </td>
-                        <?php foreach ($roles as $roleKey => $roleLabel):
-                            $prefix = "perm_{$mk}_{$roleKey}_";
-                        ?>
-                        <td>
-                            <div class="perm-checks">
-                                <?php foreach ($standardPerms as $permKey => $permMeta): ?>
-                                <label class="perm-check">
-                                    <input type="checkbox" class="perm-cb"
-                                           data-module="<?= htmlspecialchars($mk) ?>"
-                                           data-role="<?= htmlspecialchars($roleKey) ?>"
-                                           data-perm="<?= $permKey ?>"
-                                           value="1"
-                                           <?= permChecked($permissions, $mk, $roleKey, $permKey) ? 'checked' : '' ?>>
-                                    <i class="<?= $permMeta['icon'] ?>"></i>
-                                    <?= $permMeta['label'] ?>
-                                </label>
-                                <?php endforeach; ?>
-
-                                <?php if ($hasCustom): ?>
-                                <div class="perm-divider"></div>
-                                <?php foreach ($customPermsByModule[$mk] as $cpKey => $cpMeta): ?>
-                                <label class="perm-check custom-perm">
-                                    <input type="checkbox" class="perm-cb"
-                                           data-module="<?= htmlspecialchars($mk) ?>"
-                                           data-role="<?= htmlspecialchars($roleKey) ?>"
-                                           data-perm="<?= $cpKey ?>"
-                                           value="1"
-                                           <?= permChecked($permissions, $mk, $roleKey, $cpKey) ? 'checked' : '' ?>>
-                                    <i class="<?= $cpMeta['icon'] ?>"></i>
-                                    <?= $cpMeta['label'] ?>
-                                </label>
-                                <?php endforeach; ?>
-                                <?php endif; ?>
-                            </div>
-                        </td>
-                        <?php endforeach; ?>
-                    </tr>
+    <div class="perm-table-wrap">
+        <table class="perm-table">
+            <thead>
+                <tr>
+                    <th>Module</th>
+                    <?php foreach ($roles as $roleKey => $roleLabel): ?>
+                    <th class="role-col">
+                        <div class="role-header">
+                            <span class="role-header-name"><?= htmlspecialchars($roleLabel) ?></span>
+                            <span class="role-header-badge role-badge-<?= $roleKey ?>"><?= $roleKey ?></span>
+                        </div>
+                    </th>
                     <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    <?php endforeach; ?>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($modules as $mod):
+                    $mk = $mod['module_key'];
+                    $hasCustom = isset($customPermsByModule[$mk]);
+                ?>
+                <tr>
+                    <td>
+                        <div class="module-cell">
+                            <div class="module-cell-icon">
+                                <i class="<?= htmlspecialchars($mod['icon']) ?>"></i>
+                            </div>
+                            <div class="module-cell-info">
+                                <span class="module-cell-name"><?= htmlspecialchars($mod['label']) ?></span>
+                                <span class="module-cell-key"><?= htmlspecialchars($mk) ?></span>
+                            </div>
+                        </div>
+                    </td>
+                    <?php foreach ($roles as $roleKey => $roleLabel): ?>
+                    <td>
+                        <div class="perm-checks">
+                            <?php foreach ($standardPerms as $permKey => $permMeta): $on = permChecked($permissions, $mk, $roleKey, $permKey); ?>
+                            <span class="perm-check<?= $on ? '' : ' is-off' ?>">
+                                <input type="checkbox" <?= $on ? 'checked' : '' ?> disabled>
+                                <i class="<?= $permMeta['icon'] ?>"></i>
+                                <?= $permMeta['label'] ?>
+                            </span>
+                            <?php endforeach; ?>
 
-    <div class="sticky-save">
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button type="button" class="select-all-btn" data-fr-click="toggleAllPerms" data-fr-args='[true]'>
-                <i class="fas fa-check-double"></i> Tout cocher
-            </button>
-            <button type="button" class="select-all-btn" data-fr-click="toggleAllPerms" data-fr-args='[false]'>
-                <i class="fas fa-times"></i> Tout decocher
-            </button>
-            <button type="button" class="select-all-btn" data-fr-click="toggleColumnPerms" data-fr-args='["can_view",true]'>
-                <i class="fas fa-eye"></i> Tout voir
-            </button>
-        </div>
-        <div style="display:flex;gap:10px;align-items:center">
-            <button type="submit" class="btn-save-perms">
-                <i class="fas fa-save"></i> Enregistrer les permissions
-            </button>
-        </div>
+                            <?php if ($hasCustom): ?>
+                            <div class="perm-divider"></div>
+                            <?php foreach ($customPermsByModule[$mk] as $cpKey => $cpMeta): $on = permChecked($permissions, $mk, $roleKey, $cpKey); ?>
+                            <span class="perm-check custom-perm<?= $on ? '' : ' is-off' ?>">
+                                <input type="checkbox" <?= $on ? 'checked' : '' ?> disabled>
+                                <i class="<?= $cpMeta['icon'] ?>"></i>
+                                <?= $cpMeta['label'] ?>
+                            </span>
+                            <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
+                    </td>
+                    <?php endforeach; ?>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
     </div>
-</form>
-
-<!-- Reset form (separate to avoid accidental save) -->
-<div style="margin-top:20px;padding:20px;background:#fff;border:1px solid #e2e8f0;border-radius:8px">
-    <h3 style="margin:0 0 12px;font-size:1em;color:#2d3748;display:flex;align-items:center;gap:8px">
-        <i class="fas fa-undo" style="color:#e53e3e"></i> Reinitialiser les permissions
-    </h3>
-    <p style="font-size:.88em;color:#718096;margin:0 0 14px">
-        Cette action remplacera toutes les permissions actuelles par les valeurs par defaut.
-        Les administrateurs auront tous les droits, les professeurs et la vie scolaire des droits intermediaires,
-        les eleves et parents des droits en lecture seule.
-    </p>
-    <form method="post" data-fr-confirm="Etes-vous sur de vouloir reinitialiser toutes les permissions aux valeurs par defaut ? Cette action est irreversible.">
-        <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
-        <input type="hidden" name="action" value="reset_defaults">
-        <button type="submit" class="btn-reset">
-            <i class="fas fa-undo"></i> Reinitialiser les permissions par defaut
-        </button>
-    </form>
 </div>
+<?php endforeach; ?>
 
 <div style="margin-top:20px">
     <a href="index.php" class="btn-back"><i class="fas fa-arrow-left"></i> Retour aux modules</a>
 </div>
-
-<script nonce="<?= csp_nonce() ?>">
-function toggleAllPerms(checked) {
-    document.querySelectorAll('#permissionsForm .perm-cb').forEach(function(cb) {
-        cb.checked = checked;
-    });
-}
-
-function toggleColumnPerms(permName, checked) {
-    document.querySelectorAll('#permissionsForm .perm-cb').forEach(function(cb) {
-        if (cb.dataset.perm === permName) {
-            cb.checked = checked;
-        }
-    });
-}
-
-// Sérialise toute la matrice dans un seul champ JSON pour contourner
-// php.ini max_input_vars (qui tronquait le POST et ne sauvait que les premières catégories).
-document.getElementById('permissionsForm').addEventListener('submit', function() {
-    var matrix = {};
-    document.querySelectorAll('#permissionsForm .perm-cb').forEach(function(cb) {
-        var m = cb.dataset.module, r = cb.dataset.role, p = cb.dataset.perm;
-        if (!matrix[m]) matrix[m] = {};
-        if (!matrix[m][r]) matrix[m][r] = {};
-        matrix[m][r][p] = cb.checked ? 1 : 0;
-    });
-    document.getElementById('permData').value = JSON.stringify(matrix);
-});
-</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

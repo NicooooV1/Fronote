@@ -103,19 +103,46 @@ $offset = ($page - 1) * $perPage;
 
 // Cloisonnement multi-tenant de la liste et des compteurs : uniquement les messages de
 // conversations de l'établissement courant (sous-requête, valable même sans JOIN dans le COUNT).
-$where = ["m.conversation_id IN (SELECT id FROM conversations WHERE etablissement_id = ?)"];
-$params = [\API\Core\EstablishmentContext::id()];
-if (!empty($search)) {
-    $where[] = "MATCH(m.body) AGAINST(? IN BOOLEAN MODE)";
-    $params[] = $search;
-}
-if (!empty($filterType)) { $where[] = "m.status = ?"; $params[] = $filterType; }
-if ($filterDeleted === '1') { $where[] = "m.is_deleted = 1"; }
-elseif ($filterDeleted !== 'all') { $where[] = "m.is_deleted = 0"; }
-$whereSQL = 'WHERE ' . implode(' AND ', $where);
+// La recherche utilise FULLTEXT (BOOLEAN MODE) ; si l'index FULLTEXT est absent du schéma
+// de base, ou si $search contient des opérateurs booléens malformés, MySQL lève une erreur
+// qui, sans garde-fou, renverrait un 500. On rebâtit alors la clause en recherche LIKE.
+$buildWhere = function (bool $fulltext) use ($search, $filterType, $filterDeleted) {
+    $where = ["m.conversation_id IN (SELECT id FROM conversations WHERE etablissement_id = ?)"];
+    $params = [\API\Core\EstablishmentContext::id()];
+    if (!empty($search)) {
+        if ($fulltext) {
+            $where[] = "MATCH(m.body) AGAINST(? IN BOOLEAN MODE)";
+            $params[] = $search;
+        } else {
+            // Repli : LIKE avec échappement des métacaractères (% _ \).
+            $where[] = "m.body LIKE ? ESCAPE '\\\\'";
+            $params[] = '%' . addcslashes($search, '%_\\') . '%';
+        }
+    }
+    if (!empty($filterType)) { $where[] = "m.status = ?"; $params[] = $filterType; }
+    if ($filterDeleted === '1') { $where[] = "m.is_deleted = 1"; }
+    elseif ($filterDeleted !== 'all') { $where[] = "m.is_deleted = 0"; }
+    return ['WHERE ' . implode(' AND ', $where), $params];
+};
+
+$fulltext = !empty($search);
+[$whereSQL, $params] = $buildWhere($fulltext);
 
 $total = $pdo->prepare("SELECT COUNT(*) FROM messages m $whereSQL");
-$total->execute($params); $totalMessages = $total->fetchColumn();
+try {
+    $total->execute($params);
+} catch (\PDOException $e) {
+    // Échec du FULLTEXT (index manquant ou opérateurs invalides) → repli LIKE.
+    if ($fulltext) {
+        $fulltext = false;
+        [$whereSQL, $params] = $buildWhere(false);
+        $total = $pdo->prepare("SELECT COUNT(*) FROM messages m $whereSQL");
+        $total->execute($params);
+    } else {
+        throw $e;
+    }
+}
+$totalMessages = $total->fetchColumn();
 $totalPages = max(1, ceil((float) ($totalMessages / $perPage)));
 
 $sql = "SELECT m.*, c.subject AS conv_subject,

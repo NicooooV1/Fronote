@@ -1,136 +1,109 @@
 <?php
 declare(strict_types=1);
 /**
- * Administration — Permissions par RÔLE (RBAC/ABAC).
+ * Administration — Permissions par RÔLE (VUE EN LECTURE SEULE).
  *
- * Édite la matrice rôle → permissions (table rbac_permissions), que le moteur
- * Authorization::can() lit EN PRIORITÉ (override du catalogue RoleCatalog).
- * Donc cocher/décocher ici change réellement ce que chaque rôle peut faire.
+ * La configuration de « ce qu'un rôle peut faire » (matrice rôle → permissions) est
+ * désormais GÉRÉE AU NIVEAU DE LA PLATEFORME et n'est plus modifiable par les
+ * directions d'établissement. Cette page ne fait donc QU'AFFICHER, à titre de
+ * transparence, les permissions effectives de chaque rôle telles que définies par le
+ * catalogue central (RoleCatalog). Elle n'écrit plus rien (ni rbac_permissions, ni
+ * rbac_grants) : aucun traitement POST, aucune synchronisation.
  *
- * Le périmètre (sa classe / ses enfants / ses élèves assignés) est appliqué par
- * Authorization selon le scope du rôle ; ici on gère le QUOI (permissions), pas le
- * périmètre. L'attribution d'un rôle à un utilisateur se fait dans users/roles.php.
+ * L'ATTRIBUTION d'un rôle à un utilisateur reste, elle, du ressort de la direction :
+ * voir users/roles.php.
  */
 require_once __DIR__ . '/../../API/core.php';
 require_once __DIR__ . '/../includes/admin_functions.php';
 
 requireAuth();
-tenantGate('tenant.users.view', ['administrateur', 'super_admin']);
+// Page en LECTURE SEULE : consultation des permissions de rôle. On conserve le même
+// public que la page utilisateurs (direction d'établissement) — plus aucune écriture.
+tenantGate('tenant.users.manage', ['administrateur', 'super_admin']);
 
 use API\Security\RoleCatalog;
-use API\Security\RoleSync;
 
-$pdo = getPDO();
-
-// Catalogue (source des rôles + permissions + défauts).
 $rolesMeta = class_exists(RoleCatalog::class) ? RoleCatalog::roles() : [];
 $permsMeta = class_exists(RoleCatalog::class) ? RoleCatalog::permissions() : [];
 
-// Auto-synchronisation catalogue -> base au premier accès (une fois), pour que la
-// matrice et la liste des rôles existent en base sans dépendre du bouton « Mettre à jour ».
-$syncNote = '';
-try {
-    $hasRoles = (int) $pdo->query("SELECT COUNT(*) FROM rbac_roles")->fetchColumn();
-    if ($hasRoles === 0 && class_exists(RoleSync::class)) {
-        $r = (new RoleSync($pdo))->sync();
-        $syncNote = "Catalogue synchronisé : {$r['roles']} rôle(s), {$r['grants']} permission(s).";
+// Couleurs par tier (badges type Discord). Utilise le helper central du catalogue s'il
+// existe (design partagé), sinon repli sur une table locale couvrant tous les tiers.
+$tierColorLocal = [
+    'plateforme'   => '#7c3aed',
+    'direction'    => '#2563eb',
+    'administratif'=> '#0891b2',
+    'vie_scolaire' => '#16a34a',
+    'pedagogique'  => '#ca8a04',
+    'enseignant'   => '#ea580c',
+    'sante_social' => '#dc2626',
+    'eleve_famille'=> '#db2777',
+    'famille'      => '#db2777',
+    'eleve'        => '#64748b',
+    'organisation' => '#0d9488',
+    'communication'=> '#4f46e5',
+    'documents'    => '#b45309',
+    'services'     => '#65a30d',
+    'stages'       => '#c026d3',
+    'controle'     => '#475569',
+    'systeme'      => '#334155',
+];
+$tierColor = static function (string $tier) use ($tierColorLocal): string {
+    if (method_exists(RoleCatalog::class, 'tierColor')) {
+        $c = (string) RoleCatalog::tierColor($tier);
+        if ($c !== '') return $c;
     }
-} catch (\Throwable $e) {
-    $syncNote = "Synchronisation impossible (tables RBAC absentes ?) : " . $e->getMessage();
-}
+    return $tierColorLocal[$tier] ?? '#64748b';
+};
+$roleDescription = static function (string $roleKey, array $meta): string {
+    foreach (['roleDescription', 'description', 'descriptionFor'] as $m) {
+        if (method_exists(RoleCatalog::class, $m)) {
+            $d = (string) RoleCatalog::$m($roleKey);
+            if ($d !== '') return $d;
+        }
+    }
+    return (string) ($meta['description'] ?? '');
+};
 
-$message = '';
-$messageType = 'success';
-if (!isset($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
-$csrf = $_SESSION['csrf_token'];
-
-// Rôle sélectionné.
-$selectedRole = $_POST['role'] ?? $_GET['role'] ?? 'professeur';
+// Rôle sélectionné (GET uniquement — aucune mutation).
+$selectedRole = $_GET['role'] ?? 'professeur';
 if (!isset($rolesMeta[$selectedRole])) {
     $selectedRole = $rolesMeta ? array_key_first($rolesMeta) : 'professeur';
 }
+$selMeta  = $rolesMeta[$selectedRole] ?? [];
+$selTier  = (string) ($selMeta['tier'] ?? '');
+$selColor = $tierColor($selTier);
 
-// Sauvegarde des permissions du rôle sélectionné.
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && hash_equals($csrf, $_POST['csrf_token'] ?? '')) {
-    $role = $_POST['role'] ?? '';
-    if (!isset($rolesMeta[$role])) {
-        $message = 'Rôle inconnu.'; $messageType = 'danger';
-    } elseif ($role === 'super_admin') {
-        $message = 'Le super-administrateur a un accès total non modifiable.'; $messageType = 'danger';
-    } else {
-        $checked = $_POST['perm'] ?? [];
-        // Anti-escalade de privilège : un admin d'ÉTABLISSEMENT (non super_admin) ne peut ni toucher
-        // aux permissions sensibles/plateforme (self-escalade vers admin.systeme, roles.manage, rgpd…,
-        // platform.*/tenant.*), ni ACCORDER une permission qu'il ne détient pas lui-même. Ces
-        // permissions sont laissées inchangées (continue) plutôt que réécrites.
-        $isSuper = function_exists('isSuperAdmin') && isSuperAdmin();
-        $isSensitive = static function (string $pk): bool {
-            return (bool) preg_match('#^(platform|tenant|impersonation)\.#', $pk)
-                || in_array($pk, ['admin.systeme', 'roles.manage', 'permissions.manage', 'rgpd.manage'], true);
-        };
-        // Régionalisation : la surcharge est posée POUR L'ÉTABLISSEMENT COURANT de l'acteur — elle ne
-        // s'applique qu'à lui (Authorization::roleGrants lit les lignes de l'établissement de l'user).
-        // Résilient : si la colonne n'existe pas encore (schéma non migré), écriture globale historique.
-        $hasEtabCol = false;
-        try { $col = $pdo->query("SHOW COLUMNS FROM rbac_permissions LIKE 'etablissement_id'"); $hasEtabCol = $col && $col->fetch() !== false; } catch (\Throwable $e) {}
-        $etabScope = 1;
-        try { $etabScope = (int) \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) {}
-        try {
-            $up = $hasEtabCol
-                ? $pdo->prepare("INSERT INTO rbac_permissions (role, permission, etablissement_id, granted) VALUES (?, ?, ?, ?)
-                                 ON DUPLICATE KEY UPDATE granted = VALUES(granted), updated_at = NOW()")
-                : $pdo->prepare("INSERT INTO rbac_permissions (role, permission, granted) VALUES (?, ?, ?)
-                                 ON DUPLICATE KEY UPDATE granted = VALUES(granted), updated_at = NOW()");
-            foreach (array_keys($permsMeta) as $pk) {
-                $want = isset($checked[$pk]) ? 1 : 0;
-                if (!$isSuper) {
-                    if ($isSensitive($pk)) {
-                        continue; // permission sensible/plateforme : réservée au super_admin
-                    }
-                    if ($want === 1 && !(function_exists('can') && can($pk))) {
-                        continue; // plafond de privilège : ne pas accorder ce qu'on ne détient pas
-                    }
-                }
-                if ($hasEtabCol) {
-                    $up->execute([$role, $pk, $etabScope, $want]);
-                } else {
-                    $up->execute([$role, $pk, $want]);
-                }
-            }
-            try { app('audit')->logAuth('rbac.permissions.update', $role, true, ['count' => count($permsMeta)]); } catch (\Throwable $e) {}
-            $message = 'Permissions enregistrées pour « ' . ($rolesMeta[$role]['label'] ?? $role) . ' ».';
-            $selectedRole = $role;
-        } catch (\Throwable $e) {
-            $message = 'Erreur lors de l\'enregistrement : ' . $e->getMessage(); $messageType = 'danger';
-        }
-    }
-}
-
-// État courant des grants du rôle sélectionné (DB override sinon défaut catalogue).
-$dbGrants = [];
+// Permissions EFFECTIVES du rôle = catalogue (source de vérité, wildcards développés)
+// AJUSTÉ par les surcharges GLOBALES posées au niveau PLATEFORME (rbac_grants). L'établissement
+// voit ici, en LECTURE SEULE, ce que la plateforme a réellement configuré pour ce rôle
+// (accord/refus) — c'est le déploiement de la gouvernance plateforme côté établissement.
+$effective = class_exists(RoleCatalog::class) ? RoleCatalog::permissionsFor($selectedRole) : [];
+$effSet    = array_fill_keys($effective, true);
 try {
-    $st = $pdo->prepare("SELECT permission, granted FROM rbac_permissions WHERE role = ?");
-    $st->execute([$selectedRole]);
-    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) { $dbGrants[$r['permission']] = (int) $r['granted']; }
-} catch (\Throwable $e) { /* table absente → défauts catalogue */ }
-
-$catGrants  = class_exists(RoleCatalog::class) ? RoleCatalog::grantsFor($selectedRole) : [];
-$isWildcard = in_array('*', $catGrants, true);
-$isGranted = function (string $pk) use ($dbGrants, $catGrants, $isWildcard): bool {
-    if (array_key_exists($pk, $dbGrants)) return $dbGrants[$pk] === 1;
-    if ($isWildcard) return true;
-    if (in_array($pk, $catGrants, true)) return true;
-    return in_array(explode('.', $pk)[0] . '.*', $catGrants, true);
-};
+    $canon = class_exists(RoleCatalog::class) ? RoleCatalog::canonical($selectedRole) : $selectedRole;
+    $st = getPDO()->prepare("SELECT permission, MIN(granted) AS g FROM rbac_grants WHERE role IN (?, ?) GROUP BY permission");
+    $st->execute([$selectedRole, $canon]);
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        if ((int) $row['g'] === 1) { $effSet[$row['permission']] = true; } // accord plateforme
+        else { unset($effSet[$row['permission']]); }                       // refus plateforme
+    }
+} catch (\Throwable $e) { /* table rbac_grants absente → catalogue seul */ }
+$isGranted = static function (string $pk) use ($effSet): bool { return isset($effSet[$pk]); };
 
 // Permissions groupées par catégorie (domaine).
 $byCat = [];
 foreach ($permsMeta as $pk => $meta) { $byCat[$meta['category'] ?? 'autre'][$pk] = $meta; }
 ksort($byCat);
 
-$pageTitle = 'Permissions par rôle';
+// Nombre de permissions accordées (pour le récap).
+$grantedCount = 0;
+foreach ($permsMeta as $pk => $meta) { if ($isGranted($pk)) $grantedCount++; }
+
+// Rôles groupés par tier pour le sélecteur.
+$rolesByTier = [];
+foreach ($rolesMeta as $rk => $rm) { $rolesByTier[$rm['tier'] ?? 'autre'][$rk] = $rm; }
+
+$pageTitle = 'Permissions par rôle (lecture seule)';
 include __DIR__ . '/../includes/header.php';
 ?>
 <div class="admin-container">
@@ -138,71 +111,91 @@ include __DIR__ . '/../includes/header.php';
         <h1><i class="fas fa-user-lock"></i> Permissions par rôle</h1>
         <div>
             <a href="../users/roles.php" class="btn btn-secondary"><i class="fas fa-user-tag"></i> Attribuer des rôles</a>
-            <a href="permissions.php" class="btn btn-secondary"><i class="fas fa-table"></i> Permissions par module (legacy)</a>
+            <a href="permissions.php" class="btn btn-secondary"><i class="fas fa-table"></i> Permissions par module (lecture seule)</a>
         </div>
     </div>
 
-    <?php if ($syncNote): ?><div class="alert alert-info"><?= htmlspecialchars($syncNote) ?></div><?php endif; ?>
-    <?php if ($message): ?><div class="alert alert-<?= $messageType ?>"><?= htmlspecialchars($message) ?></div><?php endif; ?>
+    <div class="alert alert-info" style="display:flex;gap:10px;align-items:flex-start">
+        <i class="fas fa-info-circle" style="margin-top:2px"></i>
+        <div>
+            <strong>Les permissions des rôles sont gérées au niveau de la plateforme.</strong><br>
+            Cette page présente, à titre de transparence, ce que chaque rôle peut faire.
+            L'<em>attribution</em> d'un rôle à un utilisateur reste possible depuis
+            « <a href="../users/roles.php">Attribuer des rôles</a> ».
+        </div>
+    </div>
 
     <form method="get" style="margin-bottom:16px;display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
         <div class="form-group">
             <label>Rôle</label>
             <select name="role" class="form-control" data-fr-change="submitOwn">
-                <?php foreach ($rolesMeta as $rk => $rm): ?>
-                    <option value="<?= htmlspecialchars($rk) ?>" <?= $rk === $selectedRole ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($rm['label'] ?? $rk) ?> — <?= htmlspecialchars($rm['tier'] ?? '') ?><?= !empty($rm['sensitive']) ? ' ⚠️' : '' ?>
-                    </option>
+                <?php foreach ($rolesByTier as $tier => $rlist): ?>
+                    <optgroup label="<?= htmlspecialchars(ucfirst(str_replace('_', ' ', $tier))) ?>">
+                        <?php foreach ($rlist as $rk => $rm): ?>
+                            <option value="<?= htmlspecialchars($rk) ?>" <?= $rk === $selectedRole ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($rm['label'] ?? $rk) ?><?= !empty($rm['sensitive']) ? ' ⚠️' : '' ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </optgroup>
                 <?php endforeach; ?>
             </select>
         </div>
-        <noscript><button class="btn btn-primary" type="submit">Charger</button></noscript>
+        <noscript><button class="btn btn-primary" type="submit">Afficher</button></noscript>
     </form>
+
+    <?php if ($selMeta): ?>
+    <div class="card" style="margin-bottom:16px">
+        <div class="card-body" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+            <span style="display:inline-flex;align-items:center;gap:8px;padding:4px 12px;border-radius:999px;background:<?= htmlspecialchars($selColor) ?>;color:#fff;font-weight:600;font-size:.9rem">
+                <i class="fas fa-user-shield"></i> <?= htmlspecialchars($selMeta['label'] ?? $selectedRole) ?>
+            </span>
+            <span style="color:var(--text-muted,#64748b);font-size:.85rem">
+                <i class="fas fa-layer-group"></i> <?= htmlspecialchars(ucfirst(str_replace('_', ' ', $selTier))) ?>
+                &nbsp;·&nbsp; <i class="fas fa-street-view"></i> périmètre : <?= htmlspecialchars($selMeta['scope'] ?? '—') ?>
+                <?php if (!empty($selMeta['sensitive'])): ?>&nbsp;·&nbsp; <span style="color:#b91c1c"><i class="fas fa-triangle-exclamation"></i> rôle sensible</span><?php endif; ?>
+            </span>
+            <span style="margin-left:auto;color:var(--text-muted,#64748b);font-size:.85rem">
+                <?php if (in_array('*', class_exists(RoleCatalog::class) ? RoleCatalog::grantsFor($selectedRole) : [], true)): ?>
+                    <strong>Accès total</strong> (toutes les permissions)
+                <?php else: ?>
+                    <strong><?= (int) $grantedCount ?></strong> permission(s) accordée(s)
+                <?php endif; ?>
+            </span>
+            <?php $desc = $roleDescription($selectedRole, $selMeta); if ($desc !== ''): ?>
+                <div style="flex-basis:100%;color:var(--text-muted,#64748b);font-size:.85rem"><?= htmlspecialchars($desc) ?></div>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <?php if ($selectedRole === 'super_admin'): ?>
-        <div class="alert alert-warning"><strong>Super-administrateur</strong> : accès total à toute la plateforme (non modifiable).</div>
-    <?php else: ?>
-    <form method="post">
-        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
-        <input type="hidden" name="role" value="<?= htmlspecialchars($selectedRole) ?>">
+        <div class="alert alert-warning"><strong>Super-administrateur</strong> : accès total à toute la plateforme.</div>
+    <?php endif; ?>
 
-        <div style="margin-bottom:12px;display:flex;gap:8px">
-            <button type="button" class="btn btn-sm btn-outline" data-fr-click="frRP1">Tout cocher</button>
-            <button type="button" class="btn btn-sm btn-outline" data-fr-click="frRP2">Tout décocher</button>
+    <?php foreach ($byCat as $cat => $perms): ?>
+    <div class="card" style="margin-bottom:12px">
+        <div class="card-header">
+            <h3 style="margin:0;text-transform:capitalize"><?= htmlspecialchars($cat) ?></h3>
         </div>
-
-        <?php foreach ($byCat as $cat => $perms): ?>
-        <div class="card" style="margin-bottom:12px">
-            <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
-                <h3 style="margin:0;text-transform:capitalize"><?= htmlspecialchars($cat) ?></h3>
-                <label style="font-size:.85rem;font-weight:normal">
-                    <input type="checkbox" data-fr-change="frRP3"> tout
-                </label>
-            </div>
-            <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px">
-                <?php foreach ($perms as $pk => $meta): ?>
-                    <label style="display:flex;gap:8px;align-items:center;<?= !empty($meta['sensitive']) ? 'color:#b91c1c' : '' ?>">
-                        <input type="checkbox" class="perm-cb" name="perm[<?= htmlspecialchars($pk) ?>]" <?= $isGranted($pk) ? 'checked' : '' ?>>
-                        <span title="<?= htmlspecialchars($pk) ?>"><?= htmlspecialchars($meta['label'] ?? $pk) ?><?= !empty($meta['sensitive']) ? ' 🔒' : '' ?></span>
-                    </label>
-                <?php endforeach; ?>
-            </div>
+        <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px">
+            <?php foreach ($perms as $pk => $meta): $g = $isGranted($pk); ?>
+                <div style="display:flex;gap:8px;align-items:center;<?= $g ? '' : 'opacity:.45' ?>">
+                    <?php if ($g): ?>
+                        <i class="fas fa-check-circle" style="color:#16a34a" aria-hidden="true"></i>
+                    <?php else: ?>
+                        <i class="far fa-circle" style="color:#94a3b8" aria-hidden="true"></i>
+                    <?php endif; ?>
+                    <span title="<?= htmlspecialchars($pk) ?>" style="<?= !empty($meta['sensitive']) ? 'color:#b91c1c' : '' ?>">
+                        <?= htmlspecialchars($meta['label'] ?? $pk) ?><?= !empty($meta['sensitive']) ? ' 🔒' : '' ?>
+                    </span>
+                </div>
+            <?php endforeach; ?>
         </div>
-        <?php endforeach; ?>
+    </div>
+    <?php endforeach; ?>
 
-        <?php if (!$byCat): ?>
-            <div class="alert alert-warning">Aucune permission au catalogue (RoleCatalog introuvable ?).</div>
-        <?php endif; ?>
-
-        <div class="form-actions" style="position:sticky;bottom:0;background:var(--surface,#fff);padding:12px 0">
-            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer les permissions de ce rôle</button>
-        </div>
-    </form>
+    <?php if (!$byCat): ?>
+        <div class="alert alert-warning">Aucune permission au catalogue (RoleCatalog introuvable ?).</div>
     <?php endif; ?>
 </div>
-<script nonce="<?= csp_nonce() ?>">
-window.frRP1 = function () { document.querySelectorAll('.perm-cb').forEach(c=>c.checked=true) };
-window.frRP2 = function () { document.querySelectorAll('.perm-cb').forEach(c=>c.checked=false) };
-window.frRP3 = function () { this.closest('.card').querySelectorAll('.perm-cb').forEach(c=>c.checked=this.checked) };
-</script>
 <?php include __DIR__ . '/../includes/footer.php'; ?>
