@@ -1,10 +1,10 @@
 # Fronote — Système de gestion scolaire
 
-![PHP 8+](https://img.shields.io/badge/PHP-8%2B-blue) ![MySQL 8+](https://img.shields.io/badge/MySQL-8%2B-orange) ![Version](https://img.shields.io/badge/version-3.3.0_Durcissement-green) ![Licence](https://img.shields.io/badge/licence-proprietary-lightgrey) ![i18n](https://img.shields.io/badge/i18n-8%20locales-blueviolet) ![Modules](https://img.shields.io/badge/modules-62-brightgreen)
+![PHP 8+](https://img.shields.io/badge/PHP-8%2B-blue) ![MariaDB / MySQL](https://img.shields.io/badge/MariaDB_10.11_%2F_MySQL_8-orange) ![Version](https://img.shields.io/badge/version-3.5.1_Cloisonnement-green) ![Licence](https://img.shields.io/badge/licence-proprietary-lightgrey) ![i18n](https://img.shields.io/badge/i18n-8%20locales-blueviolet) ![Modules](https://img.shields.io/badge/modules-62-brightgreen)
 
 > Fronote est une application **PHP pure, sans framework**, de gestion d'établissement scolaire (notes, absences, emploi du temps, messagerie, vie scolaire, facturation, etc.). Architecture modulaire (62 modules découverts dynamiquement), conteneur d'injection de dépendances maison, multi-établissement, design system à thèmes et internationalisation (8 langues).
 >
-> Version courante : **3.3.0** (« Durcissement », build 2026-07-11). Voir `version.json`.
+> Version courante : **3.5.1** (« Cloisonnement », build 2026-07-12). Voir `version.json`.
 
 ---
 
@@ -399,4 +399,4 @@ UPLOADS_PATH=
 
 ---
 
-*Fronote 3.3.0 « Durcissement » — PHP pur · PSR-4 · conteneur DI maison · 62 modules · multi-établissement · topbar · 8 locales · schéma déclaratif additif + migrations versionnées · mise à jour Git un-bouton.*
+*Fronote 3.5.1 « Cloisonnement » — PHP pur · PSR-4 · conteneur DI maison · 62 modules · multi-établissement · topbar · 8 locales · schéma déclaratif additif + migrations versionnées · mise à jour Git un-bouton.*
