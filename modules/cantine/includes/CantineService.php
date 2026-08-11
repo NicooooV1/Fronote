@@ -341,10 +341,10 @@ class CantineService
             FROM cantine_reservations r
             JOIN eleves e ON r.eleve_id = e.id
             LEFT JOIN classes cl ON e.classe = cl.nom
-            WHERE r.date_repas BETWEEN ? AND ?
+            WHERE r.date_repas BETWEEN ? AND ? AND e.etablissement_id = ?
             ORDER BY r.date_repas, e.nom
         ");
-        $stmt->execute([$dateDebut, $dateFin]);
+        $stmt->execute([$dateDebut, $dateFin, \API\Core\EstablishmentContext::id()]);
         $rows = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
             $rows[] = [

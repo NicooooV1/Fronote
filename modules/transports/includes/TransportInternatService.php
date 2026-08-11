@@ -62,8 +62,8 @@ class TransportInternatService
 
     public function getInscritsLigne(int $ligneId): array
     {
-        $stmt = $this->pdo->prepare("SELECT it.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, cl.nom AS classe_nom FROM inscriptions_transport it JOIN eleves e ON it.eleve_id = e.id LEFT JOIN classes cl ON e.classe = cl.nom WHERE it.ligne_id = ? ORDER BY e.nom");
-        $stmt->execute([$ligneId]);
+        $stmt = $this->pdo->prepare("SELECT it.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, cl.nom AS classe_nom FROM inscriptions_transport it JOIN eleves e ON it.eleve_id = e.id LEFT JOIN classes cl ON e.classe = cl.nom WHERE it.ligne_id = ? AND e.etablissement_id = ? ORDER BY e.nom");
+        $stmt->execute([$ligneId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

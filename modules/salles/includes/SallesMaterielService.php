@@ -54,8 +54,8 @@ class SallesMaterielService
     public function annulerReservation(int $id, ?int $ownerId = null): void
     {
         // Securite (IDOR) : si un proprietaire est fourni, l'annulation est restreinte a SES reservations.
-        $sql = "UPDATE reservations_salles SET statut = 'annulee' WHERE id = ?";
-        $params = [$id];
+        $sql = "UPDATE reservations_salles SET statut = 'annulee' WHERE id = ? AND etablissement_id = ?";
+        $params = [$id, \API\Core\EstablishmentContext::id()];
         if ($ownerId !== null) {
             $sql .= " AND reserveur_id = ?";
             $params[] = $ownerId;

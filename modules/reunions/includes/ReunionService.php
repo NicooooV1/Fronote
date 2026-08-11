@@ -189,12 +189,20 @@ class ReunionService
 
     public function creerConvocation(array $data): int
     {
+        // Anti-IDOR cross-tenant : le destinataire doit appartenir à l'établissement courant.
+        $etab = (int)\API\Core\EstablishmentContext::id();
+        $typeTable = ['eleve' => 'eleves', 'parent' => 'parents', 'professeur' => 'professeurs', 'vie_scolaire' => 'vie_scolaire', 'administrateur' => 'administrateurs'];
+        $tbl = $typeTable[$data['destinataire_type']] ?? null;
+        if ($tbl === null) return 0;
+        $chk = $this->pdo->prepare("SELECT 1 FROM {$tbl} WHERE id = ? AND etablissement_id = ? LIMIT 1");
+        $chk->execute([(int)$data['destinataire_id'], $etab]);
+        if (!$chk->fetchColumn()) return 0; // destinataire hors établissement -> refus
         $stmt = $this->pdo->prepare("
-            INSERT INTO convocations (reunion_id, destinataire_id, destinataire_type, objet, contenu, date_convocation, heure, lieu, type, emetteur_id, emetteur_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO convocations (etablissement_id, reunion_id, destinataire_id, destinataire_type, objet, contenu, date_convocation, heure, lieu, type, emetteur_id, emetteur_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
-            $data['reunion_id'] ?? null, $data['destinataire_id'], $data['destinataire_type'],
+            $etab, $data['reunion_id'] ?? null, $data['destinataire_id'], $data['destinataire_type'],
             $data['objet'], $data['contenu'] ?? null, $data['date_convocation'],
             $data['heure'] ?? null, $data['lieu'] ?? null, $data['type'] ?? 'reunion',
             $data['emetteur_id'], $data['emetteur_type']
