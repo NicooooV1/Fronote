@@ -119,9 +119,9 @@ include 'templates/header.php';
  * Chargée ici de façon idempotente : si le header l'a déjà déclarée dans $extraCss,
  * on ne la ré-émet pas. Ancrée à la racine du dépôt + versionnée via asset_url().
  */
-if (!in_array('assets/css/messagerie.css', $extraCss ?? [], true)):
+if (!in_array('modules/messagerie/assets/css/messagerie.css', $extraCss ?? [], true)):
 ?>
-<link rel="stylesheet" href="<?= h(asset_url('assets/css/messagerie.css')) ?>">
+<link rel="stylesheet" href="<?= h(asset_url('modules/messagerie/assets/css/messagerie.css')) ?>">
 <?php endif; ?>
 
 <?php
