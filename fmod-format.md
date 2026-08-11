@@ -1,6 +1,6 @@
 # Format de paquet module Fronote — Spécification `.fmod` v1
 
-> Plateforme **3.3.0** (build 2026-07-11) · Format **.fmod v1** · Signature **Ed25519** (ext-sodium)
+> Plateforme **4.0.0** (build 2026-08-11) · Format **.fmod v1** · Signature **Ed25519** (ext-sodium)
 
 ## Vue d'ensemble
 

@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [4.0.0] — « Étanche » : isolation multi-tenant complète + remédiation des 25 critiques — 2026-08-11
+
+Version stable **définitive**. Aboutissement du durcissement : les 25 bugs critiques de l'audit
+runtime multi-rôles sont corrigés et vérifiés, l'isolation multi-tenant est **étanche**, et toute
+la documentation est alignée.
+
+### Sécurité — Isolation multi-tenant (12 IDOR cross-tenant fermés)
+- **Cantine** : export des réservations scopé établissement (fin de la fuite de PII élèves entre
+  établissements) ; clé UNIQUE `menus_cantine` régionalisée `(etablissement_id, date, régime)`
+  (fin de l'écrasement silencieux du menu d'un autre établissement).
+- **Cahier de textes** : `deleteFichier` scopé via le devoir parent (fin de la suppression
+  destructive cross-tenant de pièces jointes).
+- **Messagerie** : l'action « restaurer » ne permet plus de rejoindre une conversation dont on n'a
+  jamais été membre (IDOR horizontal / escalade de privilège).
+- **Notes** : `ajax_stats` (évolution) borné à l'établissement même en accès complet.
+- Cloisonnement ajouté sur : transports, salles, réunions (convocations), projets pédagogiques,
+  vie associative, emploi du temps (maquettes), internat (incidents — PII de mineurs).
+
+### Correctifs de robustesse
+- **Plantages HTTP 500 corrigés** : pointage cantine (variable `$user` non définie), module
+  intelligence (`logAudit()` indéfini → `app('audit')->log()`).
+- **Dérive de schéma éliminée** (8 modules — clubs, compétences, diplômes, périscolaire, personnel) :
+  code aligné sur le schéma réel (colonnes et valeurs d'enum inexistantes corrigées).
+- **Orientation** : `sauvegarderVoeux` rendu transactionnel — un INSERT en échec ne détruit plus
+  tous les vœux de l'élève.
+
+### Documentation & version
+- Documentation entièrement revue et alignée : version 4.0.0 partout, 2FA obligatoire, RBAC global
+  (`rbac_grants`), stack de production de référence (MariaDB 10.11 + PHP-FPM/mpm_event).
+- `version.json` : **63 modules**, prise en charge **MariaDB** déclarée.
+
 ## [3.6.0] — Second facteur obligatoire + RBAC centralisé plateforme — 2026-08-11
 
 ### Sécurité — Authentification

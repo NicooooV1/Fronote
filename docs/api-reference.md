@@ -6,7 +6,7 @@ versionnée : la quasi-totalité du code applicatif consomme directement les ser
 du conteneur et les helpers globaux. Les seuls points d'entrée HTTP « API » sont les
 endpoints AJAX de `API/endpoints/` (consommés par le front).
 
-> Version applicative : `version.json` → 3.3.0 (build 2026‑07‑11). PHP ≥ 8.0, PDO
+> Version applicative : `version.json` → 4.0.0 (build 2026-08-11). PHP ≥ 8.0, PDO
 > MySQL 8.0+ / MariaDB 10.3+. Pas de framework.
 
 ---

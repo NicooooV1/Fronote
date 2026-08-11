@@ -7,7 +7,7 @@ un système de migrations **de données versionnées** (`database/migrations/` +
 `MigrationRunner`) couvre les cas non additifs. Guide de référence :
 **[UPDATING.md](UPDATING.md)**.
 
-> Version documentée : **3.3.0** (`version.json`). Tous les chemins sont relatifs à la
+> Version documentée : **4.0.0** (`version.json`). Tous les chemins sont relatifs à la
 > racine du projet (ex. `/var/www/fronote`).
 
 ---
@@ -22,6 +22,10 @@ un système de migrations **de données versionnées** (`database/migrations/` +
 | `git` | n'importe quelle version récente | Oui (pour la MAJ en un bouton) |
 | Composer | 2.x | Pour `vendor/` (`firebase/php-jwt`) |
 | Node.js | 18+ | Optionnel (serveur WebSocket) |
+
+> **Stack de production de référence** (validée) : **Apache `mpm_event` + PHP-FPM 8.2** et
+> **MariaDB 10.11 native**. La configuration générique décrite ci-dessous (Apache + MySQL 8 **ou**
+> MariaDB ≥ 10.3) reste pleinement supportée ; PHP-FPM est recommandé pour la performance.
 
 ### Extensions PHP
 

@@ -1,4 +1,4 @@
-# Contribuer à Fronote (v3.3.0)
+# Contribuer à Fronote (v4.0.0)
 
 Merci de votre intérêt pour Fronote ! Ce guide explique comment contribuer au code,
 quelles conventions respecter, et comment ajouter un module, une table ou une chaîne

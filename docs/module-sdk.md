@@ -1,4 +1,4 @@
-# Module SDK — Guide du Développeur (v3.3.0)
+# Module SDK — Guide du Développeur (v4.0.0)
 
 ## Introduction
 

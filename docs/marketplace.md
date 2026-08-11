@@ -1,4 +1,4 @@
-# Marketplace — Guide (v3.3.0)
+# Marketplace — Guide (v4.0.0)
 
 Module `marketplace` v1.5.2 — installation et désinstallation de modules Fronote.
 
@@ -121,7 +121,7 @@ La signature couvre `sha256(MANIFEST.sha256)` — le hash du fichier de hashes. 
 - La version du cœur ne satisfait pas `min_core`/`max_core` (`FmodService::semverSatisfies` : `>=`, `<=`, `>`, `<`, `=`, `^`, `~`, wildcards `X.Y.*`, conjonctions séparées par espace)
 - La version est yankée (`marketplace_advisories_seen`, sévérité `high`/`critical` — hook `isYanked`)
 
-La contrainte du semver du cœur est lue depuis le manifeste (`publish.min_core`/`max_core`). La version courante vient de `version.json` (`3.3.0`).
+La contrainte du semver du cœur est lue depuis le manifeste (`publish.min_core`/`max_core`). La version courante vient de `version.json` (`4.0.0`).
 
 ---
 
@@ -382,7 +382,7 @@ $fmod->buildPackage(
 $pubKeyB64 = trim(file_get_contents('config/marketplace/roots/fronote-test-root.pub'));
 $roots     = [\API\Services\FmodService::fingerprint($pubKeyB64) => $pubKeyB64];
 $fmod      = new \API\Services\FmodService($roots);
-$result    = $fmod->verifyPackage('./module.fmod', '3.3.0');
+$result    = $fmod->verifyPackage('./module.fmod', '4.0.0');
 // $result['ok'], $result['errors'], $result['manifest'], $result['signature']
 ```
 

@@ -2,7 +2,7 @@
 
 > Ce document s'adresse aux **administrateurs système** et **responsables informatiques** qui déploient Fronote sur un serveur, ainsi qu'aux **développeurs** qui veulent comprendre ce que fait l'assistant d'installation.
 >
-> Version documentée : **Fronote 3.3.0** (build 2026-07-11). Source de vérité : `install.php`, `.env.example`, `pronote.sql`, `API/Services/UpdateService.php`, `API/Services/SchemaSyncService.php`, `API/Services/MigrationRunner.php`. Pour tout ce qui touche au schéma et aux mises à jour, le guide de référence est **[docs/UPDATING.md](docs/UPDATING.md)**.
+> Version documentée : **Fronote 4.0.0** (build 2026-08-11). Source de vérité : `install.php`, `.env.example`, `pronote.sql`, `API/Services/UpdateService.php`, `API/Services/SchemaSyncService.php`, `API/Services/MigrationRunner.php`. Pour tout ce qui touche au schéma et aux mises à jour, le guide de référence est **[docs/UPDATING.md](docs/UPDATING.md)**.
 
 ---
 
@@ -407,7 +407,7 @@ gunzip < fronote_AAAAMMJJ.sql.gz | mysql -h 127.0.0.1 -u fronote_user -p nom_bas
 
 ## Annexe — version & dépendances
 
-- **Version** : `version.json` → `3.3.0` (build 2026-07-11, codename *Durcissement*).
+- **Version** : `version.json` → `4.0.0` (build 2026-08-11, codename *Étanche*).
 - **Architecture** : PHP sans framework, conteneur DI maison (`API/bootstrap.php`, services via `app('clé')`), autoload PSR‑4 (`API\ → API/`, `Pronote\ → API/`, `Modules\ → modules/`).
 - **Dépendance Composer** : `firebase/php-jwt ^7.0` ; extensions `sodium`, `json`, `zip`, `pdo`.
 - **Schéma** : DDL déclaratif (`pronote.sql` + `modules/<m>/Database/install.sql` + `rgpd/Database/*.sql`) réconcilié de façon additive par `SchemaSyncService` ; migrations **de données versionnées** (`database/migrations/` + `MigrationRunner`) pour les cas non additifs. L'ancien système de migrations **par module** n'existe plus. Voir [docs/UPDATING.md](docs/UPDATING.md).

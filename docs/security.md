@@ -49,6 +49,22 @@ $_SESSION['user']             = [...];           // sans mot_de_passe
 $_SESSION['etablissement_id'] = 1;
 ```
 
+### Authentification à deux facteurs (2FA) — obligatoire pour les rôles à responsabilité
+
+Tout **rôle à responsabilité accédant à des données** (`professeur`, `vie_scolaire`,
+`administrateur`, `super_admin`) valide un **second facteur TOTP à chaque nouvelle connexion**.
+Élèves et parents en sont exemptés.
+
+- **Tolérance 1 h par appareil** : après une validation réussie, l'appareil n'est plus sollicité
+  pendant une heure (cookie signé HMAC — `API\Security\TwoFactorTrust`, clé = `APP_KEY`).
+- **Enrôlement forcé** : un compte à responsabilité sans 2FA configuré est redirigé vers
+  `login/setup_2fa.php` (clé TOTP + **codes de secours** à usage unique) avant toute session ;
+  les comptes déjà équipés passent par `login/verify_2fa.php`.
+- Anti-bruteforce du second facteur **persistant** (`login_attempts`, clé `2fa:<type>:<id>`).
+- Service : `API\Services\TwoFactorService` (base32, période 30 s, 6 chiffres, SHA-1).
+- **Bypass de test** : `TEST_2FA_BYPASS=1` contourne le 2FA **uniquement** pour les comptes `sim.*`
+  (harnais de tests). À ne **jamais** activer en production réelle.
+
 ### Vérifier l'authentification
 
 Helpers globaux (définis dans `API/Legacy/Bridge.php`) :
@@ -240,6 +256,18 @@ hors de cette matrice, géré séparément).
    `module.json` et injectées par `ModuleSDK::syncPermissions()` à l'activation du
    module. `can()` tombe en fallback DB pour toute permission absente de la matrice
    statique.
+
+### Attribution centralisée rôle → permissions (`rbac_grants`)
+
+Les permissions **associées à un rôle** se pilotent depuis la **plateforme**
+(`platform/roles.php`) via la table globale **`rbac_grants`**, possédée par l'opérateur et
+appliquée à **tous les établissements**. `API\Security\Authorization::roleGrants()` lit ces
+surcharges globales, avec repli sur le **catalogue de rôles** (`API\Security\RoleCatalog`) si
+aucune surcharge n'existe. Objectif : *un rôle = un jeu de permissions*, **modifiable au niveau
+plateforme** sans reporter cette charge sur les dirigeants d'établissement — le panneau
+d'administration n'expose plus qu'une **vue en lecture seule** des permissions effectives
+(catalogue + surcharges). La table `rbac_permissions` (ancien modèle par établissement) subsiste
+pour rétrocompatibilité.
 
 ### API
 

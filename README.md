@@ -1,10 +1,10 @@
 # Fronote — Système de gestion scolaire
 
-![PHP 8+](https://img.shields.io/badge/PHP-8%2B-blue) ![MariaDB / MySQL](https://img.shields.io/badge/MariaDB_10.11_%2F_MySQL_8-orange) ![Version](https://img.shields.io/badge/version-3.6.0_Second_facteur-green) ![Licence](https://img.shields.io/badge/licence-proprietary-lightgrey) ![i18n](https://img.shields.io/badge/i18n-8%20locales-blueviolet) ![Modules](https://img.shields.io/badge/modules-62-brightgreen)
+![PHP 8+](https://img.shields.io/badge/PHP-8%2B-blue) ![MariaDB / MySQL](https://img.shields.io/badge/MariaDB_10.11_%2F_MySQL_8-orange) ![Version](https://img.shields.io/badge/version-4.0.0_%C3%89tanche-green) ![Licence](https://img.shields.io/badge/licence-proprietary-lightgrey) ![i18n](https://img.shields.io/badge/i18n-8%20locales-blueviolet) ![Modules](https://img.shields.io/badge/modules-63-brightgreen)
 
-> Fronote est une application **PHP pure, sans framework**, de gestion d'établissement scolaire (notes, absences, emploi du temps, messagerie, vie scolaire, facturation, etc.). Architecture modulaire (62 modules découverts dynamiquement), conteneur d'injection de dépendances maison, multi-établissement, design system à thèmes et internationalisation (8 langues).
+> Fronote est une application **PHP pure, sans framework**, de gestion d'établissement scolaire (notes, absences, emploi du temps, messagerie, vie scolaire, facturation, etc.). Architecture modulaire (63 modules découverts dynamiquement), conteneur d'injection de dépendances maison, multi-établissement, design system à thèmes et internationalisation (8 langues).
 >
-> Version courante : **3.6.0** (« Second facteur », build 2026-08-11). Voir `version.json`.
+> Version courante : **4.0.0** (« Étanche », build 2026-08-11). Voir `version.json`.
 
 ---
 
@@ -140,7 +140,7 @@ Pronote/
 │   ├── onboarding_gate.php
 │   ├── Core/  Auth/  Security/  Services/  Providers/  Middleware/  endpoints/  Legacy/
 │
-├── modules/             ← 62 modules métier (un dossier par module, module.json)
+├── modules/             ← 63 modules métier (un dossier par module, module.json)
 │   ├── notes/  absences/  agenda/  messagerie/  bulletins/  emploi_du_temps/ …
 │   └── <clé>/
 │       ├── module.json          ← Manifeste (clé, nom, icône, catégorie, routes, permissions, widgets)
@@ -309,7 +309,7 @@ echo __('messagerie.bonjour', ['nom' => $n]); // interpolation de {nom}
 
 ## Modules
 
-62 modules métier sous `modules/<clé>/`, plus les essentiels à la racine. Catégories valides (`ModuleSDK::VALID_CATEGORIES`) : `navigation`, `scolaire`, `vie_scolaire`, `communication`, `etablissement`, `logistique`, `outils`, `administration`, `systeme`, `sante`, `custom`.
+63 modules métier sous `modules/<clé>/`, plus les essentiels à la racine. Catégories valides (`ModuleSDK::VALID_CATEGORIES`) : `navigation`, `scolaire`, `vie_scolaire`, `communication`, `etablissement`, `logistique`, `outils`, `administration`, `systeme`, `sante`, `custom`.
 
 | Domaine | Modules (extrait) |
 |---------|-------------------|
@@ -399,4 +399,4 @@ UPLOADS_PATH=
 
 ---
 
-*Fronote 3.6.0 « Second facteur » — PHP pur · PSR-4 · conteneur DI maison · 62 modules · multi-établissement · topbar · 8 locales · schéma déclaratif additif + migrations versionnées · mise à jour Git un-bouton.*
+*Fronote 4.0.0 « Étanche » — PHP pur · PSR-4 · conteneur DI maison · 63 modules · multi-établissement · topbar · 8 locales · schéma déclaratif additif + migrations versionnées · mise à jour Git un-bouton.*
