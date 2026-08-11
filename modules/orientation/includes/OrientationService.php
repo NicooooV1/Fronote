@@ -112,25 +112,38 @@ class OrientationService
 
     public function sauvegarderVoeux(int $ficheId, array $voeux): void
     {
-        $this->pdo->prepare('DELETE FROM orientation_voeux WHERE fiche_id = ? AND etablissement_id = ?')->execute([$ficheId, \API\Core\EstablishmentContext::id()]);
+        $etab = \API\Core\EstablishmentContext::id();
+        // Transaction : le DELETE puis les INSERT sont atomiques. Un INSERT en échec
+        // déclenche un rollback → les vœux existants ne sont pas perdus.
+        $this->pdo->beginTransaction();
+        try {
+            $this->pdo->prepare('DELETE FROM orientation_voeux WHERE fiche_id = ? AND etablissement_id = ?')->execute([$ficheId, $etab]);
 
-        $stmt = $this->pdo->prepare("
-            INSERT INTO orientation_voeux (etablissement_id, fiche_id, rang, intitule, etablissement_vise, motivation, avis_pp, avis_conseil)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ");
+            $stmt = $this->pdo->prepare("
+                INSERT INTO orientation_voeux (etablissement_id, fiche_id, rang, intitule, etablissement_vise, motivation, avis_pp, avis_conseil)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ");
 
-        foreach ($voeux as $i => $v) {
-            if (empty(trim($v['formation'] ?? ''))) continue;
-            $stmt->execute([
-                \API\Core\EstablishmentContext::id(),
-                $ficheId,
-                $i + 1,
-                $v['formation'],
-                $v['etablissement_vise'] ?? null,
-                $v['motivation'] ?? null,
-                $v['avis_pp'] ?? null,
-                $v['avis_conseil'] ?? null,
-            ]);
+            foreach ($voeux as $i => $v) {
+                // Accepte 'formation' (formulaire de saisie) OU 'intitule' (relecture via getVoeux) :
+                // sans ça, sauver un avis — qui repasse les vœux avec la clé 'intitule' — les effacerait tous.
+                $formation = trim((string)($v['formation'] ?? $v['intitule'] ?? ''));
+                if ($formation === '') continue;
+                $stmt->execute([
+                    $etab,
+                    $ficheId,
+                    $i + 1,
+                    $formation,
+                    $v['etablissement_vise'] ?? null,
+                    $v['motivation'] ?? null,
+                    $v['avis_pp'] ?? null,
+                    $v['avis_conseil'] ?? null,
+                ]);
+            }
+            $this->pdo->commit();
+        } catch (\Throwable $e) {
+            if ($this->pdo->inTransaction()) { $this->pdo->rollBack(); }
+            throw $e;
         }
     }
 
