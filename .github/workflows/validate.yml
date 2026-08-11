@@ -131,7 +131,9 @@ jobs:
           php-version: '8.2'
           extensions: sodium, zip, json, pdo, pdo_mysql, mbstring
           coverage: none
-          tools: composer:v2, phpstan
+          # Version épinglée : garantit que la CI applique exactement la même
+          # analyse que la baseline (phpstan-baseline.neon) régénérée localement.
+          tools: composer:v2, phpstan:2.2.8
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress --no-dev
       - name: Provision a minimal .env for bootstrap

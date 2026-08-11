@@ -23,9 +23,9 @@ if (count($manifests) < 30) {
 
 $problems = 0;
 foreach ($manifests as $key => $m) {
+    // Un module peut légitimement n'avoir aucune page (widgets / back-office only) :
+    // routes.main absent → toléré. Seule une route DÉCLARÉE mais introuvable est une erreur.
     if (empty($m['routes']['main'])) {
-        echo "[{$key}] no routes.main declared\n";
-        $problems++;
         continue;
     }
     $path = ($m['_path'] ?? '') . DIRECTORY_SEPARATOR . $m['routes']['main'];

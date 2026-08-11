@@ -44,7 +44,7 @@ $rolesMeta = class_exists(RoleCatalog::class) ? RoleCatalog::roles() : [];
 $permsMeta = class_exists(RoleCatalog::class) ? RoleCatalog::permissions() : [];
 
 /* Défaut catalogue effectif pour (rôle, permission) — wildcards résolus. */
-$catalogDefault = static function (string $role, string $pk) use ($permsMeta): bool {
+$catalogDefault = static function (string $role, string $pk): bool {
     if (!class_exists(RoleCatalog::class)) return false;
     $grants = RoleCatalog::grantsFor($role);
     if (in_array('*', $grants, true)) return true;

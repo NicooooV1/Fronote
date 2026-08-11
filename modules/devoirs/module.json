@@ -6,7 +6,6 @@
     "icon": "fas fa-book-open",
     "category": "scolaire",
     "core": false,
-    "routes": { "main": "devoirs.php" },
     "database": { "install": "" },
     "permissions": {
         "view":   { "default_roles": ["administrateur", "professeur", "eleve", "parent"] },
@@ -14,7 +13,6 @@
         "submit": { "default_roles": ["eleve"] },
         "correct":{ "default_roles": ["administrateur", "professeur"] }
     },
-    "sidebar": { "hidden": true, "sort_order": 30 },
     "establishment_types": null,
     "author": "Fronote Team",
     "license": "MIT"

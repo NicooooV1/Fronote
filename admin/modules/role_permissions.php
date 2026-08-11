@@ -55,11 +55,9 @@ $tierColor = static function (string $tier) use ($tierColorLocal): string {
     return $tierColorLocal[$tier] ?? '#64748b';
 };
 $roleDescription = static function (string $roleKey, array $meta): string {
-    foreach (['roleDescription', 'description', 'descriptionFor'] as $m) {
-        if (method_exists(RoleCatalog::class, $m)) {
-            $d = (string) RoleCatalog::$m($roleKey);
-            if ($d !== '') return $d;
-        }
+    if (method_exists(RoleCatalog::class, 'roleDescription')) {
+        $d = (string) RoleCatalog::roleDescription($roleKey);
+        if ($d !== '') return $d;
     }
     return (string) ($meta['description'] ?? '');
 };

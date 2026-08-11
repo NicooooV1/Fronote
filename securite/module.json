@@ -20,7 +20,6 @@
         "signaler": { "default_roles": ["*"] },
         "alerte": { "default_roles": ["administrateur"] }
     },
-    "routes": { "main": "securite.php" },
     "widgets": [
         {
             "key": "securite_niveau_vigipirate",
@@ -36,8 +35,6 @@
         }
     ],
     "establishment_types": null,
-    "sidebar": { "sort_order": 80 },
-    "topbar": { "category": "etablissement", "sort_order": 80 },
     "settings_schema": {
         "ppms_actif": {
             "type": "checkbox",

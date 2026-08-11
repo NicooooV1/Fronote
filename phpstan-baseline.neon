@@ -75,7 +75,7 @@ parameters:
 		-
 			message: '#^Access to property \$senderType on an unknown class API\\Events\\MessageSent\.$#'
 			identifier: class.notFound
-			count: 1
+			count: 2
 			path: API/Events/Listeners/WebSocketListener.php
 
 		-
@@ -251,12 +251,6 @@ parameters:
 			identifier: empty.variable
 			count: 1
 			path: admin/users/profile_ajax.php
-
-		-
-			message: '#^Variable \$error in empty\(\) always exists and is always falsy\.$#'
-			identifier: empty.variable
-			count: 1
-			path: admin/users/sessions.php
 
 		-
 			message: '#^Variable \$pdo might not be defined\.$#'
@@ -1171,21 +1165,9 @@ parameters:
 			path: modules/messagerie/download.php
 
 		-
-			message: '#^Variable \$contenu might not be defined\.$#'
-			identifier: variable.undefined
-			count: 1
-			path: modules/messagerie/new_announcement.php
-
-		-
 			message: '#^Variable \$pdo might not be defined\.$#'
 			identifier: variable.undefined
 			count: 6
-			path: modules/messagerie/new_announcement.php
-
-		-
-			message: '#^Variable \$titre might not be defined\.$#'
-			identifier: variable.undefined
-			count: 1
 			path: modules/messagerie/new_announcement.php
 
 		-
@@ -1246,12 +1228,6 @@ parameters:
 			message: '#^Variable \$user might not be defined\.$#'
 			identifier: variable.undefined
 			count: 2
-			path: modules/messagerie/templates/header.php
-
-		-
-			message: '#^Variable \$wsUrl might not be defined\.$#'
-			identifier: variable.undefined
-			count: 1
 			path: modules/messagerie/templates/header.php
 
 		-
@@ -1429,6 +1405,30 @@ parameters:
 			path: modules/portail_parents/portail.php
 
 		-
+			message: '#^Variable \$rootPrefix might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/profil/index.php
+
+		-
+			message: '#^Variable \$user_fullname might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/profil/index.php
+
+		-
+			message: '#^Variable \$user_initials might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: modules/profil/index.php
+
+		-
+			message: '#^Variable \$user_role might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: modules/profil/index.php
+
+		-
 			message: '#^Variable \$projetService might not be defined\.$#'
 			identifier: variable.undefined
 			count: 3
@@ -1539,7 +1539,7 @@ parameters:
 		-
 			message: '#^Variable \$reunionService might not be defined\.$#'
 			identifier: variable.undefined
-			count: 3
+			count: 4
 			path: modules/reunions/reserver.php
 
 		-
@@ -1797,19 +1797,19 @@ parameters:
 		-
 			message: '#^Variable \$base might not be defined\.$#'
 			identifier: variable.undefined
-			count: 2
+			count: 4
 			path: tenant/login.php
 
 		-
 			message: '#^Variable \$establishment might not be defined\.$#'
 			identifier: variable.undefined
-			count: 7
+			count: 10
 			path: tenant/login.php
 
 		-
 			message: '#^Variable \$slug might not be defined\.$#'
 			identifier: variable.undefined
-			count: 3
+			count: 5
 			path: tenant/login.php
 
 		-

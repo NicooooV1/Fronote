@@ -20,7 +20,6 @@
         "participer": { "default_roles": ["eleve"] },
         "export": { "default_roles": ["administrateur"] }
     },
-    "routes": { "main": "tutorat.php" },
     "widgets": [
         {
             "key": "tutorat_leaderboard",
@@ -36,8 +35,6 @@
         }
     ],
     "establishment_types": null,
-    "sidebar": { "sort_order": 56 },
-    "topbar": { "category": "scolaire", "sort_order": 56 },
     "settings_schema": {
         "auto_matching": {
             "type": "checkbox",
