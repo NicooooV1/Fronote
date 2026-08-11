@@ -22,7 +22,7 @@ class PersonnelService
                 WHERE pa.etablissement_id = ?";
         $params = [\API\Core\EstablishmentContext::id()];
         if (!empty($filters['statut'])) { $sql .= ' AND pa.statut = ?'; $params[] = $filters['statut']; }
-        if (!empty($filters['type'])) { $sql .= ' AND pa.type = ?'; $params[] = $filters['type']; }
+        if (!empty($filters['type'])) { $sql .= ' AND pa.type_absence = ?'; $params[] = $filters['type']; }
         if (!empty($filters['personnel_id'])) { $sql .= ' AND pa.personnel_id = ?'; $params[] = $filters['personnel_id']; }
         $sql .= ' ORDER BY pa.date_debut DESC';
         $stmt = $this->pdo->prepare($sql);
@@ -39,8 +39,8 @@ class PersonnelService
 
     public function creerAbsence(array $d): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO personnel_absences (personnel_id, type, date_debut, date_fin, motif, statut, etablissement_id) VALUES (?,?,?,?,?,?,?)");
-        $stmt->execute([$d['personnel_id'], $d['type'], $d['date_debut'], $d['date_fin'], $d['motif'] ?? null, $d['statut'] ?? 'en_attente', \API\Core\EstablishmentContext::id()]);
+        $stmt = $this->pdo->prepare("INSERT INTO personnel_absences (personnel_id, personnel_type, type_absence, date_debut, date_fin, motif, statut, etablissement_id) VALUES (?,?,?,?,?,?,?,?)");
+        $stmt->execute([$d['personnel_id'], $d['personnel_type'] ?? 'professeur', $d['type'], $d['date_debut'], $d['date_fin'], $d['motif'] ?? null, $d['statut'] ?? 'declaree', \API\Core\EstablishmentContext::id()]);
         return (int) $this->pdo->lastInsertId();
     }
 
@@ -74,13 +74,13 @@ class PersonnelService
     public function creerRemplacement(array $d): int
     {
         $stmt = $this->pdo->prepare("INSERT INTO remplacements (absence_id, professeur_absent_id, professeur_remplacant_id, matiere_id, classe_id, date_debut, date_fin, statut, etablissement_id) VALUES (?,?,?,?,?,?,?,?,?)");
-        $stmt->execute([$d['absence_id'] ?? null, $d['professeur_absent_id'], $d['professeur_remplacant_id'] ?? null, $d['matiere_id'] ?? null, $d['classe_id'] ?? null, $d['date_debut'], $d['date_fin'], $d['statut'] ?? 'propose', \API\Core\EstablishmentContext::id()]);
+        $stmt->execute([$d['absence_id'] ?? null, $d['professeur_absent_id'], $d['professeur_remplacant_id'] ?? null, $d['matiere_id'] ?? null, $d['classe_id'] ?? null, $d['date_debut'], $d['date_fin'], $d['statut'] ?? 'a_pourvoir', \API\Core\EstablishmentContext::id()]);
         return (int) $this->pdo->lastInsertId();
     }
 
     public function attribuerRemplacant(int $id, int $remplacantId): void
     {
-        $this->pdo->prepare("UPDATE remplacements SET professeur_remplacant_id = ?, statut = 'confirme' WHERE id = ? AND etablissement_id = ?")->execute([$remplacantId, $id, \API\Core\EstablishmentContext::id()]);
+        $this->pdo->prepare("UPDATE remplacements SET professeur_remplacant_id = ?, statut = 'pourvu' WHERE id = ? AND etablissement_id = ?")->execute([$remplacantId, $id, \API\Core\EstablishmentContext::id()]);
     }
 
     /* ───── LEAVE MANAGEMENT (CONGÉS) ───── */
@@ -170,7 +170,7 @@ class PersonnelService
             // Check if replacement exists
             $rempStmt = $this->pdo->prepare("
                 SELECT id FROM remplacements
-                WHERE professeur_absent_id = ? AND date_debut <= ? AND date_fin >= ? AND statut = 'confirme' AND etablissement_id = ?
+                WHERE professeur_absent_id = ? AND date_debut <= ? AND date_fin >= ? AND statut = 'pourvu' AND etablissement_id = ?
             ");
 
             foreach ($cours as $c) {
@@ -242,30 +242,30 @@ class PersonnelService
     public function getStats(): array
     {
         $etab = (int)\API\Core\EstablishmentContext::id();
-        $abs = $this->pdo->query("SELECT COUNT(*) FROM personnel_absences WHERE statut IN ('validee','en_attente') AND etablissement_id = $etab")->fetchColumn();
-        $remp = $this->pdo->query("SELECT COUNT(*) FROM remplacements WHERE statut = 'propose' AND etablissement_id = $etab")->fetchColumn();
-        $conf = $this->pdo->query("SELECT COUNT(*) FROM remplacements WHERE statut = 'confirme' AND etablissement_id = $etab")->fetchColumn();
+        $abs = $this->pdo->query("SELECT COUNT(*) FROM personnel_absences WHERE statut IN ('validee','declaree') AND etablissement_id = $etab")->fetchColumn();
+        $remp = $this->pdo->query("SELECT COUNT(*) FROM remplacements WHERE statut = 'a_pourvoir' AND etablissement_id = $etab")->fetchColumn();
+        $conf = $this->pdo->query("SELECT COUNT(*) FROM remplacements WHERE statut = 'pourvu' AND etablissement_id = $etab")->fetchColumn();
         return ['absences_actives' => $abs, 'remplacements_en_attente' => $remp, 'remplacements_confirmes' => $conf];
     }
 
     public static function typesAbsence(): array
     {
-        return ['maladie' => 'Maladie', 'conge' => 'Congé', 'formation' => 'Formation', 'personnel' => 'Personnel', 'autre' => 'Autre'];
+        return ['maladie' => 'Maladie', 'formation' => 'Formation', 'personnel' => 'Personnel', 'maternite' => 'Maternité', 'autre' => 'Autre'];
     }
 
     public static function statutsAbsence(): array
     {
-        return ['en_attente' => 'En attente', 'validee' => 'Validée', 'refusee' => 'Refusée'];
+        return ['declaree' => 'Déclarée', 'validee' => 'Validée', 'refusee' => 'Refusée'];
     }
 
     public static function statutsRemplacement(): array
     {
-        return ['propose' => 'Proposé', 'confirme' => 'Confirmé', 'annule' => 'Annulé'];
+        return ['a_pourvoir' => 'À pourvoir', 'pourvu' => 'Pourvu', 'annule' => 'Annulé'];
     }
 
     public static function badgeStatut(string $s): string
     {
-        $m = ['en_attente' => 'warning', 'validee' => 'success', 'refusee' => 'danger', 'propose' => 'info', 'confirme' => 'success', 'annule' => 'danger'];
+        $m = ['en_attente' => 'warning', 'declaree' => 'warning', 'validee' => 'success', 'refusee' => 'danger', 'a_pourvoir' => 'info', 'pourvu' => 'success', 'annule' => 'danger'];
         return '<span class="badge badge-' . ($m[$s] ?? 'secondary') . '">' . ucfirst(str_replace('_', ' ', $s)) . '</span>';
     }
 

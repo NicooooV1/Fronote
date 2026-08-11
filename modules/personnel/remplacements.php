@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                     <?php if ($r['classe_nom']): ?><span><i class="fas fa-users"></i> <?= htmlspecialchars($r['classe_nom']) ?></span><?php endif; ?>
                 </div>
             </div>
-            <?php if ($r['statut'] === 'propose' && !$r['professeur_remplacant_id']): ?>
+            <?php if ($r['statut'] === 'a_pourvoir' && !$r['professeur_remplacant_id']): ?>
             <form method="post" class="form-inline" style="margin-top:.5rem;">
                 <?= csrfField() ?><input type="hidden" name="action" value="attribuer"><input type="hidden" name="remplacement_id" value="<?= $r['id'] ?>">
                 <select name="remplacant_id" class="form-control" required><option value="">— Remplaçant —</option><?php foreach ($profs as $p): ?><option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['prenom'] . ' ' . $p['nom']) ?></option><?php endforeach; ?></select>

@@ -16,7 +16,7 @@ class PeriscolaireService
 
     public function getServices(?string $type = null): array
     {
-        $sql = "SELECT sp.*, (SELECT COUNT(*) FROM inscriptions_periscolaire ip WHERE ip.service_id = sp.id AND ip.statut = 'active') AS nb_inscrits FROM services_periscolaires sp WHERE sp.etablissement_id = ?";
+        $sql = "SELECT sp.*, (SELECT COUNT(*) FROM inscriptions_periscolaire ip WHERE ip.service_id = sp.id AND ip.statut = 'inscrit') AS nb_inscrits FROM services_periscolaires sp WHERE sp.etablissement_id = ?";
         $params = [\API\Core\EstablishmentContext::id()];
         if ($type) { $sql .= ' AND sp.type = ?'; $params[] = $type; }
         $sql .= ' ORDER BY sp.nom';
@@ -46,24 +46,24 @@ class PeriscolaireService
         // Vérifier places
         $service = $this->getService($serviceId);
         if ($service && $service['places_max']) {
-            $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM inscriptions_periscolaire WHERE service_id = ? AND statut = 'active'");
+            $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM inscriptions_periscolaire WHERE service_id = ? AND statut = 'inscrit'");
             $stmt->execute([$serviceId]);
             if ($stmt->fetchColumn() >= $service['places_max']) {
                 throw new RuntimeException('Plus de places disponibles.');
             }
         }
         $stmt = $this->pdo->prepare("INSERT INTO inscriptions_periscolaire (service_id, eleve_id, jour, date_debut, statut) VALUES (?,?,?,CURDATE(),?)");
-        $stmt->execute([$serviceId, $eleveId, $jour, 'active']);
+        $stmt->execute([$serviceId, $eleveId, $jour, 'inscrit']);
     }
 
     public function desinscrire(int $inscriptionId): void
     {
-        $this->pdo->prepare("UPDATE inscriptions_periscolaire SET statut = 'annulee', date_fin = CURDATE() WHERE id = ?")->execute([$inscriptionId]);
+        $this->pdo->prepare("UPDATE inscriptions_periscolaire SET statut = 'annule', date_fin = CURDATE() WHERE id = ?")->execute([$inscriptionId]);
     }
 
     public function getInscriptions(int $serviceId): array
     {
-        $stmt = $this->pdo->prepare("SELECT ip.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, cl.nom AS classe_nom FROM inscriptions_periscolaire ip JOIN eleves e ON ip.eleve_id = e.id LEFT JOIN classes cl ON e.classe = cl.nom WHERE ip.service_id = ? AND ip.statut = 'active' AND e.etablissement_id = ? ORDER BY e.nom");
+        $stmt = $this->pdo->prepare("SELECT ip.*, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, cl.nom AS classe_nom FROM inscriptions_periscolaire ip JOIN eleves e ON ip.eleve_id = e.id LEFT JOIN classes cl ON e.classe = cl.nom WHERE ip.service_id = ? AND ip.statut = 'inscrit' AND e.etablissement_id = ? ORDER BY e.nom");
         $stmt->execute([$serviceId, \API\Core\EstablishmentContext::id()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -96,8 +96,8 @@ class PeriscolaireService
             SELECT ip.id AS inscription_id, CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, pp.present
             FROM inscriptions_periscolaire ip
             JOIN eleves e ON ip.eleve_id = e.id
-            LEFT JOIN presences_periscolaire pp ON pp.inscription_id = ip.id AND pp.date = ?
-            WHERE ip.service_id = ? AND ip.statut = 'active' AND e.etablissement_id = ?
+            LEFT JOIN presences_periscolaire pp ON pp.inscription_id = ip.id AND pp.date_presence = ?
+            WHERE ip.service_id = ? AND ip.statut = 'inscrit' AND e.etablissement_id = ?
             ORDER BY e.nom
         ");
         $stmt->execute([$date, $serviceId, \API\Core\EstablishmentContext::id()]);
@@ -201,7 +201,7 @@ class PeriscolaireService
                 JOIN eleves e ON ip.eleve_id = e.id
                 LEFT JOIN classes cl ON e.classe = cl.nom
                 JOIN services_periscolaires sp ON ip.service_id = sp.id
-                WHERE ip.statut = 'active' AND sp.etablissement_id = ?
+                WHERE ip.statut = 'inscrit' AND sp.etablissement_id = ?
                 ORDER BY sp.nom, e.nom
             ");
             $stmt->execute([\API\Core\EstablishmentContext::id()]);
@@ -268,8 +268,8 @@ class PeriscolaireService
             JOIN services_periscolaires sp ON ip.service_id = sp.id
             LEFT JOIN presences_periscolaire pp ON pp.inscription_id = ip.id
                   AND pp.present = 1
-                  AND DATE_FORMAT(pp.date, '%Y-%m') = :m
-            WHERE ip.statut = 'active' AND sp.etablissement_id = :etab
+                  AND DATE_FORMAT(pp.date_presence, '%Y-%m') = :m
+            WHERE ip.statut = 'inscrit' AND sp.etablissement_id = :etab
             GROUP BY ip.eleve_id, sp.id
             HAVING nb_presences > 0
             ORDER BY e.nom
@@ -303,8 +303,8 @@ class PeriscolaireService
                    SUM(pp.present) AS nb_presents,
                    COUNT(pp.id) - COALESCE(SUM(pp.present), 0) AS nb_absents
             FROM services_periscolaires sp
-            LEFT JOIN inscriptions_periscolaire ip ON ip.service_id = sp.id AND ip.statut = 'active'
-            LEFT JOIN presences_periscolaire pp ON pp.inscription_id = ip.id AND DATE_FORMAT(pp.date, '%Y-%m') = :m
+            LEFT JOIN inscriptions_periscolaire ip ON ip.service_id = sp.id AND ip.statut = 'inscrit'
+            LEFT JOIN presences_periscolaire pp ON pp.inscription_id = ip.id AND DATE_FORMAT(pp.date_presence, '%Y-%m') = :m
             WHERE sp.etablissement_id = :etab
             GROUP BY sp.id
             ORDER BY sp.nom

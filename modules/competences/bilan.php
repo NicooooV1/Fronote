@@ -119,7 +119,7 @@ $niveaux = CompetenceService::niveauxLabels();
                      data-radar-canvas="canvas-radar-eleve"
                      data-radar-overlay-url="<?php
                         // Get classe_id for overlay
-                        $stmtCl = getPDO()->prepare("SELECT classe_id FROM eleves WHERE id = ?");
+                        $stmtCl = getPDO()->prepare("SELECT c.id FROM eleves e JOIN classes c ON c.nom = e.classe WHERE e.id = ?");
                         $stmtCl->execute([$eleveId]);
                         $clId = $stmtCl->fetchColumn();
                         if ($clId) echo 'includes/ajax_radar.php?type=classe&classe_id=' . $clId . ($periodeId ? '&periode_id=' . $periodeId : '');

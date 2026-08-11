@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
             $_SESSION['error_message'] = $e->getMessage();
         }
     } elseif ($action === 'accepter' && $isGestionnaire) {
-        $clubService->traiterDemande((int)$_POST['inscription_id'], 'accepte');
+        $clubService->traiterDemande((int)$_POST['inscription_id'], 'inscrit');
     } elseif ($action === 'refuser' && $isGestionnaire) {
         $clubService->traiterDemande((int)$_POST['inscription_id'], 'refuse');
     } elseif ($action === 'retirer' && $isGestionnaire) {

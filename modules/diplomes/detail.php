@@ -49,11 +49,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
         <div class="info-item"><i class="fas fa-user-graduate"></i> <?= htmlspecialchars($diplome['eleve_nom']) ?></div>
         <div class="info-item"><span class="badge badge-primary"><?= $types[$diplome['type']] ?? $diplome['type'] ?></span></div>
         <div class="info-item"><i class="fas fa-calendar"></i> <?= formatDate($diplome['date_obtention']) ?></div>
-        <div class="info-item"><i class="fas fa-hashtag"></i> <?= htmlspecialchars($diplome['numero']) ?></div>
+        <div class="info-item"><i class="fas fa-hashtag"></i> <?= htmlspecialchars((string)($diplome['numero_diplome'] ?? '')) ?></div>
         <?php if ($diplome['mention']): ?><div class="info-item"><?= DiplomeService::badgeMention($diplome['mention']) ?></div><?php endif; ?>
     </div>
 
-    <?php if ($diplome['description']): ?>
+    <?php if (!empty($diplome['description'])): ?>
     <div class="card" style="margin-bottom:1.5rem;"><div class="card-body"><p><?= nl2br(htmlspecialchars($diplome['description'])) ?></p></div></div>
     <?php endif; ?>
 

@@ -79,13 +79,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
                 <?php foreach ($absences as $a): ?>
                 <tr>
                     <td><strong><?= htmlspecialchars($a['personnel_nom']) ?></strong></td>
-                    <td><span class="badge badge-secondary"><?= $typesAbsence[$a['type']] ?? $a['type'] ?></span></td>
+                    <td><span class="badge badge-secondary"><?= $typesAbsence[$a['type_absence']] ?? $a['type_absence'] ?></span></td>
                     <td><?= formatDate($a['date_debut']) ?></td>
                     <td><?= formatDate($a['date_fin']) ?></td>
                     <td><?= htmlspecialchars($a['motif'] ?? '-') ?></td>
                     <td><?= PersonnelService::badgeStatut($a['statut']) ?></td>
                     <td>
-                        <?php if ($a['statut'] === 'en_attente'): ?>
+                        <?php if ($a['statut'] === 'declaree'): ?>
                         <form method="post" style="display:inline;"><?= csrfField() ?><input type="hidden" name="absence_id" value="<?= $a['id'] ?>"><button name="action" value="valider" class="btn btn-sm btn-success">✓</button></form>
                         <form method="post" style="display:inline;"><?= csrfField() ?><input type="hidden" name="absence_id" value="<?= $a['id'] ?>"><button name="action" value="refuser" class="btn btn-sm btn-danger">✗</button></form>
                         <?php else: echo '-'; endif; ?>

@@ -17,7 +17,7 @@ class ClubService
         $sql = "
             SELECT c.*,
                    CONCAT(p.prenom, ' ', p.nom) AS responsable_nom,
-                   (SELECT COUNT(*) FROM club_inscriptions ci WHERE ci.club_id = c.id AND ci.statut = 'accepte') AS nb_inscrits
+                   (SELECT COUNT(*) FROM club_inscriptions ci WHERE ci.club_id = c.id AND ci.statut = 'inscrit') AS nb_inscrits
             FROM clubs c
             LEFT JOIN professeurs p ON c.responsable_id = p.id
             WHERE c.actif = 1 AND c.etablissement_id = ?
@@ -34,7 +34,7 @@ class ClubService
     {
         $stmt = $this->pdo->prepare("
             SELECT c.*, CONCAT(p.prenom, ' ', p.nom) AS responsable_nom,
-                   (SELECT COUNT(*) FROM club_inscriptions ci WHERE ci.club_id = c.id AND ci.statut = 'accepte') AS nb_inscrits
+                   (SELECT COUNT(*) FROM club_inscriptions ci WHERE ci.club_id = c.id AND ci.statut = 'inscrit') AS nb_inscrits
             FROM clubs c
             LEFT JOIN professeurs p ON c.responsable_id = p.id
             WHERE c.id = ? AND c.etablissement_id = ?
@@ -105,7 +105,7 @@ class ClubService
             JOIN eleves e ON ci.eleve_id = e.id
             LEFT JOIN classes cl ON e.classe = cl.nom
             LEFT JOIN classes c ON e.classe = c.nom
-            WHERE ci.club_id = ? AND ci.statut = 'accepte' AND ci.etablissement_id = ?
+            WHERE ci.club_id = ? AND ci.statut = 'inscrit' AND ci.etablissement_id = ?
             ORDER BY e.nom
         ");
         $stmt->execute([$clubId, \API\Core\EstablishmentContext::id()]);
@@ -217,7 +217,7 @@ class ClubService
             SELECT cs.*, c.nom AS club_nom
             FROM club_seances cs
             JOIN clubs c ON cs.club_id = c.id
-            JOIN club_inscriptions ci ON ci.club_id = c.id AND ci.eleve_id = ? AND ci.statut = 'accepte'
+            JOIN club_inscriptions ci ON ci.club_id = c.id AND ci.eleve_id = ? AND ci.statut = 'inscrit'
             WHERE cs.date_seance >= CURDATE() AND c.etablissement_id = ?
             ORDER BY cs.date_seance, cs.heure_debut
         ");
@@ -229,7 +229,7 @@ class ClubService
     {
         $etab = (int)\API\Core\EstablishmentContext::id();
         $clubs = (int)$this->pdo->query("SELECT COUNT(*) FROM clubs WHERE actif = 1 AND etablissement_id = {$etab}")->fetchColumn();
-        $inscrits = (int)$this->pdo->query("SELECT COUNT(*) FROM club_inscriptions WHERE statut = 'accepte' AND etablissement_id = {$etab}")->fetchColumn();
+        $inscrits = (int)$this->pdo->query("SELECT COUNT(*) FROM club_inscriptions WHERE statut = 'inscrit' AND etablissement_id = {$etab}")->fetchColumn();
         $attente = (int)$this->pdo->query("SELECT COUNT(*) FROM club_inscriptions WHERE statut = 'en_attente' AND etablissement_id = {$etab}")->fetchColumn();
         return ['clubs_actifs' => $clubs, 'total_inscrits' => $inscrits, 'demandes_en_attente' => $attente];
     }
@@ -380,7 +380,7 @@ class ClubService
         if (!$entry) return false;
         try {
             $this->inscrire($clubId, $entry['eleve_id']);
-            $this->traiterDemande($this->pdo->lastInsertId(), 'accepte');
+            $this->traiterDemande($this->pdo->lastInsertId(), 'inscrit');
             $this->pdo->prepare("DELETE FROM club_waitlist WHERE id = ?")->execute([$entry['id']]);
             return true;
         } catch (\RuntimeException $e) { return false; }
