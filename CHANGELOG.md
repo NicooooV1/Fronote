@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.6.0] — Second facteur obligatoire + RBAC centralisé plateforme — 2026-08-11
+
+### Sécurité — Authentification
+- **2FA obligatoire pour les rôles à responsabilité** (professeur, vie scolaire, administrateur,
+  super-admin) : second facteur exigé à chaque nouvelle connexion, avec tolérance d'1 h par appareil
+  (cookie de confiance signé HMAC — `API/Security/TwoFactorTrust`). Enrôlement forcé
+  (`login/setup_2fa.php`) avec secret TOTP + codes de secours pour les comptes non encore équipés.
+  Élèves et parents non impactés.
+- Anti-bruteforce du 2e facteur persistant (`login_attempts`) en plus du compteur de session.
+
+### RBAC — Contrôle d'accès centralisé
+- **Table globale `rbac_grants`** (possédée par la plateforme) : les permissions associées aux rôles se
+  pilotent depuis la plateforme et s'appliquent à tous les établissements, allégeant les dirigeants
+  d'établissement. La gestion directe rôle→permission du panneau d'administration passe en lecture seule
+  (vue des permissions effectives = catalogue + surcharges).
+- Éditeur rôles→permissions côté plateforme écrivant `rbac_grants`.
+
+### Design & modules
+- Refonte du module messagerie (bulles groupées, temps réel) et de l'attribution des rôles (boutons/cartes).
+- Système de design plateforme unifié (composants `pf-*`).
+
+### Infrastructure (déploiement de référence)
+- Serveur web migré Apache mpm_prefork + mod_php → **mpm_event + PHP-FPM 8.2**.
+- Base de données migrée MySQL 8.0 (Docker) → **MariaDB 10.11 natif**.
+
 ## [3.5.1] — Régionalisation RBAC + harness d'autorisation — 2026-07-12
 
 - **Matrice RBAC cloisonnée par établissement** (finding #2, précédemment en chantier) : une surcharge
