@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS `menus_cantine` (
   `allergenes` text DEFAULT NULL,
   `regime_special` varchar(100) DEFAULT NULL COMMENT 'végétarien, sans porc, etc.',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_date` (`date_menu`, `regime_special`),
+  UNIQUE KEY `uk_date` (`etablissement_id`, `date_menu`, `regime_special`),
   KEY `idx_etab` (`etablissement_id`),
   CONSTRAINT `fk_menus_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

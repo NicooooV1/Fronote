@@ -558,20 +558,12 @@ function restoreConversation($convId, $userId, $userType) {
             ");
             $deleteOthersStmt->execute([$convId, $userId, $userType, $recordId]);
         } else {
-            // Anti-IDOR tenant : ne pas créer un participant « frais » (jamais membre) pour une
-            // conversation d'un autre établissement — sinon on rejoindrait une conversation étrangère.
-            $etabChk = $pdo->prepare("SELECT 1 FROM conversations WHERE id = ? AND etablissement_id = ? LIMIT 1");
-            $etabChk->execute([$convId, \API\Core\EstablishmentContext::id()]);
-            if (!$etabChk->fetchColumn()) {
-                throw new \RuntimeException("Conversation hors de votre établissement.");
-            }
-            // Créer un nouveau participant
-            $insertStmt = $pdo->prepare("
-                INSERT INTO conversation_participants
-                (conversation_id, user_id, user_type, joined_at, is_deleted, is_archived)
-                VALUES (?, ?, ?, NOW(), 0, 0)
-            ");
-            $insertStmt->execute([$convId, $userId, $userType]);
+            // Anti-IDOR horizontal : « restore » ne RÉactive qu'une participation EXISTANTE
+            // (précédemment supprimée par l'utilisateur). Un utilisateur jamais membre ne peut
+            // pas rejoindre — donc lire/répondre — une conversation via cette action, même dans
+            // son propre établissement.
+            $pdo->rollBack();
+            return false;
         }
         
         $pdo->commit();

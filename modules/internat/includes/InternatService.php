@@ -172,14 +172,17 @@ class InternatService
 
     public function getIncidents(?string $dateDebut = null, ?string $dateFin = null): array
     {
+        $etab = (int)\API\Core\EstablishmentContext::id();
         $sql = "SELECT i.*, e.nom, e.prenom, ch.numero AS chambre_numero
                 FROM internat_incidents i
                 LEFT JOIN eleves e ON i.eleve_id = e.id
-                LEFT JOIN internat_chambres ch ON i.chambre_id = ch.id";
-        $params = [];
+                LEFT JOIN internat_chambres ch ON i.chambre_id = ch.id
+                WHERE (e.etablissement_id = ? OR ch.etablissement_id = ?)";
+        $params = [$etab, $etab];
         if ($dateDebut && $dateFin) {
-            $sql .= " WHERE DATE(i.date_incident) BETWEEN ? AND ?";
-            $params = [$dateDebut, $dateFin];
+            $sql .= " AND DATE(i.date_incident) BETWEEN ? AND ?";
+            $params[] = $dateDebut;
+            $params[] = $dateFin;
         }
         $sql .= " ORDER BY i.date_incident DESC";
         $stmt = $this->pdo->prepare($sql);

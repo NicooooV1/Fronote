@@ -1085,8 +1085,9 @@ class EdtService
 
     public function deleteMaquette(int $id): bool
     {
-        $stmt = $this->pdo->prepare("DELETE FROM edt_maquette WHERE id = ?");
-        return $stmt->execute([$id]);
+        // Anti-IDOR cross-tenant : edt_maquette n'a pas d'etablissement_id → scope via la classe.
+        $stmt = $this->pdo->prepare("DELETE em FROM edt_maquette em JOIN classes c ON em.classe_id = c.id WHERE em.id = ? AND c.etablissement_id = ?");
+        return $stmt->execute([$id, (int)\API\Core\EstablishmentContext::id()]);
     }
 
     /**
