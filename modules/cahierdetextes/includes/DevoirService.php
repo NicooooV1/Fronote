@@ -444,15 +444,20 @@ class DevoirService
 
     public function deleteFichier(int $fichierId): bool
     {
-        $stmt = $this->pdo->prepare('SELECT nom_stockage FROM devoirs_fichiers WHERE id = :id');
-        $stmt->execute([':id' => $fichierId]);
+        // Anti-IDOR cross-tenant : le fichier doit appartenir à un devoir de l'établissement courant.
+        $etab = (int)\API\Core\EstablishmentContext::id();
+        $stmt = $this->pdo->prepare('SELECT df.nom_stockage FROM devoirs_fichiers df JOIN devoirs d ON df.devoir_id = d.id WHERE df.id = :id AND d.etablissement_id = :etab');
+        $stmt->execute([':id' => $fichierId, ':etab' => $etab]);
         $nom = $stmt->fetchColumn();
+        if ($nom === false) {
+            return false; // fichier inexistant ou hors établissement -> refus
+        }
         if ($nom) {
             $uploader = new \API\Services\FileUploadService('devoirs');
             $uploader->delete($nom);
         }
-        $stmt = $this->pdo->prepare('DELETE FROM devoirs_fichiers WHERE id = :id');
-        return $stmt->execute([':id' => $fichierId]);
+        $stmt = $this->pdo->prepare('DELETE df FROM devoirs_fichiers df JOIN devoirs d ON df.devoir_id = d.id WHERE df.id = :id AND d.etablissement_id = :etab');
+        return $stmt->execute([':id' => $fichierId, ':etab' => $etab]);
     }
 
     private function deleteAttachedFiles(int $devoirId): void

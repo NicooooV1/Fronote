@@ -74,7 +74,7 @@ class ProjetPedagogiqueService
         $stmt = $this->pdo->prepare(
             "UPDATE projets_pedagogiques SET titre = ?, description = ?, objectifs = ?, type = ?,
              classes = ?, matieres = ?, date_debut = ?, date_fin = ?, budget = ?, statut = ?, bilan = ?
-             WHERE id = ?"
+             WHERE id = ? AND etablissement_id = ?"
         );
         return $stmt->execute([
             $data['titre'], $data['description'] ?? null, $data['objectifs'] ?? null,
@@ -82,14 +82,14 @@ class ProjetPedagogiqueService
             $data['classes'] ?? null, $data['matieres'] ?? null,
             $data['date_debut'], $data['date_fin'] ?? null,
             $data['budget'] ?? null, $data['statut'] ?? 'brouillon',
-            $data['bilan'] ?? null, $id,
+            $data['bilan'] ?? null, $id, (int)\API\Core\EstablishmentContext::id(),
         ]);
     }
 
     public function changerStatut(int $id, string $statut): bool
     {
-        $stmt = $this->pdo->prepare("UPDATE projets_pedagogiques SET statut = ? WHERE id = ?");
-        return $stmt->execute([$statut, $id]);
+        $stmt = $this->pdo->prepare("UPDATE projets_pedagogiques SET statut = ? WHERE id = ? AND etablissement_id = ?");
+        return $stmt->execute([$statut, $id, (int)\API\Core\EstablishmentContext::id()]);
     }
 
     /* ==================== PARTICIPANTS ==================== */

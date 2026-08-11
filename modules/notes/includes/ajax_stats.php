@@ -51,7 +51,14 @@ try {
 
     if ($type === 'evolution') {
         if ($isFullAccess) {
-            // Accès complet établissement — rien à restreindre.
+            // Accès complet établissement, MAIS toujours borné à l'établissement courant (anti cross-tenant).
+            $st = $pdo->prepare("SELECT 1 FROM eleves WHERE id = ? AND etablissement_id = ? LIMIT 1");
+            $st->execute([$eleveId, $etabId]);
+            if (!$st->fetchColumn()) {
+                http_response_code(403);
+                echo json_encode(['error' => 'Accès refusé à cet élève']);
+                exit;
+            }
         } elseif ($isTeacher) {
             // Un professeur ne peut consulter l'évolution que d'un élève de SES classes.
             $st = $pdo->prepare("SELECT classe FROM eleves WHERE id = ? AND etablissement_id = ?");

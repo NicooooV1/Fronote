@@ -25,7 +25,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !validateCSRFToken($_POST['csrf_tok
         'statut'              => $_POST['statut'] ?? 'active',
     ];
     if (!$data['nom']) $erreur = 'Le nom est obligatoire.';
-    if (!$erreur) {
+    if (!$erreur && $editId && !$asso) {
+        // Anti-IDOR cross-tenant : getAssociation() est scopé établissement → $asso null = cible hors périmètre.
+        $erreur = "Association introuvable dans votre établissement.";
+    } elseif (!$erreur) {
         if ($editId) { $vieAssoService->modifierAssociation($editId, $data); }
         else { $editId = $vieAssoService->creerAssociation($data); }
         header("Location: detail.php?id=$editId"); exit;
