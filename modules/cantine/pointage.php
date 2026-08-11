@@ -13,6 +13,7 @@ $dateVue = $_GET['date'] ?? date('Y-m-d');
 // Securite (XSS) : $dateVue est reinjecte sans echappement (attribut value) plus bas.
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateVue)) { $dateVue = date('Y-m-d'); }
 $message = '';
+$user = getCurrentUser();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pointer'])) {
     if (!validateCSRFToken()) {

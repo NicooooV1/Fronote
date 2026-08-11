@@ -20,11 +20,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken($_POST['csrf_toke
     if ($action === 'recalculer') {
         $n = $svc->recalculerTous($etabId);
         $a = $svc->genererAlertes($etabId);
-        logAudit('intelligence.recalcul', 'intelligence_scores', null, null, ['scores' => $n, 'alertes' => $a]);
+        if (function_exists('app') && ($__audit = app('audit'))) { $__audit->log('intelligence.recalcul', 'intelligence_scores', ['new' => ['scores' => $n, 'alertes' => $a]]); }
         $flash = "{$n} score(s) recalculé(s), {$a} alerte(s) générée(s).";
     } elseif ($action === 'traiter_alerte') {
         $svc->traiterAlerte((int) ($_POST['alerte_id'] ?? 0), trim($_POST['action_prise'] ?? '') ?: 'Traité', getUserId());
-        logAudit('intelligence.alerte_traitee', 'intelligence_alertes', (int) ($_POST['alerte_id'] ?? 0));
+        if (function_exists('app') && ($__audit = app('audit'))) { $__audit->log('intelligence.alerte_traitee', 'intelligence_alertes', ['new' => ['alerte_id' => (int) ($_POST['alerte_id'] ?? 0)]]); }
         $flash = 'Alerte traitée.';
     }
 }
