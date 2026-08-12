@@ -11,15 +11,15 @@ cités) et les exigences pour les développeurs de modules.
 
 Code de référence :
 - `API/Auth/` — `SessionGuard`, `AuthManager`, `UserProvider`, `OAuthGuard`
-- `API/Security/` — `CSRF`, `RBAC`, `RateLimiter`, `PasswordPolicy`, `ModuleScanner`, `IpFirewall`, `Validator`
+- `API/Security/` — `CSRF`, `Authorization`, `RoleCatalog`, `RateLimiter`, `PasswordPolicy`, `ModuleScanner`, `Validator`, `TwoFactorTrust`
 - `API/Core/Encryption.php`, `API/Core/EstablishmentContext.php`
 - `templates/shared_header.php` (en-têtes + CSP)
-- `API/Legacy/Bridge.php` (helpers globaux : `csrf_verify()`, `requireRole()`, `getCurrentUser()`…)
-- `login/index.php` (flux de connexion), `rgpd/` (anonymisation)
+- `API/Legacy/Bridge.php` (helpers globaux : `csrf_verify()`, `can()`/`authorize()`/`requireCapability()`/`tenantGate()`, `getCurrentUser()`…)
+- `login/index.php` (flux de connexion), `login/setup_2fa.php` (2FA), `rgpd/` (anonymisation)
 
 Les services sont exposés via le conteneur DI : `app('auth')`, `app('csrf')`,
-`app('rbac')`, `app('rate_limiter')`, `app('password_policy')`, `app('encryption')`,
-`app('user')`.
+`app('authz')`, `app('rate_limiter')`, `app('password_policy')`, `app('user')`.
+(`Encryption` s'instancie directement — plus de binding `app('encryption')`.)
 
 ---
 
@@ -233,29 +233,30 @@ Helpers globaux (`API/Legacy/Bridge.php`) : `csrf_field()`, `csrf_meta()`,
 
 ---
 
-## RBAC — Contrôle d'accès basé sur les rôles
+## Autorisation — moteur unique
 
-Centralisé dans `API\Security\RBAC` (`app('rbac')`). L'utilisateur courant est
-injecté automatiquement à la résolution du service (`setUser()` depuis la session).
+Centralisée dans `API\Security\Authorization` (`app('authz')`). L'utilisateur courant est
+injecté à la résolution du service (`setUser()` depuis la session, via le helper `authz()`).
+La classe `RBAC` legacy et sa matrice statique ont été **supprimées**.
 
 ### Rôles
 
-`administrateur`, `vie_scolaire`, `professeur`, `parent`, `eleve` (+ `super_admin`
-hors de cette matrice, géré séparément).
+Le **rôle de base** est le type de compte (`administrateur`, `vie_scolaire`, `professeur`,
+`parent`, `eleve`, + `super_admin` transverse). Au-dessus, un **catalogue** en code
+(`API\Security\RoleCatalog`, ~110 rôles répartis en familles) : des rôles supplémentaires
+sont attribués par utilisateur dans la table `user_roles` (attributions scopées/temporisées),
+et les sous-fonctions `vie_scolaire.est_CPE`/`est_infirmerie` dérivent les rôles `cpe`/`infirmerie`.
+`super_admin` a un accès total. La hiérarchie est portée par les **wildcards** du catalogue
+(`domaine.*`, `*`), pas par une table.
 
-**Hiérarchie** (`ROLE_HIERARCHY`) : `administrateur` hérite des permissions de
-`vie_scolaire` et `professeur`. Les autres rôles n'héritent de rien.
+### Une source de permissions : le catalogue (+ déviations globales)
 
-### Deux sources de permissions
-
-1. **Matrice statique** (`RBAC::PERMISSIONS`) — uniquement les permissions
-   **système/transversales** : `admin.*`, `rgpd.*`, `notifications.view`,
-   `parametres.view`.
-2. **Permissions dynamiques en base** (`rbac_permissions`) — toutes les permissions
-   **module** (`notes.*`, `absences.*`, `devoirs.*`…). Elles sont déclarées dans
-   `module.json` et injectées par `ModuleSDK::syncPermissions()` à l'activation du
-   module. `can()` tombe en fallback DB pour toute permission absente de la matrice
-   statique.
+`RoleCatalog::GRANTS` (en code) fait foi : pour chaque rôle, la liste des permissions
+octroyées (clés `domaine.action` ou wildcards `domaine.*`). La table **`rbac_grants`** ne
+contient que des **déviations globales** (force-accorder `granted=1` / force-refuser
+`granted=0`), lue en premier par `Authorization::roleGrants()` (le refus l'emporte), puis
+repli sur le catalogue. Le bloc `permissions` de `module.json` reste **déclaratif** (validé,
+audité) — il n'alimente plus aucune table.
 
 ### Attribution centralisée rôle → permissions (`rbac_grants`)
 
