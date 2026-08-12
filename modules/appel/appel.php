@@ -179,8 +179,9 @@ include 'includes/header.php';
             <?php if ($appel['matiere_nom']): ?>
                 — <?= htmlspecialchars($appel['matiere_nom']) ?>
             <?php endif; ?>
+            <?php $statutLabels = ['valide' => 'Validé', 'en_cours' => 'En cours', 'brouillon' => 'Brouillon', 'nouveau' => 'À faire']; ?>
             <span class="badge badge-<?= $appel['statut'] === 'valide' ? 'success' : ($appel['statut'] === 'en_cours' ? 'warning' : 'secondary') ?>">
-                <?= ucfirst($appel['statut']) ?>
+                <?= htmlspecialchars($statutLabels[$appel['statut']] ?? ucfirst(str_replace('_', ' ', $appel['statut']))) ?>
             </span>
         </h3>
         <span class="text-muted">
