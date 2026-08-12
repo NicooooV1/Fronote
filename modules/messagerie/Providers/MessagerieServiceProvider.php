@@ -11,11 +11,8 @@ class MessagerieServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        $hooks = $this->app->make('hooks');
-        $audit = new \API\Events\Listeners\AuditListener();
-        $ws    = new \API\Events\Listeners\WebSocketListener();
-
-        $hooks->register(\Modules\Messagerie\Events\MessageSent::class, [$audit, 'handle']);
-        $hooks->register(\Modules\Messagerie\Events\MessageSent::class, [$ws,    'handle']);
+        // L'événement MessageSent a été retiré (jamais dispatché) : la messagerie
+        // notifie le WebSocket directement et journalise via son propre service.
+        // Aucun hook à enregistrer ici.
     }
 }
