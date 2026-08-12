@@ -94,7 +94,7 @@ if (isset($_GET['edit'])) {
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
         <!-- Formulaire ajout/édition -->
-        <div style="background:white;border-radius:12px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <div style="background:var(--bg-card);border-radius:12px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
             <h3 style="font-size:15px;font-weight:600;color:#2d3748;margin-bottom:16px;">
                 <?= $editComp ? 'Modifier la compétence' : 'Nouvelle compétence' ?>
             </h3>
@@ -158,7 +158,7 @@ if (isset($_GET['edit'])) {
         </div>
 
         <!-- Liste des compétences -->
-        <div style="background:white;border-radius:12px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,0.06);max-height:600px;overflow-y:auto;">
+        <div style="background:var(--bg-card);border-radius:12px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,0.06);max-height:600px;overflow-y:auto;">
             <h3 style="font-size:15px;font-weight:600;color:#2d3748;margin-bottom:16px;">
                 Référentiel actuel (<?= count($allFlat) ?> compétences)
             </h3>

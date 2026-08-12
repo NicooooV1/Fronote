@@ -43,7 +43,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 
     <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-plane-departure"></i> <?= __('echanges.programmes') ?> (<?= count($programmes) ?>)</h2>
     <?php if (empty($programmes)): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('echanges.aucun_programme') ?></p>
+    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('echanges.aucun_programme') ?></p>
     <?php else: ?>
     <div style="overflow-x:auto;margin-bottom:28px">
     <table style="width:100%;border-collapse:collapse;font-size:.9em">
@@ -69,7 +69,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 
     <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-handshake"></i> <?= __('echanges.partenariats_actifs') ?> (<?= count($partenariats) ?>)</h2>
     <?php if (empty($partenariats)): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('echanges.aucun_partenariat') ?></p>
+    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('echanges.aucun_partenariat') ?></p>
     <?php else: ?>
     <div style="display:flex;flex-wrap:wrap;gap:10px">
         <?php foreach ($partenariats as $pt): ?>

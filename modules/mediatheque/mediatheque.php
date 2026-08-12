@@ -61,14 +61,14 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <?php if ($q !== ''): ?>
     <h2 style="font-size:1.1em;margin:0 0 12px">Résultats pour « <?= htmlspecialchars($q) ?> » (<?= count($resultats) ?>)</h2>
     <?php if (empty($resultats)): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('mediatheque.aucun_contenu_trouve') ?></p>
+    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('mediatheque.aucun_contenu_trouve') ?></p>
     <?php else: ?>
     <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:28px"><?php foreach ($resultats as $c) echo med_card($c); ?></div>
     <?php endif; ?>
     <?php else: ?>
     <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-magic"></i> <?= __('mediatheque.recommande_pour_vous') ?></h2>
     <?php if (empty($reco)): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('mediatheque.aucun_contenu_disponible') ?></p>
+    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('mediatheque.aucun_contenu_disponible') ?></p>
     <?php else: ?>
     <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:28px"><?php foreach ($reco as $c) echo med_card($c); ?></div>
     <?php endif; ?>

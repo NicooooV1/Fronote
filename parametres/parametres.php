@@ -872,7 +872,7 @@ $roleWidgets = match ($userType) {
 .twofa-step strong { display: block; margin-bottom: 4px; }
 .twofa-step p { font-size: .88em; color: var(--text-muted, #666); margin: 0; }
 .twofa-qr {
-    display: inline-block; padding: 12px; background: white;
+    display: inline-block; padding: 12px; background: var(--bg-card);
     border: 2px solid var(--border-color, #e2e8f0); border-radius: 12px; margin-top: 8px;
 }
 .btn-danger {

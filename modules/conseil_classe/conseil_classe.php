@@ -43,7 +43,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <p style="color:var(--text-muted,#64748b);margin:0 0 20px"><?= __('conseil_classe.annee') ?> <?= htmlspecialchars($annee) ?></p>
 
     <?php if (empty($classes)): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('conseil_classe.aucune_classe') ?></p>
+    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('conseil_classe.aucune_classe') ?></p>
     <?php else: ?>
     <form method="get" style="margin-bottom:24px">
         <label style="font-size:.9em;color:var(--text-muted,#64748b);margin-right:8px"><?= __('conseil_classe.filtre_classe') ?></label>
@@ -56,7 +56,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 
     <h2 style="font-size:1.1em;margin:0 0 12px"><?= __('conseil_classe.conseils') ?> — <?= htmlspecialchars($classe) ?> (<?= count($sessions) ?>)</h2>
     <?php if (empty($sessions)): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('conseil_classe.aucun_conseil') ?></p>
+    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('conseil_classe.aucun_conseil') ?></p>
     <?php else: ?>
     <div style="display:flex;flex-direction:column;gap:10px">
         <?php foreach ($sessions as $s): $stt = $s['statut'] ?? 'planifie'; ?>

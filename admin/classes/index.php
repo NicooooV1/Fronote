@@ -167,7 +167,7 @@ ob_start();
 <style>
     .classes-container { max-width: 1100px; margin: 0 auto; }
     .classes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
-    .class-card { background: white; border-radius: 10px; padding: 18px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); border-left: 4px solid #0f4c81; transition: transform 0.2s; }
+    .class-card { background: var(--bg-card); border-radius: 10px; padding: 18px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); border-left: 4px solid #0f4c81; transition: transform 0.2s; }
     .class-card:hover { transform: translateY(-2px); }
     .class-card.inactive { opacity: 0.6; border-left-color: #ccc; }
     .class-card h3 { margin: 0 0 8px; font-size: 18px; display: flex; justify-content: space-between; align-items: center; }

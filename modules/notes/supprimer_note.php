@@ -77,14 +77,14 @@ $pageTitle = 'Supprimer une note';
 include 'includes/header.php';
 ?>
 
-                <div style="background:white; border-radius:10px; padding:30px; box-shadow:0 2px 8px rgba(0,0,0,0.06); max-width:600px;">
+                <div style="background:var(--bg-card); border-radius:10px; padding:30px; box-shadow:0 2px 8px rgba(0,0,0,0.06); max-width:600px;">
                     <h2 style="font-size:1.1em; color:#2d3748; margin-bottom:20px;">Suppression de la note</h2>
 
                     <div class="alert alert-warning" style="margin-bottom:20px;">
                         <strong>Attention !</strong> Cette action est irréversible.
                     </div>
 
-                    <div style="background:#f7fafc; border-radius:8px; padding:15px; margin-bottom:20px;">
+                    <div style="background:var(--bg-secondary); border-radius:8px; padding:15px; margin-bottom:20px;">
                         <p style="margin:5px 0; font-size:14px;"><strong>Élève :</strong> <?= htmlspecialchars(($note['prenom_eleve'] ?? '') . ' ' . ($note['nom_eleve'] ?? '')) ?></p>
                         <p style="margin:5px 0; font-size:14px;"><strong>Matière :</strong> <?= htmlspecialchars($note['nom_matiere'] ?? '') ?></p>
                         <p style="margin:5px 0; font-size:14px;"><strong>Note :</strong> <?= htmlspecialchars($note['note'] ?? '') ?>/<?= $note['note_sur'] ?? 20 ?></p>

@@ -111,7 +111,7 @@ $niveaux = CompetenceService::niveauxLabels();
         <?php if ($ffRadarGraph && $eleveId): ?>
         <!-- Radar chart -->
         <div class="comp-radar-section" style="margin-bottom:24px;">
-            <div style="background:white;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+            <div style="background:var(--bg-card);border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
                 <h3 style="font-size:14px;font-weight:600;color:#2d3748;margin-bottom:12px;">
                     <i class="fas fa-chart-pie" style="margin-right:6px;color:#667eea;"></i> Vue radar des compétences
                 </h3>

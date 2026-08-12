@@ -99,7 +99,7 @@ $extraCss    = ['../../assets/css/admin.css'];
 ob_start(); ?>
 <style>
   .upd-wrap { max-width: 820px; margin: 0 auto; }
-  .upd-card { background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,.06); padding:22px 24px; margin-bottom:16px; }
+  .upd-card { background:var(--bg-card); border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,.06); padding:22px 24px; margin-bottom:16px; }
   .upd-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
   .badge-ok{background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
   .badge-warn{background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}

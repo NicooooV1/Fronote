@@ -68,7 +68,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <!-- Élèves à risque -->
     <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-triangle-exclamation"></i> <?= __('intelligence.eleves_a_risque') ?> (<?= count($dash['eleves_a_risque']) ?>)</h2>
     <?php if (empty($dash['eleves_a_risque'])): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('intelligence.aucun_eleve_risque') ?></p>
+    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('intelligence.aucun_eleve_risque') ?></p>
     <?php else: ?>
     <div style="overflow-x:auto;margin-bottom:28px">
     <table style="width:100%;border-collapse:collapse;font-size:.9em">
@@ -93,7 +93,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <!-- Alertes actives -->
     <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-bell"></i> <?= __('intelligence.alertes_actives') ?> (<?= count($alertes) ?>)</h2>
     <?php if (empty($alertes)): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('intelligence.aucune_alerte') ?></p>
+    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('intelligence.aucune_alerte') ?></p>
     <?php else: ?>
     <?php foreach ($alertes as $al): ?>
         <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:8px;padding:12px 14px;margin-bottom:8px">

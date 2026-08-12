@@ -192,7 +192,7 @@ ob_start();
     .search-bar { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; align-items: flex-end; }
     .search-bar input, .search-bar select { padding: 8px 10px; border: 1px solid #d2d6dc; border-radius: 6px; font-size: 13px; }
     .search-bar input[type=text] { flex: 1; min-width: 200px; }
-    .msg-card { background: white; border-radius: 8px; padding: 14px 18px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); display: flex; gap: 12px; align-items: flex-start; }
+    .msg-card { background: var(--bg-card); border-radius: 8px; padding: 14px 18px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); display: flex; gap: 12px; align-items: flex-start; }
     .msg-card.deleted { opacity: 0.5; background: #fef2f2; }
     .msg-card.pinned { border-left: 3px solid #f59e0b; }
     .msg-body { flex: 1; }

@@ -56,7 +56,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 
     <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-book-open"></i> <?= __('formations.catalogue') ?> (<?= count($catalogue) ?>)</h2>
     <?php if (empty($catalogue)): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('formations.aucune_formation') ?></p>
+    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('formations.aucune_formation') ?></p>
     <?php else: ?>
     <div style="overflow-x:auto">
     <table style="width:100%;border-collapse:collapse;font-size:.9em">

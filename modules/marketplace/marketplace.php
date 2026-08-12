@@ -186,7 +186,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
         </form>
     </section>
 <?php else: ?>
-    <section style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:18px;margin:18px 0">
+    <section style="background:var(--bg-card);border:1px solid #e2e8f0;border-radius:10px;padding:18px;margin:18px 0">
         <h2 style="margin:0 0 12px;font-size:1.1em"><?= __('marketplace.televerser_paquet') ?> <code>.fmod</code></h2>
         <form method="post" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
@@ -204,13 +204,13 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     </section>
 <?php endif; ?>
 
-    <section style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:18px;margin:18px 0">
+    <section style="background:var(--bg-card);border:1px solid #e2e8f0;border-radius:10px;padding:18px;margin:18px 0">
         <h2 style="margin:0 0 12px;font-size:1.1em"><?= __('marketplace.modules_installes_signature') ?> (<?= $total ?>)</h2>
         <?php if (empty($installed)): ?>
             <p style="color:#64748b"><?= __('marketplace.aucune_installation') ?></p>
         <?php else: ?>
             <table style="width:100%;border-collapse:collapse;font-size:.92em">
-                <thead style="background:#f8fafc">
+                <thead style="background:var(--bg-secondary)">
                     <tr>
                         <th style="text-align:left;padding:8px"><?= __('marketplace.module') ?></th>
                         <th style="text-align:left;padding:8px"><?= __('marketplace.version') ?></th>

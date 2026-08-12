@@ -135,11 +135,11 @@ ob_start();
 ?>
 <style>
     .create-container { max-width: 800px; margin: 0 auto; }
-    .form-card { background: white; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 20px; }
+    .form-card { background: var(--bg-card); border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 20px; }
     .form-card h3 { margin: 0 0 20px; font-size: 16px; color: #2d3748; }
     .form-group input:focus, .form-group select:focus { border-color: #0f4c81; outline: none; box-shadow: 0 0 0 3px rgba(15,76,129,0.1); }
     .profil-selector { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
-    .profil-btn { padding: 10px 18px; border: 2px solid #e2e8f0; border-radius: 8px; background: white; cursor: pointer; font-size: 14px; transition: all 0.15s; display: flex; align-items: center; gap: 8px; }
+    .profil-btn { padding: 10px 18px; border: 2px solid #e2e8f0; border-radius: 8px; background: var(--bg-card); cursor: pointer; font-size: 14px; transition: all 0.15s; display: flex; align-items: center; gap: 8px; }
     .profil-btn:hover { border-color: #0f4c81; }
     .profil-btn.selected { border-color: #0f4c81; background: #eff6ff; color: #0f4c81; font-weight: 600; }
     .dynamic-fields { display: none; }

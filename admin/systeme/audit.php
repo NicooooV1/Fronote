@@ -66,13 +66,13 @@ ob_start();
 ?>
 <style>
     .audit-container { max-width: 1200px; margin: 0 auto; }
-    .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px; background: white; padding: 12px 15px; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); align-items: flex-end; }
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px; background: var(--bg-card); padding: 12px 15px; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); align-items: flex-end; }
     .filters .fg { display: flex; flex-direction: column; gap: 3px; }
     .filters label { font-size: 11px; font-weight: 600; color: #4a5568; }
     .filters select, .filters input { padding: 6px 8px; border: 1px solid #d2d6dc; border-radius: 5px; font-size: 12px; }
-    .log-table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .log-table { width: 100%; border-collapse: collapse; background: var(--bg-card); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
     .log-table th, .log-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 12px; }
-    .log-table th { background: #f7fafc; font-weight: 600; color: #4a5568; }
+    .log-table th { background: var(--bg-secondary); font-weight: 600; color: #4a5568; }
     .badge-action { display: inline-block; padding: 2px 6px; border-radius: 6px; font-size: 10px; font-weight: 600; font-family: monospace; }
     .ba-create { background: #d1fae5; color: #065f46; } .ba-delete { background: #fee2e2; color: #991b1b; }
     .ba-update { background: #dbeafe; color: #1e40af; } .ba-default { background: #e2e8f0; color: #4a5568; }

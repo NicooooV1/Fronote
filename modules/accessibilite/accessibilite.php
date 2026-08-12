@@ -42,7 +42,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 
     <h2 style="font-size:1.1em;margin:0 0 12px"><?= __('accessibilite.amenagements_par_type') ?></h2>
     <?php if (empty($stats['amenagements_par_type'])): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('accessibilite.aucun_amenagement') ?></p>
+    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('accessibilite.aucun_amenagement') ?></p>
     <?php else: ?>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px">
         <?php foreach ($stats['amenagements_par_type'] as $t): ?>
@@ -62,7 +62,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 
     <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-hands-helping"></i> AESH (<?= count($aesh) ?>)</h2>
     <?php if (empty($aesh)): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('accessibilite.aucun_aesh') ?></p>
+    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('accessibilite.aucun_aesh') ?></p>
     <?php else: ?>
     <div style="overflow-x:auto">
     <table style="width:100%;border-collapse:collapse;font-size:.9em">

@@ -130,13 +130,13 @@ ob_start();
 ?>
 <style>
     .ann-container { max-width: 900px; margin: 0 auto; }
-    .form-card { background: white; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 25px; }
+    .form-card { background: var(--bg-card); border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 25px; }
     .form-card h3 { margin: 0 0 15px; font-size: 18px; }
     .form-group textarea { min-height: 120px; resize: vertical; }
     .target-selector { display: flex; gap: 10px; flex-wrap: wrap; }
     .target-option { padding: 8px 16px; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; }
     .target-option.active { border-color: #0f4c81; background: #eff6ff; color: #0f4c81; }
-    .ann-item { background: white; border-radius: 8px; padding: 14px 18px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+    .ann-item { background: var(--bg-card); border-radius: 8px; padding: 14px 18px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
     .ann-item h4 { margin: 0 0 4px; font-size: 15px; }
     .ann-meta { font-size: 12px; color: #888; }
     .ann-body { font-size: 13px; color: #555; margin-top: 6px; max-height: 50px; overflow: hidden; }

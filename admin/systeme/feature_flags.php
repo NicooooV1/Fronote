@@ -217,7 +217,7 @@ include __DIR__ . '/../includes/header.php';
 }
 .flag-toggle-slider::before {
     content: ''; position: absolute; left: 3px; top: 3px;
-    width: 18px; height: 18px; background: #fff; border-radius: 50%;
+    width: 18px; height: 18px; background: var(--bg-card); border-radius: 50%;
     transition: transform 0.2s;
 }
 .flag-toggle input:checked + .flag-toggle-slider { background: var(--primary); }

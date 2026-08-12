@@ -117,10 +117,10 @@ include __DIR__ . '/../includes/header.php';
 <style>
 .th-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px}
 .th-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-bottom:32px}
-.th-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;transition:.2s}
+.th-card{background:var(--bg-card);border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;transition:.2s}
 .th-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.08)}
 .th-card.active{border-color:#667eea;box-shadow:0 0 0 2px rgba(102,126,234,.3)}
-.th-preview{height:120px;background:#f7fafc;display:flex;align-items:center;justify-content:center;color:#cbd5e0;font-size:2em;position:relative}
+.th-preview{height:120px;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;color:#cbd5e0;font-size:2em;position:relative}
 .th-preview img{width:100%;height:100%;object-fit:cover}
 .th-default-badge{position:absolute;top:8px;right:8px;background:#667eea;color:#fff;font-size:.7em;padding:3px 10px;border-radius:12px;font-weight:600}
 .th-body{padding:16px}
@@ -134,7 +134,7 @@ include __DIR__ . '/../includes/header.php';
 .th-btn-outline{background:transparent;border:1px solid #e2e8f0;color:#4a5568}
 .th-section{margin-bottom:32px}
 .th-section h3{font-size:1em;color:#4a5568;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #e2e8f0}
-.th-upload{background:#f7fafc;border:2px dashed #e2e8f0;border-radius:10px;padding:24px;margin-bottom:24px}
+.th-upload{background:var(--bg-secondary);border:2px dashed #e2e8f0;border-radius:10px;padding:24px;margin-bottom:24px}
 .th-upload label{display:block;font-size:.85em;color:#4a5568;margin-bottom:6px;font-weight:600}
 .th-upload input[type=text],.th-upload textarea{width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:.9em;margin-bottom:12px;box-sizing:border-box}
 .th-upload input[type=file]{margin-bottom:12px}
@@ -306,7 +306,7 @@ include __DIR__ . '/../includes/header.php';
         </div>
 
         <!-- Rapport de contraste WCAG -->
-        <div style="background:#f7fafc;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:.85em">
+        <div style="background:var(--bg-secondary);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:.85em">
             <strong style="color:#4a5568">Contraste (WCAG AA)</strong>
             <?php foreach ($editContrast as $c): ?>
             <div style="display:flex;justify-content:space-between;padding:3px 0">

@@ -128,7 +128,7 @@ include __DIR__ . '/../includes/header.php';
 .toggle-switch{position:relative;width:44px;height:24px}
 .toggle-switch input{opacity:0;width:0;height:0}
 .toggle-slider{position:absolute;inset:0;background:var(--border-color);border-radius:12px;cursor:pointer;transition:.2s}
-.toggle-slider::before{content:'';position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle-slider::before{content:'';position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:var(--bg-card);border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .toggle-switch input:checked+.toggle-slider{background:var(--success-color,#34c759)}
 .toggle-switch input:checked+.toggle-slider::before{transform:translateX(20px)}
 .toggle-switch input:disabled+.toggle-slider{opacity:.5;cursor:not-allowed}

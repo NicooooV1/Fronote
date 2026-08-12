@@ -141,15 +141,15 @@ ob_start();
 ?>
 <style>
     .sessions-container { max-width: 1100px; margin: 0 auto; }
-    .stat-pill { background: white; border-radius: 8px; padding: 12px 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); display: flex; align-items: center; gap: 10px; }
+    .stat-pill { background: var(--bg-card); border-radius: 8px; padding: 12px 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); display: flex; align-items: center; gap: 10px; }
     .stat-pill i { font-size: 20px; color: #0f4c81; }
     .stat-pill .val { font-size: 20px; font-weight: 700; color: #1a202c; }
     .stat-pill .lbl { font-size: 12px; color: #888; }
     .alert-box { background: #fef3cd; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
     .alert-box strong { color: #92400e; }
-    .sess-table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .sess-table { width: 100%; border-collapse: collapse; background: var(--bg-card); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
     .sess-table th, .sess-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
-    .sess-table th { background: #f7fafc; font-weight: 600; color: #4a5568; }
+    .sess-table th { background: var(--bg-secondary); font-weight: 600; color: #4a5568; }
     .top-actions { display: flex; justify-content: flex-end; margin-bottom: 15px; }
     .ip-mono { font-family: monospace; font-size: 12px; color: #555; }
 </style>

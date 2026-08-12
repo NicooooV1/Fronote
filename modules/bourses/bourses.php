@@ -75,7 +75,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <!-- Stats campagne -->
     <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-chart-pie"></i> <?= __('bourses.etat_campagne') ?></h2>
     <?php if (empty($stats['par_statut'])): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('bourses.aucune_demande_campagne') ?></p>
+    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('bourses.aucune_demande_campagne') ?></p>
     <?php else: ?>
     <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:28px">
         <?php foreach ($stats['par_statut'] as $s): ?>
@@ -93,7 +93,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <!-- Demandes à instruire -->
     <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-inbox"></i> <?= __('bourses.demandes_a_instruire') ?> (<?= count($aInstruire) ?>)</h2>
     <?php if (empty($aInstruire)): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('bourses.aucune_demande_instruction') ?></p>
+    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('bourses.aucune_demande_instruction') ?></p>
     <?php else: ?>
     <div style="overflow-x:auto">
     <table style="width:100%;border-collapse:collapse;font-size:.9em">

@@ -38,7 +38,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 
     <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-inbox"></i> <?= __('enquetes.a_repondre') ?> (<?= count($ouvertes) ?>)</h2>
     <?php if (empty($ouvertes)): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('enquetes.aucune_ouverte') ?></p>
+    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('enquetes.aucune_ouverte') ?></p>
     <?php else: ?>
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px">
         <?php foreach ($ouvertes as $e): ?>
@@ -55,7 +55,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <?php if ($isAdmin): ?>
     <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-sliders-h"></i> <?= __('enquetes.pilotage') ?> (<?= count($pilotage) ?>)</h2>
     <?php if (empty($pilotage)): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('enquetes.aucune_creee') ?></p>
+    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('enquetes.aucune_creee') ?></p>
     <?php else: ?>
     <div style="overflow-x:auto">
     <table style="width:100%;border-collapse:collapse;font-size:.9em">

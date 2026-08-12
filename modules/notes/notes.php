@@ -216,7 +216,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                 <?php if ($user_role === 'parent'): ?>
                 <!-- ========== VUE PARENT ========== -->
                 <?php if (count($enfants) > 1): ?>
-                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; background:white; padding:15px 20px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; background:var(--bg-card); padding:15px 20px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
                     <span style="font-weight:600; color:#4a5568; line-height:36px;">Enfant :</span>
                     <?php foreach ($enfants as $e): ?>
                     <a href="?trimestre=<?= $selectedTrimestre ?>&enfant=<?= $e['id'] ?>"
@@ -397,7 +397,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 
                 <!-- Filtres classe / matière -->
                 <?php if (!empty($availableClasses)): ?>
-                <form method="get" class="notes-filter-bar" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:20px; background:white; padding:15px 20px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+                <form method="get" class="notes-filter-bar" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:20px; background:var(--bg-card); padding:15px 20px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
                     <input type="hidden" name="trimestre" value="<?= $selectedTrimestre ?>">
                     <div>
                         <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:4px;"><?= __('label.classe') ?></label>

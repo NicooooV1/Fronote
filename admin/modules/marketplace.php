@@ -74,10 +74,10 @@ include __DIR__ . '/../includes/header.php';
 .mp-search input{padding:8px 14px;border:1px solid #e2e8f0;border-radius:6px;font-size:.9em;width:280px}
 .mp-search button{padding:8px 16px;background:#667eea;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.9em}
 .mp-tabs{display:flex;gap:8px;margin-bottom:20px}
-.mp-tab{padding:6px 16px;border-radius:20px;background:#f7fafc;border:1px solid #e2e8f0;cursor:pointer;font-size:.85em;text-decoration:none;color:#4a5568}
+.mp-tab{padding:6px 16px;border-radius:20px;background:var(--bg-secondary);border:1px solid #e2e8f0;cursor:pointer;font-size:.85em;text-decoration:none;color:#4a5568}
 .mp-tab.active{background:#667eea;color:#fff;border-color:#667eea}
 .mp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
-.mp-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:20px;transition:.2s}
+.mp-card{background:var(--bg-card);border:1px solid #e2e8f0;border-radius:10px;padding:20px;transition:.2s}
 .mp-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.08)}
 .mp-card-header{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px}
 .mp-card-icon{width:48px;height:48px;border-radius:10px;background:#f0f4ff;display:flex;align-items:center;justify-content:center;font-size:1.3em;color:#667eea;flex-shrink:0}

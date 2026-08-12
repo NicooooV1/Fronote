@@ -109,12 +109,12 @@ ob_start();
 ?>
 <style>
     .aff-container { max-width: 1200px; margin: 0 auto; }
-    .matrix-wrapper { overflow-x: auto; background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .matrix-wrapper { overflow-x: auto; background: var(--bg-card); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
     .matrix-table { border-collapse: collapse; width: 100%; min-width: 800px; }
     .matrix-table th, .matrix-table td { padding: 8px 10px; text-align: center; border: 1px solid #edf2f7; font-size: 13px; }
-    .matrix-table thead th { background: #f7fafc; font-weight: 600; color: #4a5568; position: sticky; top: 0; z-index: 1; }
+    .matrix-table thead th { background: var(--bg-secondary); font-weight: 600; color: #4a5568; position: sticky; top: 0; z-index: 1; }
     .matrix-table thead th:first-child { text-align: left; min-width: 180px; position: sticky; left: 0; z-index: 2; background: #edf2f7; }
-    .matrix-table tbody td:first-child { text-align: left; font-weight: 500; position: sticky; left: 0; background: white; z-index: 1; border-right: 2px solid #e2e8f0; }
+    .matrix-table tbody td:first-child { text-align: left; font-weight: 500; position: sticky; left: 0; background: var(--bg-card); z-index: 1; border-right: 2px solid #e2e8f0; }
     .matrix-table tbody tr:hover { background: #f0f7ff; }
     .matrix-table tbody tr:hover td:first-child { background: #f0f7ff; }
     .cell-check { width: 18px; height: 18px; cursor: pointer; accent-color: #0f4c81; }
@@ -177,7 +177,7 @@ include __DIR__ . '/../includes/header.php';
                 <?php endforeach; ?>
             </tbody>
             <tfoot>
-                <tr style="background:#f7fafc;font-weight:600">
+                <tr style="background:var(--bg-secondary);font-weight:600">
                     <td style="text-align:right">Profs/classe →</td>
                     <?php foreach ($classes as $c):
                         $classCount = 0;

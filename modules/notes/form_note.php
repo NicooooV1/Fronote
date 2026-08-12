@@ -227,7 +227,7 @@ include 'includes/header.php';
 
 <?php if ($isEdit): ?>
                 <!-- ═══════════ FORMULAIRE ÉDITION ═══════════ -->
-                <div style="background:white; border-radius:10px; padding:30px; box-shadow:0 2px 8px rgba(0,0,0,0.06); max-width:700px;">
+                <div style="background:var(--bg-card); border-radius:10px; padding:30px; box-shadow:0 2px 8px rgba(0,0,0,0.06); max-width:700px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                         <h2 style="font-size:1.1em; color:#2d3748; margin:0;">Modification de la note</h2>
                         <a href="notes.php" class="btn btn-secondary" style="font-size:13px;"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
@@ -239,11 +239,11 @@ include 'includes/header.php';
                         <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:15px; margin-bottom:15px;">
                             <div>
                                 <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;">Élève</label>
-                                <input type="text" value="<?= htmlspecialchars(($note['prenom_eleve'] ?? '') . ' ' . ($note['nom_eleve'] ?? '')) ?>" readonly class="form-control" style="background:#f7fafc;">
+                                <input type="text" value="<?= htmlspecialchars(($note['prenom_eleve'] ?? '') . ' ' . ($note['nom_eleve'] ?? '')) ?>" readonly class="form-control" style="background:var(--bg-secondary);">
                             </div>
                             <div>
                                 <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;"><?= __('notes.subject') ?></label>
-                                <input type="text" value="<?= htmlspecialchars($note['nom_matiere'] ?? '') ?>" readonly class="form-control" style="background:#f7fafc;">
+                                <input type="text" value="<?= htmlspecialchars($note['nom_matiere'] ?? '') ?>" readonly class="form-control" style="background:var(--bg-secondary);">
                             </div>
                         </div>
 
@@ -291,7 +291,7 @@ include 'includes/header.php';
 
 <?php elseif (empty($eleves)): ?>
                 <!-- ═══════════ ÉTAPE 1 : SÉLECTION CLASSE / MATIÈRE ═══════════ -->
-                <div style="background:white; border-radius:10px; padding:30px; box-shadow:0 2px 8px rgba(0,0,0,0.06); max-width:600px;">
+                <div style="background:var(--bg-card); border-radius:10px; padding:30px; box-shadow:0 2px 8px rgba(0,0,0,0.06); max-width:600px;">
                     <h2 style="font-size:1.1em; color:#2d3748; margin-bottom:20px;">Sélection de la classe et matière</h2>
                     <form method="get" action="">
                         <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:15px; margin-bottom:20px;">
@@ -320,7 +320,7 @@ include 'includes/header.php';
 
 <?php else: ?>
                 <!-- ═══════════ ÉTAPE 2 : SAISIE DES NOTES ═══════════ -->
-                <div style="background:white; border-radius:10px; padding:30px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+                <div style="background:var(--bg-card); border-radius:10px; padding:30px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                         <h2 style="font-size:1.1em; color:#2d3748; margin:0;">
                             Saisie des notes — <?= htmlspecialchars($selectedClasse) ?>
@@ -377,7 +377,7 @@ include 'includes/header.php';
                         <!-- Tableau des élèves -->
                         <table style="width:100%; border-collapse:collapse;">
                             <thead>
-                                <tr style="background:#f7fafc;">
+                                <tr style="background:var(--bg-secondary);">
                                     <th style="padding:10px 15px; text-align:left; font-size:13px; color:#4a5568; font-weight:600; width:35%;">Élève</th>
                                     <th style="padding:10px 15px; text-align:center; font-size:13px; color:#4a5568; font-weight:600; width:15%;"><?= __('notes.grade') ?></th>
                                     <th style="padding:10px 15px; text-align:left; font-size:13px; color:#4a5568; font-weight:600;"><?= __('notes.comment') ?></th>
@@ -403,7 +403,7 @@ include 'includes/header.php';
                         </table>
 
                         <!-- Statistiques temps réel -->
-                        <div id="live-stats" style="display:none; background:#f7fafc; border-radius:10px; padding:15px 20px; margin-top:20px;">
+                        <div id="live-stats" style="display:none; background:var(--bg-secondary); border-radius:10px; padding:15px 20px; margin-top:20px;">
                             <h4 style="margin:0 0 10px; font-size:13px; color:#4a5568; font-weight:600;">
                                 <i class="fas fa-chart-bar" style="margin-right:5px;"></i> Statistiques en temps réel
                             </h4>

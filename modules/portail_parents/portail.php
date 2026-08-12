@@ -31,7 +31,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <h1 style="font-size:1.5em;margin:0 0 16px"><i class="fas fa-user-shield"></i> <?= __('portail_parents.page_title') ?></h1>
 
     <?php if (empty($enfants)): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('portail_parents.no_child') ?></p>
+    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('portail_parents.no_child') ?></p>
     <?php else: ?>
 
     <?php if (count($enfants) > 1): ?>

@@ -39,7 +39,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <?php if (in_array($role, ['professeur', 'administrateur'], true)): ?>
     <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-database"></i> <?= __('evaluations.my_question_banks') ?> (<?= count($banques) ?>)</h2>
     <?php if (empty($banques)): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('evaluations.no_question_bank') ?></p>
+    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('evaluations.no_question_bank') ?></p>
     <?php else: ?>
     <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:28px">
         <?php foreach ($banques as $b): ?>
@@ -54,7 +54,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 
     <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-list-check"></i> <?= __('evaluations.heading') ?> (<?= count($evals) ?>)</h2>
     <?php if (empty($evals)): ?>
-    <p style="color:var(--text-muted,#64748b);background:#f7fafc;padding:16px;border-radius:8px"><?= __('evaluations.none') ?></p>
+    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('evaluations.none') ?></p>
     <?php else: ?>
     <div style="overflow-x:auto">
     <table style="width:100%;border-collapse:collapse;font-size:.9em">

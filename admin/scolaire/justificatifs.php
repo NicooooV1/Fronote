@@ -112,7 +112,7 @@ ob_start();
     .tab-link.active { color: #0f4c81; border-bottom-color: #0f4c81; }
     .tab-badge { padding: 1px 7px; border-radius: 50%; font-size: 11px; font-weight: 600; color: white; }
     .tb-pending { background: #f59e0b; } .tb-approved { background: #059669; } .tb-rejected { background: #dc2626; }
-    .just-card { background: white; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); padding: 18px; margin-bottom: 15px; display: flex; gap: 15px; align-items: flex-start; }
+    .just-card { background: var(--bg-card); border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); padding: 18px; margin-bottom: 15px; display: flex; gap: 15px; align-items: flex-start; }
     .just-card .left { flex: 1; }
     .just-card .right { display: flex; flex-direction: column; gap: 8px; min-width: 200px; }
     .just-card h4 { margin: 0 0 4px; font-size: 15px; }
@@ -121,7 +121,7 @@ ob_start();
     .badge-type { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; background: #e2e8f0; color: #4a5568; }
     .badge-status { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; }
     .status-pending { background: #fef3cd; color: #92400e; } .status-approved { background: #d1fae5; color: #065f46; } .status-rejected { background: #fee2e2; color: #991b1b; }
-    .admin-comment { font-size: 12px; padding: 6px 10px; background: #f8f9fa; border-radius: 6px; margin-top: 6px; color: #555; }
+    .admin-comment { font-size: 12px; padding: 6px 10px; background: var(--bg-secondary); border-radius: 6px; margin-top: 6px; color: #555; }
     .action-form textarea { width: 100%; padding: 6px 8px; border: 1px solid #d2d6dc; border-radius: 6px; font-size: 12px; resize: vertical; box-sizing: border-box; }
     .file-link { color: #0f4c81; font-size: 13px; text-decoration: none; }
     .file-link:hover { text-decoration: underline; }

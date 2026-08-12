@@ -80,7 +80,7 @@ ob_start();
 ?>
 <style>
     .etab-container { max-width: 800px; margin: 0 auto; }
-    .form-card { background: white; border-radius: 10px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .form-card { background: var(--bg-card); border-radius: 10px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
     .form-card h3 { margin: 0 0 20px; font-size: 18px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
     .section-label { font-size: 14px; font-weight: 600; color: #0f4c81; margin: 20px 0 10px; padding-top: 15px; border-top: 1px solid #eee; }
 </style>
