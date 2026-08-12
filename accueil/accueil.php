@@ -78,6 +78,53 @@ include __DIR__ . '/../templates/shared_topbar.php';
                 </div>
             </div>
 
+            <?php
+            // Actions rapides RÔLE-CONSCIENTES : mettent en avant les gestes clés de chaque
+            // profil. Pour un professeur, « Faire l'appel » et « Mon emploi du temps » sont
+            // en vedette (même proéminence). Les liens pointent vers les pages des modules.
+            $quickActionSets = [
+                'professeur' => [
+                    ['label' => "Faire l'appel",        'icon' => 'fas fa-clipboard-check', 'route' => 'modules/appel/appel.php',                       'desc' => 'Présences du cours', 'featured' => true],
+                    ['label' => 'Mon emploi du temps',  'icon' => 'fas fa-calendar-alt',    'route' => 'modules/emploi_du_temps/emploi_du_temps.php',    'desc' => 'Vos cours de la semaine', 'featured' => true],
+                    ['label' => 'Cahier de textes',     'icon' => 'fas fa-book-open',       'route' => 'modules/cahierdetextes/cahierdetextes.php',      'desc' => 'Contenus & devoirs'],
+                    ['label' => 'Saisir des notes',     'icon' => 'fas fa-pen-to-square',   'route' => 'modules/notes/notes.php',                       'desc' => 'Évaluations'],
+                ],
+                'vie_scolaire' => [
+                    ['label' => "Faire l'appel",        'icon' => 'fas fa-clipboard-check', 'route' => 'modules/appel/appel.php',                       'desc' => 'Présences', 'featured' => true],
+                    ['label' => 'Absences',             'icon' => 'fas fa-user-clock',      'route' => 'modules/absences/absences.php',                 'desc' => 'Gestion & justificatifs', 'featured' => true],
+                    ['label' => 'Emploi du temps',      'icon' => 'fas fa-calendar-alt',    'route' => 'modules/emploi_du_temps/emploi_du_temps.php',    'desc' => 'Vue établissement'],
+                    ['label' => 'Messagerie',           'icon' => 'fas fa-envelope',        'route' => 'modules/messagerie/index.php',                  'desc' => 'Vos messages'],
+                ],
+                'eleve' => [
+                    ['label' => 'Mon emploi du temps',  'icon' => 'fas fa-calendar-alt',    'route' => 'modules/emploi_du_temps/emploi_du_temps.php',    'desc' => 'Vos cours', 'featured' => true],
+                    ['label' => 'Mes notes',            'icon' => 'fas fa-chart-line',      'route' => 'modules/notes/notes.php',                       'desc' => 'Vos résultats', 'featured' => true],
+                    ['label' => 'Cahier de textes',     'icon' => 'fas fa-book-open',       'route' => 'modules/cahierdetextes/cahierdetextes.php',      'desc' => 'Devoirs à faire'],
+                    ['label' => 'Messagerie',           'icon' => 'fas fa-envelope',        'route' => 'modules/messagerie/index.php',                  'desc' => 'Vos messages'],
+                ],
+                'parent' => [
+                    ['label' => 'Emploi du temps',      'icon' => 'fas fa-calendar-alt',    'route' => 'modules/emploi_du_temps/emploi_du_temps.php',    'desc' => 'Cours de vos enfants', 'featured' => true],
+                    ['label' => 'Notes',                'icon' => 'fas fa-chart-line',      'route' => 'modules/notes/notes.php',                       'desc' => 'Résultats', 'featured' => true],
+                    ['label' => 'Absences',             'icon' => 'fas fa-user-clock',      'route' => 'modules/absences/absences.php',                 'desc' => 'Suivi'],
+                    ['label' => 'Messagerie',           'icon' => 'fas fa-envelope',        'route' => 'modules/messagerie/index.php',                  'desc' => "Contacter l'établissement"],
+                ],
+            ];
+            $quickActions = $quickActionSets[$user_role] ?? [];
+            ?>
+            <?php if ($quickActions): ?>
+            <section class="quick-actions" aria-label="Actions rapides">
+                <?php foreach ($quickActions as $qa): ?>
+                <a class="qa-card<?= !empty($qa['featured']) ? ' qa-card--featured' : '' ?>" href="<?= htmlspecialchars($rootPrefix . $qa['route']) ?>">
+                    <span class="qa-card__icon"><i class="<?= htmlspecialchars($qa['icon']) ?>"></i></span>
+                    <span class="qa-card__body">
+                        <span class="qa-card__label"><?= htmlspecialchars($qa['label']) ?></span>
+                        <span class="qa-card__desc"><?= htmlspecialchars($qa['desc']) ?></span>
+                    </span>
+                    <i class="fas fa-chevron-right qa-card__arrow" aria-hidden="true"></i>
+                </a>
+                <?php endforeach; ?>
+            </section>
+            <?php endif; ?>
+
             <!-- iPhone-style widget grid -->
             <div class="widget-grid" id="widgetGrid">
                 <?php foreach ($userWidgets as $idx => $widget):
