@@ -292,31 +292,58 @@
     });
 
     // ── Theme toggle ────────────────────────────────────────────
-    var themeToggle = document.getElementById('topbar-theme-toggle');
-    var iconLight = document.getElementById('theme-icon-light');
-    var iconDark = document.getElementById('theme-icon-dark');
+    // ── Moteur de thème UNIFIÉ (source de vérité unique) ─────────
+    // Une préférence ('light'|'dark'|'liquid'|'auto') → un data-theme effectif.
+    // Utilisé par le toggle topbar ET le sélecteur des Paramètres (window.FronoteUI.setTheme).
+    // Persistance instantanée sur l'appareil via localStorage ; la préférence durable
+    // est écrite en base par le formulaire des Paramètres.
+    var THEME_CYCLE = ['light', 'dark', 'liquid']; // ordre du bouton bascule
+    var el = document.documentElement;
 
-    function updateThemeIcons() {
-        var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        if (iconLight) iconLight.style.display = isDark ? 'none' : '';
-        if (iconDark) iconDark.style.display = isDark ? '' : 'none';
+    function resolveTheme(pref) {
+        if (pref === 'auto' || !pref) {
+            return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+        }
+        return (['light', 'dark', 'liquid'].indexOf(pref) >= 0) ? pref : 'light';
     }
 
+    function updateThemeIcons() {
+        var t = el.getAttribute('data-theme') || 'light';
+        var icons = { light: 'theme-icon-light', dark: 'theme-icon-dark', liquid: 'theme-icon-liquid' };
+        for (var key in icons) {
+            var node = document.getElementById(icons[key]);
+            if (node) node.style.display = (t === key) ? '' : 'none';
+        }
+    }
+
+    // API publique : appliquer un thème instantanément (aperçu + bascule).
+    window.FronoteUI = window.FronoteUI || {};
+    window.FronoteUI.setTheme = function (pref) {
+        var theme = resolveTheme(pref);
+        el.setAttribute('data-theme', theme);
+        el.setAttribute('data-theme-pref', pref);
+        try { localStorage.setItem('fronote_dark_mode', pref); } catch (e) {}
+        updateThemeIcons();
+    };
+    window.FronoteUI.cycleTheme = function () {
+        var pref = (function () { try { return localStorage.getItem('fronote_dark_mode'); } catch (e) { return null; } })()
+            || el.getAttribute('data-theme-pref') || el.getAttribute('data-theme') || 'light';
+        // On boucle sur le thème EFFECTIF (auto est résolu) pour un cycle prévisible.
+        var current = (THEME_CYCLE.indexOf(pref) >= 0) ? pref : resolveTheme(pref);
+        var next = THEME_CYCLE[(THEME_CYCLE.indexOf(current) + 1) % THEME_CYCLE.length];
+        window.FronoteUI.setTheme(next);
+    };
+
+    var themeToggle = document.getElementById('topbar-theme-toggle');
     if (themeToggle) {
-        themeToggle.addEventListener('click', function () {
-            var current = document.documentElement.getAttribute('data-theme') || 'light';
-            var next = current === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', next);
-            try { localStorage.setItem('fronote_dark_mode', next); } catch (e) {}
-            updateThemeIcons();
-        });
+        themeToggle.addEventListener('click', window.FronoteUI.cycleTheme);
     }
 
     updateThemeIcons();
 
-    // Watch for external theme changes (e.g., from sidebar toggle)
+    // Refléter tout changement externe de data-theme (ex. depuis les Paramètres).
     var observer = new MutationObserver(updateThemeIcons);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    observer.observe(el, { attributes: true, attributeFilter: ['data-theme'] });
 
     // ── Favoris (épingler des modules) ──────────────────────────
     function csrfToken() {

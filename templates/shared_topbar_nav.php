@@ -163,6 +163,7 @@ $_topbar_role           = $__nav['role'];
         <button class="topbar-action-btn" id="topbar-theme-toggle" title="Theme" aria-label="<?= __('nav.theme_toggle', ['default' => 'Changer de thème']) ?>" type="button">
             <i class="fas fa-sun" id="theme-icon-light" aria-hidden="true"></i>
             <i class="fas fa-moon" id="theme-icon-dark" style="display:none" aria-hidden="true"></i>
+            <i class="fas fa-droplet" id="theme-icon-liquid" style="display:none" aria-hidden="true"></i>
         </button>
 
         <!-- Parent child selector -->
