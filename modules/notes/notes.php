@@ -174,7 +174,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                 <?php if (isAdmin()): ?>
                 <div class="admin-toolbar">
                     <span class="admin-toolbar-badge"><i class="fas fa-shield-alt"></i> Administration</span>
-                    <span style="font-size:13px;color:#4a5568">Vue complète — <?= $totalNotes ?> note(s) au total</span>
+                    <span style="font-size:13px;color:var(--text-color, #4a5568)">Vue complète — <?= $totalNotes ?> note(s) au total</span>
                     <a href="form_note.php" class="btn-sm" style="background:#059669;color:white;text-decoration:none;margin-left:auto"><i class="fas fa-plus"></i> Ajouter une note</a>
                     <a href="../../admin/scolaire/notes.php" class="btn-sm" style="background:#0f4c81;color:white;text-decoration:none"><i class="fas fa-cog"></i> Panneau admin</a>
                 </div>
@@ -217,7 +217,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                 <!-- ========== VUE PARENT ========== -->
                 <?php if (count($enfants) > 1): ?>
                 <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; background:var(--bg-card); padding:15px 20px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-                    <span style="font-weight:600; color:#4a5568; line-height:36px;">Enfant :</span>
+                    <span style="font-weight:600; color:var(--text-color, #4a5568); line-height:36px;">Enfant :</span>
                     <?php foreach ($enfants as $e): ?>
                     <a href="?trimestre=<?= $selectedTrimestre ?>&enfant=<?= $e['id'] ?>"
                        class="btn <?= $e['id'] == $selectedEnfantId ? 'btn-primary' : 'btn-secondary' ?>">
@@ -227,7 +227,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                     <?php endforeach; ?>
                 </div>
                 <?php elseif (!empty($enfants)): ?>
-                <p style="color:#4a5568; margin-bottom:16px;">Notes de <strong><?= htmlspecialchars($selectedEnfantNom) ?></strong></p>
+                <p style="color:var(--text-color, #4a5568); margin-bottom:16px;">Notes de <strong><?= htmlspecialchars($selectedEnfantNom) ?></strong></p>
                 <?php endif; ?>
 
                 <?php if (empty($enfants)): ?>
@@ -400,7 +400,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                 <form method="get" class="notes-filter-bar" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:20px; background:var(--bg-card); padding:15px 20px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
                     <input type="hidden" name="trimestre" value="<?= $selectedTrimestre ?>">
                     <div>
-                        <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:4px;"><?= __('label.classe') ?></label>
+                        <label style="display:block; font-size:12px; font-weight:600; color:var(--text-color, #4a5568); margin-bottom:4px;"><?= __('label.classe') ?></label>
                         <select name="classe" class="form-control" style="min-width:140px;">
                             <option value=""><?= __('label.toutes') ?></option>
                             <?php foreach ($availableClasses as $c): ?>
@@ -409,7 +409,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                         </select>
                     </div>
                     <div>
-                        <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:4px;"><?= __('label.matiere') ?></label>
+                        <label style="display:block; font-size:12px; font-weight:600; color:var(--text-color, #4a5568); margin-bottom:4px;"><?= __('label.matiere') ?></label>
                         <select name="matiere" class="form-control" style="min-width:160px;">
                             <option value=""><?= __('label.toutes') ?></option>
                             <?php foreach ($availableMatieres as $m): ?>
@@ -419,7 +419,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                     </div>
                     <button type="submit" class="btn btn-secondary" style="height:38px;"><i class="fas fa-filter"></i> <?= __('btn.filter') ?></button>
                     <?php if ($filterClasse || $filterMatiere): ?>
-                    <a href="?trimestre=<?= $selectedTrimestre ?>" class="btn btn-sm" style="color:#718096; height:38px; line-height:38px;">✕ Réinitialiser</a>
+                    <a href="?trimestre=<?= $selectedTrimestre ?>" class="btn btn-sm" style="color:var(--text-light, #718096); height:38px; line-height:38px;">✕ Réinitialiser</a>
                     <?php endif; ?>
                 </form>
                 <?php endif; ?>
@@ -635,7 +635,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                     <a href="?<?= $queryBase ?>&page=<?= $currentPage - 1 ?>" class="btn btn-sm btn-secondary">&laquo; Précédent</a>
                     <?php endif; ?>
 
-                    <span style="font-size:14px;color:#4a5568;">
+                    <span style="font-size:14px;color:var(--text-color, #4a5568);">
                         Page <?= $currentPage ?> / <?= $totalPages ?> (<?= $totalNotes ?> notes)
                     </span>
 

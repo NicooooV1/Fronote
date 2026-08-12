@@ -138,15 +138,15 @@ ob_start();
 ?>
 <style>
     .abs-container { max-width: 1200px; margin: 0 auto; }
-    .tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid #eee; }
-    .tab-link { padding: 10px 20px; text-decoration: none; font-size: 14px; font-weight: 500; color: #666; border-bottom: 2px solid transparent; margin-bottom: -2px; display: flex; align-items: center; gap: 6px; }
+    .tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid var(--border-color, #eee); }
+    .tab-link { padding: 10px 20px; text-decoration: none; font-size: 14px; font-weight: 500; color: var(--text-light, #666); border-bottom: 2px solid transparent; margin-bottom: -2px; display: flex; align-items: center; gap: 6px; }
     .tab-link.active { color: #0f4c81; border-bottom-color: #0f4c81; }
     .tab-badge { background: #e74c3c; color: white; border-radius: 50%; padding: 1px 6px; font-size: 11px; }
     .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; align-items: flex-end; }
     .filters select, .filters input { padding: 7px 10px; border: 1px solid #d2d6dc; border-radius: 6px; font-size: 13px; }
     .data-table { width: 100%; border-collapse: collapse; background: var(--bg-card); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .data-table th, .data-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
-    .data-table th { background: var(--bg-secondary); font-weight: 600; color: #4a5568; font-size: 12px; }
+    .data-table th, .data-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border-color, #f0f0f0); font-size: 13px; }
+    .data-table th { background: var(--bg-secondary); font-weight: 600; color: var(--text-color, #4a5568); font-size: 12px; }
     .badge-j { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
     .badge-oui { background: #d1fae5; color: #065f46; } .badge-non { background: #fee2e2; color: #991b1b; }
 </style>
@@ -184,7 +184,7 @@ include __DIR__ . '/../includes/header.php';
     <?php if ($tab === 'absences'): ?>
     <!-- Tableau Absences -->
     <?php if (empty($absences)): ?>
-        <div style="text-align:center;padding:40px;color:#999"><p>Aucune absence trouvée.</p></div>
+        <div style="text-align:center;padding:40px;color:var(--text-muted, #999)"><p>Aucune absence trouvée.</p></div>
     <?php else: ?>
     <table class="data-table">
         <thead><tr><th>Élève</th><th>Classe</th><th>Début</th><th>Fin</th><th>Type</th><th>Motif</th><th>Justifié</th><th>Actions</th></tr></thead>
@@ -211,7 +211,7 @@ include __DIR__ . '/../includes/header.php';
     <?php else: ?>
     <!-- Tableau Retards -->
     <?php if (empty($retards)): ?>
-        <div style="text-align:center;padding:40px;color:#999"><p>Aucun retard trouvé.</p></div>
+        <div style="text-align:center;padding:40px;color:var(--text-muted, #999)"><p>Aucun retard trouvé.</p></div>
     <?php else: ?>
     <table class="data-table">
         <thead><tr><th>Élève</th><th>Classe</th><th>Date</th><th>Durée</th><th>Motif</th><th>Justifié</th><th>Actions</th></tr></thead>

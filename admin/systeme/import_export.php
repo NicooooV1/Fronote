@@ -315,26 +315,26 @@ ob_start();
 
     /* Tabs */
     .ie-tabs { display: flex; gap: 0; margin-bottom: 20px; background: var(--bg-card); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
-    .ie-tab { flex: 1; text-align: center; padding: 12px 20px; font-size: 13px; font-weight: 600; color: #4a5568; text-decoration: none; border-bottom: 3px solid transparent; transition: all 0.2s; }
-    .ie-tab:hover { background: var(--bg-secondary); color: #2d3748; }
-    .ie-tab.active { color: #4f46e5; border-bottom-color: #4f46e5; background: #f0f0ff; }
+    .ie-tab { flex: 1; text-align: center; padding: 12px 20px; font-size: 13px; font-weight: 600; color: var(--text-color, #4a5568); text-decoration: none; border-bottom: 3px solid transparent; transition: all 0.2s; }
+    .ie-tab:hover { background: var(--bg-secondary); color: var(--text-color, #2d3748); }
+    .ie-tab.active { color: #4f46e5; border-bottom-color: #4f46e5; background: rgba(79, 70, 229, 0.14); }
     .ie-tab i { margin-right: 6px; }
 
     /* Stats bar */
     .stats-bar { display: flex; gap: 15px; margin-bottom: 20px; }
     .stat-card { flex: 1; background: var(--bg-card); padding: 15px 20px; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); text-align: center; }
-    .stat-card .val { font-size: 24px; font-weight: 700; color: #2d3748; }
-    .stat-card .lbl { font-size: 11px; color: #718096; margin-top: 4px; }
+    .stat-card .val { font-size: 24px; font-weight: 700; color: var(--text-color, #2d3748); }
+    .stat-card .lbl { font-size: 11px; color: var(--text-light, #718096); margin-top: 4px; }
 
     /* Cards */
     .ie-card { background: var(--bg-card); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); padding: 20px 24px; margin-bottom: 20px; }
-    .ie-card h3 { font-size: 15px; font-weight: 700; color: #2d3748; margin: 0 0 15px; display: flex; align-items: center; gap: 8px; }
+    .ie-card h3 { font-size: 15px; font-weight: 700; color: var(--text-color, #2d3748); margin: 0 0 15px; display: flex; align-items: center; gap: 8px; }
     .ie-card h3 i { color: #4f46e5; }
 
     /* Forms */
     .form-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
     .form-group { display: flex; flex-direction: column; gap: 4px; }
-    .form-group label { font-size: 11px; font-weight: 600; color: #4a5568; }
+    .form-group label { font-size: 11px; font-weight: 600; color: var(--text-color, #4a5568); }
     .form-group select, .form-group input[type="file"] { padding: 7px 10px; border: 1px solid #d2d6dc; border-radius: 6px; font-size: 12px; min-width: 180px; }
     .form-group input[type="file"] { padding: 5px; }
 
@@ -359,14 +359,14 @@ ob_start();
 
     /* Preview table */
     .preview-table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 12px 0; }
-    .preview-table th, .preview-table td { padding: 6px 10px; text-align: left; border-bottom: 1px solid #f0f0f0; }
-    .preview-table th { background: var(--bg-secondary); font-weight: 600; color: #4a5568; font-size: 11px; }
-    .preview-table tr:hover { background: #fafafa; }
+    .preview-table th, .preview-table td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border-color, #f0f0f0); }
+    .preview-table th { background: var(--bg-secondary); font-weight: 600; color: var(--text-color, #4a5568); font-size: 11px; }
+    .preview-table tr:hover { background: var(--bg-hover, #fafafa); }
 
     /* History table */
     .history-table { width: 100%; border-collapse: collapse; }
-    .history-table th, .history-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 12px; }
-    .history-table th { background: var(--bg-secondary); font-weight: 600; color: #4a5568; }
+    .history-table th, .history-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border-color, #f0f0f0); font-size: 12px; }
+    .history-table th { background: var(--bg-secondary); font-weight: 600; color: var(--text-color, #4a5568); }
     .badge-type { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; }
     .badge-export { background: #dbeafe; color: #1e40af; }
     .badge-import { background: #fef3c7; color: #92400e; }
@@ -378,10 +378,10 @@ ob_start();
     /* Checkbox row */
     .checkbox-row { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
     .checkbox-row input[type="checkbox"] { accent-color: #4f46e5; }
-    .checkbox-row label { font-size: 12px; color: #4a5568; cursor: pointer; }
+    .checkbox-row label { font-size: 12px; color: var(--text-color, #4a5568); cursor: pointer; }
 
     /* SQL tables selector */
-    .tables-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px; max-height: 250px; overflow-y: auto; padding: 10px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb; margin-bottom: 12px; }
+    .tables-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px; max-height: 250px; overflow-y: auto; padding: 10px; background: var(--bg-secondary, #f9fafb); border-radius: 6px; border: 1px solid var(--border-color, #e5e7eb); margin-bottom: 12px; }
     .tables-grid label { font-size: 11px; display: flex; align-items: center; gap: 4px; padding: 3px 0; }
 
     /* Passwords list */
@@ -396,7 +396,7 @@ ob_start();
     .errors-list li { font-size: 11px; color: #991b1b; padding: 2px 0; }
 
     /* Separator */
-    .ie-separator { border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0; }
+    .ie-separator { border: 0; border-top: 1px solid var(--border-color, #e5e7eb); margin: 20px 0; }
 
     /* Select all / none */
     .select-actions { display: flex; gap: 8px; margin-bottom: 6px; }
@@ -465,7 +465,7 @@ include __DIR__ . '/../includes/header.php';
         <!-- Export configuration -->
         <div class="ie-card">
             <h3><i class="fas fa-cogs"></i> Exporter la configuration</h3>
-            <p style="font-size:12px;color:#718096;margin:0 0 12px">Exporte les modules, permissions et parametres du systeme au format JSON.</p>
+            <p style="font-size:12px;color:var(--text-light, #718096);margin:0 0 12px">Exporte les modules, permissions et parametres du systeme au format JSON.</p>
             <form method="post" action="?tab=export">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
                 <input type="hidden" name="action" value="export_config">
@@ -476,7 +476,7 @@ include __DIR__ . '/../includes/header.php';
         <!-- Export SQL -->
         <div class="ie-card">
             <h3><i class="fas fa-database"></i> Sauvegarde SQL</h3>
-            <p style="font-size:12px;color:#718096;margin:0 0 12px">Genere un dump SQL des tables selectionnees (structure + donnees).</p>
+            <p style="font-size:12px;color:var(--text-light, #718096);margin:0 0 12px">Genere un dump SQL des tables selectionnees (structure + donnees).</p>
             <form method="post" action="?tab=export">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
                 <input type="hidden" name="action" value="export_sql">
@@ -519,16 +519,16 @@ include __DIR__ . '/../includes/header.php';
             <div class="ie-card">
                 <h3><i class="fas fa-wand-magic-sparkles"></i> Correspondance des colonnes — <?= htmlspecialchars($bpSchema['label'] ?? $bulkPreview['entity']) ?></h3>
                 <div style="display:flex;gap:18px;margin:8px 0 14px">
-                    <div style="text-align:center"><div style="font-size:20px;font-weight:700;color:#059669"><?= $bpPrev['valid'] ?></div><div style="font-size:11px;color:#718096">Valides</div></div>
-                    <div style="text-align:center"><div style="font-size:20px;font-weight:700;color:#d97706"><?= $bpPrev['dedup'] ?></div><div style="font-size:11px;color:#718096">Doublons</div></div>
-                    <div style="text-align:center"><div style="font-size:20px;font-weight:700;color:#dc2626"><?= count($bpPrev['invalid']) ?></div><div style="font-size:11px;color:#718096">Erreurs</div></div>
-                    <div style="text-align:center"><div style="font-size:20px;font-weight:700;color:#2d3748"><?= $bpPrev['total'] ?></div><div style="font-size:11px;color:#718096">Total</div></div>
+                    <div style="text-align:center"><div style="font-size:20px;font-weight:700;color:#059669"><?= $bpPrev['valid'] ?></div><div style="font-size:11px;color:var(--text-light, #718096)">Valides</div></div>
+                    <div style="text-align:center"><div style="font-size:20px;font-weight:700;color:#d97706"><?= $bpPrev['dedup'] ?></div><div style="font-size:11px;color:var(--text-light, #718096)">Doublons</div></div>
+                    <div style="text-align:center"><div style="font-size:20px;font-weight:700;color:#dc2626"><?= count($bpPrev['invalid']) ?></div><div style="font-size:11px;color:var(--text-light, #718096)">Erreurs</div></div>
+                    <div style="text-align:center"><div style="font-size:20px;font-weight:700;color:var(--text-color, #2d3748)"><?= $bpPrev['total'] ?></div><div style="font-size:11px;color:var(--text-light, #718096)">Total</div></div>
                 </div>
 
                 <form method="post" action="?tab=import">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
                     <input type="hidden" name="action" value="bulk_confirm">
-                    <p style="font-size:12px;color:#718096;margin:0 0 8px">Vérifiez à quelle colonne de la base chaque en-tête de votre fichier correspond. « Ignorer » exclut la colonne.</p>
+                    <p style="font-size:12px;color:var(--text-light, #718096);margin:0 0 8px">Vérifiez à quelle colonne de la base chaque en-tête de votre fichier correspond. « Ignorer » exclut la colonne.</p>
                     <div style="overflow-x:auto">
                         <table class="preview-table">
                             <thead><tr><th>En-tête du fichier</th><th>→ Colonne cible</th></tr></thead>
@@ -586,7 +586,7 @@ include __DIR__ . '/../includes/header.php';
                 <h3><i class="fas fa-eye"></i> Apercu de l'import</h3>
 
                 <?php if ($previewData && $previewData['type'] === 'users'): ?>
-                    <p style="font-size:12px;color:#4a5568;margin-bottom:10px">
+                    <p style="font-size:12px;color:var(--text-color, #4a5568);margin-bottom:10px">
                         <strong>Fichier :</strong> <?= htmlspecialchars($pending['name']) ?> |
                         <strong>Type :</strong> <?= htmlspecialchars($userTypes[$previewData['user_type']] ?? $previewData['user_type']) ?> |
                         <strong>Lignes :</strong> <?= $previewData['total_lines'] ?>
@@ -609,13 +609,13 @@ include __DIR__ . '/../includes/header.php';
                                     </tr>
                                 <?php endforeach; ?>
                                 <?php if ($previewData['total_lines'] > 5): ?>
-                                    <tr><td colspan="<?= count($previewData['headers']) ?>" style="text-align:center;color:#999;font-style:italic">... et <?= $previewData['total_lines'] - 5 ?> autre(s) ligne(s)</td></tr>
+                                    <tr><td colspan="<?= count($previewData['headers']) ?>" style="text-align:center;color:var(--text-muted, #999);font-style:italic">... et <?= $previewData['total_lines'] - 5 ?> autre(s) ligne(s)</td></tr>
                                 <?php endif; ?>
                             </tbody>
                         </table>
                     </div>
                 <?php elseif ($previewData && $previewData['type'] === 'config'): ?>
-                    <p style="font-size:12px;color:#4a5568">
+                    <p style="font-size:12px;color:var(--text-color, #4a5568)">
                         <strong>Fichier :</strong> <?= htmlspecialchars($pending['name']) ?><br>
                         <strong>Date d'export :</strong> <?= htmlspecialchars($previewData['date']) ?><br>
                         <strong>Modules :</strong> <?= $previewData['modules'] ?>
@@ -653,32 +653,32 @@ include __DIR__ . '/../includes/header.php';
                 <div style="display:flex;gap:20px;margin-bottom:15px">
                     <?php if (isset($importResult['nb_total'])): ?>
                         <div style="text-align:center">
-                            <div style="font-size:20px;font-weight:700;color:#2d3748"><?= $importResult['nb_total'] ?></div>
-                            <div style="font-size:11px;color:#718096">Total</div>
+                            <div style="font-size:20px;font-weight:700;color:var(--text-color, #2d3748)"><?= $importResult['nb_total'] ?></div>
+                            <div style="font-size:11px;color:var(--text-light, #718096)">Total</div>
                         </div>
                     <?php endif; ?>
                     <?php if (isset($importResult['nb_importes'])): ?>
                         <div style="text-align:center">
                             <div style="font-size:20px;font-weight:700;color:#059669"><?= $importResult['nb_importes'] ?></div>
-                            <div style="font-size:11px;color:#718096">Importes</div>
+                            <div style="font-size:11px;color:var(--text-light, #718096)">Importes</div>
                         </div>
                     <?php endif; ?>
                     <?php if (isset($importResult['nb_doublons']) && $importResult['nb_doublons'] > 0): ?>
                         <div style="text-align:center">
                             <div style="font-size:20px;font-weight:700;color:#d97706"><?= $importResult['nb_doublons'] ?></div>
-                            <div style="font-size:11px;color:#718096">Doublons</div>
+                            <div style="font-size:11px;color:var(--text-light, #718096)">Doublons</div>
                         </div>
                     <?php endif; ?>
                     <?php if (isset($importResult['nb_erreurs']) && $importResult['nb_erreurs'] > 0): ?>
                         <div style="text-align:center">
                             <div style="font-size:20px;font-weight:700;color:#dc2626"><?= $importResult['nb_erreurs'] ?></div>
-                            <div style="font-size:11px;color:#718096">Erreurs</div>
+                            <div style="font-size:11px;color:var(--text-light, #718096)">Erreurs</div>
                         </div>
                     <?php endif; ?>
                     <?php if (isset($importResult['nb_traites'])): ?>
                         <div style="text-align:center">
                             <div style="font-size:20px;font-weight:700;color:#059669"><?= $importResult['nb_traites'] ?></div>
-                            <div style="font-size:11px;color:#718096">Traites</div>
+                            <div style="font-size:11px;color:var(--text-light, #718096)">Traites</div>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -723,7 +723,7 @@ include __DIR__ . '/../includes/header.php';
             <!-- Import en masse (toutes entités, CSV ou copier-coller) -->
             <div class="ie-card">
                 <h3><i class="fas fa-table"></i> Import en masse</h3>
-                <p style="font-size:12px;color:#718096;margin:0 0 10px">
+                <p style="font-size:12px;color:var(--text-light, #718096);margin:0 0 10px">
                     Importez élèves, professeurs, parents, classes, matières, notes, devoirs — par fichier CSV/TSV
                     <strong>ou en collant directement un tableau</strong> (depuis un tableur ou un export Pronote).
                     Les en-têtes sont reconnus automatiquement (« Né(e) le », « Matière », « Période »…) ;
@@ -766,7 +766,7 @@ include __DIR__ . '/../includes/header.php';
             <!-- Formulaire d'upload -->
             <div class="ie-card">
                 <h3><i class="fas fa-file-upload"></i> Importer des utilisateurs (CSV)</h3>
-                <p style="font-size:12px;color:#718096;margin:0 0 10px">
+                <p style="font-size:12px;color:var(--text-light, #718096);margin:0 0 10px">
                     Le fichier CSV doit contenir les colonnes : <code>nom</code>, <code>prenom</code>, <code>mail</code>, <code>identifiant</code> (optionnel).
                     Separateur : point-virgule (;). Encodage : UTF-8.
                 </p>
@@ -794,7 +794,7 @@ include __DIR__ . '/../includes/header.php';
 
             <div class="ie-card">
                 <h3><i class="fas fa-file-import"></i> Importer une configuration (JSON)</h3>
-                <p style="font-size:12px;color:#718096;margin:0 0 10px">
+                <p style="font-size:12px;color:var(--text-light, #718096);margin:0 0 10px">
                     Importez un fichier JSON prealablement exporte depuis l'onglet Export.
                     Cela mettra a jour les modules et permissions existants.
                 </p>
@@ -822,7 +822,7 @@ include __DIR__ . '/../includes/header.php';
             <h3><i class="fas fa-history"></i> Historique des operations (<?= $historyCount ?> entrees)</h3>
 
             <?php if (empty($history)): ?>
-                <div style="text-align:center;padding:30px;color:#999">
+                <div style="text-align:center;padding:30px;color:var(--text-muted, #999)">
                     <i class="fas fa-inbox" style="font-size:32px;margin-bottom:10px;display:block"></i>
                     Aucune operation enregistree.
                 </div>
@@ -846,7 +846,7 @@ include __DIR__ . '/../includes/header.php';
                         <tbody>
                             <?php foreach ($history as $h): ?>
                                 <tr>
-                                    <td style="color:#888"><?= $h['id'] ?></td>
+                                    <td style="color:var(--text-muted, #888)"><?= $h['id'] ?></td>
                                     <td style="font-size:11px;white-space:nowrap"><?= date('d/m/Y H:i', strtotime($h['created_at'])) ?></td>
                                     <td>
                                         <span class="badge-type badge-<?= $h['type'] ?>">
@@ -862,7 +862,7 @@ include __DIR__ . '/../includes/header.php';
                                         <?php if (($h['nb_erreurs'] ?? 0) > 0): ?>
                                             <span style="color:#dc2626;font-weight:600"><?= $h['nb_erreurs'] ?></span>
                                         <?php else: ?>
-                                            <span style="color:#999">0</span>
+                                            <span style="color:var(--text-muted, #999)">0</span>
                                         <?php endif; ?>
                                     </td>
                                     <td>

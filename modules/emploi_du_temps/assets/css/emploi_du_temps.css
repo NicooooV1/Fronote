@@ -5,10 +5,10 @@
 /* Variables spécifiques au module */
 :root {
     --edt-cell-min-height: 80px;
-    --edt-border-color: #e0e0e0;
+    --edt-border-color: var(--border-color, #e0e0e0);
     --edt-header-bg: var(--sidebar-bg, #2c3e50);
     --edt-header-color: #fff;
-    --edt-time-bg: #f8f9fa;
+    --edt-time-bg: var(--bg-secondary, #f8f9fa);
 }
 
 /* ======= GRILLE EDT ======= */
@@ -62,13 +62,13 @@
 .edt-time-range {
     display: block;
     font-size: 0.75rem;
-    color: #888;
+    color: var(--text-muted, #888);
     margin-top: 2px;
 }
 
 /* ======= CELLULE COURS ======= */
 .edt-cours {
-    background: #fff;
+    background: var(--bg-card, #fff);
     border-radius: 6px;
     padding: 0.4rem 0.5rem;
     height: 100%;
@@ -85,7 +85,7 @@
 .edt-cours-matiere {
     font-weight: 700;
     font-size: 0.85rem;
-    color: #2c3e50;
+    color: var(--text-color, #2c3e50);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -95,7 +95,7 @@
 .edt-cours-classe,
 .edt-cours-salle {
     font-size: 0.75rem;
-    color: #666;
+    color: var(--text-light, #666);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -117,7 +117,7 @@
 
 /* ======= FILTRES ======= */
 .filters-bar {
-    background: #fff;
+    background: var(--bg-card, #fff);
     border-radius: 8px;
     padding: 1rem 1.25rem;
     margin-bottom: 1rem;
@@ -145,10 +145,10 @@
 
 .filter-group select {
     padding: 0.4rem 0.75rem;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color, #ddd);
     border-radius: 6px;
     font-size: 0.9rem;
-    background: #fff;
+    background: var(--bg-card, #fff);
 }
 
 /* ======= FORMULAIRE GESTION COURS ======= */
@@ -173,7 +173,7 @@
 .form-grid .form-group .form-control {
     width: 100%;
     padding: 0.5rem 0.75rem;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color, #ddd);
     border-radius: 6px;
     font-size: 0.9rem;
 }
@@ -189,14 +189,14 @@
     gap: 0.75rem;
     margin-top: 1.5rem;
     padding-top: 1rem;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--border-color, #eee);
 }
 
 /* ======= EMPTY STATE ======= */
 .empty-state {
     text-align: center;
     padding: 3rem 1rem;
-    color: #888;
+    color: var(--text-muted, #888);
 }
 
 .empty-state i {
@@ -205,7 +205,7 @@
 }
 
 .empty-state h3 {
-    color: #555;
+    color: var(--text-color, #555);
     margin-bottom: 0.5rem;
 }
 

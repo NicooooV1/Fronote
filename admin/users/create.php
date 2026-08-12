@@ -136,10 +136,10 @@ ob_start();
 <style>
     .create-container { max-width: 800px; margin: 0 auto; }
     .form-card { background: var(--bg-card); border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 20px; }
-    .form-card h3 { margin: 0 0 20px; font-size: 16px; color: #2d3748; }
+    .form-card h3 { margin: 0 0 20px; font-size: 16px; color: var(--text-color, #2d3748); }
     .form-group input:focus, .form-group select:focus { border-color: #0f4c81; outline: none; box-shadow: 0 0 0 3px rgba(15,76,129,0.1); }
     .profil-selector { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
-    .profil-btn { padding: 10px 18px; border: 2px solid #e2e8f0; border-radius: 8px; background: var(--bg-card); cursor: pointer; font-size: 14px; transition: all 0.15s; display: flex; align-items: center; gap: 8px; }
+    .profil-btn { padding: 10px 18px; border: 2px solid var(--border-color, #e2e8f0); border-radius: 8px; background: var(--bg-card); cursor: pointer; font-size: 14px; transition: all 0.15s; display: flex; align-items: center; gap: 8px; }
     .profil-btn:hover { border-color: #0f4c81; }
     .profil-btn.selected { border-color: #0f4c81; background: #eff6ff; color: #0f4c81; font-weight: 600; }
     .dynamic-fields { display: none; }
@@ -253,13 +253,13 @@ include __DIR__ . '/../includes/header.php';
         <!-- Champs administrateur -->
         <div class="dynamic-fields" id="fields-administrateur">
             <h3><i class="fas fa-user-shield"></i> Administrateur</h3>
-            <p style="font-size:13px;color:#718096;">Aucun champ spécifique requis. L'utilisateur aura un accès complet au panneau d'administration.</p>
+            <p style="font-size:13px;color:var(--text-light, #718096);">Aucun champ spécifique requis. L'utilisateur aura un accès complet au panneau d'administration.</p>
         </div>
 
         <!-- Rôles fonctionnels (catalogue) — rôle principal + sous-rôles, pour le personnel -->
         <div class="dynamic-fields" id="fields-roles">
             <h3><i class="fas fa-user-shield"></i> Rôles fonctionnels</h3>
-            <p style="font-size:13px;color:#718096;">Un <strong>rôle principal</strong> + des <strong>sous-rôles</strong> donnant des permissions spécifiques. Les élèves et les parents n'ont en général qu'un seul rôle (leur type) ; le personnel peut en cumuler plusieurs.</p>
+            <p style="font-size:13px;color:var(--text-light, #718096);">Un <strong>rôle principal</strong> + des <strong>sous-rôles</strong> donnant des permissions spécifiques. Les élèves et les parents n'ont en général qu'un seul rôle (leur type) ; le personnel peut en cumuler plusieurs.</p>
             <div class="form-group">
                 <label>Rôle principal</label>
                 <select name="principal_role">
@@ -276,12 +276,12 @@ include __DIR__ . '/../includes/header.php';
             </div>
             <div class="form-group">
                 <label>Sous-rôles (permissions additionnelles)</label>
-                <div style="max-height:240px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;padding:10px">
+                <div style="max-height:240px;overflow-y:auto;border:1px solid var(--border-color, #e2e8f0);border-radius:8px;padding:10px">
                     <?php foreach ($rolesByTier as $tier => $roles):
                         $opts = array_filter($roles, fn($rk) => isset($assignableSet[$rk]), ARRAY_FILTER_USE_KEY);
                         if (!$opts) continue; ?>
                         <div class="role-tier" data-tier="<?= htmlspecialchars($tier) ?>">
-                        <strong style="display:block;font-size:.78em;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin:6px 0 3px"><?= htmlspecialchars($tierLabels[$tier] ?? $tier) ?></strong>
+                        <strong style="display:block;font-size:.78em;color:var(--text-light, #64748b);text-transform:uppercase;letter-spacing:.04em;margin:6px 0 3px"><?= htmlspecialchars($tierLabels[$tier] ?? $tier) ?></strong>
                         <?php foreach ($opts as $rk => $meta): ?>
                             <label style="display:inline-flex;align-items:center;gap:5px;margin:2px 12px 2px 0;font-weight:normal;font-size:.9em">
                                 <input type="checkbox" name="sub_roles[]" value="<?= htmlspecialchars($rk) ?>"> <?= htmlspecialchars($meta['label'] ?? $rk) ?><?= !empty($meta['sensitive']) ? ' 🔒' : '' ?>

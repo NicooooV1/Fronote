@@ -196,15 +196,15 @@ ob_start();
     .msg-card.deleted { opacity: 0.5; background: #fef2f2; }
     .msg-card.pinned { border-left: 3px solid #f59e0b; }
     .msg-body { flex: 1; }
-    .msg-meta { font-size: 12px; color: #888; margin-bottom: 4px; }
-    .msg-meta strong { color: #333; }
-    .msg-text { font-size: 13px; color: #444; line-height: 1.5; max-height: 60px; overflow: hidden; }
+    .msg-meta { font-size: 12px; color: var(--text-muted, #888); margin-bottom: 4px; }
+    .msg-meta strong { color: var(--text-color, #333); }
+    .msg-text { font-size: 13px; color: var(--text-color, #444); line-height: 1.5; max-height: 60px; overflow: hidden; }
     .msg-actions { display: flex; gap: 4px; flex-wrap: wrap; }
     .badge-status { display: inline-block; padding: 2px 6px; border-radius: 8px; font-size: 10px; font-weight: 600; margin-left: 4px; }
     .bs-normal { background: #e2e8f0; color: #4a5568; } .bs-important { background: #fef3cd; color: #92400e; }
     .bs-urgent { background: #fee2e2; color: #991b1b; } .bs-annonce { background: #dbeafe; color: #1e40af; }
     .report-box { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 12px; margin-bottom: 10px; font-size: 13px; }
-    .section-title { font-size: 16px; font-weight: 600; margin: 20px 0 10px; color: #1a202c; }
+    .section-title { font-size: 16px; font-weight: 600; margin: 20px 0 10px; color: var(--text-color, #1a202c); }
 </style>
 <?php
 $extraHeadHtml = ob_get_clean();
@@ -225,7 +225,7 @@ include __DIR__ . '/../includes/header.php';
             <input type="hidden" name="action" value="report_action">
             <input type="hidden" name="report_id" value="<?= $r['id'] ?>">
             <input type="hidden" name="message_id" value="<?= $r['message_id'] ?>">
-            <input type="text" name="resolution" placeholder="Note admin…" style="flex:1;padding:4px 8px;border:1px solid #ddd;border-radius:4px;font-size:12px">
+            <input type="text" name="resolution" placeholder="Note admin…" style="flex:1;padding:4px 8px;border:1px solid var(--border-color, #ddd);border-radius:4px;font-size:12px">
             <button class="btn-xs success"><i class="fas fa-check"></i> Traiter</button>
         </form>
     </div>

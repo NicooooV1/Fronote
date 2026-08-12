@@ -105,10 +105,10 @@ ob_start(); ?>
   .badge-warn{background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
   .badge-err{background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
   .upd-steps{background:#1a202c;color:#e2e8f0;border-radius:8px;padding:14px 16px;font-family:monospace;font-size:12px;line-height:1.7;margin-top:14px;white-space:pre-wrap;display:none}
-  .upd-form label{display:block;font-size:13px;font-weight:600;color:#4a5568;margin-bottom:4px}
+  .upd-form label{display:block;font-size:13px;font-weight:600;color:var(--text-color, #4a5568);margin-bottom:4px}
   .upd-form input{width:100%;padding:8px 10px;border:1px solid #d2d6dc;border-radius:6px;font-size:13px;box-sizing:border-box}
   .upd-form .field{margin-bottom:14px}
-  .muted{color:#718096;font-size:13px}
+  .muted{color:var(--text-light, #718096);font-size:13px}
 </style>
 <?php $extraHeadHtml = ob_get_clean();
 include __DIR__ . '/../includes/header.php';

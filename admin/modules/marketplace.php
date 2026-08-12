@@ -71,29 +71,29 @@ include __DIR__ . '/../includes/header.php';
 <style>
 .mp-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px}
 .mp-search{display:flex;gap:8px}
-.mp-search input{padding:8px 14px;border:1px solid #e2e8f0;border-radius:6px;font-size:.9em;width:280px}
+.mp-search input{padding:8px 14px;border:1px solid var(--border-color, #e2e8f0);border-radius:6px;font-size:.9em;width:280px}
 .mp-search button{padding:8px 16px;background:#667eea;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.9em}
 .mp-tabs{display:flex;gap:8px;margin-bottom:20px}
-.mp-tab{padding:6px 16px;border-radius:20px;background:var(--bg-secondary);border:1px solid #e2e8f0;cursor:pointer;font-size:.85em;text-decoration:none;color:#4a5568}
+.mp-tab{padding:6px 16px;border-radius:20px;background:var(--bg-secondary);border:1px solid var(--border-color, #e2e8f0);cursor:pointer;font-size:.85em;text-decoration:none;color:var(--text-color, #4a5568)}
 .mp-tab.active{background:#667eea;color:#fff;border-color:#667eea}
 .mp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
-.mp-card{background:var(--bg-card);border:1px solid #e2e8f0;border-radius:10px;padding:20px;transition:.2s}
+.mp-card{background:var(--bg-card);border:1px solid var(--border-color, #e2e8f0);border-radius:10px;padding:20px;transition:.2s}
 .mp-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.08)}
 .mp-card-header{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px}
 .mp-card-icon{width:48px;height:48px;border-radius:10px;background:#f0f4ff;display:flex;align-items:center;justify-content:center;font-size:1.3em;color:#667eea;flex-shrink:0}
 .mp-card-info{flex:1}
-.mp-card-name{font-weight:700;font-size:1em;color:#2d3748}
-.mp-card-author{font-size:.8em;color:#a0aec0;margin-top:2px}
-.mp-card-desc{font-size:.85em;color:#718096;line-height:1.5;margin-bottom:12px}
+.mp-card-name{font-weight:700;font-size:1em;color:var(--text-color, #2d3748)}
+.mp-card-author{font-size:.8em;color:var(--text-muted, #a0aec0);margin-top:2px}
+.mp-card-desc{font-size:.85em;color:var(--text-light, #718096);line-height:1.5;margin-bottom:12px}
 .mp-card-footer{display:flex;justify-content:space-between;align-items:center}
-.mp-card-version{font-size:.78em;color:#a0aec0}
+.mp-card-version{font-size:.78em;color:var(--text-muted, #a0aec0)}
 .mp-card-tags{display:flex;gap:4px;flex-wrap:wrap}
-.mp-tag{font-size:.7em;padding:2px 8px;border-radius:10px;background:#edf2f7;color:#718096}
+.mp-tag{font-size:.7em;padding:2px 8px;border-radius:10px;background:var(--bg-secondary, #edf2f7);color:#718096}
 .mp-btn{padding:6px 14px;border:none;border-radius:6px;cursor:pointer;font-size:.82em;font-weight:600}
 .mp-btn-install{background:#48bb78;color:#fff}
-.mp-btn-installed{background:#edf2f7;color:#a0aec0;cursor:default}
+.mp-btn-installed{background:var(--bg-secondary, #edf2f7);color:var(--text-muted, #a0aec0);cursor:default}
 .mp-btn-uninstall{background:#fc8181;color:#fff}
-.mp-empty{text-align:center;padding:60px 20px;color:#a0aec0}
+.mp-empty{text-align:center;padding:60px 20px;color:var(--text-muted, #a0aec0)}
 .mp-empty i{font-size:3em;margin-bottom:12px;display:block}
 .mp-updates{background:#fffff0;border:1px solid #fefcbf;border-radius:8px;padding:14px 18px;margin-bottom:20px}
 .mp-updates strong{color:#d69e2e}

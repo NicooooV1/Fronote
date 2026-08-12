@@ -294,7 +294,7 @@ include __DIR__ . '/../includes/header.php';
         </thead>
         <tbody>
             <?php if (empty($usersList)): ?>
-                <tr><td colspan="7" style="text-align:center;color:#999;padding:30px;">Aucun utilisateur trouvé.</td></tr>
+                <tr><td colspan="7" style="text-align:center;color:var(--text-muted, #999);padding:30px;">Aucun utilisateur trouvé.</td></tr>
             <?php else: ?>
                 <?php foreach ($usersList as $u): ?>
                 <tr>
@@ -311,7 +311,7 @@ include __DIR__ . '/../includes/header.php';
                             <span class="status-inactive"><i class="fas fa-times-circle"></i> Inactif</span>
                         <?php endif; ?>
                     </td>
-                    <td style="font-size:13px;color:#718096;">
+                    <td style="font-size:13px;color:var(--text-light, #718096);">
                         <?= !empty($u['last_login']) ? date('d/m/Y H:i', strtotime($u['last_login'])) : '<em>Jamais</em>' ?>
                     </td>
                     <td>
@@ -353,7 +353,7 @@ include __DIR__ . '/../includes/header.php';
     <div class="modal-box">
         <button class="modal-close" data-fr-click="closeProfile">&times;</button>
         <h2 id="profileTitle">Profil utilisateur</h2>
-        <div id="profileContent"><p style="text-align:center;color:#999;"><i class="fas fa-spinner fa-spin"></i> Chargement…</p></div>
+        <div id="profileContent"><p style="text-align:center;color:var(--text-muted, #999);"><i class="fas fa-spinner fa-spin"></i> Chargement…</p></div>
     </div>
 </div>
 
@@ -361,7 +361,7 @@ include __DIR__ . '/../includes/header.php';
 function openProfile(userId, userType) {
     document.getElementById('profileModal').classList.add('show');
     const content = document.getElementById('profileContent');
-    content.innerHTML = '<p style="text-align:center;color:#999;"><i class="fas fa-spinner fa-spin"></i> Chargement…</p>';
+    content.innerHTML = '<p style="text-align:center;color:var(--text-muted, #999);"><i class="fas fa-spinner fa-spin"></i> Chargement…</p>';
 
     // Fetch via a simple AJAX-like approach with a hidden form
     fetch('profile_ajax.php?id=' + userId + '&type=' + userType)

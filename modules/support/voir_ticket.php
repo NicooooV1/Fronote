@@ -155,7 +155,7 @@ $canReply      = $ticket['statut'] !== 'ferme';
 
                 <!-- Satisfaction (demandeur, ticket résolu/fermé, pas encore noté) -->
                 <?php if ($isOwner && in_array($ticket['statut'], ['resolu', 'ferme'], true) && empty($ticket['satisfaction_note'])): ?>
-                <div class="ticket-reply" style="margin-top:14px;border-top:1px solid #e2e8f0;padding-top:14px">
+                <div class="ticket-reply" style="margin-top:14px;border-top:1px solid var(--border-color,#e2e8f0);padding-top:14px">
                     <form method="post">
                         <?= csrfField() ?>
                         <input type="hidden" name="action" value="satisfaction">
@@ -181,7 +181,7 @@ $canReply      = $ticket['statut'] !== 'ferme';
             <div class="card-header"><h3><i class="fas fa-lock"></i> Notes internes (non visibles par le demandeur)</h3></div>
             <div class="card-body">
                 <?php if (empty($notesInternes)): ?>
-                    <p style="color:#718096">Aucune note interne.</p>
+                    <p style="color:var(--text-muted,#718096)">Aucune note interne.</p>
                 <?php else: foreach ($notesInternes as $ni): ?>
                     <div class="ticket-message" style="background:#fffbeb;border-radius:8px;padding:8px 12px;margin-bottom:8px">
                         <div class="message-header"><strong><?= htmlspecialchars($ni['auteur_nom'] ?? 'Staff') ?></strong> <span><?= formatDateTime($ni['created_at']) ?></span></div>

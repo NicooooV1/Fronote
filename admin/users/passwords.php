@@ -139,15 +139,15 @@ ob_start();
 ?>
 <style>
     .pwd-container { max-width: 1000px; margin: 0 auto; }
-    .tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid #eee; }
+    .tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid var(--border-color, #eee); }
     .tab-content { display: none; } .tab-content.active { display: block; }
     .req-table { width: 100%; border-collapse: collapse; background: var(--bg-card); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .req-table th, .req-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
-    .req-table th { background: var(--bg-secondary); font-weight: 600; color: #4a5568; font-size: 13px; }
+    .req-table th, .req-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border-color, #f0f0f0); font-size: 14px; }
+    .req-table th { background: var(--bg-secondary); font-weight: 600; color: var(--text-color, #4a5568); font-size: 13px; }
     .badge-count { background: #e74c3c; color: white; border-radius: 50%; padding: 1px 7px; font-size: 12px; font-weight: 600; margin-left: 6px; }
     .search-form { display: flex; gap: 10px; margin-bottom: 20px; }
     .search-form input { flex: 1; padding: 9px 12px; border: 1px solid #d2d6dc; border-radius: 6px; font-size: 14px; }
-    .empty-state { text-align: center; padding: 40px; color: #999; }
+    .empty-state { text-align: center; padding: 40px; color: var(--text-muted, #999); }
     .empty-state i { font-size: 36px; margin-bottom: 10px; display: block; opacity: 0.3; }
 </style>
 <?php

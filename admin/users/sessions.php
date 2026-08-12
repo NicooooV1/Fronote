@@ -144,14 +144,14 @@ ob_start();
     .stat-pill { background: var(--bg-card); border-radius: 8px; padding: 12px 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); display: flex; align-items: center; gap: 10px; }
     .stat-pill i { font-size: 20px; color: #0f4c81; }
     .stat-pill .val { font-size: 20px; font-weight: 700; color: #1a202c; }
-    .stat-pill .lbl { font-size: 12px; color: #888; }
+    .stat-pill .lbl { font-size: 12px; color: var(--text-muted, #888); }
     .alert-box { background: #fef3cd; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
     .alert-box strong { color: #92400e; }
     .sess-table { width: 100%; border-collapse: collapse; background: var(--bg-card); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .sess-table th, .sess-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
-    .sess-table th { background: var(--bg-secondary); font-weight: 600; color: #4a5568; }
+    .sess-table th, .sess-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border-color, #f0f0f0); font-size: 13px; }
+    .sess-table th { background: var(--bg-secondary); font-weight: 600; color: var(--text-color, #4a5568); }
     .top-actions { display: flex; justify-content: flex-end; margin-bottom: 15px; }
-    .ip-mono { font-family: monospace; font-size: 12px; color: #555; }
+    .ip-mono { font-family: monospace; font-size: 12px; color: var(--text-color, #555); }
 </style>
 <?php
 $extraHeadHtml = ob_get_clean();
@@ -198,7 +198,7 @@ include __DIR__ . '/../includes/header.php';
     </div>
 
     <?php if (empty($sessions)): ?>
-        <div style="text-align:center;padding:40px;color:#999"><i class="fas fa-check-circle" style="font-size:36px;opacity:0.3"></i><p>Aucune session active.</p></div>
+        <div style="text-align:center;padding:40px;color:var(--text-muted, #999)"><i class="fas fa-check-circle" style="font-size:36px;opacity:0.3"></i><p>Aucune session active.</p></div>
     <?php else: ?>
     <table class="sess-table">
         <thead><tr><th>Utilisateur</th><th>Profil</th><th>IP</th><th>Navigateur</th><th>Dernière activité</th><th>Expire</th><th>Action</th></tr></thead>

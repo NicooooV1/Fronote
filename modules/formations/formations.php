@@ -60,13 +60,13 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <?php else: ?>
     <div style="overflow-x:auto">
     <table style="width:100%;border-collapse:collapse;font-size:.9em">
-        <thead><tr style="text-align:left;color:#718096;border-bottom:1px solid #e2e8f0">
+        <thead><tr style="text-align:left;color:var(--text-muted,#718096);border-bottom:1px solid var(--border-color,#e2e8f0)">
             <th style="padding:8px 10px"><?= __('label.titre') ?></th><th style="padding:8px 10px"><?= __('formations.organisme') ?></th>
             <th style="padding:8px 10px"><?= __('label.periode') ?></th><th style="padding:8px 10px"><?= __('formations.places') ?></th>
         </tr></thead>
         <tbody>
         <?php foreach ($catalogue as $f): ?>
-            <tr style="border-bottom:1px solid #f7fafc">
+            <tr style="border-bottom:1px solid var(--border-color,#f7fafc)">
                 <td style="padding:8px 10px"><?= htmlspecialchars($f['titre']) ?></td>
                 <td style="padding:8px 10px"><?= htmlspecialchars($f['organisme'] ?? '') ?></td>
                 <td style="padding:8px 10px"><?= htmlspecialchars($f['date_debut'] ?? '') ?> → <?= htmlspecialchars($f['date_fin'] ?? '') ?></td>

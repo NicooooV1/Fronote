@@ -229,7 +229,7 @@ include 'includes/header.php';
                 <!-- ═══════════ FORMULAIRE ÉDITION ═══════════ -->
                 <div style="background:var(--bg-card); border-radius:10px; padding:30px; box-shadow:0 2px 8px rgba(0,0,0,0.06); max-width:700px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                        <h2 style="font-size:1.1em; color:#2d3748; margin:0;">Modification de la note</h2>
+                        <h2 style="font-size:1.1em; color:var(--text-color, #2d3748); margin:0;">Modification de la note</h2>
                         <a href="notes.php" class="btn btn-secondary" style="font-size:13px;"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
                     </div>
 
@@ -238,23 +238,23 @@ include 'includes/header.php';
 
                         <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:15px; margin-bottom:15px;">
                             <div>
-                                <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;">Élève</label>
+                                <label style="display:block; font-size:12px; font-weight:600; color:var(--text-color, #4a5568); margin-bottom:5px;">Élève</label>
                                 <input type="text" value="<?= htmlspecialchars(($note['prenom_eleve'] ?? '') . ' ' . ($note['nom_eleve'] ?? '')) ?>" readonly class="form-control" style="background:var(--bg-secondary);">
                             </div>
                             <div>
-                                <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;"><?= __('notes.subject') ?></label>
+                                <label style="display:block; font-size:12px; font-weight:600; color:var(--text-color, #4a5568); margin-bottom:5px;"><?= __('notes.subject') ?></label>
                                 <input type="text" value="<?= htmlspecialchars($note['nom_matiere'] ?? '') ?>" readonly class="form-control" style="background:var(--bg-secondary);">
                             </div>
                         </div>
 
                         <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:15px; margin-bottom:15px;">
                             <div>
-                                <label for="note" style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;">Note * <span style="color:#a0aec0;">/<?= $note['note_sur'] ?? 20 ?></span></label>
+                                <label for="note" style="display:block; font-size:12px; font-weight:600; color:var(--text-color, #4a5568); margin-bottom:5px;">Note * <span style="color:var(--text-muted, #a0aec0);">/<?= $note['note_sur'] ?? 20 ?></span></label>
                                 <input type="number" id="note" name="note" step="0.25" min="0" max="<?= $note['note_sur'] ?? 20 ?>"
                                        value="<?= htmlspecialchars($note['note'] ?? '') ?>" required class="form-control">
                             </div>
                             <div>
-                                <label for="coefficient" style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;">Coefficient *</label>
+                                <label for="coefficient" style="display:block; font-size:12px; font-weight:600; color:var(--text-color, #4a5568); margin-bottom:5px;">Coefficient *</label>
                                 <input type="number" id="coefficient" name="coefficient" step="0.25" min="0.25" max="9.99"
                                        value="<?= htmlspecialchars($note['coefficient'] ?? '1') ?>" required class="form-control">
                             </div>
@@ -262,12 +262,12 @@ include 'includes/header.php';
 
                         <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:15px; margin-bottom:15px;">
                             <div>
-                                <label for="date_note" style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;">Date d'évaluation</label>
+                                <label for="date_note" style="display:block; font-size:12px; font-weight:600; color:var(--text-color, #4a5568); margin-bottom:5px;">Date d'évaluation</label>
                                 <input type="date" id="date_note" name="date_note"
                                        value="<?= htmlspecialchars($note['date_note'] ?? '') ?>" max="<?= date('Y-m-d') ?>" class="form-control">
                             </div>
                             <div>
-                                <label for="trimestre" style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;">Trimestre *</label>
+                                <label for="trimestre" style="display:block; font-size:12px; font-weight:600; color:var(--text-color, #4a5568); margin-bottom:5px;">Trimestre *</label>
                                 <select id="trimestre" name="trimestre" required class="form-control">
                                     <option value="1" <?= ($note['trimestre'] ?? '') == '1' ? 'selected' : '' ?>>1er trimestre</option>
                                     <option value="2" <?= ($note['trimestre'] ?? '') == '2' ? 'selected' : '' ?>>2ème trimestre</option>
@@ -277,12 +277,12 @@ include 'includes/header.php';
                         </div>
 
                         <div style="margin-bottom:20px;">
-                            <label for="commentaire" style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;"><?= __('notes.comment') ?></label>
+                            <label for="commentaire" style="display:block; font-size:12px; font-weight:600; color:var(--text-color, #4a5568); margin-bottom:5px;"><?= __('notes.comment') ?></label>
                             <textarea id="commentaire" name="commentaire" rows="3" maxlength="500" class="form-control"><?= htmlspecialchars($note['commentaire'] ?? '') ?></textarea>
-                            <small style="color:#a0aec0; font-size:11px;">Maximum 500 caractères</small>
+                            <small style="color:var(--text-muted, #a0aec0); font-size:11px;">Maximum 500 caractères</small>
                         </div>
 
-                        <div style="display:flex; gap:10px; justify-content:flex-end; padding-top:15px; border-top:1px solid #edf2f7;">
+                        <div style="display:flex; gap:10px; justify-content:flex-end; padding-top:15px; border-top:1px solid var(--border-color, #edf2f7);">
                             <a href="notes.php" class="btn btn-secondary"><i class="fas fa-times"></i> <?= __('btn.cancel') ?></a>
                             <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> <?= __('btn.save') ?></button>
                         </div>
@@ -292,11 +292,11 @@ include 'includes/header.php';
 <?php elseif (empty($eleves)): ?>
                 <!-- ═══════════ ÉTAPE 1 : SÉLECTION CLASSE / MATIÈRE ═══════════ -->
                 <div style="background:var(--bg-card); border-radius:10px; padding:30px; box-shadow:0 2px 8px rgba(0,0,0,0.06); max-width:600px;">
-                    <h2 style="font-size:1.1em; color:#2d3748; margin-bottom:20px;">Sélection de la classe et matière</h2>
+                    <h2 style="font-size:1.1em; color:var(--text-color, #2d3748); margin-bottom:20px;">Sélection de la classe et matière</h2>
                     <form method="get" action="">
                         <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:15px; margin-bottom:20px;">
                             <div>
-                                <label style="display:block; font-size:13px; font-weight:600; color:#4a5568; margin-bottom:6px;"><?= __('label.classe') ?> <span style="color:#e53e3e;">*</span></label>
+                                <label style="display:block; font-size:13px; font-weight:600; color:var(--text-color, #4a5568); margin-bottom:6px;"><?= __('label.classe') ?> <span style="color:#e53e3e;">*</span></label>
                                 <select name="classe" class="form-control" required>
                                     <option value="">Sélectionnez</option>
                                     <?php foreach ($classes as $c): ?>
@@ -305,7 +305,7 @@ include 'includes/header.php';
                                 </select>
                             </div>
                             <div>
-                                <label style="display:block; font-size:13px; font-weight:600; color:#4a5568; margin-bottom:6px;"><?= __('notes.subject') ?> <span style="color:#e53e3e;">*</span></label>
+                                <label style="display:block; font-size:13px; font-weight:600; color:var(--text-color, #4a5568); margin-bottom:6px;"><?= __('notes.subject') ?> <span style="color:#e53e3e;">*</span></label>
                                 <select name="matiere" class="form-control" required>
                                     <option value="">Sélectionnez</option>
                                     <?php foreach ($matieres as $m): ?>
@@ -322,9 +322,9 @@ include 'includes/header.php';
                 <!-- ═══════════ ÉTAPE 2 : SAISIE DES NOTES ═══════════ -->
                 <div style="background:var(--bg-card); border-radius:10px; padding:30px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                        <h2 style="font-size:1.1em; color:#2d3748; margin:0;">
+                        <h2 style="font-size:1.1em; color:var(--text-color, #2d3748); margin:0;">
                             Saisie des notes — <?= htmlspecialchars($selectedClasse) ?>
-                            <span style="font-weight:400; color:#718096; font-size:0.9em;">(<?= count($eleves) ?> élèves)</span>
+                            <span style="font-weight:400; color:var(--text-light, #718096); font-size:0.9em;">(<?= count($eleves) ?> élèves)</span>
                         </h2>
                         <a href="form_note.php" class="btn btn-secondary" style="font-size:13px;"><i class="fas fa-arrow-left"></i> Changer de classe</a>
                     </div>
@@ -335,9 +335,9 @@ include 'includes/header.php';
                         <input type="hidden" name="classe" value="<?= htmlspecialchars($selectedClasse) ?>">
 
                         <!-- Paramètres de l'évaluation -->
-                        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:15px; margin-bottom:25px; padding-bottom:20px; border-bottom:1px solid #edf2f7;">
+                        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:15px; margin-bottom:25px; padding-bottom:20px; border-bottom:1px solid var(--border-color, #edf2f7);">
                             <div>
-                                <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;"><?= __('notes.subject') ?></label>
+                                <label style="display:block; font-size:12px; font-weight:600; color:var(--text-color, #4a5568); margin-bottom:5px;"><?= __('notes.subject') ?></label>
                                 <select name="id_matiere" class="form-control" required>
                                     <?php foreach ($matieres as $m): ?>
                                     <option value="<?= $m['id'] ?>" <?= $selectedMatiere == $m['id'] ? 'selected' : '' ?>><?= htmlspecialchars($m['nom']) ?></option>
@@ -345,15 +345,15 @@ include 'includes/header.php';
                                 </select>
                             </div>
                             <div>
-                                <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;">Type d'évaluation</label>
+                                <label style="display:block; font-size:12px; font-weight:600; color:var(--text-color, #4a5568); margin-bottom:5px;">Type d'évaluation</label>
                                 <input type="text" name="type_evaluation" class="form-control" value="<?= htmlspecialchars($_POST['type_evaluation'] ?? 'Contrôle') ?>" required placeholder="Ex: Contrôle, DS, DM...">
                             </div>
                             <div>
-                                <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;"><?= __('notes.date') ?></label>
+                                <label style="display:block; font-size:12px; font-weight:600; color:var(--text-color, #4a5568); margin-bottom:5px;"><?= __('notes.date') ?></label>
                                 <input type="date" name="date_note" class="form-control" value="<?= htmlspecialchars($_POST['date_note'] ?? date('Y-m-d')) ?>" required>
                             </div>
                             <div>
-                                <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;"><?= __('label.trimestre') ?></label>
+                                <label style="display:block; font-size:12px; font-weight:600; color:var(--text-color, #4a5568); margin-bottom:5px;"><?= __('label.trimestre') ?></label>
                                 <select name="trimestre" class="form-control" required>
                                     <?php
                                     $currentTri = NoteService::getTrimestreCourant();
@@ -365,11 +365,11 @@ include 'includes/header.php';
                                 </select>
                             </div>
                             <div>
-                                <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;"><?= __('label.coefficient') ?></label>
+                                <label style="display:block; font-size:12px; font-weight:600; color:var(--text-color, #4a5568); margin-bottom:5px;"><?= __('label.coefficient') ?></label>
                                 <input type="number" name="coefficient" class="form-control" min="0.25" max="9.99" step="0.25" value="<?= htmlspecialchars($_POST['coefficient'] ?? '1') ?>" required>
                             </div>
                             <div>
-                                <label style="display:block; font-size:12px; font-weight:600; color:#4a5568; margin-bottom:5px;">Barème (note sur)</label>
+                                <label style="display:block; font-size:12px; font-weight:600; color:var(--text-color, #4a5568); margin-bottom:5px;">Barème (note sur)</label>
                                 <input type="number" name="note_sur" class="form-control" min="1" max="99" step="1" value="<?= htmlspecialchars($_POST['note_sur'] ?? '20') ?>" required>
                             </div>
                         </div>
@@ -378,14 +378,14 @@ include 'includes/header.php';
                         <table style="width:100%; border-collapse:collapse;">
                             <thead>
                                 <tr style="background:var(--bg-secondary);">
-                                    <th style="padding:10px 15px; text-align:left; font-size:13px; color:#4a5568; font-weight:600; width:35%;">Élève</th>
-                                    <th style="padding:10px 15px; text-align:center; font-size:13px; color:#4a5568; font-weight:600; width:15%;"><?= __('notes.grade') ?></th>
-                                    <th style="padding:10px 15px; text-align:left; font-size:13px; color:#4a5568; font-weight:600;"><?= __('notes.comment') ?></th>
+                                    <th style="padding:10px 15px; text-align:left; font-size:13px; color:var(--text-color, #4a5568); font-weight:600; width:35%;">Élève</th>
+                                    <th style="padding:10px 15px; text-align:center; font-size:13px; color:var(--text-color, #4a5568); font-weight:600; width:15%;"><?= __('notes.grade') ?></th>
+                                    <th style="padding:10px 15px; text-align:left; font-size:13px; color:var(--text-color, #4a5568); font-weight:600;"><?= __('notes.comment') ?></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php foreach ($eleves as $el): ?>
-                                <tr style="border-bottom:1px solid #edf2f7;">
+                                <tr style="border-bottom:1px solid var(--border-color, #edf2f7);">
                                     <td style="padding:10px 15px; font-size:14px;">
                                         <strong><?= htmlspecialchars($el['nom']) ?></strong> <?= htmlspecialchars($el['prenom']) ?>
                                     </td>
@@ -404,34 +404,34 @@ include 'includes/header.php';
 
                         <!-- Statistiques temps réel -->
                         <div id="live-stats" style="display:none; background:var(--bg-secondary); border-radius:10px; padding:15px 20px; margin-top:20px;">
-                            <h4 style="margin:0 0 10px; font-size:13px; color:#4a5568; font-weight:600;">
+                            <h4 style="margin:0 0 10px; font-size:13px; color:var(--text-color, #4a5568); font-weight:600;">
                                 <i class="fas fa-chart-bar" style="margin-right:5px;"></i> Statistiques en temps réel
                             </h4>
                             <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:12px; text-align:center;">
                                 <div>
                                     <div id="stat-moyenne" style="font-size:20px; font-weight:700; color:#0f4c81;">—</div>
-                                    <div style="font-size:11px; color:#718096;">Moyenne</div>
+                                    <div style="font-size:11px; color:var(--text-light, #718096);">Moyenne</div>
                                 </div>
                                 <div>
                                     <div id="stat-min" style="font-size:20px; font-weight:700; color:#e53e3e;">—</div>
-                                    <div style="font-size:11px; color:#718096;">Min</div>
+                                    <div style="font-size:11px; color:var(--text-light, #718096);">Min</div>
                                 </div>
                                 <div>
                                     <div id="stat-max" style="font-size:20px; font-weight:700; color:#38a169;">—</div>
-                                    <div style="font-size:11px; color:#718096;">Max</div>
+                                    <div style="font-size:11px; color:var(--text-light, #718096);">Max</div>
                                 </div>
                                 <div>
                                     <div id="stat-mediane" style="font-size:20px; font-weight:700; color:#667eea;">—</div>
-                                    <div style="font-size:11px; color:#718096;">Médiane</div>
+                                    <div style="font-size:11px; color:var(--text-light, #718096);">Médiane</div>
                                 </div>
                                 <div>
-                                    <div id="stat-nb" style="font-size:20px; font-weight:700; color:#4a5568;">0</div>
-                                    <div style="font-size:11px; color:#718096;">Saisies</div>
+                                    <div id="stat-nb" style="font-size:20px; font-weight:700; color:var(--text-color, #4a5568);">0</div>
+                                    <div style="font-size:11px; color:var(--text-light, #718096);">Saisies</div>
                                 </div>
                             </div>
                         </div>
 
-                        <div style="display:flex; gap:10px; justify-content:flex-end; align-items:center; margin-top:20px; padding-top:15px; border-top:1px solid #edf2f7;">
+                        <div style="display:flex; gap:10px; justify-content:flex-end; align-items:center; margin-top:20px; padding-top:15px; border-top:1px solid var(--border-color, #edf2f7);">
                             <span id="autosave-status" class="autosave-status" style="margin-right:auto;"></span>
                             <a href="notes.php" class="btn btn-secondary"><?= __('btn.cancel') ?></a>
                             <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer les notes</button>

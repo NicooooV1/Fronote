@@ -68,15 +68,15 @@ ob_start();
     .audit-container { max-width: 1200px; margin: 0 auto; }
     .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px; background: var(--bg-card); padding: 12px 15px; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); align-items: flex-end; }
     .filters .fg { display: flex; flex-direction: column; gap: 3px; }
-    .filters label { font-size: 11px; font-weight: 600; color: #4a5568; }
+    .filters label { font-size: 11px; font-weight: 600; color: var(--text-color, #4a5568); }
     .filters select, .filters input { padding: 6px 8px; border: 1px solid #d2d6dc; border-radius: 5px; font-size: 12px; }
     .log-table { width: 100%; border-collapse: collapse; background: var(--bg-card); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .log-table th, .log-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 12px; }
-    .log-table th { background: var(--bg-secondary); font-weight: 600; color: #4a5568; }
+    .log-table th, .log-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border-color, #f0f0f0); font-size: 12px; }
+    .log-table th { background: var(--bg-secondary); font-weight: 600; color: var(--text-color, #4a5568); }
     .badge-action { display: inline-block; padding: 2px 6px; border-radius: 6px; font-size: 10px; font-weight: 600; font-family: monospace; }
     .ba-create { background: #d1fae5; color: #065f46; } .ba-delete { background: #fee2e2; color: #991b1b; }
     .ba-update { background: #dbeafe; color: #1e40af; } .ba-default { background: #e2e8f0; color: #4a5568; }
-    .json-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; font-size: 11px; color: #666; cursor: pointer; }
+    .json-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; font-size: 11px; color: var(--text-light, #666); cursor: pointer; }
     .json-cell:hover { white-space: normal; word-break: break-all; }
 </style>
 <?php
@@ -110,7 +110,7 @@ include __DIR__ . '/../includes/header.php';
     </form>
 
     <?php if (empty($logs)): ?>
-        <div style="text-align:center;padding:40px;color:#999"><p>Aucune entrée dans le journal.</p></div>
+        <div style="text-align:center;padding:40px;color:var(--text-muted, #999)"><p>Aucune entrée dans le journal.</p></div>
     <?php else: ?>
     <table class="log-table">
         <thead><tr><th>#</th><th>Date</th><th>Action</th><th>Modèle</th><th>ID</th><th>User</th><th>IP</th><th>Anciennes valeurs</th><th>Nouvelles valeurs</th></tr></thead>
@@ -122,7 +122,7 @@ include __DIR__ . '/../includes/header.php';
                 elseif (str_contains($l['action'], 'edit') || str_contains($l['action'], 'update')) $actionClass = 'ba-update';
             ?>
             <tr>
-                <td style="color:#888"><?= $l['id'] ?></td>
+                <td style="color:var(--text-muted, #888)"><?= $l['id'] ?></td>
                 <td style="font-size:11px;white-space:nowrap"><?= date('d/m/Y H:i:s', strtotime($l['created_at'])) ?></td>
                 <td><span class="badge-action <?= $actionClass ?>"><?= htmlspecialchars($l['action']) ?></span></td>
                 <td style="font-family:monospace;font-size:11px"><?= htmlspecialchars($l['model'] ?? '-') ?></td>

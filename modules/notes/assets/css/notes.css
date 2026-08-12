@@ -51,7 +51,7 @@
 
 .note-value.note-good { color: #38a169; font-weight: 700; font-size: 15px; }
 .note-value.note-bad  { color: #e53e3e; font-weight: 700; font-size: 15px; }
-.note-sur { font-size: 12px; color: #a0aec0; }
+.note-sur { font-size: 12px; color: var(--text-muted, #a0aec0); }
 
 /* ──────────────────────────────────────────────
    Sélecteur de trimestre
@@ -66,7 +66,7 @@
 }
 .trimestre-selector .trimestre-label {
   font-weight: 600;
-  color: #4a5568;
+  color: var(--text-color, #4a5568);
   margin-right: 5px;
 }
 
@@ -96,7 +96,7 @@
 .section-title {
   font-size: 1.1em;
   margin-bottom: 15px;
-  color: #2d3748;
+  color: var(--text-color, #2d3748);
 }
 .section-header {
   display: flex;
@@ -117,23 +117,23 @@
   margin-bottom: 30px;
 }
 .notes-matiere-card {
-  background: white;
+  background: var(--bg-card, white);
   border-radius: 10px;
   padding: 18px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   border-left: 4px solid #3498db;
 }
-.notes-matiere-name   { font-size: 13px; color: #718096; margin-bottom: 6px; }
-.notes-matiere-moyenne { font-size: 26px; font-weight: 700; color: #2d3748; }
-.notes-matiere-unit   { font-size: 14px; color: #a0aec0; }
-.notes-matiere-count  { font-size: 12px; color: #a0aec0; margin-top: 4px; }
+.notes-matiere-name   { font-size: 13px; color: var(--text-light, #718096); margin-bottom: 6px; }
+.notes-matiere-moyenne { font-size: 26px; font-weight: 700; color: var(--text-color, #2d3748); }
+.notes-matiere-unit   { font-size: 14px; color: var(--text-muted, #a0aec0); }
+.notes-matiere-count  { font-size: 12px; color: var(--text-muted, #a0aec0); margin-top: 4px; }
 
 /* ──────────────────────────────────────────────
    Table des notes
    ────────────────────────────────────────────── */
 
 .notes-table-wrapper {
-  background: white;
+  background: var(--bg-card, white);
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
@@ -142,16 +142,16 @@
   width: 100%;
   border-collapse: collapse;
 }
-.notes-table thead tr { background: #f7fafc; }
+.notes-table thead tr { background: var(--bg-secondary, #f7fafc); }
 .notes-table th {
   padding: 12px 15px;
   text-align: left;
   font-size: 13px;
-  color: #4a5568;
+  color: var(--text-color, #4a5568);
   font-weight: 600;
 }
 .notes-table td { padding: 10px 15px; font-size: 14px; }
-.notes-table tbody tr { border-bottom: 1px solid #edf2f7; }
+.notes-table tbody tr { border-bottom: 1px solid var(--border-color, #edf2f7); }
 .notes-table tbody tr:last-child { border-bottom: none; }
 
 /* Badge matière (pastille) */
@@ -184,14 +184,14 @@
 .notes-stat-value.primary { color: var(--primary-color, #0f4c81); }
 .notes-stat-value.success { color: #38a169; }
 .notes-stat-value.info    { color: #667eea; }
-.notes-stat-label { font-size: 13px; color: #718096; }
+.notes-stat-label { font-size: 13px; color: var(--text-light, #718096); }
 
 /* ──────────────────────────────────────────────
    Utilitaires
    ────────────────────────────────────────────── */
 
 .text-center { text-align: center; }
-.text-muted  { color: #718096; }
+.text-muted  { color: var(--text-light, #718096); }
 .font-medium { font-weight: 500; }
 .btn-sm { padding: 4px 10px; font-size: 12px; }
 
@@ -224,7 +224,7 @@
   display: flex;
   gap: 4px;
   margin-bottom: 16px;
-  background: #f7fafc;
+  background: var(--bg-secondary, #f7fafc);
   border-radius: 10px;
   padding: 4px;
 }
@@ -233,7 +233,7 @@
   padding: 8px 16px;
   border: none;
   background: transparent;
-  color: #718096;
+  color: var(--text-light, #718096);
   font-size: 13px;
   font-weight: 500;
   border-radius: 8px;
@@ -242,12 +242,12 @@
 }
 
 .notes-graphs-tab:hover {
-  background: #edf2f7;
-  color: #4a5568;
+  background: var(--bg-hover, #edf2f7);
+  color: var(--text-color, #4a5568);
 }
 
 .notes-graphs-tab.active {
-  background: white;
+  background: var(--bg-card, white);
   color: var(--primary-color, #0f4c81);
   font-weight: 600;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
@@ -255,7 +255,7 @@
 
 .notes-graph-panel {
   display: none;
-  background: white;
+  background: var(--bg-card, white);
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
@@ -274,14 +274,14 @@
 .notes-graph-title {
   font-size: 14px;
   font-weight: 600;
-  color: #2d3748;
+  color: var(--text-color, #2d3748);
   margin-bottom: 12px;
 }
 
 .notes-graph-empty {
   text-align: center;
   padding: 40px 20px;
-  color: #a0aec0;
+  color: var(--text-muted, #a0aec0);
   font-size: 14px;
 }
 

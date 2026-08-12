@@ -186,7 +186,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
         </form>
     </section>
 <?php else: ?>
-    <section style="background:var(--bg-card);border:1px solid #e2e8f0;border-radius:10px;padding:18px;margin:18px 0">
+    <section style="background:var(--bg-card);border:1px solid var(--border-color,#e2e8f0);border-radius:10px;padding:18px;margin:18px 0">
         <h2 style="margin:0 0 12px;font-size:1.1em"><?= __('marketplace.televerser_paquet') ?> <code>.fmod</code></h2>
         <form method="post" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token ?? '') ?>">
@@ -196,7 +196,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                 <i class="fas fa-shield-alt"></i> <?= __('marketplace.verifier_installer') ?>
             </button>
         </form>
-        <p style="margin-top:10px;font-size:.88em;color:#64748b">
+        <p style="margin-top:10px;font-size:.88em;color:var(--text-light,#64748b)">
             <?= __('marketplace.root_ca_reconnues') ?> <strong><?= count($rootFiles) ?></strong>
             <?php foreach ($rootFiles as $rf): ?><code style="margin-left:6px"><?= htmlspecialchars($rf) ?></code><?php endforeach; ?>
             <?= empty($rootFiles) ? ' — <span style="color:#b91c1c">aucune ; tout sideload sera refusé.</span>' : '' ?>
@@ -204,10 +204,10 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     </section>
 <?php endif; ?>
 
-    <section style="background:var(--bg-card);border:1px solid #e2e8f0;border-radius:10px;padding:18px;margin:18px 0">
+    <section style="background:var(--bg-card);border:1px solid var(--border-color,#e2e8f0);border-radius:10px;padding:18px;margin:18px 0">
         <h2 style="margin:0 0 12px;font-size:1.1em"><?= __('marketplace.modules_installes_signature') ?> (<?= $total ?>)</h2>
         <?php if (empty($installed)): ?>
-            <p style="color:#64748b"><?= __('marketplace.aucune_installation') ?></p>
+            <p style="color:var(--text-light,#64748b)"><?= __('marketplace.aucune_installation') ?></p>
         <?php else: ?>
             <table style="width:100%;border-collapse:collapse;font-size:.92em">
                 <thead style="background:var(--bg-secondary)">
@@ -222,7 +222,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                 </thead>
                 <tbody>
                 <?php foreach ($installed as $row): ?>
-                    <tr style="border-top:1px solid #e2e8f0">
+                    <tr style="border-top:1px solid var(--border-color,#e2e8f0)">
                         <td style="padding:8px">
                             <code><?= htmlspecialchars((string) $row['module_key']) ?></code>
                             <?php if (($row['channel'] ?? '') === 'sideload'): ?>
@@ -243,7 +243,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
             <?php if ($pages > 1): ?>
             <div style="display:flex;gap:6px;margin-top:12px;justify-content:center">
                 <?php for ($p = 1; $p <= $pages; $p++): ?>
-                    <a href="?page=<?= $p ?>" style="padding:4px 10px;border-radius:4px;text-decoration:none;<?= $p === $page ? 'background:#0f4c81;color:#fff;font-weight:600' : 'background:#f1f5f9;color:#374151' ?>"><?= $p ?></a>
+                    <a href="?page=<?= $p ?>" style="padding:4px 10px;border-radius:4px;text-decoration:none;<?= $p === $page ? 'background:#0f4c81;color:#fff;font-weight:600' : 'background:var(--bg-secondary, #f1f5f9);color:#374151' ?>"><?= $p ?></a>
                 <?php endfor; ?>
             </div>
             <?php endif; ?>

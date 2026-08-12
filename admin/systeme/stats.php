@@ -103,7 +103,7 @@ include __DIR__ . '/../includes/header.php';
     <div class="kpi"><div class="v" style="color:#2d7d46"><?= $profs ?></div><div class="l">Professeurs</div></div>
     <div class="kpi"><div class="v" style="color:#b45309"><?= $parents ?></div><div class="l">Parents</div></div>
     <div class="kpi"><div class="v" style="color:#6b21a8"><?= $vs + $admins ?></div><div class="l">Personnel</div></div>
-    <div class="kpi"><div class="v" style="color:#333"><?= $notesDistrib['total'] ?? 0 ?></div><div class="l">Notes saisies</div></div>
+    <div class="kpi"><div class="v" style="color:var(--text-color, #333)"><?= $notesDistrib['total'] ?? 0 ?></div><div class="l">Notes saisies</div></div>
     <div class="kpi"><div class="v" style="color:#dc2626"><?= $notesDistrib['moyenne'] ?? '-' ?> /20</div><div class="l">Moyenne générale</div></div>
 </div>
 

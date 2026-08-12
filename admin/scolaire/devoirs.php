@@ -66,7 +66,7 @@ $page = new \API\Admin\AdminCrudPage([
             'render' => function ($v, $row) {
                 $html = '<strong>' . htmlspecialchars($v ?? '') . '</strong>';
                 if (!empty($row['description'])) {
-                    $html .= '<br><small style="color:#888">' . htmlspecialchars(mb_substr($row['description'], 0, 60)) . '…</small>';
+                    $html .= '<br><small style="color:var(--text-muted, #888)">' . htmlspecialchars(mb_substr($row['description'], 0, 60)) . '…</small>';
                 }
                 return $html;
             }],

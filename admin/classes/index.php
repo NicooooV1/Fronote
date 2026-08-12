@@ -172,11 +172,11 @@ ob_start();
     .class-card.inactive { opacity: 0.6; border-left-color: #ccc; }
     .class-card h3 { margin: 0 0 8px; font-size: 18px; display: flex; justify-content: space-between; align-items: center; }
     .class-card .effectif { font-size: 24px; font-weight: 700; color: #0f4c81; }
-    .class-meta { font-size: 13px; color: #666; margin-bottom: 8px; }
+    .class-meta { font-size: 13px; color: var(--text-light, #666); margin-bottom: 8px; }
     .class-actions { display: flex; gap: 6px; margin-top: 10px; }
     .badge-niveau { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; background: #e2e8f0; color: #4a5568; }
     .badge-inactive { background: #fee2e2; color: #991b1b; }
-    .student-list { max-height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; }
+    .student-list { max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; padding: 8px; }
     .student-list label { display: block; padding: 4px 6px; font-size: 13px; cursor: pointer; border-radius: 4px; }
     .student-list label:hover { background: #f0f4f8; }
 </style>
@@ -274,7 +274,7 @@ include __DIR__ . '/../includes/header.php';
             <input type="hidden" name="action" value="assign_students">
             <input type="hidden" name="class_id" id="sm_cid">
             <input type="hidden" name="class_name" id="sm_cname">
-            <input type="text" id="sm_search" placeholder="Rechercher…" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;margin-bottom:10px;box-sizing:border-box;font-size:13px" data-fr-input="filterStudents">
+            <input type="text" id="sm_search" placeholder="Rechercher…" style="width:100%;padding:8px;border:1px solid var(--border-color, #ddd);border-radius:6px;margin-bottom:10px;box-sizing:border-box;font-size:13px" data-fr-input="filterStudents">
             <div class="student-list" id="sm_list">Chargement…</div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button type="button" class="btn btn-secondary" data-fr-click="removeClass" data-fr-args='["studentsModal","active"]'>Annuler</button><button type="submit" class="btn btn-primary">Enregistrer</button></div>
         </form>
@@ -302,7 +302,7 @@ function openStudents(cid, className) {
     let html = '';
     allStudents.forEach(s => {
         const checked = s.classe === className ? 'checked' : '';
-        html += `<label><input type="checkbox" name="student_ids[]" value="${parseInt(s.id, 10)}" ${checked}> ${esc(s.prenom)} ${esc(s.nom)} <small style="color:#888">(${esc(s.classe) || 'Sans classe'})</small></label>`;
+        html += `<label><input type="checkbox" name="student_ids[]" value="${parseInt(s.id, 10)}" ${checked}> ${esc(s.prenom)} ${esc(s.nom)} <small style="color:var(--text-muted, #888)">(${esc(s.classe) || 'Sans classe'})</small></label>`;
     });
     document.getElementById('sm_list').innerHTML = html;
     document.getElementById('studentsModal').classList.add('active');

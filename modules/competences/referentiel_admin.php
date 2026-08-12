@@ -95,7 +95,7 @@ if (isset($_GET['edit'])) {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
         <!-- Formulaire ajout/édition -->
         <div style="background:var(--bg-card);border-radius:12px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-            <h3 style="font-size:15px;font-weight:600;color:#2d3748;margin-bottom:16px;">
+            <h3 style="font-size:15px;font-weight:600;color:var(--text-color, #2d3748);margin-bottom:16px;">
                 <?= $editComp ? 'Modifier la compétence' : 'Nouvelle compétence' ?>
             </h3>
             <form method="post">
@@ -105,28 +105,28 @@ if (isset($_GET['edit'])) {
 
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
                     <div>
-                        <label style="display:block;font-size:12px;font-weight:600;color:#4a5568;margin-bottom:4px;">Code *</label>
+                        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-color, #4a5568);margin-bottom:4px;">Code *</label>
                         <input type="text" name="code" class="form-control" required value="<?= htmlspecialchars($editComp['code'] ?? '') ?>" placeholder="Ex: D1.1">
                     </div>
                     <div>
-                        <label style="display:block;font-size:12px;font-weight:600;color:#4a5568;margin-bottom:4px;"><?= __('competences.domain') ?></label>
+                        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-color, #4a5568);margin-bottom:4px;"><?= __('competences.domain') ?></label>
                         <input type="text" name="domaine" class="form-control" value="<?= htmlspecialchars($editComp['domaine'] ?? '') ?>" placeholder="Ex: Langages">
                     </div>
                 </div>
 
                 <div style="margin-bottom:12px;">
-                    <label style="display:block;font-size:12px;font-weight:600;color:#4a5568;margin-bottom:4px;">Nom *</label>
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-color, #4a5568);margin-bottom:4px;">Nom *</label>
                     <input type="text" name="nom" class="form-control" required value="<?= htmlspecialchars($editComp['nom'] ?? '') ?>">
                 </div>
 
                 <div style="margin-bottom:12px;">
-                    <label style="display:block;font-size:12px;font-weight:600;color:#4a5568;margin-bottom:4px;"><?= __('label.description') ?></label>
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-color, #4a5568);margin-bottom:4px;"><?= __('label.description') ?></label>
                     <textarea name="description" class="form-control" rows="2"><?= htmlspecialchars($editComp['description'] ?? '') ?></textarea>
                 </div>
 
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
                     <div>
-                        <label style="display:block;font-size:12px;font-weight:600;color:#4a5568;margin-bottom:4px;">Parent</label>
+                        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-color, #4a5568);margin-bottom:4px;">Parent</label>
                         <select name="parent_id" class="form-control">
                             <option value="0">— Racine —</option>
                             <?php foreach ($allFlat as $c): ?>
@@ -135,11 +135,11 @@ if (isset($_GET['edit'])) {
                         </select>
                     </div>
                     <div>
-                        <label style="display:block;font-size:12px;font-weight:600;color:#4a5568;margin-bottom:4px;">Ordre</label>
+                        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-color, #4a5568);margin-bottom:4px;">Ordre</label>
                         <input type="number" name="ordre" class="form-control" value="<?= $editComp['ordre'] ?? 0 ?>" min="0">
                     </div>
                     <div>
-                        <label style="display:block;font-size:12px;font-weight:600;color:#4a5568;margin-bottom:4px;">Niveau attendu</label>
+                        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-color, #4a5568);margin-bottom:4px;">Niveau attendu</label>
                         <select name="niveau_attendu" class="form-control">
                             <?php foreach (['acquis','depasse','en_cours'] as $nv): ?>
                             <option value="<?= $nv ?>" <?= ($editComp['niveau_attendu'] ?? 'acquis') === $nv ? 'selected' : '' ?>><?= $niveauxLabels[$nv] ?? $nv ?></option>
@@ -159,14 +159,14 @@ if (isset($_GET['edit'])) {
 
         <!-- Liste des compétences -->
         <div style="background:var(--bg-card);border-radius:12px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,0.06);max-height:600px;overflow-y:auto;">
-            <h3 style="font-size:15px;font-weight:600;color:#2d3748;margin-bottom:16px;">
+            <h3 style="font-size:15px;font-weight:600;color:var(--text-color, #2d3748);margin-bottom:16px;">
                 Référentiel actuel (<?= count($allFlat) ?> compétences)
             </h3>
             <?php foreach ($arbre as $domaine): ?>
             <div style="margin-bottom:16px;">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
                     <span style="font-weight:700;color:#0f4c81;font-size:13px;"><?= htmlspecialchars($domaine['code']) ?></span>
-                    <span style="font-weight:600;font-size:13px;color:#2d3748;"><?= htmlspecialchars($domaine['nom']) ?></span>
+                    <span style="font-weight:600;font-size:13px;color:var(--text-color, #2d3748);"><?= htmlspecialchars($domaine['nom']) ?></span>
                     <div style="margin-left:auto;display:flex;gap:4px;">
                         <a href="?edit=<?= $domaine['id'] ?>" class="btn btn-sm btn-secondary" title="<?= __('btn.edit') ?>"><i class="fas fa-edit"></i></a>
                         <form method="post" style="display:inline;" data-fr-confirm="Supprimer ce domaine et toutes ses sous-compétences ?">
@@ -179,9 +179,9 @@ if (isset($_GET['edit'])) {
                 </div>
                 <?php if (!empty($domaine['children'])): ?>
                 <?php foreach ($domaine['children'] as $child): ?>
-                <div style="display:flex;align-items:center;gap:8px;padding:4px 0 4px 20px;font-size:13px;border-bottom:1px solid #f7fafc;">
-                    <span style="color:#718096;font-weight:500;"><?= htmlspecialchars($child['code']) ?></span>
-                    <span style="color:#4a5568;"><?= htmlspecialchars($child['nom']) ?></span>
+                <div style="display:flex;align-items:center;gap:8px;padding:4px 0 4px 20px;font-size:13px;border-bottom:1px solid var(--border-color, #f7fafc);">
+                    <span style="color:var(--text-light, #718096);font-weight:500;"><?= htmlspecialchars($child['code']) ?></span>
+                    <span style="color:var(--text-color, #4a5568);"><?= htmlspecialchars($child['nom']) ?></span>
                     <div style="margin-left:auto;display:flex;gap:4px;">
                         <a href="?edit=<?= $child['id'] ?>" class="btn btn-sm btn-secondary" style="padding:2px 6px;font-size:11px;"><i class="fas fa-edit"></i></a>
                         <form method="post" style="display:inline;" data-fr-confirm="Supprimer cette compétence ?">

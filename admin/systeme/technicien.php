@@ -256,21 +256,21 @@ ob_start();
 .tech-container{max-width:1100px;margin:0 auto}
 .tech-stats{display:flex;gap:16px;margin-bottom:24px}
 .tech-stat{background:var(--bg-card);border-radius:8px;padding:14px 20px;flex:1;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.05)}
-.tech-stat-value{font-size:1.8em;font-weight:700;color:#333}
-.tech-stat-label{font-size:.85em;color:#718096;margin-top:2px}
-.tab-nav{display:flex;gap:0;border-bottom:2px solid #e2e8f0;margin-bottom:20px}
-.tab-btn{padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;font-size:14px;font-weight:500;color:#718096;transition:color .15s,border-color .15s}
+.tech-stat-value{font-size:1.8em;font-weight:700;color:var(--text-color, #333)}
+.tech-stat-label{font-size:.85em;color:var(--text-light, #718096);margin-top:2px}
+.tab-nav{display:flex;gap:0;border-bottom:2px solid var(--border-color, #e2e8f0);margin-bottom:20px}
+.tab-btn{padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;font-size:14px;font-weight:500;color:var(--text-light, #718096);transition:color .15s,border-color .15s}
 .tab-btn.active{color:#0f4c81;border-bottom-color:#0f4c81}
 .tab-pane{display:none}
 .tab-pane.active{display:block}
-.tech-card{background:var(--bg-card);border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.04);transition:.2s}
+.tech-card{background:var(--bg-card);border:1px solid var(--border-color, #e2e8f0);border-radius:10px;padding:18px 20px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.04);transition:.2s}
 .tech-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.08)}
 .tech-card-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
-.tech-card-name{font-weight:600;font-size:1.05em;color:#2d3748}
+.tech-card-name{font-weight:600;font-size:1.05em;color:var(--text-color, #2d3748)}
 .tech-card-login{font-family:monospace;font-size:.9em;color:#667eea;background:#f0f4ff;padding:2px 8px;border-radius:4px}
-.tech-card-meta{display:flex;flex-wrap:wrap;gap:10px;font-size:.85em;color:#718096;margin-bottom:8px}
+.tech-card-meta{display:flex;flex-wrap:wrap;gap:10px;font-size:.85em;color:var(--text-light, #718096);margin-bottom:8px}
 .tech-card-meta span{display:flex;align-items:center;gap:4px}
-.tech-card-motif{font-size:.88em;color:#4a5568;background:var(--bg-secondary);padding:8px 12px;border-radius:6px;border-left:3px solid #667eea;margin-bottom:10px}
+.tech-card-motif{font-size:.88em;color:var(--text-color, #4a5568);background:var(--bg-secondary);padding:8px 12px;border-radius:6px;border-left:3px solid #667eea;margin-bottom:10px}
 .tech-card-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .badge-status{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:.78em;font-weight:600}
 .badge-active{background:#d1fae5;color:#065f46}
@@ -286,32 +286,32 @@ ob_start();
 .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
 .form-group{display:flex;flex-direction:column;gap:4px}
 .form-group.full{grid-column:1/-1}
-.form-group label{font-size:.85em;font-weight:600;color:#4a5568}
+.form-group label{font-size:.85em;font-weight:600;color:var(--text-color, #4a5568)}
 .form-group input,.form-group select,.form-group textarea{padding:8px 12px;border:1px solid #d2d6dc;border-radius:6px;font-size:.9em;font-family:inherit}
 .form-group textarea{resize:vertical;min-height:60px}
-.form-group .help{font-size:.78em;color:#a0aec0;margin-top:2px}
+.form-group .help{font-size:.78em;color:var(--text-muted, #a0aec0);margin-top:2px}
 .btn-create{background:#0f4c81;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:.95em;font-weight:600;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:6px}
 .btn-create:hover{background:#0d3f6b}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999}
 .modal-box{background:var(--bg-card);border-radius:12px;padding:28px 32px;max-width:500px;width:90%;box-shadow:0 10px 40px rgba(0,0,0,.15)}
-.modal-box h3{margin:0 0 12px;color:#2d3748;font-size:1.15em}
-.modal-box .cred-block{background:var(--bg-secondary);border:1px solid #e2e8f0;border-radius:8px;padding:14px 18px;margin:12px 0;font-family:monospace;font-size:.95em}
-.modal-box .cred-label{font-size:.8em;color:#718096;font-weight:600;font-family:sans-serif;margin-bottom:2px}
-.modal-box .cred-value{font-size:1.05em;color:#2d3748;user-select:all}
+.modal-box h3{margin:0 0 12px;color:var(--text-color, #2d3748);font-size:1.15em}
+.modal-box .cred-block{background:var(--bg-secondary);border:1px solid var(--border-color, #e2e8f0);border-radius:8px;padding:14px 18px;margin:12px 0;font-family:monospace;font-size:.95em}
+.modal-box .cred-label{font-size:.8em;color:var(--text-light, #718096);font-weight:600;font-family:sans-serif;margin-bottom:2px}
+.modal-box .cred-value{font-size:1.05em;color:var(--text-color, #2d3748);user-select:all}
 .modal-box .warning{background:#fef3c7;color:#92400e;padding:10px 14px;border-radius:6px;font-size:.85em;margin:14px 0;display:flex;align-items:center;gap:8px}
 .btn-modal-close{background:#0f4c81;color:#fff;border:none;padding:8px 20px;border-radius:6px;font-size:.9em;font-weight:600;cursor:pointer;margin-top:8px}
 .btn-copy{background:#667eea;color:#fff;border:none;padding:4px 10px;border-radius:4px;font-size:.78em;cursor:pointer;margin-left:8px}
 .btn-copy:hover{background:#5a67d8}
 .audit-table{width:100%;border-collapse:collapse;background:var(--bg-card);border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-.audit-table th,.audit-table td{padding:8px 12px;text-align:left;border-bottom:1px solid #f0f0f0;font-size:.82em}
-.audit-table th{background:var(--bg-secondary);font-weight:600;color:#4a5568}
+.audit-table th,.audit-table td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border-color, #f0f0f0);font-size:.82em}
+.audit-table th{background:var(--bg-secondary);font-weight:600;color:var(--text-color, #4a5568)}
 .audit-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;background:var(--bg-card);padding:10px 14px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.04);align-items:flex-end}
 .audit-filters .fg{display:flex;flex-direction:column;gap:3px}
-.audit-filters label{font-size:.75em;font-weight:600;color:#4a5568}
+.audit-filters label{font-size:.75em;font-weight:600;color:var(--text-color, #4a5568)}
 .audit-filters select{padding:5px 8px;border:1px solid #d2d6dc;border-radius:5px;font-size:.82em}
-.empty-state{text-align:center;padding:40px;color:#a0aec0;font-size:.95em}
+.empty-state{text-align:center;padding:40px;color:var(--text-muted, #a0aec0);font-size:.95em}
 .pagination{display:flex;gap:4px;justify-content:center;margin-top:16px}
-.pagination a,.pagination span{padding:5px 10px;border-radius:4px;font-size:.82em;text-decoration:none;border:1px solid #e2e8f0;color:#4a5568}
+.pagination a,.pagination span{padding:5px 10px;border-radius:4px;font-size:.82em;text-decoration:none;border:1px solid var(--border-color, #e2e8f0);color:var(--text-color, #4a5568)}
 .pagination span.current{background:#0f4c81;color:#fff;border-color:#0f4c81}
 .pagination a:hover{background:var(--bg-secondary)}
 .msg-toast{padding:12px 16px;border-radius:6px;margin-bottom:16px;font-size:.92em;display:flex;align-items:center;gap:8px}
@@ -406,18 +406,18 @@ include __DIR__ . '/../includes/header.php';
                 $modulesList = json_decode($acc['modules_autorises'] ?? 'null', true);
             ?>
             <?php if (!empty($ipList)): ?>
-            <div style="font-size:.82em;color:#718096;margin-bottom:6px">
+            <div style="font-size:.82em;color:var(--text-light, #718096);margin-bottom:6px">
                 <i class="fas fa-network-wired"></i> IP autorisees : <?= htmlspecialchars(implode(', ', $ipList)) ?>
             </div>
             <?php endif; ?>
             <?php if (!empty($modulesList)): ?>
-            <div style="font-size:.82em;color:#718096;margin-bottom:6px">
+            <div style="font-size:.82em;color:var(--text-light, #718096);margin-bottom:6px">
                 <i class="fas fa-puzzle-piece"></i> Modules : <?= htmlspecialchars(implode(', ', $modulesList)) ?>
             </div>
             <?php endif; ?>
             <div class="tech-card-footer">
                 <div style="display:flex;align-items:center;gap:12px">
-                    <span style="font-size:.85em;color:#718096">
+                    <span style="font-size:.85em;color:var(--text-light, #718096)">
                         <i class="fas fa-clock"></i> Expire le <?= date('d/m/Y H:i', strtotime($acc['date_expiration'])) ?>
                     </span>
                     <span class="countdown" data-expires="<?= strtotime($acc['date_expiration']) ?>">
@@ -491,7 +491,7 @@ include __DIR__ . '/../includes/header.php';
 <!-- ═══ CREER UN ACCES ═══ -->
 <div id="tab-creer" class="tab-pane">
     <div class="form-card">
-        <h3 style="margin:0 0 18px;color:#2d3748;font-size:1.1em"><i class="fas fa-user-shield"></i> Nouveau compte technicien</h3>
+        <h3 style="margin:0 0 18px;color:var(--text-color, #2d3748);font-size:1.1em"><i class="fas fa-user-shield"></i> Nouveau compte technicien</h3>
         <form method="post">
             <input type="hidden" name="csrf_token" value="<?= $csrfToken ?>">
             <input type="hidden" name="action" value="create">
@@ -556,7 +556,7 @@ include __DIR__ . '/../includes/header.php';
                             'modules' => 'Modules',
                         ];
                         foreach ($availableModules as $modKey => $modLabel): ?>
-                        <label style="display:flex;align-items:center;gap:4px;font-size:.88em;color:#4a5568;cursor:pointer">
+                        <label style="display:flex;align-items:center;gap:4px;font-size:.88em;color:var(--text-color, #4a5568);cursor:pointer">
                             <input type="checkbox" name="modules_autorises[]" value="<?= $modKey ?>">
                             <?= $modLabel ?>
                         </label>
@@ -570,7 +570,7 @@ include __DIR__ . '/../includes/header.php';
                 <button type="submit" class="btn-create">
                     <i class="fas fa-user-plus"></i> Creer l'acces technicien
                 </button>
-                <span style="font-size:.82em;color:#a0aec0">L'identifiant et le mot de passe seront generes automatiquement.</span>
+                <span style="font-size:.82em;color:var(--text-muted, #a0aec0)">L'identifiant et le mot de passe seront generes automatiquement.</span>
             </div>
         </form>
     </div>
@@ -602,7 +602,7 @@ include __DIR__ . '/../includes/header.php';
             </select>
         </div>
         <button class="btn-create" style="padding:6px 14px;font-size:.82em"><i class="fas fa-filter"></i> Filtrer</button>
-        <a href="technicien.php" style="font-size:.82em;text-decoration:none;padding:6px;color:#718096">Reset</a>
+        <a href="technicien.php" style="font-size:.82em;text-decoration:none;padding:6px;color:var(--text-light, #718096)">Reset</a>
     </form>
 
     <?php if (empty($auditLogs)): ?>
@@ -626,10 +626,10 @@ include __DIR__ . '/../includes/header.php';
         <tbody>
             <?php foreach ($auditLogs as $log): ?>
             <tr>
-                <td style="color:#a0aec0"><?= $log['id'] ?></td>
+                <td style="color:var(--text-muted, #a0aec0)"><?= $log['id'] ?></td>
                 <td style="white-space:nowrap"><?= date('d/m/Y H:i:s', strtotime($log['created_at'])) ?></td>
                 <td>
-                    <span style="font-weight:600;color:#2d3748"><?= htmlspecialchars($log['tech_name'] ?? '-') ?></span>
+                    <span style="font-weight:600;color:var(--text-color, #2d3748)"><?= htmlspecialchars($log['tech_name'] ?? '-') ?></span>
                     <br><span style="font-family:monospace;font-size:.9em;color:#667eea"><?= htmlspecialchars($log['tech_login'] ?? '-') ?></span>
                 </td>
                 <td>
@@ -647,11 +647,11 @@ include __DIR__ . '/../includes/header.php';
                         <?= htmlspecialchars($log['action']) ?>
                     </span>
                 </td>
-                <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;font-size:.78em;color:#666;cursor:pointer" title="<?= htmlspecialchars($log['details'] ?? '') ?>">
+                <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;font-size:.78em;color:var(--text-light, #666);cursor:pointer" title="<?= htmlspecialchars($log['details'] ?? '') ?>">
                     <?= htmlspecialchars(mb_substr($log['details'] ?? '-', 0, 60)) ?>
                 </td>
                 <td style="font-family:monospace;font-size:.82em"><?= htmlspecialchars($log['ip_address'] ?? '-') ?></td>
-                <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.78em;color:#999" title="<?= htmlspecialchars($log['user_agent'] ?? '') ?>">
+                <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.78em;color:var(--text-muted, #999)" title="<?= htmlspecialchars($log['user_agent'] ?? '') ?>">
                     <?= htmlspecialchars(mb_substr($log['user_agent'] ?? '-', 0, 40)) ?>
                 </td>
             </tr>
@@ -690,7 +690,7 @@ include __DIR__ . '/../includes/header.php';
 <div class="modal-overlay" id="passwordModal">
     <div class="modal-box">
         <h3><i class="fas fa-key" style="color:#48bb78"></i> Acces technicien cree</h3>
-        <p style="font-size:.9em;color:#4a5568;margin:0 0 14px">
+        <p style="font-size:.9em;color:var(--text-color, #4a5568);margin:0 0 14px">
             Voici les identifiants de connexion. <strong>Le mot de passe ne sera plus jamais affiche.</strong>
         </p>
 

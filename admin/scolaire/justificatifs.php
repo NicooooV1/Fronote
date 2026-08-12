@@ -107,8 +107,8 @@ ob_start();
 ?>
 <style>
     .just-container { max-width: 1100px; margin: 0 auto; }
-    .tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid #eee; }
-    .tab-link { padding: 10px 18px; text-decoration: none; font-size: 14px; font-weight: 500; color: #666; border-bottom: 2px solid transparent; margin-bottom: -2px; display: flex; align-items: center; gap: 6px; }
+    .tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid var(--border-color, #eee); }
+    .tab-link { padding: 10px 18px; text-decoration: none; font-size: 14px; font-weight: 500; color: var(--text-light, #666); border-bottom: 2px solid transparent; margin-bottom: -2px; display: flex; align-items: center; gap: 6px; }
     .tab-link.active { color: #0f4c81; border-bottom-color: #0f4c81; }
     .tab-badge { padding: 1px 7px; border-radius: 50%; font-size: 11px; font-weight: 600; color: white; }
     .tb-pending { background: #f59e0b; } .tb-approved { background: #059669; } .tb-rejected { background: #dc2626; }
@@ -116,16 +116,16 @@ ob_start();
     .just-card .left { flex: 1; }
     .just-card .right { display: flex; flex-direction: column; gap: 8px; min-width: 200px; }
     .just-card h4 { margin: 0 0 4px; font-size: 15px; }
-    .just-meta { font-size: 13px; color: #666; margin-bottom: 6px; }
+    .just-meta { font-size: 13px; color: var(--text-light, #666); margin-bottom: 6px; }
     .just-meta span { margin-right: 12px; }
     .badge-type { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; background: #e2e8f0; color: #4a5568; }
     .badge-status { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; }
     .status-pending { background: #fef3cd; color: #92400e; } .status-approved { background: #d1fae5; color: #065f46; } .status-rejected { background: #fee2e2; color: #991b1b; }
-    .admin-comment { font-size: 12px; padding: 6px 10px; background: var(--bg-secondary); border-radius: 6px; margin-top: 6px; color: #555; }
+    .admin-comment { font-size: 12px; padding: 6px 10px; background: var(--bg-secondary); border-radius: 6px; margin-top: 6px; color: var(--text-color, #555); }
     .action-form textarea { width: 100%; padding: 6px 8px; border: 1px solid #d2d6dc; border-radius: 6px; font-size: 12px; resize: vertical; box-sizing: border-box; }
     .file-link { color: #0f4c81; font-size: 13px; text-decoration: none; }
     .file-link:hover { text-decoration: underline; }
-    .empty-state { text-align: center; padding: 40px; color: #999; }
+    .empty-state { text-align: center; padding: 40px; color: var(--text-muted, #999); }
 </style>
 <?php
 $extraHeadHtml = ob_get_clean();
@@ -147,13 +147,13 @@ include __DIR__ . '/../includes/header.php';
         <?php foreach ($justificatifs as $j): ?>
         <div class="just-card">
             <div class="left">
-                <h4><?= htmlspecialchars($j['eleve_prenom'] . ' ' . $j['eleve_nom']) ?> <small style="color:#888">(<?= htmlspecialchars($j['classe']) ?>)</small></h4>
+                <h4><?= htmlspecialchars($j['eleve_prenom'] . ' ' . $j['eleve_nom']) ?> <small style="color:var(--text-muted, #888)">(<?= htmlspecialchars($j['classe']) ?>)</small></h4>
                 <div class="just-meta">
                     <span><i class="fas fa-calendar"></i> <?= date('d/m/Y', strtotime($j['date_debut_absence'])) ?> → <?= date('d/m/Y', strtotime($j['date_fin_absence'])) ?></span>
                     <span class="badge-type"><?= htmlspecialchars($j['type']) ?></span>
                     <span><i class="fas fa-clock"></i> Soumis le <?= date('d/m/Y', strtotime($j['date_soumission'])) ?></span>
                 </div>
-                <?php if (!empty($j['motif'])): ?><div style="font-size:13px;color:#444;margin-top:4px"><strong>Motif :</strong> <?= htmlspecialchars($j['motif']) ?></div><?php endif; ?>
+                <?php if (!empty($j['motif'])): ?><div style="font-size:13px;color:var(--text-color, #444);margin-top:4px"><strong>Motif :</strong> <?= htmlspecialchars($j['motif']) ?></div><?php endif; ?>
                 <?php if (!empty($j['fichier'])): ?><div style="margin-top:6px"><a href="../../<?= htmlspecialchars($j['fichier']) ?>" class="file-link" target="_blank"><i class="fas fa-paperclip"></i> Voir le fichier joint</a></div><?php endif; ?>
                 <?php if (!empty($j['commentaire_admin'])): ?><div class="admin-comment"><i class="fas fa-comment-dots"></i> <?= htmlspecialchars($j['commentaire_admin']) ?></div><?php endif; ?>
             </div>
@@ -170,7 +170,7 @@ include __DIR__ . '/../includes/header.php';
                 </form>
                 <?php else: ?>
                 <span class="badge-status <?= $j['approuve'] ? 'status-approved' : 'status-rejected' ?>"><?= $j['approuve'] ? 'Approuvé' : 'Rejeté' ?></span>
-                <?php if (!empty($j['date_traitement'])): ?><div style="font-size:12px;color:#888;margin-top:4px">Le <?= date('d/m/Y H:i', strtotime($j['date_traitement'])) ?></div><?php endif; ?>
+                <?php if (!empty($j['date_traitement'])): ?><div style="font-size:12px;color:var(--text-muted, #888);margin-top:4px">Le <?= date('d/m/Y H:i', strtotime($j['date_traitement'])) ?></div><?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>

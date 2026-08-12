@@ -144,7 +144,7 @@ $csrf_token = $_SESSION['csrf_token'] ?? '';
         $notes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) {} ?>
     <?php if (empty($notes)): ?>
-        <p style="color:#999;">Aucune note enregistrée.</p>
+        <p style="color:var(--text-muted, #999);">Aucune note enregistrée.</p>
     <?php else: ?>
         <table class="users-table" style="font-size:13px;">
             <tr><th>Matière</th><th>Note</th><th>Coef</th><th>Type</th><th>Date</th><th>Professeur</th></tr>
@@ -172,7 +172,7 @@ $csrf_token = $_SESSION['csrf_token'] ?? '';
         $absences = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) {} ?>
     <?php if (empty($absences)): ?>
-        <p style="color:#999;">Aucune absence enregistrée.</p>
+        <p style="color:var(--text-muted, #999);">Aucune absence enregistrée.</p>
     <?php else: ?>
         <table class="users-table" style="font-size:13px;">
             <tr><th>Début</th><th>Fin</th><th>Type</th><th>Motif</th><th>Justifié</th></tr>

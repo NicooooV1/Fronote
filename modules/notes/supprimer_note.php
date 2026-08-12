@@ -78,7 +78,7 @@ include 'includes/header.php';
 ?>
 
                 <div style="background:var(--bg-card); border-radius:10px; padding:30px; box-shadow:0 2px 8px rgba(0,0,0,0.06); max-width:600px;">
-                    <h2 style="font-size:1.1em; color:#2d3748; margin-bottom:20px;">Suppression de la note</h2>
+                    <h2 style="font-size:1.1em; color:var(--text-color, #2d3748); margin-bottom:20px;">Suppression de la note</h2>
 
                     <div class="alert alert-warning" style="margin-bottom:20px;">
                         <strong>Attention !</strong> Cette action est irréversible.

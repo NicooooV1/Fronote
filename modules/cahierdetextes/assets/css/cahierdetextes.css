@@ -31,7 +31,7 @@
 }
 
 .summary-card {
-  background-color: white;
+  background-color: var(--bg-card, #fff);
   border-radius: var(--radius-md, 10px);
   box-shadow: var(--shadow-light, 0 2px 6px rgba(0, 0, 0, 0.05));
   padding: 20px;
@@ -94,7 +94,7 @@
   margin-bottom: 20px;
   flex-wrap: wrap;
   gap: 15px;
-  background-color: white;
+  background-color: var(--bg-card, #fff);
   padding: 15px 20px;
   border-radius: var(--radius-md, 10px);
   box-shadow: var(--shadow-light, 0 2px 6px rgba(0, 0, 0, 0.05));
@@ -111,8 +111,8 @@
   display: flex;
   overflow: hidden;
   border-radius: 6px;
-  background-color: #f5f5f5;
-  border: 1px solid #ddd;
+  background-color: var(--bg-secondary, #f5f5f5);
+  border: 1px solid var(--border-color, #ddd);
 }
 
 .view-toggle-option {
@@ -124,7 +124,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #555;
+  color: var(--text-color, #555);
   transition: all 0.2s;
   text-decoration: none;
 }
@@ -144,7 +144,7 @@
 }
 
 .devoir-card {
-  background-color: white;
+  background-color: var(--bg-card, #fff);
   border-radius: var(--radius-md, 10px);
   box-shadow: var(--shadow-light, 0 2px 6px rgba(0, 0, 0, 0.05));
   overflow: hidden;
@@ -171,14 +171,14 @@
 
 .card-header {
   padding: 15px 20px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-color, #eee);
   background-color: rgba(0, 0, 0, 0.02);
 }
 
 .devoir-title {
   font-size: 18px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-color, #333);
   margin-bottom: 5px;
   display: flex;
   align-items: center;
@@ -233,7 +233,7 @@
 
 .devoir-info .info-value {
   font-weight: 500;
-  color: #333;
+  color: var(--text-color, #333);
 }
 
 .date-rendu.urgent {
@@ -251,7 +251,7 @@
 }
 
 .devoir-description {
-  background-color: #f9f9f9;
+  background-color: var(--bg-secondary, #f9f9f9);
   padding: 15px;
   border-radius: 6px;
   margin-bottom: 20px;
@@ -268,7 +268,7 @@
 .devoir-description p {
   margin: 0;
   line-height: 1.5;
-  color: #333;
+  color: var(--text-color, #333);
   white-space: pre-line;
 }
 
@@ -279,7 +279,7 @@
 
 /* ======= VUE CALENDRIER (cahier-specific) ======= */
 .calendar-container {
-  background-color: white;
+  background-color: var(--bg-card, #fff);
   border-radius: var(--radius-md, 10px);
   overflow: hidden;
   box-shadow: var(--shadow-light, 0 2px 6px rgba(0, 0, 0, 0.05));
@@ -306,7 +306,7 @@
 }
 
 .calendar-nav-btn {
-  background-color: white;
+  background-color: var(--bg-card, #fff);
   border: none;
   width: 30px;
   height: 30px;
@@ -321,7 +321,7 @@
 }
 
 .calendar-nav-btn:hover {
-  background-color: #f5f5f5;
+  background-color: var(--bg-hover, #f5f5f5);
 }
 
 .calendar-grid {
@@ -333,13 +333,13 @@
   text-align: center;
   padding: 10px;
   font-weight: 600;
-  background-color: #f5f5f5;
-  border-bottom: 1px solid #eee;
+  background-color: var(--bg-secondary, #f5f5f5);
+  border-bottom: 1px solid var(--border-color, #eee);
 }
 
 .calendar-day {
   min-height: 100px;
-  border: 1px solid #eee;
+  border: 1px solid var(--border-color, #eee);
   padding: 8px;
   position: relative;
 }
@@ -356,7 +356,7 @@
   font-weight: 500;
   margin-bottom: 6px;
   text-align: right;
-  color: #333;
+  color: var(--text-color, #333);
 }
 
 .today .calendar-date {
@@ -449,10 +449,10 @@ textarea.form-control {
 
 .selected-user-display {
   padding: 10px;
-  background-color: #f5f5f5;
+  background-color: var(--bg-secondary, #f5f5f5);
   border-radius: 6px;
   font-weight: 500;
-  color: #333;
+  color: var(--text-color, #333);
 }
 
 /* ======= RESPONSIVE (module-specific) ======= */
@@ -517,7 +517,7 @@ textarea.form-control {
 .search-bar input[type="text"] {
   flex: 1;
   padding: 8px 14px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color, #ddd);
   border-radius: 6px;
   font-size: 14px;
   transition: border-color .2s;
@@ -573,7 +573,7 @@ textarea.form-control {
   padding: 4px 8px;
   border-radius: 6px;
   transition: background .2s, color .2s;
-  color: #999;
+  color: var(--text-muted, #999);
 }
 .btn-fait:hover {
   background: rgba(0,184,148,.1);
@@ -655,7 +655,7 @@ textarea.form-control {
   background: #f5f5fa;
   border-radius: 6px;
   font-size: 13px;
-  color: #444;
+  color: var(--text-color, #444);
   text-decoration: none;
   transition: background .2s;
 }
@@ -669,7 +669,7 @@ textarea.form-control {
 }
 .fichier-taille {
   font-size: 11px;
-  color: #999;
+  color: var(--text-muted, #999);
 }
 .fichier-delete {
   color: #e74c3c;
@@ -701,8 +701,8 @@ textarea.form-control {
   border-radius: 6px;
   font-size: 14px;
   text-decoration: none;
-  color: #555;
-  border: 1px solid #ddd;
+  color: var(--text-color, #555);
+  border: 1px solid var(--border-color, #ddd);
   transition: all .2s;
 }
 .pagination a:hover {
@@ -724,7 +724,7 @@ textarea.form-control {
   text-align: center;
   margin-top: 8px;
   font-size: 13px;
-  color: #888;
+  color: var(--text-muted, #888);
 }
 
 /* --- Popover calendrier --- */
@@ -732,7 +732,7 @@ textarea.form-control {
   position: absolute;
   z-index: 100;
   width: 280px;
-  background: #fff;
+  background: var(--bg-card, #fff);
   border-radius: 10px;
   box-shadow: 0 8px 30px rgba(0,0,0,.15);
   overflow: hidden;
@@ -754,18 +754,18 @@ textarea.form-control {
 }
 .popover-desc {
   font-size: 13px;
-  color: #666;
+  color: var(--text-light, #666);
   margin-top: 6px;
   line-height: 1.5;
 }
 .popover-meta {
   font-size: 12px;
-  color: #888;
+  color: var(--text-muted, #888);
   margin-top: 4px;
 }
 .popover-footer {
   padding: 8px 16px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-color, #eee);
   display: flex;
   gap: 8px;
 }
@@ -782,7 +782,7 @@ textarea.form-control {
 .devoir-description {
   margin-top: 15px;
   padding: 10px;
-  background-color: #f9f9f9;
+  background-color: var(--bg-secondary, #f9f9f9);
   border-radius: 4px;
 }
 .devoir-description h4 {
@@ -804,10 +804,10 @@ textarea.form-control {
 }
 .filter-row select {
   padding: 6px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color, #ddd);
   border-radius: 6px;
   font-size: 13px;
-  background: #fff;
+  background: var(--bg-card, #fff);
   cursor: pointer;
 }
 .filter-row select:focus {

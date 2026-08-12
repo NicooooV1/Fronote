@@ -125,29 +125,29 @@ include __DIR__ . '/../includes/header.php';
 ?>
 
 <style>
-.config-card{background:var(--bg-card);border:1px solid #e2e8f0;border-radius:8px;padding:24px;margin-bottom:20px}
-.config-card h3{font-size:1.05em;color:#2d3748;margin:0 0 16px;padding-bottom:10px;border-bottom:1px solid #edf2f7;display:flex;align-items:center;gap:8px}
+.config-card{background:var(--bg-card);border:1px solid var(--border-color, #e2e8f0);border-radius:8px;padding:24px;margin-bottom:20px}
+.config-card h3{font-size:1.05em;color:var(--text-color, #2d3748);margin:0 0 16px;padding-bottom:10px;border-bottom:1px solid var(--border-color, #edf2f7);display:flex;align-items:center;gap:8px}
 .config-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:640px){.config-grid{grid-template-columns:1fr}}
 .field{margin-bottom:14px}
-.field label{display:block;font-size:.88em;font-weight:600;color:#4a5568;margin-bottom:4px}
-.field input,.field select,.field textarea{width:100%;padding:9px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:.92em}
+.field label{display:block;font-size:.88em;font-weight:600;color:var(--text-color, #4a5568);margin-bottom:4px}
+.field input,.field select,.field textarea{width:100%;padding:9px 12px;border:1px solid var(--border-color, #e2e8f0);border-radius:6px;font-size:.92em}
 .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.12)}
-.field .hint{font-size:.78em;color:#a0aec0;margin-top:3px}
+.field .hint{font-size:.78em;color:var(--text-muted, #a0aec0);margin-top:3px}
 .field textarea{min-height:80px;resize:vertical}
 .mod-preview{display:flex;align-items:center;gap:14px;padding:16px;background:var(--bg-secondary);border-radius:8px;margin-bottom:20px}
 .mod-preview-icon{width:50px;height:50px;border-radius:10px;background:#f0f4ff;display:flex;align-items:center;justify-content:center;font-size:1.3em;color:#667eea}
-.mod-preview h4{margin:0;font-size:1em;color:#2d3748}
-.mod-preview p{margin:2px 0 0;font-size:.85em;color:#a0aec0}
+.mod-preview h4{margin:0;font-size:1em;color:var(--text-color, #2d3748)}
+.mod-preview p{margin:2px 0 0;font-size:.85em;color:var(--text-muted, #a0aec0)}
 .btn-bar{display:flex;gap:10px;margin-top:16px}
 .btn-save{padding:10px 24px;background:#667eea;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:.92em}
 .btn-save:hover{background:#5a67d8}
-.btn-back{padding:10px 24px;background:#edf2f7;color:#4a5568;border:none;border-radius:6px;font-weight:600;cursor:pointer;text-decoration:none;font-size:.92em}
-.btn-back:hover{background:#e2e8f0}
+.btn-back{padding:10px 24px;background:var(--bg-secondary, #edf2f7);color:var(--text-color, #4a5568);border:none;border-radius:6px;font-weight:600;cursor:pointer;text-decoration:none;font-size:.92em}
+.btn-back:hover{background:var(--bg-hover, #e2e8f0)}
 .msg{padding:12px 16px;border-radius:6px;margin-bottom:16px;font-size:.92em}
 .msg-success{background:#f0fff4;border:1px solid #9ae6b4;color:#276749}
 .msg-error{background:#fff5f5;border:1px solid #feb2b2;color:#c53030}
-.no-config{color:#a0aec0;font-style:italic;padding:20px;text-align:center}
+.no-config{color:var(--text-muted, #a0aec0);font-style:italic;padding:20px;text-align:center}
 </style>
 
 <div class="mod-preview">
@@ -255,7 +255,7 @@ include __DIR__ . '/../includes/header.php';
 <!-- Rôles autorisés -->
 <div class="config-card">
     <h3><i class="fas fa-users-cog"></i> Visibilité par rôle</h3>
-    <p style="font-size:.88em;color:#718096;margin:0 0 16px">
+    <p style="font-size:.88em;color:var(--text-light, #718096);margin:0 0 16px">
         Définissez quels rôles peuvent voir ce module dans la sidebar. Laissez tout décoché pour autoriser tous les rôles (comportement par défaut).
     </p>
     <form method="post">
@@ -272,9 +272,9 @@ include __DIR__ . '/../includes/header.php';
             'controle'=>'Contrôle & lecture','systeme'=>'Système',
         ];
         ?>
-        <div style="max-height:280px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;padding:10px;margin-bottom:16px">
+        <div style="max-height:280px;overflow-y:auto;border:1px solid var(--border-color, #e2e8f0);border-radius:8px;padding:10px;margin-bottom:16px">
         <?php foreach ($rolesByTier as $tier => $roles): ?>
-            <strong style="display:block;font-size:.78em;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin:6px 0 3px"><?= htmlspecialchars($tierLabels[$tier] ?? $tier) ?></strong>
+            <strong style="display:block;font-size:.78em;color:var(--text-light, #64748b);text-transform:uppercase;letter-spacing:.04em;margin:6px 0 3px"><?= htmlspecialchars($tierLabels[$tier] ?? $tier) ?></strong>
             <?php foreach ($roles as $roleKey => $meta): ?>
                 <label style="display:inline-flex;align-items:center;gap:5px;font-size:.88em;cursor:pointer;margin:2px 10px 2px 0;font-weight:normal">
                     <input type="checkbox" name="role_<?= htmlspecialchars($roleKey) ?>" value="1"

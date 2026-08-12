@@ -66,12 +66,12 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <?php else: ?>
     <div style="overflow-x:auto">
     <table style="width:100%;border-collapse:collapse;font-size:.9em">
-        <thead><tr style="text-align:left;color:#718096;border-bottom:1px solid #e2e8f0">
+        <thead><tr style="text-align:left;color:var(--text-muted,#718096);border-bottom:1px solid var(--border-color,#e2e8f0)">
             <th style="padding:8px 10px"><?= __('label.nom') ?></th><th style="padding:8px 10px"><?= __('accessibilite.eleves_suivis') ?></th><th style="padding:8px 10px"><?= __('accessibilite.heures_sem') ?></th>
         </tr></thead>
         <tbody>
         <?php foreach ($aesh as $a): ?>
-            <tr style="border-bottom:1px solid #f7fafc">
+            <tr style="border-bottom:1px solid var(--border-color,#f7fafc)">
                 <td style="padding:8px 10px"><?= htmlspecialchars(($a['prenom'] ?? '') . ' ' . ($a['nom'] ?? '')) ?></td>
                 <td style="padding:8px 10px"><?= (int) ($a['nb_eleves'] ?? 0) ?></td>
                 <td style="padding:8px 10px"><?= (float) ($a['total_heures'] ?? 0) ?>h</td>

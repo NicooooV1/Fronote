@@ -111,14 +111,14 @@ ob_start();
     .aff-container { max-width: 1200px; margin: 0 auto; }
     .matrix-wrapper { overflow-x: auto; background: var(--bg-card); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
     .matrix-table { border-collapse: collapse; width: 100%; min-width: 800px; }
-    .matrix-table th, .matrix-table td { padding: 8px 10px; text-align: center; border: 1px solid #edf2f7; font-size: 13px; }
-    .matrix-table thead th { background: var(--bg-secondary); font-weight: 600; color: #4a5568; position: sticky; top: 0; z-index: 1; }
-    .matrix-table thead th:first-child { text-align: left; min-width: 180px; position: sticky; left: 0; z-index: 2; background: #edf2f7; }
-    .matrix-table tbody td:first-child { text-align: left; font-weight: 500; position: sticky; left: 0; background: var(--bg-card); z-index: 1; border-right: 2px solid #e2e8f0; }
+    .matrix-table th, .matrix-table td { padding: 8px 10px; text-align: center; border: 1px solid var(--border-color, #edf2f7); font-size: 13px; }
+    .matrix-table thead th { background: var(--bg-secondary); font-weight: 600; color: var(--text-color, #4a5568); position: sticky; top: 0; z-index: 1; }
+    .matrix-table thead th:first-child { text-align: left; min-width: 180px; position: sticky; left: 0; z-index: 2; background: var(--bg-secondary, #edf2f7); }
+    .matrix-table tbody td:first-child { text-align: left; font-weight: 500; position: sticky; left: 0; background: var(--bg-card); z-index: 1; border-right: 2px solid var(--border-color, #e2e8f0); }
     .matrix-table tbody tr:hover { background: #f0f7ff; }
     .matrix-table tbody tr:hover td:first-child { background: #f0f7ff; }
     .cell-check { width: 18px; height: 18px; cursor: pointer; accent-color: #0f4c81; }
-    .legend { display: flex; gap: 15px; margin-bottom: 15px; font-size: 13px; color: #555; align-items: center; }
+    .legend { display: flex; gap: 15px; margin-bottom: 15px; font-size: 13px; color: var(--text-color, #555); align-items: center; }
     .legend span { display: flex; align-items: center; gap: 4px; }
     .count-badge { background: #dbeafe; color: #1e40af; padding: 1px 6px; border-radius: 10px; font-size: 11px; font-weight: 600; margin-left: 4px; }
     .actions-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
@@ -134,11 +134,11 @@ include __DIR__ . '/../includes/header.php';
     <div class="legend">
         <span><input type="checkbox" checked disabled class="cell-check"> Affecté</span>
         <span><input type="checkbox" disabled class="cell-check"> Non affecté</span>
-        <span style="margin-left:auto;font-size:12px;color:#888">Cliquez sur une case pour ajouter/retirer une affectation instantanément.</span>
+        <span style="margin-left:auto;font-size:12px;color:var(--text-muted, #888)">Cliquez sur une case pour ajouter/retirer une affectation instantanément.</span>
     </div>
 
     <?php if (empty($professeurs) || empty($classes)): ?>
-        <div style="text-align:center;padding:40px;color:#999"><p>Ajoutez des professeurs et des classes pour utiliser cette vue.</p></div>
+        <div style="text-align:center;padding:40px;color:var(--text-muted, #999)"><p>Ajoutez des professeurs et des classes pour utiliser cette vue.</p></div>
     <?php else: ?>
     <div class="matrix-wrapper">
         <table class="matrix-table">

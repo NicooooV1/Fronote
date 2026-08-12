@@ -89,8 +89,8 @@ ob_start();
     .search-bar { display: flex; gap: 10px; margin-bottom: 15px; }
     .search-bar input { flex: 1; padding: 8px 12px; border: 1px solid #d2d6dc; border-radius: 6px; font-size: 13px; }
     .conv-table { width: 100%; border-collapse: collapse; background: var(--bg-card); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .conv-table th, .conv-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
-    .conv-table th { background: var(--bg-secondary); font-weight: 600; color: #4a5568; font-size: 12px; }
+    .conv-table th, .conv-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border-color, #f0f0f0); font-size: 13px; }
+    .conv-table th { background: var(--bg-secondary); font-weight: 600; color: var(--text-color, #4a5568); font-size: 12px; }
     .badge-type { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
     .bt-standard { background: #e2e8f0; color: #4a5568; }
     .bt-broadcast { background: #dbeafe; color: #1e40af; }
@@ -117,7 +117,7 @@ include __DIR__ . '/../includes/header.php';
     </form>
 
     <?php if (empty($conversations)): ?>
-        <div style="text-align:center;padding:40px;color:#999"><p>Aucune conversation trouvée.</p></div>
+        <div style="text-align:center;padding:40px;color:var(--text-muted, #999)"><p>Aucune conversation trouvée.</p></div>
     <?php else: ?>
     <table class="conv-table">
         <thead><tr><th>Sujet</th><th>Type</th><th>Participants</th><th>Messages</th><th>Dernier msg</th><th>Créée le</th><th>Actions</th></tr></thead>

@@ -88,6 +88,27 @@
   --mc-shadow-sm: 0 1px 2px rgba(0,0,0,.4);
 }
 
+/* Thème liquide : mêmes jetons sombres, accordés à la palette navy du liquide
+   (la coquille messagerie a ses propres jetons --mc-* ; sans ce bloc elle
+   resterait claire en liquide alors que le reste de l'app est sombre). */
+[data-theme="liquid"] .msg-app,
+[data-theme="liquid"] .conversation-page {
+  --mc-bg:        #0b1020;
+  --mc-panel:     #141c2e;
+  --mc-panel-2:   #1c2640;
+  --mc-border:    #2b3650;
+  --mc-border-2:  #232d45;
+  --mc-text:      #f4f7ff;
+  --mc-muted:     #a9b4d0;
+  --mc-accent:    #8b5cf6;
+  --mc-accent-ink:#ffffff;
+  --mc-accent-weak:#1e1b34;
+  --mc-other-bg:  #1c2640;
+  --mc-other-ink: #f4f7ff;
+  --mc-shadow:    0 1px 2px rgba(0,0,0,.35), 0 12px 32px rgba(0,0,0,.45);
+  --mc-shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+}
+
 /* ---------------------------------------------------------------------------
  * 2. Coquille 2 volets — .msg-app
  * -------------------------------------------------------------------------*/
