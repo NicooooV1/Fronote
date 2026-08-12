@@ -125,7 +125,6 @@ include __DIR__ . '/../includes/header.php';
 <div class="mp-tabs">
     <a href="index.php" class="mp-tab">Modules installés</a>
     <a href="marketplace.php" class="mp-tab active">Marketplace</a>
-    <a href="permissions.php" class="mp-tab">Permissions (lecture seule)</a>
 </div>
 
 <?php if (empty($catalog)): ?>

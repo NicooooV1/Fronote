@@ -240,8 +240,7 @@ include __DIR__ . '/../includes/header.php';
 
 <div class="users-container">
     <div style="margin-bottom:12px">
-        <a href="roles.php" class="btn btn-secondary"><i class="fas fa-user-shield"></i> Attribution des rôles (RBAC)</a>
-        <a href="../modules/role_permissions.php" class="btn btn-secondary"><i class="fas fa-eye"></i> Voir les permissions par rôle</a>
+        <a href="roles.php" class="btn btn-secondary"><i class="fas fa-user-shield"></i> Attribution des rôles</a>
     </div>
     <?php if (!empty($message)): ?>
         <div class="alert alert-success"><?= $message ?></div>
