@@ -23,8 +23,13 @@
 img, svg, video, canvas, iframe, table, pre { max-width: 100%; }
 /* min-width:0 CIBLÉ sur les conteneurs flex/grid (pas *{} global : éviterait de rétrécir
    des éléments qui comptent sur leur min-content). */
-.main-content, .form-row, .form-grid, .form-grid-2, .form-grid-3, .filters-bar { min-width: 0; }
+.main-content, .content-container, .form-row, .form-grid, .form-grid-2, .form-grid-3, .filters-bar { min-width: 0; }
 .form-row > *, .form-grid > *, .form-grid-2 > *, .form-grid-3 > *, .filters-bar > * { min-width: 0; }
+/* Enfants directs du wrapper de contenu (flex column) : sans borne, un enfant contenant un
+   tableau nowrap (ex. .users-container) prend la largeur intrinsèque du tableau (min-content)
+   et déborde le viewport sur mobile. max-width:100% le borne à la largeur DÉFINIE du wrapper ;
+   le scroll interne du tableau (.admin-table{overflow-x:auto}) prend alors le relais. */
+.content-container > * { min-width: 0; }
 
 /* ── 1. Neutralisation du layout « sidebar » disparu (nav passée en topbar) ── */
 .main-content { margin-left: 0 !important; min-width: 0; }
@@ -98,6 +103,11 @@ img, svg, video, canvas, iframe, table, pre { max-width: 100%; }
     display: block; overflow-x: auto; -webkit-overflow-scrolling: touch;
     white-space: nowrap; max-width: 100%;
   }
+  /* Borne mobile : un enfant du wrapper de contenu (ex. .users-container, max-width:1100px
+     défini en <style> page) ne doit pas prendre la largeur intrinsèque de son tableau et
+     déborder. !important pour battre le style inline de page (spécificité égale, sinon perdu).
+     Le scroll interne du tableau prend le relais. */
+  .content-container > * { max-width: 100% !important; }
 }
 
 /* ── 8. MODALES : tenir dans le viewport (largeur + hauteur + scroll) ───────── */
