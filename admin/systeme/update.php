@@ -101,12 +101,12 @@ ob_start(); ?>
   .upd-wrap { max-width: 820px; margin: 0 auto; }
   .upd-card { background:var(--bg-card); border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,.06); padding:22px 24px; margin-bottom:16px; }
   .upd-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
-  .badge-ok{background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
-  .badge-warn{background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
-  .badge-err{background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
+  .badge-ok{background:var(--ds-success-light,#d1fae5);color:var(--ds-success,#065f46);padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
+  .badge-warn{background:var(--ds-warning-light,#fef3c7);color:var(--ds-warning,#92400e);padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
+  .badge-err{background:var(--ds-danger-light,#fee2e2);color:var(--ds-danger,#991b1b);padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
   .upd-steps{background:#1a202c;color:#e2e8f0;border-radius:8px;padding:14px 16px;font-family:monospace;font-size:12px;line-height:1.7;margin-top:14px;white-space:pre-wrap;display:none}
   .upd-form label{display:block;font-size:13px;font-weight:600;color:var(--text-color, #4a5568);margin-bottom:4px}
-  .upd-form input{width:100%;padding:8px 10px;border:1px solid #d2d6dc;border-radius:6px;font-size:13px;box-sizing:border-box}
+  .upd-form input{width:100%;padding:8px 10px;border:1px solid var(--border-color,#d2d6dc);background:var(--bg-card,#fff);color:var(--text-color,#1d1d1f);border-radius:6px;font-size:13px;box-sizing:border-box}
   .upd-form .field{margin-bottom:14px}
   .muted{color:var(--text-light, #718096);font-size:13px}
 </style>
@@ -117,7 +117,7 @@ include __DIR__ . '/../includes/header.php';
 <div class="upd-wrap">
 
 <?php if (!empty($successMsg)): ?>
-  <div style="background:#d1fae5;color:#065f46;border-radius:8px;padding:10px 16px;margin-bottom:16px">
+  <div style="background:var(--ds-success-light,#d1fae5);color:var(--ds-success,#065f46);border-radius:8px;padding:10px 16px;margin-bottom:16px">
     <i class="fas fa-check-circle"></i> <?= htmlspecialchars($successMsg) ?>
   </div>
 <?php endif; ?>

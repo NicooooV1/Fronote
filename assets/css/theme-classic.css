@@ -884,14 +884,14 @@ a {
 .btn-primary:hover { background-color: var(--primary-dark); }
 .btn-secondary { background-color: var(--bg-secondary, #f5f5f5); color: var(--text-color); border: 1px solid var(--border-color, transparent); }
 .btn-secondary:hover { background-color: var(--bg-hover, #e5e7e9); }
-.btn-danger { background-color: var(--error-color); color: var(--text-on-accent); }
-.btn-danger:hover { background-color: #e12e1c; }
-.btn-success { background-color: var(--success-color); color: var(--text-on-accent); }
-.btn-success:hover { background-color: #2eb14f; }
-.btn-warning { background-color: var(--warning-color); color: var(--text-on-accent); }
-.btn-warning:hover { opacity: 0.9; }
-.btn-info { background-color: var(--info-color); color: var(--text-on-accent); }
-.btn-info:hover { opacity: 0.9; }
+.btn-danger { background-color: var(--btn-danger-bg); color: #fff; }
+.btn-danger:hover { background-color: var(--btn-danger-bg-hover); }
+.btn-success { background-color: var(--btn-success-bg); color: #fff; }
+.btn-success:hover { background-color: var(--btn-success-bg-hover); }
+.btn-warning { background-color: var(--btn-warning-bg); color: #fff; }
+.btn-warning:hover { background-color: var(--btn-warning-bg-hover); }
+.btn-info { background-color: var(--btn-info-bg); color: #fff; }
+.btn-info:hover { background-color: var(--btn-info-bg-hover); }
 .btn-sm { padding: 6px 12px; font-size: 13px; }
 
 /* Micro action buttons */

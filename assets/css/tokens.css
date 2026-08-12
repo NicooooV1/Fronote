@@ -132,6 +132,21 @@
   --bg-muted: var(--bg-secondary);
   --card-border: var(--border-color);
 
+  /* ── Fonds de BOUTONS sémantiques pleins ──
+     Les accents --success/--warning/... (verts/oranges Apple clairs) servent au TEXTE,
+     icônes et badges sur fond clair : parfait là, mais en fond de bouton avec texte blanc
+     ils tombaient à ~2.2:1 (illisible). Ces variantes assombries portent le texte blanc à
+     ≥4.5:1 (WCAG AA) et restent valables en clair ET sombre (le fond du bouton est opaque,
+     indépendant du thème de la page). N'affectent QUE les .btn-* (pas la palette globale). */
+  --btn-success-bg: #157f3a;
+  --btn-success-bg-hover: #126e32;
+  --btn-warning-bg: #a85d06;
+  --btn-warning-bg-hover: #8f4e05;
+  --btn-danger-bg: #cf2e24;
+  --btn-danger-bg-hover: #b5271e;
+  --btn-info-bg: #0067d6;
+  --btn-info-bg-hover: #005ab8;
+
   /* ── Spacing (4px grid, used by utility classes) ── */
   --sp-1: 4px;
   --sp-2: 8px;

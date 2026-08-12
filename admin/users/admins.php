@@ -124,10 +124,10 @@ ob_start();
 ?>
 <style>
     .admins-container { max-width: 1000px; margin: 0 auto; }
-    .admin-table tr.current-user { background: #eff6ff; }
+    .admin-table tr.current-user { background: var(--ds-primary-light, #eff6ff); }
     .two-fa { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-    .two-fa.on { background: #d1fae5; color: #065f46; }
-    .two-fa.off { background: #fee2e2; color: #991b1b; }
+    .two-fa.on { background: var(--ds-success-light, #d1fae5); color: var(--ds-success, #065f46); }
+    .two-fa.off { background: var(--ds-danger-light, #fee2e2); color: var(--ds-danger, #991b1b); }
 </style>
 <?php
 $extraHeadHtml = ob_get_clean();
@@ -158,7 +158,7 @@ include __DIR__ . '/../includes/header.php';
                         <span class="status-inactive"><i class="fas fa-times-circle"></i> Inactif</span>
                     <?php endif; ?>
                 </td>
-                <td style="font-size:13px;color:#718096;"><?= !empty($a['last_login']) ? date('d/m/Y H:i', strtotime($a['last_login'])) : '<em>Jamais</em>' ?></td>
+                <td style="font-size:13px;color:var(--text-light,#718096);"><?= !empty($a['last_login']) ? date('d/m/Y H:i', strtotime($a['last_login'])) : '<em>Jamais</em>' ?></td>
                 <td>
                     <div class="actions-cell">
                         <button class="btn-xs primary" data-fr-click="openEdit" data-fr-args='[<?= json_encode($a, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>]' title="Modifier"><i class="fas fa-edit"></i></button>

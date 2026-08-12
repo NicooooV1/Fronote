@@ -96,24 +96,26 @@
 }
 
 /* Danger / Success / Warning : pleins sémantiques. */
+/* Fonds assombris (--btn-*-bg) : texte blanc ≥4.5:1 dans tous les thèmes.
+   Les accents --danger/--success/--warning restent sur la bordure pour l'identité couleur. */
 .ds-btn--danger {
-  background: var(--danger);
-  border-color: var(--danger);
-  color: var(--text-on-accent);
+  background: var(--btn-danger-bg, var(--danger));
+  border-color: var(--btn-danger-bg, var(--danger));
+  color: #fff;
 }
 .ds-btn--danger:hover { filter: brightness(0.93); }
 
 .ds-btn--success {
-  background: var(--success);
-  border-color: var(--success);
-  color: var(--text-on-accent);
+  background: var(--btn-success-bg, var(--success));
+  border-color: var(--btn-success-bg, var(--success));
+  color: #fff;
 }
 .ds-btn--success:hover { filter: brightness(0.93); }
 
 .ds-btn--warning {
-  background: var(--warning);
-  border-color: var(--warning);
-  color: var(--text-on-accent);
+  background: var(--btn-warning-bg, var(--warning));
+  border-color: var(--btn-warning-bg, var(--warning));
+  color: #fff;
 }
 .ds-btn--warning:hover { filter: brightness(0.93); }
 
