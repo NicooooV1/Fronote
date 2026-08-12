@@ -429,27 +429,17 @@ if (!function_exists('can')) {
 	/**
 	 * L'utilisateur courant a-t-il $permission (dans le contexte $ctx) ?
 	 *
-	 * Source de vérité = catalogue/authz (rôles effectifs base + attribués, périmètre,
-	 * résolution .manage, audit des permissions sensibles). Repli sur l'ancien RBAC
-	 * pour les clés hors catalogue (admin.*, *.manage seedées par module.json, matrice
-	 * module_permissions éditable) → zéro régression pendant la convergence.
+	 * Source de vérité UNIQUE = catalogue/authz (rôles effectifs base + attribués,
+	 * périmètre, résolution .manage, surcharges globales rbac_grants éditées plateforme,
+	 * audit des permissions sensibles). Plus de repli RBAC legacy : le catalogue fait foi.
+	 * Fail-closed : toute erreur du moteur ⇒ refus.
 	 *
 	 * $ctx (optionnel) : ['etablissement_id'=>, 'class_id'=>, 'subject_id'=>,
 	 * 'student_id'=>, 'owner_id'=>, 'owner_type'=>] — périmètre de l'action.
 	 */
 	function can(string $permission, array $ctx = []): bool {
-		try { if (authz()->can($permission, $ctx)) return true; }
-		catch (\Throwable $e) { error_log('[can] authz: ' . $e->getMessage()); }
-		// Anti-IDOR : si un CONTEXTE de périmètre a été fourni, le moteur scopé a évalué le
-		// scope et son refus fait autorité. On NE retombe PAS sur le RBAC legacy (aveugle au
-		// périmètre), qui re-accorderait une permission refusée pour cause de scope. Le repli
-		// legacy ne vaut que pour les vérifs SANS périmètre (clés hors catalogue : admin.*,
-		// matrice module_permissions…) → zéro régression.
-		if (!empty($ctx)) {
-			return false;
-		}
-		try { return app('rbac')->can($permission); }
-		catch (\Throwable $e) { return false; }
+		try { return authz()->can($permission, $ctx); }
+		catch (\Throwable $e) { error_log('[can] authz: ' . $e->getMessage()); return false; }
 	}
 }
 
@@ -503,11 +493,12 @@ if (!function_exists('canModule')) {
 	 * Ex: canModule('messagerie', 'send'), canModule('notes', 'create')
 	 */
 	function canModule(string $moduleKey, string $action = 'view'): bool {
-		try {
-			return app('rbac')->canModule($moduleKey, $action);
-		} catch (\Throwable $e) {
-			return false;
+		// Legacy (aucun appelant applicatif). Routé vers le moteur unique : la capacité
+		// d'ouvrir le module pour view/access, sinon la permission catalogue "<module>.<action>".
+		if ($action === 'view' || $action === 'access') {
+			return hasCapability('module.' . $moduleKey . '.access') || can($moduleKey . '.view');
 		}
+		return can($moduleKey . '.' . $action);
 	}
 }
 

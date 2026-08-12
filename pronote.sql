@@ -1064,24 +1064,6 @@ CREATE TABLE `user_roles` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- RBAC : valeurs de périmètre normalisées (complète user_roles.scope_json).
--- Une ligne par (attribution de rôle, type de périmètre, ressource ciblée).
--- Ex. un prof sur 3 classes = 3 lignes scope_type='class'. Requêtable en SQL
--- (contrairement à scope_json), tout en gardant scope_json comme repli.
--- ============================================================
-CREATE TABLE `user_role_scope_values` (
-  `id`            INT AUTO_INCREMENT PRIMARY KEY,
-  `user_role_id`  INT          NOT NULL,
-  `scope_type`    VARCHAR(40)  NOT NULL,  -- class|classes|subject|subjects|student|students|establishment|group
-  `scope_id`      INT          NOT NULL,
-  `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY `uk_urs` (`user_role_id`, `scope_type`, `scope_id`),
-  KEY `idx_urs_role` (`user_role_id`),
-  KEY `idx_urs_target` (`scope_type`, `scope_id`),
-  CONSTRAINT `fk_urs_role` FOREIGN KEY (`user_role_id`) REFERENCES `user_roles` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ============================================================
 -- Relations entre comptes (modèle cible : un lien métier sujet → ressource).
 -- Unifie parent_eleve / professeur_classes / suivis AESH-médico-psycho-sociaux.
 -- Identité = (type de compte, id) pour rester compatible avec le modèle legacy
@@ -1380,28 +1362,9 @@ CREATE TABLE `tenant_roles` (
   UNIQUE KEY `uk_tenant_role_key` (`role_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `tenant_permissions` (
-  `id`             INT AUTO_INCREMENT PRIMARY KEY,
-  `permission_key` VARCHAR(150) NOT NULL,
-  `label`          VARCHAR(180) NOT NULL,
-  `description`    TEXT NULL,
-  `domain`         VARCHAR(100) NOT NULL,
-  `action`         VARCHAR(80) NOT NULL,
-  `is_sensitive`   TINYINT(1) NOT NULL DEFAULT 0,
-  `created_at`     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY `uk_tenant_permission_key` (`permission_key`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE `tenant_role_permissions` (
-  `id`                  INT AUTO_INCREMENT PRIMARY KEY,
-  `tenant_role_id`      INT NOT NULL,
-  `tenant_permission_id` INT NOT NULL,
-  `granted`             TINYINT(1) NOT NULL DEFAULT 1,
-  `created_at`          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY `uk_trp` (`tenant_role_id`, `tenant_permission_id`),
-  CONSTRAINT `fk_trp_role` FOREIGN KEY (`tenant_role_id`) REFERENCES `tenant_roles` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_trp_perm` FOREIGN KEY (`tenant_permission_id`) REFERENCES `tenant_permissions` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- NOTE refonte rôles : tables `tenant_permissions` / `tenant_role_permissions`
+-- supprimées — jamais alimentées ni lues (le catalogue RoleCatalog + rbac_grants
+-- fait foi ; l'octroi rôle→permission est central et éditable côté plateforme).
 
 CREATE TABLE `tenant_membership_roles` (
   `id`            INT AUTO_INCREMENT PRIMARY KEY,

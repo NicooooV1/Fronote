@@ -245,15 +245,6 @@ class ClientCache
             $this->set('user_locale', 'fr', $ttl);
         }
 
-        // RBAC permissions (compact list)
-        try {
-            $rbac = app('rbac');
-            $permissions = $rbac->getAllPermissions();
-            $this->set('user_permissions', $permissions, $ttl);
-        } catch (\Throwable $e) {
-            // Non-critical
-        }
-
         // Enabled modules for this user
         try {
             $modules = app('modules');
