@@ -143,7 +143,7 @@
   /* Palette sombre COHÉRENTE (échelle slate unique) : fond, surfaces, bordures et textes
      forment une seule gamme -> fin de l'incohérence gris/slate entre topbar, cartes et fond. */
   --primary-color: #3b82f6;
-  --primary-light: #60a5fa;
+  --primary-light: #7cb2ff; /* relevé de #60a5fa → ≥4.5:1 en texte d'accent sur surfaces sombres (WCAG AA) */
   --primary-dark: #2563eb;
   --background-color: #0f172a;  /* canvas */
   --text-color: #f1f5f9;

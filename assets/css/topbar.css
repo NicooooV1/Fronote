@@ -315,6 +315,9 @@
     cursor: pointer;
     flex-shrink: 0;
 }
+/* Thème liquide : --primary est un bleu CLAIR (#6ea8ff) → le texte blanc de l'avatar
+   devient illisible (2.4:1). Texte sombre sur l'accent clair (WCAG AA). */
+[data-theme="liquid"] .topbar-user-avatar { color: var(--text-on-accent, #0b1020); }
 
 /* ── Hamburger (mobile only) ───────────────────────────────── */
 .topbar-hamburger {
@@ -589,6 +592,8 @@
     background: var(--primary, #0f4c81);
     color: #fff;
 }
+/* Thème liquide : --primary est clair (#6ea8ff) → texte sombre sur l'onglet actif (WCAG AA). */
+[data-theme="liquid"] .module-subnav .sidebar-nav-item.active { color: var(--text-on-accent, #0b1020); }
 .module-subnav .sidebar-nav-item .sidebar-nav-icon { display: inline-flex; }
 @media (max-width: 640px) {
     .module-subnav {
@@ -608,7 +613,7 @@
     z-index: 10000;
     padding: 10px 16px;
     background: #1d4ed8;
-    color: #fff;
+    color: #fff !important; /* garde le blanc sur le bleu (une règle générique [data-theme=dark] a le repassait en bleu clair) */
     font-weight: 600;
     border-radius: 0 0 6px 0;
     text-decoration: none;

@@ -446,10 +446,14 @@
     background: #0f172a; border-color: var(--border-color); color: var(--text-color);
 }
 
-/* Stats page */
+/* Stats page — les chiffres KPI portent une couleur sémantique INLINE (bleu/vert/orange…)
+   codée pour fond clair : illisible sur carte sombre. On force la couleur de texte du thème
+   en sombre/liquide (!important pour battre le style inline). La couleur reste en clair. */
 [data-theme="dark"] .chart-card h3 { color: var(--text-color); }
-[data-theme="dark"] .kpi .v { color: var(--text-color); }
+[data-theme="dark"] .kpi .v,
+[data-theme="liquid"] .kpi .v { color: var(--text-color) !important; }
 
 /* Compact stats bar (list pages) */
-[data-theme="dark"] .stats-bar .stat-card .val { color: var(--text-color); }
+[data-theme="dark"] .stats-bar .stat-card .val,
+[data-theme="liquid"] .stats-bar .stat-card .val { color: var(--text-color) !important; }
 [data-theme="dark"] .stats-bar .stat-card .lbl { color: #94a3b8; }
