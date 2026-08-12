@@ -2,7 +2,7 @@
 
 Ce guide décrit le système de traduction de Fronote : le service `TranslationService`
 (exposé via `app('translator')`), l'organisation des fichiers de langue, les helpers
-`__()` / `_n()`, la résolution de locale, le support RTL et la page d'administration
+`__()` / `app('translator')->choice()`, la résolution de locale, le support RTL et la page d'administration
 des traductions.
 
 > **À lire absolument** : la section [« Le 2ᵉ argument est l'interpolation, PAS un défaut »](#-piège-le-2e-argument-nest-pas-un-défaut)
@@ -11,7 +11,7 @@ des traductions.
 Code source de référence :
 - `API/Services/TranslationService.php` — le service
 - `API/Providers/TranslationServiceProvider.php` — enregistrement du singleton `translator`
-- `API/Legacy/Bridge.php` — helpers globaux `__()`, `_n()`, `currentLocale()`
+- `API/Legacy/Bridge.php` — helper global `__()` (pluralisation/locale via `app('translator')->choice()`/`->locale()`)
 - `admin/systeme/translations.php` — page d'administration
 - `templates/shared_header.php` — direction RTL/LTR, `<html dir>`, chargement `rtl.css`
 
@@ -139,15 +139,18 @@ echo __('welcome_message', ['name' => 'Jean']);
 
 L'interpolation remplace `:clé` par la valeur (`str_replace(':' . $k, $v, …)`).
 
-### Pluralisation — `_n()`
+### Pluralisation — `app('translator')->choice()`
 
 ```php
-echo _n('items.count', 0);   // "Aucun élément"
-echo _n('items.count', 1);   // ":count élément" → "1 élément"
-echo _n('items.count', 5);   // ":count éléments" → "5 éléments"
+$t = app('translator');
+echo $t->choice('items.count', 0);   // "Aucun élément"
+echo $t->choice('items.count', 1);   // ":count élément" → "1 élément"
+echo $t->choice('items.count', 5);   // ":count éléments" → "5 éléments"
 ```
 
-`_n()` (alias de `TranslationService::choice()`) :
+> Le helper global `_n()` a été retiré : utiliser `app('translator')->choice()`.
+
+`TranslationService::choice()` :
 - injecte automatiquement `:count` = le nombre passé ;
 - découpe la valeur sur `|` ;
 - `count == 0` → variante `[0]` ; `count == 1` → variante `[1]` (sinon `[0]`) ;
@@ -157,8 +160,10 @@ echo _n('items.count', 5);   // ":count éléments" → "5 éléments"
 ### Locale courante
 
 ```php
-echo currentLocale();           // ex: "fr"  (alias de $translator->locale())
+echo app('translator')->locale();   // ex: "fr"
 ```
+
+> Le helper global `currentLocale()` a été retiré : utiliser `app('translator')->locale()`.
 
 ### Accès direct au service
 
@@ -171,8 +176,8 @@ $t->isRtl();                    // true pour 'ar' (et 'he', 'fa')
 $t->clearCache();               // vide le cache après édition d'un fichier
 ```
 
-Les helpers `__()`, `_n()`, `currentLocale()` enveloppent ces appels dans un
-`try/catch` : si le service échoue, ils **retournent la clé** (ou `'fr'` pour la locale).
+Le helper `__()` enveloppe l'appel dans un `try/catch` : si le service échoue, il
+**retourne la clé**. (`choice()`/`locale()` s'appellent directement sur `app('translator')`.)
 
 ---
 

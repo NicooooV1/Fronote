@@ -227,7 +227,7 @@ Root CA (config/marketplace/roots/*.pub)      ← clé publique embarquée, 32 o
 5. **Scan statique** `ModuleScanner` (défense en profondeur — la signature garantit l'origine, pas l'innocuité). Violations critiques → `QuarantineService::quarantine()` (le staging est sorti du runtime), installation refusée.
 6. **Consentement** : si des permissions sont demandées (`publish.required_permissions` / `permissions_requested`), l'install est suspendue (`pending_consent`), le staging est conservé ; l'admin confirme via `confirmInstall()`.
 7. **Bascule atomique** (`deployFromStaging`) : sauvegarde de l'éventuel dossier live existant dans `storage/backups/modules/<key>_<horodatage>`, puis `rename(staging → modules/<key>/)`.
-8. `ModuleSDK::clearCache()` + `syncModule($manifest)` (peuple `modules_config`, `dashboard_widgets`, `module_permissions`) + **`provisionSql($key)` → exécute `install.sql` uniquement**.
+8. `ModuleSDK::clearCache()` + `syncModule($manifest)` (peuple `modules_config`, `dashboard_widgets`, `module_settings_schema`) + **`provisionSql($key)` → exécute `install.sql` uniquement**.
 9. Enregistrement dans `marketplace_installed` (`package_sha256`, `manifest_sha256`, `cert_fingerprint`, `publisher_id`, `channel='sideload'`, `signature_verified_at`).
 
 Limite de taille : **50 Mo** (vérifiée à l'upload côté UI, `modules/marketplace/marketplace.php`). Le téléversement n'accepte que `*.fmod`.

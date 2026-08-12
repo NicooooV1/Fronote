@@ -88,7 +88,7 @@ L'application est **double** : filtrage de l'UI (JS) **et** validation serveur d
   (`parametres/parametres.php?section=profil`) : rôle principal ★, sous-rôles (+ périmètre),
   et la liste des permissions groupées par catégorie (les sensibles marquées 🔒).
 - Permissions de modules : visibilité gérée dans **Admin → Modules → Configurer** (rôles
-  catalogue) ; accès CRUD résolu par le moteur catalogue (`RBAC::canModule`).
+  catalogue) ; accès résolu par le moteur unique `Authorization` (`can()` / capacités).
 
 ---
 

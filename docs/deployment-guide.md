@@ -342,7 +342,7 @@ Flux synchrone, dans l'ordre :
    puis sortie de maintenance.
 8. `app('module_sdk')->syncAll()` — re-synchronise les manifestes des modules
    (permissions, widgets, routes…).
-9. `RoleSync::sync()` — resynchronise le catalogue de rôles RBAC (`rbac_roles` + grants).
+9. (Plus d'étape de synchro de rôles : le catalogue vit en code `RoleCatalog` ; les déviations de permissions sont dans la table globale `rbac_grants`, éditées côté plateforme.)
 10. `app('cache')->flush()` — vide le cache applicatif.
 11. **Sortie du mode maintenance** et relecture de `version.json`.
 

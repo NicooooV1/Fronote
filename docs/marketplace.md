@@ -40,7 +40,7 @@ Deux chemins d'installation coexistent :
 | **Sideload `.fmod`** | `modules/marketplace/marketplace.php` | Téléverser un `.fmod`, écran de consentement, liste des installs signées | `installFromFmod`, `confirmInstall`, `getInstalled`, `isTestModulesAllowed` |
 | **Catalogue distant** | `admin/modules/marketplace.php` | Parcourir/installer/désinstaller un module ou thème distant, rollback | `getCatalog`, `search`, `installModule`, `uninstallModule`, `rollback`, `checkUpdates` |
 
-Les deux exigent le rôle `administrateur` (`requireRole('administrateur')`). Le service unique derrière les deux est `app('marketplace')` (`\API\Services\MarketplaceService`).
+Les deux exigent la capacité `module.marketplace.access` (`requireCapability('module.marketplace.access')`, accordée à `administrateur` par défaut — éditable côté plateforme). Le service unique derrière les deux est `app('marketplace')` (`\API\Services\MarketplaceService`).
 
 ---
 

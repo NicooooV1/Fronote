@@ -243,7 +243,7 @@ Chaque module **doit** contenir un fichier `module.json` à sa racine. Exemple c
 | `description` | object\|string | Non | Description traduite (`{fr, en}`). |
 | `core` | bool | Non | `true` ⇒ activé d'office (`enabled = 1`) et **non désactivable** ; sinon installé mais désactivé jusqu'à activation admin. |
 | `requires_php` / `dependencies` | string / array | Non | Informatifs (non vérifiés par le SDK). |
-| `permissions` | object | Non | Map `action → { default_roles: [...] }`. Convertie en lignes role-based dans `module_permissions` (voir [Permissions](#permissions-rbac)). |
+| `permissions` | object | Non | Map `action → { default_roles: [...] }`. **Déclaratif** (validé + audité) ; l'autorisation runtime passe par `RoleCatalog`/`Authorization` (voir [Permissions](#permissions)). |
 | `routes.main` | string | Non* | Fichier PHP principal (point d'entrée). La route effective stockée en base est `<dossier_relatif>/<fichier>` (ex. `modules/notes/notes.php`). |
 | `routes.api` | string | Non | Endpoint API du module (informatif côté SDK). |
 | `database.install` | string | Non | Chemin du `install.sql` (défaut `Database/install.sql`), exécuté par `provisionSql()`. |
@@ -321,7 +321,7 @@ discover → validate → syncModule (modules_config + widgets + settings + perm
 | `discover(): array` | Scanne `modules/*/module.json` **et** `*/module.json` (essentiels racine). Retourne `[key => manifest]` (avec `_path` / `_json_path` ajoutés). Résultat mis en cache mémoire. |
 | `validate(array $manifest): array` | `['valid' => bool, 'errors' => string[]]`. Champs requis + format key + catégorie + name.fr + widgets + permissions + establishment_types. |
 | `syncAll(): array` | Valide puis `syncModule()` chaque manifeste découvert, **puis purge les modules fantômes** (`pruneGhostModules()`, voir note ci-dessous). Retourne `['synced' => int, 'pruned' => string[], 'errors' => string[]]`. |
-| `syncModule(array $manifest): void` | Upsert dans `modules_config`, et synchronise `dashboard_widgets`, `module_settings_schema`, `module_permissions`. Calcule `route_path` depuis `routes.main`. |
+| `syncModule(array $manifest): void` | Upsert dans `modules_config`, et synchronise `dashboard_widgets`, `module_settings_schema`. Calcule `route_path` depuis `routes.main`. |
 | `provisionSql(string $key): array` | Exécute **uniquement** `Database/install.sql` (idempotent). `['success' => bool, 'errors' => string[]]`. **Pas de migrations.** |
 | `getManifest(string $key): ?array` | Manifeste d'un module. |
 | `getWidgetConfigs($key)` / `getAllWidgetConfigs()` | Configs widgets (avec `_module_path`). |
@@ -329,7 +329,7 @@ discover → validate → syncModule (modules_config + widgets + settings + perm
 | `bootActiveModuleProviders($app): void` | Charge les ServiceProviders des modules actifs (appelé dans `bootstrap.php`). |
 | `clearCache(): void` | Vide le cache mémoire des manifestes. |
 
-> **Purge des modules fantômes** (`syncAll()` → `pruneGhostModules()`) : un module dont le dossier ou le `module.json` a disparu du disque voit sa ligne `modules_config` **et ses lignes filles** (`module_permissions`, `module_settings_schema`, `dashboard_widgets`) supprimées, et sa clé listée dans `pruned`. Les modules `core` ne sont **jamais** purgés automatiquement (ligne conservée + erreur signalée). Une découverte vide (anomalie disque) ne purge rien.
+> **Purge des modules fantômes** (`syncAll()` → `pruneGhostModules()`) : un module dont le dossier ou le `module.json` a disparu du disque voit sa ligne `modules_config` **et ses lignes filles** (`module_settings_schema`, `dashboard_widgets`) supprimées, et sa clé listée dans `pruned`. Les modules `core` ne sont **jamais** purgés automatiquement (ligne conservée + erreur signalée). Une découverte vide (anomalie disque) ne purge rien.
 
 ### Activation / désactivation (`app('modules')`)
 
@@ -393,43 +393,35 @@ La mise à jour passe par `admin/systeme/update.php` → `app('updates')->applyU
 3. **`SchemaSyncService::sync()`** — réconciliation **déclarative, additive et idempotente** : `CREATE` des tables manquantes + `ADD COLUMN` des colonnes manquantes, lues depuis les `install.sql` / `pronote.sql` / `rgpd/Database/*.sql`. **Jamais de DROP, jamais de modification de type existant** (« ajout seulement »).
 4. **`MigrationRunner::migrate()`** — migrations de données versionnées `database/migrations/*.php` (les transformations que le déclaratif ne couvre pas : retype, index/FK sur table existante, backfill…). C'est le **niveau dépôt**, distinct du packaging d'un module (un module n'embarque jamais de migration).
 5. `app('module_sdk')->syncAll()` — re-synchronise permissions, widgets, routes…
-6. `RoleSync::sync()` puis `app('cache')->flush()`.
+6. `app('cache')->flush()`. (Plus de synchro de rôles : catalogue en code + `rbac_grants`.)
 
 Config `.env` : `GITHUB_BRANCH` (défaut `main`), `GIT_BINARY` (chemin de git s'il est hors du PATH d'Apache).
 
-## Permissions (RBAC)
+## Permissions
 
-Les permissions sont déclarées dans `module.json → permissions` et synchronisées en base par `ModuleSDK::syncPermissions()`.
+Le bloc `module.json → permissions` (actions `view`/`manage`/`create`/… + `default_roles`)
+est **purement déclaratif** : il est validé par `ModuleSDK::validateManifest()` et audité par
+`CodeAuditService`, mais **n'est plus synchronisé dans une table**. La table `module_permissions`
+et `ModuleSDK::syncPermissions()` ont été retirées.
 
-### Du manifeste à la base
-
-Le manifeste déclare des **actions** (`view`, `manage`, `create`, `edit`, `delete`, `export`, `import`) avec leurs `default_roles`. Le SDK les convertit en colonnes `can_*` de la table `module_permissions` (orientée rôle, une ligne par `module_key × role`), via cette correspondance :
-
-| Action | Colonnes activées |
-|---|---|
-| `view` | `can_view` |
-| `manage` | `can_view`, `can_create`, `can_edit`, `can_delete` |
-| `create` | `can_create` |
-| `edit` | `can_edit` |
-| `delete` | `can_delete` |
-| `export` | `can_export` |
-| `import` | `can_import` |
-
-- Le wildcard `"*"` dans `default_roles` accorde l'action à **tous** les rôles (`administrateur`, `professeur`, `vie_scolaire`, `eleve`, `parent`).
-- Une action inconnue retombe sur `can_view`.
-- L'insertion est en **`INSERT IGNORE`** : on ne sème que les paires (module, rôle) absentes, sans écraser les ajustements faits par l'admin dans la matrice de permissions.
+L'autorisation runtime passe par le **moteur unique** `API\Security\Authorization` contre le
+catalogue en code `API\Security\RoleCatalog` (+ déviations globales `rbac_grants`, éditées côté
+plateforme via `platform/roles.php`). Pour donner une garde d'entrée à un module, déclarer une
+capacité `module.<clé>.access` dans le catalogue et l'accorder aux rôles voulus.
 
 ### Vérifier une permission dans le code
 
 ```php
-// Helper global
-if (hasPermission('mon_module.manage')) {
-    // ...
-}
+// Permission métier (scopée si contexte fourni)
+if (can('mon_module.edit')) { /* ... */ }
+authorize('mon_module.edit');                 // bloque si refusé
+canOn('mon_module.view', 'student', $eleveId); // anti-IDOR
 
-// Via le service RBAC
-$rbac = app('rbac');
-if ($rbac->can($userId, $userType, 'mon_module', 'edit')) {
+// Garde d'entrée de module (capacité sans périmètre)
+requireCapability('module.mon_module.access');
+
+// Pont legacy
+if (hasPermission('mon_module.manage')) {
     // ...
 }
 ```
