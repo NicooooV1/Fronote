@@ -1,6 +1,6 @@
 -- Module formations — schéma SQL (catalogue, inscriptions, certifications, budgets, évals, plan annuel).
 -- Idempotent (IF NOT EXISTS). Injecté à l'activation (ModuleSDK::provisionSql).
--- FK vers core (etablissements, personnel). valide_par NON FK (multi-type valideur).
+-- FK vers core (etablissements, professeurs = personnel enseignant). valide_par NON FK (multi-type valideur).
 
 CREATE TABLE IF NOT EXISTS `formations` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS `formation_inscriptions` (
   KEY `idx_form_insc_form` (`formation_id`),
   KEY `idx_form_insc_pers` (`personnel_id`),
   CONSTRAINT `fk_form_insc_form` FOREIGN KEY (`formation_id`) REFERENCES `formations` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_form_insc_pers` FOREIGN KEY (`personnel_id`) REFERENCES `personnel` (`id`) ON DELETE CASCADE
+  CONSTRAINT `fk_form_insc_pers` FOREIGN KEY (`personnel_id`) REFERENCES `professeurs` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `formation_certifications` (
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS `formation_certifications` (
   `date_creation` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_form_cert_pers` (`personnel_id`),
-  CONSTRAINT `fk_form_cert_pers` FOREIGN KEY (`personnel_id`) REFERENCES `personnel` (`id`) ON DELETE CASCADE
+  CONSTRAINT `fk_form_cert_pers` FOREIGN KEY (`personnel_id`) REFERENCES `professeurs` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `formation_budgets` (
@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS `formation_budgets` (
   UNIQUE KEY `uniq_form_budget` (`etablissement_id`, `personnel_id`, `annee`),
   KEY `idx_form_budg_pers` (`personnel_id`),
   CONSTRAINT `fk_form_budg_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_form_budg_pers` FOREIGN KEY (`personnel_id`) REFERENCES `personnel` (`id`) ON DELETE CASCADE
+  CONSTRAINT `fk_form_budg_pers` FOREIGN KEY (`personnel_id`) REFERENCES `professeurs` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `formation_evaluations` (

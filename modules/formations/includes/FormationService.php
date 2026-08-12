@@ -68,7 +68,7 @@ class FormationService
 
     public function getInscriptions(int $formationId): array
     {
-        $stmt = $this->pdo->prepare("SELECT fi.*, CONCAT(p.prenom,' ',p.nom) AS personnel_nom, p.fonction FROM formation_inscriptions fi JOIN personnel p ON fi.personnel_id = p.id WHERE fi.formation_id = :fid ORDER BY fi.created_at");
+        $stmt = $this->pdo->prepare("SELECT fi.*, CONCAT(p.prenom,' ',p.nom) AS personnel_nom, p.matiere AS fonction FROM formation_inscriptions fi JOIN professeurs p ON fi.personnel_id = p.id WHERE fi.formation_id = :fid ORDER BY fi.created_at");
         $stmt->execute([':fid' => $formationId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -98,7 +98,7 @@ class FormationService
 
     public function checkExpirations(int $etabId, int $joursAvant = 30): array
     {
-        $stmt = $this->pdo->prepare("SELECT fc.*, CONCAT(p.prenom,' ',p.nom) AS personnel_nom FROM formation_certifications fc JOIN personnel p ON fc.personnel_id = p.id WHERE fc.date_expiration BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL :j DAY) ORDER BY fc.date_expiration ASC");
+        $stmt = $this->pdo->prepare("SELECT fc.*, CONCAT(p.prenom,' ',p.nom) AS personnel_nom FROM formation_certifications fc JOIN professeurs p ON fc.personnel_id = p.id WHERE fc.date_expiration BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL :j DAY) ORDER BY fc.date_expiration ASC");
         $stmt->execute([':j' => $joursAvant]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -107,7 +107,7 @@ class FormationService
 
     public function getBudgetSuivi(int $etabId, string $annee): array
     {
-        $stmt = $this->pdo->prepare("SELECT fb.*, CONCAT(p.prenom,' ',p.nom) AS personnel_nom FROM formation_budgets fb JOIN personnel p ON fb.personnel_id = p.id WHERE fb.etablissement_id = :eid AND fb.annee = :a ORDER BY p.nom");
+        $stmt = $this->pdo->prepare("SELECT fb.*, CONCAT(p.prenom,' ',p.nom) AS personnel_nom FROM formation_budgets fb JOIN professeurs p ON fb.personnel_id = p.id WHERE fb.etablissement_id = :eid AND fb.annee = :a ORDER BY p.nom");
         $stmt->execute([':eid' => $etabId, ':a' => $annee]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -139,7 +139,7 @@ class FormationService
 
     public function genererAttestationData(int $inscriptionId): array
     {
-        $stmt = $this->pdo->prepare("SELECT fi.*, f.titre, f.description, f.date_debut, f.date_fin, f.organisme, f.lieu, CONCAT(p.prenom,' ',p.nom) AS personnel_nom, p.fonction FROM formation_inscriptions fi JOIN formations f ON fi.formation_id = f.id JOIN personnel p ON fi.personnel_id = p.id WHERE fi.id = :id AND fi.statut = 'validee' AND f.etablissement_id = :eid");
+        $stmt = $this->pdo->prepare("SELECT fi.*, f.titre, f.description, f.date_debut, f.date_fin, f.organisme, f.lieu, CONCAT(p.prenom,' ',p.nom) AS personnel_nom, p.matiere AS fonction FROM formation_inscriptions fi JOIN formations f ON fi.formation_id = f.id JOIN professeurs p ON fi.personnel_id = p.id WHERE fi.id = :id AND fi.statut = 'validee' AND f.etablissement_id = :eid");
         $stmt->execute([':id' => $inscriptionId, ':eid' => \API\Core\EstablishmentContext::id()]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
     }
