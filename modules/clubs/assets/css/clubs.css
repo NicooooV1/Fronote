@@ -33,7 +33,7 @@
 .club-icon-lg { width: 80px; height: 80px; font-size: 2rem; }
 
 .club-card h3 { font-size: 1rem; margin-bottom: .25rem; }
-.club-cat { font-size: .75rem; padding: .15em .5em; border-radius: 8px; background: #f3f4f6; color: var(--text-muted, #6b7280); }
+.club-cat { font-size: .75rem; padding: .15em .5em; border-radius: 8px; background: var(--bg-secondary, #f3f4f6); color: var(--text-muted, #6b7280); }
 .club-resp { font-size: .8rem; color: var(--text-muted, #6b7280); margin-top: .5rem; }
 .club-meta { margin-top: .5rem; font-size: .8rem; color: var(--text-muted, #9ca3af); display: flex; flex-direction: column; gap: .2rem; }
 .btn-block { display: block; margin-top: .75rem; }

@@ -63,6 +63,11 @@
 /* En-têtes triables du helper : lien discret + flèche alignée. */
 .data-table th a { color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
 .data-table th a:hover { color: var(--primary); }
+/* Liens dans les cellules (ex. « Générer les bulletins » d'un état vide) : couleur d'accent
+   lisible, y compris en sombre/liquide (sinon héritent d'un texte sombre → illisible). */
+.data-table td a { color: var(--primary-color); font-weight: 500; }
+[data-theme="dark"] .data-table td a,
+[data-theme="liquid"] .data-table td a { color: var(--primary-light); }
 
 /* ─── Modal ─────────────────────────────────────────────────────────────── */
 .ui-modal-overlay {

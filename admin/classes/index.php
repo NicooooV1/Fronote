@@ -171,10 +171,11 @@ ob_start();
     .class-card:hover { transform: translateY(-2px); }
     .class-card.inactive { opacity: 0.6; border-left-color: #ccc; }
     .class-card h3 { margin: 0 0 8px; font-size: 18px; display: flex; justify-content: space-between; align-items: center; }
-    .class-card .effectif { font-size: 24px; font-weight: 700; color: #0f4c81; }
+    .class-card .effectif { font-size: 24px; font-weight: 700; color: var(--primary-color, #0f4c81); }
+    [data-theme="dark"] .class-card .effectif, [data-theme="liquid"] .class-card .effectif { color: var(--primary-light); }
     .class-meta { font-size: 13px; color: var(--text-light, #666); margin-bottom: 8px; }
     .class-actions { display: flex; gap: 6px; margin-top: 10px; }
-    .badge-niveau { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; background: #e2e8f0; color: #4a5568; }
+    .badge-niveau { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; background: var(--bg-secondary, #e2e8f0); color: var(--text-color, #4a5568); }
     .badge-inactive { background: #fee2e2; color: #991b1b; }
     .student-list { max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; padding: 8px; }
     .student-list label { display: block; padding: 4px 6px; font-size: 13px; cursor: pointer; border-radius: 4px; }

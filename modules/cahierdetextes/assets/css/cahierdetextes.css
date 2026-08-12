@@ -67,7 +67,7 @@
 }
 
 .summary-label {
-  color: #777;
+  color: var(--text-muted, #6b6b6b); /* #777 → token (illisible sur carte sombre/liquide sinon) */
   font-size: 14px;
 }
 
