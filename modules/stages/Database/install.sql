@@ -30,3 +30,18 @@ CREATE TABLE IF NOT EXISTS `stages` (
   KEY `idx_etab` (`etablissement_id`),
   CONSTRAINT `fk_stages_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Visites de stage (planning des visites du professeur référent en entreprise).
+-- Référencée par StageService::planifierVisite/getVisites/getVisitesAPlanifier.
+CREATE TABLE IF NOT EXISTS `stages_visites` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `stage_id` INT NOT NULL,
+  `professeur_id` INT DEFAULT NULL,
+  `date_visite` DATE DEFAULT NULL,
+  `commentaire` TEXT DEFAULT NULL,
+  `etablissement_id` INT NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_sv_stage` (`stage_id`),
+  KEY `idx_etab` (`etablissement_id`),
+  CONSTRAINT `fk_stages_visites_stage` FOREIGN KEY (`stage_id`) REFERENCES `stages` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

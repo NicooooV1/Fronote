@@ -302,8 +302,8 @@ class StageService
 
     public function planifierVisite(int $stageId, int $professeurId, string $date, ?string $commentaire = null): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO stages_visites (stage_id, professeur_id, date_visite, commentaire, created_at) VALUES (:s, :p, :d, :c, NOW())");
-        $stmt->execute([':s' => $stageId, ':p' => $professeurId, ':d' => $date, ':c' => $commentaire]);
+        $stmt = $this->pdo->prepare("INSERT INTO stages_visites (stage_id, professeur_id, date_visite, commentaire, etablissement_id, created_at) VALUES (:s, :p, :d, :c, :e, NOW())");
+        $stmt->execute([':s' => $stageId, ':p' => $professeurId, ':d' => $date, ':c' => $commentaire, ':e' => \API\Core\EstablishmentContext::id()]);
         return (int)$this->pdo->lastInsertId();
     }
 
@@ -327,7 +327,7 @@ class StageService
                    (SELECT COUNT(*) FROM stages_visites sv WHERE sv.stage_id = s.id) AS nb_visites
             FROM stages s
             JOIN eleves e ON s.eleve_id = e.id
-            LEFT JOIN professeurs p ON s.prof_referent_id = p.id
+            LEFT JOIN professeurs p ON s.professeur_referent_id = p.id
             WHERE s.statut = 'en_cours' AND s.etablissement_id = ?
             ORDER BY nb_visites ASC, s.date_debut ASC
         ");

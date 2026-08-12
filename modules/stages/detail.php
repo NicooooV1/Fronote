@@ -23,7 +23,7 @@ if (isEleve()) {
 $types = StageService::typesStage();
 $statuts = StageService::statutsStage();
 $isGestionnaire = isAdmin() || isPersonnelVS();
-$canEdit = $isGestionnaire || (isProfesseur() && $stage['prof_referent_id'] == getUserId());
+$canEdit = $isGestionnaire || (isProfesseur() && ($stage['professeur_referent_id'] ?? null) == getUserId());
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $canEdit) {
     $stageService->modifierStage($id, [
@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && $canEdit) {
                     <div class="form-group"><label>Tél.</label><input type="text" name="entreprise_tel" class="form-control" value="<?= htmlspecialchars($stage['entreprise_tel'] ?? '') ?>"></div>
                     <div class="form-group"><label><?= __('stages.tutor') ?></label><input type="text" name="tuteur_nom" class="form-control" value="<?= htmlspecialchars($stage['tuteur_nom'] ?? '') ?>"></div>
                     <div class="form-group"><label>Email tuteur</label><input type="email" name="tuteur_email" class="form-control" value="<?= htmlspecialchars($stage['tuteur_email'] ?? '') ?>"></div>
-                    <div class="form-group"><label>Référent</label><select name="prof_referent_id" class="form-control"><option value="">—</option><?php foreach ($profs as $p): ?><option value="<?= $p['id'] ?>" <?= $stage['prof_referent_id'] == $p['id'] ? 'selected' : '' ?>><?= htmlspecialchars($p['prenom'] . ' ' . $p['nom']) ?></option><?php endforeach; ?></select></div>
+                    <div class="form-group"><label>Référent</label><select name="prof_referent_id" class="form-control"><option value="">—</option><?php foreach ($profs as $p): ?><option value="<?= $p['id'] ?>" <?= ($stage['professeur_referent_id'] ?? null) == $p['id'] ? 'selected' : '' ?>><?= htmlspecialchars($p['prenom'] . ' ' . $p['nom']) ?></option><?php endforeach; ?></select></div>
                     <div class="form-group"><label><?= __('label.debut') ?></label><input type="date" name="date_debut" class="form-control" value="<?= $stage['date_debut'] ?>"></div>
                     <div class="form-group"><label><?= __('label.fin') ?></label><input type="date" name="date_fin" class="form-control" value="<?= $stage['date_fin'] ?>"></div>
                     <div class="form-group full-width"><label><?= __('label.description') ?></label><textarea name="description" class="form-control" rows="2"><?= htmlspecialchars($stage['description'] ?? '') ?></textarea></div>
