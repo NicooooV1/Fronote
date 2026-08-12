@@ -529,6 +529,12 @@ $app->singleton('health', function($app) {
 // Démarrer les services core
 $app->boot();
 
+// Legacy bridge (helpers globaux : getPDO(), csrf_*, etc.) — DOIT être chargé AVANT le boot
+// des providers de modules et EstablishmentScope, qui peuvent appeler getPDO(). Chargé plus
+// bas, la 1re requête de chaque worker lançait "Call to undefined function getPDO()" (avalée
+// fail-open → providers de modules ET révocation de session silencieusement inactifs).
+require_once API_PATH . '/Legacy/Bridge.php';
+
 // Charger les ServiceProviders des modules actifs (services module chargés à la demande)
 // Remplace ScolaireServiceProvider + les 15 singletons module retirés ci-dessus.
 try {
@@ -540,8 +546,7 @@ try {
 // Establishment context (multi-establishment scoping)
 \API\Middleware\EstablishmentScope::handle();
 
-// Legacy bridge (compat helpers)
-require_once API_PATH . '/Legacy/Bridge.php';
+// (Legacy bridge déjà chargé plus haut, avant le boot des providers de modules.)
 
 // Contrôle d'accès centralisé (front controller de sécurité) : impose authentification
 // + rôle minimal selon le chemin du point d'entrée appelé, en fail-closed. Complète
