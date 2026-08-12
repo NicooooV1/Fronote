@@ -21,7 +21,10 @@ require_once __DIR__ . '/User.php';
 // ==================== CONSTANTES GLOBALES ====================
 
 if (!defined('LOGIN_URL')) {
-	define('LOGIN_URL', '../login/index.php');
+	// Chemin ABSOLU (via BASE_URL) : en relatif '../login/index.php' depuis une page à 2
+	// niveaux (modules/<mod>/page.php) résolvait vers /modules/login/index.php → 404.
+	// LOGIN_URL ne sert qu'aux redirections header('Location') → l'absolu est toujours correct.
+	define('LOGIN_URL', (defined('BASE_URL') ? BASE_URL : '') . '/login/index.php');
 }
 
 // ==================== AUTHENTIFICATION ====================
