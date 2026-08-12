@@ -106,13 +106,15 @@ if (!$selectedPeriode && !empty($periodes)) {
     $stmt = $pdo->prepare("SELECT e.* FROM parent_eleve pe JOIN eleves e ON pe.id_eleve = e.id WHERE pe.id_parent = ?");
     $stmt->execute([$user['id']]);
     $enfants = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    $selectedEnfant = (int)($_GET['eleve'] ?? ($enfants[0]['id'] ?? 0));
+    // ?eleve/?enfant, sinon la sélection PARTAGÉE (barre supérieure), sinon le 1er enfant.
+    $selectedEnfant = (int)($_GET['eleve'] ?? $_GET['enfant'] ?? ($_SESSION['selected_child_id'] ?? 0));
     // Anti-IDOR : un parent ne peut consulter QUE le bulletin de ses propres enfants.
     // Si ?eleve= est altéré pour viser un autre élève, on retombe sur le 1er enfant.
     $enfantIds = array_map('intval', array_column($enfants, 'id'));
-    if ($selectedEnfant && !in_array($selectedEnfant, $enfantIds, true)) {
+    if (!$selectedEnfant || !in_array($selectedEnfant, $enfantIds, true)) {
         $selectedEnfant = (int)($enfants[0]['id'] ?? 0);
     }
+    $_SESSION['selected_child_id'] = $selectedEnfant; // garder la sélection partagée à jour
     ?>
     <div class="enfant-tabs">
         <?php foreach ($enfants as $enf): ?>

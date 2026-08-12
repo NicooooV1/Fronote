@@ -26,7 +26,7 @@ $service = new EdtService($pdo);
 
 // Filtres
 $classeId = isset($_GET['classe']) ? (int)$_GET['classe'] : 0;
-$eleveId  = isset($_GET['eleve']) ? (int)$_GET['eleve'] : 0;
+$eleveId  = (int) ($_GET['eleve'] ?? $_GET['enfant'] ?? 0);
 $cours = [];
 
 // --- Charger les données selon le rôle ---
@@ -48,17 +48,23 @@ if (isAdmin() || isVieScolaire()) {
     $stmtEnfants->execute([$user['id']]);
     $enfants = $stmtEnfants->fetchAll(PDO::FETCH_ASSOC);
 
+    // Aucun enfant explicite dans l'URL → reprendre la sélection PARTAGÉE (barre supérieure),
+    // sinon le 1er enfant. Clé unique selected_child_id → sélecteur cohérent entre modules.
+    if ($eleveId <= 0) {
+        $eleveId = (int) ($_SESSION['selected_child_id'] ?? 0);
+    }
     if ($eleveId > 0) {
-
         // Anti-IDOR : refuse l'accès à un élève hors périmètre de l'utilisateur.
         if (!assertUserCanReadEleve((int) $eleveId)) {
             $_SESSION['error_message'] = "Vous n'avez pas accès à cet élève.";
             header('Location: ' . (defined('BASE_URL') ? BASE_URL : '') . '/accueil/accueil.php');
             exit;
         }
-        $cours = $service->getEdtParent($user['id'], $eleveId);
     } elseif (!empty($enfants)) {
-        $eleveId = $enfants[0]['id'];
+        $eleveId = (int) $enfants[0]['id'];
+    }
+    if ($eleveId > 0) {
+        $_SESSION['selected_child_id'] = $eleveId; // garder la sélection partagée à jour
         $cours = $service->getEdtParent($user['id'], $eleveId);
     }
 }

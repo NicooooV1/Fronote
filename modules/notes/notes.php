@@ -40,7 +40,10 @@ if ($user_role === 'parent') {
         error_log('[' . basename(__FILE__) . '] ' . $e->getMessage());
     }
 
-    $selectedEnfantId = (int) ($_GET['enfant'] ?? ($_SESSION['selected_enfant_id'] ?? 0));
+    // Clé de session CANONIQUE partagée avec le sélecteur d'enfant de la barre supérieure
+    // et les widgets : selected_child_id (avant, notes utilisait selected_enfant_id → l'enfant
+    // choisi dans la topbar ne se propageait pas ici). On accepte ?enfant et ?eleve en override.
+    $selectedEnfantId = (int) ($_GET['enfant'] ?? $_GET['eleve'] ?? ($_SESSION['selected_child_id'] ?? 0));
 
     // Sécurité (IDOR) : l'enfant demandé DOIT appartenir au parent connecté.
     // Sinon un parent peut lire les notes de n'importe quel élève via ?enfant=<id>.
@@ -48,7 +51,7 @@ if ($user_role === 'parent') {
     if (!in_array($selectedEnfantId, $enfantsIds, true)) {
         $selectedEnfantId = !empty($enfants) ? (int) $enfants[0]['id'] : 0;
     }
-    $_SESSION['selected_enfant_id'] = $selectedEnfantId;
+    $_SESSION['selected_child_id'] = $selectedEnfantId;
 
     foreach ($enfants as $e) {
         if ((int) $e['id'] === $selectedEnfantId) {

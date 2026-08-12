@@ -19,7 +19,9 @@ $service = new RenduService($pdo);
 if ($user_role === 'eleve') {
     $devoirs = $service->getDevoirsARendreEleve($user['id']);
 } elseif ($user_role === 'parent') {
-    $eleveId = (int)($_GET['eleve'] ?? ($_SESSION['selected_enfant_id'] ?? 0));
+    // Clé canonique partagée avec la topbar/les widgets : selected_child_id (avant :
+    // selected_enfant_id → l'enfant choisi dans la barre ne s'appliquait pas ici).
+    $eleveId = (int)($_GET['eleve'] ?? $_GET['enfant'] ?? ($_SESSION['selected_child_id'] ?? 0));
     // IDOR : un parent ne peut consulter que les devoirs de ses propres enfants.
     if ($eleveId) {
         $chk = $pdo->prepare("SELECT 1 FROM parent_eleve WHERE id_parent = ? AND id_eleve = ? LIMIT 1");
