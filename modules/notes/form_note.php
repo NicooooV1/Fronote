@@ -370,7 +370,7 @@ include 'includes/header.php';
                             </div>
                             <div>
                                 <label style="display:block; font-size:12px; font-weight:600; color:var(--text-color, #4a5568); margin-bottom:5px;">Barème (note sur)</label>
-                                <input type="number" name="note_sur" class="form-control" min="1" max="99" step="1" value="<?= htmlspecialchars($_POST['note_sur'] ?? '20') ?>" required>
+                                <input type="number" id="batchNoteSur" name="note_sur" class="form-control" min="1" max="99" step="1" value="<?= htmlspecialchars($_POST['note_sur'] ?? '20') ?>" required>
                             </div>
                         </div>
 
@@ -390,7 +390,7 @@ include 'includes/header.php';
                                         <strong><?= htmlspecialchars($el['nom']) ?></strong> <?= htmlspecialchars($el['prenom']) ?>
                                     </td>
                                     <td style="padding:10px 15px; text-align:center;">
-                                        <input type="number" name="notes[<?= $el['id'] ?>]" min="0" max="100" step="0.25" class="form-control" style="width:80px; margin:auto; text-align:center;"
+                                        <input type="number" name="notes[<?= $el['id'] ?>]" min="0" max="<?= htmlspecialchars($_POST['note_sur'] ?? '20') ?>" step="0.25" class="form-control js-batch-note" style="width:80px; margin:auto; text-align:center;"
                                             value="<?= htmlspecialchars($_POST['notes'][$el['id']] ?? '') ?>">
                                     </td>
                                     <td style="padding:10px 15px;">

@@ -437,6 +437,35 @@ class ModuleService
         return true;
     }
 
+    /** Rôles considérés comme gestionnaires (accès à la catégorie « administration »). */
+    private const MANAGER_ROLES = ['administrateur', 'direction', 'chef_etablissement', 'direction_adjointe', 'responsable_permissions'];
+
+    /**
+     * L'utilisateur peut-il RÉELLEMENT ouvrir ce module (pour ne pas afficher un lien mort) ?
+     * Complète isVisibleForRoles (fail-open car roles_autorises souvent NULL) :
+     *  - la catégorie « administration » (admin/personnel/rgpd) est réservée aux gestionnaires ;
+     *  - si le module déclare une permission d'accès module.<clé>.access, on la respecte
+     *    (même vérité que requireCapability sur la page).
+     */
+    private function navAccessAllowed(string $moduleKey, string $category, array $roles): bool
+    {
+        if (in_array('super_admin', $roles, true)) {
+            return true;
+        }
+        if ($category === 'administration') {
+            return (bool) array_intersect($roles, self::MANAGER_ROLES);
+        }
+        $perm = 'module.' . $moduleKey . '.access';
+        try {
+            if (array_key_exists($perm, \API\Security\RoleCatalog::permissions())) {
+                return (bool) app('authz')->can($perm);
+            }
+        } catch (\Throwable $e) {
+            // authz indisponible au moment du build nav → ne pas masquer (comportement historique).
+        }
+        return true;
+    }
+
     /**
      * Returns modules grouped by category for sidebar display.
      * Only includes enabled modules visible to the given role.
@@ -561,6 +590,13 @@ class ModuleService
             // Determine category: topbar_category (DB) > override > category (DB)
             $cat = $mod['topbar_category'] ?? $catOverrides[$key] ?? ($mod['category'] ?? 'systeme');
             if ($cat === 'navigation') continue; // Skip navigation items (handled separately)
+
+            // Aligner la nav sur l'accès RÉEL des pages : ne pas afficher un lien que
+            // l'utilisateur ne peut pas ouvrir (les pages redirigent en silence → liens en
+            // cul-de-sac). roles_autorises étant souvent NULL, isVisibleForRoles est fail-open ;
+            // on complète avec (1) la catégorie « administration » réservée aux gestionnaires
+            // et (2) la permission d'accès module.<clé>.access quand elle est définie.
+            if (!$this->navAccessAllowed($key, $cat, $roles)) continue;
 
             $mod['route'] = $this->getRoute($key);
             $mod['module_key'] = $key;

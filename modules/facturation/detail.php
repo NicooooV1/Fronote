@@ -22,10 +22,16 @@ $modes = FacturationService::modesPaiement();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     $action = $_POST['action'] ?? '';
-    if ($action === 'ajouter_ligne' && $isGestionnaire) {
-        $factService->ajouterLigne($id, trim($_POST['description']), (int)$_POST['quantite'], (float)$_POST['prix_unitaire']);
-    } elseif ($action === 'paiement' && $isGestionnaire) {
-        $factService->enregistrerPaiement($id, (float)$_POST['montant'], $_POST['mode_paiement']);
+    try {
+        if ($action === 'ajouter_ligne' && $isGestionnaire) {
+            $factService->ajouterLigne($id, trim($_POST['description']), (int)$_POST['quantite'], (float)$_POST['prix_unitaire']);
+            $_SESSION['fact_flash'] = ['type' => 'success', 'msg' => 'Ligne ajoutée.'];
+        } elseif ($action === 'paiement' && $isGestionnaire) {
+            $factService->enregistrerPaiement($id, (float)$_POST['montant'], (string)($_POST['mode_paiement'] ?? ''));
+            $_SESSION['fact_flash'] = ['type' => 'success', 'msg' => 'Paiement enregistré.'];
+        }
+    } catch (\Throwable $e) {
+        $_SESSION['fact_flash'] = ['type' => 'error', 'msg' => $e->getMessage()];
     }
     header('Location: detail.php?id=' . $id); exit;
 }
@@ -39,6 +45,13 @@ $reste = $facture['montant_ttc'] - $totalPaye;
         <h1><i class="fas fa-file-invoice-dollar"></i> <?= htmlspecialchars($facture['numero']) ?></h1>
         <a href="factures.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
+
+    <?php if (!empty($_SESSION['fact_flash'])): $fl = $_SESSION['fact_flash']; unset($_SESSION['fact_flash']); ?>
+    <div class="alert alert-<?= $fl['type'] === 'error' ? 'danger' : 'success' ?>" style="margin:12px 0">
+        <i class="fas fa-<?= $fl['type'] === 'error' ? 'circle-exclamation' : 'circle-check' ?>"></i>
+        <?= htmlspecialchars($fl['msg']) ?>
+    </div>
+    <?php endif; ?>
 
     <div class="info-grid">
         <div class="info-item"><?= FacturationService::badgeStatut($facture['statut']) ?></div>

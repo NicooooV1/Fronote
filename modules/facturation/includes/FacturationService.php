@@ -98,7 +98,28 @@ class FacturationService
         $etab = \API\Core\EstablishmentContext::id();
         // Vérifier l'appartenance de la facture à l'établissement courant
         $facture = $this->getFacture($factureId);
-        if (!$facture) return;
+        if (!$facture) {
+            throw new \RuntimeException("Facture introuvable.");
+        }
+        // Validation du montant : strictement positif, arrondi au centime, et jamais
+        // supérieur au reste dû (sinon le total payé dépasse le TTC et le « reste » devient
+        // incohérent — un montant négatif faisait GRIMPER le reste au-delà du TTC).
+        $montant = round($montant, 2);
+        if (!is_finite($montant) || $montant <= 0) {
+            throw new \InvalidArgumentException("Le montant du paiement doit être supérieur à 0 €.");
+        }
+        if (!array_key_exists($mode, self::modesPaiement())) {
+            throw new \InvalidArgumentException("Mode de paiement invalide.");
+        }
+        $dejaPaye = (float) $this->pdo->query(
+            "SELECT COALESCE(SUM(montant), 0) FROM paiements WHERE facture_id = " . (int) $factureId
+        )->fetchColumn();
+        $reste = round((float) $facture['montant_ttc'] - $dejaPaye, 2);
+        if ($montant > $reste + 0.001) {
+            throw new \InvalidArgumentException(
+                "Le montant dépasse le reste dû (" . number_format(max(0, $reste), 2, ',', ' ') . " €)."
+            );
+        }
         $this->pdo->prepare("INSERT INTO paiements (etablissement_id, facture_id, montant, date_paiement, mode) VALUES (?,?,?,NOW(),?)")->execute([$etab, $factureId, $montant, $mode]);
         // Mettre à jour statut
         $stmt = $this->pdo->prepare("SELECT COALESCE(SUM(montant), 0) FROM paiements WHERE facture_id = ?");
