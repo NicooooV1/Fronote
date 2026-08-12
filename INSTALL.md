@@ -256,9 +256,10 @@ Fronote se met à jour depuis l'interface d'administration : **Administration �
 5. **`SchemaSyncService::sync()`** — réconciliation **déclarative et ADDITIVE** du schéma (`CREATE TABLE` + `ADD COLUMN` uniquement ; jamais de `DROP`, de changement de type ni d'index/FK sur table existante), lue depuis `pronote.sql` + `modules/*/Database/install.sql` + `rgpd/Database/*.sql` ;
 6. **`MigrationRunner::migrate()`** — joue les migrations **versionnées** en attente (`database/migrations/`, journal `schema_migrations`) pour les cas non additifs ;
 7. **Toute erreur schéma/migration ⇒ ROLLBACK COMPLET** : base restaurée depuis la sauvegarde **et** code remis au HEAD précédent, puis sortie de maintenance ;
-8. `module_sdk->syncAll()` — re‑synchronise les manifestes (permissions, widgets, routes) ;
-9. `RoleSync::sync()` — resynchronise le catalogue de rôles RBAC ;
-10. **vide le cache** applicatif, puis **sort du mode maintenance**.
+8. `module_sdk->syncAll()` — re‑synchronise les manifestes (widgets, routes ; le bloc `permissions` reste déclaratif) ;
+9. **vide le cache** applicatif, puis **sort du mode maintenance**.
+
+> Le catalogue de rôles n'est **plus** synchronisé en base par la mise à jour : il vit en code (`API\Security\RoleCatalog`) et les déviations de permissions sont des lignes de la table globale `rbac_grants` (éditées côté plateforme). Rien à resynchroniser.
 
 Le bouton **Vérifier** liste les commits en attente sur `origin/<branche>` sans rien appliquer. Le déroulé complet et le workflow d'évolution de schéma sont détaillés dans **[docs/UPDATING.md](docs/UPDATING.md)**.
 

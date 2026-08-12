@@ -6,6 +6,50 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [4.1.0] — Refonte du système de rôles + purge du code mort — 2026-08-12
+
+Refonte du système d'autorisation vers **UN moteur unique et UN catalogue**, puis grande passe
+de suppression du code mort. Changements **potentiellement cassants** pour tout code externe qui
+appelait les fonctions/tables retirées.
+
+### Changed — Autorisation unifiée
+- **Moteur unique** : toute décision passe par `API\Security\Authorization` (`app('authz')`) via les
+  helpers globaux `can()` / `authorize()` / `canOn()` / `hasCapability()` / `requireCapability()`.
+- **Un catalogue** : `API\Security\RoleCatalog` (défaut en code) + table **globale** `rbac_grants`
+  (déviations force-accorder/force-refuser), éditée **côté plateforme** (`platform/roles.php`).
+- `tenantGate('perm')` (un seul argument) route désormais vers `can()` ; les 11 gardes d'entrée de
+  module `requireRole(...)` codées en dur deviennent `requireCapability('module.<clé>.access')`.
+- L'attribution des rôles reste à la direction (`admin/users/roles.php`) ; **les permissions ne sont
+  plus éditables au niveau établissement** (les anciennes matrices `admin/modules/{role_permissions,permissions}.php`
+  redirigent). Profil « façon Discord » (poste + badges) dans `modules/profil`.
+
+### Removed — Systèmes de rôles morts
+- Classe `API\Security\RBAC`, `API\Security\RoleSync`, fonction globale `requireRole()`, binding `app('rbac')`.
+- Tables `rbac_permissions`, `rbac_roles`, `module_permissions`, `tenant_permissions`,
+  `tenant_role_permissions`, `user_role_scope_values` (droppées ; catalogue en code faisant foi).
+- `ModuleSDK::syncPermissions()` (le bloc `permissions` de `module.json` reste déclaratif) ; l'export/import
+  de configuration n'embarque plus la matrice de permissions (import rétro-compatible : section ignorée).
+
+### Removed — Purge du code mort (audit adversarial)
+- Classes/fichiers sans appelant : `IpFirewall`, `QueueService` + `SendEmailJob`, `SupportSessionGuard`,
+  événements `UserCreated`/`UserPasswordChanged`/`MessageSent`, coquilles de modules `securite/` et `tutorat/`.
+- Bindings conteneur jamais résolus retirés : `firewall`, `queue`, `encryption`, `quarantine`,
+  `super_admin`, `pdf` (les classes vivantes s'instancient directement).
+- ~40 fonctions globales sans appelant retirées de `API/Legacy/Bridge.php` (login/loginUser, canOn/authorizeOn
+  globaux, canModule, sanitizeInput, validateEmail, executeQuery, tableExists, csrf_meta/csrf_validate,
+  wrappers support*/tenant*On/currentWorld, …).
+- 22 tables sans lecteur droppées (api_tokens, webhooks, payments, signatures, sms_*, user_profiles,
+  account_profiles, ip_blocklist, custom_fields/values, …) ; définitions retirées de `pronote.sql`.
+- Décompte réel : **61 modules** (57 sous `modules/` + 4 essentiels racine).
+
+### Fixed
+- Binding conteneur des services pédagogiques au cœur (`absences`, `notes`, `matieres`, `periodes`,
+  `evenements`, `devoirs`) → pages `admin/scolaire/*` (5 pages back-office 500 → 200).
+- 404 CSS messagerie ; bug latent `ClientCache` appelant `RBAC::getAllPermissions()` inexistant.
+- Seed `rbac_permissions` + `ALTER` orphelins retirés de `pronote.sql` (corrige l'installation neuve).
+
+---
+
 ## [4.0.0] — « Étanche » : isolation multi-tenant complète + remédiation des 25 critiques — 2026-08-11
 
 Version stable **définitive**. Aboutissement du durcissement : les 25 bugs critiques de l'audit

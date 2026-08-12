@@ -1,10 +1,10 @@
 # Fronote — Système de gestion scolaire
 
-![PHP 8+](https://img.shields.io/badge/PHP-8%2B-blue) ![MariaDB / MySQL](https://img.shields.io/badge/MariaDB_10.11_%2F_MySQL_8-orange) ![Version](https://img.shields.io/badge/version-4.0.0_%C3%89tanche-green) ![Licence](https://img.shields.io/badge/licence-proprietary-lightgrey) ![i18n](https://img.shields.io/badge/i18n-8%20locales-blueviolet) ![Modules](https://img.shields.io/badge/modules-63-brightgreen)
+![PHP 8+](https://img.shields.io/badge/PHP-8%2B-blue) ![MariaDB / MySQL](https://img.shields.io/badge/MariaDB_10.11_%2F_MySQL_8-orange) ![Version](https://img.shields.io/badge/version-4.0.0_%C3%89tanche-green) ![Licence](https://img.shields.io/badge/licence-proprietary-lightgrey) ![i18n](https://img.shields.io/badge/i18n-8%20locales-blueviolet) ![Modules](https://img.shields.io/badge/modules-61-brightgreen)
 
-> Fronote est une application **PHP pure, sans framework**, de gestion d'établissement scolaire (notes, absences, emploi du temps, messagerie, vie scolaire, facturation, etc.). Architecture modulaire (63 modules découverts dynamiquement), conteneur d'injection de dépendances maison, multi-établissement, design system à thèmes et internationalisation (8 langues).
+> Fronote est une application **PHP pure, sans framework**, de gestion d'établissement scolaire (notes, absences, emploi du temps, messagerie, vie scolaire, facturation, etc.). Architecture modulaire (61 modules découverts dynamiquement), conteneur d'injection de dépendances maison, multi-établissement, design system à thèmes et internationalisation (8 langues).
 >
-> Version courante : **4.0.0** (« Étanche », build 2026-08-11). Voir `version.json`.
+> Version courante : **4.0.0** (« Étanche », build 2026-08-11), enrichie depuis par la refonte du système de rôles (moteur d'autorisation unique) et une purge du code mort. Voir `version.json` et `CHANGELOG.md`.
 
 ---
 
@@ -37,7 +37,7 @@ Fronote couvre la gestion quotidienne d'un établissement (collège, lycée, éc
 - **Vie scolaire** : absences, retards, appel, discipline, infirmerie, signalements, besoins particuliers.
 - **Communication** : messagerie temps réel, annonces, réunions parents-profs, notifications.
 - **Établissement & logistique** : trombinoscope, bibliothèque, orientation, inscriptions, cantine, internat, transports, facturation, stages, clubs.
-- **Administration & système** : gestion des utilisateurs, modules, permissions (RBAC), audit/RGPD, import en masse, marketplace de modules, mises à jour, sauvegardes.
+- **Administration & système** : gestion des utilisateurs, attribution des rôles, modules, audit/RGPD, import en masse, marketplace de modules, mises à jour, sauvegardes. (Les permissions des rôles sont gouvernées au niveau plateforme — voir *Rôles & authentification*.)
 
 Tout est livré dans un seul dépôt, installé via un assistant web (`install.php`), et mis à jour d'un seul bouton depuis l'interface d'administration.
 
@@ -70,7 +70,7 @@ Navigateur ── HTTP/HTTPS ──► Pages PHP (modules + essentiels racine)
      │                       ┌───────────────────────────────────────┐
      └────────────────────► │  Application (conteneur DI maison)     │
        websocket/    │  providers → services via app('clé')  │
-       server.js (Node)     │  facades : Auth, DB, CSRF, Log…        │
+       server.js (Node)     │  facade : CSRF (seule restante)        │
                             └────────────────┬──────────────────────┘
                                              │ PDO (utf8mb4)
                                              ▼
@@ -83,30 +83,26 @@ Le bootstrap (`API/bootstrap.php`) : charge l'autoloader Composer (ou un fallbac
 
 ### Conteneur de services `app()`
 
-Les services sont résolus par clé via le helper global `app('clé')`. Ils sont enregistrés dans `API/bootstrap.php` et les `API/Providers/*ServiceProvider.php`. Une trentaine de services sont disponibles :
+Les services sont résolus par clé via le helper global `app('clé')`. Ils sont enregistrés dans `API/bootstrap.php` et les `API/Providers/*ServiceProvider.php` :
 
 | Clé | Rôle |
 |-----|------|
 | `db` | Connexion PDO (`getConnection()`) |
-| `config` | Accès configuration |
+| `config` / `environment` | Accès configuration / environnement |
 | `auth` | Authentification (login/logout/session) |
-| `rbac` | Permissions par rôle/module |
+| `authz` | **Moteur d'autorisation unique** (`API\Security\Authorization`) — voir *Rôles & authentification* |
 | `csrf` | Jetons CSRF (token bucket) |
 | `rate_limiter` | Limitation de débit (IP + identifiant) |
 | `validator` / `password_policy` | Validation entrée / politique de mot de passe |
-| `firewall` | Pare-feu IP applicatif |
-| `encryption` | Chiffrement AES-256-GCM (si `APP_KEY` configuré) |
 | `translator` | i18n (`__('domaine.clé')`) |
-| `etablissement` / `super_admin` | Établissement courant / gestion multi-établissement |
+| `etablissement` | Établissement courant |
 | `user` | Service utilisateurs |
-| `email` | Envoi de mails (SMTP) |
-| `pdf` | Génération PDF (bulletins, exports) |
+| `email` | Envoi de mails (SMTP + file `EmailQueueService`) |
 | `modules` / `module_sdk` | Service module + SDK (découverte, sync, provisioning) |
 | `marketplace` | Marketplace de modules (`.fmod`) |
 | `features` | Feature flags |
 | `themes` | Thèmes applicatifs |
 | `hooks` | Système d'événements/hooks pour modules |
-| `queue` | File de tâches générique |
 | `cache` / `client_cache` | Cache fichier/redis / cache client (session + cookies signés) |
 | `log` | Logger structuré avec rotation |
 | `audit` | Journal d'audit (RGPD) |
@@ -114,8 +110,10 @@ Les services sont résolus par clé via le helper global `app('clé')`. Ils sont
 | `updates` | Mise à jour Git (un bouton) |
 | `maintenance` | Mode maintenance (fichier) |
 | `health` | Health checks |
-| `quarantine` | Quarantaine sécurité marketplace |
 | `admin_dashboard` / `classes` | Services scolaires (tableau de bord admin, classes) |
+| `notes` `absences` `matieres` `periodes` `evenements` `devoirs` | Services pédagogiques (back-office) |
+
+> Certaines classes ne sont **pas** exposées via un binding et s'instancient directement : `API\Core\Encryption` (AES-256-GCM, `APP_KEY`), `API\Services\PdfService` (exports), `API\Services\SuperAdminService` (multi-établissement), `API\Services\QuarantineService` (marketplace).
 
 ```php
 $pdo     = app('db')->getConnection();
@@ -123,9 +121,10 @@ $user    = app('auth')->user();
 $modules = app('modules');
 app('audit')->log('note.created', ...);
 __('notes.title');           // i18n
+can('notes.edit');           // autorisation (moteur authz)
 ```
 
-> **Facades** disponibles dans `API/Core/Facades/` (`Auth`, `DB`, `CSRF`, `Log`…) en alternative statique au helper `app()`.
+> **Facade.** Une seule facade statique subsiste : `CSRF` (`API/Core/Facades/CSRF.php`). Les autres (Auth, DB, Log…) ont été retirées — utiliser `app('clé')` ou les helpers globaux du Bridge (`API/Legacy/Bridge.php`).
 
 ### Structure des dossiers
 
@@ -140,7 +139,7 @@ Pronote/
 │   ├── onboarding_gate.php
 │   ├── Core/  Auth/  Security/  Services/  Providers/  Middleware/  endpoints/  Legacy/
 │
-├── modules/             ← 63 modules métier (un dossier par module, module.json)
+├── modules/             ← 57 modules métier (un dossier par module, module.json) + 4 essentiels racine = 61
 │   ├── notes/  absences/  agenda/  messagerie/  bulletins/  emploi_du_temps/ …
 │   └── <clé>/
 │       ├── module.json          ← Manifeste (clé, nom, icône, catégorie, routes, permissions, widgets)
@@ -156,8 +155,9 @@ Pronote/
 ├── accueil/             ← Tableau de bord d'accueil (core)
 ├── admin/               ← Panneau d'administration (core)
 ├── parametres/          ← Préférences utilisateur (core)
-├── rgpd/  securite/  tutorat/
+├── rgpd/                ← Espace RGPD (droits des personnes ; module.json, non-core)
 │
+├── platform/  tenant/   ← Portail plateforme (opérateurs) / connexion établissement
 ├── login/  cron/  database/  websocket/
 ├── install.php          ← Assistant d'installation
 ├── pronote.sql          ← Schéma cœur (utilisateurs, classes, périodes, modules_config…)
@@ -241,7 +241,7 @@ La mise à jour se fait depuis **`admin/systeme/update.php`** — un unique bout
 3. `git fetch origin <branche>` puis `git reset --hard origin/<branche>` — le serveur reflète exactement le dépôt (le `.env` est sauvegardé/restauré par précaution).
 4. **`SchemaSyncService::sync()`** — réconciliation **déclarative et additive** : lit `pronote.sql` + `modules/*/Database/install.sql` + `rgpd/Database/*.sql`, **crée les tables manquantes** (`CREATE TABLE`) et **ajoute les colonnes manquantes** (`ADD COLUMN`). Jamais de `DROP`, ni de changement de type, ni d'index/FK sur table existante.
 5. **`MigrationRunner::migrate()`** — joue les migrations **versionnées** en attente (`database/migrations/`, journal `schema_migrations`) pour les cas non additifs. En cas d'erreur (schéma **ou** migration) ⇒ **ROLLBACK COMPLET**.
-6. `app('module_sdk')->syncAll()` (manifestes) → `RoleSync::sync()` (catalogue RBAC) → vidage du cache → **sortie de maintenance**.
+6. `app('module_sdk')->syncAll()` (manifestes) → vidage du cache → **sortie de maintenance**. Le catalogue de rôles n'est **pas** synchronisé en base : il vit en code (`API\Security\RoleCatalog`) ; les déviations de permissions par rôle sont des lignes de la table globale `rbac_grants`, éditées côté plateforme — rien à resynchroniser.
 
 Détails et workflow d'évolution de schéma : **[docs/UPDATING.md](docs/UPDATING.md)**.
 
@@ -274,24 +274,38 @@ Le schéma désiré est **déclaratif** :
 
 ---
 
-## Rôles & authentification
+### Types de comptes
 
-| Rôle | Accès type |
+Six **types de comptes** existent, chacun étant le *rôle de base* de l'utilisateur :
+
+| Type de compte | Accès type |
 |------|-----------|
-| `administrateur` | Administration complète (utilisateurs, modules, permissions, audit, système) |
+| `administrateur` | Administration de l'établissement (utilisateurs, attribution des rôles, modules, audit, système) |
 | `professeur` | Notes (saisie), cahier de textes, agenda, appel, absences, messagerie |
 | `vie_scolaire` | Absences, discipline, reporting, infirmerie, internat |
 | `eleve` | Consultation notes, cahier de textes & rendus, agenda, messagerie, ressources |
 | `parent` | Notes/absences des enfants, justificatifs, réunions, messagerie |
-| `super_admin` | Gestion multi-établissement (transverse) |
+| `super_admin` | Accès plateforme transverse (multi-établissement) |
+
+### Rôles & permissions (moteur unique)
+
+Au-delà du type de compte, Fronote dispose d'un **catalogue de rôles** en code (`API\Security\RoleCatalog`, ~110 rôles répartis en familles : plateforme, direction, administratif, vie scolaire, pédagogique, santé/social, élève/famille, organisation, communication, documents, services, stages, contrôle, système).
+
+- **Un rôle = un jeu de permissions.** Le catalogue en code fait foi ; les **déviations globales** (force-accorder / force-refuser) sont des lignes de la table `rbac_grants`, **éditées uniquement côté plateforme** (`platform/roles.php`) — elles s'appliquent à tout le parc.
+- **Attribution.** La direction d'établissement **attribue** les rôles aux utilisateurs (`admin/users/roles.php`) mais ne configure plus les permissions.
+- **Moteur unique.** Toute décision d'accès passe par `API\Security\Authorization` via les helpers globaux : `can($perm[, $ctx])` / `authorize()` (permission scopée, anti-IDOR via `canOn($perm, $type, $id)`), `hasCapability()` / `requireCapability('module.X.access')` (garde d'entrée de module), `tenantGate('perm')` (pages back-office). `hasPermission('domaine')` et les `canManageX()` legacy y délèguent aussi.
+- **Profil « façon Discord ».** `modules/profil` affiche le poste (rôle de plus haut tier) et les badges de rôles.
+
+**Authentification :**
 
 - **Identifiant utilisateur** : login au format `nom.prenom`.
 - **Mots de passe** : `bcrypt` cost 12.
+- **2FA obligatoire** pour les rôles à responsabilité (professeur, vie scolaire, administrateur, super_admin) : enrôlement forcé (`login/setup_2fa.php`, TOTP + codes de secours), vérification à chaque connexion avec tolérance par appareil (cookie signé `API\Security\TwoFactorTrust`) et anti-rejeu TOTP.
 - **Anti-bruteforce** : rate-limit sur IP **et** identifiant.
 - **CSRF** : `csrf_verify()` / `app('csrf')->validate($token)` ; champ caché et meta générés par `shared_header`.
 - **Headers de sécurité + CSP** (avec nonce) injectés par `shared_header`. `display_errors` forcé à `0` en production.
 
-La visibilité des modules par rôle est éditable sans redéploiement via la colonne `roles_autorises` (JSON) de `modules_config` (`admin/modules/configure.php`), prioritaire sur les défauts du manifeste.
+La **visibilité** des modules par rôle est éditable sans redéploiement via la colonne `roles_autorises` (JSON) de `modules_config` (`admin/modules/configure.php`) ; l'**accès** d'entrée d'un module est en outre gardé par la capacité `module.<clé>.access` du catalogue.
 
 ---
 
@@ -309,7 +323,7 @@ echo __('messagerie.bonjour', ['nom' => $n]); // interpolation de {nom}
 
 ## Modules
 
-63 modules métier sous `modules/<clé>/`, plus les essentiels à la racine. Catégories valides (`ModuleSDK::VALID_CATEGORIES`) : `navigation`, `scolaire`, `vie_scolaire`, `communication`, `etablissement`, `logistique`, `outils`, `administration`, `systeme`, `sante`, `custom`.
+57 modules métier sous `modules/<clé>/`, plus 4 essentiels à la racine (61 au total). Catégories valides (`ModuleSDK::VALID_CATEGORIES`) : `navigation`, `scolaire`, `vie_scolaire`, `communication`, `etablissement`, `logistique`, `outils`, `administration`, `systeme`, `sante`, `custom`.
 
 | Domaine | Modules (extrait) |
 |---------|-------------------|
@@ -319,8 +333,9 @@ echo __('messagerie.bonjour', ['nom' => $n]); // interpolation de {nom}
 | **Établissement** | `trombinoscope`, `inscriptions`, `clubs`, `vie_associative`, `formations`, `bourses`, `diplomes` |
 | **Logistique / Services** | `cantine`, `garderie`, `periscolaire`, `internat`, `transports`, `stages`, `salles`, `personnel`, `facturation`, `inventaire`, `mediatheque`, `bibliotheque` |
 | **Santé** | `infirmerie` |
-| **Outils / Système** | `reporting`, `tableau_de_bord`, `dashboard`, `documents`, `ressources`, `archivage`, `support`, `marketplace`, `accessibilite`, `hello_world` |
-| **Essentiels (racine, core)** | `accueil`, `admin`, `parametres`, `rgpd`, `securite`, `tutorat`, `onboarding`, `profil`, `notifications` |
+| **Outils / Système** | `reporting`, `tableau_de_bord`, `documents`, `ressources`, `archivage`, `support`, `marketplace`, `accessibilite`, `intelligence` |
+| **Essentiels racine** | `accueil` (core), `admin` (core), `parametres` (core), `rgpd` (non-core) |
+| **Essentiels sous `modules/` (core)** | `notifications`, `onboarding`, `profil`, `support` |
 
 > Créer un module : ajouter un dossier `modules/<clé>/` avec son `module.json` (clé, nom multilingue, icône, `category` valide, `core`, `routes.main`, `database.install`, `permissions`), puis **Admin → Modules → Synchroniser**. Détails dans [docs/module-sdk.md](docs/module-sdk.md).
 
@@ -328,7 +343,7 @@ echo __('messagerie.bonjour', ['nom' => $n]); // interpolation de {nom}
 
 ## Fonctionnalités par rôle
 
-- **Administrateur** — gestion des utilisateurs, **import en masse** (`admin/systeme/import_export.php` → `API/Services/Import/BulkImporter` : CSV ou copier-coller, en-têtes Pronote FR, entités élèves/profs/parents/classes/matières/notes/devoirs), modules & permissions (RBAC), audit/RGPD, sauvegardes, maintenance, marketplace, mises à jour, support/tickets.
+- **Administrateur** — gestion des utilisateurs, **attribution des rôles** (`admin/users/roles.php`), **import en masse** (`admin/systeme/import_export.php` → `API/Services/Import/BulkImporter` : CSV ou copier-coller, en-têtes Pronote FR, entités élèves/profs/parents/classes/matières/notes/devoirs), modules (activation, visibilité), audit/RGPD, sauvegardes, maintenance, marketplace, mises à jour, support/tickets. (Les permissions des rôles sont éditées côté plateforme, pas dans le panneau d'établissement.)
 - **Professeur** — saisie des notes et appréciations, cahier de textes & devoirs (création, correction des rendus), appel, agenda, absences, messagerie.
 - **Vie scolaire** — suivi des absences/retards, justificatifs, discipline, infirmerie, internat, reporting.
 - **Élève** — consultation des notes, devoirs et rendus en ligne, emploi du temps, agenda, messagerie, ressources.
@@ -399,4 +414,4 @@ UPLOADS_PATH=
 
 ---
 
-*Fronote 4.0.0 « Étanche » — PHP pur · PSR-4 · conteneur DI maison · 63 modules · multi-établissement · topbar · 8 locales · schéma déclaratif additif + migrations versionnées · mise à jour Git un-bouton.*
+*Fronote 4.0.0 « Étanche » — PHP pur · PSR-4 · conteneur DI maison · 61 modules · multi-établissement · moteur d'autorisation unique (catalogue + rbac_grants) · topbar · 8 locales · schéma déclaratif additif + migrations versionnées · mise à jour Git un-bouton.*

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Config PHPUnit dédiée à la MESURE DE COUVERTURE (campagne de tests longue).
+     Séparée de phpunit.xml pour n'activer la source de couverture que sur demande.
+     À lancer avec pcov : php -d pcov.enabled=1 vendor/bin/phpunit -c phpunit-coverage.xml -->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         failOnWarning="false">
+    <testsuites>
+        <testsuite name="unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory suffix=".php">API</directory>
+        </include>
+        <exclude>
+            <directory>API/Legacy</directory>
+        </exclude>
+    </source>
+</phpunit>
