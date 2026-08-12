@@ -39,6 +39,14 @@ if ($role === 'eleve') {
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         $eleveNom = $row ? $row['prenom'] . ' ' . $row['nom'] : '';
     }
+    // Liste des élèves (par NOM, groupés par classe) pour le sélecteur — remplace la saisie
+    // d'un ID numérique brut. Cloisonné à l'établissement ; l'IDOR reste vérifié à la sélection.
+    $elevesStmt = getPDO()->prepare("SELECT id, prenom, nom, classe FROM eleves WHERE etablissement_id = ? AND actif = 1 ORDER BY classe, nom, prenom");
+    $elevesStmt->execute([\API\Core\EstablishmentContext::id()]);
+    $elevesParClasse = [];
+    foreach ($elevesStmt->fetchAll(PDO::FETCH_ASSOC) as $el) {
+        $elevesParClasse[$el['classe'] ?: '—'][] = $el;
+    }
 }
 
 // Anti-IDOR : un bilan de compétences ne se consulte que pour un élève du périmètre.
@@ -83,8 +91,19 @@ $niveaux = CompetenceService::niveauxLabels();
         <div class="comp-selectors">
             <form method="get" class="comp-selector-form">
                 <div class="form-group">
-                    <label>Élève (ID)</label>
-                    <input type="number" name="eleve_id" value="<?= $eleveId ?>" class="form-control" placeholder="ID de l'élève">
+                    <label>Élève</label>
+                    <select name="eleve_id" data-fr-change="submitOwn" class="form-select">
+                        <option value="0">— Choisir un élève —</option>
+                        <?php foreach (($elevesParClasse ?? []) as $classe => $elevesCl): ?>
+                        <optgroup label="<?= htmlspecialchars((string) $classe) ?>">
+                            <?php foreach ($elevesCl as $el): ?>
+                            <option value="<?= (int) $el['id'] ?>" <?= (int) $el['id'] === (int) $eleveId ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($el['nom'] . ' ' . $el['prenom']) ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </optgroup>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label><?= __('label.periode') ?></label>
