@@ -691,7 +691,9 @@ a {
   margin-left: var(--sidebar-width);
   padding: var(--space-md);
   background-color: var(--background-color);
-  min-height: 100vh;
+  /* sticky-footer sans scroll parasite : la topbar (56px) est déjà comptée par le
+     padding-top de .app-container ; on soustrait sa hauteur pour ne pas dépasser 100vh. */
+  min-height: calc(100dvh - 56px);
   display: flex;
   flex-direction: column;
 }
@@ -821,12 +823,12 @@ a {
 
 .footer {
   margin-top: auto;
-  background-color: white;
-  border-top: 1px solid var(--border-color);
-  padding: 15px 20px;
-  font-size: 13px;
-  color: #777;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.03);
+  background: var(--surface-card);
+  border-top: 1px solid var(--border-light, var(--border-color));
+  padding: var(--space-4, 15px) var(--space-5, 20px);
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-secondary, #777);
+  box-shadow: 0 -1px 0 var(--border-light, var(--border-color));
   border-radius: var(--radius-md);
 }
 .footer-content {

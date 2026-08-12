@@ -95,7 +95,8 @@ include __DIR__ . '/../templates/shared_topbar.php';
                         && empty($wData['reunions']) && empty($wData['notes'])
                         && empty($wData['devoirs']) && empty($wData['tickets']);
                     $sizeClass = match(true) {
-                        $wWidth >= 4 => 'widget-size-large',
+                        $wWidth >= 4 => 'widget-size-xlarge',
+                        $wWidth >= 3 => 'widget-size-large',
                         $wWidth >= 2 => 'widget-size-medium',
                         default      => 'widget-size-small',
                     };
