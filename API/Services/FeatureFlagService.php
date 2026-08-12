@@ -22,6 +22,8 @@ class FeatureFlagService
 
     /** @var string|null Type d'établissement courant */
     private ?string $currentType = null;
+    // Établissement pour lequel $flags a été chargé (config feature-flags par-tenant).
+    private ?int $flagsEtab = null;
 
     public function __construct(\PDO $pdo)
     {
@@ -35,17 +37,19 @@ class FeatureFlagService
      */
     private function loadFlags(): array
     {
-        if ($this->flags !== null) {
+        // Cloisonnement par établissement : les feature flags sont par-tenant
+        // (feature_flags a une ligne par (flag_key, etablissement_id)).
+        $etab = \API\Core\EstablishmentContext::id();
+        if ($this->flags !== null && $this->flagsEtab === $etab) {
             return $this->flags;
         }
 
         $this->flags = [];
+        $this->flagsEtab = $etab;
 
         try {
-            $stmt = $this->pdo->query("SELECT * FROM feature_flags");
-            if ($stmt === false) {
-                return $this->flags;
-            }
+            $stmt = $this->pdo->prepare("SELECT * FROM feature_flags WHERE etablissement_id = ?");
+            $stmt->execute([$etab]);
 
             foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
                 $row['establishment_types'] = !empty($row['establishment_types'])
@@ -74,7 +78,10 @@ class FeatureFlagService
         }
 
         try {
-            $stmt = $this->pdo->query("SELECT type FROM etablissements LIMIT 1");
+            // Type de l'établissement COURANT (pas du premier venu) : le gating par
+            // establishment_types doit refléter l'établissement de la session.
+            $stmt = $this->pdo->prepare("SELECT type FROM etablissements WHERE id = ? LIMIT 1");
+            $stmt->execute([\API\Core\EstablishmentContext::id()]);
             $this->currentType = $stmt->fetchColumn() ?: 'college';
         } catch (\Throwable $e) {
             $this->currentType = 'college';
@@ -179,6 +186,7 @@ class FeatureFlagService
     public function clearCache(): void
     {
         $this->flags = null;
+        $this->flagsEtab = null;
         $this->currentType = null;
     }
 
@@ -190,8 +198,8 @@ class FeatureFlagService
     public function setEnabled(string $flagKey, bool $enabled): bool
     {
         try {
-            $stmt = $this->pdo->prepare("UPDATE feature_flags SET enabled = ? WHERE flag_key = ?");
-            $result = $stmt->execute([(int)$enabled, $flagKey]);
+            $stmt = $this->pdo->prepare("UPDATE feature_flags SET enabled = ? WHERE flag_key = ? AND etablissement_id = ?");
+            $result = $stmt->execute([(int)$enabled, $flagKey, \API\Core\EstablishmentContext::id()]);
             $this->clearCache();
             return $result && $stmt->rowCount() > 0;
         } catch (\Throwable $e) {
@@ -207,11 +215,13 @@ class FeatureFlagService
     {
         try {
             $stmt = $this->pdo->prepare(
-                "INSERT INTO feature_flags (flag_key, description, enabled, establishment_types, config)
-                 VALUES (?, ?, ?, ?, ?)"
+                "INSERT INTO feature_flags (etablissement_id, flag_key, label, description, enabled, establishment_types, config)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)"
             );
             $result = $stmt->execute([
+                \API\Core\EstablishmentContext::id(),
                 $flagKey,
+                $flagKey, // label : requis (NOT NULL), défaut = clé du flag
                 $description,
                 (int)$enabled,
                 $establishmentTypes !== null ? json_encode($establishmentTypes) : null,
@@ -254,7 +264,8 @@ class FeatureFlagService
             if (empty($sets)) return false;
 
             $params[] = $flagKey;
-            $sql = "UPDATE feature_flags SET " . implode(', ', $sets) . " WHERE flag_key = ?";
+            $params[] = \API\Core\EstablishmentContext::id();
+            $sql = "UPDATE feature_flags SET " . implode(', ', $sets) . " WHERE flag_key = ? AND etablissement_id = ?";
             $stmt = $this->pdo->prepare($sql);
             $result = $stmt->execute($params);
             $this->clearCache();
@@ -271,8 +282,8 @@ class FeatureFlagService
     public function delete(string $flagKey): bool
     {
         try {
-            $stmt = $this->pdo->prepare("DELETE FROM feature_flags WHERE flag_key = ?");
-            $result = $stmt->execute([$flagKey]);
+            $stmt = $this->pdo->prepare("DELETE FROM feature_flags WHERE flag_key = ? AND etablissement_id = ?");
+            $result = $stmt->execute([$flagKey, \API\Core\EstablishmentContext::id()]);
             $this->clearCache();
             return $result && $stmt->rowCount() > 0;
         } catch (\Throwable $e) {
