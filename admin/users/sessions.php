@@ -142,7 +142,7 @@ ob_start();
 <style>
     .sessions-container { max-width: 1100px; margin: 0 auto; }
     .stat-pill { background: var(--bg-card); border-radius: 8px; padding: 12px 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); display: flex; align-items: center; gap: 10px; }
-    .stat-pill i { font-size: 20px; color: #0f4c81; }
+    .stat-pill i { font-size: 20px; color: var(--primary-color, #0f4c81); }
     .stat-pill .val { font-size: 20px; font-weight: 700; color: #1a202c; }
     .stat-pill .lbl { font-size: 12px; color: var(--text-muted, #888); }
     .alert-box { background: #fef3cd; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }

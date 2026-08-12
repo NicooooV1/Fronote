@@ -409,7 +409,7 @@ include 'includes/header.php';
                             </h4>
                             <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:12px; text-align:center;">
                                 <div>
-                                    <div id="stat-moyenne" style="font-size:20px; font-weight:700; color:#0f4c81;">—</div>
+                                    <div id="stat-moyenne" style="font-size:20px; font-weight:700; color: var(--primary-color, #0f4c81);">—</div>
                                     <div style="font-size:11px; color:var(--text-light, #718096);">Moyenne</div>
                                 </div>
                                 <div>

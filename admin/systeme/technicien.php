@@ -260,7 +260,7 @@ ob_start();
 .tech-stat-label{font-size:.85em;color:var(--text-light, #718096);margin-top:2px}
 .tab-nav{display:flex;gap:0;border-bottom:2px solid var(--border-color, #e2e8f0);margin-bottom:20px}
 .tab-btn{padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;font-size:14px;font-weight:500;color:var(--text-light, #718096);transition:color .15s,border-color .15s}
-.tab-btn.active{color:#0f4c81;border-bottom-color:#0f4c81}
+.tab-btn.active{color: var(--primary-color, #0f4c81);border-bottom-color:#0f4c81}
 .tab-pane{display:none}
 .tab-pane.active{display:block}
 .tech-card{background:var(--bg-card);border:1px solid var(--border-color, #e2e8f0);border-radius:10px;padding:18px 20px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.04);transition:.2s}

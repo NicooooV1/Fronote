@@ -140,7 +140,7 @@ ob_start();
     .abs-container { max-width: 1200px; margin: 0 auto; }
     .tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid var(--border-color, #eee); }
     .tab-link { padding: 10px 20px; text-decoration: none; font-size: 14px; font-weight: 500; color: var(--text-light, #666); border-bottom: 2px solid transparent; margin-bottom: -2px; display: flex; align-items: center; gap: 6px; }
-    .tab-link.active { color: #0f4c81; border-bottom-color: #0f4c81; }
+    .tab-link.active { color: var(--primary-color, #0f4c81); border-bottom-color: var(--primary-color, #0f4c81); }
     .tab-badge { background: #e74c3c; color: white; border-radius: 50%; padding: 1px 6px; font-size: 11px; }
     .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; align-items: flex-end; }
     .filters select, .filters input { padding: 7px 10px; border: 1px solid #d2d6dc; border-radius: 6px; font-size: 13px; }

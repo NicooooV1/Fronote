@@ -109,7 +109,7 @@ ob_start();
     .just-container { max-width: 1100px; margin: 0 auto; }
     .tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid var(--border-color, #eee); }
     .tab-link { padding: 10px 18px; text-decoration: none; font-size: 14px; font-weight: 500; color: var(--text-light, #666); border-bottom: 2px solid transparent; margin-bottom: -2px; display: flex; align-items: center; gap: 6px; }
-    .tab-link.active { color: #0f4c81; border-bottom-color: #0f4c81; }
+    .tab-link.active { color: var(--primary-color, #0f4c81); border-bottom-color: #0f4c81; }
     .tab-badge { padding: 1px 7px; border-radius: 50%; font-size: 11px; font-weight: 600; color: white; }
     .tb-pending { background: #f59e0b; } .tb-approved { background: #059669; } .tb-rejected { background: #dc2626; }
     .just-card { background: var(--bg-card); border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); padding: 18px; margin-bottom: 15px; display: flex; gap: 15px; align-items: flex-start; }
@@ -123,7 +123,7 @@ ob_start();
     .status-pending { background: #fef3cd; color: #92400e; } .status-approved { background: #d1fae5; color: #065f46; } .status-rejected { background: #fee2e2; color: #991b1b; }
     .admin-comment { font-size: 12px; padding: 6px 10px; background: var(--bg-secondary); border-radius: 6px; margin-top: 6px; color: var(--text-color, #555); }
     .action-form textarea { width: 100%; padding: 6px 8px; border: 1px solid #d2d6dc; border-radius: 6px; font-size: 12px; resize: vertical; box-sizing: border-box; }
-    .file-link { color: #0f4c81; font-size: 13px; text-decoration: none; }
+    .file-link { color: var(--primary-color, #0f4c81); font-size: 13px; text-decoration: none; }
     .file-link:hover { text-decoration: underline; }
     .empty-state { text-align: center; padding: 40px; color: var(--text-muted, #999); }
 </style>

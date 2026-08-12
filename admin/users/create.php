@@ -148,7 +148,7 @@ ob_start();
     .profil-selector { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
     .profil-btn { padding: 10px 18px; border: 2px solid var(--border-color, #e2e8f0); border-radius: 8px; background: var(--bg-card); cursor: pointer; font-size: 14px; transition: all 0.15s; display: flex; align-items: center; gap: 8px; }
     .profil-btn:hover { border-color: #0f4c81; }
-    .profil-btn.selected { border-color: #0f4c81; background: #eff6ff; color: #0f4c81; font-weight: 600; }
+    .profil-btn.selected { border-color: #0f4c81; background: #eff6ff; color: var(--primary-color, #0f4c81); font-weight: 600; }
     .dynamic-fields { display: none; }
     .dynamic-fields.visible { display: block; }
     .credentials-box { background: #f0fdf4; border: 2px dashed #059669; padding: 20px; border-radius: 8px; margin-bottom: 20px; }

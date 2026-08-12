@@ -165,7 +165,7 @@ if (isset($_GET['edit'])) {
             <?php foreach ($arbre as $domaine): ?>
             <div style="margin-bottom:16px;">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                    <span style="font-weight:700;color:#0f4c81;font-size:13px;"><?= htmlspecialchars($domaine['code']) ?></span>
+                    <span style="font-weight:700;color: var(--primary-color, #0f4c81);font-size:13px;"><?= htmlspecialchars($domaine['code']) ?></span>
                     <span style="font-weight:600;font-size:13px;color:var(--text-color, #2d3748);"><?= htmlspecialchars($domaine['nom']) ?></span>
                     <div style="margin-left:auto;display:flex;gap:4px;">
                         <a href="?edit=<?= $domaine['id'] ?>" class="btn btn-sm btn-secondary" title="<?= __('btn.edit') ?>"><i class="fas fa-edit"></i></a>

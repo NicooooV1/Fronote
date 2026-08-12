@@ -135,7 +135,7 @@ ob_start();
     .form-group textarea { min-height: 120px; resize: vertical; }
     .target-selector { display: flex; gap: 10px; flex-wrap: wrap; }
     .target-option { padding: 8px 16px; border: 2px solid var(--border-color, #e2e8f0); border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; }
-    .target-option.active { border-color: #0f4c81; background: #eff6ff; color: #0f4c81; }
+    .target-option.active { border-color: #0f4c81; background: #eff6ff; color: var(--primary-color, #0f4c81); }
     .ann-item { background: var(--bg-card); border-radius: 8px; padding: 14px 18px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
     .ann-item h4 { margin: 0 0 4px; font-size: 15px; }
     .ann-meta { font-size: 12px; color: var(--text-muted, #888); }
