@@ -246,21 +246,21 @@ class AdminCrudPage
                         </button>
                     <?php endif; ?>
                 </div>
-                <div style="font-size:13px;color:#6b7280">
+                <div style="font-size:13px;color:var(--text-light,#6b7280)">
                     <?= $this->totalItems ?> résultat<?= $this->totalItems > 1 ? 's' : '' ?>
                 </div>
             </div>
 
             <?php if (empty($this->items)): ?>
-                <div style="text-align:center;padding:40px;color:#999;background:white;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+                <div style="text-align:center;padding:40px;color:var(--text-muted,#6e6e73);background:var(--bg-card,#fff);border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
                     <p><?= $e($this->config['emptyMessage']) ?></p>
                 </div>
             <?php else: ?>
-            <table class="crud-table" style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+            <table class="crud-table" style="width:100%;border-collapse:collapse;background:var(--bg-card,#fff);border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
                 <thead>
                     <tr>
                         <?php foreach ($columns as $key => $col): ?>
-                            <th style="padding:10px 14px;text-align:left;background:#f7fafc;font-weight:600;color:#4a5568;font-size:12px;border-bottom:1px solid #f0f0f0">
+                            <th style="padding:10px 14px;text-align:left;background:var(--bg-secondary,#f7fafc);font-weight:600;color:var(--text-color,#4a5568);font-size:12px;border-bottom:1px solid var(--border-color,#f0f0f0)">
                                 <?php if (!empty($col['sortable'])): ?>
                                     <?php
                                     $newDir = ($this->sortBy === $key && $this->sortDir === 'asc') ? 'desc' : 'asc';
@@ -277,7 +277,7 @@ class AdminCrudPage
                             </th>
                         <?php endforeach; ?>
                         <?php if (!empty($actions)): ?>
-                            <th style="padding:10px 14px;text-align:left;background:#f7fafc;font-weight:600;color:#4a5568;font-size:12px;border-bottom:1px solid #f0f0f0">Actions</th>
+                            <th style="padding:10px 14px;text-align:left;background:var(--bg-secondary,#f7fafc);font-weight:600;color:var(--text-color,#4a5568);font-size:12px;border-bottom:1px solid var(--border-color,#f0f0f0)">Actions</th>
                         <?php endif; ?>
                     </tr>
                 </thead>
@@ -285,7 +285,7 @@ class AdminCrudPage
                     <?php foreach ($this->items as $row): ?>
                         <tr>
                             <?php foreach ($columns as $key => $col): ?>
-                                <td style="padding:10px 14px;font-size:13px;border-bottom:1px solid #f0f0f0">
+                                <td style="padding:10px 14px;font-size:13px;border-bottom:1px solid var(--border-color,#f0f0f0)">
                                     <?php if (isset($col['render'])): ?>
                                         <?= ($col['render'])($row[$key] ?? null, $row) ?>
                                     <?php else: ?>
@@ -294,7 +294,7 @@ class AdminCrudPage
                                 </td>
                             <?php endforeach; ?>
                             <?php if (!empty($actions)): ?>
-                                <td style="padding:10px 14px;font-size:13px;border-bottom:1px solid #f0f0f0">
+                                <td style="padding:10px 14px;font-size:13px;border-bottom:1px solid var(--border-color,#f0f0f0)">
                                     <?php $this->renderRowActions($row, $csrf, $idField, $actions); ?>
                                 </td>
                             <?php endif; ?>
@@ -337,12 +337,12 @@ class AdminCrudPage
         echo '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px">';
         foreach ($stats as $stat) {
             $icon  = $stat['icon'] ?? 'fas fa-chart-bar';
-            $rawColor = $stat['color'] ?? '#0f4c81';
+            $rawColor = $stat['color'] ?? 'var(--primary-color,#0f4c81)';
             // Whitelist CSS color values to prevent injection via ; : ( ) characters
-            $color = preg_match('/^(#[0-9a-fA-F]{3,8}|rgb\(\d+,\s*\d+,\s*\d+\)|[a-zA-Z]{2,30})$/', $rawColor) ? $rawColor : '#0f4c81';
+            $color = preg_match('/^(#[0-9a-fA-F]{3,8}|rgb\(\d+,\s*\d+,\s*\d+\)|[a-zA-Z]{2,30})$/', $rawColor) ? $rawColor : 'var(--primary-color,#0f4c81)';
             $value = htmlspecialchars((string) ($stat['value'] ?? '0'), ENT_QUOTES, 'UTF-8');
             $label = htmlspecialchars((string) ($stat['label'] ?? ''), ENT_QUOTES, 'UTF-8');
-            echo '<div style="display:inline-flex;align-items:center;gap:6px;background:white;border-radius:8px;padding:8px 14px;box-shadow:0 1px 4px rgba(0,0,0,0.06);font-size:14px">'
+            echo '<div style="display:inline-flex;align-items:center;gap:6px;background:var(--bg-card,#fff);border-radius:8px;padding:8px 14px;box-shadow:0 1px 4px rgba(0,0,0,0.06);font-size:14px">'
                 . '<i class="' . htmlspecialchars($icon) . '" style="color:' . htmlspecialchars($color) . '"></i> '
                 . '<strong style="font-size:18px;font-weight:700">' . $value . '</strong> ' . $label
                 . '</div>';
@@ -354,14 +354,14 @@ class AdminCrudPage
     {
         if (empty($this->config['tabs'])) return;
 
-        echo '<div style="display:flex;gap:0;margin-bottom:15px;border-bottom:2px solid #e5e7eb">';
+        echo '<div style="display:flex;gap:0;margin-bottom:15px;border-bottom:2px solid var(--border-color,#e5e7eb)">';
         foreach ($this->config['tabs'] as $key => $tab) {
             $label = htmlspecialchars($tab['label'] ?? $key, ENT_QUOTES, 'UTF-8');
             $isActive = ($this->activeTab === $key);
             $url = '?' . http_build_query(array_merge($_GET, ['tab' => $key, 'page' => 1]));
             $style = $isActive
-                ? 'padding:10px 20px;font-size:14px;font-weight:600;color:#0f4c81;border-bottom:2px solid #0f4c81;margin-bottom:-2px;text-decoration:none;background:transparent;border:none;cursor:pointer'
-                : 'padding:10px 20px;font-size:14px;color:#6b7280;text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-2px;background:transparent;border:none;cursor:pointer';
+                ? 'padding:10px 20px;font-size:14px;font-weight:600;color:var(--primary-color,#0f4c81);border-bottom:2px solid var(--primary-color,#0f4c81);margin-bottom:-2px;text-decoration:none;background:transparent;border:none;cursor:pointer'
+                : 'padding:10px 20px;font-size:14px;color:var(--text-light,#6b7280);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-2px;background:transparent;border:none;cursor:pointer';
             $icon = isset($tab['icon']) ? '<i class="' . htmlspecialchars($tab['icon']) . '"></i> ' : '';
             $badge = isset($tab['badge']) ? ' <span style="background:#ef4444;color:white;font-size:11px;padding:1px 6px;border-radius:10px;margin-left:4px">' . (int) $tab['badge'] . '</span>' : '';
             echo '<a href="' . htmlspecialchars($url) . '" style="' . $style . '">' . $icon . $label . $badge . '</a>';
@@ -386,7 +386,7 @@ class AdminCrudPage
 
             if ($type === 'select' && isset($def['options'])) {
                 $placeholder = $def['placeholder'] ?? ('Tous / ' . $label);
-                echo '<select name="' . htmlspecialchars($key) . '" style="padding:7px 10px;border:1px solid #d2d6dc;border-radius:6px;font-size:13px">';
+                echo '<select name="' . htmlspecialchars($key) . '" style="padding:7px 10px;border:1px solid var(--border-color,#d2d6dc);border-radius:6px;font-size:13px;background:var(--bg-card,#fff);color:var(--text-color,#1d1d1f)">';
                 echo '<option value="">' . htmlspecialchars($placeholder) . '</option>';
                 foreach ($def['options'] as $optVal => $optLabel) {
                     $sel = ((string) $optVal === $value) ? ' selected' : '';
@@ -395,9 +395,9 @@ class AdminCrudPage
                 echo '</select>';
             } elseif ($type === 'text') {
                 $placeholder = $def['placeholder'] ?? $label . '…';
-                echo '<input type="text" name="' . htmlspecialchars($key) . '" value="' . htmlspecialchars($value) . '" placeholder="' . htmlspecialchars($placeholder) . '" style="padding:7px 10px;border:1px solid #d2d6dc;border-radius:6px;font-size:13px">';
+                echo '<input type="text" name="' . htmlspecialchars($key) . '" value="' . htmlspecialchars($value) . '" placeholder="' . htmlspecialchars($placeholder) . '" style="padding:7px 10px;border:1px solid var(--border-color,#d2d6dc);border-radius:6px;font-size:13px;background:var(--bg-card,#fff);color:var(--text-color,#1d1d1f)">';
             } elseif ($type === 'date') {
-                echo '<input type="date" name="' . htmlspecialchars($key) . '" value="' . htmlspecialchars($value) . '" style="padding:7px 10px;border:1px solid #d2d6dc;border-radius:6px;font-size:13px">';
+                echo '<input type="date" name="' . htmlspecialchars($key) . '" value="' . htmlspecialchars($value) . '" style="padding:7px 10px;border:1px solid var(--border-color,#d2d6dc);border-radius:6px;font-size:13px;background:var(--bg-card,#fff);color:var(--text-color,#1d1d1f)">';
             }
         }
 
@@ -430,7 +430,7 @@ class AdminCrudPage
         // Previous
         if ($this->currentPage > 1) {
             $params['page'] = $this->currentPage - 1;
-            echo '<a href="?' . http_build_query($params) . '" style="padding:6px 12px;border:1px solid #d2d6dc;border-radius:6px;text-decoration:none;font-size:13px;color:#4a5568">&laquo;</a>';
+            echo '<a href="?' . http_build_query($params) . '" style="padding:6px 12px;border:1px solid var(--border-color,#d2d6dc);border-radius:6px;text-decoration:none;font-size:13px;color:var(--text-color,#4a5568)">&laquo;</a>';
         }
 
         // Page numbers
@@ -439,29 +439,29 @@ class AdminCrudPage
 
         if ($start > 1) {
             $params['page'] = 1;
-            echo '<a href="?' . http_build_query($params) . '" style="padding:6px 12px;border:1px solid #d2d6dc;border-radius:6px;text-decoration:none;font-size:13px;color:#4a5568">1</a>';
-            if ($start > 2) echo '<span style="padding:6px 4px;color:#999">…</span>';
+            echo '<a href="?' . http_build_query($params) . '" style="padding:6px 12px;border:1px solid var(--border-color,#d2d6dc);border-radius:6px;text-decoration:none;font-size:13px;color:var(--text-color,#4a5568)">1</a>';
+            if ($start > 2) echo '<span style="padding:6px 4px;color:var(--text-muted,#6e6e73)">…</span>';
         }
 
         for ($i = $start; $i <= $end; $i++) {
             $params['page'] = $i;
             $isCurrent = ($i === $this->currentPage);
             $style = $isCurrent
-                ? 'padding:6px 12px;border:1px solid #0f4c81;border-radius:6px;background:#0f4c81;color:white;font-size:13px;text-decoration:none;font-weight:600'
-                : 'padding:6px 12px;border:1px solid #d2d6dc;border-radius:6px;text-decoration:none;font-size:13px;color:#4a5568';
+                ? 'padding:6px 12px;border:1px solid var(--primary-color,#0f4c81);border-radius:6px;background:var(--primary-color,#0f4c81);color:white;font-size:13px;text-decoration:none;font-weight:600'
+                : 'padding:6px 12px;border:1px solid var(--border-color,#d2d6dc);border-radius:6px;text-decoration:none;font-size:13px;color:var(--text-color,#4a5568)';
             echo '<a href="?' . http_build_query($params) . '" style="' . $style . '">' . $i . '</a>';
         }
 
         if ($end < $totalPages) {
-            if ($end < $totalPages - 1) echo '<span style="padding:6px 4px;color:#999">…</span>';
+            if ($end < $totalPages - 1) echo '<span style="padding:6px 4px;color:var(--text-muted,#6e6e73)">…</span>';
             $params['page'] = $totalPages;
-            echo '<a href="?' . http_build_query($params) . '" style="padding:6px 12px;border:1px solid #d2d6dc;border-radius:6px;text-decoration:none;font-size:13px;color:#4a5568">' . $totalPages . '</a>';
+            echo '<a href="?' . http_build_query($params) . '" style="padding:6px 12px;border:1px solid var(--border-color,#d2d6dc);border-radius:6px;text-decoration:none;font-size:13px;color:var(--text-color,#4a5568)">' . $totalPages . '</a>';
         }
 
         // Next
         if ($this->currentPage < $totalPages) {
             $params['page'] = $this->currentPage + 1;
-            echo '<a href="?' . http_build_query($params) . '" style="padding:6px 12px;border:1px solid #d2d6dc;border-radius:6px;text-decoration:none;font-size:13px;color:#4a5568">&raquo;</a>';
+            echo '<a href="?' . http_build_query($params) . '" style="padding:6px 12px;border:1px solid var(--border-color,#d2d6dc);border-radius:6px;text-decoration:none;font-size:13px;color:var(--text-color,#4a5568)">&raquo;</a>';
         }
 
         echo '</div>';
