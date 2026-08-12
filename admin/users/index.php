@@ -317,6 +317,7 @@ include __DIR__ . '/../includes/header.php';
                     <td>
                         <div class="actions-cell">
                             <button class="btn-xs primary" data-fr-click="openProfile" data-fr-args='[<?= $u['id'] ?>,"<?= $u['profil'] ?>"]'><i class="fas fa-eye"></i></button>
+                            <a class="btn-xs" href="roles.php?ut=<?= urlencode($u['profil']) ?>&uid=<?= (int) $u['id'] ?>" title="Gérer les rôles"><i class="fas fa-user-shield"></i></a>
                             <?php if (!empty($u['locked_until']) && strtotime($u['locked_until']) > time()): ?>
                                 <form method="post" style="display:inline"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="unlock"><input type="hidden" name="user_id" value="<?= $u['id'] ?>"><input type="hidden" name="user_type" value="<?= $u['profil'] ?>"><button class="btn-xs warning" title="Déverrouiller"><i class="fas fa-unlock"></i></button></form>
                             <?php endif; ?>

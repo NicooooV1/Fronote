@@ -59,6 +59,57 @@ final class RoleManagementService
     }
 
     /**
+     * Recherche d'utilisateurs par NOM (autocomplétion du picker de cible), CLOISONNÉE à
+     * l'établissement de l'acteur (super_admin = global). Remplace la saisie d'un id numérique
+     * interne. Ne cherche que les 5 types rattachés à un établissement (super_admin/technicien
+     * n'ont pas de table cloisonnée et ne sont pas des cibles d'attribution ici).
+     *
+     * @return array<int,array{type:string,id:int,label:string,sub:string}>
+     */
+    public function searchUsers(array $actorRoleKeys, string $query, ?string $onlyType = null, int $limit = 20): array
+    {
+        $query = trim($query);
+        if (strlen($query) < 2 || empty($this->assignableRoles($actorRoleKeys))) {
+            return [];
+        }
+        $isSuper = in_array('super_admin', $actorRoleKeys, true);
+        // [table, expression du nom complet, colonne d'info secondaire]
+        $map = [
+            'eleve'          => ['eleves',          "CONCAT(prenom,' ',nom)", 'classe'],
+            'parent'         => ['parents',         "CONCAT(prenom,' ',nom)", 'NULL'],
+            'professeur'     => ['professeurs',     "CONCAT(prenom,' ',nom)", 'matiere'],
+            'vie_scolaire'   => ['vie_scolaire',    "CONCAT(prenom,' ',nom)", 'NULL'],
+            'administrateur' => ['administrateurs', "CONCAT(prenom,' ',nom)", 'NULL'],
+        ];
+        $types = ($onlyType !== null && isset($map[$onlyType])) ? [$onlyType] : array_keys($map);
+        $etab = null;
+        if (!$isSuper) {
+            try { $etab = \API\Core\EstablishmentContext::id(); } catch (\Throwable $e) { return []; }
+        }
+        $like = '%' . str_replace(['%', '_'], ['\%', '\_'], $query) . '%';
+        $out = [];
+        foreach ($types as $t) {
+            [$table, $nameExpr, $subExpr] = $map[$t];
+            $where = "(prenom LIKE ? OR nom LIKE ? OR {$nameExpr} LIKE ?)";
+            $params = [$like, $like, $like];
+            if (!$isSuper) { $where .= ' AND etablissement_id = ?'; $params[] = $etab; }
+            $params[] = $limit;
+            try {
+                $stmt = $this->pdo->prepare("SELECT id, {$nameExpr} AS label, {$subExpr} AS sub FROM `{$table}` WHERE {$where} ORDER BY nom, prenom LIMIT ?");
+                foreach ($params as $i => $p) {
+                    $stmt->bindValue($i + 1, $p, is_int($p) ? PDO::PARAM_INT : PDO::PARAM_STR);
+                }
+                $stmt->execute();
+                foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                    $out[] = ['type' => $t, 'id' => (int) $row['id'], 'label' => (string) $row['label'], 'sub' => $row['sub'] !== null ? (string) $row['sub'] : ''];
+                }
+            } catch (\PDOException $e) { /* table/colonne absente → ignorer ce type */ }
+        }
+        usort($out, static fn($a, $b) => strcasecmp($a['label'], $b['label']));
+        return array_slice($out, 0, $limit);
+    }
+
+    /**
      * Attribue un rôle. $actor = ['type'=>,'id'=>], $actorRoleKeys = rôles effectifs de l'acteur.
      * @throws \RuntimeException si l'acteur n'a pas le droit (anti-escalade).
      */
@@ -149,6 +200,30 @@ final class RoleManagementService
             'valid_from' => $from ?: null, 'valid_until' => $until ?: null, 'reason' => $reason ?: null,
         ]);
         return $id;
+    }
+
+    /**
+     * Libellé lisible d'un utilisateur (prénom + nom) pour l'affichage du picker.
+     * Retourne null si introuvable ou type inconnu — l'appelant retombe sur « type #id ».
+     */
+    public function userLabel(string $userType, int $userId): ?string
+    {
+        static $map = [
+            'eleve' => 'eleves', 'parent' => 'parents', 'professeur' => 'professeurs',
+            'vie_scolaire' => 'vie_scolaire', 'administrateur' => 'administrateurs',
+        ];
+        $table = $map[$userType] ?? null;
+        if ($table === null || $userId <= 0) {
+            return null;
+        }
+        try {
+            $stmt = $this->pdo->prepare("SELECT TRIM(CONCAT(prenom, ' ', nom)) FROM `$table` WHERE id = ? LIMIT 1");
+            $stmt->execute([$userId]);
+            $label = $stmt->fetchColumn();
+            return $label !== false && $label !== '' ? (string) $label : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     /**

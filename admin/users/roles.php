@@ -52,20 +52,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && hash_equals($csrf, $_POST['csrf_tok
     $action = $_POST['action'] ?? '';
     try {
         if ($action === 'assign' && $targetAllowed) {
-            // Périmètre fin optionnel (scope_json), p.ex. {"class_ids":[2,4]} pour own_classes,
-            // {"student_ids":[5,7]} pour assigned, {"etablissement_ids":[1,3]} pour establishments.
-            $scopeRaw = trim((string) ($_POST['scope_json'] ?? ''));
-            $scopeArr = null;
-            if ($scopeRaw !== '') {
-                $scopeArr = json_decode($scopeRaw, true);
-                if (!is_array($scopeArr)) {
-                    throw new \RuntimeException('Périmètre JSON invalide. Exemple : {"class_ids":[2,4]} ou {"student_ids":[5,7]}.');
-                }
-            }
+            // Périmètre fin construit depuis des SÉLECTEURS (plus de JSON à écrire) :
+            // classes cochées → class_ids ; élèves choisis → student_ids. Seules ces deux
+            // clés sont lues par le moteur (Authorization) ; on n'émet rien d'autre.
+            $classIds   = array_values(array_unique(array_filter(array_map('intval', (array) ($_POST['class_ids'] ?? [])))));
+            $studentIds = array_values(array_unique(array_filter(array_map('intval', (array) ($_POST['student_ids'] ?? [])))));
+            $scopeArr = [];
+            if ($classIds)   { $scopeArr['class_ids'] = $classIds; }
+            if ($studentIds) { $scopeArr['student_ids'] = $studentIds; }
             $svc->assign($actor, $actorRoles, $targetType, $targetId, $_POST['role_key'] ?? '', [
                 'etablissement_id' => $_POST['etablissement_id'] ?? '',
                 'scope_type'       => ($_POST['scope_type'] ?? '') !== '' ? $_POST['scope_type'] : null,
-                'scope'            => $scopeArr,
+                'scope'            => $scopeArr ?: null,
                 'valid_until'      => $_POST['valid_until'] ?? null,
                 'reason'           => $_POST['reason'] ?? null,
             ]);
@@ -82,9 +80,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && hash_equals($csrf, $_POST['csrf_tok
 $assignable = $svc->assignableRoles($actorRoles);
 $catalog    = RoleCatalog::roles();
 $current    = $targetAllowed ? $svc->listUserRoles($targetType, $targetId) : [];
+$targetName = $targetAllowed ? $svc->userLabel($targetType, $targetId) : null;
+// Libellés FR des types de compte (pour un affichage lisible « Marie Dupont · professeur »).
+$typeLabelsFr = [
+    'eleve' => 'élève', 'parent' => 'parent', 'professeur' => 'professeur',
+    'vie_scolaire' => 'vie scolaire', 'administrateur' => 'administrateur',
+];
+$targetDisplay = $targetName !== null
+    ? $targetName . ' · ' . ($typeLabelsFr[$targetType] ?? $targetType)
+    : ($typeLabelsFr[$targetType] ?? $targetType) . ' #' . $targetId;
 $etabs      = $pdo->query("SELECT id, nom FROM etablissements WHERE actif = 1 ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
-$scopeTypes = ['establishment', 'establishments', 'global', 'self', 'children', 'assigned', 'own_classes'];
-$accountTypes = ['eleve', 'parent', 'professeur', 'vie_scolaire', 'administrateur', 'super_admin', 'technicien'];
+
+// Périmètres en LANGAGE CLAIR (value = enum technique, texte = libellé FR).
+$scopeLabels = [
+    'establishment'  => "Tout l'établissement",
+    'own_classes'    => 'Certaines classes seulement',
+    'assigned'       => 'Certains élèves seulement',
+    'children'       => 'Ses enfants',
+    'self'           => 'Ses propres données',
+    'global'         => 'Toute la plateforme',
+];
+// Périmètres proposés (on masque 'establishments' non câblé au runtime ; 'global' réservé super-admin).
+$scopeTypes = array_keys($scopeLabels);
+// Seuls les 5 types rattachés à un établissement (super_admin/technicien : pas de cible ici).
+$accountTypes = ['eleve', 'parent', 'professeur', 'vie_scolaire', 'administrateur'];
+
+// Classes de l'établissement cible — pour le sélecteur « certaines classes » (own_classes).
+$targetClasses = [];
+if ($targetAllowed) {
+    try {
+        $etabForClasses = $isSuper && !empty($current[0]['etablissement_id'])
+            ? (int) $current[0]['etablissement_id']
+            : (int) \API\Core\EstablishmentContext::id();
+        $cs = $pdo->prepare("SELECT id, nom, niveau FROM classes WHERE etablissement_id = ? AND actif = 1 ORDER BY niveau, nom");
+        $cs->execute([$etabForClasses]);
+        $targetClasses = $cs->fetchAll(PDO::FETCH_ASSOC);
+    } catch (\Throwable $e) { $targetClasses = []; }
+}
 
 // Rôles réellement compatibles avec le type de compte cible (garde-fou métier du
 // catalogue) : un super_admin n'est pas limité et se voit proposer tout l'assignable.
@@ -107,6 +139,7 @@ foreach ($assignable as $rk) {
         'color'     => RoleCatalog::tierColor($tier),
         'desc'      => RoleCatalog::roleDescription($rk),
         'sensitive' => !empty($meta['sensitive']),
+        'scope'     => $meta['scope'] ?? 'establishment',
     ];
 }
 uksort($offer, static fn($a, $b) => rc_tier_rank($a) <=> rc_tier_rank($b));
@@ -216,6 +249,34 @@ ob_start();
     .rl-adv__grid { display: flex; flex-wrap: wrap; gap: 14px; padding: 4px 0 16px; }
     .rl-adv small { display: block; margin-top: 4px; color: var(--text-muted, #64748b); font-size: .74rem; }
 
+    /* Recherche de cible par nom */
+    .rl-search-field { position: relative; flex: 1 1 320px; }
+    .rl-results { position: absolute; top: 100%; left: 0; right: 0; z-index: 30; margin-top: 4px;
+        background: var(--surface, #fff); border: 1px solid var(--border, #e2e8f0); border-radius: 10px;
+        box-shadow: 0 12px 30px rgba(15,23,42,.16); max-height: 320px; overflow-y: auto; }
+    .rl-res { display: flex; flex-direction: column; width: 100%; text-align: left; gap: 2px;
+        padding: 9px 12px; background: transparent; border: 0; border-bottom: 1px solid var(--border-light, #eef1f5); cursor: pointer; }
+    .rl-res:last-child { border-bottom: 0; }
+    .rl-res:hover, .rl-res:focus-visible { background: var(--surface-muted, #f1f5f9); }
+    .rl-res-name { font-weight: 600; color: var(--text, #0f172a); font-size: .92rem; }
+    .rl-res-meta { font-size: .74rem; color: var(--text-muted, #64748b); }
+    .rl-res-empty { padding: 12px; color: var(--text-muted, #64748b); font-style: italic; }
+    .rl-picker-current { margin: 12px 0 0; font-size: .86rem; color: var(--text-secondary, #475569); }
+
+    /* Périmètre : sélecteur clair + panneaux concrets */
+    .rl-scope-lab { display: flex; flex-direction: column; gap: 4px; font-size: .76rem; font-weight: 600; color: var(--text-muted, #64748b); }
+    .rl-scope-lab select { padding: 8px 10px; border: 1px solid var(--border, #e2e8f0); border-radius: 8px; font-size: 13px; background: var(--surface, #fff); color: var(--text, #0f172a); }
+    .rl-scope-panel { border: 1px solid var(--border-light, #eef1f5); border-radius: 9px; padding: 10px; background: var(--surface-muted, #f8fafc); }
+    .rl-scope-hint { margin: 0 0 8px; font-size: .76rem; color: var(--text-secondary, #475569); }
+    .rl-scope-hint em { color: var(--text-muted, #64748b); font-style: italic; }
+    .rl-checks { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+    .rl-check { display: inline-flex; align-items: center; gap: 6px; font-size: .82rem; color: var(--text, #0f172a); cursor: pointer; }
+    .rl-stu-search { width: 100%; padding: 7px 9px; border: 1px solid var(--border, #e2e8f0); border-radius: 8px; font-size: 13px; background: var(--surface, #fff); color: var(--text, #0f172a); }
+    .rl-stu-results { margin-top: 4px; border: 1px solid var(--border, #e2e8f0); border-radius: 8px; max-height: 200px; overflow-y: auto; background: var(--surface, #fff); }
+    .rl-stu-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .rl-chip-mini { display: inline-flex; align-items: center; gap: 6px; padding: 3px 6px 3px 10px; border-radius: 9999px; background: var(--primary, #7c3aed); color: #fff; font-size: .78rem; }
+    .rl-chip-mini button { border: 0; background: rgba(255,255,255,.25); color: #fff; width: 18px; height: 18px; border-radius: 50%; cursor: pointer; line-height: 1; }
+
     :focus-visible { outline: 2px solid #7c3aed; outline-offset: 2px; }
     @media (prefers-reduced-motion: reduce) { .rl-card, .rl-go, .rl-chip__x { transition: none; } }
     @media (max-width: 640px) { .rl-grid { grid-template-columns: 1fr; } }
@@ -240,24 +301,29 @@ include __DIR__ . '/../includes/header.php';
     <?php if ($message): ?><div class="alert alert-success"><?= e($message) ?></div><?php endif; ?>
     <?php if ($error): ?><div class="alert alert-danger"><?= e($error) ?></div><?php endif; ?>
 
-    <!-- Sélecteur de la cible -->
+    <!-- Sélecteur de la cible : RECHERCHE PAR NOM (plus d'id numérique à connaître) -->
     <div class="rl-panel">
-        <p class="rl-eyebrow">Cible</p>
-        <form method="get" class="rl-picker">
+        <p class="rl-eyebrow">Choisir l'utilisateur</p>
+        <div class="rl-picker">
+            <div class="rl-field rl-search-field">
+                <label for="rl-search">Rechercher par nom ou prénom</label>
+                <input type="text" id="rl-search" autocomplete="off" placeholder="Ex. Dupont, Marie…"
+                       aria-controls="rl-results" aria-expanded="false" role="combobox">
+                <div id="rl-results" class="rl-results" role="listbox" hidden></div>
+            </div>
             <div class="rl-field">
-                <label for="rl-ut">Type de compte</label>
-                <select name="ut" id="rl-ut">
+                <label for="rl-type-filter">Type (optionnel)</label>
+                <select id="rl-type-filter">
+                    <option value="">Tous les types</option>
                     <?php foreach ($accountTypes as $t): ?>
-                        <option value="<?= e($t) ?>" <?= $targetType === $t ? 'selected' : '' ?>><?= e($t) ?></option>
+                        <option value="<?= e($t) ?>"><?= e($t) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="rl-field">
-                <label for="rl-uid">ID utilisateur</label>
-                <input type="number" name="uid" id="rl-uid" value="<?= $targetId ?: '' ?>" min="1">
-            </div>
-            <button class="btn btn-primary" type="submit"><i class="fas fa-search"></i> Charger</button>
-        </form>
+        </div>
+        <?php if ($targetLoaded && $targetAllowed): ?>
+            <p class="rl-picker-current">Utilisateur chargé : <strong><?= e($targetDisplay) ?></strong> — vous pouvez gérer ses rôles ci-dessous, ou en rechercher un autre.</p>
+        <?php endif; ?>
     </div>
 
     <?php if ($targetLoaded && $targetAllowed): ?>
@@ -266,7 +332,7 @@ include __DIR__ . '/../includes/header.php';
     <div class="rl-panel">
         <div class="rl-panel__head">
             <p class="rl-eyebrow" style="margin:0">Rôles actuels</p>
-            <span class="rl-mono"><?= e($targetType) ?> #<?= $targetId ?></span>
+            <span class="rl-mono"><?= e($targetDisplay) ?></span>
         </div>
         <?php if (!$current): ?>
             <p class="rl-empty">Aucun rôle attribué (le rôle de base = type de compte s'applique).</p>
@@ -323,11 +389,6 @@ include __DIR__ . '/../includes/header.php';
                 <label for="rl-adv-until">Expire le (optionnel)</label>
                 <input type="datetime-local" id="rl-adv-until">
             </div>
-            <div class="rl-field" style="flex:1;min-width:240px">
-                <label for="rl-adv-scope">Périmètre fin — JSON (optionnel)</label>
-                <input type="text" id="rl-adv-scope" placeholder='{"class_ids":[2,4]}'>
-                <small>own_classes → class_ids ; assigned → student_ids ; establishments → etablissement_ids</small>
-            </div>
         </div>
     </details>
 
@@ -335,7 +396,7 @@ include __DIR__ . '/../includes/header.php';
     <div class="rl-panel">
         <p class="rl-eyebrow">Attribuer un rôle</p>
         <?php if (!$offer): ?>
-            <p class="rl-empty">Aucun rôle compatible avec un compte « <?= e($targetType) ?> ».</p>
+            <p class="rl-empty">Aucun rôle compatible avec un compte « <?= e($typeLabelsFr[$targetType] ?? $targetType) ?> ».</p>
         <?php endif; ?>
         <?php foreach ($offer as $tier => $roles):
             $tcolor = RoleCatalog::tierColor($tier);
@@ -364,24 +425,43 @@ include __DIR__ . '/../includes/header.php';
                                 <input type="hidden" name="uid" value="<?= $targetId ?>">
                                 <input type="hidden" name="action" value="assign">
                                 <input type="hidden" name="role_key" value="<?= e($role['key']) ?>">
-                                <!-- champs fusionnés depuis les options avancées via JS (défauts serveur si absents) -->
+                                <!-- établissement + expiration fusionnés depuis les options avancées via JS -->
                                 <input type="hidden" name="etablissement_id" value="">
                                 <input type="hidden" name="valid_until" value="">
-                                <input type="hidden" name="scope_json" value="">
                                 <?php if ($sens): ?>
                                 <div class="rl-reason">
                                     <input type="text" name="reason" placeholder="Justification (obligatoire)" required>
                                 </div>
                                 <?php endif; ?>
                                 <div class="rl-card__form">
-                                    <div class="rl-card__row">
-                                        <select name="scope_type" aria-label="Périmètre">
-                                            <option value="">— périmètre par défaut —</option>
-                                            <?php foreach ($scopeTypes as $s): ?>
-                                                <option value="<?= e($s) ?>"><?= e($s) ?></option>
+                                    <label class="rl-scope-lab">Périmètre
+                                        <select name="scope_type" class="rl-scope-select" data-default="<?= e($role['scope']) ?>">
+                                            <?php foreach ($scopeTypes as $s):
+                                                if ($s === 'global' && !$isSuper) { continue; } ?>
+                                                <option value="<?= e($s) ?>" <?= $s === $role['scope'] ? 'selected' : '' ?>><?= e($scopeLabels[$s] ?? $s) ?><?= $s === $role['scope'] ? ' — par défaut' : '' ?></option>
                                             <?php endforeach; ?>
                                         </select>
-                                        <button type="submit" class="rl-go"><i class="fas fa-plus"></i> Attribuer</button>
+                                    </label>
+                                    <div class="rl-scope-panel rl-scope-classes" data-scope="own_classes" hidden>
+                                        <?php if ($targetClasses): ?>
+                                            <p class="rl-scope-hint">Classes concernées <em>(aucune cochée = toutes ses classes)</em> :</p>
+                                            <div class="rl-checks">
+                                                <?php foreach ($targetClasses as $cl): ?>
+                                                    <label class="rl-check"><input type="checkbox" name="class_ids[]" value="<?= (int) $cl['id'] ?>"> <?= e($cl['nom']) ?></label>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php else: ?>
+                                            <p class="rl-scope-hint">Aucune classe dans cet établissement.</p>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="rl-scope-panel rl-scope-students" data-scope="assigned" hidden>
+                                        <p class="rl-scope-hint">Élèves concernés :</p>
+                                        <input type="text" class="rl-stu-search" placeholder="Rechercher un élève…" autocomplete="off">
+                                        <div class="rl-stu-results" hidden></div>
+                                        <div class="rl-stu-chips"></div>
+                                    </div>
+                                    <div class="rl-card__row">
+                                        <button type="submit" class="rl-go"><i class="fas fa-plus"></i> Attribuer ce rôle</button>
                                     </div>
                                 </div>
                             </form>
@@ -397,7 +477,7 @@ include __DIR__ . '/../includes/header.php';
     <?php elseif ($targetLoaded): /* chargé mais hors périmètre : message déjà affiché */ ?>
     <?php else: ?>
     <div class="rl-panel">
-        <p class="rl-empty">Sélectionnez un type de compte et un identifiant, puis « Charger » pour gérer ses rôles.</p>
+        <p class="rl-empty">Recherchez un utilisateur par son nom ci-dessus pour gérer ses rôles.</p>
     </div>
     <?php endif; ?>
 </div>
@@ -407,36 +487,84 @@ include __DIR__ . '/../includes/header.php';
     'use strict';
     var advEtab  = document.getElementById('rl-adv-etab');
     var advUntil = document.getElementById('rl-adv-until');
-    var advScope = document.getElementById('rl-adv-scope');
+    function setField(form, name, val) { var i = form.querySelector('input[name="' + name + '"]'); if (i) { i.value = val || ''; } }
+    function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]; }); }
+    function debounce(fn, ms){ var t; return function(){ var a=arguments, c=this; clearTimeout(t); t=setTimeout(function(){ fn.apply(c, a); }, ms); }; }
 
-    function setField(form, name, val) {
-        var i = form.querySelector('input[name="' + name + '"]');
-        if (i) { i.value = val || ''; }
+    // ── Recherche de la cible par NOM → ouvre roles.php pré-chargé ─────────
+    var search = document.getElementById('rl-search');
+    var results = document.getElementById('rl-results');
+    var typeFilter = document.getElementById('rl-type-filter');
+    if (search && results) {
+        var run = debounce(function () {
+            var q = search.value.trim();
+            if (q.length < 2) { results.hidden = true; return; }
+            var url = 'roles_search.php?q=' + encodeURIComponent(q) + (typeFilter && typeFilter.value ? '&type=' + encodeURIComponent(typeFilter.value) : '');
+            fetch(url).then(function (r) { return r.json(); }).then(function (d) {
+                var items = d.results || [];
+                results.innerHTML = items.length
+                    ? items.map(function (u) { return '<button type="button" class="rl-res" data-ut="' + esc(u.type) + '" data-uid="' + u.id + '"><span class="rl-res-name">' + esc(u.label) + '</span><span class="rl-res-meta">' + esc(u.type) + (u.sub ? ' · ' + esc(u.sub) : '') + '</span></button>'; }).join('')
+                    : '<div class="rl-res-empty">Aucun résultat</div>';
+                results.hidden = false;
+            }).catch(function () { results.hidden = true; });
+        }, 220);
+        search.addEventListener('input', run);
+        if (typeFilter) { typeFilter.addEventListener('change', function () { if (search.value.trim().length >= 2) { run(); } }); }
+        results.addEventListener('click', function (ev) {
+            var b = ev.target.closest('.rl-res'); if (!b || !b.dataset.uid) { return; }
+            window.location = 'roles.php?ut=' + encodeURIComponent(b.dataset.ut) + '&uid=' + encodeURIComponent(b.dataset.uid);
+        });
+        document.addEventListener('click', function (ev) { if (!ev.target.closest('.rl-search-field')) { results.hidden = true; } });
     }
 
-    // Fusionne les options avancées partagées dans le formulaire soumis + état optimiste.
-    var forms = document.querySelectorAll('.rl-assign-form');
-    for (var i = 0; i < forms.length; i++) {
-        forms[i].addEventListener('submit', function () {
-            if (advEtab)  { setField(this, 'etablissement_id', advEtab.value); }
-            if (advUntil) { setField(this, 'valid_until', advUntil.value); }
-            if (advScope) { setField(this, 'scope_json', advScope.value); }
-            var card = this.closest('.rl-card');
-            if (card) { card.classList.add('is-busy'); }
+    // ── Périmètre : afficher le sélecteur concret selon le choix ──────────
+    function updatePanels(select) {
+        var form = select.closest('.rl-assign-form'); if (!form) { return; }
+        var val = select.value;
+        form.querySelectorAll('.rl-scope-panel').forEach(function (pan) {
+            var on = pan.getAttribute('data-scope') === val;
+            pan.hidden = !on;
+            pan.querySelectorAll('input').forEach(function (inp) { inp.disabled = !on; }); // pas de class_ids/student_ids parasites
         });
     }
+    document.querySelectorAll('.rl-scope-select').forEach(function (sel) {
+        updatePanels(sel);
+        sel.addEventListener('change', function () { updatePanels(sel); });
+    });
 
-    // « Un clic sur la carte attribue » : hors contrôles de formulaire, soumet la carte
-    // (requestSubmit conserve la validation native, p.ex. justification requise).
-    var cards = document.querySelectorAll('.rl-card');
-    for (var c = 0; c < cards.length; c++) {
-        cards[c].addEventListener('click', function (ev) {
-            if (ev.target.closest('input, select, textarea, button, a, label')) { return; }
-            var f = this.querySelector('.rl-assign-form');
-            if (!f) { return; }
-            if (f.requestSubmit) { f.requestSubmit(); } else { f.submit(); }
+    // ── Recherche d'élèves (périmètre « certains élèves ») → chips ────────
+    document.querySelectorAll('.rl-scope-students').forEach(function (pan) {
+        var input = pan.querySelector('.rl-stu-search');
+        var res = pan.querySelector('.rl-stu-results');
+        var chips = pan.querySelector('.rl-stu-chips');
+        var form = pan.closest('.rl-assign-form');
+        function addChip(id, label) {
+            if (form.querySelector('input[name="student_ids[]"][value="' + id + '"]')) { return; }
+            var chip = document.createElement('span'); chip.className = 'rl-chip-mini';
+            chip.innerHTML = esc(label) + ' <button type="button" aria-label="Retirer">&times;</button><input type="hidden" name="student_ids[]" value="' + id + '">';
+            chip.querySelector('button').addEventListener('click', function () { chip.remove(); });
+            chips.appendChild(chip);
+        }
+        var run = debounce(function () {
+            var q = input.value.trim(); if (q.length < 2) { res.hidden = true; return; }
+            fetch('roles_search.php?type=eleve&q=' + encodeURIComponent(q)).then(function (r) { return r.json(); }).then(function (d) {
+                var items = d.results || [];
+                res.innerHTML = items.length ? items.map(function (u) { return '<button type="button" class="rl-res" data-uid="' + u.id + '" data-lab="' + esc(u.label) + '"><span class="rl-res-name">' + esc(u.label) + '</span><span class="rl-res-meta">' + esc(u.sub || '') + '</span></button>'; }).join('') : '<div class="rl-res-empty">Aucun élève</div>';
+                res.hidden = false;
+            }).catch(function () { res.hidden = true; });
+        }, 220);
+        input.addEventListener('input', run);
+        res.addEventListener('click', function (ev) { var b = ev.target.closest('.rl-res'); if (!b) { return; } addChip(b.dataset.uid, b.dataset.lab); input.value = ''; res.hidden = true; });
+    });
+
+    // ── Soumission : fusionne établissement + expiration (options avancées) ─
+    document.querySelectorAll('.rl-assign-form').forEach(function (form) {
+        form.addEventListener('submit', function () {
+            if (advEtab)  { setField(form, 'etablissement_id', advEtab.value); }
+            if (advUntil) { setField(form, 'valid_until', advUntil.value); }
+            var card = form.closest('.rl-card'); if (card) { card.classList.add('is-busy'); }
         });
-    }
+    });
 })();
 </script>
 
