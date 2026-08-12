@@ -89,7 +89,7 @@ class HealthCheckService
         try {
             $cache = app('cache');
             $testKey = '_health_check_' . time();
-            $cache->set($testKey, 'ok', 10);
+            $cache->put($testKey, 'ok', 10);
             $val = $cache->get($testKey);
             $cache->forget($testKey);
             return ['status' => $val === 'ok' ? 'ok' : 'error', 'driver' => get_class($cache)];
