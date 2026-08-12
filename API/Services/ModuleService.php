@@ -590,6 +590,9 @@ class ModuleService
             // Determine category: topbar_category (DB) > override > category (DB)
             $cat = $mod['topbar_category'] ?? $catOverrides[$key] ?? ($mod['category'] ?? 'systeme');
             if ($cat === 'navigation') continue; // Skip navigation items (handled separately)
+            // Les catégories 'systeme' et 'outils' portaient toutes deux le libellé « Outils »
+            // → DEUX menus « Outils » identiques. On les fusionne en un seul.
+            if ($cat === 'outils') { $cat = 'systeme'; }
 
             // Aligner la nav sur l'accès RÉEL des pages : ne pas afficher un lien que
             // l'utilisateur ne peut pas ouvrir (les pages redirigent en silence → liens en

@@ -701,6 +701,38 @@
 .message-footer .js-reply:hover { color: var(--mc-accent); background: var(--mc-accent-weak); }
 
 /* ---------------------------------------------------------------------------
+ * 11b. Menu « plus d'actions » d'une conversation (⋮) — .quick-actions-menu
+ *      Sans style il s'affichait DÉPLOYÉ en permanence et chevauchait l'aperçu :
+ *      masqué par défaut, dropdown positionné, visible à l'ouverture (.active).
+ * -------------------------------------------------------------------------*/
+.conv-item__more { position: relative; }
+.quick-actions-menu {
+  display: none;
+  position: absolute;
+  top: 100%; right: 0;
+  z-index: 50;
+  min-width: 190px;
+  margin-top: 4px;
+  padding: 6px;
+  background: var(--mc-panel);
+  border: 1px solid var(--mc-border);
+  border-radius: var(--mc-radius-sm);
+  box-shadow: var(--mc-shadow);
+}
+.quick-actions-menu.active { display: block; }
+.quick-actions-menu a,
+.quick-actions-menu button {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 8px 10px; border: none; background: none; border-radius: 6px;
+  color: var(--mc-text); text-decoration: none; font-size: .875rem;
+  white-space: nowrap; text-align: left; cursor: pointer;
+}
+.quick-actions-menu a:hover,
+.quick-actions-menu button:hover { background: var(--mc-panel-2); }
+.quick-actions-menu a i,
+.quick-actions-menu button i { width: 16px; text-align: center; color: var(--mc-muted); }
+
+/* ---------------------------------------------------------------------------
  * 12. Menu déroulant d'actions d'un message — .message-dropdown
  * -------------------------------------------------------------------------*/
 .message-dropdown { position: relative; display: inline-flex; }
