@@ -119,7 +119,7 @@
     gap: var(--space-4);
 }
 /* Anti-débordement de grille + cartes de même hauteur sur une rangée. */
-.widget-grid > .widget-card { min-width: 0; height: 100%; }
+.widget-grid > .widget-card { min-width: 0; }
 @media (max-width: 1023.98px) { .widget-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 767.98px)  { .widget-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 639.98px)  { .widget-grid { grid-template-columns: 1fr; } }
@@ -141,21 +141,28 @@
 }
 .widget-card:hover { transform: translateY(var(--translate-hover)); box-shadow: var(--shadow-md); border-color: var(--border-medium); }
 
-/* Tailles (conventions widgets iPhone) */
-/* La hauteur des grands widgets vient de leur scroll interne (max-height), PAS d'un span
-   de rangée : les span de rangée créaient des trous verticaux dans la grille. */
-.widget-size-small  { grid-column: span 1; }
-.widget-size-medium { grid-column: span 2; }
-.widget-size-large  { grid-column: span 2; }
-.widget-size-xlarge { grid-column: span 4; }
-@media (max-width: 1023.98px) { .widget-size-xlarge { grid-column: span 3; } }
-@media (max-width: 767.98px) {
-    .widget-size-large, .widget-size-xlarge { grid-column: span 2; }
-    .widget-size-medium { grid-column: span 2; }
+/* Tailles pilotées par variables : --w = largeur (colonnes 1–4), --h = hauteur (1–3).
+   LARGEUR = span de colonnes (packing propre via dense). HAUTEUR = min-height (PAS un span
+   de rangée, qui créait des trous verticaux). Le contenu long défile en interne (max-height). */
+.widget-card {
+    grid-column: span min(var(--w, 2), 4);
+    min-height: calc(150px + (var(--h, 1) - 1) * 188px); /* h1≈150, h2≈338, h3≈526 */
 }
-@media (max-width: 639.98px) {
-    .widget-size-small, .widget-size-medium, .widget-size-large, .widget-size-xlarge { grid-column: span 1; }
-}
+.widget-card.is-empty { min-height: 0; }
+/* Classes héritées conservées comme repli si --w absent (JS/PHP posent toujours --w). */
+.widget-size-small  { --w: 1; }
+.widget-size-medium { --w: 2; }
+.widget-size-large  { --w: 3; }
+.widget-size-xlarge { --w: 4; }
+@media (max-width: 1023.98px) { .widget-card { grid-column: span min(var(--w, 2), 3); } }
+@media (max-width: 767.98px)  { .widget-card { grid-column: span min(var(--w, 2), 2); } }
+@media (max-width: 639.98px)  { .widget-card { grid-column: 1 / -1; min-height: calc(140px + (var(--h, 1) - 1) * 150px); } }
+
+/* Widget « grand » (hauteur >1) : le scroll interne des listes gagne de la place. */
+.widget-card[style*="--h:2"] .widget-list-scroll,
+.widget-card[style*="--h: 2"] .widget-list-scroll { max-height: 300px; }
+.widget-card[style*="--h:3"] .widget-list-scroll,
+.widget-card[style*="--h: 3"] .widget-list-scroll { max-height: 460px; }
 
 /* États glisser-déposer */
 .widget-card.widget-dragging { opacity: 0.5; transform: scale(var(--scale-press)); }
@@ -343,3 +350,94 @@
 .dashboard-toast.toast-visible { opacity: 1; transform: translateY(0); }
 .dashboard-toast.toast-success { background: var(--success); color: #fff; border-color: transparent; }
 .dashboard-toast.toast-error   { background: var(--danger);  color: #fff; border-color: transparent; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MODE ÉDITION DU TABLEAU DE BORD — redimensionner, déplacer, ajouter/retirer
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Barre d'actions flottante (apparaît en mode édition) */
+.dashboard-edit-toolbar {
+    position: sticky;
+    top: 64px;
+    z-index: 30;
+    display: none;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    margin: 0 0 var(--space-4);
+    padding: 0.6rem 0.9rem;
+    background: var(--surface-card);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+.dashboard-editing .dashboard-edit-toolbar { display: flex; }
+.dashboard-edit-toolbar .det-hint { font-size: var(--fs-sm); color: var(--text-secondary); margin-right: auto; display: flex; align-items: center; gap: 0.4rem; }
+.dashboard-edit-toolbar .det-btn {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.5rem 0.9rem; border-radius: var(--radius-md);
+    font-size: var(--fs-sm); font-weight: var(--fw-medium); cursor: pointer;
+    border: 1px solid var(--border-medium); background: var(--surface-muted); color: var(--text-primary);
+    transition: background var(--motion-fast) var(--ease-standard);
+}
+.dashboard-edit-toolbar .det-btn:hover { background: var(--surface-hover); }
+.dashboard-edit-toolbar .det-btn--primary { background: var(--primary); color: var(--text-on-accent, #fff); border-color: transparent; }
+.dashboard-edit-toolbar .det-btn--primary:hover { background: var(--primary-hover, var(--primary-dark)); }
+
+/* Grille en mode édition : les cartes deviennent manipulables */
+.dashboard-editing .widget-grid { outline: 2px dashed var(--border-medium); outline-offset: 10px; border-radius: var(--radius-lg); }
+.dashboard-editing .widget-card { cursor: grab; user-select: none; }
+.dashboard-editing .widget-card:active { cursor: grabbing; }
+/* On neutralise les interactions du contenu pendant l'édition (liens, scroll) */
+.dashboard-editing .widget-card-body,
+.dashboard-editing .widget-card-footer { pointer-events: none; opacity: 0.75; }
+.dashboard-editing .widget-card::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    outline: 2px solid transparent; transition: outline-color var(--motion-fast);
+    pointer-events: none;
+}
+.dashboard-editing .widget-card:hover::after { outline-color: var(--primary); }
+
+/* Barre de contrôle par widget (taille + retrait) — visible en mode édition */
+.widget-edit-bar { display: none; }
+.dashboard-editing .widget-edit-bar {
+    display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;
+    margin-top: var(--space-3); padding-top: var(--space-3);
+    border-top: 1px dashed var(--border-light);
+    position: relative; z-index: 2; pointer-events: auto;
+}
+.widget-edit-group { display: inline-flex; align-items: center; gap: 0.2rem; background: var(--surface-muted); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.15rem; }
+.widget-edit-group .weg-label { font-size: var(--fs-xs); color: var(--text-muted); padding: 0 0.35rem; }
+.widget-edit-btn {
+    width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center;
+    border: none; background: transparent; color: var(--text-secondary); cursor: pointer;
+    border-radius: var(--radius-sm); font-size: var(--fs-sm);
+}
+.widget-edit-btn:hover:not(:disabled) { background: var(--surface-hover); color: var(--primary); }
+.widget-edit-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.widget-edit-val { min-width: 1.4rem; text-align: center; font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--text-primary); }
+.widget-edit-remove { margin-left: auto; color: var(--danger); }
+.widget-edit-remove:hover { background: color-mix(in srgb, var(--danger) 15%, transparent); }
+
+/* Panneau « Ajouter un widget » (widgets masqués) */
+.add-widget-panel { display: none; flex-direction: column; gap: var(--space-2); margin: 0 0 var(--space-4); padding: var(--space-4); background: var(--surface-card); border: 1px solid var(--border-light); border-radius: var(--radius-lg); }
+.dashboard-editing .add-widget-panel.is-open { display: flex; }
+.add-widget-panel h3 { font-size: var(--fs-base); margin: 0 0 var(--space-2); }
+.add-widget-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-2); }
+.add-widget-item {
+    display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.8rem;
+    border: 1px solid var(--border-light); border-radius: var(--radius-md); background: var(--surface-muted);
+    cursor: pointer; text-align: left; color: var(--text-primary); font-size: var(--fs-sm);
+    transition: border-color var(--motion-fast), background var(--motion-fast);
+}
+.add-widget-item:hover { border-color: var(--primary); background: var(--surface-hover); }
+.add-widget-item i.aw-ico { color: var(--primary); width: 20px; text-align: center; }
+.add-widget-item .aw-add { margin-left: auto; color: var(--success); }
+.add-widget-empty { font-size: var(--fs-sm); color: var(--text-muted); padding: var(--space-2); }
+
+@media (max-width: 639.98px) {
+    .dashboard-edit-toolbar { top: 56px; }
+    .widget-edit-bar { gap: 0.25rem; }
+}

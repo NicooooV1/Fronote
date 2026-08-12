@@ -125,6 +125,21 @@ include __DIR__ . '/../templates/shared_topbar.php';
             </section>
             <?php endif; ?>
 
+            <!-- Barre d'édition du tableau de bord (mode personnalisation) -->
+            <div class="dashboard-edit-toolbar" id="dashboardEditToolbar" role="toolbar" aria-label="Édition du tableau de bord">
+                <span class="det-hint"><i class="fas fa-arrows-up-down-left-right"></i> Glissez pour réordonner, ajustez la taille de chaque widget</span>
+                <button type="button" class="det-btn" data-edit-action="add"><i class="fas fa-plus"></i> Ajouter</button>
+                <button type="button" class="det-btn" data-edit-action="reset"><i class="fas fa-rotate-left"></i> Réinitialiser</button>
+                <button type="button" class="det-btn" data-edit-action="cancel">Annuler</button>
+                <button type="button" class="det-btn det-btn--primary" data-edit-action="done"><i class="fas fa-check"></i> Terminé</button>
+            </div>
+
+            <!-- Panneau « Ajouter un widget » -->
+            <div class="add-widget-panel" id="addWidgetPanel">
+                <h3><i class="fas fa-plus-circle"></i> Ajouter un widget</h3>
+                <div class="add-widget-grid" id="addWidgetGrid"></div>
+            </div>
+
             <!-- iPhone-style widget grid -->
             <div class="widget-grid" id="widgetGrid">
                 <?php foreach ($userWidgets as $idx => $widget):
@@ -133,7 +148,10 @@ include __DIR__ . '/../templates/shared_topbar.php';
                     $wType  = $widget['type'] ?? 'list';
                     $wLabel = $widget['label'] ?? $wKey;
                     $wIcon  = $widget['icon'] ?? 'fas fa-puzzle-piece';
-                    $wWidth = (int) ($widget['width'] ?? $widget['default_width'] ?? 2);
+                    $wMin    = max(1, (int) ($widget['min_width'] ?? 1));
+                    $wMax    = min(4, max($wMin, (int) ($widget['max_width'] ?? 4)));
+                    $wWidth  = max($wMin, min($wMax, (int) ($widget['width'] ?? $widget['default_width'] ?? 2)));
+                    $wHeight = max(1, min(3, (int) ($widget['height'] ?? $widget['default_height'] ?? 1)));
                     $wData  = $widgetDataMap[$wKey] ?? ['type' => 'empty', 'items' => []];
                     // Empty-state: a widget whose normalized payload has no items/value
                     // gets the .is-empty class so it collapses instead of rendering a tall box.
@@ -149,9 +167,13 @@ include __DIR__ . '/../templates/shared_topbar.php';
                     };
                 ?>
                 <div class="widget-card <?= $sizeClass ?><?= $wIsEmpty ? ' is-empty' : '' ?>"
+                     style="--w:<?= $wWidth ?>;--h:<?= $wHeight ?>"
                      data-widget-key="<?= htmlspecialchars($wKey) ?>"
                      data-widget-type="<?= htmlspecialchars($wType) ?>"
                      data-position="<?= $idx ?>"
+                     data-width="<?= $wWidth ?>" data-height="<?= $wHeight ?>"
+                     data-min="<?= $wMin ?>" data-max="<?= $wMax ?>"
+                     data-label="<?= htmlspecialchars($wLabel) ?>" data-icon="<?= htmlspecialchars($wIcon) ?>"
                      draggable="true">
                     <div class="widget-card-header">
                         <div class="widget-card-title">
@@ -199,6 +221,21 @@ include __DIR__ . '/../templates/shared_topbar.php';
                         </a>
                     </div>
                     <?php endif; ?>
+                    <div class="widget-edit-bar">
+                        <div class="widget-edit-group">
+                            <span class="weg-label">Largeur</span>
+                            <button type="button" class="widget-edit-btn" data-resize="w-minus" title="Réduire la largeur"><i class="fas fa-minus"></i></button>
+                            <span class="widget-edit-val" data-val="w"><?= $wWidth ?></span>
+                            <button type="button" class="widget-edit-btn" data-resize="w-plus" title="Élargir"><i class="fas fa-plus"></i></button>
+                        </div>
+                        <div class="widget-edit-group">
+                            <span class="weg-label">Hauteur</span>
+                            <button type="button" class="widget-edit-btn" data-resize="h-minus" title="Réduire la hauteur"><i class="fas fa-minus"></i></button>
+                            <span class="widget-edit-val" data-val="h"><?= $wHeight ?></span>
+                            <button type="button" class="widget-edit-btn" data-resize="h-plus" title="Agrandir la hauteur"><i class="fas fa-plus"></i></button>
+                        </div>
+                        <button type="button" class="widget-edit-btn widget-edit-remove" data-resize="remove" title="Retirer ce widget"><i class="fas fa-eye-slash"></i></button>
+                    </div>
                 </div>
                 <?php endforeach; ?>
             </div>
@@ -484,351 +521,250 @@ window.DASHBOARD_CSRF = ' . json_encode($_SESSION['csrf_token'] ?? '', JSON_HEX_
 (function() {
     "use strict";
 
-    // =====================================================================
-    //  Drag & Drop Reordering (native HTML5 API)
-    // =====================================================================
     var grid = document.getElementById("widgetGrid");
+    var content = document.querySelector(".dashboard-content") || document.body;
+    var editToolbar = document.getElementById("dashboardEditToolbar");
+    var addPanel = document.getElementById("addWidgetPanel");
+    var addGrid = document.getElementById("addWidgetGrid");
+    var btnCustomize = document.getElementById("btnPersonnaliser");
+    var editing = false;
     var dragSrcEl = null;
 
+    // ── Helpers ──────────────────────────────────────────────────────────
+    function escapeHtml(str) {
+        if (!str) return "";
+        var d = document.createElement("div");
+        d.appendChild(document.createTextNode(str));
+        return d.innerHTML;
+    }
+    function showToast(message, type) {
+        var t = document.createElement("div");
+        t.className = "dashboard-toast toast-" + (type || "info");
+        t.textContent = message;
+        document.body.appendChild(t);
+        setTimeout(function() { t.classList.add("toast-visible"); }, 10);
+        setTimeout(function() { t.classList.remove("toast-visible"); setTimeout(function() { t.remove(); }, 300); }, 2500);
+    }
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+    function cards() { return Array.prototype.slice.call(grid.querySelectorAll(".widget-card")); }
+
+    // ── Drag & drop pour réordonner (mode édition uniquement) ────────────
     function handleDragStart(e) {
+        if (!editing) { e.preventDefault(); return; }
         dragSrcEl = this;
         this.classList.add("widget-dragging");
         e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("text/plain", this.dataset.widgetKey);
+        try { e.dataTransfer.setData("text/plain", this.dataset.widgetKey); } catch (x) {}
     }
-
-    function handleDragOver(e) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "move";
-        this.classList.add("widget-drag-over");
-        return false;
-    }
-
-    function handleDragEnter(e) {
-        this.classList.add("widget-drag-over");
-    }
-
-    function handleDragLeave(e) {
-        this.classList.remove("widget-drag-over");
-    }
-
+    function handleDragOver(e) { if (!editing) return; e.preventDefault(); e.dataTransfer.dropEffect = "move"; this.classList.add("widget-drag-over"); return false; }
+    function handleDragEnter(e) { if (editing) this.classList.add("widget-drag-over"); }
+    function handleDragLeave(e) { this.classList.remove("widget-drag-over"); }
     function handleDrop(e) {
-        e.stopPropagation();
-        e.preventDefault();
+        e.stopPropagation(); e.preventDefault();
         this.classList.remove("widget-drag-over");
-
-        if (dragSrcEl !== this) {
-            var parent = grid;
-            var allCards = Array.from(parent.querySelectorAll(".widget-card"));
-            var fromIdx = allCards.indexOf(dragSrcEl);
-            var toIdx   = allCards.indexOf(this);
-
-            if (fromIdx < toIdx) {
-                parent.insertBefore(dragSrcEl, this.nextSibling);
-            } else {
-                parent.insertBefore(dragSrcEl, this);
-            }
-
-            saveLayoutToServer();
+        if (editing && dragSrcEl && dragSrcEl !== this) {
+            var all = cards();
+            var from = all.indexOf(dragSrcEl), to = all.indexOf(this);
+            if (from < to) grid.insertBefore(dragSrcEl, this.nextSibling);
+            else grid.insertBefore(dragSrcEl, this);
         }
         return false;
     }
-
-    function handleDragEnd(e) {
+    function handleDragEnd() {
         this.classList.remove("widget-dragging");
-        var cards = grid.querySelectorAll(".widget-card");
-        cards.forEach(function(c) { c.classList.remove("widget-drag-over"); });
+        cards().forEach(function(c) { c.classList.remove("widget-drag-over"); });
+    }
+    function bindCard(card) {
+        card.addEventListener("dragstart", handleDragStart, false);
+        card.addEventListener("dragenter", handleDragEnter, false);
+        card.addEventListener("dragover", handleDragOver, false);
+        card.addEventListener("dragleave", handleDragLeave, false);
+        card.addEventListener("drop", handleDrop, false);
+        card.addEventListener("dragend", handleDragEnd, false);
     }
 
-    function initDragAndDrop() {
-        var cards = grid.querySelectorAll(".widget-card");
-        cards.forEach(function(card) {
-            card.addEventListener("dragstart", handleDragStart, false);
-            card.addEventListener("dragenter", handleDragEnter, false);
-            card.addEventListener("dragover", handleDragOver, false);
-            card.addEventListener("dragleave", handleDragLeave, false);
-            card.addEventListener("drop", handleDrop, false);
-            card.addEventListener("dragend", handleDragEnd, false);
-        });
-    }
-
-    // =====================================================================
-    //  Toggle widget body (minimize/expand)
-    // =====================================================================
+    // ── Réduire / déplier un widget ──────────────────────────────────────
     function toggleWidgetBody(btn) {
         var card = btn.closest(".widget-card");
         var body = card.querySelector(".widget-card-body");
         var footer = card.querySelector(".widget-card-footer");
         var icon = btn.querySelector("i");
-
         if (card.classList.contains("widget-minimized")) {
             card.classList.remove("widget-minimized");
             if (body) body.classList.remove("is-hidden");
             if (footer) footer.classList.remove("is-hidden");
-            icon.className = "fas fa-chevron-up";
+            if (icon) icon.className = "fas fa-chevron-up";
         } else {
             card.classList.add("widget-minimized");
             if (body) body.classList.add("is-hidden");
             if (footer) footer.classList.add("is-hidden");
-            icon.className = "fas fa-chevron-down";
+            if (icon) icon.className = "fas fa-chevron-down";
         }
     }
 
-    document.addEventListener("click", function(e) {
-        var tgl = e.target.closest("[data-widget-action]");
-        if (tgl && tgl.getAttribute("data-widget-action") === "toggle") {
-            toggleWidgetBody(tgl);
-            return;
-        }
-        var cst = e.target.closest("[data-customize-action]");
-        if (cst) {
-            var act = cst.getAttribute("data-customize-action");
-            if (act === "close") closeCustomizeModal();
-            else if (act === "save") saveCustomization();
-        }
-    });
+    // ── Redimensionnement (largeur/hauteur) ──────────────────────────────
+    function applySize(card) {
+        var w = parseInt(card.dataset.width, 10) || 2;
+        var h = parseInt(card.dataset.height, 10) || 1;
+        card.style.setProperty("--w", w);
+        card.style.setProperty("--h", h);
+        var wv = card.querySelector("[data-val=w]"); if (wv) wv.textContent = w;
+        var hv = card.querySelector("[data-val=h]"); if (hv) hv.textContent = h;
+        // désactiver les boutons aux bornes
+        var min = parseInt(card.dataset.min, 10) || 1, max = parseInt(card.dataset.max, 10) || 4;
+        var b;
+        b = card.querySelector("[data-resize=w-minus]"); if (b) b.disabled = (w <= min);
+        b = card.querySelector("[data-resize=w-plus]");  if (b) b.disabled = (w >= max);
+        b = card.querySelector("[data-resize=h-minus]"); if (b) b.disabled = (h <= 1);
+        b = card.querySelector("[data-resize=h-plus]");  if (b) b.disabled = (h >= 3);
+    }
+    function handleResize(btn) {
+        var card = btn.closest(".widget-card");
+        if (!card) return;
+        var act = btn.getAttribute("data-resize");
+        var w = parseInt(card.dataset.width, 10) || 2;
+        var h = parseInt(card.dataset.height, 10) || 1;
+        var min = parseInt(card.dataset.min, 10) || 1, max = parseInt(card.dataset.max, 10) || 4;
+        if (act === "w-minus") card.dataset.width = clamp(w - 1, min, max);
+        else if (act === "w-plus") card.dataset.width = clamp(w + 1, min, max);
+        else if (act === "h-minus") card.dataset.height = clamp(h - 1, 1, 3);
+        else if (act === "h-plus") card.dataset.height = clamp(h + 1, 1, 3);
+        else if (act === "remove") { removeWidget(card); return; }
+        applySize(card);
+    }
 
-    // =====================================================================
-    //  Save layout to server
-    // =====================================================================
-    function saveLayoutToServer() {
-        var cards = grid.querySelectorAll(".widget-card");
+    // ── Ajouter / retirer ────────────────────────────────────────────────
+    function currentKeys() {
+        var m = {}; cards().forEach(function(c) { m[c.dataset.widgetKey] = true; }); return m;
+    }
+    function buildAddPanel() {
+        if (!addGrid) return;
+        var present = currentKeys();
+        var hidden = (window.DASHBOARD_AVAILABLE || []).filter(function(w) { return !present[w.widget_key]; });
+        addGrid.innerHTML = "";
+        if (!hidden.length) { addGrid.innerHTML = "<p class=\"add-widget-empty\">Tous les widgets sont déjà sur le tableau de bord.</p>"; return; }
+        hidden.forEach(function(w) {
+            var b = document.createElement("button");
+            b.type = "button";
+            b.className = "add-widget-item";
+            b.setAttribute("data-add-widget", w.widget_key);
+            b.innerHTML = "<i class=\"aw-ico " + escapeHtml(w.icon) + "\"></i><span>" + escapeHtml(w.label) + "</span><i class=\"fas fa-plus aw-add\"></i>";
+            addGrid.appendChild(b);
+        });
+    }
+    function removeWidget(card) {
+        card.parentNode.removeChild(card);
+        buildAddPanel();
+    }
+    function addWidget(key) {
+        var meta = (window.DASHBOARD_AVAILABLE || []).filter(function(w) { return w.widget_key === key; })[0];
+        if (!meta) return;
+        var card = document.createElement("div");
+        card.className = "widget-card is-new";
+        card.style.setProperty("--w", 2); card.style.setProperty("--h", 1);
+        card.setAttribute("draggable", "true");
+        card.dataset.widgetKey = key;
+        card.dataset.widgetType = meta.type || "list";
+        card.dataset.width = 2; card.dataset.height = 1; card.dataset.min = 1; card.dataset.max = 4;
+        card.dataset.label = meta.label; card.dataset.icon = meta.icon;
+        card.innerHTML =
+            "<div class=\"widget-card-header\"><div class=\"widget-card-title\"><i class=\"" + escapeHtml(meta.icon) + "\"></i><span>" + escapeHtml(meta.label) + "</span></div>" +
+            "<div class=\"widget-card-actions\"><button type=\"button\" class=\"widget-btn widget-btn-drag\" title=\"Déplacer\"><i class=\"fas fa-grip-vertical\"></i></button></div></div>" +
+            "<div class=\"widget-card-body\"><p class=\"add-widget-empty\"><i class=\"fas fa-circle-info\"></i> Sera affiché après enregistrement.</p></div>" +
+            "<div class=\"widget-edit-bar\"><div class=\"widget-edit-group\"><span class=\"weg-label\">Largeur</span>" +
+            "<button type=\"button\" class=\"widget-edit-btn\" data-resize=\"w-minus\"><i class=\"fas fa-minus\"></i></button><span class=\"widget-edit-val\" data-val=\"w\">2</span>" +
+            "<button type=\"button\" class=\"widget-edit-btn\" data-resize=\"w-plus\"><i class=\"fas fa-plus\"></i></button></div>" +
+            "<div class=\"widget-edit-group\"><span class=\"weg-label\">Hauteur</span>" +
+            "<button type=\"button\" class=\"widget-edit-btn\" data-resize=\"h-minus\"><i class=\"fas fa-minus\"></i></button><span class=\"widget-edit-val\" data-val=\"h\">1</span>" +
+            "<button type=\"button\" class=\"widget-edit-btn\" data-resize=\"h-plus\"><i class=\"fas fa-plus\"></i></button></div>" +
+            "<button type=\"button\" class=\"widget-edit-btn widget-edit-remove\" data-resize=\"remove\"><i class=\"fas fa-eye-slash\"></i></button></div>";
+        grid.appendChild(card);
+        bindCard(card);
+        applySize(card);
+        buildAddPanel();
+    }
+
+    // ── Collecte + sauvegarde ────────────────────────────────────────────
+    function collectLayout() {
         var layout = [];
-        cards.forEach(function(card, idx) {
-            var sizeClass = card.classList.contains("widget-size-large") ? 4
-                          : card.classList.contains("widget-size-small") ? 1 : 2;
+        cards().forEach(function(card, idx) {
             layout.push({
                 widget_key: card.dataset.widgetKey,
-                position_x: 0,
-                position_y: idx,
-                width: sizeClass,
-                height: 1,
+                position_x: 0, position_y: idx,
+                width: parseInt(card.dataset.width, 10) || 2,
+                height: parseInt(card.dataset.height, 10) || 1,
                 visible: 1
             });
         });
-
+        // widgets retirés (disponibles mais absents de la grille) → visible 0
+        var present = currentKeys();
+        (window.DASHBOARD_AVAILABLE || []).forEach(function(w) {
+            if (!present[w.widget_key]) layout.push({ widget_key: w.widget_key, position_x: 0, position_y: 99, width: 2, height: 1, visible: 0 });
+        });
+        return layout;
+    }
+    function postLayout(layout, cb) {
         fetch("ajax_dashboard.php", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                action: "save_layout",
-                csrf_token: window.DASHBOARD_CSRF,
-                layout: layout
-            })
-        }).then(function(r) { return r.json(); }).then(function(data) {
-            if (data.success) {
-                showToast("Layout sauvegarde", "success");
-            }
-        }).catch(function() {});
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "save_layout", csrf_token: window.DASHBOARD_CSRF, layout: layout })
+        }).then(function(r) { return r.json(); }).then(function(d) { cb(!!(d && d.success), d); }).catch(function() { cb(false, null); });
+    }
+    function resetLayout() {
+        if (!window.confirm("Réinitialiser le tableau de bord à sa disposition par défaut ?")) return;
+        fetch("ajax_dashboard.php", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "reset_layout", csrf_token: window.DASHBOARD_CSRF })
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            if (d && d.success) { showToast("Tableau de bord réinitialisé", "success"); setTimeout(function() { location.reload(); }, 500); }
+            else showToast("Échec de la réinitialisation", "error");
+        }).catch(function() { showToast("Erreur réseau", "error"); });
     }
 
-    // =====================================================================
-    //  Customize Modal
-    // =====================================================================
-    var btnCustomize = document.getElementById("btnPersonnaliser");
-    var modal = document.getElementById("modalCustomize");
-    var customizeList = document.getElementById("customizeWidgetList");
-
-    if (btnCustomize) {
-        btnCustomize.addEventListener("click", function() {
-            openCustomizeModal();
-        });
+    // ── Mode édition ─────────────────────────────────────────────────────
+    function enterEditMode() {
+        editing = true;
+        content.classList.add("dashboard-editing");
+        cards().forEach(function(c) { c.setAttribute("draggable", "true"); applySize(c); });
+        buildAddPanel();
+        if (btnCustomize) btnCustomize.classList.add("is-active");
+        if (editToolbar) editToolbar.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
-
-    function openCustomizeModal() {
-        modal.classList.remove("is-hidden");
-        modal.classList.add("is-visible");
-
-        var currentKeys = {};
-        window.DASHBOARD_CONFIG.forEach(function(w) {
-            currentKeys[w.widget_key] = w;
-        });
-
-        var orderedWidgets = [];
-        window.DASHBOARD_CONFIG.forEach(function(w) {
-            orderedWidgets.push({
-                widget_key: w.widget_key,
-                label: w.label,
-                icon: w.icon,
-                type: w.type,
-                visible: w.visible,
-                description: ""
+    function exitEditMode(save) {
+        if (save) {
+            postLayout(collectLayout(), function(ok) {
+                if (ok) { showToast("Tableau de bord enregistré", "success"); setTimeout(function() { location.reload(); }, 500); }
+                else showToast("Échec de l\'enregistrement", "error");
             });
-        });
-
-        window.DASHBOARD_AVAILABLE.forEach(function(aw) {
-            if (!currentKeys[aw.widget_key]) {
-                orderedWidgets.push({
-                    widget_key: aw.widget_key,
-                    label: aw.label,
-                    icon: aw.icon,
-                    type: aw.type,
-                    visible: 0,
-                    description: aw.description || ""
-                });
-            } else {
-                for (var i = 0; i < orderedWidgets.length; i++) {
-                    if (orderedWidgets[i].widget_key === aw.widget_key) {
-                        orderedWidgets[i].description = aw.description || "";
-                        break;
-                    }
-                }
-            }
-        });
-
-        customizeList.innerHTML = "";
-        orderedWidgets.forEach(function(w, idx) {
-            var div = document.createElement("div");
-            div.className = "customize-widget-item" + (w.visible ? " customize-active" : "");
-            div.setAttribute("draggable", "true");
-            div.dataset.widgetKey = w.widget_key;
-            div.dataset.index = idx;
-
-            div.innerHTML =
-                \'<div class="customize-drag-handle"><i class="fas fa-grip-vertical"></i></div>\' +
-                \'<div class="customize-widget-icon"><i class="\' + escapeHtml(w.icon) + \'"></i></div>\' +
-                \'<div class="customize-widget-info">\' +
-                \'  <div class="customize-widget-name">\' + escapeHtml(w.label) + \'</div>\' +
-                \'  <div class="customize-widget-desc">\' + escapeHtml(w.description) + \'</div>\' +
-                \'</div>\' +
-                \'<label class="customize-toggle">\' +
-                \'  <input type="checkbox" \' + (w.visible ? "checked" : "") + \' data-key="\' + escapeHtml(w.widget_key) + \'">\' +
-                \'  <span class="customize-toggle-slider"></span>\' +
-                \'</label>\';
-
-            customizeList.appendChild(div);
-        });
-
-        initCustomizeDrag();
+        } else {
+            location.reload();
+        }
     }
 
-    function closeCustomizeModal() {
-        modal.classList.add("is-hidden");
-        modal.classList.remove("is-visible");
-    }
-
-    modal.addEventListener("click", function(e) {
-        if (e.target === modal) closeCustomizeModal();
+    // ── Événements ───────────────────────────────────────────────────────
+    document.addEventListener("click", function(e) {
+        var tgl = e.target.closest("[data-widget-action]");
+        if (tgl && tgl.getAttribute("data-widget-action") === "toggle" && !editing) { toggleWidgetBody(tgl); return; }
+        var rz = e.target.closest("[data-resize]");
+        if (rz) { e.preventDefault(); handleResize(rz); return; }
+        var aw = e.target.closest("[data-add-widget]");
+        if (aw) { addWidget(aw.getAttribute("data-add-widget")); return; }
+        var ea = e.target.closest("[data-edit-action]");
+        if (ea) {
+            var a = ea.getAttribute("data-edit-action");
+            if (a === "done") exitEditMode(true);
+            else if (a === "cancel") exitEditMode(false);
+            else if (a === "reset") resetLayout();
+            else if (a === "add" && addPanel) addPanel.classList.toggle("is-open");
+            return;
+        }
     });
 
-    function saveCustomization() {
-        var items = customizeList.querySelectorAll(".customize-widget-item");
-        var layout = [];
-        items.forEach(function(item, idx) {
-            var checkbox = item.querySelector("input[type=checkbox]");
-            var key = item.dataset.widgetKey;
-            var origWidget = null;
-            for (var i = 0; i < window.DASHBOARD_CONFIG.length; i++) {
-                if (window.DASHBOARD_CONFIG[i].widget_key === key) {
-                    origWidget = window.DASHBOARD_CONFIG[i];
-                    break;
-                }
-            }
-            layout.push({
-                widget_key: key,
-                position_x: 0,
-                position_y: idx,
-                width: origWidget ? origWidget.width : 2,
-                height: 1,
-                visible: checkbox.checked ? 1 : 0
-            });
-        });
+    if (btnCustomize) btnCustomize.addEventListener("click", function() { if (editing) exitEditMode(true); else enterEditMode(); });
 
-        fetch("ajax_dashboard.php", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                action: "save_layout",
-                csrf_token: window.DASHBOARD_CSRF,
-                layout: layout
-            })
-        }).then(function(r) { return r.json(); }).then(function(data) {
-            if (data.success) {
-                showToast("Personnalisation sauvegardee", "success");
-                closeCustomizeModal();
-                setTimeout(function() { window.location.reload(); }, 600);
-            } else {
-                showToast("Erreur : " + (data.message || "Echec"), "error");
-            }
-        }).catch(function() {
-            showToast("Erreur reseau", "error");
-        });
-    }
-
-    // =====================================================================
-    //  Customize Modal — drag reorder
-    // =====================================================================
-    var dragCustomizeSrc = null;
-
-    function initCustomizeDrag() {
-        var items = customizeList.querySelectorAll(".customize-widget-item");
-        items.forEach(function(item) {
-            item.addEventListener("dragstart", function(e) {
-                dragCustomizeSrc = this;
-                this.classList.add("customize-dragging");
-                e.dataTransfer.effectAllowed = "move";
-                e.dataTransfer.setData("text/plain", this.dataset.widgetKey);
-            });
-            item.addEventListener("dragover", function(e) {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = "move";
-                this.classList.add("customize-drag-over");
-            });
-            item.addEventListener("dragleave", function(e) {
-                this.classList.remove("customize-drag-over");
-            });
-            item.addEventListener("drop", function(e) {
-                e.stopPropagation();
-                e.preventDefault();
-                this.classList.remove("customize-drag-over");
-                if (dragCustomizeSrc && dragCustomizeSrc !== this) {
-                    var allItems = Array.from(customizeList.querySelectorAll(".customize-widget-item"));
-                    var fromIdx = allItems.indexOf(dragCustomizeSrc);
-                    var toIdx = allItems.indexOf(this);
-                    if (fromIdx < toIdx) {
-                        customizeList.insertBefore(dragCustomizeSrc, this.nextSibling);
-                    } else {
-                        customizeList.insertBefore(dragCustomizeSrc, this);
-                    }
-                }
-            });
-            item.addEventListener("dragend", function(e) {
-                this.classList.remove("customize-dragging");
-                customizeList.querySelectorAll(".customize-widget-item").forEach(function(i) {
-                    i.classList.remove("customize-drag-over");
-                });
-            });
-        });
-    }
-
-    // =====================================================================
-    //  Helpers
-    // =====================================================================
-    function escapeHtml(str) {
-        if (!str) return "";
-        var div = document.createElement("div");
-        div.appendChild(document.createTextNode(str));
-        return div.innerHTML;
-    }
-
-    function showToast(message, type) {
-        var toast = document.createElement("div");
-        toast.className = "dashboard-toast toast-" + (type || "info");
-        toast.textContent = message;
-        document.body.appendChild(toast);
-        setTimeout(function() { toast.classList.add("toast-visible"); }, 10);
-        setTimeout(function() {
-            toast.classList.remove("toast-visible");
-            setTimeout(function() { toast.remove(); }, 300);
-        }, 2500);
-    }
-
-    // =====================================================================
-    //  Init
-    // =====================================================================
     document.addEventListener("DOMContentLoaded", function() {
-        initDragAndDrop();
+        cards().forEach(function(card) { bindCard(card); });
     });
+    cards().forEach(function(card) { bindCard(card); });
 })();
 </script>';
 

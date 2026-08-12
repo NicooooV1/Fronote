@@ -246,6 +246,29 @@ class DashboardService
     }
 
     /**
+     * Réinitialise le tableau de bord : supprime la config personnalisée de l'utilisateur.
+     * getUserWidgets retombe alors sur la disposition par défaut du rôle.
+     */
+    public function resetLayout(int $userId, string $userType): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                "DELETE FROM user_dashboard_config WHERE user_id = ? AND user_type = ?"
+            );
+            $ok = $stmt->execute([$userId, $userType]);
+            // Invalider le cache widgets (sinon getUserWidgets renverrait l'ancienne config).
+            $cc = class_exists('\\API\\Core\\ClientCache') ? new \API\Core\ClientCache() : null;
+            if ($cc) {
+                $cc->forget('widgets_' . $userId . '_' . $userType);
+            }
+            return $ok;
+        } catch (PDOException $e) {
+            error_log("DashboardService::resetLayout error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * S'assure qu'un utilisateur a une config initiale dans user_dashboard_config.
      */
     private function ensureUserConfig(int $userId, string $userType): void

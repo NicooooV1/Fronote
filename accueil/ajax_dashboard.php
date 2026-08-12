@@ -30,7 +30,7 @@ $input  = json_decode(file_get_contents('php://input'), true) ?? [];
 $action = $input['action'] ?? ($_GET['action'] ?? '');
 
 // CSRF validation for write operations
-if (in_array($action, ['save_layout', 'toggle_widget'])) {
+if (in_array($action, ['save_layout', 'toggle_widget', 'reset_layout'])) {
     $csrfToken = $input['csrf_token'] ?? '';
     $sessionToken = $_SESSION['csrf_token'] ?? '';
     if (!$csrfToken || !hash_equals($sessionToken, $csrfToken)) {
@@ -69,6 +69,11 @@ switch ($action) {
         }
         $ok = $dashboard->saveWidgetLayout($userId, $userType, $layout);
         echo json_encode(['success' => $ok, 'message' => $ok ? 'Layout sauvegarde' : 'Erreur de sauvegarde']);
+        break;
+
+    case 'reset_layout':
+        $ok = $dashboard->resetLayout($userId, $userType);
+        echo json_encode(['success' => $ok, 'message' => $ok ? 'Réinitialisé' : 'Erreur']);
         break;
 
     case 'toggle_widget':
