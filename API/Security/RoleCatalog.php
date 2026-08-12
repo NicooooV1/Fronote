@@ -499,6 +499,23 @@ final class RoleCatalog
 
         // ─── API ───
         'api.access' => ['label' => "Accès API",   'category' => 'api', 'sensitive' => false],
+
+        // ─── ACCÈS MODULE (capacités) : module.<clé>.access ───────────────────────
+        // Capacité d'OUVRIR un module (garde d'entrée, sans périmètre ressource).
+        // Vérifiée par hasCapability()/requireCapability() — remplace les requireRole()
+        // codés en dur sur ces modules → « qui accède au module » = permission du rôle,
+        // éditable depuis la plateforme (rbac_grants), comme tout le reste.
+        'module.echanges.access'        => ['label' => 'Accéder aux échanges',        'category' => 'module_access', 'sensitive' => false],
+        'module.mediatheque.access'     => ['label' => 'Accéder à la médiathèque',    'category' => 'module_access', 'sensitive' => false],
+        'module.accessibilite.access'   => ['label' => "Accéder à l'accessibilité",   'category' => 'module_access', 'sensitive' => false],
+        'module.inventaire.access'      => ['label' => "Accéder à l'inventaire",       'category' => 'module_access', 'sensitive' => false],
+        'module.formations.access'      => ['label' => 'Accéder aux formations',       'category' => 'module_access', 'sensitive' => false],
+        'module.marketplace.access'     => ['label' => 'Accéder au marketplace',       'category' => 'module_access', 'sensitive' => false],
+        'module.bourses.access'         => ['label' => 'Accéder aux bourses',          'category' => 'module_access', 'sensitive' => false],
+        'module.onboarding.access'      => ['label' => "Accéder à l'onboarding",       'category' => 'module_access', 'sensitive' => false],
+        'module.conseil_classe.access'  => ['label' => 'Accéder au conseil de classe', 'category' => 'module_access', 'sensitive' => false],
+        'module.intelligence.access'    => ['label' => "Accéder à l'intelligence",     'category' => 'module_access', 'sensitive' => false],
+        'module.portail_parents.access' => ['label' => 'Accéder au portail parents',   'category' => 'module_access', 'sensitive' => false],
     ];
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -521,6 +538,11 @@ final class RoleCatalog
             'classes.view', 'eleves.view', 'parents.view',
             'messagerie.view', 'annonces.view',
             'rgpd.view', 'rgpd.manage', 'rgpd.my_data', 'notifications.view',
+            // accès module (garde d'entrée) — admin ouvre tous ces modules sauf le portail parents
+            'module.echanges.access', 'module.mediatheque.access', 'module.accessibilite.access',
+            'module.inventaire.access', 'module.formations.access', 'module.marketplace.access',
+            'module.bourses.access', 'module.onboarding.access', 'module.conseil_classe.access',
+            'module.intelligence.access',
         ],
 
         'technicien' => [
@@ -653,6 +675,9 @@ final class RoleCatalog
             'absences.create', 'absences.edit', 'absences.view',
             'retards.create', 'retards.edit', 'retards.view',
             'appels.view', 'appels.edit', 'remplacements.view', 'permanences.view',
+            // accès module (garde d'entrée)
+            'module.echanges.access', 'module.accessibilite.access', 'module.formations.access',
+            'module.bourses.access', 'module.conseil_classe.access', 'module.intelligence.access',
         ],
 
         'aed' => [
@@ -698,6 +723,9 @@ final class RoleCatalog
             'notes.view', 'notes.create', 'notes.edit', 'notes.delete',
             'appreciations.create', 'appreciations.edit', 'appreciations.view',
             'documents.publish', 'messagerie.view',
+            // accès module (garde d'entrée)
+            'module.echanges.access', 'module.mediatheque.access', 'module.inventaire.access',
+            'module.formations.access', 'module.conseil_classe.access',
         ],
 
         'professeur_principal' => [
@@ -820,12 +848,16 @@ final class RoleCatalog
             'edt.view', 'devoirs.view', 'devoirs.submit',
             'notes.view', 'bulletins.view', 'absences.view', 'retards.view',
             'messagerie.view', 'documents.view', 'notifications.view',
+            // accès module (garde d'entrée)
+            'module.mediatheque.access',
         ],
 
         'parent' => [
             'notes.view', 'devoirs.view', 'edt.view',
             'absences.view', 'absences.justify', 'retards.view', 'bulletins.view',
             'documents.view', 'messagerie.view', 'notifications.view',
+            // accès module (garde d'entrée)
+            'module.bourses.access', 'module.portail_parents.access',
         ],
 
         'responsable_legal' => [

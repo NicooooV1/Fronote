@@ -174,6 +174,25 @@ final class Authorization
     }
 
     /**
+     * Capacité SANS PÉRIMÈTRE : l'un des rôles effectifs octroie-t-il $permission ?
+     * Utilisé pour les gardes d'ENTRÉE (ouvrir un module, une fonctionnalité) où il n'y
+     * a pas de ressource cible — le périmètre (self/children/own_classes…) ne s'applique
+     * pas. Contrairement à can(), n'évalue PAS scopeAllows() : un élève (périmètre 'self')
+     * ou un parent (périmètre 'children') peut ainsi détenir la capacité d'ouvrir son
+     * module sans contexte de ressource. Les surcharges plateforme (rbac_grants) et le
+     * catalogue s'appliquent normalement via roleGrants().
+     */
+    public function hasCapability(string $permission): bool
+    {
+        if ($this->user === null) return false;
+        if ($this->isSuperAdmin()) return true;
+        foreach ($this->roles() as $r) {
+            if ($this->roleGrants($r['role'], $permission)) return true;
+        }
+        return false;
+    }
+
+    /**
      * Variante ergonomique : « l'utilisateur peut-il $permission SUR cette ressource ? »
      * Construit le contexte de périmètre à partir du type/id de la ressource — c'est la
      * forme à privilégier dans les modules (anti-IDOR) : canOn('notes.view','student',$id).

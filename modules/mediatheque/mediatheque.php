@@ -7,7 +7,7 @@ declare(strict_types=1);
 $pageTitle  = 'Médiathèque';
 $activePage = 'mediatheque';
 require_once __DIR__ . '/../../API/module_boot.php';
-requireRole('administrateur', 'professeur', 'eleve');
+requireCapability('module.mediatheque.access'); // (administrateur, professeur, eleve par défaut — éditable plateforme)
 
 require_once __DIR__ . '/includes/MediathequeService.php';
 $svc    = new \Mediatheque\MediathequeService($pdo);

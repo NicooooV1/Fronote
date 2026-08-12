@@ -345,6 +345,42 @@ if (!function_exists('requireRole')) {
 	}
 }
 
+if (!function_exists('hasCapability')) {
+	/**
+	 * Capacité (garde d'entrée SANS périmètre) : l'un des rôles effectifs de
+	 * l'utilisateur octroie-t-il $permission ? Pour « peut ouvrir ce module / cette
+	 * fonctionnalité » — où il n'y a pas de ressource cible. Voir Authorization::hasCapability.
+	 */
+	function hasCapability(string $permission): bool {
+		try { return authz()->hasCapability($permission); }
+		catch (\Throwable $e) { error_log('[hasCapability] ' . $e->getMessage()); return false; }
+	}
+}
+
+if (!function_exists('requireCapability')) {
+	/**
+	 * Bloque l'accès si l'utilisateur n'a pas la capacité $permission (garde d'entrée
+	 * module/fonctionnalité, gouvernée par les permissions du rôle → éditable plateforme).
+	 * Remplace requireRole() codé en dur sur les pages d'entrée de module. Même UX de refus
+	 * que requireRole (message + redirection accueil). super_admin passe toujours.
+	 */
+	function requireCapability(string $permission): void {
+		if (hasCapability($permission)) return;
+		$script  = $_SERVER['SCRIPT_NAME'] ?? '?';
+		$current = implode(', ', getEffectiveRoles()) ?: '(non authentifié)';
+		if (session_status() === PHP_SESSION_ACTIVE) {
+			$_SESSION['error_message'] = "Accès refusé sur {$script} : capacité requise = [{$permission}], rôles actuels = [{$current}].";
+		}
+		error_log("[requireCapability] denied script={$script} perm={$permission} roles=[{$current}]");
+		if (!headers_sent()) {
+			header('Location: ' . (defined('BASE_URL') ? BASE_URL : '') . '/accueil/accueil.php');
+			exit;
+		}
+		http_response_code(403);
+		exit('Accès non autorisé.');
+	}
+}
+
 if (!function_exists('enforceModuleAccess')) {
 	/**
 	 * Gate d'autorisation PAR MODULE (défense en profondeur, fail-closed).

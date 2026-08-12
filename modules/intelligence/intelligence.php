@@ -7,7 +7,7 @@ declare(strict_types=1);
 $pageTitle  = 'Analyse prédictive';
 $activePage = 'intelligence';
 require_once __DIR__ . '/../../API/module_boot.php';
-requireRole('administrateur', 'vie_scolaire');
+requireCapability('module.intelligence.access'); // (administrateur, vie_scolaire par défaut — éditable plateforme)
 
 require_once __DIR__ . '/includes/IntelligenceService.php';
 $svc    = new \Intelligence\IntelligenceService($pdo);

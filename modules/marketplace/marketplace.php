@@ -14,7 +14,7 @@ $pageTitle  = 'Marketplace';
 $activePage = 'marketplace';
 
 require_once __DIR__ . '/../../API/module_boot.php';
-requireRole('administrateur');
+requireCapability('module.marketplace.access'); // (administrateur par défaut — éditable plateforme)
 
 $marketplace    = app('marketplace');
 $message        = null;

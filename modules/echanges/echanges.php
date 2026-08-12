@@ -7,7 +7,7 @@ declare(strict_types=1);
 $pageTitle  = 'Échanges & mobilité';
 $activePage = 'echanges';
 require_once __DIR__ . '/../../API/module_boot.php';
-requireRole('administrateur', 'professeur', 'vie_scolaire');
+requireCapability('module.echanges.access'); // (administrateur, professeur, vie_scolaire par défaut — éditable plateforme)
 
 require_once __DIR__ . '/includes/EchangesService.php';
 $svc    = new \Echanges\EchangesService($pdo);

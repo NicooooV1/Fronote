@@ -7,7 +7,7 @@ declare(strict_types=1);
 $activePage = 'accessibilite';
 require_once __DIR__ . '/../../API/module_boot.php';
 $pageTitle  = __('accessibilite.page_title');
-requireRole('administrateur', 'vie_scolaire');
+requireCapability('module.accessibilite.access'); // (administrateur, vie_scolaire par défaut — éditable plateforme)
 
 require_once __DIR__ . '/includes/AccessibiliteService.php';
 $svc    = new \Accessibilite\AccessibiliteService($pdo);

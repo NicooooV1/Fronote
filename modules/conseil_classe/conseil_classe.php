@@ -7,7 +7,7 @@ declare(strict_types=1);
 $pageTitle  = 'Conseils de classe';
 $activePage = 'conseil_classe';
 require_once __DIR__ . '/../../API/module_boot.php';
-requireRole('administrateur', 'professeur', 'vie_scolaire');
+requireCapability('module.conseil_classe.access'); // (administrateur, professeur, vie_scolaire par défaut — éditable plateforme)
 
 require_once __DIR__ . '/includes/ConseilClasseService.php';
 $svc    = new \ConseilClasse\ConseilClasseService($pdo);

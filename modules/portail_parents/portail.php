@@ -8,7 +8,7 @@ declare(strict_types=1);
 $activePage = 'portail_parents';
 require_once __DIR__ . '/../../API/module_boot.php';
 $pageTitle  = __('portail_parents.page_title');
-requireRole('parent');
+requireCapability('module.portail_parents.access'); // (parent par défaut — éditable plateforme)
 
 require_once __DIR__ . '/includes/PortailParentsService.php';
 $svc      = new \PortailParents\PortailParentsService($pdo);

@@ -7,7 +7,7 @@ declare(strict_types=1);
 $pageTitle  = 'Formation continue';
 $activePage = 'formations';
 require_once __DIR__ . '/../../API/module_boot.php';
-requireRole('administrateur', 'professeur', 'vie_scolaire');
+requireCapability('module.formations.access'); // (administrateur, professeur, vie_scolaire par défaut — éditable plateforme)
 
 require_once __DIR__ . '/includes/FormationService.php';
 $svc    = new \Formations\FormationService($pdo);

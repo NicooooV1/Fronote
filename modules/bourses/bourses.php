@@ -7,7 +7,7 @@ declare(strict_types=1);
 $pageTitle  = 'Bourses & aides financières';
 $activePage = 'bourses';
 require_once __DIR__ . '/../../API/module_boot.php';
-requireRole('administrateur', 'parent', 'vie_scolaire');
+requireCapability('module.bourses.access'); // (administrateur, parent, vie_scolaire par défaut — éditable plateforme)
 
 require_once __DIR__ . '/includes/BoursesService.php';
 $svc    = new \Bourses\BoursesService($pdo);

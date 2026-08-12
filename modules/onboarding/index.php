@@ -15,7 +15,7 @@ define('FRONOTE_ONBOARDING', true);
 $pageTitle  = 'Mise en route';
 $activePage = '';
 require_once __DIR__ . '/../../API/module_boot.php';
-requireRole('administrateur');
+requireCapability('module.onboarding.access'); // (administrateur par défaut — éditable plateforme)
 
 $etabService = app('etablissement');
 $etabId      = \API\Core\EstablishmentContext::id();

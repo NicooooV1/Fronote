@@ -7,7 +7,7 @@ declare(strict_types=1);
 $pageTitle  = 'Inventaire & patrimoine IT';
 $activePage = 'inventaire';
 require_once __DIR__ . '/../../API/module_boot.php';
-requireRole('administrateur', 'professeur');
+requireCapability('module.inventaire.access'); // (administrateur, professeur par défaut — éditable plateforme)
 
 require_once __DIR__ . '/includes/InventaireService.php';
 $svc    = new \Inventaire\InventaireService($pdo);
