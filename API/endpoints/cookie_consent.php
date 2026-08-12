@@ -16,7 +16,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 // précède la session, donc pas de token CSRF disponible). On exige à la place que
 // la requête soit de MÊME ORIGINE : l'en-tête Origin/Referer doit correspondre à
 // l'hôte courant (les navigateurs envoient Origin sur les POST cross-site).
-$host = strtolower($_SERVER['HTTP_HOST'] ?? '');
+// HTTP_HOST inclut le PORT (ex. "site:8081") alors que parse_url(Origin, HOST) le retire :
+// sur tout port non standard (:8081, :8090…) la comparaison échouait toujours → 403 → le
+// consentement n'était jamais mémorisé. On compare donc les hôtes SANS port.
+$host = strtolower((string) parse_url('//' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST));
 $srcHost = '';
 foreach ([$_SERVER['HTTP_ORIGIN'] ?? '', $_SERVER['HTTP_REFERER'] ?? ''] as $h) {
     if ($h !== '') { $srcHost = strtolower((string) parse_url($h, PHP_URL_HOST)); break; }
