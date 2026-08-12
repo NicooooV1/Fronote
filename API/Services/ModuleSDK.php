@@ -278,8 +278,11 @@ class ModuleSDK
         // Upsert dans modules_config.
         // enabled : à la 1re insertion, core = activé, autres = désactivés (activation manuelle
         // via l'admin qui injecte+vérifie le SQL). ON DUPLICATE ne TOUCHE PAS enabled (préserve le choix admin).
-        $sql = "INSERT INTO modules_config (module_key, label, description, icon, category, is_core, enabled, establishment_types, route_path, sidebar_sort, sidebar_hidden)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        // Config PAR ÉTABLISSEMENT : modules_config a une ligne par (module_key, etablissement_id).
+        // On upsert le module pour CHAQUE établissement existant (avant : une seule ligne au défaut,
+        // laissant les autres établissements sans config → nav vide une fois le service tenant-aware).
+        $sql = "INSERT INTO modules_config (etablissement_id, module_key, label, description, icon, category, is_core, enabled, establishment_types, route_path, sidebar_sort, sidebar_hidden)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE
                     label = VALUES(label),
                     description = VALUES(description),
@@ -291,8 +294,14 @@ class ModuleSDK
                     sidebar_hidden = VALUES(sidebar_hidden)";
 
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([
-            $key,
+
+        $etabs = [];
+        try { $etabs = $this->pdo->query("SELECT id FROM etablissements")->fetchAll(\PDO::FETCH_COLUMN); } catch (\Throwable $e) {}
+        // Install avant création du 1er établissement : poser une ligne modèle (défaut = 1)
+        // que le seeding par-tenant (ModuleService) copiera vers chaque établissement créé ensuite.
+        if (empty($etabs)) { $etabs = [1]; }
+
+        $common = [
             $name,
             $description,
             $manifest['icon'] ?? 'fas fa-puzzle-piece',
@@ -303,7 +312,10 @@ class ModuleSDK
             $routePath,
             (int) $sidebarSort,
             $sidebarHidden,
-        ]);
+        ];
+        foreach ($etabs as $etabId) {
+            $stmt->execute(array_merge([(int) $etabId, $key], $common));
+        }
 
         // Synchroniser les widgets
         if (!empty($manifest['widgets'])) {
@@ -805,8 +817,19 @@ class ModuleSDK
      */
     public function bootActiveModuleProviders(\API\Core\Application $app): void
     {
+        // Le boot des PROVIDERS est code-level (global), pas par-tenant : on charge le
+        // provider d'un module s'il est actif pour AU MOINS un établissement. On requête
+        // donc directement (via $this->pdo, disponible tôt au boot) au lieu de passer par
+        // la lecture par-tenant de ModuleService, qui dépend de EstablishmentContext (et
+        // donc de getPDO()) pas encore résolu à ce stade du bootstrap.
         try {
-            $activeModules = $app->make('modules')->getAll();
+            $activeModules = [];
+            $rows = $this->pdo->query(
+                "SELECT module_key, MAX(enabled) AS enabled FROM modules_config GROUP BY module_key"
+            )->fetchAll(\PDO::FETCH_ASSOC);
+            foreach ($rows as $r) {
+                $activeModules[$r['module_key']] = $r;
+            }
         } catch (\Throwable $e) {
             error_log('ModuleSDK::bootActiveModuleProviders: cannot load modules — ' . $e->getMessage());
             return;

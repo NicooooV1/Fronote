@@ -428,9 +428,12 @@ class ImportExportService
         ];
 
         try {
-            $bundle['modules_config'] = $this->pdo->query(
-                "SELECT * FROM modules_config ORDER BY sort_order, label"
-            )->fetchAll(PDO::FETCH_ASSOC);
+            // Config par établissement : n'exporter que celle de l'établissement courant.
+            $stmtMc = $this->pdo->prepare(
+                "SELECT * FROM modules_config WHERE etablissement_id = ? ORDER BY sort_order, label"
+            );
+            $stmtMc->execute([\API\Core\EstablishmentContext::id()]);
+            $bundle['modules_config'] = $stmtMc->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             error_log("ImportExportService::exportConfig modules_config: " . $e->getMessage());
         }
@@ -486,9 +489,11 @@ class ImportExportService
                 $key = $mod['module_key'] ?? null;
                 if (!$key) continue;
 
+                // Config par établissement : importer dans l'établissement courant.
+                $etab = \API\Core\EstablishmentContext::id();
                 try {
-                    $stmt = $this->pdo->prepare("SELECT id FROM modules_config WHERE module_key = ?");
-                    $stmt->execute([$key]);
+                    $stmt = $this->pdo->prepare("SELECT id FROM modules_config WHERE module_key = ? AND etablissement_id = ?");
+                    $stmt->execute([$key, $etab]);
 
                     if ($stmt->fetch()) {
                         $upd = $this->pdo->prepare("
@@ -496,7 +501,7 @@ class ImportExportService
                                 label = ?, description = ?, icon = ?, category = ?,
                                 enabled = ?, config_json = ?, roles_autorises = ?,
                                 sort_order = ?, is_core = ?
-                            WHERE module_key = ?
+                            WHERE module_key = ? AND etablissement_id = ?
                         ");
                         $upd->execute([
                             $mod['label'] ?? '',
@@ -509,14 +514,16 @@ class ImportExportService
                             $mod['sort_order'] ?? 100,
                             $mod['is_core'] ?? 0,
                             $key,
+                            $etab,
                         ]);
                     } else {
                         $ins = $this->pdo->prepare("
                             INSERT INTO modules_config
-                                (module_key, label, description, icon, category, enabled, config_json, roles_autorises, sort_order, is_core)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                (etablissement_id, module_key, label, description, icon, category, enabled, config_json, roles_autorises, sort_order, is_core)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ");
                         $ins->execute([
+                            $etab,
                             $key,
                             $mod['label'] ?? '',
                             $mod['description'] ?? null,

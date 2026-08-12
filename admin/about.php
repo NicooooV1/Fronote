@@ -19,7 +19,9 @@ $codename = $versionData['codename'] ?? '';
 $pdo = getPDO();
 $modules = [];
 try {
-    $stmt = $pdo->query("SELECT module_key, label, author, author_url, license, is_core, enabled FROM modules_config ORDER BY label");
+    // Config des modules par établissement : lister uniquement l'établissement courant.
+    $stmt = $pdo->prepare("SELECT module_key, label, author, author_url, license, is_core, enabled FROM modules_config WHERE etablissement_id = ? ORDER BY label");
+    $stmt->execute([\API\Core\EstablishmentContext::id()]);
     $modules = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 } catch (\Throwable $e) {
     // Columns might not exist yet (migration pending)

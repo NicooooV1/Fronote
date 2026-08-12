@@ -16,6 +16,9 @@ class ModuleService
 {
     private PDO $pdo;
     private ?array $cache = null;
+    // Établissement pour lequel $cache a été chargé : le cache mémoire est par-tenant,
+    // rechargé si l'établissement courant change dans la requête (ex: impersonation support).
+    private ?int $cacheEtab = null;
 
     public function __construct(PDO $pdo)
     {
@@ -29,22 +32,32 @@ class ModuleService
      */
     public function getAll(): array
     {
-        if ($this->cache === null) {
-            $fetched = app('cache')->remember('modules:all', 300, function () {
-                return $this->loadFromDb();
-            });
-            // Don't permanently cache null/empty from a transient error:
-            // keep $this->cache as null so the next call in the same request retries.
-            if (!empty($fetched)) {
-                $this->cache = $fetched;
-            }
+        // Cloisonnement multi-établissement : la config des modules est PAR-TENANT
+        // (modules_config a une ligne par (module_key, etablissement_id)). Lecture ET cache
+        // sont scopés à l'établissement courant, sinon un tenant lirait/écraserait la config
+        // d'un autre (l'ancien cache partagé « modules:all » fuyait entre établissements).
+        $etab = \API\Core\EstablishmentContext::id();
+        if ($this->cache !== null && $this->cacheEtab === $etab) {
+            return $this->cache;
+        }
+        $this->cache = null;
+        $this->cacheEtab = $etab;
+        $cacheKey = 'modules:all:' . $etab;
+
+        $fetched = app('cache')->remember($cacheKey, 300, function () {
+            return $this->loadFromDb();
+        });
+        // Don't permanently cache null/empty from a transient error:
+        // keep $this->cache as null so the next call in the same request retries.
+        if (!empty($fetched)) {
+            $this->cache = $fetched;
         }
         // Fallback: try direct DB query if in-memory cache still empty
         if (empty($this->cache)) {
             $direct = $this->loadFromDb();
             if (!empty($direct)) {
                 $this->cache = $direct;
-                try { app('cache')->put('modules:all', $direct, 300); } catch (\Throwable $e) { error_log('[ModuleService.php] ' . $e->getMessage()); }
+                try { app('cache')->put($cacheKey, $direct, 300); } catch (\Throwable $e) { error_log('[ModuleService.php] ' . $e->getMessage()); }
             }
         }
         return $this->cache ?? [];
@@ -57,8 +70,20 @@ class ModuleService
     private function loadFromDb(): array
     {
         try {
-            $stmt = $this->pdo->query("SELECT * FROM modules_config ORDER BY sort_order, label");
+            $etab = \API\Core\EstablishmentContext::id();
+            $stmt = $this->pdo->prepare("SELECT * FROM modules_config WHERE etablissement_id = ? ORDER BY sort_order, label");
+            $stmt->execute([$etab]);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Auto-réparation : un établissement sans config propre (nouvel établissement,
+            // migration de backfill pas encore jouée) est seedé depuis le modèle, pour ne
+            // JAMAIS renvoyer une navigation vide. La config devient alors éditable par-tenant.
+            if (empty($rows)) {
+                $this->seedEstablishmentFromTemplate($etab);
+                $stmt->execute([$etab]);
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+
             $result = [];
             foreach ($rows as $row) {
                 $row['config'] = !empty($row['config_json']) ? json_decode($row['config_json'], true) : [];
@@ -69,6 +94,38 @@ class ModuleService
         } catch (\Throwable $e) {
             error_log("ModuleService::getAll error: " . $e->getMessage());
             return [];
+        }
+    }
+
+    /**
+     * Seed IDEMPOTENT de la config d'un établissement à partir de la ligne « modèle »
+     * (plus petit etablissement_id) de chaque module. Garantit qu'un établissement
+     * possède ses lignes modules_config avant toute lecture/écriture par-tenant.
+     */
+    private function seedEstablishmentFromTemplate(int $etab): void
+    {
+        try {
+            $cols = 'module_key, label, description, icon, route_path, category, enabled, '
+                  . 'establishment_types, config_json, roles_autorises, sort_order, sidebar_sort, '
+                  . 'is_core, sidebar_hidden, topbar_category, topbar_sort_order';
+            $sql = "INSERT INTO modules_config (etablissement_id, {$cols})
+                    SELECT ?, t.module_key, t.label, t.description, t.icon, t.route_path, t.category,
+                           t.enabled, t.establishment_types, t.config_json, t.roles_autorises, t.sort_order,
+                           t.sidebar_sort, t.is_core, t.sidebar_hidden, t.topbar_category, t.topbar_sort_order
+                    FROM (
+                        SELECT m.* FROM modules_config m
+                        JOIN (
+                            SELECT module_key, MIN(etablissement_id) AS mid
+                            FROM modules_config GROUP BY module_key
+                        ) x ON m.module_key = x.module_key AND m.etablissement_id = x.mid
+                    ) t
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM modules_config mc
+                        WHERE mc.module_key = t.module_key AND mc.etablissement_id = ?
+                    )";
+            $this->pdo->prepare($sql)->execute([$etab, $etab]);
+        } catch (\Throwable $e) {
+            error_log('[ModuleService] seedEstablishmentFromTemplate: ' . $e->getMessage());
         }
     }
 
@@ -160,9 +217,10 @@ class ModuleService
         }
 
         try {
-            $stmt = $this->pdo->prepare("UPDATE modules_config SET enabled = ? WHERE module_key = ? AND is_core = 0");
-            $result = $stmt->execute([(int)$enabled, $key]);
-            $this->cache = null; app('cache')->forget('modules:all');
+            $etab = \API\Core\EstablishmentContext::id();
+            $stmt = $this->pdo->prepare("UPDATE modules_config SET enabled = ? WHERE module_key = ? AND is_core = 0 AND etablissement_id = ?");
+            $result = $stmt->execute([(int)$enabled, $key, $etab]);
+            $this->cache = null; $this->cacheEtab = null; app('cache')->forget('modules:all:' . $etab);
             return $result;
         } catch (\PDOException $e) {
             error_log("ModuleService::setEnabled error: " . $e->getMessage());
@@ -191,9 +249,10 @@ class ModuleService
     public function updateConfig(string $key, array $config): bool
     {
         try {
-            $stmt = $this->pdo->prepare("UPDATE modules_config SET config_json = ? WHERE module_key = ?");
-            $result = $stmt->execute([json_encode($config, JSON_UNESCAPED_UNICODE), $key]);
-            $this->cache = null; app('cache')->forget('modules:all');
+            $etab = \API\Core\EstablishmentContext::id();
+            $stmt = $this->pdo->prepare("UPDATE modules_config SET config_json = ? WHERE module_key = ? AND etablissement_id = ?");
+            $result = $stmt->execute([json_encode($config, JSON_UNESCAPED_UNICODE), $key, $etab]);
+            $this->cache = null; $this->cacheEtab = null; app('cache')->forget('modules:all:' . $etab);
             return $result;
         } catch (\PDOException $e) {
             error_log("ModuleService::updateConfig error: " . $e->getMessage());
@@ -219,9 +278,10 @@ class ModuleService
     {
         try {
             $value = ($roles !== null && count($roles) > 0) ? json_encode(array_values($roles)) : null;
-            $stmt = $this->pdo->prepare("UPDATE modules_config SET roles_autorises = ? WHERE module_key = ?");
-            $result = $stmt->execute([$value, $key]);
-            $this->cache = null; app('cache')->forget('modules:all');
+            $etab = \API\Core\EstablishmentContext::id();
+            $stmt = $this->pdo->prepare("UPDATE modules_config SET roles_autorises = ? WHERE module_key = ? AND etablissement_id = ?");
+            $result = $stmt->execute([$value, $key, $etab]);
+            $this->cache = null; $this->cacheEtab = null; app('cache')->forget('modules:all:' . $etab);
             return $result;
         } catch (\PDOException $e) {
             error_log("ModuleService::updateRolesAutorises error: " . $e->getMessage());
@@ -241,16 +301,18 @@ class ModuleService
                     description = COALESCE(?, description),
                     icon = COALESCE(?, icon),
                     sort_order = COALESCE(?, sort_order)
-                WHERE module_key = ?
+                WHERE module_key = ? AND etablissement_id = ?
             ");
+            $etab = \API\Core\EstablishmentContext::id();
             $result = $stmt->execute([
                 $data['label'] ?? null,
                 $data['description'] ?? null,
                 $data['icon'] ?? null,
                 isset($data['sort_order']) ? (int)$data['sort_order'] : null,
                 $key,
+                $etab,
             ]);
-            $this->cache = null; app('cache')->forget('modules:all');
+            $this->cache = null; $this->cacheEtab = null; app('cache')->forget('modules:all:' . $etab);
             return $result;
         } catch (\PDOException $e) {
             error_log("ModuleService::updateInfo error: " . $e->getMessage());

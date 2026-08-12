@@ -78,7 +78,10 @@ final class TopbarNav
         // (garde contre cache singleton périmé, colonnes manquantes, erreurs au boot).
         if (empty($modules)) {
             try {
-                $rows = getPDO()->query("SELECT module_key, label, icon, category, sort_order FROM modules_config WHERE enabled = 1 AND sidebar_hidden = 0 ORDER BY sort_order, label")->fetchAll(\PDO::FETCH_ASSOC);
+                // Cloisonnement par établissement (cohérent avec ModuleService : config par-tenant).
+                $stmt = getPDO()->prepare("SELECT module_key, label, icon, category, sort_order FROM modules_config WHERE enabled = 1 AND sidebar_hidden = 0 AND etablissement_id = ? ORDER BY sort_order, label");
+                $stmt->execute([\API\Core\EstablishmentContext::id()]);
+                $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
                 foreach ($rows as $mod) {
                     $key = $mod['module_key'];
                     if (in_array($key, self::FALLBACK_EXCLUDE, true)) continue;

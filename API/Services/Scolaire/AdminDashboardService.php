@@ -143,8 +143,14 @@ class AdminDashboardService
     public function getModuleStats(): array
     {
         try {
-            $total   = (int) $this->pdo->query("SELECT COUNT(*) FROM modules_config")->fetchColumn();
-            $enabled = (int) $this->pdo->query("SELECT COUNT(*) FROM modules_config WHERE enabled = 1")->fetchColumn();
+            // Config des modules par établissement : compter uniquement l'établissement courant.
+            $etab = \API\Core\EstablishmentContext::id();
+            $st = $this->pdo->prepare("SELECT COUNT(*) FROM modules_config WHERE etablissement_id = ?");
+            $st->execute([$etab]);
+            $total = (int) $st->fetchColumn();
+            $se = $this->pdo->prepare("SELECT COUNT(*) FROM modules_config WHERE enabled = 1 AND etablissement_id = ?");
+            $se->execute([$etab]);
+            $enabled = (int) $se->fetchColumn();
             return ['total' => $total, 'enabled' => $enabled];
         } catch (\Throwable $e) { return ['total' => 0, 'enabled' => 0]; }
     }

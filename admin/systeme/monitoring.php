@@ -39,7 +39,9 @@ try {
 
 // Module count
 try {
-    $moduleCount = $pdo->query("SELECT COUNT(*) FROM modules_config WHERE enabled = 1")->fetchColumn();
+    $stmtMc = $pdo->prepare("SELECT COUNT(*) FROM modules_config WHERE enabled = 1 AND etablissement_id = ?");
+    $stmtMc->execute([\API\Core\EstablishmentContext::id()]);
+    $moduleCount = $stmtMc->fetchColumn();
 } catch (\Throwable $e) {
     $moduleCount = '?';
 }
