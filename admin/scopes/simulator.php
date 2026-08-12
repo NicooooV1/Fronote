@@ -40,9 +40,21 @@ function simLookupUser(PDO $pdo, string $type, int $id): ?array
         'super_admin' => 'super_admins', 'technicien' => 'technicien_access',
     ];
     if (!isset($map[$type]) || $id <= 0) return null;
+    // Cloisonnement tenant : pour les comptes rattachés à un établissement, ne résoudre
+    // QUE dans l'établissement courant (super_admin exempté ; super_admin/technicien sont
+    // des comptes globaux sans etablissement_id). Sans ce filtre, un admin d'établissement
+    // pouvait saisir l'id d'un compte d'un AUTRE tenant et lire ses rôles/scope/relations
+    // (élèves suivis, classes enseignées) — fuite lecture cross-tenant + oracle d'existence.
+    $tenantScoped = ['eleve', 'parent', 'professeur', 'vie_scolaire', 'administrateur'];
+    $isSuper = function_exists('isSuperAdmin') && isSuperAdmin();
     try {
-        $st = $pdo->prepare("SELECT * FROM `{$map[$type]}` WHERE id = ? LIMIT 1");
-        $st->execute([$id]);
+        if (in_array($type, $tenantScoped, true) && !$isSuper) {
+            $st = $pdo->prepare("SELECT * FROM `{$map[$type]}` WHERE id = ? AND etablissement_id = ? LIMIT 1");
+            $st->execute([$id, \API\Core\EstablishmentContext::id()]);
+        } else {
+            $st = $pdo->prepare("SELECT * FROM `{$map[$type]}` WHERE id = ? LIMIT 1");
+            $st->execute([$id]);
+        }
         $row = $st->fetch(PDO::FETCH_ASSOC);
         if (!$row) return null;
         return [
