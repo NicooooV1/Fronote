@@ -261,7 +261,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 <?php $nomPrefill = ($current['nom'] ?? '') === 'Établissement Scolaire' ? '' : ($current['nom'] ?? ''); ?>
             <input type="text" name="nom" required value="<?= htmlspecialchars($_POST['nom'] ?? $nomPrefill) ?>" placeholder="<?= __('onboarding.etab_name_placeholder') ?>" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px">
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:14px;margin-bottom:14px">
             <div class="form-group">
                 <label><?= __('onboarding.etab_type') ?></label>
                 <?php $curType = $_POST['type'] ?? ($current['type'] ?? 'college'); ?>
@@ -278,12 +278,12 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                 <input type="text" name="annee_scolaire" value="<?= htmlspecialchars($_POST['annee_scolaire'] ?? ($current['annee_scolaire'] ?? ($curYear . '-' . ($curYear + 1)))) ?>" placeholder="2025-2026" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px">
             </div>
         </div>
-        <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;margin-bottom:14px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:14px;margin-bottom:14px">
             <div class="form-group"><label><?= __('label.adresse') ?></label><input type="text" name="adresse" value="<?= htmlspecialchars($_POST['adresse'] ?? '') ?>" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px"></div>
             <div class="form-group"><label><?= __('onboarding.postal_code') ?></label><input type="text" name="code_postal" value="<?= htmlspecialchars($_POST['code_postal'] ?? '') ?>" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px"></div>
             <div class="form-group"><label><?= __('onboarding.city') ?></label><input type="text" name="ville" value="<?= htmlspecialchars($_POST['ville'] ?? '') ?>" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px"></div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:20px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:14px;margin-bottom:20px">
             <div class="form-group"><label><?= __('label.telephone') ?></label><input type="text" name="telephone" value="<?= htmlspecialchars($_POST['telephone'] ?? '') ?>" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px"></div>
             <div class="form-group"><label><?= __('label.email') ?></label><input type="email" name="email" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px"></div>
             <div class="form-group"><label><?= __('onboarding.academy') ?></label><input type="text" name="academie" value="<?= htmlspecialchars($_POST['academie'] ?? '') ?>" style="width:100%;padding:8px 10px;border:1px solid var(--border,#cbd5e0);border-radius:6px"></div>
@@ -299,7 +299,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
         </div>
         <div id="trimestre-fields">
             <?php for ($i = 0; $i < 3; $i++): ?>
-            <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px">
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
                 <strong style="min-width:120px"><?= $i === 0 ? '1er' : ($i + 1) . 'ème' ?> trimestre</strong>
                 <label style="font-size:12px;margin:0"><?= __('onboarding.date_from') ?></label>
                 <input type="date" name="p<?= $i + 1 ?>_debut" value="<?= $defTri[$i]['debut'] ?>" style="flex:1;padding:6px;border:1px solid var(--border,#cbd5e0);border-radius:6px">
@@ -310,7 +310,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
         </div>
         <div id="semestre-fields" style="display:none">
             <?php for ($i = 0; $i < 2; $i++): ?>
-            <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px">
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
                 <strong style="min-width:120px"><?= $i === 0 ? '1er' : '2ème' ?> semestre</strong>
                 <label style="font-size:12px;margin:0"><?= __('onboarding.date_from') ?></label>
                 <input type="date" name="s<?= $i + 1 ?>_debut" value="<?= $defSem[$i]['debut'] ?>" style="flex:1;padding:6px;border:1px solid var(--border,#cbd5e0);border-radius:6px">

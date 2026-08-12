@@ -99,15 +99,20 @@ img, svg, video, canvas, iframe, table, pre { max-width: 100%; }
 /* ── 7. TABLES : défilement horizontal au lieu de déborder la page ─────────── */
 .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
 @media (max-width: 639.98px) {
-  .data-table, .admin-table, table.table {
+  /* Tout tableau de données : défilement horizontal interne au lieu de déborder la page.
+     Générique (couvre .sess-table, .crud-table, .ds-table, .notes-table… au-delà des 3
+     classes historiques). L'EDT reste géré par son conteneur .edt-container. */
+  table {
     display: block; overflow-x: auto; -webkit-overflow-scrolling: touch;
     white-space: nowrap; max-width: 100%;
   }
   /* Borne mobile : un enfant du wrapper de contenu (ex. .users-container, max-width:1100px
-     défini en <style> page) ne doit pas prendre la largeur intrinsèque de son tableau et
-     déborder. !important pour battre le style inline de page (spécificité égale, sinon perdu).
-     Le scroll interne du tableau prend le relais. */
-  .content-container > * { max-width: 100% !important; }
+     défini en <style> page ; .onboarding-wrap, enfant direct de .main-content) ne doit pas
+     prendre la largeur intrinsèque de son contenu et déborder. !important pour battre le style
+     inline de page (spécificité égale, sinon perdu). Le scroll interne du tableau prend le relais. */
+  .content-container > *, .main-content > * { max-width: 100% !important; }
+  /* Barres d'onglets : passer à la ligne au lieu de déborder horizontalement. */
+  .tabs, .tab-nav, .nav-tabs { flex-wrap: wrap; }
 }
 
 /* ── 8. MODALES : tenir dans le viewport (largeur + hauteur + scroll) ───────── */
