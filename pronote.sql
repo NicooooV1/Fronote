@@ -3288,81 +3288,12 @@ CREATE TABLE IF NOT EXISTS formation_plan_annuel (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ============================================================
--- v2.0.0 — Module 10 : Bourses & Aides Financieres
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS bourses_types (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    etablissement_id INT NOT NULL,
-    nom VARCHAR(200) NOT NULL,
-    description TEXT,
-    montant_annuel DECIMAL(10,2),
-    echelons JSON,
-    criteres TEXT,
-    annee_scolaire VARCHAR(10),
-    actif TINYINT(1) DEFAULT 1
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS bourses_demandes (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    etablissement_id INT NOT NULL,
-    eleve_id INT NOT NULL,
-    parent_id INT NOT NULL,
-    type_bourse_id INT NOT NULL,
-    annee_scolaire VARCHAR(10),
-    revenu_fiscal DECIMAL(12,2),
-    nb_parts DECIMAL(5,2),
-    nb_enfants INT,
-    echelon_calcule INT,
-    montant_calcule DECIMAL(10,2),
-    statut ENUM('brouillon','soumise','en_instruction','accordee','refusee','versee') DEFAULT 'brouillon',
-    commentaire_admin TEXT,
-    documents JSON,
-    date_soumission DATETIME,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_bd_eleve (eleve_id),
-    INDEX idx_bd_statut (statut)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS bourses_documents (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    demande_id INT NOT NULL,
-    type_document VARCHAR(50),
-    fichier_nom VARCHAR(200),
-    fichier_chemin VARCHAR(255),
-    valide TINYINT(1),
-    commentaire TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_bdoc_demande (demande_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS bourses_versements (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    demande_id INT NOT NULL,
-    montant DECIMAL(10,2) NOT NULL,
-    date_versement DATE,
-    mode_paiement VARCHAR(50),
-    reference_comptable VARCHAR(50),
-    statut ENUM('planifie','verse','annule') DEFAULT 'planifie',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_bv_demande (demande_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS fonds_sociaux (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    etablissement_id INT NOT NULL,
-    eleve_id INT NOT NULL,
-    parent_id INT,
-    type_aide VARCHAR(100),
-    montant_demande DECIMAL(10,2),
-    montant_accorde DECIMAL(10,2),
-    motif TEXT,
-    statut ENUM('demandee','en_commission','accordee','refusee','versee') DEFAULT 'demandee',
-    commission_date DATE,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_fs_eleve (eleve_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- NOTE (correctif drift I-1) : les tables du module Bourses (bourses_types,
+-- bourses_demandes, bourses_documents, bourses_versements, fonds_sociaux) étaient
+-- définies ici AVEC UNE STRUCTURE INCOMPATIBLE (nom/montant_annuel/echelons vs
+-- code/libelle/echelon_min). Le code (BoursesService) lit les colonnes du MODULE.
+-- Ces définitions sont retirées : le module possède ses tables
+-- (modules/bourses/Database/install.sql fait foi).
 
 -- ============================================================
 -- v2.0.0 — Module 11 : Inventaire & Patrimoine IT
