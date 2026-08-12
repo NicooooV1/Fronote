@@ -242,7 +242,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
             <p style="margin:8px 0 0;font-size:.9em"><?= __('onboarding.saved_question') ?></p>
         </div>
         <div style="display:flex;gap:12px;flex-wrap:wrap">
-            <a href="index.php?nouveau=1" class="btn" style="background:var(--surface,#fff);border:1px solid var(--primary,#003366);color:var(--primary,#003366);padding:10px 22px;border-radius:8px;text-decoration:none;font-weight:600">
+            <a href="index.php?nouveau=1" class="btn" style="background:var(--surface,#fff);border:1px solid var(--primary,#003366);color:var(--brand-on-dark,var(--primary,#003366));padding:10px 22px;border-radius:8px;text-decoration:none;font-weight:600">
                 <i class="fas fa-plus"></i> <?= __('onboarding.add_another_etab') ?>
             </a>
             <a href="<?= (defined('BASE_URL') ? BASE_URL : '') ?>/accueil/accueil.php" class="btn btn-primary" style="background:var(--primary,#003366);color:#fff;padding:10px 22px;border-radius:8px;text-decoration:none;font-weight:600">
@@ -345,7 +345,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
         </button>
 
         <div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap">
-            <button type="submit" name="add_another" value="1" class="btn" style="background:var(--surface,#fff);border:1px solid var(--primary,#003366);color:var(--primary,#003366);padding:10px 22px;border-radius:8px;cursor:pointer;font-weight:600">
+            <button type="submit" name="add_another" value="1" class="btn" style="background:var(--surface,#fff);border:1px solid var(--primary,#003366);color:var(--brand-on-dark,var(--primary,#003366));padding:10px 22px;border-radius:8px;cursor:pointer;font-weight:600">
                 <?= __('onboarding.save_add_another') ?>
             </button>
             <button type="submit" name="finish" value="1" class="btn btn-primary" style="background:var(--primary,#003366);color:#fff;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-weight:600">

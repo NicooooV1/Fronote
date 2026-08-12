@@ -287,14 +287,41 @@ try {
                     'couleur_primaire'   => ['--primary-color', '--primary', '--ds-primary'],
                     'couleur_secondaire' => ['--secondary-color', '--secondary'],
                 ];
+                // Éclaircit une couleur de marque foncée POUR LE TEXTE en thème sombre : une couleur
+                // comme #003366 utilisée en texte sur surface sombre serait invisible (1.16:1). On
+                // expose une variable DÉDIÉE --brand-on-dark (≠ --primary-color, qui doit rester la
+                // couleur exacte car elle sert AUSSI de FOND de bouton avec texte blanc). Les pages
+                // qui affichent un accent de marque en texte utilisent var(--brand-on-dark,var(--primary-color)).
+                $_lin = static function (int $c): float { $c /= 255; return $c <= 0.03928 ? $c / 12.92 : pow(($c + 0.055) / 1.055, 2.4); };
+                $_lumOf = static function (int $r, int $g, int $b) use ($_lin): float { return 0.2126 * $_lin($r) + 0.7152 * $_lin($g) + 0.0722 * $_lin($b); };
+                $_lightenForDark = static function (string $hex) use ($_lin, $_lumOf): string {
+                    $h = ltrim($hex, '#');
+                    $r = (int) hexdec(substr($h, 0, 2)); $g = (int) hexdec(substr($h, 2, 2)); $b = (int) hexdec(substr($h, 4, 2));
+                    if ($_lumOf($r, $g, $b) >= 0.30) { return '#' . $h; }
+                    for ($t = 0.2; $t <= 0.85; $t += 0.1) {
+                        $nr = (int) round($r + (255 - $r) * $t); $ng = (int) round($g + (255 - $g) * $t); $nb = (int) round($b + (255 - $b) * $t);
+                        if ($_lumOf($nr, $ng, $nb) >= 0.42) { return sprintf('#%02x%02x%02x', $nr, $ng, $nb); }
+                    }
+                    return sprintf('#%02x%02x%02x', (int) round($r + (255 - $r) * 0.75), (int) round($g + (255 - $g) * 0.75), (int) round($b + (255 - $b) * 0.75));
+                };
                 $_decls = [];
+                $_primaryDark = null;
                 foreach ($_map as $_col => $_vars) {
                     $_v = (string) ($_etab[$_col] ?? '');
                     if (preg_match('/^#[0-9a-fA-F]{6}$/', $_v)) {
                         foreach ($_vars as $_vn) { $_decls[] = $_vn . ':' . $_v; }
+                        if ($_col === 'couleur_primaire') { $_primaryDark = $_lightenForDark($_v); }
                     }
                 }
+                // --brand-on-dark : accent de marque LISIBLE en texte, quel que soit le thème.
+                // En clair = couleur exacte ; en sombre = version éclaircie si la marque est foncée.
+                if (!empty($_decls) && preg_match('/^#[0-9a-fA-F]{6}$/', (string) ($_etab['couleur_primaire'] ?? ''))) {
+                    $_decls[] = '--brand-on-dark:' . $_etab['couleur_primaire'];
+                }
                 $_hdr_brand_css = $_decls ? ':root{' . implode(';', $_decls) . '}' : '';
+                if ($_primaryDark !== null && $_primaryDark !== '#' . ltrim((string) $_etab['couleur_primaire'], '#')) {
+                    $_hdr_brand_css .= '[data-theme="dark"]{--brand-on-dark:' . $_primaryDark . '}';
+                }
                 if ($_bcc) { $_bcc->set($_brandKey, $_hdr_brand_css, 3600); }
             }
         }

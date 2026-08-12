@@ -63,7 +63,7 @@ include __DIR__ . '/../includes/header.php';
                         <td><strong><?= htmlspecialchars($meta['label'] ?? $rk) ?></strong></td>
                         <td><code><?= htmlspecialchars($rk) ?></code></td>
                         <td><?= htmlspecialchars($meta['scope'] ?? '—') ?></td>
-                        <td><?php if (!empty($meta['sensitive'])): ?><span style="color:#dc2626;font-weight:600">● sensible</span><?php endif; ?></td>
+                        <td><?php if (!empty($meta['sensitive'])): ?><span style="color:var(--ds-danger,#dc2626);font-weight:600">● sensible</span><?php endif; ?></td>
                         <td><?= $permCount ?></td>
                         <td><?= (int) ($holders[$rk] ?? 0) ?></td>
                         <td><a class="btn btn-sm btn-secondary" href="show.php?role=<?= urlencode($rk) ?>">Détail</a></td>
