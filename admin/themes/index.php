@@ -145,7 +145,7 @@ include __DIR__ . '/../includes/header.php';
 </style>
 
 <?php if ($message): ?>
-<div style="margin-bottom:16px;padding:12px 16px;border-radius:8px;background:<?= $messageType === 'success' ? '#f0fff4' : '#fff5f5' ?>;color:<?= $messageType === 'success' ? '#276749' : '#c53030' ?>;border:1px solid <?= $messageType === 'success' ? '#c6f6d5' : '#fed7d7' ?>">
+<div style="margin-bottom:16px;padding:12px 16px;border-radius:8px;background:<?= $messageType === 'success' ? 'var(--ds-success-light,#f0fff4)' : 'var(--ds-danger-light,#fff5f5)' ?>;color:<?= $messageType === 'success' ? 'var(--ds-success,#276749)' : 'var(--ds-danger,#c53030)' ?>;border:1px solid <?= $messageType === 'success' ? 'var(--ds-success,#c6f6d5)' : 'var(--ds-danger,#fed7d7)' ?>">
     <?= htmlspecialchars($message) ?>
 </div>
 <?php endif; ?>
@@ -311,7 +311,7 @@ include __DIR__ . '/../includes/header.php';
             <?php foreach ($editContrast as $c): ?>
             <div style="display:flex;justify-content:space-between;padding:3px 0">
                 <span><?= htmlspecialchars($c['label']) ?></span>
-                <span style="font-weight:600;color:<?= $c['pass'] ? '#276749' : '#c53030' ?>">
+                <span style="font-weight:600;color:<?= $c['pass'] ? 'var(--ds-success,#276749)' : 'var(--ds-danger,#c53030)' ?>">
                     <?= $c['ratio'] ?>:1 <?= $c['pass'] ? '✓' : '✗ (min ' . $c['min'] . ')' ?>
                 </span>
             </div>

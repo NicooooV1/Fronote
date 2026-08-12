@@ -47,7 +47,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 
     <?php if (!empty($expirant)): ?>
     <h2 style="font-size:1.1em;margin:0 0 12px;color:#b45309"><i class="fas fa-clock"></i> <?= __('formations.certifications_expirant') ?> (<?= count($expirant) ?>)</h2>
-    <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:12px 16px;margin-bottom:28px;font-size:.9em">
+    <div style="background:var(--ds-warning-light,#fffbeb);color:var(--text-color,#1d1d1f);border:1px solid var(--ds-warning,#fcd34d);border-radius:8px;padding:12px 16px;margin-bottom:28px;font-size:.9em">
         <?php foreach ($expirant as $c): ?>
         <div><?= htmlspecialchars($c['personnel_nom'] ?? '') ?> — <?= htmlspecialchars($c['titre'] ?? '') ?> (expire le <?= htmlspecialchars($c['date_expiration'] ?? '') ?>)</div>
         <?php endforeach; ?>

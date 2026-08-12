@@ -160,7 +160,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 
 <?php if ($pendingConsent): ?>
     <!-- ─── Écran consentement ─── -->
-    <section style="background:#fffbeb;border:2px solid #f59e0b;border-radius:10px;padding:20px;margin:18px 0">
+    <section style="background:var(--ds-warning-light,#fffbeb);color:var(--text-color,#1d1d1f);border:2px solid var(--ds-warning,#f59e0b);border-radius:10px;padding:20px;margin:18px 0">
         <h2 style="margin:0 0 12px;color:#b45309"><i class="fas fa-exclamation-triangle"></i> <?= __('marketplace.consentement_requis') ?></h2>
         <p>Le module <strong><?= htmlspecialchars($pendingConsent['manifest']['key'] ?? '') ?> v<?= htmlspecialchars($pendingConsent['manifest']['version'] ?? '') ?></strong>
            demande les permissions suivantes. Cochez chacune pour continuer.</p>

@@ -100,7 +100,7 @@ include __DIR__ . '/../includes/header.php';
 </style>
 
 <?php if ($message): ?>
-<div class="alert alert-<?= $messageType ?>" style="margin-bottom:16px;padding:12px 16px;border-radius:8px;background:<?= $messageType === 'success' ? '#f0fff4' : '#fff5f5' ?>;color:<?= $messageType === 'success' ? '#276749' : '#c53030' ?>;border:1px solid <?= $messageType === 'success' ? '#c6f6d5' : '#fed7d7' ?>">
+<div class="alert alert-<?= $messageType ?>" style="margin-bottom:16px;padding:12px 16px;border-radius:8px;background:<?= $messageType === 'success' ? 'var(--ds-success-light,#f0fff4)' : 'var(--ds-danger-light,#fff5f5)' ?>;color:<?= $messageType === 'success' ? 'var(--ds-success,#276749)' : 'var(--ds-danger,#c53030)' ?>;border:1px solid <?= $messageType === 'success' ? 'var(--ds-success,#c6f6d5)' : 'var(--ds-danger,#fed7d7)' ?>">
     <?= htmlspecialchars($message) ?>
 </div>
 <?php endif; ?>

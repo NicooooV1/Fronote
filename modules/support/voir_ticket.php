@@ -183,7 +183,7 @@ $canReply      = $ticket['statut'] !== 'ferme';
                 <?php if (empty($notesInternes)): ?>
                     <p style="color:var(--text-muted,#718096)">Aucune note interne.</p>
                 <?php else: foreach ($notesInternes as $ni): ?>
-                    <div class="ticket-message" style="background:#fffbeb;border-radius:8px;padding:8px 12px;margin-bottom:8px">
+                    <div class="ticket-message" style="background:var(--ds-warning-light,#fffbeb);color:var(--text-color,#1d1d1f);border-radius:8px;padding:8px 12px;margin-bottom:8px">
                         <div class="message-header"><strong><?= htmlspecialchars($ni['auteur_nom'] ?? 'Staff') ?></strong> <span><?= formatDateTime($ni['created_at']) ?></span></div>
                         <p><?= nl2br(htmlspecialchars($ni['contenu'])) ?></p>
                     </div>
