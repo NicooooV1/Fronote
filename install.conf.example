@@ -1,0 +1,39 @@
+# =============================================================================
+#  Fronote — configuration d'installation (optionnelle)
+#
+#  Copiez ce fichier en « install.conf » et renseignez vos valeurs, puis lancez :
+#      sudo ./install.sh --yes
+#
+#  Tout ce qui n'est pas défini ici est soit demandé de façon interactive,
+#  soit généré automatiquement (mots de passe, clés secrètes).
+#  NE COMMITEZ JAMAIS install.conf (il peut contenir des données sensibles).
+# =============================================================================
+
+# ── Obligatoire ──────────────────────────────────────────────────────────────
+# URL publique de l'application (détermine SESSION_SECURE : https => cookies sécurisés).
+APP_URL="http://localhost:8081"
+# Email du compte administrateur créé à l'installation (identifiant = « admin »).
+ADMIN_EMAIL=""
+
+# ── Base de données (valeurs par défaut sûres) ───────────────────────────────
+# La base et l'utilisateur sont créés automatiquement ; l'utilisateur n'a de droits
+# QUE sur cette base (privilège minimal). Le mot de passe DB est généré et écrit
+# uniquement dans .env — ne le fixez pas ici sauf besoin explicite.
+DB_NAME="fronote"
+DB_USER="fronote"
+DB_HOST="127.0.0.1"
+DB_PORT="3306"
+
+# ── Serveur web ──────────────────────────────────────────────────────────────
+# Port d'écoute du vhost Apache généré.
+HTTP_PORT="8081"
+
+# ── Application ───────────────────────────────────────────────────────────────
+APP_NAME="Fronote"
+APP_ENV="production"          # production | development
+ADMIN_NOM="Admin"
+ADMIN_PRENOM="Fronote"
+
+# ── Avancé (rarement nécessaire) ─────────────────────────────────────────────
+# PHP_VER="8.2"               # version PHP ciblée pour les paquets/FPM
+# RUN_USER="www-data"         # utilisateur système exécutant l'application
