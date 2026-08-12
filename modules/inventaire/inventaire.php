@@ -21,7 +21,7 @@ include __DIR__ . '/../../templates/shared_header.php';
 include __DIR__ . '/../../templates/shared_topbar.php';
 ?>
 
-<div style="max-width:1100px;margin:24px auto;padding:0 16px">
+<div style="width:100%;max-width:1100px;margin:24px auto;padding:0 16px">
     <h1 style="font-size:1.5em;margin:0 0 20px"><i class="fas fa-laptop-house"></i> <?= __('inventaire.titre_page') ?></h1>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:28px">

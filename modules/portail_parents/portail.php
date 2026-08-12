@@ -27,7 +27,7 @@ include __DIR__ . '/../../templates/shared_header.php';
 include __DIR__ . '/../../templates/shared_topbar.php';
 ?>
 
-<div style="max-width:1100px;margin:24px auto;padding:0 16px">
+<div style="width:100%;max-width:1100px;margin:24px auto;padding:0 16px">
     <h1 style="font-size:1.5em;margin:0 0 16px"><i class="fas fa-user-shield"></i> <?= __('portail_parents.page_title') ?></h1>
 
     <?php if (empty($enfants)): ?>

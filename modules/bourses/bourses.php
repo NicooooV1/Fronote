@@ -39,7 +39,7 @@ include __DIR__ . '/../../templates/shared_header.php';
 include __DIR__ . '/../../templates/shared_topbar.php';
 ?>
 
-<div style="max-width:1100px;margin:24px auto;padding:0 16px">
+<div style="width:100%;max-width:1100px;margin:24px auto;padding:0 16px">
     <h1 style="font-size:1.5em;margin:0 0 4px"><i class="fas fa-hand-holding-usd"></i> <?= __('bourses.page_title') ?></h1>
     <p style="color:var(--text-muted,#64748b);margin:0 0 24px"><?= __('bourses.campagne') ?> <?= htmlspecialchars($annee) ?></p>
 

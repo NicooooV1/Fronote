@@ -33,7 +33,7 @@ include __DIR__ . '/../../templates/shared_header.php';
 include __DIR__ . '/../../templates/shared_topbar.php';
 ?>
 
-<div style="max-width:1000px;margin:24px auto;padding:0 16px">
+<div style="width:100%;max-width:1000px;margin:24px auto;padding:0 16px">
     <h1 style="font-size:1.5em;margin:0 0 20px"><i class="fas fa-poll-h"></i> <?= __('enquetes.titre_page') ?></h1>
 
     <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-inbox"></i> <?= __('enquetes.a_repondre') ?> (<?= count($ouvertes) ?>)</h2>

@@ -207,7 +207,7 @@ include __DIR__ . '/../../templates/shared_header.php';
 include __DIR__ . '/../../templates/shared_topbar.php';
 ?>
 
-<div class="onboarding-wrap" style="max-width:860px;margin:24px auto;padding:0 16px">
+<div class="onboarding-wrap" style="width:100%;max-width:860px;margin:24px auto;padding:0 16px">
     <h1 style="font-size:1.5em;margin-bottom:4px">
         <?= $createNew ? __('onboarding.new_etab_title') : __('onboarding.welcome_title') ?>
     </h1>

@@ -39,7 +39,7 @@ include __DIR__ . '/../../templates/shared_header.php';
 include __DIR__ . '/../../templates/shared_topbar.php';
 ?>
 
-<div style="max-width:1100px;margin:24px auto;padding:0 16px">
+<div style="width:100%;max-width:1100px;margin:24px auto;padding:0 16px">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px">
         <h1 style="font-size:1.5em;margin:0"><i class="fas fa-brain"></i> <?= __('intelligence.analyse_predictive_titre') ?></h1>
         <form method="post" data-fr-confirm="Recalculer les scores de tous les élèves ?">
