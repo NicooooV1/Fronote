@@ -120,8 +120,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken($_POST['csrf_toke
                 $previewData = [
                     'type'    => 'config',
                     'modules' => count($data['modules_config'] ?? []),
-                    'perms'   => count($data['module_permissions'] ?? []),
                     'date'    => $data['exported_at'] ?? 'N/A',
+                    // Anciens bundles : la section module_permissions (matrice supprimée)
+                    // sera ignorée à l'import — on le signale dans l'aperçu.
+                    'ignored_perms' => count($data['module_permissions'] ?? []),
                 ];
                 // Stocker le fichier temporairement
                 $storedPath = sys_get_temp_dir() . '/fronote_import_' . session_id() . '.json';
@@ -487,7 +489,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php foreach ($allTables as $t): ?>
                         <label>
                             <input type="checkbox" name="sql_tables[]" value="<?= htmlspecialchars($t) ?>" class="sql-table-cb"
-                                <?= in_array($t, ['eleves','professeurs','parents','vie_scolaire','administrateurs','classes','matieres','periodes','etablissement_info','modules_config','module_permissions']) ? 'checked' : '' ?>>
+                                <?= in_array($t, ['eleves','professeurs','parents','vie_scolaire','administrateurs','classes','matieres','periodes','etablissement_info','modules_config']) ? 'checked' : '' ?>>
                             <?= htmlspecialchars($t) ?>
                         </label>
                     <?php endforeach; ?>
@@ -616,8 +618,10 @@ include __DIR__ . '/../includes/header.php';
                     <p style="font-size:12px;color:#4a5568">
                         <strong>Fichier :</strong> <?= htmlspecialchars($pending['name']) ?><br>
                         <strong>Date d'export :</strong> <?= htmlspecialchars($previewData['date']) ?><br>
-                        <strong>Modules :</strong> <?= $previewData['modules'] ?> |
-                        <strong>Permissions :</strong> <?= $previewData['perms'] ?>
+                        <strong>Modules :</strong> <?= $previewData['modules'] ?>
+                        <?php if (!empty($previewData['ignored_perms'])): ?>
+                            <br><em>Ce fichier contient <?= (int) $previewData['ignored_perms'] ?> ancienne(s) entrée(s) de permissions : elles seront ignorées (permissions désormais gérées au niveau plateforme).</em>
+                        <?php endif; ?>
                     </p>
                 <?php endif; ?>
 

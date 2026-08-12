@@ -5,7 +5,7 @@ declare(strict_types=1);
  *
  * Scanne les dossiers du projet pour trouver les fichiers module.json,
  * valide leur structure, synchronise avec la base de données (modules_config,
- * dashboard_widgets, module_permissions) et gère le cycle de vie des modules.
+ * dashboard_widgets) et gère le cycle de vie des modules.
  *
  * Cycle de vie : discover → validate → install → enable → boot → disable → uninstall
  */
@@ -134,7 +134,7 @@ class ModuleSDK
 
     /**
      * Synchronise tous les manifestes découverts avec la base de données.
-     * Met à jour modules_config, dashboard_widgets et module_permissions,
+     * Met à jour modules_config et dashboard_widgets,
      * puis purge les modules « fantômes » dont le dossier a disparu du disque
      * (cf. pruneGhostModules()).
      *
@@ -183,11 +183,8 @@ class ModuleSDK
      *    leur absence du disque est signalée dans $errors.
      *
      * Supprime les lignes des tables alimentées par syncModule() :
-     * module_permissions (aussi couverte par le FK fk_modperm_module
-     * ON DELETE CASCADE — suppression explicite pour les bases legacy sans la
-     * contrainte), module_settings_schema, dashboard_widgets, puis
-     * modules_config. Les données métier du module (install.sql) ne sont pas
-     * touchées.
+     * module_settings_schema, dashboard_widgets, puis modules_config. Les
+     * données métier du module (install.sql) ne sont pas touchées.
      *
      * @param array<string, array> $manifests Manifestes découverts sur disque
      * @param string[] $errors Collecteur d'erreurs de syncAll() (par référence)
@@ -226,7 +223,7 @@ class ModuleSDK
 
             try {
                 // Enfants d'abord (bases legacy sans FK ON DELETE CASCADE).
-                foreach (['module_permissions', 'module_settings_schema', 'dashboard_widgets'] as $table) {
+                foreach (['module_settings_schema', 'dashboard_widgets'] as $table) {
                     try {
                         $this->pdo->prepare("DELETE FROM `{$table}` WHERE module_key = ?")->execute([$key]);
                     } catch (\Throwable $e) {
@@ -318,10 +315,10 @@ class ModuleSDK
             $this->syncSettingsSchema($key, $manifest['settings_schema']);
         }
 
-        // Synchroniser les permissions
-        if (!empty($manifest['permissions'])) {
-            $this->syncPermissions($key, $manifest['permissions']);
-        }
+        // NB : le bloc 'permissions' du manifeste reste purement DÉCLARATIF (validé par
+        // validateManifest, audité par CodeAuditService). L'autorisation runtime passe
+        // par le catalogue central RoleCatalog + rbac_grants — plus aucune matrice
+        // module_permissions à semer.
     }
 
     /**
@@ -362,69 +359,6 @@ class ModuleSDK
                 !empty($widget['is_default']) ? 1 : 0,
                 $widget['sort_order'] ?? 50,
             ]);
-        }
-    }
-
-    /**
-     * Synchronise les permissions d'un module avec module_permissions.
-     *
-     * module_permissions est orienté rôle (une ligne par module_key × role avec des
-     * colonnes can_view / can_create / …), c'est la table lue par RBAC. Les manifestes
-     * déclarent au contraire des actions (`view`, `manage`, `edit`, …) avec leurs
-     * `default_roles`. On convertit donc les actions en colonnes can_* et on sème une
-     * ligne par rôle. INSERT IGNORE : on ne crée que les paires (module, rôle) absentes,
-     * sans écraser les ajustements faits par l'admin dans la matrice.
-     */
-    private function syncPermissions(string $moduleKey, array $permissions): void
-    {
-        $allRoles = ['administrateur', 'professeur', 'vie_scolaire', 'eleve', 'parent'];
-
-        // Quelles actions alimentent quelle colonne can_*.
-        $actionToColumns = [
-            'view'    => ['can_view'],
-            'manage'  => ['can_view', 'can_create', 'can_edit', 'can_delete'],
-            'create'  => ['can_create'],
-            'edit'    => ['can_edit'],
-            'delete'  => ['can_delete'],
-            'export'  => ['can_export'],
-            'import'  => ['can_import'],
-        ];
-
-        // grid[role][can_*] = 1
-        $grid = [];
-        foreach ($allRoles as $r) {
-            $grid[$r] = [
-                'can_view' => 0, 'can_create' => 0, 'can_edit' => 0,
-                'can_delete' => 0, 'can_export' => 0, 'can_import' => 0,
-            ];
-        }
-
-        foreach ($permissions as $action => $config) {
-            $roles = $config['default_roles'] ?? [];
-            $cols  = $actionToColumns[$action] ?? ['can_view']; // action inconnue ⇒ au moins voir
-            // '*' = tous les rôles.
-            $targetRoles = in_array('*', $roles, true) ? $allRoles : array_intersect($roles, $allRoles);
-            foreach ($targetRoles as $r) {
-                foreach ($cols as $c) {
-                    $grid[$r][$c] = 1;
-                }
-            }
-        }
-
-        try {
-            $sql = "INSERT IGNORE INTO module_permissions
-                        (module_key, role, can_view, can_create, can_edit, can_delete, can_export, can_import)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-            $stmt = $this->pdo->prepare($sql);
-            foreach ($grid as $role => $cols) {
-                $stmt->execute([
-                    $moduleKey, $role,
-                    $cols['can_view'], $cols['can_create'], $cols['can_edit'],
-                    $cols['can_delete'], $cols['can_export'], $cols['can_import'],
-                ]);
-            }
-        } catch (\Throwable $e) {
-            error_log("ModuleSDK: Cannot sync permissions for {$moduleKey}: " . $e->getMessage());
         }
     }
 

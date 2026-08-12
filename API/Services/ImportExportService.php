@@ -411,7 +411,11 @@ class ImportExportService
      * =================================================================== */
 
     /**
-     * Exporte la configuration du systeme (modules_config + module_permissions + user_settings) en JSON.
+     * Exporte la configuration du systeme (modules_config) en JSON.
+     *
+     * Les permissions ne font plus partie du bundle : la matrice role→permission est
+     * centrale (RoleCatalog + rbac_grants, gouvernee cote plateforme), elle n'est pas
+     * une donnee de configuration d'etablissement.
      *
      * @return array ['success', 'file_path', 'file_name', 'message']
      */
@@ -420,8 +424,7 @@ class ImportExportService
         $bundle = [
             'export_type' => 'configuration',
             'exported_at' => date('Y-m-d H:i:s'),
-            'modules_config'     => [],
-            'module_permissions' => [],
+            'modules_config' => [],
         ];
 
         try {
@@ -432,14 +435,6 @@ class ImportExportService
             error_log("ImportExportService::exportConfig modules_config: " . $e->getMessage());
         }
 
-        try {
-            $bundle['module_permissions'] = $this->pdo->query(
-                "SELECT * FROM module_permissions ORDER BY module_key, role"
-            )->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) {
-            error_log("ImportExportService::exportConfig module_permissions: " . $e->getMessage());
-        }
-
         $tempDir   = $this->ensureTempDir();
         $timestamp = date('Ymd_His');
         $fileName  = "config_{$timestamp}.json";
@@ -447,7 +442,7 @@ class ImportExportService
 
         file_put_contents($filePath, json_encode($bundle, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
 
-        $total = count($bundle['modules_config']) + count($bundle['module_permissions']);
+        $total = count($bundle['modules_config']);
         $this->logImport('export', $total, 'termine', $fileName, 'configuration');
 
         return [
@@ -455,7 +450,7 @@ class ImportExportService
             'file_path' => $filePath,
             'file_name' => $fileName,
             'count'     => $total,
-            'message'   => 'Configuration exportee (' . count($bundle['modules_config']) . ' modules, ' . count($bundle['module_permissions']) . ' permissions).',
+            'message'   => 'Configuration exportee (' . count($bundle['modules_config']) . ' modules).',
         ];
     }
 
@@ -541,58 +536,12 @@ class ImportExportService
             }
         }
 
-        // Import module_permissions
-        if (!empty($data['module_permissions']) && is_array($data['module_permissions'])) {
-            foreach ($data['module_permissions'] as $perm) {
-                $key  = $perm['module_key'] ?? null;
-                $role = $perm['role'] ?? null;
-                if (!$key || !$role) continue;
-
-                try {
-                    $stmt = $this->pdo->prepare("SELECT id FROM module_permissions WHERE module_key = ? AND role = ?");
-                    $stmt->execute([$key, $role]);
-
-                    if ($stmt->fetch()) {
-                        $upd = $this->pdo->prepare("
-                            UPDATE module_permissions SET
-                                can_view = ?, can_create = ?, can_edit = ?, can_delete = ?,
-                                can_export = ?, can_import = ?, custom_permissions = ?
-                            WHERE module_key = ? AND role = ?
-                        ");
-                        $upd->execute([
-                            $perm['can_view'] ?? 1,
-                            $perm['can_create'] ?? 0,
-                            $perm['can_edit'] ?? 0,
-                            $perm['can_delete'] ?? 0,
-                            $perm['can_export'] ?? 0,
-                            $perm['can_import'] ?? 0,
-                            is_array($perm['custom_permissions'] ?? null) ? json_encode($perm['custom_permissions']) : ($perm['custom_permissions'] ?? null),
-                            $key,
-                            $role,
-                        ]);
-                    } else {
-                        $ins = $this->pdo->prepare("
-                            INSERT INTO module_permissions
-                                (module_key, role, can_view, can_create, can_edit, can_delete, can_export, can_import, custom_permissions)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ");
-                        $ins->execute([
-                            $key,
-                            $role,
-                            $perm['can_view'] ?? 1,
-                            $perm['can_create'] ?? 0,
-                            $perm['can_edit'] ?? 0,
-                            $perm['can_delete'] ?? 0,
-                            $perm['can_export'] ?? 0,
-                            $perm['can_import'] ?? 0,
-                            is_array($perm['custom_permissions'] ?? null) ? json_encode($perm['custom_permissions']) : ($perm['custom_permissions'] ?? null),
-                        ]);
-                    }
-                    $nbProcessed++;
-                } catch (PDOException $e) {
-                    $errors[] = "Permission '{$key}/{$role}' : " . $e->getMessage();
-                }
-            }
+        // Retro-compat : les anciens bundles contiennent une section module_permissions
+        // (matrice supprimee — les permissions sont desormais centrales : RoleCatalog +
+        // rbac_grants, gouvernees cote plateforme). On l'ignore explicitement, sans erreur.
+        if (!empty($data['module_permissions'])) {
+            error_log('ImportExportService::importConfig: section module_permissions ignoree ('
+                . count((array) $data['module_permissions']) . ' entree(s), matrice supprimee).');
         }
 
         $status = (count($errors) > 0 && $nbProcessed === 0) ? 'erreur' : 'termine';
@@ -624,7 +573,7 @@ class ImportExportService
             $tables = [
                 'eleves', 'professeurs', 'parents', 'vie_scolaire', 'administrateurs',
                 'classes', 'matieres', 'periodes', 'etablissement_info',
-                'modules_config', 'module_permissions',
+                'modules_config',
             ];
         }
 

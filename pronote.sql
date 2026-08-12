@@ -63,8 +63,6 @@ DROP TABLE IF EXISTS `import_export_logs`;
 DROP TABLE IF EXISTS `user_profiles`;
 DROP TABLE IF EXISTS `technicien_audit_log`;
 DROP TABLE IF EXISTS `technicien_access`;
-DROP TABLE IF EXISTS `module_permissions`;
-DROP TABLE IF EXISTS `rbac_permissions`;
 
 -- Système : modules, SMTP, PDF templates
 DROP TABLE IF EXISTS `pdf_templates`;
@@ -1548,51 +1546,9 @@ CREATE TABLE `support_session_restrictions` (
   CONSTRAINT `fk_ssr_session` FOREIGN KEY (`support_session_id`) REFERENCES `support_sessions` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ============================================================
--- M100 : Permissions CRUD par module (admin)
--- ============================================================
-CREATE TABLE `module_permissions` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `module_key` VARCHAR(50) NOT NULL,
-  `role` VARCHAR(50) NOT NULL,
-  `can_view` TINYINT(1) NOT NULL DEFAULT 1,
-  `can_create` TINYINT(1) NOT NULL DEFAULT 0,
-  `can_edit` TINYINT(1) NOT NULL DEFAULT 0,
-  `can_delete` TINYINT(1) NOT NULL DEFAULT 0,
-  `can_export` TINYINT(1) NOT NULL DEFAULT 0,
-  `can_import` TINYINT(1) NOT NULL DEFAULT 0,
-  `custom_permissions` JSON DEFAULT NULL COMMENT 'Permissions spécifiques au module, ex: {"can_send":true,"can_moderate":false}',
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY `uk_module_role` (`module_key`, `role`),
-  KEY `idx_role` (`role`),
-  KEY `idx_module` (`module_key`),
-  CONSTRAINT `fk_modperm_module` FOREIGN KEY (`module_key`) REFERENCES `modules_config` (`module_key`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Permissions par défaut messagerie (désactivée par défaut sauf admin)
-INSERT INTO `module_permissions` (`module_key`, `role`, `can_view`, `can_create`, `can_edit`, `can_delete`, `can_export`, `custom_permissions`) VALUES
-('messagerie', 'administrateur', 1, 1, 1, 1, 1, '{"can_send":true,"can_moderate":true,"can_broadcast":true}'),
-('messagerie', 'professeur',     0, 0, 0, 0, 0, '{"can_send":false,"can_moderate":false}'),
-('messagerie', 'vie_scolaire',   0, 0, 0, 0, 0, '{"can_send":false,"can_moderate":false}'),
-('messagerie', 'eleve',          0, 0, 0, 0, 0, '{"can_send":false}'),
-('messagerie', 'parent',         0, 0, 0, 0, 0, '{"can_send":false}');
-
--- Permissions par défaut notes
-INSERT INTO `module_permissions` (`module_key`, `role`, `can_view`, `can_create`, `can_edit`, `can_delete`, `can_export`) VALUES
-('notes', 'administrateur', 1, 1, 1, 1, 1),
-('notes', 'professeur',     1, 1, 1, 0, 1),
-('notes', 'vie_scolaire',   1, 0, 0, 0, 1),
-('notes', 'eleve',          1, 0, 0, 0, 0),
-('notes', 'parent',         1, 0, 0, 0, 0);
-
--- Permissions par défaut absences
-INSERT INTO `module_permissions` (`module_key`, `role`, `can_view`, `can_create`, `can_edit`, `can_delete`, `can_export`) VALUES
-('absences', 'administrateur', 1, 1, 1, 1, 1),
-('absences', 'professeur',     1, 1, 1, 0, 0),
-('absences', 'vie_scolaire',   1, 1, 1, 1, 1),
-('absences', 'eleve',          1, 0, 0, 0, 0),
-('absences', 'parent',         1, 0, 0, 0, 0);
+-- NOTE refonte rôles : table `module_permissions` (matrice CRUD module × rôle)
+-- supprimée — plus aucun chemin d'autorisation ne la lisait. Les permissions sont
+-- centrales : catalogue RoleCatalog + déviations plateforme rbac_grants.
 
 -- ============================================================
 -- M101 : Accès technicien temporaire
