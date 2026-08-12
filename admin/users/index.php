@@ -252,21 +252,21 @@ include __DIR__ . '/../includes/header.php';
     <!-- Filtres -->
     <form method="get" class="filters-bar">
         <input type="text" name="q" placeholder="Rechercher nom, prénom, identifiant, email…" value="<?= htmlspecialchars($searchTerm) ?>">
-        <select name="type">
+        <select name="type" aria-label="Filtrer par profil">
             <option value="">Tous les profils</option>
             <option value="eleve" <?= $filterType==='eleve'?'selected':'' ?>>Élèves</option>
             <option value="professeur" <?= $filterType==='professeur'?'selected':'' ?>>Professeurs</option>
             <option value="parent" <?= $filterType==='parent'?'selected':'' ?>>Parents</option>
             <option value="vie_scolaire" <?= $filterType==='vie_scolaire'?'selected':'' ?>>Vie scolaire</option>
         </select>
-        <select name="status">
+        <select name="status" aria-label="Filtrer par statut">
             <option value="">Tous les statuts</option>
             <option value="active" <?= $filterStatus==='active'?'selected':'' ?>>Actifs</option>
             <option value="inactive" <?= $filterStatus==='inactive'?'selected':'' ?>>Inactifs</option>
             <option value="locked" <?= $filterStatus==='locked'?'selected':'' ?>>Verrouillés</option>
         </select>
         <?php if (!empty($classesList)): ?>
-        <select name="classe">
+        <select name="classe" aria-label="Filtrer par classe">
             <option value="">Toutes les classes</option>
             <?php foreach ($classesList as $c): ?>
                 <option value="<?= htmlspecialchars($c) ?>" <?= $filterClasse===$c?'selected':'' ?>><?= htmlspecialchars($c) ?></option>
@@ -316,7 +316,7 @@ include __DIR__ . '/../includes/header.php';
                     </td>
                     <td>
                         <div class="actions-cell">
-                            <button class="btn-xs primary" data-fr-click="openProfile" data-fr-args='[<?= $u['id'] ?>,"<?= $u['profil'] ?>"]'><i class="fas fa-eye"></i></button>
+                            <button class="btn-xs primary" data-fr-click="openProfile" data-fr-args='[<?= $u['id'] ?>,"<?= $u['profil'] ?>"]' title="Voir le profil" aria-label="Voir le profil de <?= htmlspecialchars($u['prenom'] . ' ' . $u['nom']) ?>"><i class="fas fa-eye" aria-hidden="true"></i></button>
                             <a class="btn-xs" href="roles.php?ut=<?= urlencode($u['profil']) ?>&uid=<?= (int) $u['id'] ?>" title="Gérer les rôles"><i class="fas fa-user-shield"></i></a>
                             <?php if (!empty($u['locked_until']) && strtotime($u['locked_until']) > time()): ?>
                                 <form method="post" style="display:inline"><input type="hidden" name="csrf_token" value="<?= $csrf_token ?>"><input type="hidden" name="action" value="unlock"><input type="hidden" name="user_id" value="<?= $u['id'] ?>"><input type="hidden" name="user_type" value="<?= $u['profil'] ?>"><button class="btn-xs warning" title="Déverrouiller"><i class="fas fa-unlock"></i></button></form>

@@ -157,7 +157,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                     <?php if ($displayMode === 'calendar'): ?><input type="hidden" name="mode" value="calendar"><?php endif; ?>
                     <input type="text" name="q" class="form-control" placeholder="Rechercher un devoir…"
                            value="<?= htmlspecialchars($search ?? '') ?>">
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
+                    <button type="submit" class="btn btn-primary" aria-label="Rechercher"><i class="fas fa-search" aria-hidden="true"></i></button>
                     <?php if ($search): ?>
                         <a href="?<?= $displayMode === 'calendar' ? 'mode=calendar&' : '' ?>order=<?= htmlspecialchars($orderField) ?>"
                            class="btn btn-secondary" title="Effacer"><i class="fas fa-times"></i></a>

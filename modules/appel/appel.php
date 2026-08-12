@@ -161,7 +161,7 @@ include 'includes/header.php';
     <a href="?date=<?= date('Y-m-d', strtotime($date . ' -1 day')) ?>" class="btn btn-sm btn-secondary">
         <i class="fas fa-chevron-left"></i> Veille
     </a>
-    <input type="date" value="<?= htmlspecialchars($date) ?>"
+    <input type="date" aria-label="Date de l'appel" value="<?= htmlspecialchars($date) ?>"
            data-fr-change="frAp1" class="form-control date-input">
     <a href="?date=<?= date('Y-m-d', strtotime($date . ' +1 day')) ?>" class="btn btn-sm btn-secondary">
         Lendemain <i class="fas fa-chevron-right"></i>
@@ -303,20 +303,20 @@ include 'includes/header.php';
         <?= csrfField() ?>
         <input type="hidden" name="action" value="creer_appel">
         <div class="form-row-inline">
-            <select name="classe_id" class="form-control" required>
+            <select name="classe_id" aria-label="Classe" class="form-control" required>
                 <option value="">-- Classe --</option>
                 <?php foreach ($classes as $cl): ?>
                     <option value="<?= $cl['id'] ?>"><?= htmlspecialchars($cl['nom']) ?></option>
                 <?php endforeach; ?>
             </select>
-            <select name="matiere_id" class="form-control">
+            <select name="matiere_id" aria-label="Matière" class="form-control">
                 <option value="">-- Matière --</option>
                 <?php foreach ($matieres as $mat): ?>
                     <option value="<?= $mat['id'] ?>"><?= htmlspecialchars($mat['nom']) ?></option>
                 <?php endforeach; ?>
             </select>
-            <input type="time" name="heure_debut" class="form-control" value="<?= date('H:i') ?>">
-            <input type="time" name="heure_fin" class="form-control" value="<?= date('H:i', strtotime('+1 hour')) ?>">
+            <input type="time" name="heure_debut" aria-label="Heure de début" class="form-control" value="<?= date('H:i') ?>">
+            <input type="time" name="heure_fin" aria-label="Heure de fin" class="form-control" value="<?= date('H:i', strtotime('+1 hour')) ?>">
             <button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> Créer</button>
         </div>
     </form>

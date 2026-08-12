@@ -404,7 +404,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                     <input type="hidden" name="trimestre" value="<?= $selectedTrimestre ?>">
                     <div>
                         <label style="display:block; font-size:12px; font-weight:600; color:var(--text-color, #4a5568); margin-bottom:4px;"><?= __('label.classe') ?></label>
-                        <select name="classe" class="form-control" style="min-width:140px;">
+                        <select name="classe" aria-label="Filtrer par classe" class="form-control" style="min-width:140px;">
                             <option value=""><?= __('label.toutes') ?></option>
                             <?php foreach ($availableClasses as $c): ?>
                             <option value="<?= htmlspecialchars($c) ?>" <?= $filterClasse === $c ? 'selected' : '' ?>><?= htmlspecialchars($c) ?></option>
@@ -413,7 +413,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                     </div>
                     <div>
                         <label style="display:block; font-size:12px; font-weight:600; color:var(--text-color, #4a5568); margin-bottom:4px;"><?= __('label.matiere') ?></label>
-                        <select name="matiere" class="form-control" style="min-width:160px;">
+                        <select name="matiere" aria-label="Filtrer par matière" class="form-control" style="min-width:160px;">
                             <option value=""><?= __('label.toutes') ?></option>
                             <?php foreach ($availableMatieres as $m): ?>
                             <option value="<?= $m['id'] ?>" <?= $filterMatiere == $m['id'] ? 'selected' : '' ?>><?= htmlspecialchars($m['nom']) ?></option>
