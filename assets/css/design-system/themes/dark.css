@@ -12,28 +12,29 @@
 html[data-theme="dark"] {
   color-scheme: dark;
 
-  /* Valeurs brutes sombres (portails sans tokens.css ; idempotent sur le socle). */
-  --ds-bg: #161618;
-  --ds-surface: #1f1f21;
-  --ds-border: #38383a;
-  --ds-text: #f5f5f7;
-  --ds-text-muted: #98989d;
-  --ds-text-light: #6e6e73;
+  /* Valeurs brutes sombres — échelle SLATE unique (cohérence topbar/cartes/fond ;
+     idempotent sur le socle car identique à tokens.css [data-theme=dark]). */
+  --ds-bg: #0f172a;
+  --ds-surface: #1e293b;
+  --ds-border: #334155;
+  --ds-text: #f1f5f9;
+  --ds-text-muted: #cbd5e1;
+  --ds-text-light: #94a3b8;
 
-  --bg-card: #1f1f21;
-  --bg-secondary: #2c2c2e;
-  --bg-tertiary: #38383a;
-  --bg-hover: #2c2c2e;
+  --bg-card: #1e293b;
+  --bg-secondary: #334155;
+  --bg-tertiary: #475569;
+  --bg-hover: #334155;
 
-  --surface-raised:  #2c2c2e;
-  --surface-overlay: rgba(0, 0, 0, 0.55);
-  --surface-hover:   #2c2c2e;
+  --surface-raised:  #334155;
+  --surface-overlay: rgba(2, 6, 23, 0.6);
+  --surface-hover:   #334155;
 
-  --border-medium:   #48484a;
-  --border-strong:   #6e6e73;
+  --border-medium:   #475569;
+  --border-strong:   #64748b;
 
-  --switch-bg-off:   #48484a;
-  --switch-thumb:    #f5f5f7;
+  --switch-bg-off:   #475569;
+  --switch-thumb:    #f1f5f9;
 
   --shadow-xs:       0 1px 2px rgba(0, 0, 0, 0.5);
   --shadow-focus:    0 0 0 3px rgba(10, 132, 255, 0.4);

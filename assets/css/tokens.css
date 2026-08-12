@@ -140,15 +140,17 @@
    DARK TOKENS — gris neutres profonds (moins bleutés que l'ancien slate)
    =================================================================== */
 [data-theme="dark"] {
-  --primary-color: #0a84ff;
-  --primary-light: #409cff;
-  --primary-dark: #0071e3;
-  --background-color: #161618;
-  --text-color: #f5f5f7;
-  --text-light: #98989d;
-  --text-muted: #86868b;
-  --white: #1f1f21;
-  --border-color: #38383a;
+  /* Palette sombre COHÉRENTE (échelle slate unique) : fond, surfaces, bordures et textes
+     forment une seule gamme -> fin de l'incohérence gris/slate entre topbar, cartes et fond. */
+  --primary-color: #3b82f6;
+  --primary-light: #60a5fa;
+  --primary-dark: #2563eb;
+  --background-color: #0f172a;  /* canvas */
+  --text-color: #f1f5f9;
+  --text-light: #94a3b8;
+  --text-muted: #94a3b8;
+  --white: #1e293b;             /* surface */
+  --border-color: #334155;
 
   --success-color: #30d158;
   --warning-color: #ff9f0a;
@@ -170,12 +172,12 @@
   --ds-danger-light: #3a1210;
   --ds-info: #64d2ff;
   --ds-info-light: #06344a;
-  --ds-bg: #161618;
-  --ds-surface: #1f1f21;
-  --ds-border: #38383a;
-  --ds-text: #f5f5f7;
-  --ds-text-muted: #98989d;
-  --ds-text-light: #6e6e73;
+  --ds-bg: #0f172a;
+  --ds-surface: #1e293b;
+  --ds-border: #334155;
+  --ds-text: #f1f5f9;
+  --ds-text-muted: #cbd5e1;
+  --ds-text-light: #94a3b8;
   --ds-shadow: 0 1px 2px rgba(0,0,0,.5);
   --ds-shadow-md: 0 4px 12px rgba(0,0,0,.5);
   --ds-shadow-lg: 0 12px 34px rgba(0,0,0,.6);
@@ -191,11 +193,18 @@
   --primary-bg: rgba(10, 132, 255, 0.10);
 
   /* ── Surfaces & textes (sombre) — corrige les modules qui utilisaient ces alias ── */
-  --bg-card: #1f1f21;
-  --bg-secondary: #2c2c2e;
-  --bg-tertiary: #38383a;
-  --bg-hover: #2c2c2e;
-  --text-primary: #f5f5f7;
-  --text-secondary: #98989d;
-  --border: #38383a;
+  --bg-card: #1e293b;
+  --bg-secondary: #334155;
+  --bg-tertiary: #475569;
+  --bg-hover: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --border: #334155;
+
+  /* Tokens sémantiques du design-system, alignés sur la même gamme slate (au cas où une
+     page les utilise avant la couche design-system/). */
+  --surface-card: #1e293b;
+  --surface-muted: #334155;
+  --border-light: #334155;
+  --border-medium: #475569;
 }
