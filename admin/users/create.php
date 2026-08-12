@@ -127,6 +127,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && hash_equals($csrf_token, $_POST['cs
     }
 }
 
+// Repopulation des champs après une erreur de validation : sinon l'admin ressaisit
+// tout le formulaire. On ne repeuple QUE si la création a échoué ($error), pas après
+// un succès (le formulaire doit alors se vider pour créer un compte suivant).
+$repost = !empty($error);
+$old = fn(string $k, string $d = ''): string => htmlspecialchars($repost ? (string) ($_POST[$k] ?? $d) : $d);
+$sel = fn(string $k, string $v): string => ($repost && (string) ($_POST[$k] ?? '') === $v) ? 'selected' : '';
+
 $pageTitle = 'Ajouter un utilisateur';
 $currentPage = 'users_create';
 $extraCss = ['../../assets/css/admin.css'];
@@ -181,15 +188,15 @@ include __DIR__ . '/../includes/header.php';
         <!-- Champs communs -->
         <h3><i class="fas fa-id-card"></i> Informations générales</h3>
         <div class="form-row">
-            <div class="form-group"><label>Nom *</label><input type="text" name="nom" required></div>
-            <div class="form-group"><label>Prénom *</label><input type="text" name="prenom" required></div>
+            <div class="form-group"><label>Nom *</label><input type="text" name="nom" value="<?= $old('nom') ?>" required></div>
+            <div class="form-group"><label>Prénom *</label><input type="text" name="prenom" value="<?= $old('prenom') ?>" required></div>
         </div>
         <div class="form-row">
-            <div class="form-group"><label>Email *</label><input type="email" name="mail" required></div>
-            <div class="form-group"><label>Téléphone</label><input type="text" name="telephone" placeholder="06 12 34 56 78"></div>
+            <div class="form-group"><label>Email *</label><input type="email" name="mail" value="<?= $old('mail') ?>" required></div>
+            <div class="form-group"><label>Téléphone</label><input type="text" name="telephone" value="<?= $old('telephone') ?>" placeholder="06 12 34 56 78"></div>
         </div>
         <div class="form-row">
-            <div class="form-group"><label>Adresse</label><input type="text" name="adresse"></div>
+            <div class="form-group"><label>Adresse</label><input type="text" name="adresse" value="<?= $old('adresse') ?>"></div>
         </div>
 
         <!-- Champs élève -->
@@ -200,12 +207,12 @@ include __DIR__ . '/../includes/header.php';
                     <select name="classe">
                         <option value="">Sélectionner…</option>
                         <?php foreach ($classesList as $c): ?>
-                        <option value="<?= htmlspecialchars($c) ?>"><?= htmlspecialchars($c) ?></option>
+                        <option value="<?= htmlspecialchars($c) ?>" <?= $sel('classe', $c) ?>><?= htmlspecialchars($c) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="form-group"><label>Date de naissance *</label><input type="date" name="date_naissance"></div>
-                <div class="form-group"><label>Lieu de naissance</label><input type="text" name="lieu_naissance"></div>
+                <div class="form-group"><label>Date de naissance *</label><input type="date" name="date_naissance" value="<?= $old('date_naissance') ?>"></div>
+                <div class="form-group"><label>Lieu de naissance</label><input type="text" name="lieu_naissance" value="<?= $old('lieu_naissance') ?>"></div>
             </div>
         </div>
 
@@ -217,7 +224,7 @@ include __DIR__ . '/../includes/header.php';
                     <select name="matiere">
                         <option value="">Sélectionner…</option>
                         <?php foreach ($matieresList as $m): ?>
-                        <option value="<?= htmlspecialchars($m) ?>"><?= htmlspecialchars($m) ?></option>
+                        <option value="<?= htmlspecialchars($m) ?>" <?= $sel('matiere', $m) ?>><?= htmlspecialchars($m) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -234,7 +241,7 @@ include __DIR__ . '/../includes/header.php';
         <div class="dynamic-fields" id="fields-parent">
             <h3><i class="fas fa-users"></i> Informations parent</h3>
             <div class="form-row">
-                <div class="form-group"><label>Métier</label><input type="text" name="metier"></div>
+                <div class="form-group"><label>Métier</label><input type="text" name="metier" value="<?= $old('metier') ?>"></div>
                 <div class="form-group"><label>Parent d'élève</label>
                     <select name="est_parent_eleve"><option value="non">Non</option><option value="oui">Oui</option></select>
                 </div>
@@ -330,6 +337,11 @@ function selectProfil(profil) {
     if (rolesBox) rolesBox.classList.toggle('visible', staff);
     filterRolesByAccount(profil);
 }
+<?php if ($repost && !empty($_POST['profil'])): ?>
+// Erreur de validation : restaurer le profil choisi et sa section (sinon les champs
+// spécifiques restent masqués alors qu'ils sont repeuplés côté serveur).
+try { selectProfil(<?= json_encode((string) $_POST['profil']) ?>); } catch (e) {}
+<?php endif; ?>
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
