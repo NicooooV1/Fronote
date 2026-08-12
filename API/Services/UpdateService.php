@@ -223,13 +223,9 @@ class UpdateService
             $steps[] = 'Sync modules : échec — ' . $e->getMessage();
         }
 
-        // 4b) Synchroniser le catalogue de rôles RBAC (rbac_roles + grants rôle→permission).
-        try {
-            $rs = (new \API\Security\RoleSync(getPDO()))->sync();
-            $steps[] = sprintf('Rôles RBAC : %d rôle(s), %d permission(s) synchronisé(es)', $rs['roles'], $rs['grants']);
-        } catch (\Throwable $e) {
-            $steps[] = 'Sync rôles RBAC : échec — ' . $e->getMessage();
-        }
+        // 4b) (Retiré) Ancienne synchro rbac_roles/rbac_permissions : le catalogue en
+        // code (RoleCatalog) fait foi ; les déviations globales vivent dans rbac_grants.
+        // Plus aucune table miroir à réconcilier.
 
         // 4c) Rafraîchir le miroir d'identité `accounts` depuis les tables héritées (unification
         //     d'identité : additif/idempotent, N'altère PAS l'authentification courante).

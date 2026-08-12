@@ -139,16 +139,15 @@ if (!function_exists('isVieScolaire')) {
 if (!function_exists('hasPermission')) {
 	/**
 	 * Vérifie si l'utilisateur connecté a la permission pour une action donnée.
-	 * Délègue au système RBAC centralisé (API\Security\RBAC).
-	 * Accepte les formats legacy "notes" et RBAC "notes.manage".
+	 * Délègue au moteur UNIQUE can() (catalogue RoleCatalog + surcharges plateforme
+	 * rbac_grants). Accepte les formats legacy "notes" et catalogue "notes.manage".
 	 * @param string $action Clé de permission
 	 * @return bool
 	 */
 	function hasPermission(string $action): bool {
 		// Format legacy "notes" → permission "notes.manage" (gestion). Route via can()
-		// unifié : catalogue/authz (rôles effectifs base + attribués, résolution .manage)
-		// d'abord, repli RBAC legacy ensuite. Zéro régression, et les rôles attribués
-		// (cpe, infirmerie, professeur_principal…) satisfont désormais canManageX().
+		// unifié : catalogue/authz (rôles effectifs base + attribués, résolution .manage).
+		// Les rôles attribués (cpe, infirmerie, professeur_principal…) satisfont canManageX().
 		$perm = str_contains($action, '.') ? $action : ($action . '.manage');
 		return can($perm);
 	}
@@ -156,15 +155,12 @@ if (!function_exists('hasPermission')) {
 
 /**
  * Fonctions legacy de vérification de permissions par module.
- * @deprecated DEPUIS 3.0 — utiliser :
- *   - `app('rbac')->can($userId, $userType, 'module', 'action')` pour une vérif fine,
- *   - ou `hasPermission('module.action')` côté code applicatif.
+ * @deprecated Préférer `hasPermission('module.action')` ou `can('domaine.action')`.
  *
- * Conservées pour compatibilité ascendante : elles doublent la matrice RBAC dynamique
- * (table `module_permissions`). Risque connu : un admin qui décoche `can_edit` dans la
- * matrice peut être contredit par une de ces fonctions si la logique du module n'utilise
- * que `canManageX()` au lieu de la matrice. Toute nouvelle écriture DOIT passer par
- * `app('rbac')->can()` avec module + action explicites.
+ * Conservées pour compatibilité ascendante : elles délèguent toutes à hasPermission()
+ * → can() (moteur unique, catalogue RoleCatalog + rbac_grants). Aucune dépendance à
+ * l'ancien RBAC ni à une matrice DB : « ce qu'un rôle peut faire » est central et
+ * éditable depuis la plateforme.
  *
  * Définies inline (pas d'eval, pas de cache fichier) pour éviter les problèmes de
  * permissions sur storage/cache/ entre l'utilisateur d'install et www-data.

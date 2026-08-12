@@ -53,11 +53,11 @@ function simLookupUser(PDO $pdo, string $type, int $id): ?array
     } catch (\Throwable $e) { return null; }
 }
 
-/** Le rôle accorde-t-il la permission (catalogue + surcharge DB) ? — pour expliquer le « pourquoi ». */
+/** Le rôle accorde-t-il la permission (catalogue + surcharge plateforme rbac_grants) ? — pour expliquer le « pourquoi ». */
 function simRoleGrants(PDO $pdo, string $role, string $permission): bool
 {
     try {
-        $st = $pdo->prepare("SELECT granted FROM rbac_permissions WHERE role = ? AND permission = ? LIMIT 1");
+        $st = $pdo->prepare("SELECT granted FROM rbac_grants WHERE role = ? AND permission = ? LIMIT 1");
         $st->execute([$role, $permission]);
         $g = $st->fetchColumn();
         if ($g !== false) return (int) $g === 1;

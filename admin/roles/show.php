@@ -31,10 +31,10 @@ $expanded = RoleCatalog::permissionsFor($roleKey);            // étendu (wildca
 $allPerms = RoleCatalog::permissions();
 $hasStar  = in_array('*', $grants, true);
 
-// Surcharges en base (matrice éditable) pour ce rôle.
+// Surcharges GLOBALES éditées côté plateforme (rbac_grants) pour ce rôle.
 $overrides = [];
 try {
-    $st = $pdo->prepare("SELECT permission, granted FROM rbac_permissions WHERE role = ?");
+    $st = $pdo->prepare("SELECT permission, granted FROM rbac_grants WHERE role = ?");
     $st->execute([$roleKey]);
     foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $o) { $overrides[$o['permission']] = (int) $o['granted']; }
 } catch (\Throwable $e) { /* table absente */ }

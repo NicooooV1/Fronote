@@ -989,24 +989,13 @@ CREATE OR REPLACE VIEW `v_users` AS
   UNION ALL
   SELECT id, prenom, nom, CONCAT(prenom, ' ', nom), 'administrateur' FROM administrateurs;
 
--- ============================================================
--- M99 : RBAC Permissions dynamiques
--- ============================================================
-CREATE TABLE `rbac_permissions` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `role` VARCHAR(50) NOT NULL,
-  `permission` VARCHAR(100) NOT NULL,
-  `granted` TINYINT(1) NOT NULL DEFAULT 1,
-  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY `uk_role_permission` (`role`, `permission`),
-  INDEX `idx_role` (`role`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- NOTE refonte rôles : table `rbac_permissions` supprimée (ancien miroir
+-- rôle→permission, jamais lu par le moteur d'autorisation). Le catalogue en code
+-- (RoleCatalog) fait foi ; les déviations globales vivent dans `rbac_grants`.
 
 -- ============================================================
 -- RBAC : matrice GLOBALE rôle->permission gouvernée par la PLATEFORME.
--- Contrairement à rbac_permissions (surcharge par établissement), cette table
--- est UNIQUE pour tout le parc (pas de etablissement_id) et démarre VIDE :
+-- Table UNIQUE pour tout le parc (pas de etablissement_id) qui démarre VIDE :
 -- le catalogue en code (RoleCatalog::grantsFor) reste la source de vérité, et
 -- une ligne ici n'est qu'une DÉVIATION (force-grant granted=1 / force-deny 0).
 -- Éditée via platform/roles.php (permission platform.rbac.manage). Le deny (0)

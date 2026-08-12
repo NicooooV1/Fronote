@@ -5,7 +5,6 @@ namespace API\Providers;
 
 use API\Core\ServiceProvider;
 use API\Security\CSRF;
-use API\Security\RBAC;
 use API\Security\RateLimiter;
 use API\Security\Validator;
 use API\Security\PasswordPolicy;
@@ -42,17 +41,8 @@ class SecurityServiceProvider extends ServiceProvider
             return new Validator();
         });
 
-        // Enregistrer RBAC
-        $this->app->singleton('rbac', function($app) {
-            $pdo = $app->make('db')->getConnection();
-            $rbac = new RBAC($pdo);
-            // Sync avec l'utilisateur de la session s'il existe
-            $user = $app->make('auth')->user();
-            if ($user) {
-                $rbac->setUser($user);
-            }
-            return $rbac;
-        });
+        // (Retiré) Ancien RBAC : l'autorisation passe désormais par l'unique moteur
+        // Authorization (app('authz')) contre le catalogue RoleCatalog + rbac_grants.
 
         // Enregistrer PasswordPolicy
         $this->app->singleton('password_policy', function($app) {
