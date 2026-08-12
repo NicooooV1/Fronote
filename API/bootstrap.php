@@ -476,6 +476,29 @@ $app->singleton('absences', function($app) {
 	require_once dirname(__DIR__) . '/modules/absences/Services/AbsenceService.php';
 	return new \Modules\Absences\Services\AbsenceService($app->make('db')->getConnection());
 });
+// Services scolaires additionnels (vrais services dans les modules) exposés au conteneur
+// cœur pour les pages d'administration scolaire (leurs providers de module ne sont pas
+// chargés hors contexte module) : notes, matieres, periodes, evenements, devoirs.
+$app->singleton('notes', function($app) {
+	require_once dirname(__DIR__) . '/modules/notes/Services/NoteService.php';
+	return new \Modules\Notes\Services\NoteService($app->make('db')->getConnection());
+});
+$app->singleton('matieres', function($app) {
+	require_once dirname(__DIR__) . '/modules/emploi_du_temps/Services/MatiereService.php';
+	return new \Modules\EmploiDuTemps\Services\MatiereService($app->make('db')->getConnection());
+});
+$app->singleton('periodes', function($app) {
+	require_once dirname(__DIR__) . '/modules/emploi_du_temps/Services/PeriodeService.php';
+	return new \Modules\EmploiDuTemps\Services\PeriodeService($app->make('db')->getConnection());
+});
+$app->singleton('evenements', function($app) {
+	require_once dirname(__DIR__) . '/modules/agenda/Services/EvenementService.php';
+	return new \Modules\Agenda\Services\EvenementService($app->make('db')->getConnection());
+});
+$app->singleton('devoirs', function($app) {
+	require_once dirname(__DIR__) . '/modules/devoirs/Services/DevoirService.php';
+	return new \Modules\Devoirs\Services\DevoirService($app->make('db')->getConnection());
+});
 
 // Theme Service (core — theming applicatif)
 $app->singleton('themes', function($app) {
