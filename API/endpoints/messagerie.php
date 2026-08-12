@@ -349,7 +349,7 @@ function handleConversations(string $action, array $user): void {
             break;
 
         default:
-            throw new Exception("Action '{$action}' inconnue pour les conversations");
+            throw new \InvalidArgumentException("Action '{$action}' inconnue pour les conversations");
     }
 }
 
@@ -551,7 +551,7 @@ function handleMessages(string $action, array $user): void {
             break;
 
         default:
-            throw new Exception("Action '{$action}' inconnue pour les messages");
+            throw new \InvalidArgumentException("Action '{$action}' inconnue pour les messages");
     }
 }
 
@@ -633,7 +633,7 @@ function handleParticipants(string $action, array $user): void {
             break;
 
         default:
-            throw new Exception("Action '{$action}' inconnue pour les participants");
+            throw new \InvalidArgumentException("Action '{$action}' inconnue pour les participants");
     }
 }
 
@@ -664,7 +664,7 @@ function handleReactions(string $action, array $user): void {
             break;
 
         default:
-            throw new Exception("Action '{$action}' inconnue pour les réactions");
+            throw new \InvalidArgumentException("Action '{$action}' inconnue pour les réactions");
     }
 }
 
@@ -680,7 +680,7 @@ function handleNotifications(string $action, array $user): void {
             break;
 
         default:
-            throw new Exception("Action '{$action}' inconnue pour les notifications");
+            throw new \InvalidArgumentException("Action '{$action}' inconnue pour les notifications");
     }
 }
 
