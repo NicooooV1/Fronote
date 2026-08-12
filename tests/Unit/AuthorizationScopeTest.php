@@ -47,8 +47,8 @@ final class AuthorizationScopeTest extends TestCase
                 scope_type TEXT, scope_json TEXT, valid_from TEXT, valid_until TEXT
             )'
         );
-        // Matrice éditable : présente mais vide → can() retombe sur le catalogue (RoleCatalog).
-        $this->pdo->exec('CREATE TABLE rbac_permissions (role TEXT, permission TEXT, granted INTEGER)');
+        // Déviations plateforme : présentes mais vides → can() retombe sur le catalogue (RoleCatalog).
+        $this->pdo->exec('CREATE TABLE rbac_grants (role TEXT, permission TEXT, granted INTEGER)');
         $this->pdo->exec(
             'CREATE TABLE audit_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, action TEXT, model TEXT, model_id INTEGER,

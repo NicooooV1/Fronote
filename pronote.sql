@@ -1010,21 +1010,8 @@ CREATE TABLE `rbac_grants` (
   PRIMARY KEY (`role`, `permission`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ============================================================
--- RBAC : catalogue des rôles (source de vérité = RoleCatalog en code,
--- synchronisé ici par RoleSync). Voir API/Security/Authorization.php.
--- ============================================================
-CREATE TABLE `rbac_roles` (
-  `role_key`    VARCHAR(50)  NOT NULL,
-  `label`       VARCHAR(120) NOT NULL,
-  `tier`        VARCHAR(40)  NOT NULL DEFAULT 'autre',
-  `is_system`   TINYINT(1)   NOT NULL DEFAULT 0,
-  `sensitive`   TINYINT(1)   NOT NULL DEFAULT 0,
-  `description` TEXT         DEFAULT NULL,
-  `created_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`role_key`),
-  KEY `idx_tier` (`tier`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- NOTE refonte rôles : table `rbac_roles` supprimée (miroir du catalogue de rôles,
+-- écrit par l'ancien RoleSync, jamais lu). RoleCatalog en code est la seule référence.
 
 -- ============================================================
 -- RBAC : attribution multi-rôles à un utilisateur, scopée (établissement / classes /

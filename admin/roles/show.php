@@ -2,7 +2,7 @@
 declare(strict_types=1);
 /**
  * Détail d'un rôle du catalogue : périmètre, permissions accordées (catalogue +
- * surcharges DB rbac_permissions), et titulaires. Lecture seule.
+ * surcharges plateforme rbac_grants), et titulaires. Lecture seule.
  */
 require_once __DIR__ . '/../../API/core.php';
 require_once __DIR__ . '/../includes/admin_functions.php';

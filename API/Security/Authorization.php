@@ -21,8 +21,8 @@ use PDO;
  * scopés (établissement, classes, élèves assignés) et limités dans le temps.
  *
  * Les permissions par rôle proviennent de RoleCatalog (source de vérité en code),
- * synchronisées en base (rbac_permissions) par RoleSync. can() retombe sur le
- * catalogue si la base est indisponible.
+ * surchargées par les déviations GLOBALES rbac_grants éditées côté plateforme.
+ * can() retombe sur le catalogue si la base est indisponible.
  */
 final class Authorization
 {
@@ -241,8 +241,8 @@ final class Authorization
 
     // ───────────────────────── interne ─────────────────────────
 
-    /** Un rôle accorde-t-il une permission ? La matrice ÉDITABLE (rbac_permissions) prime
-     *  sur le catalogue : c'est ce qui rend les permissions réellement gérables côté admin. */
+    /** Un rôle accorde-t-il une permission ? Les déviations plateforme (rbac_grants) priment
+     *  sur le catalogue : c'est ce qui rend les permissions réellement gérables centralement. */
     private function roleGrants(string $role, string $permission): bool
     {
         // Forme canonique du rôle (alias tenant/variantes → clé canonique du catalogue).
