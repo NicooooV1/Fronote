@@ -93,13 +93,21 @@ class SignalementService
             $message = "Un signalement de niveau {$data['urgence']} a été déposé. Intervention requise.";
             $lien = '/signalements/detail.php?id=' . $signalementId;
 
-            // Notify all admins and CPE
-            $admins = $this->pdo->query("SELECT id FROM administrateurs WHERE actif = 1")->fetchAll(\PDO::FETCH_COLUMN);
+            // Notify admins and CPE — CLOISONNÉS à l'établissement du signalement.
+            // Sans ce filtre, un signalement urgent (harcèlement/violence) d'un établissement
+            // alertait les admins/CPE de TOUS les établissements (fuite cross-tenant + pollution).
+            $etabNotif = \API\Core\EstablishmentContext::id();
+
+            $adminStmt = $this->pdo->prepare("SELECT id FROM administrateurs WHERE actif = 1 AND etablissement_id = ?");
+            $adminStmt->execute([$etabNotif]);
+            $admins = $adminStmt->fetchAll(\PDO::FETCH_COLUMN);
             foreach ($admins as $adminId) {
                 $notifService->creer((int) $adminId, 'administrateur', 'signalement_urgent', $titre, $message, $lien, 'haute');
             }
 
-            $cpe = $this->pdo->query("SELECT id FROM vie_scolaire WHERE actif = 1")->fetchAll(\PDO::FETCH_COLUMN);
+            $cpeStmt = $this->pdo->prepare("SELECT id FROM vie_scolaire WHERE actif = 1 AND etablissement_id = ?");
+            $cpeStmt->execute([$etabNotif]);
+            $cpe = $cpeStmt->fetchAll(\PDO::FETCH_COLUMN);
             foreach ($cpe as $cpeId) {
                 $notifService->creer((int) $cpeId, 'vie_scolaire', 'signalement_urgent', $titre, $message, $lien, 'haute');
             }

@@ -58,7 +58,16 @@ class PeriscolaireService
 
     public function desinscrire(int $inscriptionId): void
     {
-        $this->pdo->prepare("UPDATE inscriptions_periscolaire SET statut = 'annule', date_fin = CURDATE() WHERE id = ?")->execute([$inscriptionId]);
+        // Cloisonnement tenant : inscriptions_periscolaire n'a pas d'etablissement_id,
+        // le scoping passe par services_periscolaires. Sans ce JOIN, un gestionnaire
+        // pouvait annuler l'inscription d'un AUTRE établissement (IDOR cross-tenant).
+        $stmt = $this->pdo->prepare(
+            "UPDATE inscriptions_periscolaire ip
+             JOIN services_periscolaires sp ON ip.service_id = sp.id
+             SET ip.statut = 'annule', ip.date_fin = CURDATE()
+             WHERE ip.id = ? AND sp.etablissement_id = ?"
+        );
+        $stmt->execute([$inscriptionId, \API\Core\EstablishmentContext::id()]);
     }
 
     public function getInscriptions(int $serviceId): array
@@ -86,7 +95,9 @@ class PeriscolaireService
 
     public function enregistrerPresence(int $inscriptionId, string $date, bool $present): void
     {
-        $stmt = $this->pdo->prepare("INSERT INTO presences_periscolaire (inscription_id, date, present) VALUES (?,?,?) ON DUPLICATE KEY UPDATE present = VALUES(present)");
+        // Colonne réelle = date_presence (la clé unique uk_insc_date porte sur inscription_id+date_presence).
+        // L'ancien nom `date` (inexistant) faisait échouer chaque enregistrement (Unknown column 'date').
+        $stmt = $this->pdo->prepare("INSERT INTO presences_periscolaire (inscription_id, date_presence, present) VALUES (?,?,?) ON DUPLICATE KEY UPDATE present = VALUES(present)");
         $stmt->execute([$inscriptionId, $date, $present ? 1 : 0]);
     }
 
