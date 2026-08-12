@@ -123,6 +123,13 @@
   --text-primary: #1d1d1f;
   --text-secondary: #6e6e73;
   --border: #e5e5ea;
+  /* Alias de SURFACE oubliés : 22+ CSS de module écrivent var(--card-bg,#fff) / var(--surface,#fff)
+     / var(--bg,#fff) — jamais définis → cartes BLANCHES en sombre/liquide (texte clair illisible).
+     Référencent --bg-card → s'adaptent automatiquement à chaque thème. */
+  --card-bg: var(--bg-card);
+  --surface: var(--bg-card);
+  --bg: var(--bg-card);
+  --card-border: var(--border-color);
 
   /* ── Spacing (4px grid, used by utility classes) ── */
   --sp-1: 4px;
