@@ -319,7 +319,9 @@ if (!function_exists('requireCapability')) {
 		$script  = $_SERVER['SCRIPT_NAME'] ?? '?';
 		$current = implode(', ', getEffectiveRoles()) ?: '(non authentifié)';
 		if (session_status() === PHP_SESSION_ACTIVE) {
-			$_SESSION['error_message'] = "Accès refusé sur {$script} : capacité requise = [{$permission}], rôles actuels = [{$current}].";
+			// Message UTILISATEUR (propre) ; le détail technique (script/permission/rôles) reste
+			// dans error_log ci-dessous — ne pas exposer les noms de permissions internes.
+			$_SESSION['error_message'] = "Vous n'avez pas accès à cette page.";
 		}
 		error_log("[requireCapability] denied script={$script} perm={$permission} roles=[{$current}]");
 		if (!headers_sent()) {
@@ -362,7 +364,7 @@ if (!function_exists('enforceModuleAccess')) {
 		$script  = $_SERVER['SCRIPT_NAME'] ?? '?';
 		$current = $roles ? implode(', ', $roles) : '(non authentifié)';
 		if (session_status() === PHP_SESSION_ACTIVE) {
-			$_SESSION['error_message'] = "Accès refusé au module « {$moduleKey} » (rôles : {$current}).";
+			$_SESSION['error_message'] = "Vous n'avez pas accès à ce module.";
 		}
 		error_log("[enforceModuleAccess] denied module={$moduleKey} script={$script} roles=[{$current}]");
 		if (!headers_sent()) {

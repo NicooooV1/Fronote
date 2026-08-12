@@ -146,6 +146,7 @@ include __DIR__ . '/../includes/header.php';
 </div>
 
 <script src="<?= asset_url('assets/lib/chartjs/chart.umd.min.js') ?>" nonce="<?= csp_nonce() ?>"></script>
+<script src="<?= asset_url('assets/js/chart-empty-state.js') ?>" nonce="<?= csp_nonce() ?>"></script>
 <script nonce="<?= csp_nonce() ?>">
 document.addEventListener('DOMContentLoaded', function(){
     const colors = ['#0f4c81','#2d7d46','#b45309','#6b21a8','#dc2626'];

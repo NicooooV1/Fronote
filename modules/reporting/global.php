@@ -138,6 +138,7 @@ $topIncidents    = $reportService->getTopIncidents();
 </div>
 
 <script src="<?= asset_url('assets/lib/chartjs/chart.umd.min.js') ?>" nonce="<?= csp_nonce() ?>"></script>
+<script src="<?= asset_url('assets/js/chart-empty-state.js') ?>" nonce="<?= csp_nonce() ?>"></script>
 <script nonce="<?= csp_nonce() ?>">
 // ------ Data prep ------
 <?php
