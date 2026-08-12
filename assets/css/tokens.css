@@ -129,6 +129,7 @@
   --card-bg: var(--bg-card);
   --surface: var(--bg-card);
   --bg: var(--bg-card);
+  --bg-muted: var(--bg-secondary);
   --card-border: var(--border-color);
 
   /* ── Spacing (4px grid, used by utility classes) ── */
