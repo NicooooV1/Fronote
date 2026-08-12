@@ -161,12 +161,14 @@ a {
   padding: 2px 8px;
   font-size: 11px;
   font-weight: 600;
-  margin-left: auto;
   line-height: 1.3;
   display: inline-block;
   min-width: 18px;
   text-align: center;
 }
+/* margin-left:auto UNIQUEMENT pour le compteur de la sidebar (poussé à droite) — PAS pour le
+   .badge générique, sinon tout badge dans un conteneur flex est écarté vers la droite. */
+.sidebar-badge { margin-left: auto; }
 
 /* Info items in sidebar */
 .info-item { padding: 6px 0; }
