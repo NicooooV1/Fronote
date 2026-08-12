@@ -113,6 +113,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
                     $userService->recordFailedAttempt($ip, $username);
                     $error = __('login.error.invalid_credentials');
                     $_SESSION['last_username'] = $username;
+                    // $lastUsername a été lu (et vidé) en tête de page AVANT ce handler : sans
+                    // cette ligne, le champ se réafficherait VIDE après un échec (même requête).
+                    $lastUsername = $username;
                     try { app('audit')->logAuth('login_failed', (string) $username, false, []); } catch (\Throwable $e) {}
 
                 } elseif (is_array($result) && isset($result[0]) && isset($result[0]['type'])) {
@@ -120,6 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
                     $ambiguous = $result;
                     // Transmettre le username pour le re-submit
                     $_SESSION['last_username'] = $username;
+                    $lastUsername = $username;
 
                 } else {
                     // Un seul compte valide → politique 2FA
