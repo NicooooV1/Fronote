@@ -51,7 +51,10 @@
 }
 .notif-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,.06); }
 .notif-item.notif-unread {
-    background: #eef2ff;
+    /* Teinte primaire subtile calculée sur la carte du thème : lisible en clair, sombre
+       ET liquide (avant, #eef2ff codé en dur restait clair en liquide → texte clair
+       invisible, 1.03:1). Le thème sombre garde sa surcharge dédiée plus bas. */
+    background: color-mix(in srgb, var(--primary-color, #4f46e5) 8%, var(--card-bg, #fff));
     border-left: 4px solid var(--primary, #4f46e5);
 }
 .notif-item.notif-importance-urgente { border-left: 4px solid #ef4444; }
@@ -179,7 +182,7 @@
 
 [data-theme="dark"] .notif-titre { color: #e2e8f0; }
 [data-theme="dark"] .notif-text { color: #94a3b8; }
-[data-theme="dark"] .notif-meta { color: #64748b; }
+[data-theme="dark"] .notif-meta { color: #94a3b8; }
 
 [data-theme="dark"] .empty-state { color: #94a3b8; }
 
