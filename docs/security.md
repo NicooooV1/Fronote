@@ -267,29 +267,24 @@ surcharges globales, avec repli sur le **catalogue de rôles** (`API\Security\Ro
 aucune surcharge n'existe. Objectif : *un rôle = un jeu de permissions*, **modifiable au niveau
 plateforme** sans reporter cette charge sur les dirigeants d'établissement — le panneau
 d'administration n'expose plus qu'une **vue en lecture seule** des permissions effectives
-(catalogue + surcharges). La table `rbac_permissions` (ancien modèle par établissement) subsiste
-pour rétrocompatibilité.
+(catalogue + surcharges globales `rbac_grants`).
 
 ### API
 
+Via les helpers globaux (`API/Legacy/Bridge.php`, qui délèguent à `app('authz')`) :
+
 ```php
-$rbac = app('rbac');
-
-$rbac->can('admin.users');              // bool (avec héritage de rôles)
-$rbac->canAny(['notes.view', 'notes.manage']);
-$rbac->canAll([...]);
-$rbac->authorize('admin.modules');      // HTTP 403 (JSON) ou redirection + exit si refusé
-$rbac->requireAdmin();                  // back-office : administrateur uniquement
-$rbac->requireRole('professeur', 'vie_scolaire');
-
-// Permissions CRUD par module (table module_permissions, colonnes can_view/create/edit/...)
-$rbac->canModule('messagerie', 'send');
-$rbac->canModule('notes', 'create');
+can('admin.users');                       // bool
+authorize('admin.modules');               // HTTP 403 (JSON) ou redirection + exit si refusé
+canOn('notes.view', 'student', $eleveId); // permission SUR une ressource (anti-IDOR)
+requireCapability('module.messagerie.access'); // garde d'entrée de module
+tenantGate('tenant.users.manage');        // page back-office établissement
+hasPermission('notes');                   // pont legacy → can('notes.manage')
 ```
 
-Helpers globaux équivalents : `can()`, `authorize()`, `canModule()`,
-`requireRole(...)` (ce dernier, dans `Bridge.php`, redirige vers l'accueil avec un
-message explicite et journalise le refus).
+Directement sur le moteur : `app('authz')->can()`, `->canAny([...])`, `->canOn()`,
+`->hasCapability()`, `->authorize()`. Les gardes d'entrée `requireCapability()` /
+`tenantGate()` redirigent vers l'accueil avec message explicite et journalisent le refus.
 
 ### Journalisation des refus
 

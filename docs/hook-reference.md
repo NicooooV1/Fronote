@@ -291,15 +291,16 @@ Il n'est branché que là où c'est utile : `NoteCreated`, `AbsenceCreated`,
 
 ### `NotifyParentAbsenceListener` (`API/Events/Listeners/NotifyParentAbsenceListener.php`)
 
-Branché sur `AbsenceCreated`. Envoie un email aux parents — **de façon asynchrone**.
+Branché sur `AbsenceCreated`. Notifie **in-app** les parents de l'élève absent — de
+façon **synchrone** (il n'y a ni file de jobs ni relais e-mail sur ce déploiement).
 Il :
 
-1. vérifie le feature flag `absences.notify_parents` (`app('features')->isEnabled(...)`) ;
-2. met en file un job via `app('queue')->dispatch(\API\Jobs\SendAbsenceNotificationJob::class, [...])`
-   plutôt que d'envoyer dans la requête (ne bloque pas la réponse).
+1. vérifie le feature flag opt-in `absences.notify_parents` (`app('features')->isEnabled(...)`) ;
+2. récupère les parents (`parent_eleve`) et crée une notification via `\NotificationService::creer()` ;
+3. est **fail-safe** : toute erreur est journalisée sans jamais casser la création de l'absence.
 
-> Bon exemple de listener « lourd » : il ne fait que **mettre en queue**, le travail
-> réel est déporté.
+> Bon exemple de listener best-effort : il ne doit **jamais** faire échouer l'action
+> métier qui l'a déclenché (tout est enveloppé dans un `try/catch`).
 
 ---
 
