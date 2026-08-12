@@ -63,6 +63,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        if ($action === 'ouvrir_edt') {
+            // Bouton « Faire l'appel » depuis une case de l'emploi du temps.
+            $edtId = (int)($_POST['edt_id'] ?? 0);
+            $appelId = $edtId > 0 ? $service->findOrCreateAppelFromEdt($edtId, $date, (int)$user['id']) : null;
+            if ($appelId !== null) {
+                header("Location: appel.php?id={$appelId}&date={$date}");
+                exit;
+            }
+            $errors[] = "Ce cours n'est pas dans votre emploi du temps.";
+        }
+
         if ($action === 'sauvegarder' || $action === 'valider') {
             $appelId = (int)($_POST['appel_id'] ?? 0);
             $statuts = $_POST['eleves'] ?? [];

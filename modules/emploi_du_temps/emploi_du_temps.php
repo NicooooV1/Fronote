@@ -69,6 +69,15 @@ $grille = $service->buildGrille($cours);
 $jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'];
 $joursLabels = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
 
+// Dates concrètes de la semaine courante : le professeur ouvre l'appel d'un cours
+// directement depuis sa case d'emploi du temps (le jour de la grille → une date réelle).
+$lundiTs = strtotime('monday this week');
+$jourDates = [];
+foreach ($jours as $i => $j) {
+    $jourDates[$j] = date('Y-m-d', strtotime("+{$i} day", $lundiTs));
+}
+$todayStr = date('Y-m-d');
+
 $pageTitle = 'Emploi du temps';
 $currentPage = 'grille';
 
@@ -230,6 +239,18 @@ include 'includes/header.php';
                                     <?php endif; ?>
                                     <?php if (!empty($c['type_cours']) && $c['type_cours'] !== 'cours'): ?>
                                         <span class="edt-cours-type badge badge-sm"><?= htmlspecialchars(ucfirst($c['type_cours'])) ?></span>
+                                    <?php endif; ?>
+                                    <?php if (isTeacher() && !empty($c['id']) && isset($c['classe_id'])): ?>
+                                        <?php $isToday = ($jourDates[$jour] ?? '') === $todayStr; ?>
+                                        <form method="post" action="../appel/appel.php?date=<?= htmlspecialchars($jourDates[$jour] ?? $todayStr) ?>" class="edt-appel-form">
+                                            <?= csrfField() ?>
+                                            <input type="hidden" name="action" value="ouvrir_edt">
+                                            <input type="hidden" name="edt_id" value="<?= (int)$c['id'] ?>">
+                                            <button type="submit" class="edt-appel-btn<?= $isToday ? ' edt-appel-btn--today' : '' ?>">
+                                                <i class="fas fa-clipboard-check" aria-hidden="true"></i>
+                                                <span>Faire l'appel</span>
+                                            </button>
+                                        </form>
                                     <?php endif; ?>
                                 </div>
                             <?php endif; ?>

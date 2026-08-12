@@ -376,3 +376,44 @@
 [data-theme="dark"] .empty-state h3 {
     color: #e2e8f0;
 }
+
+/* ----- Accès direct à l'appel depuis une case (professeur) ----- */
+.edt-appel-form {
+    margin-top: auto;   /* colle le bouton au bas de la case */
+    padding-top: 4px;
+}
+.edt-appel-btn {
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 5px 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.1;
+    color: var(--primary-color, #0f4c81);
+    background: var(--bg-card, #fff);
+    border: 1px solid var(--primary-color, #0f4c81);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.edt-appel-btn:hover {
+    background: var(--primary-color, #0f4c81);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+/* Cours du jour : bouton plein, mis en avant comme action prioritaire. */
+.edt-appel-btn--today {
+    color: #fff;
+    background: var(--primary-color, #0f4c81);
+}
+.edt-appel-btn--today:hover {
+    background: var(--primary-dark, #0a3962);
+}
+.edt-appel-btn i { font-size: 0.7rem; }
+@media (max-width: 640px) {
+    .edt-appel-btn span { display: none; }   /* icône seule sur mobile étroit */
+    .edt-appel-btn { padding: 6px; }
+}

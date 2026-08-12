@@ -284,6 +284,52 @@ class AppelService
     }
 
     /**
+     * Ouvre (ou crée) l'appel d'UN cours de l'emploi du temps, à une date donnée.
+     * Utilisé par le bouton « Faire l'appel » directement sur une case de l'EDT.
+     *
+     * Anti-IDOR : le cours EDT doit appartenir au professeur et à l'établissement courant
+     * (fail-closed → null sinon). Anti-doublon : réutilise l'appel existant (edt_id + date).
+     *
+     * @return int|null id de l'appel prêt à l'emploi, ou null si le cours n'est pas au professeur.
+     */
+    public function findOrCreateAppelFromEdt(int $edtId, string $date, int $profId): ?int
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT e.*, c.heure_debut, c.heure_fin
+             FROM emploi_du_temps e
+             JOIN creneaux_horaires c ON e.creneau_id = c.id
+             WHERE e.id = ? AND e.professeur_id = ? AND e.actif = 1 AND e.etablissement_id = ?
+             LIMIT 1"
+        );
+        $stmt->execute([$edtId, $profId, \API\Core\EstablishmentContext::id()]);
+        $cours = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$cours) {
+            return null; // cours inexistant ou hors périmètre du professeur
+        }
+
+        // Réutiliser l'appel du jour s'il existe déjà (génér-depuis-EDT, appel manuel, etc.).
+        $check = $this->pdo->prepare(
+            "SELECT id FROM appels WHERE edt_id = ? AND date_appel = ? AND etablissement_id = ? LIMIT 1"
+        );
+        $check->execute([$edtId, $date, \API\Core\EstablishmentContext::id()]);
+        $existing = $check->fetchColumn();
+        if ($existing) {
+            return (int) $existing;
+        }
+
+        return $this->createAppel([
+            'edt_id'        => $edtId,
+            'classe_id'     => $cours['classe_id'],
+            'professeur_id' => $profId,
+            'matiere_id'    => $cours['matiere_id'],
+            'date_appel'    => $date,
+            'heure_debut'   => $cours['heure_debut'],
+            'heure_fin'     => $cours['heure_fin'],
+            'type_appel'    => 'cours',
+        ]);
+    }
+
+    /**
      * Génère les sessions d'appel à partir de l'emploi du temps.
      */
     public function genererAppelsDepuisEDT(int $profId, string $date): array
