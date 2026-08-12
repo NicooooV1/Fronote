@@ -33,8 +33,8 @@
     font-size: .875rem;
     transition: all .2s;
 }
-.filter-btn:hover { background: var(--primary, #4f46e5); color: #fff; }
-.filter-btn.active { background: var(--primary, #4f46e5); color: #fff; }
+.filter-btn:hover { background: var(--primary, #4f46e5); color: var(--text-on-accent, #fff); }
+.filter-btn.active { background: var(--primary, #4f46e5); color: var(--text-on-accent, #fff); }
 
 /* List */
 .notif-list { display: flex; flex-direction: column; gap: .5rem; }
