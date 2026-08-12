@@ -25,7 +25,7 @@
 .vs-stat-warning .vs-stat-icon { background: #fef3c7; color: #d97706; }
 .vs-stat-primary .vs-stat-icon { background: #eef2ff; color: var(--primary, #4f46e5); }
 .vs-stat-info .vs-stat-icon { background: #dbeafe; color: #2563eb; }
-.vs-stat-secondary .vs-stat-icon { background: #f1f5f9; color: #64748b; }
+.vs-stat-secondary .vs-stat-icon { background: #f1f5f9; color: #94a3b8; }
 .vs-stat-value { display: block; font-size: 1.5rem; font-weight: 700; line-height: 1; }
 .vs-stat-label { font-size: .8rem; color: var(--text-secondary, #64748b); }
 

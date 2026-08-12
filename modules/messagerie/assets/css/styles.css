@@ -690,7 +690,7 @@ main h2 { font-size: 20px; margin-bottom: 20px; color: #212529; font-weight: 500
 [data-theme="dark"] .badge-secondary { background-color: #475569; color: #ffffff; }
 
 /* ── Empty states ── */
-[data-theme="dark"] .empty-state i { color: #64748b; }
+[data-theme="dark"] .empty-state i { color: #94a3b8; }
 [data-theme="dark"] .empty-state p { color: #94a3b8; }
 
 /* ── Formulaires ── */
@@ -717,7 +717,7 @@ main h2 { font-size: 20px; margin-bottom: 20px; color: #212529; font-weight: 500
 [data-theme="dark"] textarea:focus {
     border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
 }
-[data-theme="dark"] ::placeholder { color: #64748b; }
+[data-theme="dark"] ::placeholder { color: #94a3b8; }
 
 /* ── Sélection des destinataires ── */
 [data-theme="dark"] .multiselect-container { border-color: #334155; }

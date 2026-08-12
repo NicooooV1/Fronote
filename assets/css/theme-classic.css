@@ -1850,7 +1850,7 @@ a {
   background: rgba(255,255,255,0.05);
   border-color: #1e293b;
 }
-[data-theme="dark"] .sidebar-category-header { color: #64748b; }
+[data-theme="dark"] .sidebar-category-header { color: #94a3b8; }
 [data-theme="dark"] .sidebar-highlight { background: rgba(96,165,250,0.25); }
 [data-theme="dark"] .sidebar--collapsed .sidebar-collapse-btn {
   background: #1e293b; border-color: #334155;
@@ -1929,7 +1929,7 @@ a {
 }
 [data-theme="dark"] .form-control::placeholder,
 [data-theme="dark"] input::placeholder,
-[data-theme="dark"] textarea::placeholder { color: #64748b; }
+[data-theme="dark"] textarea::placeholder { color: #94a3b8; }
 
 /* Dark alerts */
 [data-theme="dark"] .alert-success {
@@ -1978,7 +1978,7 @@ a {
 [data-theme="dark"] .mod-card.core { border-left-color: #3b82f6; }
 [data-theme="dark"] .mod-icon { background: #1e3a5f; color: #7cb2ff; }
 [data-theme="dark"] .mod-name { color: #e2e8f0; }
-[data-theme="dark"] .mod-desc { color: #64748b; }
+[data-theme="dark"] .mod-desc { color: #94a3b8; }
 [data-theme="dark"] .mod-category-title { color: #94a3b8; border-bottom-color: #334155; }
 
 /* Dark toggle */
@@ -2024,7 +2024,7 @@ a {
 [data-theme="dark"] .theme-option.selected { border-color: #3b82f6; background: #1e3a5f; }
 [data-theme="dark"] .notif-option { border-color: #334155; }
 [data-theme="dark"] .notif-info strong { color: #e2e8f0; }
-[data-theme="dark"] .notif-info p { color: #64748b; }
+[data-theme="dark"] .notif-info p { color: #94a3b8; }
 
 /* Dark summary cards */
 [data-theme="dark"] .summary-card { background: #1e293b; border-color: #334155; }
@@ -2033,7 +2033,7 @@ a {
 [data-theme="dark"] .module-card { background: #1e293b; border-color: #334155; }
 [data-theme="dark"] .module-card:hover { border-color: #3b82f6; }
 [data-theme="dark"] .module-card h3 { color: #e2e8f0; }
-[data-theme="dark"] .module-card p { color: #64748b; }
+[data-theme="dark"] .module-card p { color: #94a3b8; }
 
 /* Dark widget cards */
 [data-theme="dark"] .widget-card,
@@ -2042,7 +2042,7 @@ a {
 }
 
 /* Dark topbar */
-[data-theme="dark"] .logout-button { color: #64748b; }
+[data-theme="dark"] .logout-button { color: #94a3b8; }
 [data-theme="dark"] .logout-button:hover { color: #ef4444; }
 [data-theme="dark"] .admin-topbar-link { color: #7cb2ff; background: rgba(59,130,246,0.1); }
 [data-theme="dark"] .admin-topbar-link:hover { background: #2563eb; color: white; }

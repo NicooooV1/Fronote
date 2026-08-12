@@ -1672,7 +1672,7 @@
 }
 
 [data-theme="dark"] .calendar-day.other-month .calendar-day-number {
-  color: #64748b;
+  color: #94a3b8;
 }
 
 [data-theme="dark"] .calendar-day-number {
@@ -1699,7 +1699,7 @@
 }
 
 [data-theme="dark"] .timeline-hour {
-  color: #64748b;
+  color: #94a3b8;
   border-bottom-color: #334155;
 }
 
@@ -1721,7 +1721,7 @@
 }
 
 [data-theme="dark"] .week-day-name {
-  color: #64748b;
+  color: #94a3b8;
 }
 
 [data-theme="dark"] .week-day-date {
@@ -1773,7 +1773,7 @@
 }
 
 [data-theme="dark"] .event-list-date .month {
-  color: #64748b;
+  color: #94a3b8;
 }
 
 [data-theme="dark"] .event-list-meta {

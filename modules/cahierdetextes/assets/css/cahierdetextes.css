@@ -853,7 +853,7 @@ textarea.form-control {
 [data-theme="dark"] .popover-meta,
 [data-theme="dark"] .pagination-info,
 [data-theme="dark"] .fichier-taille {
-  color: #64748b;
+  color: #94a3b8;
 }
 
 /* --- En-tête de carte / bordures --- */
@@ -982,7 +982,7 @@ textarea.form-control {
 }
 
 [data-theme="dark"] .search-bar input[type="text"]::placeholder {
-  color: #64748b;
+  color: #94a3b8;
 }
 
 [data-theme="dark"] .search-bar input[type="text"]:focus {
@@ -992,7 +992,7 @@ textarea.form-control {
 
 /* --- Bouton « fait » (élève) --- */
 [data-theme="dark"] .btn-fait {
-  color: #64748b;
+  color: #94a3b8;
 }
 
 [data-theme="dark"] .btn-fait:hover {
@@ -1016,7 +1016,7 @@ textarea.form-control {
 }
 
 [data-theme="dark"] .upload-zone i {
-  color: #64748b;
+  color: #94a3b8;
 }
 
 [data-theme="dark"] .upload-zone p {

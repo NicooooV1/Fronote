@@ -131,7 +131,7 @@
 [data-theme="dark"] .rdv-info p,
 [data-theme="dark"] .conv-content p,
 [data-theme="dark"] .reunion-description { color: #94a3b8; }
-[data-theme="dark"] .conv-meta { color: #64748b; }
+[data-theme="dark"] .conv-meta { color: #94a3b8; }
 
 [data-theme="dark"] .reunion-description { border-top-color: #334155; }
 [data-theme="dark"] .pv-content { background: #273449; color: #e2e8f0; }
