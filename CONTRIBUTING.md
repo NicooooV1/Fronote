@@ -25,7 +25,7 @@ traduite sans rien casser.
 **Un module NE PEUT PAS :**
 - Modifier un fichier de `API/` (cela exige une PR core relue)
 - Ajouter un singleton dans `API/bootstrap.php`
-- Modifier `RBAC::PERMISSIONS` directement
+- Éditer le catalogue de rôles `API\Security\RoleCatalog` ou la table `rbac_grants` (permissions gouvernées côté plateforme)
 - Ajouter une méthode métier à `API/Core/WebSocket.php`
 - Interroger la table d'un autre module sans passer par son service public
 
@@ -178,8 +178,8 @@ juste après `SchemaSyncService`. Modèle complet et pièges dans **[docs/UPDATI
    `ADD COLUMN`, jamais de `DROP`), lue depuis `pronote.sql` + `install.sql` + `rgpd/`.
 5. **`MigrationRunner::migrate()`** — migrations versionnées en attente.
 6. **Toute erreur schéma/migration ⇒ ROLLBACK COMPLET** (base + code restaurés).
-7. `app('module_sdk')->syncAll()` (manifestes) → `RoleSync::sync()` (catalogue RBAC) →
-   vidage du cache → **sortie de maintenance**.
+7. `app('module_sdk')->syncAll()` (manifestes) → vidage du cache → **sortie de maintenance**.
+   (Le catalogue de rôles vit en code, `RoleCatalog` ; rien à resynchroniser en base.)
 
 Config `.env` : `GITHUB_BRANCH` (défaut `main`), `GIT_BINARY` (chemin de `git` s'il est
 hors du `PATH` d'Apache, ex. Windows).
@@ -250,8 +250,8 @@ tableau `['url' => …, 'label' => …]`) **avant** l'inclusion de `shared_topba
 
 ## Internationalisation (i18n)
 
-- Service : `app('translator')` ; helper global `__('domaine.clé', $params)` (et `_n()`
-  pour la pluralisation, variantes séparées par `|`).
+- Service : `app('translator')` ; helper global `__('domaine.clé', $params)`. La
+  pluralisation passe par `app('translator')->choice(...)` (variantes séparées par `|`).
 - Fichiers : `lang/<locale>/<domaine>.json` (cœur) et `modules/<clé>/lang/<locale>.json`
   (modules). Locales disponibles : `ar, de, en, es, fr, nl, ru, th`.
 

@@ -41,43 +41,43 @@ dans son `module.json`).
 
 | Clé | Classe | Rôle |
 |---|---|---|
-| `config` | (array) `ConfigServiceProvider` | Configuration applicative (notation pointée via `config()`). |
+| `config` / `environment` | `ConfigServiceProvider` / env | Configuration (notation pointée via `config()`) / environnement. |
 | `db` | `API\Database\Database` | Connexion PDO. `app('db')->getConnection()` → `PDO`. |
 | `auth` | `API\Auth\AuthManager` | Session utilisateur : `check()`, `user()`, `attempt()`, `logout()`, `loginUser()`. |
 | `auth.provider` | `API\Auth\UserProvider` | Récupération/validation des comptes (scopé établissement). |
 | `auth.guard` | `API\Auth\SessionGuard` | Garde de session sous-jacente. |
+| `authz` | `API\Security\Authorization` | **Moteur d'autorisation unique** : `can()`, `canOn()`, `authorize()`, `hasCapability()`, `roleKeys()`, `setUser()`. Catalogue `RoleCatalog` + déviations `rbac_grants`. |
 | `etablissement` | `API\Services\EtablissementService` | Données établissement (`getData()`, classes, matières, périodes). |
-| `super_admin` | `API\Services\SuperAdminService` | Gestion multi-établissement / super-admin. |
 | `user` | `API\Services\UserService` | CRUD comptes : `create()`, `changePassword()`, `findByCredentials()`, `createResetRequest()`. |
-| `email` | service mail | Envoi d'e-mails. |
-| `pdf` | `API\Services\PdfService` | Génération PDF. |
-| `modules` | `API\Services\ModuleService` | Modules côté UI : favoris (`getFavorites`, `toggleFavorite`, `addPageFavorite`, `reorderFavorites`), navigation. |
+| `email` | `API\Services\EmailService` | Envoi d'e-mails (+ file `EmailQueueService`). |
+| `modules` | `API\Services\ModuleService` | Modules côté UI : favoris, navigation, `getEnabledForRole()`, `isVisibleForRoles()`. |
 | `module_sdk` | `API\Services\ModuleSDK` | Découverte/activation modules : `discover()`, `provisionSql()`, `syncAll()`, `bootActiveModuleProviders()`. |
 | `marketplace` | `API\Services\MarketplaceService` | Installation locale de modules (`.fmod`). |
 | `csrf` | `API\Security\CSRF` | Jetons CSRF : `getToken()`, `validate()`, `verifyOrFail()`, `field()`, `meta()`, `emitNextToken()`. |
 | `rate_limiter` | `API\Security\RateLimiter` | Limitation : `tooManyAttempts()`, `hit()`, `clear()`. |
 | `validator` | `API\Security\Validator` | Validation de données (`validate($data, $rules)`). |
-| `rbac` | `API\Security\RBAC` | Permissions : `can()`, `authorize()`, `canModule()`, `requireRole()`, `setUser()`. |
 | `password_policy` | `API\Security\PasswordPolicy` | Règles mot de passe (longueur, casse, chiffres, spéciaux). |
 | `translator` | `API\Services\TranslationService` | i18n : `get()`, `choice()`, `locale()`. |
 | `hooks` | `API\Core\HookManager` | Bus d'événements pour modules. |
 | `features` | `API\Services\FeatureFlagService` | Feature flags par type d'établissement. |
-| `queue` | `API\Services\QueueService` | File de jobs générique. |
 | `log` | `API\Core\Logger` | Logger structuré avec rotation (`logs/`). |
 | `audit` | `API\Services\AuditService` | Journal d'audit : `log()`, `logSecurity()`. **Admin-only** (cf. note). |
 | `cache` | `API\Core\CacheManager` | Cache file/redis : `get()`, `remember()`, `has()`, `forget()`, `flush()`. |
 | `client_cache` | `API\Core\ClientCache` | Cache côté client (session + cookies signés HMAC). |
 | `themes` | `API\Services\ThemeService` | Thèmes applicatifs. |
-| `firewall` | `API\Security\IpFirewall` | Pare-feu IP. |
-| `encryption` | `API\Core\Encryption` | AES‑256‑GCM (`null` si `APP_KEY` absent). |
 | `backup` | `API\Services\BackupService` | Sauvegardes. |
 | `updates` | `API\Services\UpdateService` | Mise à jour : `getCurrentVersion()`, `applyUpdate()`. |
 | `maintenance` | `API\Services\MaintenanceService` | Mode maintenance (fichier `storage/maintenance.json`). |
 | `health` | `API\Services\HealthCheckService` | Diagnostics : `runAll()`. |
-| `quarantine` | `API\Services\QuarantineService` | Quarantaine sécurité marketplace. |
 | `admin_dashboard` | `API\Services\Scolaire\AdminDashboardService` | Données tableau de bord admin. |
 | `classes` | `API\Services\Scolaire\ClasseService` | Gestion des classes. |
-| `env.loader` / `env.load_error` | `API\Core\EnvLoader` / `Throwable\|null` | Loader `.env` et cause d'échec éventuelle. |
+| `notes` `absences` `matieres` `periodes` `evenements` `devoirs` | `Modules\*\Services\*` | Services pédagogiques exposés au cœur (back-office `admin/scolaire/*`). |
+
+> **Non exposés par un binding** (s'instancient directement là où ils servent) :
+> `API\Core\Encryption` (AES-256-GCM, `null` si `APP_KEY` absent), `API\Services\PdfService`
+> (exports/bulletins), `API\Services\SuperAdminService` (multi-établissement),
+> `API\Services\QuarantineService` (marketplace). Les anciens bindings `rbac`, `firewall`,
+> `queue`, `encryption`, `pdf`, `super_admin`, `quarantine` **n'existent plus**.
 
 > **Note audit** : `app('audit')->log()` / `logSecurity()` sont conçus pour le
 > back-office admin. Côté code applicatif, préférer le helper `logSecurityEvent()`
@@ -106,8 +106,9 @@ Définis dans `API/Core/helpers.php` (chargé tôt) et surtout dans
 | Helper | Effet |
 |---|---|
 | `getPDO(): PDO` | Connexion PDO (remplace l'ancien `$GLOBALS['pdo']`). |
-| `executeQuery($sql, $params, $mode)` | SELECT/SHOW → `fetchAll` ; INSERT → `lastInsertId` ; sinon `rowCount`. |
-| `tableExists($table)` | `SHOW TABLES LIKE`. |
+
+> Il n'y a **pas** de helpers `executeQuery()`/`tableExists()` : utiliser directement
+> `getPDO()->prepare(...)`. (Retirés lors du nettoyage — aucun appelant.)
 
 ### Authentification & session
 
@@ -116,24 +117,29 @@ Définis dans `API/Core/helpers.php` (chargé tôt) et surtout dans
 | `requireAuth()` / `requireLogin()` | Redirige vers le login si non connecté, sinon retourne l'utilisateur. |
 | `isLoggedIn(): bool` | `app('auth')->check()`. |
 | `getCurrentUser()` / `checkAuth()` | Tableau utilisateur courant (ou `null`). |
-| `getUserId()` | ID utilisateur courant. |
-| `getUserRole()` | Rôle (`profil`/`type`) courant. |
+| `getUserId()` / `getUserRole()` | ID / rôle de base (`profil`/`type`) courant. |
 | `getUserFullName()` / `getUserInitials()` | Affichage. |
-| `login($profil,$id,$pwd)` / `logout()` / `loginUser($user)` | Connexion/déconnexion. |
+| `logout()` | Déconnexion. La **connexion** passe par `app('auth')->attempt()` / `->loginUser()` (les anciens wrappers globaux `login()`/`loginUser()` ont été retirés). |
 
-### Rôles & permissions
+### Rôles & permissions — moteur unique `authz`
+
+Toute décision d'accès passe par `API\Security\Authorization` (`app('authz')`), via ces helpers globaux :
 
 | Helper | Effet |
 |---|---|
-| `requireRole(string ...$roles)` | Bloque (redirige vers `/accueil/accueil.php`) si le rôle courant n'est pas listé. |
-| `requireAdmin()` | Réservé back-office (gère aussi l'accès `technicien` temporaire). |
-| `isAdmin()` / `isTeacher()`/`isProfesseur()` / `isStudent()`/`isEleve()` / `isParent()` / `isVieScolaire()` | Tests de rôle. |
-| `isSuperAdmin(): bool` | `SuperAdminService::isSuperAdmin()`. |
-| `can($permission): bool` | `app('rbac')->can()`. |
-| `authorize($permission): void` | Bloque si refusé. |
-| `canModule($key, $action='view'): bool` | Permission CRUD module (ex. `canModule('notes','create')`). |
-| `hasPermission($action): bool` | Pont legacy → RBAC (`'notes'` → `'notes.manage'`). |
-| `parentOwnsEleve($parentId,$eleveId)` / `assertUserCanReadEleve($eleveId)` | Gardes anti-IDOR (rattachement parent↔élève, lecture des données d'un élève). |
+| `can($perm, $ctx=[]): bool` | Autorisation. Source : catalogue `RoleCatalog` + déviations `rbac_grants`. `$ctx` fournit le périmètre (`etablissement_id`, `class_id`, `student_id`, `owner_id`…). |
+| `authorize($perm, $ctx=[]): void` | Comme `can()` mais **bloque** (403 JSON / redirection accueil) si refusé. |
+| `canOn($perm, $type, $id, $extra=[])` / `authorizeOn(...)` | Variante **anti-IDOR** : le périmètre est déduit du type+id de ressource (`student`/`class`/`establishment`/`subject`/`self`). |
+| `hasCapability($perm): bool` / `requireCapability($perm)` | Capacité **sans périmètre** (garde d'entrée de module/fonctionnalité, ex. `requireCapability('module.echanges.access')`). |
+| `tenantGate($perm)` | Garde des pages **back-office** établissement (route vers `can()`). |
+| `hasPermission($action): bool` | Pont legacy : `'notes'` → `can('notes.manage')`. Les `canManageX()` (ex. `canManageNotes()`) y délèguent. |
+| `getEffectiveRoles(): array` | Rôles effectifs (type de compte + rôles attribués `user_roles`). |
+| `enforceModuleAccess($key)` | Garde de visibilité/accès module (fail-closed, via `roles_autorises`). |
+| `platformCan()` / `platformAuthorize()` / `tenantCan()` / `tenantAuthorize()` | Mondes plateforme / établissement (délèguent à `WorldContext`). |
+| `isAdmin()` / `isProfesseur()` / `isEleve()` / `isParent()` / `isVieScolaire()` / `isSuperAdmin()` | Tests de type de compte. |
+| `parentOwnsEleve($parentId,$eleveId)` / `assertUserCanReadEleve($eleveId)` | Gardes anti-IDOR (rattachement parent↔élève). |
+
+> **Retirés** (aucun appelant) : `requireRole()`, `requireAdmin()`, `canModule()`, `hasRole()`, `isTechnicien()`, `isCpe()`. Utiliser `requireCapability()`/`tenantGate()`/`can()`.
 
 ### CSRF
 
@@ -141,33 +147,31 @@ Définis dans `API/Core/helpers.php` (chargé tôt) et surtout dans
 |---|---|
 | `csrf_verify(): void` | `app('csrf')->verifyOrFail()` — **à appeler sur toute mutation**. |
 | `csrf_token()` | Jeton courant. |
-| `csrf_field()` / `csrfField()` | `<input type="hidden">` prêt à l'emploi. |
-| `csrf_meta()` | Balise `<meta>` (pour fetch JS). |
-| `csrf_validate($token=null): bool` / `validateCSRFToken()` | Validation non bloquante (token explicite, header, body JSON). |
-| `isAjaxRequest(): bool` | Détecte `X-Requested-With: XMLHttpRequest`. |
+| `csrf_field()` / `csrfField()` / `generateCSRFToken()` | Champ caché / génération. |
+| `validateCSRFToken($token=null): bool` | Validation non bloquante (token explicite, header, body JSON). |
+
+> Pour la meta CSRF côté fetch JS : `app('csrf')->meta()`. (Le helper global `csrf_meta()` a été retiré.)
 
 ### i18n
 
 | Helper | Effet |
 |---|---|
 | `__($cle, $params=[], $locale=null)` | Traduction. **`$params` = interpolation `:nom`, PAS un défaut.** Clé absente ⇒ la clé est renvoyée telle quelle. |
-| `_n($cle, $count, $params=[], $locale=null)` | Pluralisation (variantes séparées par `\|`). |
-| `currentLocale(): string` | Locale active (`fr` par défaut). |
+
+> La pluralisation passe par `app('translator')->choice(...)`. (Les helpers globaux `_n()` et `currentLocale()` ont été retirés — utiliser `app('translator')->locale()`.)
 
 ### Établissement / divers
 
 | Helper | Effet |
 |---|---|
-| `getEstablishmentId(): int` | `\API\Core\EstablishmentContext::id()` — ID établissement courant. |
 | `getEtablissementData()` | Bloc d'infos établissement (info/classes/matières/périodes). |
 | `redirect($path, $message=null, $type='info')` | Redirection (URL absolue ou relative à `BASE_URL`) + flash. |
-| `redirectTo($url, $message=null)` | Variante simple. |
-| `setFlashMessage($type,$message)` | Message flash en session. |
+| `redirectTo($url, $message=null)` / `setFlashMessage($type,$message)` | Redirection simple / message flash. |
 | `logError()` / `logInfo()` / `logSecurityEvent()` | Logging (le 3e fait aussi l'audit en base). |
-| `checkRateLimit($key,$max=5,$decay=60): bool` | Garde anti-bruteforce. |
-| `validate($data,$rules)` | `app('validator')->validate()`. |
 | `formatDate()` / `formatDateTime()` / `getTrimestre()` | Formatage FR. |
-| `sanitizeInput()` / `validateEmail()` / `validateStrongPassword()` | Helpers validation. |
+| `e($v)` / `csp_nonce()` / `asset_url()` / `asset_bust()` / `deny_access()` / `json_error()` | Utilitaires `helpers.php` (échappement, nonce CSP, URL d'assets versionnées, refus, erreur JSON). |
+
+> **ID établissement** : utiliser directement `\API\Core\EstablishmentContext::id()` (le helper `getEstablishmentId()` a été retiré). Idem `checkRateLimit()`/`validate()`/`sanitizeInput()`/`validateEmail()`/`validateStrongPassword()` : retirés — passer par `app('rate_limiter')`, `app('validator')`, `filter_var()` / `app('password_policy')`.
 
 > `\API\Core\EstablishmentContext::id()` lève une exception si l'établissement n'est
 > pas résolu pour la session — certains endpoints (cf. `agenda_persons.php`)
@@ -177,8 +181,12 @@ Définis dans `API/Core/helpers.php` (chargé tôt) et surtout dans
 
 ## 3. Authentification & rôles
 
-Rôles applicatifs : `administrateur`, `professeur`, `vie_scolaire`, `eleve`,
-`parent`, plus `super_admin` (transverse) et un accès temporaire `technicien`.
+**Types de comptes** (rôle de base) : `administrateur`, `professeur`, `vie_scolaire`,
+`eleve`, `parent`, plus `super_admin` (transverse). Au-dessus, un **catalogue de rôles**
+en code (`API\Security\RoleCatalog`, ~110 rôles) attribués via `admin/users/roles.php` ;
+les permissions par rôle = catalogue + déviations globales `rbac_grants` (éditeur plateforme
+`platform/roles.php`). **2FA obligatoire** pour les rôles à responsabilité (enrôlement forcé
+`login/setup_2fa.php`).
 
 - Connexion via `app('auth')->attempt(['type'=>..., 'login'=>..., 'password'=>...])`.
   L'identifiant utilisateur est le **login `nom.prenom`**.
@@ -186,7 +194,7 @@ Rôles applicatifs : `administrateur`, `professeur`, `vie_scolaire`, `eleve`,
 - Rate-limit IP + identifiant à la connexion ; anti-énumération.
 - En-têtes de sécurité + CSP injectés par `templates/shared_header.php`.
 - **Multi-établissement** : toute requête sur une table scopée DOIT filtrer
-  `etablissement_id = getEstablishmentId()`. L'auth (`UserProvider`) est scopée.
+  `etablissement_id = \API\Core\EstablishmentContext::id()`. L'auth (`UserProvider`) est scopée.
   Un onboarding obligatoire (`API/onboarding_gate.php`) force la configuration tant
   que l'établissement porte le code `'default'`.
 
@@ -342,7 +350,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 csrf_verify();                                 // mutation → CSRF obligatoire
 
 $pdo    = getPDO();
-$etabId = getEstablishmentId();                // scoping établissement
+$etabId = \API\Core\EstablishmentContext::id(); // scoping établissement
 
 // ... logique métier, requêtes scopées par etablissement_id ...
 

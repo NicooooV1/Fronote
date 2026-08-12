@@ -41,7 +41,7 @@ Deux points d'entrée, même flux : `admin/systeme/update.php` (rôle `administr
 5. **`MigrationRunner::migrate()`** — migrations versionnées en attente.
 6. **Toute erreur schéma/migration ⇒ ROLLBACK COMPLET** : base restaurée depuis la sauvegarde +
    `git reset --hard` sur l'ancien HEAD.
-7. `ModuleSDK::syncAll()` (manifestes de modules) → `RoleSync::sync()` (catalogue RBAC) → vidage
+7. `ModuleSDK::syncAll()` (manifestes de modules) → vidage
    du cache → sortie de maintenance.
 
 Configuration (`.env`) :

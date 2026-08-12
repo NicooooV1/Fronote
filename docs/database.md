@@ -70,8 +70,7 @@ synchrone, est (voir aussi [`docs/UPDATING.md`](UPDATING.md)) :
 4. `git reset --hard origin/<branche>` — le serveur reflète exactement le dépôt.
 5. **`SchemaSyncService::sync()`** — réconciliation déclarative (additive) du schéma.
 6. **`MigrationRunner::migrate()`** — migrations de données versionnées.
-7. `app('module_sdk')->syncAll()` — re-synchronise les manifestes (permissions, widgets, routes).
-8. `RoleSync::sync()` — synchronise les rôles.
+7. `app('module_sdk')->syncAll()` — re-synchronise les manifestes (widgets, routes ; le bloc `permissions` reste déclaratif). Le catalogue de rôles vit en code (`RoleCatalog`) — rien à resynchroniser.
 9. `app('cache')->flush()`, puis **sortie du mode maintenance**.
 
 > Toute erreur de schéma ou de migration déclenche un **ROLLBACK COMPLET** : la base est
