@@ -47,12 +47,12 @@ final class RelationshipServiceTest extends TestCase
         return new RelationshipService($this->pdo);
     }
 
-    private function seed(string $st, int $sid, string $tt, int $tid, string $type, int $active = 1): int
+    private function seed(string $st, int $sid, string $tt, int $tid, string $type, int $active = 1, int $etab = 1): int
     {
         $this->pdo->prepare(
-            'INSERT INTO account_relationships (source_type, source_id, target_type, target_id, relationship_type, is_active)
-             VALUES (?, ?, ?, ?, ?, ?)'
-        )->execute([$st, $sid, $tt, $tid, $type, $active]);
+            'INSERT INTO account_relationships (source_type, source_id, target_type, target_id, relationship_type, is_active, etablissement_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?)'
+        )->execute([$st, $sid, $tt, $tid, $type, $active, $etab]);
         return (int) $this->pdo->lastInsertId();
     }
 
@@ -88,10 +88,11 @@ final class RelationshipServiceTest extends TestCase
 
     public function testRemoveSoftDeletesAndAudits(): void
     {
-        $id = $this->seed('vie_scolaire', 7, 'eleve', 100, 'aesh_of');
+        $id = $this->seed('vie_scolaire', 7, 'eleve', 100, 'aesh_of'); // etablissement_id = 1
         $this->assertCount(1, $this->svc()->listFor('vie_scolaire', 7));
 
-        $ok = $this->svc()->remove(['type' => 'administrateur', 'id' => 1], $id);
+        // Acteur administrateur du MÊME établissement que la relation → autorisé.
+        $ok = $this->svc()->remove(['type' => 'administrateur', 'id' => 1, 'etablissement_id' => 1], $id);
         $this->assertTrue($ok);
         $this->assertCount(0, $this->svc()->listFor('vie_scolaire', 7), 'La relation désactivée ne doit plus apparaître.');
 
@@ -102,5 +103,18 @@ final class RelationshipServiceTest extends TestCase
             "SELECT COUNT(*) FROM user_role_audit_logs WHERE action = 'relationship_removed'"
         )->fetchColumn();
         $this->assertSame(1, $audited);
+    }
+
+    public function testRemoveDeniesCrossTenant(): void
+    {
+        // Relation de l'établissement 1 ; un administrateur de l'établissement 2 ne doit
+        // PAS pouvoir la désactiver (IDOR write cross-tenant corrigé).
+        $id = $this->seed('vie_scolaire', 7, 'eleve', 100, 'aesh_of', 1, 1);
+
+        $ok = $this->svc()->remove(['type' => 'administrateur', 'id' => 2, 'etablissement_id' => 2], $id);
+        $this->assertFalse($ok, 'Un admin d\'un autre établissement ne peut pas retirer la relation.');
+
+        $active = (int) $this->pdo->query("SELECT is_active FROM account_relationships WHERE id = {$id}")->fetchColumn();
+        $this->assertSame(1, $active, 'La relation reste active après une tentative cross-tenant.');
     }
 }
