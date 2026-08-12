@@ -9,7 +9,7 @@ require_once __DIR__ . '/../includes/admin_functions.php';
 
 requireAuth();
 // Bascule 3-mondes : permission établissement prioritaire, repli legacy le temps de la transition.
-tenantGate('tenant.roles.view', ['administrateur', 'super_admin']);
+tenantGate('tenant.roles.view');
 
 use API\Security\RoleCatalog;
 

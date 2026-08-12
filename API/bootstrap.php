@@ -431,11 +431,6 @@ $app->singleton('features', function($app) {
 	return new \API\Services\FeatureFlagService($app->make('db')->getConnection());
 });
 
-// Generic job queue (core — not module-specific)
-$app->singleton('queue', function($app) {
-	return new \API\Services\QueueService($app->make('db')->getConnection());
-});
-
 // Logger structuré avec rotation de fichiers
 $app->singleton('log', function($app) {
 	$logDir = getenv('LOGS_PATH') ?: (BASE_PATH . '/logs');
@@ -505,19 +500,8 @@ $app->singleton('themes', function($app) {
 	return new \API\Services\ThemeService($app->make('db')->getConnection(), BASE_PATH);
 });
 
-// IP Firewall (core — sécurité transversale)
-$app->singleton('firewall', function($app) {
-	return new \API\Security\IpFirewall($app->make('db')->getConnection());
-});
-
-// Encryption Service (core — AES-256-GCM)
-$app->singleton('encryption', function($app) {
-	try {
-		return new \API\Core\Encryption();
-	} catch (\Throwable $e) {
-		return null; // APP_KEY non configuré
-	}
-});
+// (Encryption s'instancie directement là où elle sert — TwoFactorService, BackupService,
+// services santé/RGPD — pas de binding conteneur.)
 
 // Backup Service (core)
 $app->singleton('backup', function($app) {
@@ -537,11 +521,6 @@ $app->singleton('maintenance', function($app) {
 // Health Check Service (core)
 $app->singleton('health', function($app) {
 	return new \API\Services\HealthCheckService($app->make('db')->getConnection(), BASE_PATH);
-});
-
-// Quarantine Service (core — marketplace security)
-$app->singleton('quarantine', function($app) {
-	return new \API\Services\QuarantineService(BASE_PATH);
 });
 
 // Lier l'application aux Facades

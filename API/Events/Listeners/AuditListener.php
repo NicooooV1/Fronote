@@ -49,11 +49,6 @@ class AuditListener
         'ClasseCreated'         => 'classe.created',
         'ClasseUpdated'         => 'classe.updated',
         'ClasseDeleted'         => 'classe.deleted',
-        // Utilisateurs
-        'UserCreated'           => 'user.created',
-        'UserPasswordChanged'   => 'user.password_changed',
-        // Messages
-        'MessageSent'           => 'message.sent',
     ];
 
     public function handle(object $event): void

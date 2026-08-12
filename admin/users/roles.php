@@ -17,7 +17,7 @@ require_once __DIR__ . '/../includes/admin_functions.php';
 require_once __DIR__ . '/../../modules/profil/includes/role_badges.php';
 
 requireAuth();
-tenantGate('tenant.users.view', ['administrateur', 'super_admin']);
+tenantGate('tenant.users.view');
 
 use API\Services\RoleManagementService;
 use API\Security\RoleCatalog;

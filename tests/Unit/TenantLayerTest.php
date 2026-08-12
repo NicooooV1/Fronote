@@ -60,18 +60,6 @@ final class TenantLayerTest extends TestCase
         return (int) $this->pdo->lastInsertId();
     }
 
-    private function addScopeValue(int $mrId, string $type, int $id): void
-    {
-        $this->pdo->prepare("INSERT INTO tenant_membership_role_scope_values (membership_role_id, scope_type, scope_id) VALUES (?, ?, ?)")
-            ->execute([$mrId, $type, $id]);
-    }
-
-    private function addRel(int $sourceAcc, string $relType, int $targetId, string $targetType = 'tenant_account'): void
-    {
-        $this->pdo->prepare("INSERT INTO account_relationships (source_type, source_id, target_type, target_id, relationship_type, is_active) VALUES ('tenant_account', ?, ?, ?, ?, 1)")
-            ->execute([$sourceAcc, $targetType, $targetId, $relType]);
-    }
-
     // ── Catalogue ──
     public function testCatalog(): void
     {
@@ -86,56 +74,15 @@ final class TenantLayerTest extends TestCase
         $this->assertArrayNotHasKey('administrateur', TenantRoleCatalog::roles());
     }
 
-    // ── Autorisation par périmètre ──
+    // ── Autorisation (permission plate — le contrôle par ressource/périmètre est
+    //    porté par le moteur unique Authorization::canOn, testé dans AuthorizationScopeTest) ──
     public function testDirectorEstablishmentScope(): void
     {
         $m = $this->mkMembership($this->mkAccount('director'));
         $this->giveRole($m, 'directeur', 'establishment');
         $auth = new TenantAuthorization($this->pdo, $m);
         $this->assertTrue($auth->can('tenant.users.create'));
-        $this->assertTrue($auth->canOn('students.view', 'student', 999), 'Directeur = périmètre établissement entier.');
-    }
-
-    public function testProfessorOwnClasses(): void
-    {
-        $m = $this->mkMembership($this->mkAccount('staff'));
-        $mr = $this->giveRole($m, 'professeur', 'own_classes');
-        $this->addScopeValue($mr, 'class', 8);
-        $auth = new TenantAuthorization($this->pdo, $m);
-        $this->assertTrue($auth->canOn('grades.edit', 'class', 8));
-        $this->assertFalse($auth->canOn('grades.edit', 'class', 9), 'Pas de droit sur une classe hors périmètre.');
-    }
-
-    public function testParentChildren(): void
-    {
-        $parentAcc = $this->mkAccount('family');
-        $m = $this->mkMembership($parentAcc);
-        $this->giveRole($m, 'parent', 'children');
-        $this->addRel($parentAcc, 'parent_of', 100);
-        $auth = new TenantAuthorization($this->pdo, $m);
-        $this->assertTrue($auth->canOn('grades.view', 'student', 100));
-        $this->assertFalse($auth->canOn('grades.view', 'student', 200), "Un parent ne voit pas l'enfant d'autrui.");
-    }
-
-    public function testEleveSelf(): void
-    {
-        $acc = $this->mkAccount('student');
-        $m = $this->mkMembership($acc);
-        $this->giveRole($m, 'eleve', 'self');
-        $auth = new TenantAuthorization($this->pdo, $m);
-        $this->assertTrue($auth->canOn('grades.view', 'student', $acc));
-        $this->assertFalse($auth->canOn('grades.view', 'student', $acc + 1));
-    }
-
-    public function testAeshAssigned(): void
-    {
-        $acc = $this->mkAccount('staff');
-        $m = $this->mkMembership($acc);
-        $this->giveRole($m, 'aesh', 'assigned');
-        $this->addRel($acc, 'aesh_of', 100);
-        $auth = new TenantAuthorization($this->pdo, $m);
-        $this->assertTrue($auth->canOn('students.view', 'student', 100));
-        $this->assertFalse($auth->canOn('students.view', 'student', 200));
+        $this->assertFalse($auth->can('permission.inexistante'));
     }
 
     public function testInactiveMembershipDeniesAll(): void

@@ -4,21 +4,18 @@ declare(strict_types=1);
 namespace API\Providers;
 
 use API\Core\ServiceProvider;
-use API\Events\Listeners\AuditListener;
 
 /**
  * Enregistre les listeners sur les événements CORE uniquement.
  *
- * Les événements domaine-métier (NoteCreated, AbsenceCreated…) sont désormais
- * enregistrés dans le ServiceProvider de chaque module via HookManager.
- * Seuls les événements transversaux (UserCreated, UserPasswordChanged) restent ici.
+ * Les événements domaine-métier (NoteCreated, AbsenceCreated…) sont enregistrés
+ * dans le ServiceProvider de chaque module via HookManager. Plus aucun événement
+ * core à ce jour (les anciens UserCreated/UserPasswordChanged n'étaient jamais
+ * dispatchés et ont été supprimés) — la map reste le point d'accroche.
  */
 class EventServiceProvider extends ServiceProvider
 {
-    private const LISTEN = [
-        \API\Events\UserCreated::class         => [AuditListener::class],
-        \API\Events\UserPasswordChanged::class => [AuditListener::class],
-    ];
+    private const LISTEN = [];
 
     public function register(): void {}
 

@@ -8,7 +8,7 @@ require_once __DIR__ . '/../includes/admin_functions.php';
 
 requireAuth();
 // Bascule 3-mondes : permission établissement prioritaire, repli legacy le temps de la transition.
-tenantGate('tenant.users.manage', ['administrateur']);
+tenantGate('tenant.users.manage');
 
 $pdo = getPDO();
 $userObj = app('user');

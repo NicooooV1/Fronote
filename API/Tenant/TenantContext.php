@@ -28,15 +28,6 @@ final class TenantContext
         }
     }
 
-    public static function establishmentById(PDO $pdo, int $id): ?array
-    {
-        try {
-            $st = $pdo->prepare("SELECT * FROM etablissements WHERE id = ? LIMIT 1");
-            $st->execute([$id]);
-            return $st->fetch(PDO::FETCH_ASSOC) ?: null;
-        } catch (\PDOException $e) { return null; }
-    }
-
     /** Compte établissement ACTIF par identifiant ou email (pour le login). */
     public static function findAccountByLogin(PDO $pdo, string $login): ?array
     {
@@ -66,23 +57,4 @@ final class TenantContext
         } catch (\PDOException $e) { return null; }
     }
 
-    /**
-     * Tente une connexion tenant.
-     * @return array{ok:bool, reason?:string, membership?:array, account?:array}
-     */
-    public static function attemptLogin(PDO $pdo, array $establishment, string $login, string $password): array
-    {
-        if (in_array($establishment['status'] ?? 'active', ['suspended'], true)) {
-            return ['ok' => false, 'reason' => 'Établissement suspendu — connexions bloquées.'];
-        }
-        $account = self::findAccountByLogin($pdo, $login);
-        if (!$account || empty($account['password_hash']) || !password_verify($password, (string) $account['password_hash'])) {
-            return ['ok' => false, 'reason' => 'Identifiants invalides.'];
-        }
-        $membership = self::membershipFor($pdo, (int) $establishment['id'], (int) $account['id']);
-        if (!$membership) {
-            return ['ok' => false, 'reason' => "Vous n'avez pas accès à cet établissement."];
-        }
-        return ['ok' => true, 'membership' => $membership, 'account' => $account];
-    }
 }

@@ -8,7 +8,7 @@ require_once __DIR__ . '/../../API/core.php';
 require_once __DIR__ . '/../includes/admin_functions.php';
 
 requireAuth();
-tenantGate('tenant.users.view', ['administrateur']);
+tenantGate('tenant.users.view');
 
 // Health check
 $health = app('health');

@@ -262,7 +262,6 @@ $pdo->query("SELECT * FROM notes WHERE id_eleve = $eleveId");
 | Table | Description |
 |---|---|
 | `modules_config` | Registre des modules : `module_key` (unique par établissement), `label`, `enabled`, `category`/`topbar_category`, `route_path`, `roles_autorises` (JSON), `is_core`, `establishment_types` (JSON), ordres de tri. |
-| `module_permissions` | Permissions RBAC par (`module_key` × `role`) — colonnes `can_*`. |
 | `module_settings_schema` | Schéma des réglages déclarés par les modules. |
 | `dashboard_widgets`, `user_dashboard_config`, `dashboard_layouts` | Widgets de tableau de bord et layout par utilisateur. |
 | `feature_flags` | Feature flags (scopés par établissement, unicité `uk_flag_etab`). |
@@ -281,8 +280,8 @@ $pdo->query("SELECT * FROM notes WHERE id_eleve = $eleveId");
 | `rate_limits`, `api_rate_limits` | Compteurs de rate limiting (app et API). |
 | `remember_tokens` | Tokens « se souvenir de moi » (hash SHA-256). |
 | `session_security` | Sessions actives / détection d'anomalies. |
-| `api_tokens`, `webhooks`, `oauth_bindings` | Auth API, webhooks, liaisons OAuth. |
-| `ip_blocklist`, `demandes_reinitialisation` | Blocage IP, demandes de réinitialisation de mot de passe. |
+| `oauth_bindings` | Liaisons OAuth/SSO des comptes. |
+| `demandes_reinitialisation` | Demandes de réinitialisation de mot de passe. |
 
 ### Données métier (exemples)
 

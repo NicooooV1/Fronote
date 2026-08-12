@@ -181,17 +181,6 @@ if (!function_exists('js_json')) {
     }
 }
 
-if (!function_exists('json_success')) {
-    /** Réponse JSON de succès normalisée {ok:true, success:true, ...$data} — contrat uniforme des endpoints. */
-    function json_success(array $data = []): void
-    {
-        if (!headers_sent()) {
-            header('Content-Type: application/json; charset=utf-8');
-        }
-        echo json_encode(array_merge(['ok' => true, 'success' => true], $data));
-    }
-}
-
 if (!function_exists('request_wants_json')) {
     /**
      * L'appelant attend-il une réponse JSON plutôt qu'une page HTML ? Unifie les ~9

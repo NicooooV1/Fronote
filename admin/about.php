@@ -8,7 +8,7 @@ require_once __DIR__ . '/../API/core.php';
 require_once __DIR__ . '/includes/admin_functions.php';
 
 requireAuth();
-tenantGate('tenant.users.view', ['administrateur']);
+tenantGate('tenant.users.view');
 
 $versionFile = BASE_PATH . '/version.json';
 $versionData = file_exists($versionFile) ? json_decode(file_get_contents($versionFile), true) : [];

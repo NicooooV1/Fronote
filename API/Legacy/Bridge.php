@@ -75,27 +75,6 @@ if (!function_exists('logout')) {
 	}
 }
 
-if (!function_exists('login')) {
-	function login($profil, $identifiant, $password) {
-		// Map legacy fields to current credentials keys
-		return app('auth')->attempt([
-			'type' => $profil,
-			'login' => $identifiant,
-			'password' => $password
-		]);
-	}
-}
-
-if (!function_exists('loginUser')) {
-	/**
-	 * Crée la session pour un utilisateur déjà validé (après 2FA ou login unifié).
-	 * @param array $user Tableau utilisateur avec au moins 'id' et 'type'
-	 */
-	function loginUser(array $user): void {
-		app('auth')->loginUser($user);
-	}
-}
-
 // ==================== VÉRIFICATIONS DE RÔLES ====================
 
 if (!function_exists('isAdmin')) {
@@ -316,31 +295,6 @@ if (!function_exists('getEffectiveRoles')) {
 	}
 }
 
-if (!function_exists('requireRole')) {
-	/**
-	 * Bloque l'accès si AUCUN rôle effectif (base + attribués) n'est dans la liste.
-	 * super_admin a toujours accès (périmètre global).
-	 * @param string ...$roles Rôles autorisés
-	 */
-	function requireRole(string ...$roles) {
-		$effective = getEffectiveRoles();
-		// super_admin = accès global, ne se voit jamais refuser par un requireRole.
-		if (in_array('super_admin', $effective, true)) return;
-		if (array_intersect($roles, $effective)) return;
-
-		// Message explicite avec rôle requis + rôles actuels — sinon l'admin se
-		// retrouve avec une redirection muette et aucune trace utile.
-		$wanted  = implode(', ', $roles);
-		$current = $effective ? implode(', ', $effective) : '(non authentifié)';
-		$script  = $_SERVER['SCRIPT_NAME'] ?? '?';
-		$_SESSION['error_message'] = "Accès refusé sur {$script} : rôle requis = [{$wanted}], rôles actuels = [{$current}].";
-		error_log("[requireRole] denied script={$script} roles=[{$current}] expected=[{$wanted}]");
-		$base = defined('BASE_URL') ? BASE_URL : '';
-		header('Location: ' . $base . '/accueil/accueil.php');
-		exit;
-	}
-}
-
 if (!function_exists('hasCapability')) {
 	/**
 	 * Capacité (garde d'entrée SANS périmètre) : l'un des rôles effectifs de
@@ -452,88 +406,6 @@ if (!function_exists('authorize')) {
 	}
 }
 
-if (!function_exists('canOn')) {
-	/**
-	 * « L'utilisateur peut-il $permission SUR cette ressource ? » — forme à privilégier
-	 * dans les modules pour bloquer l'IDOR : le périmètre est déduit du type+id de la
-	 * ressource. Ex: canOn('notes.view', 'student', $eleveId), canOn('cdt.edit', 'class', $id).
-	 * Types reconnus : student/eleve, class/classe, establishment/etablissement,
-	 * subject/matiere, self/owner. $extra ajoute des clés de contexte (ex. owner_type).
-	 *
-	 * Contrairement à can(), pas de repli RBAC aveugle au périmètre : l'enforcement de
-	 * scope est précisément le but ici (les permissions visées sont au catalogue).
-	 */
-	function canOn(string $permission, string $resourceType, int $resourceId, array $extra = []): bool {
-		try { return authz()->canOn($permission, $resourceType, $resourceId, $extra); }
-		catch (\Throwable $e) { error_log('[canOn] ' . $e->getMessage()); return false; }
-	}
-}
-
-if (!function_exists('authorizeOn')) {
-	/**
-	 * Vérifie une permission SUR une ressource — bloque (redirection) si refusée.
-	 * Fail-closed : toute erreur d'évaluation ⇒ refus (canOn() renvoie false).
-	 */
-	function authorizeOn(string $permission, string $resourceType, int $resourceId, array $extra = []): void {
-		if (canOn($permission, $resourceType, $resourceId, $extra)) return;
-		$_SESSION['error_message'] = 'Accès refusé.';
-		$base = defined('BASE_URL') ? BASE_URL : '';
-		if (!headers_sent()) header('Location: ' . $base . '/accueil/accueil.php');
-		exit;
-	}
-}
-
-if (!function_exists('canModule')) {
-	/**
-	 * Vérifie une permission CRUD sur un module.
-	 * Ex: canModule('messagerie', 'send'), canModule('notes', 'create')
-	 */
-	function canModule(string $moduleKey, string $action = 'view'): bool {
-		// Legacy (aucun appelant applicatif). Routé vers le moteur unique : la capacité
-		// d'ouvrir le module pour view/access, sinon la permission catalogue "<module>.<action>".
-		if ($action === 'view' || $action === 'access') {
-			return hasCapability('module.' . $moduleKey . '.access') || can($moduleKey . '.view');
-		}
-		return can($moduleKey . '.' . $action);
-	}
-}
-
-if (!function_exists('requireAdmin')) {
-	/**
-	 * Bloque l'accès au back-office si non-admin ou technicien
-	 */
-	function requireAdmin(): void {
-		$role = getUserRole();
-		if ($role === 'technicien') {
-			// Technicien has limited admin access, verify it's still valid
-			if (!isTechnicienValid()) {
-				$_SESSION['error_message'] = 'Accès technicien expiré.';
-				header('Location: ' . (defined('BASE_URL') ? BASE_URL : '') . '/login/index.php');
-				exit;
-			}
-			return;
-		}
-		requireRole('administrateur');
-	}
-}
-
-if (!function_exists('isTechnicienValid')) {
-	/**
-	 * Vérifie si l'accès technicien est encore valide (actif + non expiré)
-	 */
-	function isTechnicienValid(): bool {
-		if (getUserRole() !== 'technicien') return false;
-		try {
-			$pdo = getPDO();
-			$stmt = $pdo->prepare("SELECT id FROM technicien_access WHERE id = ? AND actif = 1 AND date_expiration > NOW() AND revoked_at IS NULL LIMIT 1");
-			$stmt->execute([getUserId()]);
-			return (bool)$stmt->fetchColumn();
-		} catch (\Throwable $e) {
-			return false;
-		}
-	}
-}
-
 // ==================== UTILITAIRES UTILISATEUR ====================
 
 if (!function_exists('getUserFullName')) {
@@ -579,65 +451,11 @@ if (!function_exists('__')) {
 	}
 }
 
-if (!function_exists('_n')) {
-	/**
-	 * Pluralisation. Le fichier de traduction utilise des variantes séparées par |
-	 * Ex: "Aucun élément|:count élément|:count éléments"
-	 * @param string $key    Clé de traduction
-	 * @param int    $count  Nombre pour la pluralisation
-	 * @param array  $params Paramètres supplémentaires
-	 * @param string|null $locale Locale forcée
-	 * @return string
-	 */
-	function _n(string $key, int $count, array $params = [], ?string $locale = null): string {
-		try {
-			return app('translator')->choice($key, $count, $params, $locale);
-		} catch (\Throwable $e) {
-			return $key;
-		}
-	}
-}
-
-if (!function_exists('currentLocale')) {
-	/**
-	 * Retourne la locale active
-	 */
-	function currentLocale(): string {
-		try {
-			return app('translator')->locale();
-		} catch (\Throwable $e) {
-			return 'fr';
-		}
-	}
-}
-
 // ==================== CSRF (helpers supplémentaires, ex-core.php) ====================
-
-if (!function_exists('csrf_meta')) {
-    function csrf_meta() {
-        return app('csrf')->meta();
-    }
-}
-
-if (!function_exists('csrf_validate')) {
-    function csrf_validate(?string $token = null): bool {
-        if ($token !== null) {
-            return app('csrf')->validate($token);
-        }
-        return app('csrf')->validateFromRequest();
-    }
-}
 
 if (!function_exists('csrf_verify')) {
     function csrf_verify(): void {
         app('csrf')->verifyOrFail();
-    }
-}
-
-if (!function_exists('isAjaxRequest')) {
-    function isAjaxRequest(): bool {
-        return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
-               strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
     }
 }
 
@@ -670,38 +488,6 @@ if (!function_exists('validateCSRFToken')) {
 if (!function_exists('csrfField')) {
 	function csrfField() {
 		return app('csrf')->field();
-	}
-}
-
-// ==================== DATABASE ====================
-
-if (!function_exists('executeQuery')) {
-	function executeQuery($sql, $params = [], $fetchMode = \PDO::FETCH_ASSOC) {
-		$pdo = app('db')->getConnection();
-		$stmt = $pdo->prepare($sql);
-		$stmt->execute($params);
-
-		$head = strtoupper(strtok(ltrim($sql), " \t\n\r"));
-		if (in_array($head, ['SELECT','SHOW','DESCRIBE','EXPLAIN'], true)) {
-			return $stmt->fetchAll($fetchMode);
-		}
-		if ($head === 'INSERT') {
-			return (int) $pdo->lastInsertId();
-		}
-		return $stmt->rowCount();
-	}
-}
-
-if (!function_exists('tableExists')) {
-	function tableExists($tableName) {
-		try {
-			$pdo = app('db')->getConnection();
-			$stmt = $pdo->prepare("SHOW TABLES LIKE ?");
-			$stmt->execute([$tableName]);
-			return $stmt->rowCount() > 0;
-		} catch (\Throwable $e) {
-			return false;
-		}
 	}
 }
 
@@ -744,20 +530,6 @@ if (!function_exists('logSecurityEvent')) {
 	}
 }
 
-// ==================== RATE LIMITING ====================
-
-if (!function_exists('checkRateLimit')) {
-	function checkRateLimit($key, $maxAttempts = 5, $decaySeconds = 60) {
-		// Our RateLimiter exposes tooManyAttempts/hit/clear. Decay is session-based.
-		$limiter = app('rate_limiter');
-		if ($limiter->tooManyAttempts($key)) {
-			return false;
-		}
-		$limiter->hit($key);
-		return true;
-	}
-}
-
 // ==================== REDIRECTION ====================
 
 if (!function_exists('redirect')) {
@@ -796,44 +568,6 @@ if (!function_exists('setFlashMessage')) {
 	 */
 	function setFlashMessage($type, $message) {
 		$_SESSION[$type . '_message'] = $message;
-	}
-}
-
-// ==================== SESSION CLEANUP ====================
-
-if (!function_exists('cleanExpiredSessions')) {
-	function cleanExpiredSessions() {
-		try {
-			$pdo = app('db')->getConnection();
-			$lifetime = (int)(config('security.session_lifetime', 7200));
-			$sql = "DELETE FROM session_security WHERE last_activity < DATE_SUB(NOW(), INTERVAL ? SECOND)";
-			$stmt = $pdo->prepare($sql);
-			$stmt->execute([$lifetime]);
-		} catch (\Throwable $e) {
-			// Silent fail
-			error_log('[Bridge.php] ' . $e->getMessage());
-		}
-	}
-}
-
-// ==================== VALIDATION HELPERS ====================
-
-if (!function_exists('sanitizeInput')) {
-	function sanitizeInput($input, $type = 'string') {
-		if ($input === null) return null;
-		switch ($type) {
-			case 'email': return filter_var(trim($input), FILTER_SANITIZE_EMAIL);
-			case 'int': return filter_var($input, FILTER_SANITIZE_NUMBER_INT);
-			case 'float': return filter_var($input, FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
-			case 'url': return filter_var(trim($input), FILTER_SANITIZE_URL);
-			default: return htmlspecialchars(trim((string)$input), ENT_QUOTES, 'UTF-8');
-		}
-	}
-}
-
-if (!function_exists('validateEmail')) {
-	function validateEmail($email) {
-		return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
 	}
 }
 
@@ -892,88 +626,6 @@ if (!function_exists('getTrimestre')) {
 	}
 }
 
-// ==================== ADMIN ====================
-
-if (!function_exists('isAdminManagementAllowed')) {
-	/**
-	 * Vérifie si la gestion des comptes administrateurs est autorisée
-	 * @return bool
-	 */
-	function isAdminManagementAllowed() {
-		// Par défaut, seul un administrateur connecté peut gérer les admins
-		return isLoggedIn() && getUserRole() === 'administrateur';
-	}
-}
-
-if (!function_exists('validateStrongPassword')) {
-	/**
-	 * Valide la robustesse d'un mot de passe
-	 * @param string $password Le mot de passe à valider
-	 * @return array ['valid' => bool, 'errors' => string[]]
-	 */
-	function validateStrongPassword($password) {
-		$errors = [];
-		if (strlen($password) < 8) {
-			$errors[] = "Le mot de passe doit contenir au moins 8 caractères";
-		}
-		if (!preg_match('/[A-Z]/', $password)) {
-			$errors[] = "Le mot de passe doit contenir au moins une lettre majuscule";
-		}
-		if (!preg_match('/[a-z]/', $password)) {
-			$errors[] = "Le mot de passe doit contenir au moins une lettre minuscule";
-		}
-		if (!preg_match('/[0-9]/', $password)) {
-			$errors[] = "Le mot de passe doit contenir au moins un chiffre";
-		}
-		if (!preg_match('/[^A-Za-z0-9]/', $password)) {
-			$errors[] = "Le mot de passe doit contenir au moins un caractère spécial";
-		}
-		return ['valid' => empty($errors), 'errors' => $errors];
-	}
-}
-
-// ==================== AUTH HELPERS (déplacés depuis core.php) ====================
-
-if (!function_exists('authenticateUser')) {
-	function authenticateUser($username, $password, $userType, $rememberMe = false) {
-		try {
-			$auth = app('auth');
-			$credentials = [
-				'email' => $username,
-				'password' => $password,
-				'type' => $userType
-			];
-			if ($auth->attempt($credentials)) {
-				$user = $auth->user();
-				return ['success' => true, 'user' => $user, 'message' => 'Connexion réussie'];
-			}
-			return ['success' => false, 'message' => 'Identifiant ou mot de passe incorrect'];
-		} catch (\Exception $e) {
-			error_log("Authentication error: " . $e->getMessage());
-			return ['success' => false, 'message' => 'Erreur lors de l\'authentification'];
-		}
-	}
-}
-
-if (!function_exists('logoutUser')) {
-	function logoutUser() {
-		app('auth')->logout();
-		redirect('login/index.php');
-	}
-}
-
-if (!function_exists('createUser')) {
-	function createUser($profil, $userData) {
-		try {
-			$userService = app()->make('API\Services\UserService');
-			return $userService->create($profil, $userData);
-		} catch (\Exception $e) {
-			error_log("User creation error: " . $e->getMessage());
-			return ['success' => false, 'message' => 'Erreur lors de la création de l\'utilisateur'];
-		}
-	}
-}
-
 if (!function_exists('changePassword')) {
 	function changePassword($userId, $newPassword, ?string $userType = null) {
 		try {
@@ -995,15 +647,6 @@ if (!function_exists('getEtablissementData')) {
 			error_log("Etablissement data error: " . $e->getMessage());
 			return ['info' => null, 'classes' => [], 'matieres' => [], 'periodes' => []];
 		}
-	}
-}
-
-if (!function_exists('getEstablishmentId')) {
-	/**
-	 * Returns the current establishment ID from the context.
-	 */
-	function getEstablishmentId(): int {
-		return \API\Core\EstablishmentContext::id();
 	}
 }
 
@@ -1035,27 +678,6 @@ if (!function_exists('authz')) {
 		return $a;
 	}
 }
-if (!function_exists('authorizeOr403')) {
-	/** Autorise ou coupe (403 JSON / redirection). */
-	function authorizeOr403(string $permission, array $ctx = []): void {
-		try { authz()->authorize($permission, $ctx); }
-		catch (\Throwable $e) { error_log('[authorize] ' . $e->getMessage()); }
-	}
-}
-if (!function_exists('hasRole')) {
-	/** L'utilisateur possède-t-il ce rôle effectif (base + attribués) ? */
-	function hasRole(string $roleKey): bool {
-		try { return authz()->hasRole($roleKey); }
-		catch (\Throwable $e) { return false; }
-	}
-}
-if (!function_exists('isTechnicien')) {
-	function isTechnicien(): bool { return getUserRole() === 'technicien'; }
-}
-if (!function_exists('isCpe')) {
-	function isCpe(): bool { return hasRole('cpe'); }
-}
-
 if (!function_exists('findUserByCredentials')) {
 	function findUserByCredentials($username, $email, $phone, $userType) {
 		try {
@@ -1080,27 +702,8 @@ if (!function_exists('createResetRequest')) {
 	}
 }
 
-if (!function_exists('getErrorMessage')) {
-	function getErrorMessage() {
-		return $_SESSION['error_message'] ?? 'Une erreur est survenue';
-	}
-}
-
-if (!function_exists('getDatabaseConnection')) {
-	function getDatabaseConnection() {
-		return app('db')->getConnection();
-	}
-}
-
-if (!function_exists('validate')) {
-	function validate($data, $rules) {
-		$validator = app('validator');
-		return $validator->validate($data, $rules);
-	}
-}
-
-// ──────────── REFONTE 3-MONDES : helpers d'autorisation par monde ────────────
-// Remplacent l'ancien requireRole(). Délèguent à API\Security\WorldContext.
+// ──────────── Helpers d'autorisation des mondes plateforme/établissement ────────────
+// Délèguent à API\Security\WorldContext.
 if (!function_exists('platformCan')) {
 	function platformCan(string $permission): bool { return \API\Security\WorldContext::platformCan($permission); }
 }
@@ -1110,31 +713,8 @@ if (!function_exists('platformAuthorize')) {
 if (!function_exists('tenantCan')) {
 	function tenantCan(string $permission): bool { return \API\Security\WorldContext::tenantCan($permission); }
 }
-if (!function_exists('tenantCanOn')) {
-	function tenantCanOn(string $permission, string $resourceType, int $resourceId): bool {
-		return \API\Security\WorldContext::tenantCanOn($permission, $resourceType, $resourceId);
-	}
-}
 if (!function_exists('tenantAuthorize')) {
 	function tenantAuthorize(string $permission): void { \API\Security\WorldContext::tenantAuthorize($permission); }
-}
-if (!function_exists('tenantAuthorizeOn')) {
-	function tenantAuthorizeOn(string $permission, string $resourceType, int $resourceId): void {
-		\API\Security\WorldContext::tenantAuthorizeOn($permission, $resourceType, $resourceId);
-	}
-}
-if (!function_exists('supportCan')) {
-	function supportCan(int $establishmentId, string $level, ?string $type = null, ?int $id = null, bool $sensitive = false): bool {
-		return \API\Security\WorldContext::supportCan($establishmentId, $level, $type, $id, $sensitive);
-	}
-}
-if (!function_exists('supportAuthorize')) {
-	function supportAuthorize(int $establishmentId, string $level, ?string $type = null, ?int $id = null, bool $sensitive = false): void {
-		\API\Security\WorldContext::supportAuthorize($establishmentId, $level, $type, $id, $sensitive);
-	}
-}
-if (!function_exists('currentWorld')) {
-	function currentWorld(): ?string { return \API\Security\WorldContext::currentWorld(); }
 }
 if (!function_exists('tenantGate')) {
 	/**
@@ -1152,9 +732,8 @@ if (!function_exists('tenantGate')) {
 	 * aucun autre rôle ne l'a par défaut ⇒ comportement identique à l'ancien repli.
 	 *
 	 * @param string $permission  clé de permission (tenant.* héritée ou clé catalogue)
-	 * @param array  $legacyFallbackRoles  conservé pour compat de signature — NON utilisé.
 	 */
-	function tenantGate(string $permission, array $legacyFallbackRoles = []): void {
+	function tenantGate(string $permission): void {
 		static $MAP = [
 			'tenant.users.view'           => 'admin.users',
 			'tenant.users.manage'         => 'admin.users',

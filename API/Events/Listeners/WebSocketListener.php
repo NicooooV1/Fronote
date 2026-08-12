@@ -7,7 +7,6 @@ namespace API\Events\Listeners;
 use API\Core\WebSocket;
 use API\Events\NoteCreated;
 use API\Events\AbsenceCreated;
-use API\Events\MessageSent;
 use API\Events\EvenementCreated;
 
 /**
@@ -22,7 +21,6 @@ class WebSocketListener
             match (true) {
                 $event instanceof NoteCreated      => $this->onNoteCreated($event),
                 $event instanceof AbsenceCreated   => $this->onAbsenceCreated($event),
-                $event instanceof MessageSent      => $this->onMessageSent($event),
                 $event instanceof EvenementCreated => $this->onEvenementCreated($event),
                 default                            => null,
             };
@@ -56,18 +54,6 @@ class WebSocketListener
         );
     }
 
-    private function onMessageSent(MessageSent $event): void
-    {
-        WebSocket::notifyUser(
-            $event->senderId,
-            [
-                'type'        => 'message_sent',
-                'messageId'   => $event->messageId,
-                'sender_type' => $event->senderType,
-            ],
-            $event->senderType
-        );
-    }
 
     private function onEvenementCreated(EvenementCreated $event): void
     {

@@ -10,7 +10,7 @@ requireAuth();
 // Durci : cette modale expose des donnees sensibles (notes, absences, identifiants, tentatives de
 // connexion) et porte les actions de gestion (edit/reset MDP/desactivation/suppression vers index.php).
 // Reserve aux gestionnaires -> exclut le role lecture seule responsable_permissions, comme index.php.
-tenantGate('tenant.users.manage', ['administrateur']);
+tenantGate('tenant.users.manage');
 
 $pdo = getPDO();
 $userObj = app('user');

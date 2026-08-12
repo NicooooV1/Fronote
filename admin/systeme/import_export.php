@@ -14,7 +14,7 @@ requireAuth();
 // Securite : page d'export (dump SQL complet, comptes, config) et d'import (config RBAC, comptes
 // en masse). tenant.exports.manage exclut le role lecture seule responsable_permissions ; les
 // actions d'import exigent en plus tenant.imports.manage (voir bloc POST ci-dessous).
-tenantGate('tenant.exports.manage', ['administrateur']);
+tenantGate('tenant.exports.manage');
 
 $pdo = getPDO();
 $service = new \API\Services\ImportExportService($pdo);

@@ -6,7 +6,7 @@ require_once __DIR__ . '/../API/core.php';
 require_once __DIR__ . '/includes/admin_functions.php';
 
 requireAuth();
-tenantGate('tenant.users.view', ['administrateur', 'super_admin']);
+tenantGate('tenant.users.view');
 
 $pageTitle = 'Design System';
 include __DIR__ . '/includes/header.php';

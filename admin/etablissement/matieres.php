@@ -4,7 +4,7 @@ declare(strict_types=1);
  * Gestion des matières — CRUD via AdminCrudPage
  */
 require_once __DIR__ . '/../../API/module_boot.php';
-tenantGate('tenant.users.manage', ['administrateur']); // durci: page mutante, exige *.manage (exclut le role lecture seule responsable_permissions)
+tenantGate('tenant.users.manage');
 
 $page = new \API\Admin\AdminCrudPage([
     'title'       => 'Matières',

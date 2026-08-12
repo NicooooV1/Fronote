@@ -33,34 +33,23 @@ DROP TABLE IF EXISTS `theme_token_overrides`;
 DROP TABLE IF EXISTS `themes`;
 DROP TABLE IF EXISTS `marketplace_installs`;
 -- Tables Sécurité (v2.4+)
-DROP TABLE IF EXISTS `ip_blocklist`;
 -- Tables Push Notifications (v2.2+)
 DROP TABLE IF EXISTS `push_subscriptions`;
--- Tables SMS (v2.3+)
-DROP TABLE IF EXISTS `sms_log`;
-DROP TABLE IF EXISTS `sms_config`;
 -- Tables Email amélioré (v2.3+)
 DROP TABLE IF EXISTS `email_templates`;
 DROP TABLE IF EXISTS `email_log`;
--- Tables Paiement (v2.7+)
-DROP TABLE IF EXISTS `payments`;
--- Tables Signatures (v2.7+)
-DROP TABLE IF EXISTS `signatures`;
 
 -- Tables ajoutées (phases 2+)
 DROP TABLE IF EXISTS `app_metrics`;
 DROP TABLE IF EXISTS `module_settings_schema`;
 DROP TABLE IF EXISTS `job_queue`;
 DROP TABLE IF EXISTS `oauth_bindings`;
-DROP TABLE IF EXISTS `webhooks`;
-DROP TABLE IF EXISTS `api_tokens`;
 DROP TABLE IF EXISTS `feature_flags`;
 DROP TABLE IF EXISTS `translations`;
 DROP TABLE IF EXISTS `dashboard_layouts`;
 DROP TABLE IF EXISTS `user_dashboard_config`;
 DROP TABLE IF EXISTS `dashboard_widgets`;
 DROP TABLE IF EXISTS `import_export_logs`;
-DROP TABLE IF EXISTS `user_profiles`;
 DROP TABLE IF EXISTS `technicien_audit_log`;
 DROP TABLE IF EXISTS `technicien_access`;
 
@@ -1129,26 +1118,6 @@ CREATE TABLE `accounts` (
   CONSTRAINT `fk_etab_accounts` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `account_profiles` (
-  `id`               INT AUTO_INCREMENT PRIMARY KEY,
-  `account_id`       INT          NOT NULL,
-  `profile_type`     ENUM('personnel','student','family','external','system') NOT NULL,
-  `etablissement_id` INT          DEFAULT NULL,
-  `date_of_birth`    DATE         DEFAULT NULL,
-  `address`          TEXT         DEFAULT NULL,
-  `job_title`        VARCHAR(150) DEFAULT NULL,
-  `employee_number`  VARCHAR(100) DEFAULT NULL,
-  `student_number`   VARCHAR(100) DEFAULT NULL,
-  `class_id`         INT          DEFAULT NULL,
-  `company_id`       INT          DEFAULT NULL,
-  `created_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at`       DATETIME     DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  KEY `idx_ap_account` (`account_id`),
-  CONSTRAINT `fk_ap_account` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE,
-  KEY `idx_etab_account_profiles` (`etablissement_id`),
-  CONSTRAINT `fk_etab_account_profiles` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 -- ============================================================================
 -- ============================================================================
 -- REFONTE 3-MONDES (cahier des charges « Plateforme / Établissements / Support »)
@@ -1594,33 +1563,6 @@ CREATE TABLE `technicien_audit_log` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- M102 : Profil utilisateur étendu (citation, réseaux sociaux, photo)
--- ============================================================
-CREATE TABLE `user_profiles` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `user_id` INT NOT NULL,
-  `user_type` VARCHAR(20) NOT NULL,
-  `citation` VARCHAR(500) DEFAULT NULL COMMENT 'Citation ou phrase de présentation',
-  `site_web` VARCHAR(255) DEFAULT NULL,
-  `lien_linkedin` VARCHAR(255) DEFAULT NULL,
-  `lien_twitter` VARCHAR(255) DEFAULT NULL,
-  `lien_github` VARCHAR(255) DEFAULT NULL,
-  `lien_instagram` VARCHAR(255) DEFAULT NULL,
-  `lien_autre` VARCHAR(255) DEFAULT NULL,
-  `competences_tags` JSON DEFAULT NULL COMMENT 'Tags de compétences/intérêts',
-  `disponibilites` VARCHAR(255) DEFAULT NULL COMMENT 'Horaires de disponibilité (texte libre)',
-  `bureau` VARCHAR(100) DEFAULT NULL COMMENT 'Numéro de bureau (professeur/admin)',
-  `telephone_pro` VARCHAR(20) DEFAULT NULL,
-  `date_naissance_visible` TINYINT(1) NOT NULL DEFAULT 0,
-  `email_visible` TINYINT(1) NOT NULL DEFAULT 0,
-  `profil_public` TINYINT(1) NOT NULL DEFAULT 1 COMMENT 'Visible dans le trombinoscope',
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY `uk_user_profile` (`user_id`, `user_type`),
-  KEY `idx_profil_public` (`profil_public`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ============================================================
 -- M103 : Configuration import/export
 -- ============================================================
 CREATE TABLE `import_export_logs` (
@@ -1865,42 +1807,6 @@ INSERT INTO `feature_flags` (`flag_key`, `label`, `description`, `establishment_
 ('parcours.portfolio',        'Portfolio eleve',                    'Active le portfolio numerique de l\'eleve',            NULL, 0, NULL);
 
 -- ============================================================
--- API TOKENS (authentification externe)
--- ============================================================
-
-CREATE TABLE `api_tokens` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `user_id` int(11) NOT NULL,
-  `user_type` varchar(20) NOT NULL,
-  `token_hash` varchar(64) NOT NULL COMMENT 'SHA-256 du token',
-  `name` varchar(100) NOT NULL COMMENT 'Nom descriptif du token',
-  `abilities` JSON DEFAULT NULL COMMENT 'Permissions du token (null = toutes)',
-  `last_used_at` datetime DEFAULT NULL,
-  `expires_at` datetime DEFAULT NULL,
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_token` (`token_hash`),
-  KEY `idx_api_tokens_user` (`user_id`, `user_type`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ============================================================
--- WEBHOOKS (intégrations externes)
--- ============================================================
-
-CREATE TABLE `webhooks` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `url` varchar(500) NOT NULL,
-  `events` JSON NOT NULL COMMENT 'Événements déclencheurs',
-  `secret` varchar(64) NOT NULL COMMENT 'Secret HMAC-SHA256',
-  `active` tinyint(1) NOT NULL DEFAULT 1,
-  `created_by` int(11) DEFAULT NULL,
-  `last_triggered_at` datetime DEFAULT NULL,
-  `failure_count` int(11) NOT NULL DEFAULT 0,
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ============================================================
 -- OAuth SSO bindings
 -- ============================================================
 CREATE TABLE `oauth_bindings` (
@@ -2025,161 +1931,6 @@ VALUES
 ON DUPLICATE KEY UPDATE route_path = VALUES(route_path);
 
 -- ============================================================
--- Seeds : rbac_permissions — matrice RBAC initiale depuis RBAC::PERMISSIONS
--- ============================================================
-INSERT IGNORE INTO `rbac_permissions` (`role`, `permission`, `granted`) VALUES
--- admin.* (administrateur only)
-('administrateur','admin.access',1),('administrateur','admin.users',1),
-('administrateur','admin.users.create',1),('administrateur','admin.users.delete',1),
-('administrateur','admin.users.import',1),('administrateur','admin.scolaire',1),
-('administrateur','admin.modules',1),('administrateur','admin.systeme',1),
-('administrateur','admin.etablissement',1),('administrateur','admin.messagerie',1),
-('administrateur','admin.classes',1),
--- notes
-('administrateur','notes.view',1),('professeur','notes.view',1),('vie_scolaire','notes.view',1),('eleve','notes.view',1),('parent','notes.view',1),
-('administrateur','notes.manage',1),('professeur','notes.manage',1),('vie_scolaire','notes.manage',1),
-('administrateur','notes.edit',1),('professeur','notes.edit',1),
-('administrateur','notes.delete',1),('administrateur','notes.lock',1),
--- absences
-('administrateur','absences.view',1),('professeur','absences.view',1),('vie_scolaire','absences.view',1),('eleve','absences.view',1),('parent','absences.view',1),
-('administrateur','absences.manage',1),('professeur','absences.manage',1),('vie_scolaire','absences.manage',1),
-('administrateur','absences.validate',1),('vie_scolaire','absences.validate',1),
-('eleve','absences.justify',1),('parent','absences.justify',1),
-('administrateur','absences.stats',1),('vie_scolaire','absences.stats',1),
-('administrateur','absences.export',1),('vie_scolaire','absences.export',1),
--- appel
-('administrateur','appel.view',1),('professeur','appel.view',1),('vie_scolaire','appel.view',1),
-('administrateur','appel.manage',1),('professeur','appel.manage',1),('vie_scolaire','appel.manage',1),
-('administrateur','appel.correction',1),('professeur','appel.correction',1),
--- devoirs
-('administrateur','devoirs.view',1),('professeur','devoirs.view',1),('eleve','devoirs.view',1),('parent','devoirs.view',1),
-('administrateur','devoirs.manage',1),('professeur','devoirs.manage',1),
-('eleve','devoirs.submit',1),
-('administrateur','devoirs.correct',1),('professeur','devoirs.correct',1),
--- edt
-('administrateur','edt.view',1),('professeur','edt.view',1),('vie_scolaire','edt.view',1),('eleve','edt.view',1),('parent','edt.view',1),
-('administrateur','edt.manage',1),('vie_scolaire','edt.manage',1),
--- discipline
-('administrateur','discipline.view',1),('vie_scolaire','discipline.view',1),('professeur','discipline.view',1),
-('administrateur','discipline.manage',1),('vie_scolaire','discipline.manage',1),
-('administrateur','discipline.signal',1),('professeur','discipline.signal',1),('vie_scolaire','discipline.signal',1),
--- bulletins
-('administrateur','bulletins.view',1),('professeur','bulletins.view',1),('vie_scolaire','bulletins.view',1),('eleve','bulletins.view',1),('parent','bulletins.view',1),
-('administrateur','bulletins.manage',1),('professeur','bulletins.manage',1),('vie_scolaire','bulletins.manage',1),
-('administrateur','bulletins.generate',1),('vie_scolaire','bulletins.generate',1),
--- competences
-('administrateur','competences.view',1),('professeur','competences.view',1),('vie_scolaire','competences.view',1),('eleve','competences.view',1),('parent','competences.view',1),
-('administrateur','competences.manage',1),('professeur','competences.manage',1),
--- annonces
-('administrateur','annonces.view',1),('professeur','annonces.view',1),('vie_scolaire','annonces.view',1),('eleve','annonces.view',1),('parent','annonces.view',1),
-('administrateur','annonces.manage',1),('professeur','annonces.manage',1),('vie_scolaire','annonces.manage',1),
--- agenda
-('administrateur','agenda.view',1),('professeur','agenda.view',1),('vie_scolaire','agenda.view',1),('eleve','agenda.view',1),('parent','agenda.view',1),
-('administrateur','agenda.manage',1),('professeur','agenda.manage',1),('vie_scolaire','agenda.manage',1),
--- messagerie
-('administrateur','messagerie.view',1),('professeur','messagerie.view',1),('vie_scolaire','messagerie.view',1),('eleve','messagerie.view',1),('parent','messagerie.view',1),
-('administrateur','messagerie.send',1),('professeur','messagerie.send',1),('vie_scolaire','messagerie.send',1),('eleve','messagerie.send',1),('parent','messagerie.send',1),
--- documents
-('administrateur','documents.view',1),('professeur','documents.view',1),('vie_scolaire','documents.view',1),('eleve','documents.view',1),('parent','documents.view',1),
-('administrateur','documents.manage',1),('professeur','documents.manage',1),('vie_scolaire','documents.manage',1),
--- cahierdetextes
-('administrateur','cahierdetextes.view',1),('professeur','cahierdetextes.view',1),('vie_scolaire','cahierdetextes.view',1),('eleve','cahierdetextes.view',1),('parent','cahierdetextes.view',1),
-('administrateur','cahierdetextes.manage',1),('professeur','cahierdetextes.manage',1),
--- reunions
-('administrateur','reunions.view',1),('professeur','reunions.view',1),('vie_scolaire','reunions.view',1),('parent','reunions.view',1),
-('administrateur','reunions.manage',1),('vie_scolaire','reunions.manage',1),('professeur','reunions.manage',1),
-('parent','reunions.reserve',1),
--- inscriptions
-('administrateur','inscriptions.view',1),('vie_scolaire','inscriptions.view',1),
-('administrateur','inscriptions.manage',1),('vie_scolaire','inscriptions.manage',1),
--- orientation
-('administrateur','orientation.view',1),('professeur','orientation.view',1),('vie_scolaire','orientation.view',1),('eleve','orientation.view',1),('parent','orientation.view',1),
-('administrateur','orientation.manage',1),('professeur','orientation.manage',1),('vie_scolaire','orientation.manage',1),
--- signalements
-('administrateur','signalements.view',1),('vie_scolaire','signalements.view',1),
-('administrateur','signalements.manage',1),('vie_scolaire','signalements.manage',1),
-('administrateur','signalements.create',1),('professeur','signalements.create',1),('vie_scolaire','signalements.create',1),('eleve','signalements.create',1),
--- bibliotheque
-('administrateur','bibliotheque.view',1),('professeur','bibliotheque.view',1),('vie_scolaire','bibliotheque.view',1),('eleve','bibliotheque.view',1),('parent','bibliotheque.view',1),
-('administrateur','bibliotheque.manage',1),('vie_scolaire','bibliotheque.manage',1),
-('eleve','bibliotheque.borrow',1),('professeur','bibliotheque.borrow',1),
--- clubs
-('administrateur','clubs.view',1),('professeur','clubs.view',1),('vie_scolaire','clubs.view',1),('eleve','clubs.view',1),
-('administrateur','clubs.manage',1),('vie_scolaire','clubs.manage',1),('professeur','clubs.manage',1),
-('eleve','clubs.join',1),
--- infirmerie
-('administrateur','infirmerie.view',1),('vie_scolaire','infirmerie.view',1),
-('administrateur','infirmerie.manage',1),('vie_scolaire','infirmerie.manage',1),
--- support
-('administrateur','support.view',1),('professeur','support.view',1),('vie_scolaire','support.view',1),('eleve','support.view',1),('parent','support.view',1),
-('administrateur','support.manage',1),('vie_scolaire','support.manage',1),
-('administrateur','support.create',1),('professeur','support.create',1),('vie_scolaire','support.create',1),('eleve','support.create',1),('parent','support.create',1),
--- examens
-('administrateur','examens.view',1),('vie_scolaire','examens.view',1),('professeur','examens.view',1),('eleve','examens.view',1),
-('administrateur','examens.manage',1),('vie_scolaire','examens.manage',1),
--- ressources
-('administrateur','ressources.view',1),('professeur','ressources.view',1),('vie_scolaire','ressources.view',1),('eleve','ressources.view',1),
-('administrateur','ressources.manage',1),('professeur','ressources.manage',1),
--- stages
-('administrateur','stages.view',1),('professeur','stages.view',1),('vie_scolaire','stages.view',1),('eleve','stages.view',1),('parent','stages.view',1),
-('administrateur','stages.manage',1),('vie_scolaire','stages.manage',1),('professeur','stages.manage',1),
--- facturation
-('administrateur','facturation.view',1),('vie_scolaire','facturation.view',1),('parent','facturation.view',1),
-('administrateur','facturation.manage',1),('vie_scolaire','facturation.manage',1),
--- cantine
-('administrateur','cantine.view',1),('vie_scolaire','cantine.view',1),('eleve','cantine.view',1),('parent','cantine.view',1),
-('administrateur','cantine.manage',1),('vie_scolaire','cantine.manage',1),
-('parent','cantine.reserve',1),('eleve','cantine.reserve',1),
--- salles
-('administrateur','salles.view',1),('vie_scolaire','salles.view',1),('professeur','salles.view',1),
-('administrateur','salles.manage',1),('vie_scolaire','salles.manage',1),
-('administrateur','salles.reserve',1),('vie_scolaire','salles.reserve',1),('professeur','salles.reserve',1),
--- periscolaire
-('administrateur','periscolaire.view',1),('vie_scolaire','periscolaire.view',1),('parent','periscolaire.view',1),
-('administrateur','periscolaire.manage',1),('vie_scolaire','periscolaire.manage',1),
--- personnel
-('administrateur','personnel.view',1),('vie_scolaire','personnel.view',1),
-('administrateur','personnel.manage',1),('vie_scolaire','personnel.manage',1),
--- transports
-('administrateur','transports.view',1),('vie_scolaire','transports.view',1),('parent','transports.view',1),
-('administrateur','transports.manage',1),('vie_scolaire','transports.manage',1),
--- diplomes
-('administrateur','diplomes.view',1),('vie_scolaire','diplomes.view',1),('eleve','diplomes.view',1),('parent','diplomes.view',1),
-('administrateur','diplomes.manage',1),('vie_scolaire','diplomes.manage',1),
--- archivage
-('administrateur','archivage.view',1),('administrateur','archivage.manage',1),
--- trombinoscope
-('administrateur','trombinoscope.view',1),('professeur','trombinoscope.view',1),('vie_scolaire','trombinoscope.view',1),
--- reporting
-('administrateur','reporting.view',1),('professeur','reporting.view',1),('vie_scolaire','reporting.view',1),
-('administrateur','reporting.export',1),('vie_scolaire','reporting.export',1),
--- rgpd
-('administrateur','rgpd.view',1),('administrateur','rgpd.manage',1),
-('administrateur','rgpd.my_data',1),('professeur','rgpd.my_data',1),('vie_scolaire','rgpd.my_data',1),('eleve','rgpd.my_data',1),('parent','rgpd.my_data',1),
--- vie_scolaire
-('administrateur','vie_scolaire.view',1),('vie_scolaire','vie_scolaire.view',1),
-('administrateur','vie_scolaire.manage',1),('vie_scolaire','vie_scolaire.manage',1),
--- notifications
-('administrateur','notifications.view',1),('professeur','notifications.view',1),('vie_scolaire','notifications.view',1),('eleve','notifications.view',1),('parent','notifications.view',1),
--- parametres
-('administrateur','parametres.view',1),('professeur','parametres.view',1),('vie_scolaire','parametres.view',1),('eleve','parametres.view',1),('parent','parametres.view',1),
--- projets
-('administrateur','projets.view',1),('professeur','projets.view',1),('vie_scolaire','projets.view',1),
-('administrateur','projets.manage',1),('professeur','projets.manage',1),
--- parcours
-('administrateur','parcours.view',1),('professeur','parcours.view',1),('vie_scolaire','parcours.view',1),('eleve','parcours.view',1),('parent','parcours.view',1),
-('administrateur','parcours.manage',1),('professeur','parcours.manage',1),
--- besoins
-('administrateur','besoins.view',1),('professeur','besoins.view',1),('vie_scolaire','besoins.view',1),('parent','besoins.view',1),
-('administrateur','besoins.manage',1),('vie_scolaire','besoins.manage',1),('professeur','besoins.manage',1),
--- internat
-('administrateur','internat.view',1),('vie_scolaire','internat.view',1),
-('administrateur','internat.manage',1),('vie_scolaire','internat.manage',1),
--- vie_associative
-('administrateur','vie_associative.view',1),('vie_scolaire','vie_associative.view',1),('eleve','vie_associative.view',1),
-('administrateur','vie_associative.manage',1),('vie_scolaire','vie_associative.manage',1);
-
--- ============================================================
 -- Seeds : module_settings_schema — champs de configuration déclaratifs
 -- ============================================================
 INSERT IGNORE INTO `module_settings_schema` (`module_key`, `field_key`, `field_type`, `label`, `default_value`, `options`, `hint`, `sort_order`) VALUES
@@ -2280,30 +2031,8 @@ CREATE TABLE `push_subscriptions` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================================
--- PHASE 3 : SMS & Email amélioré
+-- Email amélioré (templates + log)
 -- ============================================================
-
-CREATE TABLE `sms_config` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `provider` VARCHAR(50) NOT NULL DEFAULT 'twilio',
-  `api_key` VARCHAR(255) DEFAULT NULL,
-  `api_secret` VARCHAR(255) DEFAULT NULL,
-  `sender_name` VARCHAR(20) DEFAULT 'Fronote',
-  `actif` TINYINT(1) NOT NULL DEFAULT 0,
-  `monthly_quota` INT DEFAULT 1000,
-  `used_this_month` INT DEFAULT 0,
-  `quota_reset_at` DATE DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE `sms_log` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `recipient` VARCHAR(20) NOT NULL,
-  `message` TEXT NOT NULL,
-  `status` ENUM('pending','sent','delivered','failed') NOT NULL DEFAULT 'pending',
-  `provider_id` VARCHAR(100) DEFAULT NULL,
-  `error` TEXT DEFAULT NULL,
-  `sent_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `email_templates` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -2337,57 +2066,6 @@ INSERT INTO `email_templates` (`key`, `name`, `subject`, `html_body`, `variables
 ('bulletin', 'Bulletin disponible', 'Bulletin de {{periode}} disponible', '<h2>Bulletin scolaire</h2><p>Le bulletin de {{eleve}} pour la période <strong>{{periode}}</strong> est désormais disponible.</p><p><a href="{{url}}">Consulter le bulletin</a></p>', '["eleve","periode","url"]'),
 ('reunion', 'Invitation réunion', 'Réunion parents-professeurs le {{date}}', '<h2>Réunion parents-professeurs</h2><p>Vous êtes invité(e) à la réunion du <strong>{{date}}</strong> à <strong>{{heure}}</strong>.</p><p>Lieu : {{lieu}}</p><p><a href="{{url}}">Réserver un créneau</a></p>', '["date","heure","lieu","url"]'),
 ('annonce', 'Annonce', '{{titre}}', '<h2>{{titre}}</h2><div>{{contenu}}</div><p>— {{auteur}}</p>', '["titre","contenu","auteur"]');
-
--- ============================================================
--- PHASE 4 : Sécurité IP Firewall
--- ============================================================
-
-CREATE TABLE `ip_blocklist` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `ip` VARCHAR(45) NOT NULL,
-  `reason` VARCHAR(255) DEFAULT NULL,
-  `auto_blocked` TINYINT(1) NOT NULL DEFAULT 0,
-  `blocked_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `expires_at` DATETIME DEFAULT NULL,
-  `created_by` INT DEFAULT NULL,
-  UNIQUE KEY `uq_ip` (`ip`),
-  INDEX `idx_ip_expires` (`expires_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ============================================================
--- PHASE 7 : Paiements & Signatures
--- ============================================================
-
-CREATE TABLE `payments` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `user_id` INT NOT NULL,
-  `user_type` VARCHAR(30) NOT NULL DEFAULT 'parent',
-  `amount` DECIMAL(10,2) NOT NULL,
-  `currency` VARCHAR(3) NOT NULL DEFAULT 'EUR',
-  `description` VARCHAR(255) DEFAULT NULL,
-  `provider` VARCHAR(30) NOT NULL DEFAULT 'stripe',
-  `provider_reference` VARCHAR(255) DEFAULT NULL,
-  `status` ENUM('pending','completed','failed','refunded') NOT NULL DEFAULT 'pending',
-  `metadata` JSON DEFAULT NULL,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `completed_at` DATETIME DEFAULT NULL,
-  INDEX `idx_payment_user` (`user_id`, `user_type`),
-  INDEX `idx_payment_status` (`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE `signatures` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `document_type` VARCHAR(50) NOT NULL,
-  `document_id` INT NOT NULL,
-  `signer_id` INT NOT NULL,
-  `signer_type` VARCHAR(30) NOT NULL,
-  `signature_hash` VARCHAR(64) NOT NULL,
-  `signature_data` MEDIUMTEXT DEFAULT NULL,
-  `ip_address` VARCHAR(45) DEFAULT NULL,
-  `signed_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX `idx_sig_document` (`document_type`, `document_id`),
-  INDEX `idx_sig_signer` (`signer_id`, `signer_type`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================================
 -- MULTI-ÉTABLISSEMENT : ajout etablissement_id sur les tables scopées
@@ -2539,19 +2217,6 @@ ALTER TABLE `user_settings`
   ADD INDEX `idx_etab` (`etablissement_id`),
   ADD CONSTRAINT `fk_user_settings_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`);
 
-ALTER TABLE `user_profiles`
-  ADD COLUMN `etablissement_id` INT NOT NULL DEFAULT 1 AFTER `id`,
-  ADD INDEX `idx_etab` (`etablissement_id`),
-  ADD CONSTRAINT `fk_user_profiles_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`);
-
-ALTER TABLE `rbac_permissions`
-  ADD COLUMN `etablissement_id` INT NOT NULL DEFAULT 1 AFTER `id`,
-  ADD INDEX `idx_etab` (`etablissement_id`),
-  ADD CONSTRAINT `fk_rbac_perm_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`),
-  -- Régionalisation (finding #2) : la clé unique inclut l'établissement → surcharges par établissement.
-  DROP INDEX `uk_role_permission`,
-  ADD UNIQUE KEY `uk_role_permission_etab` (`role`, `permission`, `etablissement_id`);
-
 ALTER TABLE `notification_preferences`
   ADD COLUMN `etablissement_id` INT NOT NULL DEFAULT 1 AFTER `id`,
   ADD INDEX `idx_etab` (`etablissement_id`),
@@ -2561,16 +2226,6 @@ ALTER TABLE `notification_preferences`
 ALTER TABLE `audit_log`
   ADD COLUMN `etablissement_id` INT DEFAULT 1 AFTER `id`,
   ADD INDEX `idx_audit_etab` (`etablissement_id`);
-
-ALTER TABLE `api_tokens`
-  ADD COLUMN `etablissement_id` INT NOT NULL DEFAULT 1 AFTER `id`,
-  ADD INDEX `idx_etab` (`etablissement_id`),
-  ADD CONSTRAINT `fk_api_tokens_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`);
-
-ALTER TABLE `webhooks`
-  ADD COLUMN `etablissement_id` INT NOT NULL DEFAULT 1 AFTER `id`,
-  ADD INDEX `idx_etab` (`etablissement_id`),
-  ADD CONSTRAINT `fk_webhooks_etab` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`);
 
 ALTER TABLE `pdf_templates`
   ADD COLUMN `etablissement_id` INT NOT NULL DEFAULT 1 AFTER `id`,
@@ -2625,89 +2280,6 @@ CREATE TABLE IF NOT EXISTS `note_calculations` (
   UNIQUE KEY `uk_calc` (`classe_id`, `matiere_id`, `periode_id`, `type`, `etablissement_id`),
   KEY `idx_etab_note_calculations` (`etablissement_id`),
   CONSTRAINT `fk_etab_note_calculations` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Phase 6: Competences — referentiel
-CREATE TABLE IF NOT EXISTS `referentiel_competences` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `domaine` VARCHAR(200) NOT NULL,
-  `sous_domaine` VARCHAR(200) DEFAULT NULL,
-  `item` VARCHAR(500) NOT NULL,
-  `niveau_attendu` TINYINT DEFAULT 3,
-  `etablissement_id` INT NOT NULL DEFAULT 1,
-  INDEX `idx_etab` (`etablissement_id`),
-  CONSTRAINT `fk_etab_referentiel_competences` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- Phase 6: Bulletins — templates and appreciations
-CREATE TABLE IF NOT EXISTS `bulletin_templates` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `template_key` VARCHAR(100) DEFAULT NULL,
-  `name` VARCHAR(100) NOT NULL,
-  `html_template` TEXT NOT NULL,
-  `etablissement_id` INT NOT NULL DEFAULT 1,
-  UNIQUE KEY `uk_template_key_etab` (`template_key`, `etablissement_id`),
-  KEY `idx_etab_bulletin_templates` (`etablissement_id`),
-  CONSTRAINT `fk_etab_bulletin_templates` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `bulletin_appreciations` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `bulletin_id` INT NOT NULL,
-  `prof_id` INT DEFAULT NULL,
-  `matiere_id` INT DEFAULT NULL,
-  `texte` TEXT NOT NULL,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX `idx_bulletin` (`bulletin_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Phase 6: Devoirs — rendus
-CREATE TABLE IF NOT EXISTS `devoir_rendus` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `devoir_id` INT NOT NULL,
-  `eleve_id` INT NOT NULL,
-  `fichier_path` VARCHAR(500) DEFAULT NULL,
-  `rendu_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `is_late` TINYINT(1) NOT NULL DEFAULT 0,
-  `note` DECIMAL(5,2) DEFAULT NULL,
-  `commentaire_prof` TEXT DEFAULT NULL,
-  `etablissement_id` INT NOT NULL DEFAULT 1,
-  UNIQUE KEY `uk_devoir_eleve` (`devoir_id`, `eleve_id`),
-  INDEX `idx_etab` (`etablissement_id`),
-  CONSTRAINT `fk_etab_devoir_rendus` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Phase 6: Cahier de textes — pieces jointes
-CREATE TABLE IF NOT EXISTS `cahier_pieces_jointes` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `entree_id` INT NOT NULL,
-  `fichier_path` VARCHAR(500) NOT NULL,
-  `nom_original` VARCHAR(255) NOT NULL,
-  `taille` INT DEFAULT 0,
-  `etablissement_id` INT NOT NULL DEFAULT 1,
-  INDEX `idx_entree` (`entree_id`),
-  KEY `idx_etab_cahier_pieces_jointes` (`etablissement_id`),
-  CONSTRAINT `fk_etab_cahier_pieces_jointes` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Phase 6: Emploi du temps — remplacement enhancement
-
--- Phase 6: Examens — new tables
-CREATE TABLE IF NOT EXISTS `examen_salles` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `examen_id` INT NOT NULL,
-  `salle_id` INT NOT NULL,
-  `nb_places` INT NOT NULL DEFAULT 30,
-  INDEX `idx_examen` (`examen_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `examen_surveillants` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `examen_id` INT NOT NULL,
-  `prof_id` INT NOT NULL,
-  `salle_id` INT DEFAULT NULL,
-  INDEX `idx_examen` (`examen_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `examen_convocations` (
@@ -2825,20 +2397,6 @@ CREATE TABLE IF NOT EXISTS `document_versions` (
   INDEX `idx_doc` (`document_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
--- Phase 7: Notifications — preferences
-CREATE TABLE IF NOT EXISTS `notification_user_preferences` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `user_id` INT NOT NULL,
-  `user_type` VARCHAR(30) NOT NULL,
-  `category` VARCHAR(50) NOT NULL,
-  `channel` VARCHAR(20) NOT NULL DEFAULT 'web',
-  `enabled` TINYINT(1) NOT NULL DEFAULT 1,
-  `etablissement_id` INT NOT NULL DEFAULT 1,
-  UNIQUE KEY `uk_pref` (`user_id`, `user_type`, `category`, `channel`),
-  KEY `idx_etab_notification_user_preferences` (`etablissement_id`),
-  CONSTRAINT `fk_etab_notification_user_preferences` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Phase 8: Inscriptions — workflow steps
 
@@ -3055,54 +2613,6 @@ CREATE TABLE IF NOT EXISTS annees_scolaires (
     actif TINYINT(1) DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_annee_etab (etablissement_id, actif)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Champs personnalises
-CREATE TABLE IF NOT EXISTS custom_fields (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    etablissement_id INT NOT NULL,
-    entity_type VARCHAR(50) NOT NULL,
-    field_key VARCHAR(50) NOT NULL,
-    field_type ENUM('text','number','date','select','checkbox','textarea') DEFAULT 'text',
-    label VARCHAR(100) NOT NULL,
-    options JSON,
-    required TINYINT(1) DEFAULT 0,
-    sort_order INT DEFAULT 0,
-    actif TINYINT(1) DEFAULT 1,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_cf_entity_key (etablissement_id, entity_type, field_key)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS custom_field_values (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    field_id INT NOT NULL,
-    entity_id INT NOT NULL,
-    value TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_cfv (field_id, entity_id),
-    INDEX idx_cfv_entity (entity_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Calendrier academique
-CREATE TABLE IF NOT EXISTS calendrier_academique (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    etablissement_id INT NOT NULL,
-    date DATE NOT NULL,
-    type ENUM('cours','vacances','ferie','pont','formation','examen') NOT NULL,
-    libelle VARCHAR(100),
-    annee_scolaire VARCHAR(10),
-    INDEX idx_cal_etab_date (etablissement_id, date)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Routage notifications avance
-CREATE TABLE IF NOT EXISTS notification_routing (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    event_type VARCHAR(50) NOT NULL,
-    canal ENUM('email','sms','push','websocket') NOT NULL,
-    enabled TINYINT(1) DEFAULT 1,
-    template_id INT,
-    roles_cibles JSON,
-    UNIQUE KEY uk_nr_event_canal (event_type, canal)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================================
@@ -3504,21 +3014,6 @@ CREATE TABLE IF NOT EXISTS intelligence_alertes (
     action_prise TEXT,
     date_alerte DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_ia_dest (destinataire_id, destinataire_type, lu)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS intelligence_cohortes (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    etablissement_id INT NOT NULL,
-    type ENUM('classe','niveau','etablissement') NOT NULL,
-    reference_id INT,
-    annee_scolaire VARCHAR(10),
-    periode_id INT,
-    moyenne_generale DECIMAL(5,2),
-    taux_absenteisme DECIMAL(5,2),
-    nb_incidents INT DEFAULT 0,
-    nb_eleves_risque INT DEFAULT 0,
-    date_calcul DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_ic_type (type, reference_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS intelligence_config (

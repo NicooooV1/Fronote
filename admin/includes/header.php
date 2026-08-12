@@ -13,7 +13,7 @@ requireAuth();
 // établissement (les rôles administration/direction/directeur/responsable_permissions la
 // détiennent), avec repli sur les rôles legacy le temps de la transition (zéro régression :
 // administrateur/super_admin passent toujours). Chokepoint unique de tout l'espace admin.
-tenantGate('tenant.users.view', ['administrateur', 'super_admin']);
+tenantGate('tenant.users.view');
 
 // Onboarding obligatoire : tant que l'établissement n'est pas configuré, on
 // redirige vers le wizard depuis n'importe quelle page admin (sauf les pages de
