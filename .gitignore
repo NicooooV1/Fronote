@@ -35,3 +35,5 @@ dist/*.fmod
 .env.*.bak
 !.env.example
 !.env.ci.example
+dist/config.php
+dist/data/
