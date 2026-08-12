@@ -158,6 +158,12 @@ final class RelationshipService
         if (!$row) {
             return false;
         }
+        // Cloisonnement multi-établissement (symétrique à add()) : l'acteur doit gérer
+        // l'établissement de la relation. Sans ce contrôle, un admin d'un établissement
+        // pouvait désactiver n'importe quelle relation d'un autre tenant (IDOR write).
+        if (!$this->actorMayManage($actor, (int) $row['etablissement_id'])) {
+            return false;
+        }
         $ok = $this->pdo->prepare("UPDATE account_relationships SET is_active = 0 WHERE id = ?")->execute([$id]);
         if ($ok) {
             $this->audit($actor, 'relationship_removed', $row['target_type'], (int) $row['target_id'], [
@@ -169,14 +175,20 @@ final class RelationshipService
     }
 
     /** Relations actives DONT un compte est la source (ses élèves/classes suivis). */
-    public function listFor(string $sourceType, int $sourceId): array
+    public function listFor(string $sourceType, int $sourceId, ?int $etabId = null): array
     {
-        return $this->fetch(
-            "SELECT * FROM account_relationships
-              WHERE source_type = ? AND source_id = ? AND is_active = 1
-              ORDER BY relationship_type, target_id",
-            [$sourceType, $sourceId]
-        );
+        // Cloisonnement tenant optionnel : la page admin passe l'établissement courant,
+        // sinon un admin énumérait les relations (et le rattachement établissement) de
+        // comptes d'autres tenants par simple saisie d'un id (fuite lecture cross-tenant).
+        $sql = "SELECT * FROM account_relationships
+                 WHERE source_type = ? AND source_id = ? AND is_active = 1";
+        $params = [$sourceType, $sourceId];
+        if ($etabId !== null) {
+            $sql .= " AND etablissement_id = ?";
+            $params[] = $etabId;
+        }
+        $sql .= " ORDER BY relationship_type, target_id";
+        return $this->fetch($sql, $params);
     }
 
     /** Relations actives DONT un compte/ressource est la cible (qui suit cet élève ?). */

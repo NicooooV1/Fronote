@@ -101,8 +101,15 @@ class VieAssociativeService
 
     public function retirerMembre(int $membreId): bool
     {
-        $stmt = $this->pdo->prepare("DELETE FROM association_membres WHERE id = ?");
-        return $stmt->execute([$membreId]);
+        // Cloisonnement tenant : association_membres n'a pas d'etablissement_id ; le scope
+        // passe par l'association. Sans ce JOIN, un id deviné supprimait une adhésion d'une
+        // association d'un autre établissement (IDOR DELETE cross-tenant).
+        $stmt = $this->pdo->prepare(
+            "DELETE am FROM association_membres am
+             JOIN associations a ON am.association_id = a.id
+             WHERE am.id = ? AND a.etablissement_id = ?"
+        );
+        return $stmt->execute([$membreId, \API\Core\EstablishmentContext::id()]);
     }
 
     /* ==================== ACTIVITÉS ==================== */

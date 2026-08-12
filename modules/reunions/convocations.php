@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken() && (isAdmin() |
 
 // Marquer comme lue
 if (isset($_GET['lire'])) {
-    $reunionService->marquerConvocationLue((int)$_GET['lire']);
+    $reunionService->marquerConvocationLue((int)$_GET['lire'], $userId, $userType);
     header('Location: convocations.php');
     exit;
 }

@@ -122,8 +122,15 @@ class ProjetPedagogiqueService
 
     public function retirerParticipant(int $participantId): bool
     {
-        $stmt = $this->pdo->prepare("DELETE FROM projets_pedagogiques_participants WHERE id = ?");
-        return $stmt->execute([$participantId]);
+        // Cloisonnement tenant : projets_pedagogiques_participants n'a pas d'etablissement_id ;
+        // le scope passe par le projet. Sans ce JOIN, un id deviné supprimait un participant
+        // d'un projet d'un autre établissement (IDOR DELETE cross-tenant).
+        $stmt = $this->pdo->prepare(
+            "DELETE ppp FROM projets_pedagogiques_participants ppp
+             JOIN projets_pedagogiques pp ON ppp.projet_id = pp.id
+             WHERE ppp.id = ? AND pp.etablissement_id = ?"
+        );
+        return $stmt->execute([$participantId, \API\Core\EstablishmentContext::id()]);
     }
 
     /* ==================== ÉTAPES ==================== */
@@ -146,8 +153,16 @@ class ProjetPedagogiqueService
 
     public function changerStatutEtape(int $etapeId, string $statut): bool
     {
-        $stmt = $this->pdo->prepare("UPDATE projets_pedagogiques_etapes SET statut = ? WHERE id = ?");
-        return $stmt->execute([$statut, $etapeId]);
+        // Cloisonnement tenant via le projet parent (projets_pedagogiques_etapes n'a pas
+        // d'etablissement_id). Sans ce JOIN, un etape_id deviné modifiait l'étape d'un
+        // projet d'un autre établissement (IDOR UPDATE cross-tenant).
+        $stmt = $this->pdo->prepare(
+            "UPDATE projets_pedagogiques_etapes e
+             JOIN projets_pedagogiques pp ON e.projet_id = pp.id
+             SET e.statut = ?
+             WHERE e.id = ? AND pp.etablissement_id = ?"
+        );
+        return $stmt->execute([$statut, $etapeId, \API\Core\EstablishmentContext::id()]);
     }
 
     /* ==================== BUDGET TRACKING ==================== */

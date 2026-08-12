@@ -217,10 +217,16 @@ class ReunionService
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function marquerConvocationLue(int $id): bool
+    public function marquerConvocationLue(int $id, int $userId, string $userType): bool
     {
-        $stmt = $this->pdo->prepare("UPDATE convocations SET lue = 1, date_lecture = NOW() WHERE id = ?");
-        return $stmt->execute([$id]);
+        // Cloisonnement tenant + destinataire : un utilisateur ne peut marquer comme lue
+        // QUE sa propre convocation, dans son établissement. Sans ce filtre, un id deviné
+        // marquait la convocation d'un autre (tenant ou destinataire).
+        $stmt = $this->pdo->prepare(
+            "UPDATE convocations SET lue = 1, date_lecture = NOW()
+             WHERE id = ? AND etablissement_id = ? AND destinataire_id = ? AND destinataire_type = ?"
+        );
+        return $stmt->execute([$id, \API\Core\EstablishmentContext::id(), $userId, $userType]);
     }
 
     // ── Helpers ──

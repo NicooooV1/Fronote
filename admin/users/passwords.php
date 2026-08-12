@@ -50,10 +50,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && hash_equals($csrf_token, $_POST['cs
     if ($action === 'reject') {
         $rid = intval($_POST['request_id'] ?? 0);
         if ($rid > 0) {
-            $stmt = $pdo->prepare("UPDATE demandes_reinitialisation SET status = 'rejected', date_traitement = NOW(), admin_id = ? WHERE id = ?");
-            $stmt->execute([$admin['id'], $rid]);
-            logAudit('password_reset_rejected', 'demandes_reinitialisation', $rid);
-            $message = "Demande rejetée.";
+            // Cloisonnement multi-tenant (cf. approve/manual_reset) : la demande doit cibler
+            // un compte que cet admin peut gérer, sinon un admin d'un établissement pouvait
+            // rejeter les demandes de réinitialisation d'un autre tenant.
+            $dstmt = $pdo->prepare("SELECT user_id, user_type FROM demandes_reinitialisation WHERE id = ?");
+            $dstmt->execute([$rid]);
+            $dem = $dstmt->fetch(PDO::FETCH_ASSOC);
+            if ($dem && adminCanManageUser((int) $dem['user_id'], (string) $dem['user_type'])) {
+                $stmt = $pdo->prepare("UPDATE demandes_reinitialisation SET status = 'rejected', date_traitement = NOW(), admin_id = ? WHERE id = ?");
+                $stmt->execute([$admin['id'], $rid]);
+                logAudit('password_reset_rejected', 'demandes_reinitialisation', $rid);
+                $message = "Demande rejetée.";
+            } else {
+                $error = "Demande introuvable ou hors de votre périmètre.";
+            }
         }
     }
 
@@ -99,6 +109,12 @@ try {
         ORDER BY r.date_demande DESC
     ");
     $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Cloisonnement multi-tenant : ne montrer que les demandes des comptes gérables par cet
+    // admin (super_admin exempté dans adminCanManageUser) — évite la fuite cross-tenant des
+    // noms/identifiants des comptes en attente de réinitialisation.
+    $requests = array_values(array_filter($requests, static function ($r) {
+        return adminCanManageUser((int) $r['user_id'], (string) $r['user_type']);
+    }));
 } catch (Exception $e) {
     error_log('[' . basename(__FILE__) . '] ' . $e->getMessage());
 }

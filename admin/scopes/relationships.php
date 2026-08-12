@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     }
 }
 
-$relations = ($srcType && $srcId > 0) ? $svc->listFor($srcType, $srcId) : [];
+$relations = ($srcType && $srcId > 0) ? $svc->listFor($srcType, $srcId, (int) \API\Core\EstablishmentContext::id()) : [];
 $accountTypes = ['eleve', 'parent', 'professeur', 'vie_scolaire', 'administrateur'];
 $targetTypes  = ['eleve', 'classe'];
 

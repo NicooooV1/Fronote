@@ -334,11 +334,15 @@ class DisciplineService
 
     public function affecterEleveRetenue(int $retenueId, int $eleveId, ?int $sanctionId = null): bool
     {
+        // Cloisonnement tenant : n'insère que si la retenue appartient à l'établissement
+        // courant. Sans ce filtre, un retenue_id deviné rattachait un élève à une retenue
+        // d'un autre établissement (pollution cross-tenant du roster).
         $stmt = $this->pdo->prepare(
             "INSERT IGNORE INTO retenue_eleves (retenue_id, eleve_id, sanction_id)
-             VALUES (?, ?, ?)"
+             SELECT r.id, ?, ? FROM retenues r
+             WHERE r.id = ? AND r.etablissement_id = ?"
         );
-        return $stmt->execute([$retenueId, $eleveId, $sanctionId]);
+        return $stmt->execute([$eleveId, $sanctionId, $retenueId, \API\Core\EstablishmentContext::id()]);
     }
 
     public function getRetenues(array $filters = []): array
