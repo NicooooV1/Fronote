@@ -12,7 +12,7 @@ $jour = $data['jour'] ?? '';
     <ul class="widget-list">
         <?php foreach ($cours as $c): ?>
         <li class="widget-list-item">
-            <span class="widget-list-icon"><i class="fas fa-clock" style="color:var(--primary-color,#667eea)"></i></span>
+            <span class="widget-list-icon"><i class="fas fa-clock" style="color:var(--primary-color,#4f46e5)"></i></span>
             <div class="widget-list-content">
                 <div class="widget-list-title">
                     <?= htmlspecialchars(substr($c['heure_debut'], 0, 5)) ?>–<?= htmlspecialchars(substr($c['heure_fin'], 0, 5)) ?>

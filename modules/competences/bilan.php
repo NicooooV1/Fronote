@@ -132,7 +132,7 @@ $niveaux = CompetenceService::niveauxLabels();
         <div class="comp-radar-section" style="margin-bottom:24px;">
             <div style="background:var(--bg-card);border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
                 <h3 style="font-size:14px;font-weight:600;color:var(--text-color, #2d3748);margin-bottom:12px;">
-                    <i class="fas fa-chart-pie" style="margin-right:6px;color:#667eea;"></i> Vue radar des compétences
+                    <i class="fas fa-chart-pie" style="margin-right:6px;color:#4f46e5;"></i> Vue radar des compétences
                 </h3>
                 <div data-radar-url="includes/ajax_radar.php?type=eleve&eleve_id=<?= $eleveId ?><?= $periodeId ? '&periode_id=' . $periodeId : '' ?>"
                      data-radar-canvas="canvas-radar-eleve"

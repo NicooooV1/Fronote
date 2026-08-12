@@ -132,15 +132,15 @@ include __DIR__ . '/../includes/header.php';
 .field{margin-bottom:14px}
 .field label{display:block;font-size:.88em;font-weight:600;color:var(--text-color, #4a5568);margin-bottom:4px}
 .field input,.field select,.field textarea{width:100%;padding:9px 12px;border:1px solid var(--border-color, #e2e8f0);border-radius:6px;font-size:.92em}
-.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.12)}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:#4f46e5;box-shadow:0 0 0 3px rgba(102,126,234,.12)}
 .field .hint{font-size:.78em;color:var(--text-muted, #a0aec0);margin-top:3px}
 .field textarea{min-height:80px;resize:vertical}
 .mod-preview{display:flex;align-items:center;gap:14px;padding:16px;background:var(--bg-secondary);border-radius:8px;margin-bottom:20px}
-.mod-preview-icon{width:50px;height:50px;border-radius:10px;background:#f0f4ff;display:flex;align-items:center;justify-content:center;font-size:1.3em;color:#667eea}
+.mod-preview-icon{width:50px;height:50px;border-radius:10px;background:#f0f4ff;display:flex;align-items:center;justify-content:center;font-size:1.3em;color:#4f46e5}
 .mod-preview h4{margin:0;font-size:1em;color:var(--text-color, #2d3748)}
 .mod-preview p{margin:2px 0 0;font-size:.85em;color:var(--text-muted, #a0aec0)}
 .btn-bar{display:flex;gap:10px;margin-top:16px}
-.btn-save{padding:10px 24px;background:#667eea;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:.92em}
+.btn-save{padding:10px 24px;background:#4f46e5;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:.92em}
 .btn-save:hover{background:#5a67d8}
 .btn-back{padding:10px 24px;background:var(--bg-secondary, #edf2f7);color:var(--text-color, #4a5568);border:none;border-radius:6px;font-weight:600;cursor:pointer;text-decoration:none;font-size:.92em}
 .btn-back:hover{background:var(--bg-hover, #e2e8f0)}

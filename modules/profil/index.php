@@ -88,7 +88,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 
                         <!-- Renvois vers les réglages personnels -->
                         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:18px">
-                            <a class="btn-sm" style="background:var(--primary-color,#667eea);color:#fff;text-decoration:none;padding:8px 14px;border-radius:8px"
+                            <a class="btn-sm" style="background:var(--primary-color,#4f46e5);color:#fff;text-decoration:none;padding:8px 14px;border-radius:8px"
                                href="<?= $rootPrefix ?>parametres/parametres.php?section=profil">
                                 <i class="fas fa-user-edit"></i> Modifier mon profil
                             </a>

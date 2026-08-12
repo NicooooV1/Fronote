@@ -63,7 +63,7 @@ class VieScolaireWidgetProvider implements WidgetDataProvider
                 ['label' => 'Absents aujourd\'hui', 'value' => $absencesToday, 'icon' => 'fas fa-user-times', 'color' => '#e53e3e'],
                 ['label' => 'Retards', 'value' => $retardsToday, 'icon' => 'fas fa-clock', 'color' => '#ed8936'],
                 ['label' => 'Incidents ouverts', 'value' => $incidentsOuverts, 'icon' => 'fas fa-exclamation-triangle', 'color' => '#d69e2e'],
-                ['label' => 'Justificatifs en attente', 'value' => $justifAttente, 'icon' => 'fas fa-file-medical', 'color' => '#667eea'],
+                ['label' => 'Justificatifs en attente', 'value' => $justifAttente, 'icon' => 'fas fa-file-medical', 'color' => '#4f46e5'],
                 ['label' => 'Appels en cours', 'value' => $appelsEnCours, 'icon' => 'fas fa-check-square', 'color' => '#48bb78'],
             ],
         ];

@@ -183,7 +183,7 @@
 .notes-stat-value { font-size: 28px; font-weight: 700; }
 .notes-stat-value.primary { color: var(--primary-color, #0f4c81); }
 .notes-stat-value.success { color: #38a169; }
-.notes-stat-value.info    { color: #667eea; }
+.notes-stat-value.info    { color: #4f46e5; }
 .notes-stat-label { font-size: 13px; color: var(--text-light, #718096); }
 
 /* ──────────────────────────────────────────────

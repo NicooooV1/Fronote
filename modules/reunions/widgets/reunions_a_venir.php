@@ -8,7 +8,7 @@ $reunions = $data['reunions'] ?? [];
     <ul class="widget-list">
         <?php foreach ($reunions as $r): ?>
         <li class="widget-list-item">
-            <span class="widget-list-icon"><i class="fas fa-handshake" style="color:var(--accent-color,#667eea)"></i></span>
+            <span class="widget-list-icon"><i class="fas fa-handshake" style="color:var(--accent-color,#4f46e5)"></i></span>
             <div class="widget-list-content">
                 <div class="widget-list-title"><?= htmlspecialchars($r['titre']) ?></div>
                 <div class="widget-list-meta">

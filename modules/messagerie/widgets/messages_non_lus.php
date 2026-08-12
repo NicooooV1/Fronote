@@ -14,7 +14,7 @@ $unreadTotal = $data['unread_total'] ?? 0;
     <ul class="widget-list">
         <?php foreach ($conversations as $conv): ?>
         <li class="widget-list-item">
-            <span class="widget-list-icon"><i class="fas fa-envelope" style="color:var(--primary-color,#667eea)"></i></span>
+            <span class="widget-list-icon"><i class="fas fa-envelope" style="color:var(--primary-color,#4f46e5)"></i></span>
             <div class="widget-list-content">
                 <div class="widget-list-title">
                     <?= htmlspecialchars($conv['subject']) ?>

@@ -2,7 +2,7 @@
 declare(strict_types=1);
 $tickets = $data['tickets'] ?? [];
 $count = $data['count'] ?? 0;
-$prioColors = ['urgente' => '#e53e3e', 'haute' => '#ed8936', 'normale' => '#667eea', 'basse' => '#a0aec0'];
+$prioColors = ['urgente' => '#e53e3e', 'haute' => '#ed8936', 'normale' => '#4f46e5', 'basse' => '#a0aec0'];
 ?>
 <?php if ($count > 0): ?>
     <div class="widget-stat-mini"><strong><?= $count ?></strong> ticket<?= $count > 1 ? 's' : '' ?> ouvert<?= $count > 1 ? 's' : '' ?></div>
@@ -14,7 +14,7 @@ $prioColors = ['urgente' => '#e53e3e', 'haute' => '#ed8936', 'normale' => '#667e
         <?php foreach ($tickets as $t): ?>
         <li class="widget-list-item">
             <span class="widget-list-icon">
-                <i class="fas fa-ticket-alt" style="color:<?= $prioColors[$t['priorite']] ?? '#667eea' ?>"></i>
+                <i class="fas fa-ticket-alt" style="color:<?= $prioColors[$t['priorite']] ?? '#4f46e5' ?>"></i>
             </span>
             <div class="widget-list-content">
                 <div class="widget-list-title">

@@ -153,7 +153,7 @@ include __DIR__ . '/../includes/header.php';
         <div class="mod-stat-label">Désactivés</div>
     </div>
     <div class="mod-stat">
-        <div class="mod-stat-value" style="color:#667eea"><?= $stats['core'] ?></div>
+        <div class="mod-stat-value" style="color:#4f46e5"><?= $stats['core'] ?></div>
         <div class="mod-stat-label">Système (verrouillés)</div>
     </div>
 </div>

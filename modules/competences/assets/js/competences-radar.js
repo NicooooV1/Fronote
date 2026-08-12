@@ -9,7 +9,7 @@
         primary: 'rgba(15, 76, 129, 0.6)',
         primaryBorder: '#0f4c81',
         classeOverlay: 'rgba(102, 126, 234, 0.3)',
-        classeBorder: '#667eea',
+        classeBorder: '#4f46e5',
         grid: '#e2e8f0',
         text: '#4a5568',
         textLight: '#718096',

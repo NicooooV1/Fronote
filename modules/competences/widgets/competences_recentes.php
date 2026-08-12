@@ -2,7 +2,7 @@
 declare(strict_types=1);
 $evaluations = $data['evaluations'] ?? [];
 $niveauLabels = ['non_atteint' => 'Non atteint', 'en_cours' => 'En cours', 'atteint' => 'Atteint', 'depasse' => 'Dépassé'];
-$niveauColors = ['non_atteint' => '#e53e3e', 'en_cours' => '#ed8936', 'atteint' => '#48bb78', 'depasse' => '#667eea'];
+$niveauColors = ['non_atteint' => '#e53e3e', 'en_cours' => '#ed8936', 'atteint' => '#48bb78', 'depasse' => '#4f46e5'];
 ?>
 <?php if (empty($evaluations)): ?>
     <p class="widget-empty">Aucune évaluation récente.</p>
@@ -11,12 +11,12 @@ $niveauColors = ['non_atteint' => '#e53e3e', 'en_cours' => '#ed8936', 'atteint' 
         <?php foreach ($evaluations as $ev): ?>
         <li class="widget-list-item">
             <span class="widget-list-icon">
-                <i class="fas fa-award" style="color:<?= $niveauColors[$ev['niveau']] ?? '#667eea' ?>"></i>
+                <i class="fas fa-award" style="color:<?= $niveauColors[$ev['niveau']] ?? '#4f46e5' ?>"></i>
             </span>
             <div class="widget-list-content">
                 <div class="widget-list-title">
                     <?= htmlspecialchars($ev['competence']) ?>
-                    <span class="widget-badge" style="background:<?= $niveauColors[$ev['niveau']] ?? '#667eea' ?>">
+                    <span class="widget-badge" style="background:<?= $niveauColors[$ev['niveau']] ?? '#4f46e5' ?>">
                         <?= htmlspecialchars($niveauLabels[$ev['niveau']] ?? $ev['niveau']) ?>
                     </span>
                 </div>

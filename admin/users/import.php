@@ -138,9 +138,9 @@ ob_start();
     width: 100%; padding: 9px 12px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; font-size: .92em;
 }
 .import-form select:focus, .import-form input[type="file"]:focus {
-    outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,.12);
+    outline: none; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(102,126,234,.12);
 }
-.btn-import { padding: 10px 20px; background: #667eea; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: .92em; display: flex; align-items: center; gap: 6px; }
+.btn-import { padding: 10px 20px; background: #4f46e5; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: .92em; display: flex; align-items: center; gap: 6px; }
 .btn-import:hover { background: #5a67d8; }
 .format-help { font-size: .85em; color: var(--text-light, #718096); line-height: 1.6; }
 .format-help code { background: var(--bg-secondary, #edf2f7); padding: 2px 6px; border-radius: 3px; font-size: .92em; }

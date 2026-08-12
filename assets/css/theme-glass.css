@@ -50,7 +50,7 @@
   --glass-blur-heavy: blur(40px) saturate(200%);
 
   /* --- Page background gradient --- */
-  --glass-page-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --glass-page-bg: linear-gradient(135deg, #4f46e5 0%, #764ba2 100%);
 
   /* --- Typography --- */
   --glass-font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;

@@ -9,7 +9,7 @@
         primary: '#0f4c81',
         success: '#38a169',
         danger: '#e53e3e',
-        info: '#667eea',
+        info: '#4f46e5',
         muted: '#a0aec0',
         gridLine: '#edf2f7',
         text: '#4a5568',

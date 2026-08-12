@@ -267,10 +267,10 @@ ob_start();
 .tech-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.08)}
 .tech-card-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
 .tech-card-name{font-weight:600;font-size:1.05em;color:var(--text-color, #2d3748)}
-.tech-card-login{font-family:monospace;font-size:.9em;color:#667eea;background:#f0f4ff;padding:2px 8px;border-radius:4px}
+.tech-card-login{font-family:monospace;font-size:.9em;color:#4f46e5;background:#f0f4ff;padding:2px 8px;border-radius:4px}
 .tech-card-meta{display:flex;flex-wrap:wrap;gap:10px;font-size:.85em;color:var(--text-light, #718096);margin-bottom:8px}
 .tech-card-meta span{display:flex;align-items:center;gap:4px}
-.tech-card-motif{font-size:.88em;color:var(--text-color, #4a5568);background:var(--bg-secondary);padding:8px 12px;border-radius:6px;border-left:3px solid #667eea;margin-bottom:10px}
+.tech-card-motif{font-size:.88em;color:var(--text-color, #4a5568);background:var(--bg-secondary);padding:8px 12px;border-radius:6px;border-left:3px solid #4f46e5;margin-bottom:10px}
 .tech-card-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .badge-status{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:.78em;font-weight:600}
 .badge-active{background:#d1fae5;color:#065f46}
@@ -300,7 +300,7 @@ ob_start();
 .modal-box .cred-value{font-size:1.05em;color:var(--text-color, #2d3748);user-select:all}
 .modal-box .warning{background:#fef3c7;color:#92400e;padding:10px 14px;border-radius:6px;font-size:.85em;margin:14px 0;display:flex;align-items:center;gap:8px}
 .btn-modal-close{background:#0f4c81;color:#fff;border:none;padding:8px 20px;border-radius:6px;font-size:.9em;font-weight:600;cursor:pointer;margin-top:8px}
-.btn-copy{background:#667eea;color:#fff;border:none;padding:4px 10px;border-radius:4px;font-size:.78em;cursor:pointer;margin-left:8px}
+.btn-copy{background:#4f46e5;color:#fff;border:none;padding:4px 10px;border-radius:4px;font-size:.78em;cursor:pointer;margin-left:8px}
 .btn-copy:hover{background:#5a67d8}
 .audit-table{width:100%;border-collapse:collapse;background:var(--bg-card);border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06)}
 .audit-table th,.audit-table td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border-color, #f0f0f0);font-size:.82em}
@@ -630,7 +630,7 @@ include __DIR__ . '/../includes/header.php';
                 <td style="white-space:nowrap"><?= date('d/m/Y H:i:s', strtotime($log['created_at'])) ?></td>
                 <td>
                     <span style="font-weight:600;color:var(--text-color, #2d3748)"><?= htmlspecialchars($log['tech_name'] ?? '-') ?></span>
-                    <br><span style="font-family:monospace;font-size:.9em;color:#667eea"><?= htmlspecialchars($log['tech_login'] ?? '-') ?></span>
+                    <br><span style="font-family:monospace;font-size:.9em;color:#4f46e5"><?= htmlspecialchars($log['tech_login'] ?? '-') ?></span>
                 </td>
                 <td>
                     <?php

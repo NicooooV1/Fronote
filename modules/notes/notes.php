@@ -435,7 +435,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                         <div class="notes-stat-label">Moyenne /20</div>
                     </div>
                     <div class="notes-stat-card">
-                        <div class="notes-stat-value" style="color:#667eea;"><?= $classStats['mediane'] ?></div>
+                        <div class="notes-stat-value" style="color:#4f46e5;"><?= $classStats['mediane'] ?></div>
                         <div class="notes-stat-label">Médiane /20</div>
                     </div>
                     <div class="notes-stat-card">

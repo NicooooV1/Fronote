@@ -421,7 +421,7 @@ include 'includes/header.php';
                                     <div style="font-size:11px; color:var(--text-light, #718096);">Max</div>
                                 </div>
                                 <div>
-                                    <div id="stat-mediane" style="font-size:20px; font-weight:700; color:#667eea;">—</div>
+                                    <div id="stat-mediane" style="font-size:20px; font-weight:700; color:#4f46e5;">—</div>
                                     <div style="font-size:11px; color:var(--text-light, #718096);">Médiane</div>
                                 </div>
                                 <div>
