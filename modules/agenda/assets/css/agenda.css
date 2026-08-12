@@ -1987,7 +1987,7 @@
 [data-theme="dark"] .upcoming-month,
 [data-theme="dark"] .upcoming-item-meta,
 [data-theme="dark"] .upcoming-empty {
-  color: #64748b;
+  color: #94a3b8; /* #64748b tombait à ~3.1:1 sur la carte sombre → relevé à ≥4.5:1 */
 }
 
 [data-theme="dark"] .upcoming-day {
