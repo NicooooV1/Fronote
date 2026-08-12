@@ -10,12 +10,14 @@ declare(strict_types=1);
  *   POST /module            {token, module}       → autorise un module premium (renvoie sa signature)
  *   GET  /health                                  → statut
  *   GET  /pubkey                                  → clé publique de signature (hex)
- *   POST /admin/unban       {ip}   (X-Admin-Token) → débannit (bot Discord / CLI distante)
- *   POST /admin/ban         {ip}   (X-Admin-Token)
- *   GET  /admin/status      ?ip=   (X-Admin-Token)
+ *   POST /admin/allow       {ip, note?} (X-Admin-Token) → whiteliste une IP (bot Discord / CLI)
+ *   POST /admin/disallow    {ip}        (X-Admin-Token) → retire une IP de la whitelist
+ *   GET  /admin/list        ?ip=        (X-Admin-Token) → whitelist complète, ou statut d'une IP
+ *   GET  /admin/refused     ?since_id=&limit= (X-Admin-Token) → tentatives refusées (delta)
  *
- * Sécurité : bannissement IP après N échecs de clé, jeton d'admin en temps constant,
- * jamais de secret en réponse, archives signées Ed25519 (vérifiées côté client).
+ * Sécurité : allowlist d'IP (une IP non listée est refusée ET journalisée pour le bot),
+ * jeton d'admin en temps constant, jamais de secret en réponse, archives signées
+ * Ed25519 (vérifiées côté client).
  */
 
 require __DIR__ . '/lib/loader.php';
@@ -63,13 +65,32 @@ function json_out(int $code, array $payload): never
 
 function client_ip(array $cfg): string
 {
-    // Par défaut : l'IP TCP réelle (non spoofable). XFF honoré seulement si explicitement
-    // configuré (derrière un reverse-proxy de confiance).
-    if (!empty($cfg['trust_forwarded']) && !empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        $parts = explode(',', (string) $_SERVER['HTTP_X_FORWARDED_FOR']);
-        return trim($parts[0]);
+    // IP réelle du client, utilisée comme SEUL contrôle d'accès (allowlist). Elle DOIT
+    // donc être non-spoofable.
+    //
+    // ⚠️ FAILLE CORRIGÉE (revue adversariale 2026-08-12) : l'ancienne version renvoyait
+    // le segment LE PLUS À GAUCHE de X-Forwarded-For dès que trust_forwarded=true. Or ce
+    // segment est ENTIÈREMENT fourni par le client : Caddy AJOUTE l'IP du pair à droite
+    // sans supprimer un XFF entrant. N'importe qui atteignant dist.nicov1.fr pouvait donc
+    // envoyer « X-Forwarded-For: <une IP whitelistée> » et contourner toute l'allowlist.
+    //
+    // Défense : on n'honore XFF QUE si la connexion vient d'un proxy de confiance déclaré
+    // (Caddy), et on prend alors le segment LE PLUS À DROITE (celui que CE proxy a ajouté,
+    // hors de portée du client), validé comme IP. Sinon, l'IP TCP réelle. En complément,
+    // le vhost Caddy réécrit XFF = IP du pair (header_up), rendant le contournement
+    // impossible même en amont.
+    $remote = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+    $trusted = array_map('strval', (array) ($cfg['trusted_proxies'] ?? []));
+    if (!empty($cfg['trust_forwarded'])
+        && in_array($remote, $trusted, true)
+        && !empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $parts = array_map('trim', explode(',', (string) $_SERVER['HTTP_X_FORWARDED_FOR']));
+        $cand = end($parts);   // segment ajouté par le proxy de confiance = non spoofable
+        if ($cand !== false && filter_var($cand, FILTER_VALIDATE_IP)) {
+            return $cand;
+        }
     }
-    return (string) ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
+    return filter_var($remote, FILTER_VALIDATE_IP) ? $remote : '0.0.0.0';
 }
 
 function require_admin(array $cfg): void
@@ -154,7 +175,10 @@ switch ($action) {
         $module = trim((string) ($_POST['module'] ?? ''));
         $res = $store->authorizeModule($token, $module, $ip);
         if ($res['status'] !== 'ok') {
-            $codes = ['banned' => 403, 'invalid_token' => 401, 'not_entitled' => 402, 'revoked' => 410, 'expired' => 410];
+            // 'not_whitelisted' est le PREMIER test d'authorizeModule : il doit répondre
+            // 403 (cohérent avec /redeem et /download), pas retomber sur le 400 générique.
+            $codes = ['not_whitelisted' => 403, 'invalid_token' => 401, 'invalid_module' => 400,
+                      'not_entitled' => 402, 'revoked' => 410, 'expired' => 410];
             json_out($codes[$res['status']] ?? 400, ['status' => $res['status']]);
         }
         $file = $payloadDir . '/module-' . $module . '.tar.gz';
@@ -170,7 +194,10 @@ switch ($action) {
 
     case 'download': {
         if ($method !== 'GET') { json_out(405, ['status' => 'method_not_allowed']); }
-        if (!$store->isIpAllowed($ip)) { json_out(403, ['status' => 'not_whitelisted']); }
+        if (!$store->isIpAllowed($ip)) {
+            $store->recordRefused($ip, 'download');
+            json_out(403, ['status' => 'not_whitelisted']);
+        }
         $token = trim((string) ($_GET['token'] ?? ''));
         $artifact = (string) ($_GET['artifact'] ?? '');
         if (!preg_match('/^(base|module-[a-z][a-z0-9_]*)$/', $artifact)) {
@@ -178,9 +205,14 @@ switch ($action) {
         }
         // Autorisation : 'base' → jeton d'installation valide ; 'module-x' → droit sur x.
         if ($artifact === 'base') {
-            // Un jeton valide suffit pour re-télécharger le socle.
+            // Un jeton valide suffit pour re-télécharger le socle. On propage le VRAI
+            // statut (revoked/expired/…) au lieu de tout aplatir en « invalid_token » :
+            // un client dont la licence vient d'être révoquée mérite un message exact.
             $ok = $store->authorizeModule($token, ($cfg['simple_modules'][0] ?? 'notes'), $ip);
-            if (($ok['status'] ?? '') !== 'ok') { json_out(401, ['status' => 'invalid_token']); }
+            if (($ok['status'] ?? '') !== 'ok') {
+                $codes = ['not_whitelisted' => 403, 'invalid_token' => 401, 'revoked' => 410, 'expired' => 410];
+                json_out($codes[$ok['status'] ?? ''] ?? 401, ['status' => $ok['status'] ?? 'invalid_token']);
+            }
         } else {
             $mod = substr($artifact, strlen('module-'));
             $ok = $store->authorizeModule($token, $mod, $ip);
@@ -219,6 +251,13 @@ switch ($action) {
         $target = trim((string) ($_GET['ip'] ?? ''));
         if ($target !== '') { json_out(200, ['status' => 'ok', 'ip' => $store->ipStatus($target)]); }
         json_out(200, ['status' => 'ok', 'allowlist' => $store->listAllowed()]);
+    }
+
+    case 'admin_refused': {   // tentatives refusées depuis un curseur (pour le bot Discord)
+        require_admin($cfg);
+        $since = (int) ($_GET['since_id'] ?? 0);
+        $limit = (int) ($_GET['limit'] ?? 200);
+        json_out(200, ['status' => 'ok', 'refused' => $store->listRefused($since, $limit)]);
     }
 
     default:

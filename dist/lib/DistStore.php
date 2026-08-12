@@ -80,6 +80,12 @@ final class DistStore
                 ip             TEXT,
                 at             TEXT NOT NULL DEFAULT (datetime('now'))
             );
+            CREATE TABLE IF NOT EXISTS refused_log (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                ip             TEXT NOT NULL,
+                kind           TEXT NOT NULL,               -- 'redeem' | 'download' | 'module'
+                at             TEXT NOT NULL DEFAULT (datetime('now'))
+            );
         SQL);
     }
 
@@ -123,6 +129,55 @@ final class DistStore
         $stmt->execute([':ip' => $ip]);
         $row = $stmt->fetch();
         return ['ip' => $ip, 'allowed' => (bool) $row, 'note' => $row['note'] ?? null, 'added_at' => $row['added_at'] ?? null];
+    }
+
+    // ─── Journal des refus (IP non whitelistées) ─────────────────────────────
+    // Consommé par le bot Discord du distributeur (GET /admin/refused) pour proposer
+    // d'autoriser l'IP d'un client qui a tenté d'installer sans être encore listé.
+    // On ne journalise QUE l'IP et le type de requête — jamais la clé soumise.
+
+    public function recordRefused(string $ip, string $kind): void
+    {
+        // Ne journalise qu'une IP VALIDE : client_ip() peut, en dernier recours, renvoyer
+        // « 0.0.0.0 », et on ne veut jamais stocker une chaîne arbitraire (le bot l'affiche
+        // dans Discord et la propose à /dist autoriser).
+        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+            return;
+        }
+        $this->db->prepare('INSERT INTO refused_log (ip, kind) VALUES (:ip, :k)')
+            ->execute([':ip' => $ip, ':k' => $kind]);
+        // Borne la table (une IP hostile ne doit pas faire gonfler la base sans fin).
+        $this->db->exec(
+            'DELETE FROM refused_log WHERE id <= (SELECT COALESCE(MAX(id),0) FROM refused_log) - 5000'
+        );
+    }
+
+    /**
+     * Refus depuis un curseur (id > sinceId), ordre chronologique — le bot mémorise le
+     * dernier id vu et ne relit que le delta.
+     *
+     * ⚠️ sinceId <= 0 = « donne-moi les plus RÉCENTS » (commande /dist refus) : on prend
+     * la QUEUE du journal (ORDER BY id DESC LIMIT n) puis on ré-inverse pour rendre l'ordre
+     * chronologique. Un simple « WHERE id > 0 ORDER BY id ASC LIMIT 1000 » renvoyait au
+     * contraire les 1000 plus ANCIENS et masquait tous les refus récents dès que la table
+     * dépasse la limite (constat revue 2026-08-12).
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function listRefused(int $sinceId = 0, int $limit = 200): array
+    {
+        $n = max(1, min(1000, $limit));
+        if ($sinceId > 0) {
+            $stmt = $this->db->prepare(
+                'SELECT id, ip, kind, at FROM refused_log WHERE id > :s ORDER BY id ASC LIMIT ' . $n
+            );
+            $stmt->execute([':s' => $sinceId]);
+            return $stmt->fetchAll();
+        }
+        $rows = $this->db->query(
+            'SELECT id, ip, kind, at FROM refused_log ORDER BY id DESC LIMIT ' . $n
+        )->fetchAll();
+        return array_reverse($rows);   // rendu chronologique (id croissant)
     }
 
     // ─── Clés ────────────────────────────────────────────────────────────────
@@ -195,6 +250,7 @@ final class DistStore
     public function redeem(string $key, string $ip): array
     {
         if (!$this->isIpAllowed($ip)) {
+            $this->recordRefused($ip, 'redeem');
             return ['status' => 'not_whitelisted'];
         }
         if (!preg_match('/^[A-Za-z0-9]{48}$/', $key)) {
@@ -272,6 +328,7 @@ final class DistStore
     public function authorizeModule(string $installToken, string $module, string $ip): array
     {
         if (!$this->isIpAllowed($ip)) {
+            $this->recordRefused($ip, 'module');
             return ['status' => 'not_whitelisted'];
         }
         if (!preg_match('/^[a-z][a-z0-9_]*$/', $module)) {

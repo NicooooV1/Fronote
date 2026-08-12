@@ -9,6 +9,9 @@ Ed25519**.
 
 1. Le distributeur **whiteliste l'IP publique** du client (via son bot Discord → API d'admin,
    ou `php dist/bin/allow.php <ip>`). Une IP non listée est **refusée** — pas de bannissement.
+   Chaque refus est **journalisé** (`refused_log`, IP + type + date, jamais la clé soumise) et
+   exposé au bot via `GET /admin/refused` : le bot peut notifier « telle IP a tenté d'installer »
+   et proposer de l'autoriser en un clic.
 2. Le distributeur **émet une clé** (48 car., usage unique) : `php dist/bin/issue-key.php`.
 3. Il remet au client **`bootstrap.sh`** (configuré) + **la clé**.
 4. Le client lance `sudo ./bootstrap.sh` → saisit la clé → le serveur valide (IP whitelistée +
@@ -85,6 +88,7 @@ Les endpoints d'admin exigent l'en-tête **`X-Admin-Token: <admin_token>`**.
 | `/admin/allow`    | POST | `ip`, `note?` | whiteliste une IP |
 | `/admin/disallow` | POST | `ip`          | retire une IP |
 | `/admin/list`     | GET  | `ip?`         | liste la whitelist, ou statut d'une IP |
+| `/admin/refused`  | GET  | `since_id?`, `limit?` | tentatives refusées (IP non whitelistées) depuis un curseur |
 | `/redeem`         | POST | `key`         | (client) valide+consomme la clé |
 | `/download`       | GET  | `artifact`, `token` | (client) archive signée |
 | `/module`         | POST | `token`, `module`   | (client) autorise un module premium |

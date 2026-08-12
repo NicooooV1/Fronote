@@ -46,6 +46,16 @@ for arg in "$@"; do
     --no-packages)   DO_PACKAGES=0 ;;
     --no-webserver)  DO_WEBSERVER=0 ;;
     -h|--help)       sed -n '2,25p' "$0"; exit 0 ;;
+    # VAR=valeur en argument = équivalent d'une variable d'environnement (APP_URL=…,
+    # ADMIN_EMAIL=…). Indispensable au passthrough de bootstrap.sh, dont l'usage
+    # documenté est « ./bootstrap.sh --yes APP_URL=… ADMIN_EMAIL=… » : sans ce cas,
+    # ces arguments tombaient dans « Option inconnue » et l'installation mourait
+    # APRÈS téléchargement/vérification du socle (constat test e2e 2026-08-12).
+    [A-Za-z_]*=*)
+      case "${arg%%=*}" in
+        *[!A-Za-z0-9_]*) die "Option inconnue : $arg" ;;
+        *) printf -v "${arg%%=*}" '%s' "${arg#*=}" ;;
+      esac ;;
     *) die "Option inconnue : $arg" ;;
   esac
 done
@@ -101,8 +111,14 @@ if [ "$DO_PACKAGES" = 1 ]; then
     "php${PHP_VER}-intl" "php${PHP_VER}-bcmath" \
     mariadb-server apache2 nodejs npm unzip curl openssl ca-certificates git >/dev/null
   ok "Paquets système installés"
-  # composer (vérifié par signature officielle)
-  if ! command -v composer >/dev/null; then
+  # composer (vérifié par signature officielle). Installé dans /usr/local/bin, mais on
+  # ne SUPPOSE PAS que ce répertoire est dans le PATH : sous un shell d'automatisation
+  # (bootstrap.sh -> exec install.sh via `pct exec`/cloud-init/CI), le PATH se réduit
+  # souvent à /usr/bin:/bin, et un `composer` nu devenait alors « command not found »
+  # -> « composer install a échoué » indiagnosticable, juste après avoir été installé
+  # (constat test e2e 2026-08-12). On mémorise donc son CHEMIN et on l'appelle par là.
+  COMPOSER_BIN="$(command -v composer || true)"
+  if [ -z "$COMPOSER_BIN" ]; then
     log "Installation de composer"
     EXPECTED="$(curl -fsSL https://composer.github.io/installer.sig)"
     curl -fsSL https://getcomposer.org/installer -o /tmp/composer-setup.php
@@ -110,25 +126,51 @@ if [ "$DO_PACKAGES" = 1 ]; then
     [ "$EXPECTED" = "$ACTUAL" ] || die "Signature de l'installeur composer invalide — abandon."
     php /tmp/composer-setup.php --quiet --install-dir=/usr/local/bin --filename=composer
     rm -f /tmp/composer-setup.php
-    ok "composer installé"
+    COMPOSER_BIN=/usr/local/bin/composer
+    ok "composer installé ($COMPOSER_BIN)"
   fi
 else
   log "Étape paquets ignorée (--no-packages) — vérification des prérequis"
   command -v php >/dev/null || die "php introuvable."
-  command -v composer >/dev/null || die "composer introuvable."
+  # Résolution robuste (PATH, puis emplacements usuels) : même raison que ci-dessus.
+  COMPOSER_BIN="$(command -v composer || true)"
+  [ -z "$COMPOSER_BIN" ] && for c in /usr/local/bin/composer /usr/bin/composer "$APP_DIR/composer.phar"; do
+    [ -x "$c" ] && { COMPOSER_BIN="$c"; break; }
+  done
+  [ -n "$COMPOSER_BIN" ] || die "composer introuvable."
   command -v mariadb >/dev/null || command -v mysql >/dev/null || die "client MariaDB/MySQL introuvable."
 fi
 
-# extensions PHP indispensables
+# extensions PHP indispensables.
+# ⚠️ On liste les modules UNE fois dans une variable, puis on grep cette variable —
+# et surtout PAS `php -m | grep -q "^ext$"`. Sous `set -o pipefail`, `grep -q` sort dès
+# la première correspondance et FERME le tuyau ; `php -m`, encore en train d'écrire,
+# meurt alors d'un SIGPIPE (code 141), et pipefail propage ce 141 comme échec du tuyau
+# ALORS MÊME QUE grep a trouvé l'extension. « json » (premier dans l'ordre alphabétique
+# de `php -m`) déclenchait donc un faux « Extension manquante » quasi systématique, et
+# les autres de façon intermittente sous charge (constat test e2e 2026-08-12).
+PHP_MODULES="$(php -m 2>/dev/null)"
 for ext in pdo_mysql mbstring json openssl; do
-  php -m 2>/dev/null | grep -qi "^${ext}$" || die "Extension PHP manquante : ${ext}"
+  printf '%s\n' "$PHP_MODULES" | grep -qi "^${ext}$" || die "Extension PHP manquante : ${ext}"
 done
 ok "Extensions PHP requises présentes"
 
 # ── 2. dépendances PHP ──────────────────────────────────────────────────────
+# La sortie est CAPTURÉE (et non jetée vers /dev/null) : un `composer install` qui
+# échoue vraiment — dépôt injoignable, mémoire insuffisante pendant le dump de
+# l'autoloader optimisé, dépendance manquante — laissait sinon un « a échoué » nu,
+# indiagnosticable pour le client. On montre les dernières lignes en cas d'échec.
+# `--no-progress` évite les barres qui polluent un log non-tty.
 log "Installation des dépendances PHP (composer, sans dev)"
-COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction \
-  --working-dir="$APP_DIR" >/dev/null 2>&1 || die "composer install a échoué."
+COMPOSER_LOG="$(mktemp)"
+if ! COMPOSER_ALLOW_SUPERUSER=1 "$COMPOSER_BIN" install --no-dev --optimize-autoloader \
+      --no-interaction --no-progress --working-dir="$APP_DIR" >"$COMPOSER_LOG" 2>&1; then
+  warn "composer install a échoué — dernières lignes :"
+  tail -n 20 "$COMPOSER_LOG" >&2
+  rm -f "$COMPOSER_LOG"
+  die "composer install a échoué (voir ci-dessus)."
+fi
+rm -f "$COMPOSER_LOG"
 ok "Dépendances PHP installées (vendor/)"
 
 # ── 3. secrets ──────────────────────────────────────────────────────────────
@@ -151,11 +193,16 @@ SQL
 ok "Base « ${DB_NAME} » + utilisateur « ${DB_USER} »@${DB_HOST} (droits limités à cette base uniquement)"
 
 # ── 5. provisioning applicatif (headless, en tant que www-data) ─────────────
+# On abaisse les privilèges avec `runuser` (util-linux, TOUJOURS présent) et non `sudo` :
+# une image serveur minimale n'a souvent PAS sudo installé, et le script tournait déjà
+# en root — `sudo -u www-data …` échouait alors en « sudo: command not found », juste
+# avant la seule étape qui écrit la base (constat test e2e 2026-08-12). runuser rend le
+# même service sans dépendance externe. Idem pour le `npm install` du WebSocket plus bas.
 log "Provisioning applicatif (schéma, modules, admin, cohérence 3-mondes)"
 id "$RUN_USER" >/dev/null 2>&1 || die "Utilisateur système « $RUN_USER » introuvable."
 # Droits d'écriture pour que www-data puisse écrire .env / install.lock / caches.
 chown -R "$RUN_USER":"$RUN_USER" "$APP_DIR"
-sudo -u "$RUN_USER" env \
+runuser -u "$RUN_USER" -- env \
   FRONOTE_DB_HOST="$DB_HOST" FRONOTE_DB_PORT="$DB_PORT" FRONOTE_DB_NAME="$DB_NAME" \
   FRONOTE_DB_USER="$DB_USER" FRONOTE_DB_PASS="$DB_PASS" \
   FRONOTE_APP_NAME="$APP_NAME" FRONOTE_APP_ENV="$APP_ENV" FRONOTE_APP_URL="$APP_URL" \
@@ -229,7 +276,7 @@ VHOST
   # ── 8. WebSocket (systemd) ─────────────────────────────────────────────────
   if [ "$WITH_WEBSOCKET" = 1 ] && [ -d "$APP_DIR/websocket" ]; then
     log "Service WebSocket (systemd)"
-    ( cd "$APP_DIR/websocket" && sudo -u "$RUN_USER" npm install --omit=dev >/dev/null 2>&1 ) || warn "npm install (websocket) a échoué — service non démarré."
+    ( cd "$APP_DIR/websocket" && runuser -u "$RUN_USER" -- npm install --omit=dev >/dev/null 2>&1 ) || warn "npm install (websocket) a échoué — service non démarré."
     cat > /etc/systemd/system/fronote-ws.service <<UNIT
 [Unit]
 Description=Fronote WebSocket (Socket.IO)

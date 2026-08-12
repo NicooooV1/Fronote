@@ -34,6 +34,12 @@ return [
     // Honore X-Forwarded-For UNIQUEMENT derrière un reverse-proxy de confiance (sinon spoofable).
     'trust_forwarded' => false,
 
+    // Si trust_forwarded=true : liste des IP de PROXYS de confiance (reverse-proxy) dont
+    // seul le X-Forwarded-For est honoré, et dont on prend le segment le plus a DROITE
+    // (celui que CE proxy ajoute, hors de portee du client). Indispensable pour ne pas
+    // laisser un client spoofer une IP whitelistee via un XFF force. Ex: ['10.3.20.116'].
+    'trusted_proxies' => [],
+
     // Ensemble FIXE des « modules simples » livrés avec la base à toute installation.
     // (Les autres modules sont « premium » : téléchargeables ensuite si la licence y donne droit.)
     'simple_modules' => [
