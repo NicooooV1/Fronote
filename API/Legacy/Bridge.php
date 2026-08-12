@@ -1115,17 +1115,47 @@ if (!function_exists('currentWorld')) {
 }
 if (!function_exists('tenantGate')) {
 	/**
-	 * Garde de bascule : la PERMISSION établissement fait autorité. Si l'utilisateur
-	 * la détient (via son appartenance — connexion /e/{slug} OU repli legacy), accès accordé.
-	 * Sinon, repli sur les rôles legacy le temps de la transition (zéro régression pour les
-	 * comptes non encore migrés). Sans repli, refus strict (tenantAuthorize → 403/redirection).
+	 * Garde des pages back-office établissement — MODÈLE D'AUTORISATION UNIFIÉ.
 	 *
-	 * Remplace progressivement requireRole('administrateur', ...) sur les pages établissement.
+	 * Un rôle = son jeu de permissions (catalogue RoleCatalog + surcharges GLOBALES
+	 * éditées côté PLATEFORME via rbac_grants). L'accès est décidé par la PERMISSION,
+	 * résolue par le moteur UNIQUE Authorization::can() — plus de « monde tenant »
+	 * (tables d'appartenance) ni de repli par nom de rôle. Régler « qui a le droit »
+	 * = éditer les permissions du rôle depuis la plateforme, rien d'autre.
+	 *
+	 * Les clés d'appel historiques `tenant.*` sont traduites vers la famille unique de
+	 * permissions back-office `admin.*` du catalogue (une seule famille = éditeur clair).
+	 * super_admin passe toujours ('*'), administrateur détient la famille admin.* ;
+	 * aucun autre rôle ne l'a par défaut ⇒ comportement identique à l'ancien repli.
+	 *
+	 * @param string $permission  clé de permission (tenant.* héritée ou clé catalogue)
+	 * @param array  $legacyFallbackRoles  conservé pour compat de signature — NON utilisé.
 	 */
 	function tenantGate(string $permission, array $legacyFallbackRoles = []): void {
-		if (tenantCan($permission)) { return; }
-		if (!empty($legacyFallbackRoles)) { requireRole(...$legacyFallbackRoles); return; }
-		tenantAuthorize($permission);
+		static $MAP = [
+			'tenant.users.view'           => 'admin.users',
+			'tenant.users.manage'         => 'admin.users',
+			'tenant.classes.view'         => 'admin.classes',
+			'tenant.classes.manage'       => 'admin.classes',
+			'tenant.roles.view'           => 'roles.view',
+			'tenant.roles.manage'         => 'roles.manage',
+			'tenant.modules.manage'       => 'admin.modules',
+			'tenant.etablissement.manage' => 'admin.etablissement',
+			'tenant.imports.manage'       => 'admin.users.import',
+			'tenant.exports.manage'       => 'export.export',
+			'tenant.audit.view'           => 'audit.view',
+			'tenant.dashboard.view'       => 'admin.access',
+		];
+		if (isset($MAP[$permission])) {
+			$perm = $MAP[$permission];
+		} elseif (strncmp($permission, 'tenant.', 7) === 0) {
+			// clé tenant.* non cartographiée : défaut conservateur (admin uniquement).
+			error_log("[tenantGate] clé tenant.* non mappée: {$permission} → admin.access");
+			$perm = 'admin.access';
+		} else {
+			$perm = $permission; // déjà une clé catalogue
+		}
+		authorize($perm);
 	}
 }
 
