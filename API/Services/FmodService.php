@@ -511,64 +511,6 @@ class FmodService
         }
     }
 
-    /**
-     * @deprecated Use verifyAndExtract() to remove the verify→extract TOCTOU window.
-     * Retained for backward compatibility with code that pre-verified the package.
-     */
-    public function extract(string $fmodPath, string $targetDir): void
-    {
-        if (file_exists($targetDir) && !$this->isEmptyDir($targetDir)) {
-            throw new \RuntimeException("target dir not empty: {$targetDir}");
-        }
-        if (!is_dir($targetDir) && !mkdir($targetDir, 0775, true)) {
-            throw new \RuntimeException("cannot mkdir {$targetDir}");
-        }
-        $targetReal = realpath($targetDir);
-        if ($targetReal === false) {
-            throw new \RuntimeException("cannot resolve target dir: {$targetDir}");
-        }
-        $zip = new \ZipArchive();
-        $openRc = $zip->open($fmodPath);
-        if ($openRc !== true) {
-            throw new \RuntimeException('cannot open package (rc=' . (int) $openRc . ')');
-        }
-        try {
-            for ($i = 0, $n = $zip->numFiles; $i < $n; $i++) {
-                $name = $zip->getNameIndex($i);
-                if ($name === false) {
-                    throw new \RuntimeException("ZipArchive::getNameIndex({$i}) failed");
-                }
-                if ($name === self::MANIFEST_FILE || $name === self::SIGNATURE_FILE) continue;
-                if (substr($name, -1) === '/') continue; // directory entries created lazily
-                if (!$this->isSafeArchiveName($name)) {
-                    throw new \RuntimeException("unsafe entry name: {$name}");
-                }
-                $dest = $this->resolveSafeTarget($targetReal, $name);
-                if ($dest === null) {
-                    throw new \RuntimeException("path traversal blocked: {$name}");
-                }
-                $parent = dirname($dest);
-                if (!is_dir($parent) && !mkdir($parent, 0775, true)) {
-                    throw new \RuntimeException("cannot mkdir for {$name}");
-                }
-                $stream = $zip->getStream($name);
-                if (!is_resource($stream)) {
-                    throw new \RuntimeException("cannot read {$name}");
-                }
-                $out = fopen($dest, 'wb');
-                if (!is_resource($out)) {
-                    fclose($stream);
-                    throw new \RuntimeException("cannot write {$dest}");
-                }
-                stream_copy_to_stream($stream, $out);
-                fclose($out);
-                fclose($stream);
-            }
-        } finally {
-            $zip->close();
-        }
-    }
-
     // ───────────────────────── Helpers ─────────────────────────
 
     private function isExcluded(string $rel): bool

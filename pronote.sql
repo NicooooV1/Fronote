@@ -42,7 +42,6 @@ DROP TABLE IF EXISTS `email_log`;
 -- Tables ajoutées (phases 2+)
 DROP TABLE IF EXISTS `app_metrics`;
 DROP TABLE IF EXISTS `module_settings_schema`;
-DROP TABLE IF EXISTS `job_queue`;
 DROP TABLE IF EXISTS `oauth_bindings`;
 DROP TABLE IF EXISTS `feature_flags`;
 DROP TABLE IF EXISTS `translations`;
@@ -1834,24 +1833,6 @@ ALTER TABLE `audit_log`
   ADD INDEX `idx_action_date` (`action`, `created_at`);
 
 -- ============================================================
--- Job Queue (G4) — file d'attente asynchrone en base
--- ============================================================
-CREATE TABLE `job_queue` (
-  `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-  `handler` VARCHAR(255) NOT NULL COMMENT 'Classe ou callable du job',
-  `payload` JSON NOT NULL,
-  `status` ENUM('pending','processing','completed','failed') NOT NULL DEFAULT 'pending',
-  `attempts` INT NOT NULL DEFAULT 0,
-  `max_attempts` INT NOT NULL DEFAULT 3,
-  `available_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `started_at` DATETIME DEFAULT NULL,
-  `completed_at` DATETIME DEFAULT NULL,
-  `error_message` TEXT DEFAULT NULL,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX `idx_status_available` (`status`, `available_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ============================================================
 -- Module Settings Schema (D5) — champs de configuration déclaratifs par module
 -- ============================================================
 CREATE TABLE `module_settings_schema` (
@@ -2911,74 +2892,6 @@ CREATE TABLE IF NOT EXISTS enquete_reponses (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================================
--- v2.0.0 — Module 5 : Tutorat & Entraide
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS tutorat_pairs (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    etablissement_id INT NOT NULL,
-    tuteur_eleve_id INT NOT NULL,
-    tutore_eleve_id INT NOT NULL,
-    matiere_id INT,
-    professeur_validateur_id INT,
-    date_debut DATE,
-    date_fin DATE,
-    statut ENUM('propose','actif','termine','annule') DEFAULT 'propose',
-    score_amelioration DECIMAL(5,2),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_tp_tuteur (tuteur_eleve_id),
-    INDEX idx_tp_tutore (tutore_eleve_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS tutorat_sessions (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    pair_id INT NOT NULL,
-    date_session DATE NOT NULL,
-    heure_debut TIME,
-    heure_fin TIME,
-    salle_id INT,
-    sujet TEXT,
-    compte_rendu TEXT,
-    statut ENUM('planifiee','realisee','annulee') DEFAULT 'planifiee',
-    note_tuteur INT,
-    note_tutore INT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_ts_pair (pair_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS tutorat_badges (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    code VARCHAR(50) NOT NULL UNIQUE,
-    nom VARCHAR(100) NOT NULL,
-    description TEXT,
-    icone VARCHAR(50),
-    condition_json JSON,
-    xp_reward INT DEFAULT 0,
-    actif TINYINT(1) DEFAULT 1
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS tutorat_eleve_badges (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    eleve_id INT NOT NULL,
-    badge_id INT NOT NULL,
-    date_obtention DATETIME DEFAULT CURRENT_TIMESTAMP,
-    annee_scolaire VARCHAR(10),
-    UNIQUE KEY uk_teb (eleve_id, badge_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS tutorat_demandes (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    etablissement_id INT NOT NULL,
-    eleve_id INT NOT NULL,
-    matiere_id INT,
-    description TEXT,
-    urgence ENUM('basse','moyenne','haute') DEFAULT 'moyenne',
-    statut ENUM('ouverte','matchee','fermee') DEFAULT 'ouverte',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_td_statut (statut)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ============================================================
 -- v2.0.0 — Module 6 : Intelligence / Analyse Predictive
 -- ============================================================
 
@@ -3028,91 +2941,6 @@ CREATE TABLE IF NOT EXISTS intelligence_config (
     seuil_rouge DECIMAL(5,2) DEFAULT 80,
     calcul_automatique TINYINT(1) DEFAULT 0,
     frequence_calcul ENUM('quotidien','hebdomadaire') DEFAULT 'hebdomadaire'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ============================================================
--- v2.0.0 — Module 7 : Securite & Plans d'Urgence
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS securite_plans (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    etablissement_id INT NOT NULL,
-    type ENUM('ppms_attentat','ppms_risques','evacuation','confinement') NOT NULL,
-    titre VARCHAR(200) NOT NULL,
-    contenu TEXT,
-    version INT DEFAULT 1,
-    fichier_path VARCHAR(255),
-    valide_par INT,
-    date_validation DATE,
-    statut ENUM('brouillon','valide','obsolete') DEFAULT 'brouillon',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_sp_etab (etablissement_id, type)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS securite_exercices (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    etablissement_id INT NOT NULL,
-    plan_id INT,
-    type_exercice VARCHAR(50) NOT NULL,
-    date_exercice DATETIME NOT NULL,
-    duree_minutes INT,
-    nb_participants INT DEFAULT 0,
-    nb_manquants INT DEFAULT 0,
-    observations TEXT,
-    points_amelioration TEXT,
-    responsable_id INT,
-    statut ENUM('planifie','en_cours','termine') DEFAULT 'planifie',
-    temps_evacuation_secondes INT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_se_date (date_exercice)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS securite_zones (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    exercice_id INT NOT NULL,
-    nom_zone VARCHAR(100) NOT NULL,
-    responsable_id INT,
-    statut ENUM('non_verifie','securise','probleme') DEFAULT 'non_verifie',
-    heure_verification TIME,
-    commentaire TEXT,
-    INDEX idx_sz_exercice (exercice_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS securite_incidents_registre (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    etablissement_id INT NOT NULL,
-    date_incident DATETIME NOT NULL,
-    type_danger VARCHAR(100),
-    localisation VARCHAR(200),
-    description TEXT,
-    mesures_prises TEXT,
-    signale_par_id INT,
-    signale_par_type VARCHAR(30),
-    statut ENUM('ouvert','traite','clos') DEFAULT 'ouvert',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_sir_date (date_incident)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS securite_contacts_urgence (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    etablissement_id INT NOT NULL,
-    nom VARCHAR(100) NOT NULL,
-    fonction VARCHAR(100),
-    telephone VARCHAR(20),
-    email VARCHAR(150),
-    ordre_appel INT DEFAULT 0,
-    actif TINYINT(1) DEFAULT 1
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS securite_vigipirate (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    etablissement_id INT NOT NULL,
-    niveau ENUM('vigilance','renforce','urgence_attentat') NOT NULL,
-    date_debut DATETIME DEFAULT CURRENT_TIMESTAMP,
-    mesures_actives JSON,
-    commentaire TEXT,
-    defini_par INT,
-    INDEX idx_sv_etab (etablissement_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================================

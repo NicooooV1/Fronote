@@ -563,9 +563,6 @@ class AuditService {
     }
 }
 
-// Backward compatibility aliases for code referencing the old namespace
-class_alias(\API\Services\AuditService::class, 'Pronote\Services\AuditService');
-
 /**
  * Facade Audit
  */

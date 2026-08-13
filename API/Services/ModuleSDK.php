@@ -594,52 +594,6 @@ class ModuleSDK
         return \API\Core\SqlSplitter::split($sql);
     }
 
-    /** @deprecated kept for reference only — logic now in API\Core\SqlSplitter */
-    private function splitSqlStatementsLegacy(string $sql): array
-    {
-        $statements = [];
-        $buffer = '';
-        $len = strlen($sql);
-        $inSingle = $inDouble = $inLineComment = $inBlockComment = false;
-
-        for ($i = 0; $i < $len; $i++) {
-            $c = $sql[$i];
-            $next = $i + 1 < $len ? $sql[$i + 1] : '';
-
-            if ($inLineComment) {
-                if ($c === "\n") { $inLineComment = false; $buffer .= $c; }
-                continue;
-            }
-            if ($inBlockComment) {
-                if ($c === '*' && $next === '/') { $inBlockComment = false; $i++; }
-                continue;
-            }
-            if (!$inSingle && !$inDouble) {
-                if ($c === '-' && $next === '-') { $inLineComment = true; $i++; continue; }
-                if ($c === '#') { $inLineComment = true; continue; }
-                if ($c === '/' && $next === '*') { $inBlockComment = true; $i++; continue; }
-            }
-
-            $prev = $i > 0 ? $sql[$i - 1] : '';
-            if ($c === "'" && !$inDouble && $prev !== '\\') {
-                $inSingle = !$inSingle;
-            } elseif ($c === '"' && !$inSingle && $prev !== '\\') {
-                $inDouble = !$inDouble;
-            }
-
-            if ($c === ';' && !$inSingle && !$inDouble) {
-                $statements[] = $buffer;
-                $buffer = '';
-                continue;
-            }
-            $buffer .= $c;
-        }
-        if (trim($buffer) !== '') {
-            $statements[] = $buffer;
-        }
-        return $statements;
-    }
-
     /** Vrai une fois l'ENUM field_type élargi sur la base déjà installée. */
     private bool $settingsTypeEnumEnsured = false;
 

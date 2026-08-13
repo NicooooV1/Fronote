@@ -81,12 +81,4 @@ class Database
 
         return $this->connection;
     }
-
-    /**
-     * Crée un query builder
-     */
-    public function table($table)
-    {
-        return new QueryBuilder($this->getConnection(), $table);
-    }
 }
