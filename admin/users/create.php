@@ -36,7 +36,7 @@ try {
 // Rôles catalogue attribuables par l'acteur courant (rôle principal + sous-rôles).
 $rms = new \API\Services\RoleManagementService($pdo);
 $assignableRoleKeys = [];
-try { $assignableRoleKeys = $rms->assignableRoles(app('authz')->roleKeys()); } catch (\Throwable $e) {}
+try { $assignableRoleKeys = $rms->assignableRoles(app('authz')->roleKeys()); } catch (\Throwable $e) { error_log('[users/create] assignableRoles (authz): ' . $e->getMessage()); }
 $assignableSet = array_flip($assignableRoleKeys);
 $rolesByTier   = \API\Security\RoleCatalog::rolesByTier();
 $tierLabels = [

@@ -16,7 +16,7 @@ $periodeService = app('periodes');
 $overlaps = [];
 try {
     $overlaps = $periodeService->detectOverlaps();
-} catch (\Throwable $e) {}
+} catch (\Throwable $e) { error_log('[periodes] detectOverlaps: ' . $e->getMessage()); }
 
 $page = new \API\Admin\AdminCrudPage([
     'title'       => 'Périodes scolaires',
@@ -61,7 +61,7 @@ $page = new \API\Admin\AdminCrudPage([
             if ($current) {
                 $stats[] = ['icon' => 'fas fa-clock', 'color' => '#059669', 'value' => $current['nom'], 'label' => '(en cours)'];
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) { error_log('[periodes] calcul des stats: ' . $e->getMessage()); }
         if (!empty($overlaps)) {
             $stats[] = ['icon' => 'fas fa-exclamation-triangle', 'color' => '#f59e0b', 'value' => count($overlaps), 'label' => 'chevauchement(s)'];
         }

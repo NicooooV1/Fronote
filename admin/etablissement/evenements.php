@@ -19,7 +19,7 @@ try {
     foreach ($typesRaw as $t) {
         $types[$t] = $t;
     }
-} catch (\Throwable $e) {}
+} catch (\Throwable $e) { error_log('[evenements] chargement des types: ' . $e->getMessage()); }
 
 $page = new \API\Admin\AdminCrudPage([
     'title'       => 'Événements',

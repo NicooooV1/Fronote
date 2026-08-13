@@ -425,7 +425,7 @@ class AuditRgpdService
                 foreach ($rows as &$row) {
                     foreach ($fields as $f) {
                         if (!empty($row[$f]) && $enc->isEncrypted($row[$f])) {
-                            try { $row[$f] = $enc->decrypt($row[$f]); } catch (\Throwable $e) {}
+                            try { $row[$f] = $enc->decrypt($row[$f]); } catch (\Throwable $e) { error_log('[rgpd] dechiffrement champ ' . $f . ' echoue: ' . $e->getMessage()); }
                         }
                     }
                 }
