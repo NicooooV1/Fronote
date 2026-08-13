@@ -50,7 +50,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && hash_equals($csrf_token, $_POST['cs
                 logAudit($newActive ? 'user_activated' : 'user_deactivated', $table, $uid, ['actif' => $oldVal], ['actif' => $newActive]);
                 // Désactivation → révoquer les sessions actives (déconnexion forcée à la requête suivante).
                 if (!$newActive) {
-                    try { $pdo->prepare("UPDATE session_security SET is_active = 0, expires_at = NOW() WHERE user_id = ? AND user_type = ?")->execute([$uid, $profil]); } catch (\Throwable $e) {}
+                    // Échec de révocation = l'utilisateur désactivé garde une session live : à tracer.
+                    try { $pdo->prepare("UPDATE session_security SET is_active = 0, expires_at = NOW() WHERE user_id = ? AND user_type = ?")->execute([$uid, $profil]); }
+                    catch (\Throwable $e) { error_log('[users] échec révocation session ' . $profil . '#' . $uid . ' : ' . $e->getMessage()); }
                 }
                 $message = $newActive ? "Compte activé avec succès." : "Compte désactivé avec succès.";
             } else { $error = "Erreur lors de la modification du statut."; }

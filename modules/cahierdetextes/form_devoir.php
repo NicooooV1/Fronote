@@ -294,9 +294,9 @@ include 'includes/header.php';
                                             <h4><i class="fas fa-paperclip"></i> Fichiers existants</h4>
                                             <?php foreach ($fichiers as $f): ?>
                                                 <div class="fichier-item">
-                                                    <i class="fas fa-<?= FileUploader::getFileIcon($f['type_mime']) ?>"></i>
+                                                    <i class="fas fa-<?= \API\Services\FileUploadService::getFileIcon((string) $f['type_mime']) ?>"></i>
                                                     <span><?= htmlspecialchars($f['nom_original']) ?></span>
-                                                    <span class="fichier-taille"><?= FileUploader::formatBytes($f['taille']) ?></span>
+                                                    <span class="fichier-taille"><?= \API\Services\FileUploadService::formatBytes((int) $f['taille']) ?></span>
                                                     <a href="?id=<?= $id ?>&del_fichier=<?= $f['id'] ?>&token=<?= urlencode(generateCSRFToken()) ?>"
                                                        class="btn btn-sm btn-danger" data-fr-confirm="Supprimer ce fichier ?"
                                                        title="<?= __('cahierdetextes.delete') ?>"><i class="fas fa-trash"></i></a>

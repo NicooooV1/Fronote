@@ -58,7 +58,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $c
             if ($stmt->execute([$newActive, $adminId])) {
                 logAudit($newActive ? 'admin_activated' : 'admin_deactivated', 'administrateurs', $adminId);
                 if (!$newActive) {
-                    try { $pdo->prepare("UPDATE session_security SET is_active = 0, expires_at = NOW() WHERE user_id = ? AND user_type = 'administrateur'")->execute([$adminId]); } catch (\Throwable $e) {}
+                    // Échec de révocation = l'admin désactivé garde une session live : à tracer.
+                    try { $pdo->prepare("UPDATE session_security SET is_active = 0, expires_at = NOW() WHERE user_id = ? AND user_type = 'administrateur'")->execute([$adminId]); }
+                    catch (\Throwable $e) { error_log('[admins] échec révocation session administrateur#' . $adminId . ' : ' . $e->getMessage()); }
                 }
                 $message = $newActive ? "Compte activé." : "Compte désactivé.";
             } else { $error = "Erreur lors de la modification du statut."; }

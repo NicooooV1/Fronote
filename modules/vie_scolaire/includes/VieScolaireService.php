@@ -364,8 +364,10 @@ class VieScolaireService {
         $incidents = $this->pdo->prepare("SELECT COUNT(*) FROM incidents WHERE DATE(date_incident) = CURDATE() AND etablissement_id = :eid");
         $incidents->execute([':eid' => $etabId]);
 
-        $passagesInf = $this->pdo->prepare("SELECT COUNT(*) FROM infirmerie_passages WHERE DATE(date_passage) = CURDATE()");
-        $passagesInf->execute();
+        // Table réelle = passages_infirmerie (le nom infirmerie_passages n'existe dans aucun schéma → fatal).
+        // Cloisonnement établissement ajouté pour cohérence avec les compteurs voisins (évite un décompte cross-tenant).
+        $passagesInf = $this->pdo->prepare("SELECT COUNT(*) FROM passages_infirmerie WHERE DATE(date_passage) = CURDATE() AND etablissement_id = :eid");
+        $passagesInf->execute([':eid' => $etabId]);
 
         return [
             'date' => date('Y-m-d'),
