@@ -211,7 +211,7 @@ class ParcoursEducatifService
         $eleve = $this->pdo->prepare("SELECT id, nom, prenom, classe FROM eleves WHERE id = :id");
         $eleve->execute([':id' => $eleveId]);
 
-        $parcours = $this->pdo->prepare("SELECT pe.*, m.titre AS modele_titre, m.type_parcours FROM parcours_educatifs pe JOIN parcours_modeles m ON pe.modele_id = m.id WHERE pe.eleve_id = :eid ORDER BY m.type_parcours, pe.date_inscription DESC");
+        $parcours = $this->pdo->prepare("SELECT pe.*, m.titre AS modele_titre, m.type_parcours FROM parcours_educatifs pe JOIN parcours_educatifs_modeles m ON pe.modele_id = m.id WHERE pe.eleve_id = :eid ORDER BY m.type_parcours, pe.date_inscription DESC");
         $parcours->execute([':eid' => $eleveId]);
 
         $photos = $this->pdo->prepare("SELECT * FROM parcours_photos WHERE parcours_id IN (SELECT id FROM parcours_educatifs WHERE eleve_id = :eid) ORDER BY created_at");
@@ -260,7 +260,7 @@ class ParcoursEducatifService
      */
     public function getProgression(int $eleveId): array
     {
-        $stmt = $this->pdo->prepare("SELECT pe.annee_scolaire, m.type_parcours, COUNT(*) AS nb_activites, SUM(CASE WHEN pe.statut = 'valide' THEN 1 ELSE 0 END) AS nb_valides FROM parcours_educatifs pe JOIN parcours_modeles m ON pe.modele_id = m.id WHERE pe.eleve_id = :eid GROUP BY pe.annee_scolaire, m.type_parcours ORDER BY pe.annee_scolaire, m.type_parcours");
+        $stmt = $this->pdo->prepare("SELECT pe.annee_scolaire, m.type_parcours, COUNT(*) AS nb_activites, SUM(CASE WHEN pe.statut = 'valide' THEN 1 ELSE 0 END) AS nb_valides FROM parcours_educatifs pe JOIN parcours_educatifs_modeles m ON pe.modele_id = m.id WHERE pe.eleve_id = :eid GROUP BY pe.annee_scolaire, m.type_parcours ORDER BY pe.annee_scolaire, m.type_parcours");
         $stmt->execute([':eid' => $eleveId]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }

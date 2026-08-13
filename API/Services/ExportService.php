@@ -171,19 +171,22 @@ class ExportService
     {
         try {
             $user = function_exists('getCurrentUser') ? getCurrentUser() : null;
+            // Journalise dans l'historique partagé import_export_logs (lu par
+            // admin/systeme/import_export.php). Avant : INSERT dans export_jobs, table qui
+            // n'existe dans aucun schéma → écriture silencieusement perdue (drift).
             $stmt = $this->pdo->prepare("
-                INSERT INTO export_jobs (user_id, user_type, type, module, filename, status, completed_at)
-                VALUES (?, ?, ?, ?, ?, 'completed', NOW())
+                INSERT INTO import_export_logs (type, cible, format, fichier_nom, statut, user_id, user_type, completed_at)
+                VALUES ('export', ?, ?, ?, 'termine', ?, ?, NOW())
             ");
             $stmt->execute([
+                $this->guessModule(),
+                $type,
+                $filename,
                 $user['id'] ?? 0,
                 $user['type'] ?? 'unknown',
-                $type,
-                $this->guessModule(),
-                $filename
             ]);
         } catch (\PDOException $e) {
-            // Silencieux – la table n'existe peut-être pas encore
+            error_log('[ExportService] journalisation export échouée : ' . $e->getMessage());
         }
     }
 
