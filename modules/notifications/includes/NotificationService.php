@@ -7,14 +7,10 @@ declare(strict_types=1);
  * attachée à un utilisateur précis, lui-même rattaché à un établissement. Pas de
  * listing global cross-tenant : tout `creer()`/`marquerLue()` est par-utilisateur.
  */
-class NotificationService
-{
-    private PDO $pdo;
+require_once __DIR__ . '/../../../API/Services/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
+class NotificationService extends \API\Services\AbstractTenantService
+{
 
     // ── Créer une notification ──
     public function creer(int $userId, string $userType, string $type, string $titre, ?string $contenu = null, ?string $lien = null, string $importance = 'normale', ?string $sourceType = null, ?int $sourceId = null): int

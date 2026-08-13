@@ -6,10 +6,10 @@ namespace Modules\EmploiDuTemps\Services;
 use PDO;
 use RuntimeException;
 
-class MatiereService
+require_once __DIR__ . '/../../../API/Services/AbstractTenantService.php';
+
+class MatiereService extends \API\Services\AbstractTenantService
 {
-    private PDO $pdo;
-    public function __construct(PDO $pdo) { $this->pdo = $pdo; }
     private function etabId(): int { return \API\Core\EstablishmentContext::id(); }
 
     public function getAll(): array

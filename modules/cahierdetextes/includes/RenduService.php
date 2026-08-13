@@ -4,12 +4,10 @@ declare(strict_types=1);
  * RenduService — Gestion des rendus de devoirs en ligne (M08)
  * S'articule avec le module cahierdetextes existant
  */
-class RenduService {
-    private PDO $pdo;
+require_once __DIR__ . '/../../../API/Services/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo) {
-        $this->pdo = $pdo;
-    }
+class RenduService extends \API\Services\AbstractTenantService {
+
 
     // ─── SOUMISSION ÉLÈVE ───
     public function soumettre(int $devoirId, int $eleveId, string $contenu = '', ?array $fichier = null): int {

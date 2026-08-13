@@ -4,14 +4,10 @@ declare(strict_types=1);
  * M23 – RGPD & Audit — Service
  * Enhanced: data export, anonymization, retention policies
  */
-class AuditRgpdService
-{
-    private PDO $pdo;
+require_once __DIR__ . '/../../API/Services/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
+class AuditRgpdService extends \API\Services\AbstractTenantService
+{
 
     /* ───────── JOURNAL D'AUDIT ───────── */
 

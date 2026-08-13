@@ -15,17 +15,14 @@ use PDO;
  *
  * SQL volontairement portable (pas d'ON DUPLICATE) → testable sur SQLite.
  */
-final class AccountService
+require_once __DIR__ . '/AbstractTenantService.php';
+
+final class AccountService extends \API\Services\AbstractTenantService
 {
     public const TYPES = ['platform', 'personnel', 'student', 'family', 'external', 'system', 'temporary'];
     public const STATUSES = ['active', 'inactive', 'pending', 'locked', 'archived', 'deleted'];
 
-    private PDO $pdo;
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
 
     /** Le système de comptes unifiés est-il activé ? (flag d'environnement, défaut: non). */
     public static function isEnabled(): bool

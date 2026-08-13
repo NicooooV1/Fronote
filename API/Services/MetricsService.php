@@ -31,15 +31,12 @@ use PDO;
  *   fleet.etablissements      nb d'établissements actifs
  *   fleet.accounts_active     nb de comptes actifs (parc)
  */
-final class MetricsService
+require_once __DIR__ . '/AbstractTenantService.php';
+
+final class MetricsService extends \API\Services\AbstractTenantService
 {
-    private PDO $pdo;
     private bool $ready = false;
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
 
     /** Garantit l'existence de la table (idempotent). Best-effort. */
     public function ensureTable(): bool

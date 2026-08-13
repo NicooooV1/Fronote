@@ -4,12 +4,10 @@ declare(strict_types=1);
  * VieScolaireService — Tableau de bord consolidé pour la vie scolaire (M10)
  * Agrège les données absences, retards, incidents, appels 
  */
-class VieScolaireService {
-    private PDO $pdo;
+require_once __DIR__ . '/../../../API/Services/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo) {
-        $this->pdo = $pdo;
-    }
+class VieScolaireService extends \API\Services\AbstractTenantService {
+
 
     // ─── STATISTIQUES GLOBALES ───
     public function getStatsJour(string $date = null): array {

@@ -12,7 +12,9 @@ use API\Platform\DirectorInvitationService;
  * établissement(s), l'appartenance et le rôle directeur (scope establishment), puis
  * marque l'invitation acceptée — le tout dans une transaction.
  */
-final class TenantOnboardingService
+require_once __DIR__ . '/../Services/AbstractTenantService.php';
+
+final class TenantOnboardingService extends \API\Services\AbstractTenantService
 {
     /** Types d'établissement acceptés par la table etablissements. */
     private const ETAB_TYPES = ['college', 'lycee', 'superieur', 'primaire', 'polyvalent'];
@@ -25,9 +27,7 @@ final class TenantOnboardingService
      */
     private const TEMPLATE_ETAB_ID = 1;
 
-    private PDO $pdo;
 
-    public function __construct(PDO $pdo) { $this->pdo = $pdo; }
 
     public static function slugify(string $name): string
     {

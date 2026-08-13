@@ -9,14 +9,14 @@ use PDO;
  * TenantAccountService — CRUD des comptes établissement (tenant_accounts).
  * Ces comptes ne reçoivent jamais de rôle plateforme. SQL portable (testable SQLite).
  */
-final class TenantAccountService
+require_once __DIR__ . '/../Services/AbstractTenantService.php';
+
+final class TenantAccountService extends \API\Services\AbstractTenantService
 {
     public const TYPES    = ['director', 'staff', 'teacher', 'student', 'family', 'external', 'temporary', 'system'];
     public const STATUSES = ['pending', 'active', 'inactive', 'locked', 'archived', 'deleted'];
 
-    private PDO $pdo;
 
-    public function __construct(PDO $pdo) { $this->pdo = $pdo; }
 
     /**
      * Crée un compte établissement. $data : account_type (requis), username (requis),

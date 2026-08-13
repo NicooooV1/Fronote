@@ -11,14 +11,10 @@ use PDO;
  * Vue consolidée enfant, e-signature documents, autorisations de sortie QR,
  * calendrier ICS, historique paiements et préférences.
  */
-class PortailParentsService
-{
-    private PDO $pdo;
+require_once __DIR__ . '/../../../API/Services/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
+class PortailParentsService extends \API\Services\AbstractTenantService
+{
 
     // ─── Vue consolidée ───────────────────────────────────────────
 

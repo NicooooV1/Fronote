@@ -5,10 +5,10 @@ namespace Modules\EmploiDuTemps\Services;
 
 use PDO;
 
-class PeriodeService
+require_once __DIR__ . '/../../../API/Services/AbstractTenantService.php';
+
+class PeriodeService extends \API\Services\AbstractTenantService
 {
-    private PDO $pdo;
-    public function __construct(PDO $pdo) { $this->pdo = $pdo; }
 
     public function getAll(): array { $etab = \API\Core\EstablishmentContext::id(); return app('cache')->remember('periodes:all:' . $etab, 1800, fn() => $this->pdo->query('SELECT * FROM periodes WHERE etablissement_id = ' . (int) $etab . ' ORDER BY numero')->fetchAll(PDO::FETCH_ASSOC)); }
     public function getById(int $id): ?array { $stmt = $this->pdo->prepare('SELECT * FROM periodes WHERE id = ? AND etablissement_id = ?'); $stmt->execute([$id, \API\Core\EstablishmentContext::id()]); $row = $stmt->fetch(PDO::FETCH_ASSOC); return $row !== false ? $row : null; }

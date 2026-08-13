@@ -9,13 +9,13 @@ use PDO;
  * SupportTicketService — cycle de vie des tickets. Un ticket DÉCRIT un problème ;
  * il n'accorde AUCUN accès (l'accès passe par la demande puis la session).
  */
-final class SupportTicketService
+require_once __DIR__ . '/../Services/AbstractTenantService.php';
+
+final class SupportTicketService extends \API\Services\AbstractTenantService
 {
     public const CATEGORIES = ['account', 'permissions', 'configuration', 'module', 'data', 'bug', 'security', 'performance', 'billing', 'other'];
 
-    private PDO $pdo;
 
-    public function __construct(PDO $pdo) { $this->pdo = $pdo; }
 
     public function create(int $establishmentId, ?int $createdByAccountId, ?int $membershipId, string $title, string $category, string $description, array $opts = []): int
     {

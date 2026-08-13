@@ -11,14 +11,10 @@ use PDO;
  * Gère banques de questions, évaluations chronométrées, auto-correction,
  * statistiques par question et push vers le module notes.
  */
-class EvaluationService
-{
-    private PDO $pdo;
+require_once __DIR__ . '/../../../API/Services/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
+class EvaluationService extends \API\Services\AbstractTenantService
+{
 
     // ─── Banques de questions ──────────────────────────────────────
 

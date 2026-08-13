@@ -10,13 +10,13 @@ use PDO;
  * d'un ticket. Précise NIVEAU, PÉRIMÈTRE, DURÉE et justification. N'accorde aucun
  * accès tant qu'elle n'est pas approuvée par la Direction.
  */
-final class SupportAccessRequestService
+require_once __DIR__ . '/../Services/AbstractTenantService.php';
+
+final class SupportAccessRequestService extends \API\Services\AbstractTenantService
 {
     public const LEVELS = ['read_only', 'diagnostic', 'configuration', 'account_assistance', 'data_assistance', 'impersonation', 'sensitive_data_access'];
 
-    private PDO $pdo;
 
-    public function __construct(PDO $pdo) { $this->pdo = $pdo; }
 
     /**
      * Crée et envoie une demande d'accès à la Direction.

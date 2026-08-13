@@ -11,9 +11,10 @@ use PDO;
  * Implémentation intégrée sans dépendance externe.
  * Compatible avec Google Authenticator, Authy, Microsoft Authenticator, etc.
  */
-class TwoFactorService
+require_once __DIR__ . '/AbstractTenantService.php';
+
+class TwoFactorService extends \API\Services\AbstractTenantService
 {
-    private PDO $pdo;
 
     /** Base32 alphabet */
     private const BASE32_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -33,10 +34,7 @@ class TwoFactorService
     /** Number of single-use recovery codes generated per setup */
     private const BACKUP_CODE_COUNT = 10;
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
+
 
     /** Chiffre le secret TOTP at-rest (AES-256-GCM). Rétro-compatible : ne re-chiffre pas. */
     private function encSecret(?string $v): ?string

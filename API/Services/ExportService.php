@@ -13,14 +13,10 @@ use PDO;
  *   $export->csv($data, $columns, 'absences_export.csv');
  *   $export->pdf($html, 'bulletin.pdf');
  */
-class ExportService
-{
-    private PDO $pdo;
+require_once __DIR__ . '/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
+class ExportService extends \API\Services\AbstractTenantService
+{
 
     /**
      * Export CSV – envoie directement au navigateur

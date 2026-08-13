@@ -11,9 +11,10 @@ use PDO;
  * Simulateur éligibilité, demandes en ligne, workflow instruction,
  * gestion fonds sociaux, export paiements, stats campagne.
  */
-class BoursesService
+require_once __DIR__ . '/../../../API/Services/AbstractTenantService.php';
+
+class BoursesService extends \API\Services\AbstractTenantService
 {
-    private PDO $pdo;
 
     // Barème simplifié bourses nationales collège 2025-2026
     private array $baremeEchelons = [
@@ -22,10 +23,6 @@ class BoursesService
         3 => ['plafond_1_enfant' => 3000, 'montant_annuel' => 450],
     ];
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
 
     // ─── Simulateur ───────────────────────────────────────────────
 

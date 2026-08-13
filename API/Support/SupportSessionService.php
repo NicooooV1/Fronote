@@ -18,7 +18,9 @@ use PDO;
  *  - toute action est auditée (table append-only) ;
  *  - données sensibles masquées par défaut (restrictions).
  */
-final class SupportSessionService
+require_once __DIR__ . '/../Services/AbstractTenantService.php';
+
+final class SupportSessionService extends \API\Services\AbstractTenantService
 {
     /** Hiérarchie des niveaux (du moins au plus sensible). */
     public const LEVELS = [
@@ -27,9 +29,7 @@ final class SupportSessionService
         'impersonation' => 6, 'sensitive_data_access' => 7,
     ];
 
-    private PDO $pdo;
 
-    public function __construct(PDO $pdo) { $this->pdo = $pdo; }
 
     private function now(?string $now): string { return $now ?? date('Y-m-d H:i:s'); }
 

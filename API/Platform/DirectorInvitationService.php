@@ -14,16 +14,13 @@ use PDO;
  * tenant_account (jamais un platform_account) puis crée/rejoint son/ses
  * établissement(s). Le jeton n'est stocké que sous forme de hash.
  */
-final class DirectorInvitationService
+require_once __DIR__ . '/../Services/AbstractTenantService.php';
+
+final class DirectorInvitationService extends \API\Services\AbstractTenantService
 {
     public const TYPES = ['create_establishment', 'join_establishment', 'manage_multiple_establishments'];
 
-    private PDO $pdo;
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
 
     private static function hashToken(string $token): string
     {

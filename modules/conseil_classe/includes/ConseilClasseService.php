@@ -11,14 +11,10 @@ use PDO;
  * Planification, préparation automatique, déroulé structuré, votes électroniques,
  * appréciations collaboratives, PV automatique et push vers bulletins.
  */
-class ConseilClasseService
-{
-    private PDO $pdo;
+require_once __DIR__ . '/../../../API/Services/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
+class ConseilClasseService extends \API\Services\AbstractTenantService
+{
 
     // ─── Planification ─────────────────────────────────────────────
 

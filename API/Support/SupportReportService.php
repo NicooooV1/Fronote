@@ -10,11 +10,10 @@ use PDO;
  * (métadonnées, demande/ticket liés, journal d'intervention append-only, restrictions,
  * durée, synthèse) pour consultation par le Support ET par la Direction (transparence).
  */
-final class SupportReportService
-{
-    private PDO $pdo;
+require_once __DIR__ . '/../Services/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo) { $this->pdo = $pdo; }
+final class SupportReportService extends \API\Services\AbstractTenantService
+{
 
     /** @return array|null Rapport structuré, ou null si la session est introuvable. */
     public function build(int $sessionId): ?array

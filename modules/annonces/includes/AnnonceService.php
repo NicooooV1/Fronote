@@ -5,14 +5,10 @@ declare(strict_types=1);
  *
  * Gère les annonces (CRUD, ciblage, accusés de lecture) et les sondages (options, votes).
  */
-class AnnonceService
-{
-    protected \PDO $pdo;
+require_once __DIR__ . '/../../../API/Services/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
+class AnnonceService extends \API\Services\AbstractTenantService
+{
 
     // ─── Annonces ────────────────────────────────────────────────
 

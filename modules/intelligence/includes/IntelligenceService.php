@@ -11,9 +11,10 @@ use PDO;
  * Score de risque décrochage (absences 30%, notes 35%, discipline 20%, engagement 15%),
  * dashboard RAG, détection patterns, recommandations, alertes auto.
  */
-class IntelligenceService
+require_once __DIR__ . '/../../../API/Services/AbstractTenantService.php';
+
+class IntelligenceService extends \API\Services\AbstractTenantService
 {
-    private PDO $pdo;
 
     private array $poidsDefaut = [
         'absences' => 0.30,
@@ -22,10 +23,6 @@ class IntelligenceService
         'engagement' => 0.15
     ];
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
 
     // ─── Calcul scores ────────────────────────────────────────────
 

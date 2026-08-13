@@ -10,16 +10,13 @@ use PDO;
  * Monde plateforme uniquement : ces comptes ne reçoivent jamais de rôle établissement
  * et ne se connectent qu'au portail /platform. SQL portable (testable sur SQLite).
  */
-final class PlatformAccountService
+require_once __DIR__ . '/../Services/AbstractTenantService.php';
+
+final class PlatformAccountService extends \API\Services\AbstractTenantService
 {
     public const STATUSES = ['active', 'inactive', 'locked', 'archived'];
 
-    private PDO $pdo;
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
 
     /**
      * Crée un compte plateforme. $data : email, username, password (clair) | password_hash,

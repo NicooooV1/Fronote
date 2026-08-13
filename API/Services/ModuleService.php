@@ -12,18 +12,15 @@ use PDO;
  * Les modules « core » ne peuvent pas être désactivés.
  * La sidebar consulte ce service pour savoir quels liens afficher.
  */
-class ModuleService
+require_once __DIR__ . '/AbstractTenantService.php';
+
+class ModuleService extends \API\Services\AbstractTenantService
 {
-    private PDO $pdo;
     private ?array $cache = null;
     // Établissement pour lequel $cache a été chargé : le cache mémoire est par-tenant,
     // rechargé si l'établissement courant change dans la requête (ex: impersonation support).
     private ?int $cacheEtab = null;
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
 
     // ─── Lecture ──────────────────────────────────────────────────────────
 

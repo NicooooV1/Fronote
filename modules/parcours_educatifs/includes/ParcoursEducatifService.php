@@ -3,11 +3,10 @@ declare(strict_types=1);
 /**
  * ParcoursEducatifService — Service métier pour le module Parcours Éducatifs (M42).
  */
-class ParcoursEducatifService
-{
-    private PDO $pdo;
+require_once __DIR__ . '/../../../API/Services/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo) { $this->pdo = $pdo; }
+class ParcoursEducatifService extends \API\Services\AbstractTenantService
+{
 
     /* ==================== PARCOURS ==================== */
 

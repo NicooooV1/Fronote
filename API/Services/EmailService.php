@@ -12,15 +12,13 @@ use PDO;
  * Configuration stockée en BDD (table smtp_config).
  * Fallback sur mail() si SMTP non configuré.
  */
-class EmailService
+require_once __DIR__ . '/AbstractTenantService.php';
+
+class EmailService extends \API\Services\AbstractTenantService
 {
-    private PDO $pdo;
     private ?array $config = null;
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
+
 
     // ─── Configuration ───────────────────────────────────────────────────
 

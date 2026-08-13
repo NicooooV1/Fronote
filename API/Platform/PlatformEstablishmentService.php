@@ -15,13 +15,13 @@ use PDO;
  * dans une transaction, puis marque l'établissement « purged ». Elle NE touche PAS
  * aux tables de modules héritées scopées par etablissement_id (shred dédié, hors scope).
  */
-final class PlatformEstablishmentService
+require_once __DIR__ . '/../Services/AbstractTenantService.php';
+
+final class PlatformEstablishmentService extends \API\Services\AbstractTenantService
 {
     public const STATUSES = ['draft', 'onboarding', 'active', 'suspended', 'archived', 'deleted', 'purged'];
 
-    private PDO $pdo;
 
-    public function __construct(PDO $pdo) { $this->pdo = $pdo; }
 
     /** Liste du parc avec quelques statistiques. */
     public function listAll(): array

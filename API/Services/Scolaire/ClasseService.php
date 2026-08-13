@@ -6,11 +6,10 @@ namespace API\Services\Scolaire;
 use PDO;
 use RuntimeException;
 
-class ClasseService
-{
-    private PDO $pdo;
+require_once __DIR__ . '/../AbstractTenantService.php';
 
-    public function __construct(PDO $pdo) { $this->pdo = $pdo; }
+class ClasseService extends \API\Services\AbstractTenantService
+{
 
     private function etabId(): int { return \API\Core\EstablishmentContext::id(); }
 

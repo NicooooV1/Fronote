@@ -4,10 +4,10 @@ declare(strict_types=1);
  * M15 – Trombinoscope — Service
  */
 
-class TrombinoscopeService {
-    private PDO $pdo;
+require_once __DIR__ . '/../../../API/Services/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo) { $this->pdo = $pdo; }
+class TrombinoscopeService extends \API\Services\AbstractTenantService {
+
 
     /**
      * Récupère la liste des classes

@@ -12,11 +12,10 @@ use PDO;
  * (pending_start) que le Support pourra démarrer. C'est ici que se matérialise le
  * contrôle de l'établissement sur le pont.
  */
-final class SupportAccessApprovalService
-{
-    private PDO $pdo;
+require_once __DIR__ . '/../Services/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo) { $this->pdo = $pdo; }
+final class SupportAccessApprovalService extends \API\Services\AbstractTenantService
+{
 
     /**
      * Approuve (éventuellement avec modifications). Crée la session pending_start.

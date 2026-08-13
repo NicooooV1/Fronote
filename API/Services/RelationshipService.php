@@ -14,7 +14,9 @@ use PDO;
  * ScopeResolver (et donc par Authorization pour les scopes children/assigned/own_classes).
  * Chaque mutation est journalisée dans user_role_audit_logs.
  */
-final class RelationshipService
+require_once __DIR__ . '/AbstractTenantService.php';
+
+final class RelationshipService extends \API\Services\AbstractTenantService
 {
     /** Types de relation reconnus (cf. cahier des charges §5.8). */
     public const TYPES = [
@@ -35,12 +37,7 @@ final class RelationshipService
         'classe'         => 'classes',
     ];
 
-    private PDO $pdo;
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
 
     /**
      * Crée (ou réactive) une relation. Idempotent via la clé unique uk_rel.

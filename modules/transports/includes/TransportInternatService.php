@@ -4,14 +4,10 @@ declare(strict_types=1);
  * M32 – Transports — Service
  * (Le volet internat a été retiré : voir modules/internat/includes/InternatService.php.)
  */
-class TransportInternatService
-{
-    private PDO $pdo;
+require_once __DIR__ . '/../../../API/Services/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
+class TransportInternatService extends \API\Services\AbstractTenantService
+{
 
     private function etabId(): ?int
     {

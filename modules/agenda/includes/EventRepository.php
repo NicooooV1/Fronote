@@ -6,9 +6,10 @@ declare(strict_types=1);
  * Remplace : calendar_functions.php, event_helpers.php, models/Evenement.php
  * Centralise : filtrage par rôle (×1 au lieu de ×6), types, visibilité, CRUD, matières.
  */
-class EventRepository
+require_once __DIR__ . '/../../../API/Services/AbstractTenantService.php';
+
+class EventRepository extends \API\Services\AbstractTenantService
 {
-    private PDO $pdo;
 
     /* ── Constante unique : types d'événements ── */
     const TYPES = [
@@ -44,10 +45,6 @@ class EventRepository
     const DAY_NAMES      = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
     const DAY_NAMES_FULL = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
 
     /* ================================================================
        QUERIES — filtrage unique par rôle

@@ -6,14 +6,10 @@ declare(strict_types=1);
  * Centralise toutes les requêtes SQL : CRUD cours, détection conflits,
  * modifications ponctuelles, requêtes par rôle.
  */
-class EdtService
-{
-    protected \PDO $pdo;
+require_once __DIR__ . '/../../../API/Services/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
+class EdtService extends \API\Services\AbstractTenantService
+{
 
     /**
      * Établissement courant — scope toutes les requêtes EDT.

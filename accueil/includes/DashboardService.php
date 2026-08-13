@@ -11,9 +11,10 @@ declare(strict_types=1);
  * FEAT-1/2/3/4/6 : Widgets dynamiques, resume, badge messagerie, greeting.
  * M104 : Widget management system (dashboard_widgets + user_dashboard_config).
  */
-class DashboardService
+require_once __DIR__ . '/../../API/Services/AbstractTenantService.php';
+
+class DashboardService extends \API\Services\AbstractTenantService
 {
-    private PDO $pdo;
 
     /**
      * PERF : mémoïsation de getUserInfo() — chaque renderer de widget l'appelait,
@@ -22,10 +23,6 @@ class DashboardService
      */
     private array $userInfoCache = [];
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
 
     // =====================================================================
     //  M104 — WIDGET MANAGEMENT (dashboard_widgets + user_dashboard_config)

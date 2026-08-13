@@ -10,14 +10,10 @@ use PDO;
  * table platform_roles (upsert idempotent, SQL portable). Équivalent plateforme
  * de RoleSync. À jouer après une migration de schéma.
  */
-final class PlatformRoleSync
-{
-    private PDO $pdo;
+require_once __DIR__ . '/../Services/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
+final class PlatformRoleSync extends \API\Services\AbstractTenantService
+{
 
     /** @return array{synced:int,errors:string[]} */
     public function sync(): array

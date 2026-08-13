@@ -8,14 +8,10 @@ use PDO;
 /**
  * Manages super-administrators who operate across all establishments.
  */
-class SuperAdminService
-{
-    private PDO $pdo;
+require_once __DIR__ . '/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
+class SuperAdminService extends \API\Services\AbstractTenantService
+{
 
     /**
      * Authenticate a super-admin by login + password.

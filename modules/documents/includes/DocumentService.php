@@ -4,10 +4,10 @@ declare(strict_types=1);
  * M16 – Documents administratifs — Service
  */
 
-class DocumentService {
-    private PDO $pdo;
+require_once __DIR__ . '/../../../API/Services/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo) { $this->pdo = $pdo; }
+class DocumentService extends \API\Services\AbstractTenantService {
+
 
     /** Extensions autorisées (dernière extension uniquement → bloque les doubles extensions). */
     private const ALLOWED_EXT = ['pdf','doc','docx','xls','xlsx','ppt','pptx','odt','ods','odp','txt','csv','jpg','jpeg','png','webp','gif','zip'];

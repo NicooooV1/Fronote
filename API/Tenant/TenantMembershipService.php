@@ -10,11 +10,10 @@ use PDO;
  * C'est la couche qui fournit le PÉRIMÈTRE établissement et permet le multi-établissement
  * (un même compte peut être Directeur ici et simple Direction ailleurs).
  */
-final class TenantMembershipService
-{
-    private PDO $pdo;
+require_once __DIR__ . '/../Services/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo) { $this->pdo = $pdo; }
+final class TenantMembershipService extends \API\Services\AbstractTenantService
+{
 
     /** Crée (ou retrouve) l'appartenance d'un compte à un établissement. Idempotent. */
     public function ensure(int $establishmentId, int $tenantAccountId, string $status = 'active'): int

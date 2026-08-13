@@ -5,14 +5,10 @@ namespace API\Services\Scolaire;
 
 use PDO;
 
-class AdminDashboardService
-{
-    private PDO $pdo;
+require_once __DIR__ . '/../AbstractTenantService.php';
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
+class AdminDashboardService extends \API\Services\AbstractTenantService
+{
 
     private function etabId(): int
     {

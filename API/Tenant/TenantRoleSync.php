@@ -9,11 +9,10 @@ use PDO;
  * TenantRoleSync — réconcilie le catalogue de rôles établissement (code) vers la
  * table tenant_roles (upsert idempotent, SQL portable). Ne contient aucun rôle plateforme.
  */
-final class TenantRoleSync
-{
-    private PDO $pdo;
+require_once __DIR__ . '/../Services/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo) { $this->pdo = $pdo; }
+final class TenantRoleSync extends \API\Services\AbstractTenantService
+{
 
     /** @return array{synced:int,errors:string[]} */
     public function sync(): array

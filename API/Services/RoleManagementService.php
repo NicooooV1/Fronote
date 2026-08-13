@@ -15,14 +15,10 @@ use API\Security\RoleCatalog;
  *  - interdiction de s'auto-attribuer un rôle qu'on ne possède pas déjà (anti-escalade) ;
  *  - chaque attribution/révocation est journalisée.
  */
-final class RoleManagementService
-{
-    private PDO $pdo;
+require_once __DIR__ . '/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
+final class RoleManagementService extends \API\Services\AbstractTenantService
+{
 
     /** Ensemble des rôles qu'un acteur (donné par ses rôles effectifs) peut attribuer. */
     public function assignableRoles(array $actorRoleKeys): array

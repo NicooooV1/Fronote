@@ -3,14 +3,10 @@ declare(strict_types=1);
 /**
  * M14 – Réunions / RDV / Convocations — Service
  */
-class ReunionService
-{
-    private PDO $pdo;
+require_once __DIR__ . '/../../../API/Services/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
+class ReunionService extends \API\Services\AbstractTenantService
+{
 
     private function etabId(): ?int
     {

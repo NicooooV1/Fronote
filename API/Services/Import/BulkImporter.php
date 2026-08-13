@@ -13,16 +13,13 @@ use PDO;
  * Pipeline : parse() -> detectMapping() -> preview() -> import().
  * Tout est scopé à l'établissement courant (EstablishmentContext::id()).
  */
-class BulkImporter
+require_once __DIR__ . '/../AbstractTenantService.php';
+
+class BulkImporter extends \API\Services\AbstractTenantService
 {
-    private PDO $pdo;
     /** Cache de résolution de clés étrangères pour la durée d'un run. */
     private array $fkCache = [];
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
 
     /* ============================== PARSE ============================== */
 

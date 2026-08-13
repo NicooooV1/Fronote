@@ -13,9 +13,10 @@ declare(strict_types=1);
 
 namespace API\Services;
 
-class FeatureFlagService
+require_once __DIR__ . '/AbstractTenantService.php';
+
+class FeatureFlagService extends \API\Services\AbstractTenantService
 {
-    private \PDO $pdo;
 
     /** @var array|null Cache des flags */
     private ?array $flags = null;
@@ -25,10 +26,6 @@ class FeatureFlagService
     // Établissement pour lequel $flags a été chargé (config feature-flags par-tenant).
     private ?int $flagsEtab = null;
 
-    public function __construct(\PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
 
     /**
      * Charge et met en cache tous les feature flags.

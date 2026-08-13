@@ -16,15 +16,13 @@ use PDO;
  * 
  * L'admin peut configurer les templates (header, footer, CSS) depuis l'interface.
  */
-class PdfService
+require_once __DIR__ . '/AbstractTenantService.php';
+
+class PdfService extends \API\Services\AbstractTenantService
 {
-    private PDO $pdo;
     private ?array $etablissement = null;
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
+
 
     // ─── Génération PDF ──────────────────────────────────────────────────
 

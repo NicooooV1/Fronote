@@ -16,9 +16,10 @@ declare(strict_types=1);
  * PJ     : gestion pièces jointes
  * UX-3   : case « devoir fait »
  */
-class DevoirService
+require_once __DIR__ . '/../../../API/Services/AbstractTenantService.php';
+
+class DevoirService extends \API\Services\AbstractTenantService
 {
-    private PDO $pdo;
 
     /** Colonnes explicites, pas de SELECT * */
     private const COLS = 'id, titre, description, classe, nom_matiere, nom_professeur, date_ajout, date_rendu, date_creation';
@@ -35,10 +36,6 @@ class DevoirService
 
     private const ALLOWED_DIRS = ['asc', 'desc'];
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
 
     /* ══════════ Query Builder (REF-5, UX-1) ══════════ */
 

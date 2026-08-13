@@ -5,14 +5,10 @@ declare(strict_types=1);
  *
  * Gère les incidents, sanctions, retenues et les statistiques disciplinaires.
  */
-class DisciplineService
-{
-    protected \PDO $pdo;
+require_once __DIR__ . '/../../../API/Services/AbstractTenantService.php';
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
+class DisciplineService extends \API\Services\AbstractTenantService
+{
 
     // ─── Incidents ───────────────────────────────────────────────
 

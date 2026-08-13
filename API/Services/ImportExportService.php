@@ -20,9 +20,10 @@ use PDOException;
  *   $sql = $svc->exportSQL(['eleves', 'professeurs']);
  *   $history = $svc->getImportHistory();
  */
-class ImportExportService
+require_once __DIR__ . '/AbstractTenantService.php';
+
+class ImportExportService extends \API\Services\AbstractTenantService
 {
-    private PDO $pdo;
 
     /** Map profil => table name */
     private array $tableMap = [
@@ -42,10 +43,6 @@ class ImportExportService
         'administrateurs' => ['id','nom','prenom','mail','identifiant','adresse','role','actif','date_creation'],
     ];
 
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
 
     /* ===================================================================
      *  EXPORT UTILISATEURS
