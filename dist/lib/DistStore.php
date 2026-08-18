@@ -86,6 +86,28 @@ final class DistStore
                 kind           TEXT NOT NULL,               -- 'redeem' | 'download' | 'module'
                 at             TEXT NOT NULL DEFAULT (datetime('now'))
             );
+            -- Parc des instances installées (alimenté par POST /phone-home, authentifié par
+            -- le jeton d'installation — pas par l'IP, qui change). Donne au distributeur la
+            -- vue qui manquait totalement : version, santé, dernière sauvegarde, dernière vue.
+            CREATE TABLE IF NOT EXISTS instances (
+                activation_id  INTEGER PRIMARY KEY REFERENCES activations(id) ON DELETE CASCADE,
+                license_id     INTEGER,
+                hostname       TEXT,
+                os             TEXT,
+                php_version    TEXT,
+                app_version    TEXT,
+                app_build      TEXT,
+                healthy        INTEGER,                     -- 1 sain / 0 dégradé / NULL inconnu
+                checks_json    TEXT,                        -- détail des sondes (agrégé, jamais de données élèves)
+                tenants_count  INTEGER,
+                accounts_count INTEGER,
+                disk_pct       INTEGER,
+                last_backup_at TEXT,
+                app_url        TEXT,
+                first_seen     TEXT NOT NULL DEFAULT (datetime('now')),
+                last_seen      TEXT NOT NULL DEFAULT (datetime('now')),
+                last_ip        TEXT
+            );
         SQL);
     }
 
@@ -258,22 +280,28 @@ final class DistStore
         }
 
         $hash = $this->hashKey($key);
-        $this->db->beginTransaction();
+        // BEGIN IMMEDIATE (pas le BEGIN « deferred » de PDO::beginTransaction) : prend le
+        // verrou d'écriture DÈS l'ouverture, donc busy_timeout=5000 s'applique et attend
+        // au lieu d'un SQLITE_BUSY_SNAPSHOT immédiat lors du passage lecture→écriture. Les
+        // 500 « database is locked » observés en prod sous installs concurrentes venaient
+        // de là (constat dist-server 2026-08-18). On pilote la transaction en SQL brut
+        // (exec BEGIN/COMMIT/ROLLBACK) car PDO ignore alors être en transaction.
+        $this->db->exec('BEGIN IMMEDIATE');
         try {
             $lic = $this->db->prepare('SELECT * FROM licenses WHERE key_hash = :h LIMIT 1');
             $lic->execute([':h' => $hash]);
             $row = $lic->fetch();
 
             if (!$row) {
-                $this->db->commit();
+                $this->db->exec('COMMIT');
                 return ['status' => 'invalid'];
             }
             if ((int) $row['revoked'] === 1) {
-                $this->db->commit();
+                $this->db->exec('COMMIT');
                 return ['status' => 'revoked'];
             }
             if (!empty($row['expires_at']) && strtotime((string) $row['expires_at']) < time()) {
-                $this->db->commit();
+                $this->db->exec('COMMIT');
                 return ['status' => 'expired'];
             }
 
@@ -284,7 +312,7 @@ final class DistStore
             );
             $upd->execute([':id' => $row['id']]);
             if ($upd->rowCount() === 0) {
-                $this->db->commit();
+                $this->db->exec('COMMIT');
                 return ['status' => 'exhausted'];
             }
 
@@ -296,7 +324,7 @@ final class DistStore
             $this->db->prepare('INSERT INTO download_log (kind, license_id, ip) VALUES (:k, :l, :ip)')
                 ->execute([':k' => 'base', ':l' => $row['id'], ':ip' => $ip]);
 
-            $this->db->commit();
+            $this->db->exec('COMMIT');
 
             $premium = json_decode((string) $row['modules_json'], true) ?: [];
             $modules = array_values(array_unique(array_merge(
@@ -313,7 +341,7 @@ final class DistStore
                 'modules'         => $modules,
             ];
         } catch (\Throwable $e) {
-            $this->db->rollBack();
+            try { $this->db->exec('ROLLBACK'); } catch (\Throwable $ignored) {}
             throw $e;
         }
     }
@@ -355,9 +383,100 @@ final class DistStore
         if (!in_array($module, $allowed, true)) {
             return ['status' => 'not_entitled'];
         }
-        $this->db->prepare('INSERT INTO download_log (kind, ref, license_id, ip) VALUES (:k, :r, :l, :ip)')
-            ->execute([':k' => 'module', ':r' => $module, ':l' => (int) $row['license_id'], ':ip' => $ip]);
+        // Journal best-effort : une autorisation DÉJÀ acquise ne doit pas échouer en 500
+        // parce que l'INSERT de log a rencontré un SQLITE_BUSY transitoire (le client
+        // n'aurait alors pas son module). On rattrape et on ignore (constat 2026-08-18).
+        try {
+            $this->db->prepare('INSERT INTO download_log (kind, ref, license_id, ip) VALUES (:k, :r, :l, :ip)')
+                ->execute([':k' => 'module', ':r' => $module, ':l' => (int) $row['license_id'], ':ip' => $ip]);
+        } catch (\Throwable $ignored) {
+            // best-effort — l'autorisation reste valide.
+        }
         return ['status' => 'ok', 'license_id' => (int) $row['license_id']];
+    }
+
+    // ─── Licences : lecture pour le bot (JAMAIS le key_hash) ──────────────────
+
+    /**
+     * Liste les licences pour la supervision Discord. On expose le préfixe (repérage) mais
+     * JAMAIS key_hash. `activations` = nombre d'instances effectivement activées.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function listLicenses(int $limit = 200): array
+    {
+        $n = max(1, min(1000, $limit));
+        return $this->db->query(
+            "SELECT l.id, l.key_prefix, l.tier, l.modules_json, l.max_activations, l.used_count,
+                    l.revoked, l.note, l.expires_at, l.created_at,
+                    (SELECT COUNT(*) FROM activations a WHERE a.license_id = l.id) AS activations
+             FROM licenses l ORDER BY l.id DESC LIMIT " . $n
+        )->fetchAll();
+    }
+
+    // ─── Parc d'instances (phone-home) ───────────────────────────────────────
+
+    /**
+     * Résout une activation par son jeton d'installation (hash). Retourne aussi l'état de
+     * la licence (revoked/expires_at) pour l'enforcement DOUX côté client.
+     *
+     * @return array<string,mixed>|null
+     */
+    public function activationByToken(string $installToken): ?array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT a.id AS activation_id, a.license_id, l.revoked, l.expires_at,
+                    l.modules_json, l.tier, l.note
+             FROM activations a JOIN licenses l ON l.id = a.license_id
+             WHERE a.install_token_hash = :t LIMIT 1'
+        );
+        $stmt->execute([':t' => hash('sha256', $installToken)]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
+    /**
+     * UPSERT d'un rapport d'instance (phone-home). `$fields` = colonnes de `instances`
+     * (hors clés/horodatages). Retourne l'activation_id.
+     *
+     * @param array<string,mixed> $fields
+     */
+    public function upsertInstance(int $activationId, int $licenseId, array $fields, string $ip): void
+    {
+        $cols = ['hostname', 'os', 'php_version', 'app_version', 'app_build', 'healthy',
+                 'checks_json', 'tenants_count', 'accounts_count', 'disk_pct', 'last_backup_at', 'app_url'];
+        $vals = [':aid' => $activationId, ':lid' => $licenseId, ':ip' => $ip];
+        foreach ($cols as $c) { $vals[':' . $c] = $fields[$c] ?? null; }
+        $set = implode(', ', array_map(static fn($c) => "$c = :$c", $cols));
+        $this->db->prepare(
+            "INSERT INTO instances (activation_id, license_id, " . implode(', ', $cols) . ", last_ip, last_seen)
+             VALUES (:aid, :lid, " . implode(', ', array_map(static fn($c) => ":$c", $cols)) . ", :ip, datetime('now'))
+             ON CONFLICT(activation_id) DO UPDATE SET
+                 license_id = :lid, {$set}, last_ip = :ip, last_seen = datetime('now')"
+        )->execute($vals);
+    }
+
+    /**
+     * Parc complet pour la commande /dist parc et le dashboard. Jointure licences pour le
+     * statut. `silence_seconds` = ancienneté du dernier phone-home.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function listInstances(int $limit = 500): array
+    {
+        $n = max(1, min(2000, $limit));
+        return $this->db->query(
+            "SELECT i.activation_id, i.license_id, i.hostname, i.os, i.php_version,
+                    i.app_version, i.app_build, i.healthy, i.tenants_count, i.accounts_count,
+                    i.disk_pct, i.last_backup_at, i.app_url, i.first_seen, i.last_seen, i.last_ip,
+                    l.key_prefix, l.tier, l.revoked, l.expires_at, l.note,
+                    CAST((julianday('now') - julianday(i.last_seen)) * 86400 AS INTEGER) AS silence_seconds,
+                    CASE WHEN i.last_backup_at IS NULL THEN NULL
+                         ELSE CAST((julianday('now') - julianday(i.last_backup_at)) * 86400 AS INTEGER)
+                    END AS backup_age_seconds
+             FROM instances i LEFT JOIN licenses l ON l.id = i.license_id
+             ORDER BY i.last_seen DESC LIMIT " . $n
+        )->fetchAll();
     }
 
     public function pdo(): PDO

@@ -135,6 +135,26 @@ switch ($action) {
             json_out(500, ['status' => 'server_error']);
         }
 
+    case 'manifest': {
+        // Métadonnées de la release courante (version, build, sha256 des artefacts). Public :
+        // aucun secret, sert au canal de mise à jour client (update.sh compare sa version
+        // locale à celle-ci). Le contenu reste authentifié par la signature Ed25519 au DL.
+        $mf = $payloadDir . '/manifest.json';
+        if (!is_file($mf)) { json_out(404, ['status' => 'no_manifest']); }
+        $data = json_decode((string) @file_get_contents($mf), true) ?: [];
+        json_out(200, [
+            'status'          => 'ok',
+            'version'         => (string) ($data['version'] ?? '0.0.0'),
+            'build'           => (string) ($data['build'] ?? ''),
+            'channel'         => (string) ($data['channel'] ?? 'stable'),
+            'built_at'        => (string) ($data['built_at'] ?? ''),
+            'base_sha256'     => (string) ($data['artifacts']['base']['sha256'] ?? ''),
+            'base_sig'        => (string) ($data['artifacts']['base']['sig'] ?? ''),
+            'simple_modules'  => $data['simple_modules'] ?? [],
+            'premium_modules' => $data['premium_modules'] ?? [],
+        ]);
+    }
+
     case 'redeem': {
         if ($method !== 'POST') { json_out(405, ['status' => 'method_not_allowed']); }
         $key = trim((string) ($_POST['key'] ?? ''));
@@ -228,6 +248,62 @@ switch ($action) {
         exit;
     }
 
+    case 'phone-home': {
+        // Rapport périodique d'une instance installée. Authentifié par le JETON
+        // D'INSTALLATION (pas par l'IP — elle change : NAT, IP résidentielles dynamiques ;
+        // l'IP enregistrée à l'activation est même souvent celle de la box, pas de l'école).
+        // Volontairement NON gaté par isIpAllowed() : au contraire, un phone-home valide
+        // RAFRAÎCHIT l'allowlist de l'IP courante (rend le modèle allowlist vivable pour le
+        // parc, sans rouvrir les installations neuves). Données AGRÉGÉES uniquement —
+        // jamais un nom d'élève ni d'utilisateur (minimisation RGPD).
+        if ($method !== 'POST') { json_out(405, ['status' => 'method_not_allowed']); }
+        $token = trim((string) ($_POST['token'] ?? ''));
+        $act = $store->activationByToken($token);
+        if ($act === null) { json_out(401, ['status' => 'invalid_token']); }
+
+        $intOrNull = static fn($v) => ($v === null || $v === '') ? null : (int) $v;
+        $checks = (string) ($_POST['checks_json'] ?? '');
+        if ($checks !== '' && (strlen($checks) > 4000 || json_decode($checks) === null)) { $checks = ''; }
+        $fields = [
+            'hostname'       => substr(trim((string) ($_POST['hostname'] ?? '')), 0, 120),
+            'os'             => substr(trim((string) ($_POST['os'] ?? '')), 0, 120),
+            'php_version'    => substr(trim((string) ($_POST['php_version'] ?? '')), 0, 20),
+            'app_version'    => substr(trim((string) ($_POST['app_version'] ?? '')), 0, 40),
+            'app_build'      => substr(trim((string) ($_POST['app_build'] ?? '')), 0, 80),
+            'healthy'        => $intOrNull($_POST['healthy'] ?? null),
+            'checks_json'    => $checks !== '' ? $checks : null,
+            'tenants_count'  => $intOrNull($_POST['tenants_count'] ?? null),
+            'accounts_count' => $intOrNull($_POST['accounts_count'] ?? null),
+            'disk_pct'       => $intOrNull($_POST['disk_pct'] ?? null),
+            'last_backup_at' => substr(trim((string) ($_POST['last_backup_at'] ?? '')), 0, 40) ?: null,
+            'app_url'        => substr(trim((string) ($_POST['app_url'] ?? '')), 0, 200) ?: null,
+        ];
+        try {
+            $store->upsertInstance((int) $act['activation_id'], (int) $act['license_id'], $fields, $ip);
+            // Auto-rafraîchissement de l'allowlist de l'IP courante (best-effort).
+            if (filter_var($ip, FILTER_VALIDATE_IP) && !$store->isIpAllowed($ip)) {
+                $store->allowIp($ip, 'auto phone-home (instance #' . (int) $act['activation_id'] . ')');
+            }
+        } catch (\Throwable $e) {
+            json_out(500, ['status' => 'server_error']);
+        }
+
+        // Enforcement DOUX : on renvoie le statut de licence + la version courante publiée.
+        // Le client affiche une bannière si support expiré/révoqué et sait si une MAJ existe.
+        $licStatus = 'ok';
+        if ((int) $act['revoked'] === 1) { $licStatus = 'revoked'; }
+        elseif (!empty($act['expires_at']) && strtotime((string) $act['expires_at']) < time()) { $licStatus = 'expired'; }
+        $mf = $payloadDir . '/manifest.json';
+        $latest = is_file($mf) ? (json_decode((string) @file_get_contents($mf), true) ?: []) : [];
+        json_out(200, [
+            'status'         => 'ok',
+            'license_status' => $licStatus,
+            'expires_at'     => $act['expires_at'] ?? null,
+            'latest_version' => (string) ($latest['version'] ?? ''),
+            'latest_build'   => (string) ($latest['build'] ?? ''),
+        ]);
+    }
+
     // ── API d'admin (appelée par le bot Discord du distributeur) ─────────────
     case 'admin_allow': {   // whitelister une IP
         if ($method !== 'POST') { json_out(405, ['status' => 'method_not_allowed']); }
@@ -258,6 +334,16 @@ switch ($action) {
         $since = (int) ($_GET['since_id'] ?? 0);
         $limit = (int) ($_GET['limit'] ?? 200);
         json_out(200, ['status' => 'ok', 'refused' => $store->listRefused($since, $limit)]);
+    }
+
+    case 'admin_licenses': {   // licences émises (pour /dist licences) — JAMAIS le key_hash
+        require_admin($cfg);
+        json_out(200, ['status' => 'ok', 'licenses' => $store->listLicenses((int) ($_GET['limit'] ?? 200))]);
+    }
+
+    case 'admin_park': {   // parc des instances installées (pour /dist parc + dashboard)
+        require_admin($cfg);
+        json_out(200, ['status' => 'ok', 'instances' => $store->listInstances((int) ($_GET['limit'] ?? 500))]);
     }
 
     default:

@@ -239,6 +239,15 @@ class SchemaSyncService
                 if ($ch === $strCh && ($i === 0 || $body[$i - 1] !== '\\')) $inStr = false;
                 continue;
             }
+            // Commentaire SQL « -- … » (hors chaîne) : ignoré jusqu'à la fin de ligne. Ses
+            // virgules ne doivent PAS être prises pour des séparateurs de colonnes — sinon
+            // un commentaire en liste (« `role_key` … -- super_admin, platform_admin, … »)
+            // décale le découpage et produit une pseudo-colonne de type « label » qui casse
+            // toute la synchro de platform_roles (constat mise à jour distribuée 2026-08-18).
+            if ($ch === '-' && $i + 1 < $len && $body[$i + 1] === '-') {
+                while ($i < $len && $body[$i] !== "\n") { $i++; }
+                continue;
+            }
             if ($ch === "'" || $ch === '"') { $inStr = true; $strCh = $ch; $buf .= $ch; continue; }
             if ($ch === '(') { $depth++; $buf .= $ch; continue; }
             if ($ch === ')') { $depth--; $buf .= $ch; continue; }

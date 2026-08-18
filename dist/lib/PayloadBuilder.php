@@ -49,10 +49,50 @@ final class PayloadBuilder
         return $out;
     }
 
-    /** @return string[] Modules premium = tous sauf les simples. */
+    /**
+     * Modules « core » = ceux qui déclarent `"core": true` dans leur module.json.
+     * Ce sont des briques SYSTÈME (onboarding, profil, support, notifications…) dont
+     * l'application a besoin pour fonctionner dès la première connexion — ils DOIVENT
+     * donc voyager dans le socle, quelle que soit la licence.
+     *
+     * ⚠️ Correctif critique 2026-08-18 : sans ce garde-fou, le module `onboarding`
+     * (core) tombait dans « premium » (car absent de simple_modules), était exclu de
+     * base.tar.gz, et toute installation neuve se terminait en 404 au premier login —
+     * l'école ne pouvait jamais se configurer (test e2e réel CT129).
+     *
+     * @return string[]
+     */
+    public function coreModules(): array
+    {
+        $out = [];
+        foreach ($this->allModules() as $m) {
+            $mj = @file_get_contents($this->appRoot . '/modules/' . $m . '/module.json');
+            if ($mj !== false) {
+                $data = json_decode($mj, true);
+                if (is_array($data) && !empty($data['core'])) {
+                    $out[] = $m;
+                }
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Modules livrés DANS le socle = union des modules simples (grille tarifaire) et des
+     * modules core (indispensables au fonctionnement). Data-driven : ajouter un module
+     * core à l'avenir le fait voyager automatiquement dans base.tar.gz.
+     *
+     * @return string[]
+     */
+    public function baseModules(): array
+    {
+        return array_values(array_unique(array_merge($this->simpleModules, $this->coreModules())));
+    }
+
+    /** @return string[] Modules premium = tous sauf ceux du socle (simples + core). */
     public function premiumModules(): array
     {
-        return array_values(array_diff($this->allModules(), $this->simpleModules));
+        return array_values(array_diff($this->allModules(), $this->baseModules()));
     }
 
     /**

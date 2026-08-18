@@ -21,8 +21,28 @@
 set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PHP_VER="${PHP_VER:-8.2}"
+# PHP_VER volontairement NON figé ici : détecté selon la distribution (voir detect_php_ver).
+# Fronote exige seulement PHP >= 8.0 ; coder « 8.2 » en dur cassait Ubuntu 22.04 (8.1),
+# Ubuntu 24.04 (8.3) et Debian 13 (8.4) — « Unable to locate package php8.2-* » APRÈS
+# consommation de la clé à usage unique (constat test e2e 2026-08-12/18).
+PHP_VER="${PHP_VER:-}"
 RUN_USER="${RUN_USER:-www-data}"
+
+# Détecte la version PHP à installer/utiliser. Priorité : override explicite → php déjà
+# installé → version que le méta-paquet php-fpm installerait → plus récent php*-fpm de
+# l'archive → 8.2 en dernier recours. À appeler APRÈS `apt-get update` (listes à jour).
+detect_php_ver() {
+  [ -n "${PHP_VER:-}" ] && { echo "$PHP_VER"; return; }
+  if command -v php >/dev/null 2>&1; then
+    php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null && return
+  fi
+  local v
+  v="$(apt-cache depends php-fpm 2>/dev/null | sed -n 's/.*\bphp\([0-9]\+\.[0-9]\+\)-fpm.*/\1/p' | head -1)"
+  [ -n "$v" ] && { echo "$v"; return; }
+  v="$(apt-cache search --names-only '^php[0-9.]+-fpm$' 2>/dev/null | grep -oE 'php[0-9]+\.[0-9]+' | grep -oE '[0-9]+\.[0-9]+' | sort -V | tail -1)"
+  [ -n "$v" ] && { echo "$v"; return; }
+  echo "8.2"
+}
 
 # ── journalisation ───────────────────────────────────────────────────────────
 _c() { printf '\033[%sm' "$1"; }
@@ -102,15 +122,17 @@ fi
 # ── 1. paquets système ──────────────────────────────────────────────────────
 if [ "$DO_PACKAGES" = 1 ]; then
   command -v apt-get >/dev/null || die "Distribution non supportée (apt introuvable). Relancez avec --no-packages sur une stack déjà installée."
-  log "Installation des paquets système (PHP ${PHP_VER}, MariaDB, Node.js, Apache)…"
   export DEBIAN_FRONTEND=noninteractive
   apt-get update -qq
+  PHP_VER="$(detect_php_ver)"
+  case "$PHP_VER" in 8.[0-9]|9.*) : ;; *) die "Version PHP détectée inattendue : '${PHP_VER}'. Forcez avec PHP_VER=8.x." ;; esac
+  log "Installation des paquets système (PHP ${PHP_VER}, MariaDB, Node.js, Apache)…"
   apt-get install -y -qq \
     "php${PHP_VER}-fpm" "php${PHP_VER}-cli" "php${PHP_VER}-mysql" "php${PHP_VER}-mbstring" \
     "php${PHP_VER}-xml" "php${PHP_VER}-zip" "php${PHP_VER}-gd" "php${PHP_VER}-curl" \
     "php${PHP_VER}-intl" "php${PHP_VER}-bcmath" \
-    mariadb-server apache2 nodejs npm unzip curl openssl ca-certificates git >/dev/null
-  ok "Paquets système installés"
+    mariadb-server apache2 nodejs npm unzip curl openssl ca-certificates git cron >/dev/null
+  ok "Paquets système installés (PHP ${PHP_VER})"
   # composer (vérifié par signature officielle). Installé dans /usr/local/bin, mais on
   # ne SUPPOSE PAS que ce répertoire est dans le PATH : sous un shell d'automatisation
   # (bootstrap.sh -> exec install.sh via `pct exec`/cloud-init/CI), le PATH se réduit
@@ -132,6 +154,7 @@ if [ "$DO_PACKAGES" = 1 ]; then
 else
   log "Étape paquets ignorée (--no-packages) — vérification des prérequis"
   command -v php >/dev/null || die "php introuvable."
+  PHP_VER="$(detect_php_ver)"
   # Résolution robuste (PATH, puis emplacements usuels) : même raison que ci-dessus.
   COMPOSER_BIN="$(command -v composer || true)"
   [ -z "$COMPOSER_BIN" ] && for c in /usr/local/bin/composer /usr/bin/composer "$APP_DIR/composer.phar"; do
@@ -175,8 +198,11 @@ ok "Dépendances PHP installées (vendor/)"
 
 # ── 3. secrets ──────────────────────────────────────────────────────────────
 FORCE_FLAG=""; [ "$FORCE" = 1 ] && FORCE_FLAG="--force"
+# Génère un mot de passe admin sur une install NEUVE **ou** un --reset (WIPE recrée
+# l'admin) : sinon --reset laissait l'admin/superadmin avec le mot de passe constant
+# public « unused_existing_admin » (constat installer 2026-08-18).
 DB_PASS="$(gen_pw)"
-if [ "$FRESH_INSTALL" = 1 ]; then ADMIN_PW="$(gen_pw)"; else ADMIN_PW=""; fi
+if [ "$FRESH_INSTALL" = 1 ] || [ "$WIPE" = 1 ]; then ADMIN_PW="$(gen_pw)"; else ADMIN_PW=""; fi
 
 # ── 4. base de données + utilisateur à privilège minimal ────────────────────
 log "Base de données MariaDB"
@@ -257,7 +283,9 @@ if [ "$DO_WEBSERVER" = 1 ]; then
         SetHandler "proxy:unix:/run/php/php${PHP_VER}-fpm.sock|fcgi://localhost"
     </FilesMatch>
     # Défense en profondeur : bloquer les fichiers sensibles même si .htaccess absent.
-    <FilesMatch "^(\\.env.*|\\.git.*|composer\\.(json|lock)|install\\.lock|install\\.sh|install\\.conf)\$">
+    # .fronote-license contient le JETON D'INSTALLATION : il est en 0600 sur le disque mais
+    # vit dans le DocumentRoot → servi en clair en HTTP sans cette règle (constat 2026-08-18).
+    <FilesMatch "^(\\.env.*|\\.git.*|\\.fronote-license|composer\\.(json|lock)|install\\.lock|install\\.sh|install\\.conf|version\\.json)\$">
         Require all denied
     </FilesMatch>
 ${WS_PROXY}
@@ -276,8 +304,29 @@ VHOST
   # ── 8. WebSocket (systemd) ─────────────────────────────────────────────────
   if [ "$WITH_WEBSOCKET" = 1 ] && [ -d "$APP_DIR/websocket" ]; then
     log "Service WebSocket (systemd)"
-    ( cd "$APP_DIR/websocket" && runuser -u "$RUN_USER" -- npm install --omit=dev >/dev/null 2>&1 ) || warn "npm install (websocket) a échoué — service non démarré."
-    cat > /etc/systemd/system/fronote-ws.service <<UNIT
+    NODE_BIN="$(command -v node || true)"
+    WS_OK=1
+    if [ -z "$NODE_BIN" ]; then
+      WS_OK=0; warn "node introuvable — service WebSocket non configuré."
+    else
+      # www-data n'a pas de HOME inscriptible : sans cache npm dédié, `npm install`
+      # meurt sur « /var/www/.npm » non créable (EACCES/ENOTEMPTY selon l'état) — la
+      # cause réelle de l'échec WS observé au test e2e 2026-08-18. On fournit donc un
+      # cache jetable, et on RETIRE tout node_modules pré-livré (propriété root → le
+      # rename de npm échouait en ENOTEMPTY).
+      NPM_CACHE="$(mktemp -d)"; chown "$RUN_USER":"$RUN_USER" "$NPM_CACHE"
+      rm -rf "$APP_DIR/websocket/node_modules"
+      NPM_LOG="$(mktemp)"
+      if ( cd "$APP_DIR/websocket" && runuser -u "$RUN_USER" -- env npm_config_cache="$NPM_CACHE" \
+            npm install --omit=dev --no-audit --no-fund ) >"$NPM_LOG" 2>&1; then
+        ok "Dépendances WebSocket installées"
+      else
+        WS_OK=0; warn "npm install (websocket) a échoué — dernières lignes :"; tail -n 15 "$NPM_LOG" >&2
+      fi
+      rm -rf "$NPM_CACHE" "$NPM_LOG"
+    fi
+    if [ "$WS_OK" = 1 ]; then
+      cat > /etc/systemd/system/fronote-ws.service <<UNIT
 [Unit]
 Description=Fronote WebSocket (Socket.IO)
 After=network.target mariadb.service
@@ -288,7 +337,7 @@ User=${RUN_USER}
 WorkingDirectory=${APP_DIR}/websocket
 # Le serveur charge lui-même ../.env via dotenv — pas d'EnvironmentFile (évite les
 # erreurs de parsing systemd sur des valeurs contenant des caractères spéciaux).
-ExecStart=$(command -v node) server.js
+ExecStart=${NODE_BIN} server.js
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true
@@ -297,11 +346,43 @@ PrivateTmp=true
 [Install]
 WantedBy=multi-user.target
 UNIT
-    systemctl daemon-reload
-    systemctl enable --now fronote-ws >/dev/null 2>&1 && ok "Service fronote-ws actif" || warn "fronote-ws non démarré (voir : journalctl -u fronote-ws)"
+      systemctl daemon-reload
+      systemctl enable --now fronote-ws >/dev/null 2>&1 && ok "Service fronote-ws actif" || warn "fronote-ws non démarré (voir : journalctl -u fronote-ws)"
+    else
+      # On NE crée PAS d'unité vouée à un crash-loop : l'app marche sans temps réel.
+      warn "WebSocket non démarré (dépendances Node absentes). L'application fonctionne sans temps réel ; réparez avec : cd ${APP_DIR}/websocket && npm install --omit=dev, puis relancez ./install.sh --no-packages."
+    fi
   fi
 else
   log "Configuration serveur web ignorée (--no-webserver)"
+fi
+
+# ── 8bis. planificateur (cron) ──────────────────────────────────────────────
+# Sans ceci, une école installée n'avait AUCUNE sauvegarde automatique, sa purge RGPD
+# ne tournait jamais (exposition légale : données d'élèves) et le heartbeat de la page
+# Observabilité restait rouge à vie (constat platform 2026-08-18). On génère /etc/cron.d
+# avec les chemins RÉELS de cette installation, en n'ajoutant que les scripts présents.
+log "Planificateur (cron)"
+CRON_FILE=/etc/cron.d/fronote
+if [ -d /etc/cron.d ]; then
+  {
+    echo "# Fronote — tâches planifiées (généré par install.sh). Ne pas éditer à la main."
+    echo "SHELL=/bin/bash"
+    echo "PATH=/usr/local/bin:/usr/bin:/bin"
+    [ -f "$APP_DIR/cron/daily_maintenance.php" ] && \
+      echo "0 2 * * * ${RUN_USER} php ${APP_DIR}/cron/daily_maintenance.php >> ${APP_DIR}/API/logs/cron.log 2>&1"
+    [ -f "$APP_DIR/rgpd/cron_purge.php" ] && \
+      echo "0 3 * * * ${RUN_USER} php ${APP_DIR}/rgpd/cron_purge.php >> ${APP_DIR}/API/logs/cron.log 2>&1"
+    # Phone-home quotidien (supervision distributeur). No-op si .fronote-license absent
+    # (installation manuelle hors distribution) → aucun effet indésirable.
+    [ -f "$APP_DIR/cron/phone_home.php" ] && \
+      echo "$(( RANDOM % 60 )) 4 * * * ${RUN_USER} php ${APP_DIR}/cron/phone_home.php >> ${APP_DIR}/API/logs/cron.log 2>&1"
+  } > "$CRON_FILE"
+  chown root:root "$CRON_FILE"; chmod 644 "$CRON_FILE"
+  systemctl reload cron >/dev/null 2>&1 || systemctl reload crond >/dev/null 2>&1 || service cron reload >/dev/null 2>&1 || true
+  ok "cron installé (${CRON_FILE}) : maintenance 02:00, RGPD 03:00$( [ -f "$APP_DIR/cron/phone_home.php" ] && printf ', phone-home 04:00' )"
+else
+  warn "/etc/cron.d absent — planifiez manuellement cron/daily_maintenance.php (voir cron/fronote.cron.example)."
 fi
 
 # ── 9. récapitulatif ────────────────────────────────────────────────────────
@@ -312,7 +393,7 @@ printf '%s═══════════════════════�
 echo "  URL           : ${APP_URL}"
 [ "$DO_WEBSERVER" = 1 ] && echo "  Accès local   : http://127.0.0.1:${HTTP_PORT}/"
 echo "  Identifiant   : admin"
-if [ "$FRESH_INSTALL" = 1 ]; then
+if [ -n "${ADMIN_PW:-}" ]; then
   echo "  Mot de passe  : ${ADMIN_PW}"
   echo "  (à changer OBLIGATOIREMENT à la première connexion)"
 else

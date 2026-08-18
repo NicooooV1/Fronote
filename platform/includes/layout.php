@@ -78,6 +78,47 @@ if (!function_exists('pf_layout_nav')) {
     }
 
     /**
+     * Bannière d'enforcement DOUX (jamais bloquant) : statut de licence + mise à jour
+     * disponible, écrits par le cron phone_home.php dans storage/.license-status.json.
+     * Révocation/expiration → l'app RESTE fonctionnelle, on informe seulement. Rien à
+     * afficher si le fichier est absent (installation hors distribution).
+     */
+    function pf_layout_license_notice(): string
+    {
+        $root = dirname(__DIR__, 2);
+        $f = $root . '/storage/.license-status.json';
+        if (!is_file($f)) { return ''; }
+        $s = json_decode((string) @file_get_contents($f), true);
+        if (!is_array($s)) { return ''; }
+
+        $status = (string) ($s['license_status'] ?? 'ok');
+        $latest = (string) ($s['latest_version'] ?? '');
+        $current = pf_layout_version()['version'];
+
+        $notice = null;   // [couleur, icône, texte]
+        if ($status === 'revoked') {
+            $notice = ['#c0392b', 'fa-ban',
+                "Licence révoquée. L'application reste fonctionnelle ; contactez votre prestataire pour régulariser le support et les mises à jour."];
+        } elseif ($status === 'expired') {
+            $exp = $s['expires_at'] ?? null;
+            $notice = ['#b8860b', 'fa-hourglass-end',
+                'Support/licence expiré' . ($exp ? ' le ' . pf_e($exp) : '') .
+                ". L'application continue de fonctionner ; contactez votre prestataire pour prolonger le support et recevoir les mises à jour."];
+        } elseif ($latest !== '' && $current !== '?' && version_compare($latest, $current, '>')) {
+            $notice = ['#1f6feb', 'fa-cloud-arrow-down',
+                'Une mise à jour est disponible (v' . pf_e($latest) . ', vous avez v' . pf_e($current) .
+                '). Lancez la mise à jour depuis le serveur (update.sh) ou contactez votre prestataire.'];
+        }
+        if ($notice === null) { return ''; }
+        [$color, $icon, $text] = $notice;
+        return '<div role="status" style="margin:0 0 18px;padding:12px 16px;border:1px solid ' . $color
+            . ';border-left-width:4px;border-radius:8px;background:' . $color . '1f;color:' . $color
+            . ';display:flex;gap:10px;align-items:flex-start;font-size:.92rem;line-height:1.5">'
+            . '<i class="fas ' . $icon . '" aria-hidden="true" style="margin-top:2px"></i>'
+            . '<span style="color:inherit">' . $text . '</span></div>';
+    }
+
+    /**
      * Ouvre la page et rend la chrome. À appeler AVANT tout HTML de la page.
      */
     function pf_layout_header(string $active, string $title, string $eyebrow = ''): void
@@ -176,6 +217,8 @@ if (!function_exists('pf_layout_nav')) {
 
         // Conteneur de contenu (laissé OUVERT — la page écrit dedans, pf_layout_footer ferme)
         echo '  <main class="pf-content">' . "\n";
+        // Bannière d'enforcement doux (licence/MAJ) — informatif, jamais bloquant.
+        echo pf_layout_license_notice();
     }
 
     /** Ferme le contenu + la chrome. À appeler APRÈS le HTML de la page. */
