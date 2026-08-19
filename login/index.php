@@ -21,6 +21,20 @@ if (!headers_sent()) {
 $userService = app()->make('API\Services\UserService');
 $auth        = app('auth');
 
+// SSO OIDC : bouton affiché uniquement si OAUTH_* est configuré dans le .env.
+// Les instances distribuées sans configuration SSO ne voient AUCUN changement.
+$oauthSso      = false;
+$oauthSsoLabel = '';
+try {
+    $oauthGuard = new \API\Auth\OAuthGuard(getPDO());
+    if ($oauthGuard->isConfigured()) {
+        $oauthSso      = true;
+        $oauthSsoLabel = (env('OAUTH_BUTTON_LABEL', '') ?: __('login.sso_button'));
+    }
+} catch (\Throwable $e) {
+    $oauthSso = false; // le SSO ne doit jamais empêcher la mire de s'afficher
+}
+
 // Déjà connecté → accueil
 if (isLoggedIn()) {
     redirect('accueil/accueil.php');
@@ -388,6 +402,15 @@ $_loginDir = $translator->isRtl() ? 'rtl' : 'ltr';
                     <a href="reset_password.php"><?= htmlspecialchars(__('login.forgot_password')) ?></a>
                 </div>
             </form>
+
+            <?php if ($oauthSso): ?>
+            <div class="help-text sso-separator" style="text-align:center;margin-top:14px;opacity:.75;"><?= htmlspecialchars(__('login.sso_or')) ?></div>
+            <div class="form-actions" style="margin-top:8px;">
+                <a href="oauth_start.php" class="btn btn-secondary" id="ssoBtn" style="width:100%;text-align:center;text-decoration:none;">
+                    <i class="fas fa-sign-in-alt" aria-hidden="true"></i> <?= htmlspecialchars($oauthSsoLabel) ?>
+                </a>
+            </div>
+            <?php endif; ?>
         <?php endif; ?>
     </div>
 
