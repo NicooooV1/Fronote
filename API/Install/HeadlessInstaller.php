@@ -259,8 +259,7 @@ final class HeadlessInstaller
             });
 
             // Cohérence 3-mondes : catalogues de rôles, établissement, miroir tenant, super-admin plateforme.
-            $this->safe('Cohérence 3-mondes', function () use ($pdo, $adminId) {
-                (new \API\Platform\PlatformRoleSync($pdo))->sync();
+            $this->safe('Cohérence des rôles + admin tenant', function () use ($pdo, $adminId) {
                 (new \API\Tenant\TenantRoleSync($pdo))->sync();
                 $pdo->exec("UPDATE etablissements SET slug = COALESCE(NULLIF(slug, ''), code, 'default'), status = COALESCE(NULLIF(status, ''), 'active') WHERE id = 1");
 
@@ -288,18 +287,9 @@ final class HeadlessInstaller
                     }
                 }
 
-                // Super-admin PLATEFORME (« superadmin », mêmes identifiants).
-                $pas = new \API\Platform\PlatformAccountService($pdo);
-                if (!$pas->findActiveByLogin('superadmin')) {
-                    $paId = $pas->createAccount([
-                        'email' => $mail, 'username' => 'superadmin', 'password_hash' => $hash,
-                        'first_name' => $prenom, 'last_name' => $nom, 'status' => 'active',
-                    ]);
-                    $srid = (int) ($pdo->query("SELECT id FROM platform_roles WHERE role_key='super_admin' LIMIT 1")->fetchColumn() ?: 0);
-                    if ($srid > 0) {
-                        $pdo->prepare("INSERT INTO platform_account_roles (platform_account_id, platform_role_id, scope_type, is_active) VALUES (?, ?, 'global', 1)")->execute([$paId, $srid]);
-                    }
-                }
+                // Aucune couche « platform » locale sur les instances distribuées : plus de
+                // super-admin plateforme provisionné à l'installation. La gestion est
+                // centralisée sur le hub de distribution (CT122).
             });
 
             // Migrations de données (journal schema_migrations), si un runner est présent.

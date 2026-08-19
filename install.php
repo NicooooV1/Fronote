@@ -932,7 +932,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // séparés). Réutilise les services testés ; non bloquant.
                     try {
                         $pdo->exec("USE `{$dbNameSafe}`");
-                        (new \API\Platform\PlatformRoleSync($pdo))->sync();
                         (new \API\Tenant\TenantRoleSync($pdo))->sync();
                         $pdo->exec("UPDATE etablissements SET slug = COALESCE(NULLIF(slug, ''), code, 'default'), status = COALESCE(NULLIF(status, ''), 'active') WHERE id = 1");
 
@@ -955,19 +954,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
                         }
 
-                        // Super-admin PLATEFORME (identifiant « superadmin » ; mêmes identifiants que l'admin).
-                        $pas = new \API\Platform\PlatformAccountService($pdo);
-                        if (!$pas->findActiveByLogin('superadmin')) {
-                            $paId = $pas->createAccount([
-                                'email' => $adm['mail'], 'username' => 'superadmin', 'password_hash' => $hash,
-                                'first_name' => $adm['prenom'], 'last_name' => $adm['nom'], 'status' => 'active',
-                            ]);
-                            $srid = (int) ($pdo->query("SELECT id FROM platform_roles WHERE role_key='super_admin' LIMIT 1")->fetchColumn() ?: 0);
-                            if ($srid > 0) {
-                                $pdo->prepare("INSERT INTO platform_account_roles (platform_account_id, platform_role_id, scope_type, is_active) VALUES (?, ?, 'global', 1)")->execute([$paId, $srid]);
-                            }
-                        }
-                        $log[] = ['ok', iT('result.three_worlds_ok', 'Cohérence 3-mondes initialisée (rôles, établissement, miroir tenant, super-admin plateforme « superadmin »)')];
+                        // Plus de super-admin PLATEFORME local : la gestion est centralisée
+                        // sur le hub de distribution (aucune platform locale dans l'instance).
+                        $log[] = ['ok', iT('result.three_worlds_ok', 'Rôles et miroir tenant de l\'administrateur initialisés.')];
                     } catch (Throwable $e) {
                         $log[] = ['warn', iT('label.three_worlds', 'Initialisation 3-mondes : ') . $e->getMessage()];
                     }

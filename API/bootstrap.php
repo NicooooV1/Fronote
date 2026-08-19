@@ -602,8 +602,8 @@ if (php_sapi_name() !== 'cli' && $_revokeIdentity) {
 	//      verrouille -> logout immediat, sans attendre l'expiration de session_security.
 	//      Fail-open sur erreur DB, fail-closed si le compte a disparu. Table = litteral sur.
 	if (!$_forceLogout) {
-		$_pw = !empty($_SESSION['platform']['account_id']) ? ['platform_accounts', (int) $_SESSION['platform']['account_id']]
-			: (!empty($_SESSION['tenant']['account_id']) ? ['tenant_accounts', (int) $_SESSION['tenant']['account_id']] : null);
+		// Monde PLATEFORME retiré (aucune platform locale) : ne reste que le monde TENANT.
+		$_pw = !empty($_SESSION['tenant']['account_id']) ? ['tenant_accounts', (int) $_SESSION['tenant']['account_id']] : null;
 		if ($_pw !== null) {
 			try {
 				$_pwStmt = $app->make('db')->getConnection()->prepare(

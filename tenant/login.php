@@ -4,7 +4,6 @@ declare(strict_types=1);
 require __DIR__ . '/_bootstrap.php';
 
 use API\Tenant\TenantContext;
-use API\Platform\PlatformAccountService;
 
 if (!empty($_SESSION['tenant']['membership_id']) && (int) $_SESSION['tenant']['establishment_id'] === (int) $establishment['id']) {
     header("Location: {$base}/tenant/dashboard.php?e=" . urlencode($slug));
@@ -131,7 +130,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Identifiant inconnu : vérification bcrypt factice (constant-time) pour ne pas
                 // révéler l'existence du compte par le temps de réponse (anti-énumération).
                 if (!$account) {
-                    PlatformAccountService::dummyVerify();
+                    // Vérification bcrypt factice (constant-time) contre l'énumération de
+                    // comptes — même coût (10) qu'un hash réel. Inlined (plus de dépendance
+                    // à une couche « platform » locale, retirée des instances distribuées).
+                    password_verify('dummy_password', '$2y$10$dxC/SO/ZG/0EfkH.q8WwHe58dLnQ4MIiHwY3okP9zP9GLBxmTLLfC');
                 }
                 $error = 'Identifiants invalides.';
             } else {

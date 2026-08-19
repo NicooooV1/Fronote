@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace API\Security;
 
 use PDO;
-use API\Platform\PlatformAuthorization;
 use API\Tenant\TenantAuthorization;
 
 /**
@@ -31,21 +30,10 @@ final class WorldContext
         return (int) ($_SESSION['platform']['account_id'] ?? 0);
     }
 
-    public static function platformAuth(): PlatformAuthorization
-    {
-        $id = self::platformAccountId();
-        return new PlatformAuthorization(self::pdo(), $id > 0 ? ['id' => $id] : null);
-    }
-
-    public static function platformCan(string $permission): bool
-    {
-        return self::platformAuth()->can($permission);
-    }
-
-    public static function platformAuthorize(string $permission): void
-    {
-        self::platformAuth()->authorize($permission);
-    }
+    // Le « monde plateforme » a été retiré des instances distribuées (aucune platform
+    // locale) : platformAuth/platformCan/platformAuthorize et la classe PlatformAuthorization
+    // n'existent plus ici. La gestion multi-établissements est centralisée sur le hub de
+    // distribution (CT122), jamais dans l'instance.
 
     // ───────────────────────── établissement ─────────────────────────
 

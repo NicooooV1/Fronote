@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace API\Tenant;
 
 use PDO;
-use API\Platform\DirectorInvitationService;
 
 /**
  * TenantOnboardingService — acceptation d'une invitation Directeur + création/jonction
@@ -224,7 +223,10 @@ final class TenantOnboardingService extends \API\Services\AbstractTenantService
                 }
             }
 
-            (new DirectorInvitationService($this->pdo))->markAccepted((int) $invitation['id']);
+            // Invitations « directeur » = flux plateforme, absent des instances distribuées.
+            if (class_exists('\\API\\Platform\\DirectorInvitationService')) {
+                (new \API\Platform\DirectorInvitationService($this->pdo))->markAccepted((int) $invitation['id']);
+            }
             $this->pdo->commit();
         } catch (\Throwable $e) {
             $this->pdo->rollBack();

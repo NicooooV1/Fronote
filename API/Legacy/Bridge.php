@@ -709,12 +709,7 @@ if (!function_exists('createResetRequest')) {
 
 // ──────────── Helpers d'autorisation des mondes plateforme/établissement ────────────
 // Délèguent à API\Security\WorldContext.
-if (!function_exists('platformCan')) {
-	function platformCan(string $permission): bool { return \API\Security\WorldContext::platformCan($permission); }
-}
-if (!function_exists('platformAuthorize')) {
-	function platformAuthorize(string $permission): void { \API\Security\WorldContext::platformAuthorize($permission); }
-}
+// Helpers « plateforme » retirés : plus de platform locale dans les instances distribuées.
 if (!function_exists('tenantCan')) {
 	function tenantCan(string $permission): bool { return \API\Security\WorldContext::tenantCan($permission); }
 }
