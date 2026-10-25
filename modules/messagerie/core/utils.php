@@ -57,14 +57,16 @@ function formatTimeAgo($timestamp) {
         return "à l'instant";
     } elseif ($diff < 3600) {
         $minutes = floor((float) ($diff / 60));
-        return "il y a $minutes min" . ($minutes > 1 ? 's' : '');
+        return "il y a $minutes min";
     } elseif ($diff < 86400) {
         $hours = floor((float) ($diff / 3600));
         return "il y a $hours h" . ($hours > 1 ? '' : '');
     } elseif ($diff < 172800) {
         return 'hier à ' . date('H:i', $timestamp);
     } elseif ($diff < 604800) {
-        return date('l', $timestamp) . ' à ' . date('H:i', $timestamp);
+        // Jour de la semaine en français (date('l') renvoyait « Thursday »).
+        $jours = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+        return $jours[(int) date('w', $timestamp)] . ' à ' . date('H:i', $timestamp);
     } else {
         return date('d/m/Y', $timestamp);
     }

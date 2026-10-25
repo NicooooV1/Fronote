@@ -367,7 +367,7 @@ $log("$noteRows notes");
 $motifs = ['Maladie', 'Rendez-vous médical', 'Raison familiale', 'Transport', 'Sans motif'];
 $abs = 0; $ret = 0;
 $elevesIds = array_keys($eleves);
-for ($k = 0; $k < (int) ($nbEleves * 0.45); $k++) {
+for ($k = 0; $k < (int) ($nbEleves * 0.13); $k++) {
     $eid = $pick($elevesIds);
     $d = $schoolDay($today->modify('-' . mt_rand(1, $joursNotes) . ' days'));
     $journee = mt_rand(0, 2) === 0;
@@ -380,7 +380,7 @@ for ($k = 0; $k < (int) ($nbEleves * 0.45); $k++) {
         'date_signalement' => $debut]);
     $abs++;
 }
-for ($k = 0; $k < (int) ($nbEleves * 0.3); $k++) {
+for ($k = 0; $k < (int) ($nbEleves * 0.18); $k++) {
     $eid = $pick($elevesIds);
     $d = $schoolDay($today->modify('-' . mt_rand(1, $joursNotes) . ' days'));
     $ins('retards', ['etablissement_id' => $ETAB, 'id_eleve' => $eid, 'date_retard' => $d->format('Y-m-d') . ' 08:' . sprintf('%02d', mt_rand(3, 25)) . ':00',
@@ -434,6 +434,8 @@ $conv = function (string $subject, string $type, array $participants, array $mes
     $last = null; $t = $start;
     foreach ($messages as $i => [$sid, $stype, $body]) {
         $t = $t->modify('+' . mt_rand(2, 30) . ' hours');
+        $h = (int) $t->format('G');
+        if ($h < 8 || $h > 19) { $t = $t->setTime(mt_rand(8, 19), mt_rand(0, 59)); } // messages aux heures ouvrables
         if ($t > new DateTimeImmutable()) { $t = (new DateTimeImmutable())->modify('-' . (count($messages) - $i) * 7 . ' minutes'); }
         $last = $ins('messages', ['conversation_id' => $cid, 'sender_id' => $sid, 'sender_type' => $stype, 'body' => $body, 'created_at' => $t->format('Y-m-d H:i:s'), 'status' => 'normal']);
     }
@@ -497,7 +499,7 @@ $evts = [
 foreach ($evts as [$off, $titre, $type, $h1, $h2, $lieu, $cls]) {
     $d = $schoolDay($today->modify(($off >= 0 ? '+' : '') . $off . ' days'));
     $ins('evenements', ['etablissement_id' => $ETAB, 'titre' => $titre, 'description' => $titre . ' — ' . $lieu . '.', 'date_debut' => $d->format('Y-m-d') . " $h1:00",
-        'date_fin' => $d->format('Y-m-d') . " $h2:00", 'type_evenement' => $type, 'statut' => 'planifie', 'createur' => 'Claire Delmas', 'visibilite' => 'public',
+        'date_fin' => $d->format('Y-m-d') . " $h2:00", 'type_evenement' => $type, 'statut' => 'actif', 'createur' => 'Claire Delmas', 'visibilite' => 'public',
         'lieu' => $lieu, 'classes' => $cls]);
 }
 $pdo->exec('DELETE FROM menus_cantine');
@@ -537,9 +539,6 @@ foreach ([
 }
 
 // Comptes démo : jamais de changement de mot de passe forcé, jamais de verrouillage.
-foreach (['administrateurs', 'professeurs', 'eleves', 'parents', 'vie_scolaire'] as $tbl) {
-    $pdo->exec("UPDATE `$tbl` SET password_changed_at = NOW(), failed_login_attempts = 0, locked_until = NULL");
-}
 $pdo->exec("UPDATE accounts SET must_change_password=0, failed_login_attempts=0, locked_until=NULL WHERE username LIKE 'demo.%'");
 // Le compte d'installation « admin » n'a pas sa place dans une démo publique.
 $pdo->exec("UPDATE administrateurs SET actif=0, mot_de_passe='" . $lockedHash . "' WHERE identifiant='admin'");

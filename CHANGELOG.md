@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [4.2.2] — Vitrine et démo publique — 2026-10-25
+
+### Added
+- Hub de distribution : nouvelle vitrine (accès démo par rôle, visite guidée en captures réelles,
+  version mobile, catalogue des 57 modules généré depuis les module.json, sécurité, installation, FAQ).
+  Générateur : `dist/vitrine/build-vitrine.py` (+ `shots-mkt.js` pour refaire les captures).
+
+### Fixed
+- `update.sh` / `install.sh` livrés exécutables (`sudo ./update.sh` échouait : « Permission denied »).
+- Messagerie : jour de la semaine en français (« jeudi à 14:05 » au lieu de « Thursday »), « il y a 5 min ».
+- Démo : connexion en un clic (clé `login`), bandeau en bas d'écran (ne masque plus la navigation),
+  version mobile compacte ; événements générés au statut `actif`, absences réalistes, messages en journée.
+
+---
+
 ## [4.2.1] — Mode démonstration — 2026-10-25
 
 ### Added

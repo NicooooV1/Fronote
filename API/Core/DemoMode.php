@@ -100,7 +100,7 @@ final class DemoMode
         }
     }
 
-    private static function deny(string $message): void
+    private static function deny(string $message): never
     {
         $wantsJson = str_contains((string) ($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json')
             || strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
@@ -136,10 +136,18 @@ final class DemoMode
             $links .= '<a href="/demo/?role=' . $slug . '" style="color:#fff;text-decoration:none;padding:3px 9px;border-radius:999px;border:1px solid rgba(255,255,255,.35);white-space:nowrap">' . htmlspecialchars($lib, ENT_QUOTES, 'UTF-8') . '</a>';
         }
         $who = $label ? ' · vous êtes connecté en tant que <strong>' . $label . '</strong>' : '';
-        return '<div class="fronote-demo-banner" role="note" style="position:relative;z-index:9999;background:#16243f;color:#f6f2e9;'
-            . 'font:13px/1.4 system-ui,sans-serif;padding:7px 14px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:center">'
-            . '<span><strong style="color:#d8a24b">Démonstration</strong> · données 100 % fictives, réinitialisées toutes les ' . self::resetMinutes() . ' min' . $who . '</span>'
-            . '<span style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><span style="opacity:.7">Changer de rôle :</span>' . $links . '</span>'
-            . '<a href="' . htmlspecialchars(self::siteUrl(), ENT_QUOTES, 'UTF-8') . '" style="color:#d8a24b">← Retour au site Fronote</a></div>';
+        // Barre FIXE en BAS d'écran : ne masque jamais la barre de navigation (fixe en haut) ;
+        // le bandeau cookies de l'application est remonté au-dessus d'elle.
+        return '<style>.fronote-demo-banner{position:fixed;left:0;right:0;bottom:0;z-index:9990;background:#16243f;color:#f6f2e9;'
+            . 'font:13px/1.4 system-ui,sans-serif;padding:8px 14px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;justify-content:center;'
+            . 'box-shadow:0 -6px 24px rgba(22,36,63,.18)}.fronote-demo-banner a{color:#fff;text-decoration:none}'
+            . 'body{padding-bottom:58px!important}#cookie-consent-banner{bottom:52px!important}'
+            . '.fdb-m{display:none}@media(max-width:640px){.fronote-demo-banner .fdb-txt,.fronote-demo-banner .fdb-roles{display:none}.fdb-m{display:inline}'
+            . 'body{padding-bottom:46px!important}#cookie-consent-banner{bottom:40px!important}}</style>'
+            . '<div class="fronote-demo-banner" role="note">'
+            . '<span class="fdb-txt"><strong style="color:#d8a24b">Démonstration</strong> · données 100 % fictives, réinitialisées toutes les ' . self::resetMinutes() . ' min' . $who . '</span>'
+            . '<span class="fdb-roles" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><span style="opacity:.7">Rôle :</span>' . $links . '</span>'
+            . '<span class="fdb-m"><strong style="color:#d8a24b">Démo</strong>' . ($label ? ' · ' . $label : '') . ' · <a href="/demo/" style="text-decoration:underline">changer de rôle</a></span>'
+            . '<a href="' . htmlspecialchars(self::siteUrl(), ENT_QUOTES, 'UTF-8') . '" style="color:#d8a24b">← Site Fronote</a></div>';
     }
 }

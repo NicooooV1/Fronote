@@ -22,7 +22,7 @@ if (isset(DemoMode::ROLES[$role])) {
         $_SESSION = [];
         session_regenerate_id(true);
     }
-    $user = $auth->attemptAndGetUser(['username' => $username, 'password' => DemoMode::password()]);
+    $user = $auth->attemptAndGetUser(['login' => $username, 'password' => DemoMode::password()]);
     if (is_array($user) && isset($user[0]) && is_array($user[0])) { $user = $user[0]; }
     if (is_array($user) && !empty($user['id'])) {
         $auth->loginUser($user);
