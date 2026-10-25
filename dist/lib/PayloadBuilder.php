@@ -105,6 +105,8 @@ final class PayloadBuilder
             'dist/data', 'dist/config.php', 'dist/discord-bot/node_modules', 'dist/discord-bot/.env',
             '.env', 'install.lock', 'install.conf', 'storage', 'uploads', 'temp', 'API/logs',
             '.phpunit.result.cache',
+            // Le serveur de licence (dist/) et l'outillage de dev ne regardent pas le client.
+            'dist', 'tests', '.claude', 'logs',
         ];
         // Exclure tous les modules premium du socle.
         foreach ($this->premiumModules() as $m) {

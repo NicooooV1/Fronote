@@ -37,5 +37,19 @@ function dist_store(array $cfg): \Dist\DistStore
 function dist_signer(array $cfg): \Dist\Signer
 {
     $dir = rtrim((string) $cfg['data_dir'], '/');
-    return new \Dist\Signer($dir . '/signing.key', $dir . '/signing.pub');
+    // La clé PRIVÉE vit hors du tier web (root:root 0600, ex. /etc/fronote-dist/signing.key) :
+    // seule la CLI de build (lancée en root) la lit ; le serveur HTTP n'en a jamais besoin.
+    $sk = (string) ($cfg['signing_key'] ?? ($dir . '/signing.key'));
+    return new \Dist\Signer($sk, $dir . '/signing.pub');
+}
+
+/** Clé publique Ed25519 (hex) — lue seule, sans jamais toucher à la clé privée. @param array<string,mixed> $cfg */
+function dist_public_key_hex(array $cfg): string
+{
+    $pub = rtrim((string) $cfg['data_dir'], '/') . '/signing.pub';
+    $raw = is_file($pub) ? (string) file_get_contents($pub) : '';
+    if (strlen($raw) !== SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES) {
+        throw new \RuntimeException('Clé publique de signature absente ou invalide.');
+    }
+    return bin2hex($raw);
 }

@@ -59,19 +59,33 @@ log "Mise à jour disponible : ${LOCAL_VER} → ${LATEST_VER}"
 [ "$CHECK_ONLY" = 1 ] && { echo "  (mode --check : rien n'a été modifié)"; exit 0; }
 
 # ── téléchargement + vérification (mêmes garanties qu'à l'installation) ────────
+# openssl (Ed25519) est OBLIGATOIRE : sans lui, aucune preuve d'authenticité (le SHA-256 vient
+# du même serveur). Refus strict plutôt que repli silencieux (constat d'audit « fail-open »).
+ensure_openssl(){
+  if ! command -v openssl >/dev/null 2>&1; then
+    if command -v apt-get >/dev/null 2>&1; then
+      apt-get install -y -qq openssl >/dev/null 2>&1 || true
+    fi
+  fi
+  command -v openssl >/dev/null 2>&1 || die "openssl introuvable : impossible de vérifier la signature Ed25519. Installez openssl puis relancez."
+  openssl version 2>/dev/null | grep -qE '^OpenSSL (3|[4-9])\.' \
+    || die "OpenSSL 3.x requis pour vérifier les signatures Ed25519 (trouvé : $(openssl version 2>/dev/null))."
+}
+ensure_openssl
 hex2bin(){ printf '%b' "$(printf '%s' "$1" | sed 's/\(..\)/\\x\1/g')"; }
 verify(){ # verify FILE SHA SIG LABEL
   local f="$1" sha="$2" sig="$3" label="$4" got
   if command -v sha256sum >/dev/null; then got="$(sha256sum "$f" | cut -d' ' -f1)"; else got="$(shasum -a 256 "$f" | cut -d' ' -f1)"; fi
   [ -n "$sha" ] && [ "$got" = "$sha" ] || die "SHA-256 ${label} invalide (attendu ${sha}, obtenu ${got})."
-  if command -v openssl >/dev/null && [ -n "$sig" ]; then
+  [ -n "$sig" ] || die "Signature absente pour ${label} — mise à jour refusée."
+  if command -v openssl >/dev/null; then
     local pem="$WORK/pub.pem" sb="$WORK/sig.bin"
     { printf -- '-----BEGIN PUBLIC KEY-----\n'; hex2bin "302a300506032b6570032100${PUBKEY_HEX}" | base64 | tr -d '\n'; printf -- '\n-----END PUBLIC KEY-----\n'; } > "$pem"
     hex2bin "$sig" > "$sb" 2>/dev/null || die "signature ${label} illisible."
     openssl pkeyutl -verify -pubin -inkey "$pem" -rawin -in "$f" -sigfile "$sb" >/dev/null 2>&1 \
       && ok "Signature Ed25519 vérifiée — ${label}" || die "SIGNATURE INVALIDE — ${label} refusé."
   else
-    warn "Ed25519 indisponible — repli SHA-256 + HTTPS pour ${label}."
+    die "openssl indisponible : signature de ${label} non vérifiable — mise à jour refusée."
   fi
 }
 

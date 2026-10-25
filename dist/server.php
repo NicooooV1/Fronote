@@ -130,7 +130,7 @@ switch ($action) {
     // no break (json_out exits)
     case 'pubkey':
         try {
-            json_out(200, ['public_key' => dist_signer($cfg)->publicKeyHex()]);
+            json_out(200, ['public_key' => dist_public_key_hex($cfg)]);
         } catch (\Throwable $e) {
             json_out(500, ['status' => 'server_error']);
         }

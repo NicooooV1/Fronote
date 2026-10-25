@@ -68,6 +68,19 @@ http_call(){ # http_call METHOD URL [--data-urlencode k=v ...] ; corps -> $WORK/
 field(){ grep -m1 "^$1=" "$WORK/resp" 2>/dev/null | cut -d= -f2- || true; }
 
 # ── vérification d'intégrité + authenticité d'une archive ─────────────────────
+# openssl (Ed25519) est OBLIGATOIRE : sans lui, aucune preuve d'authenticité (le SHA-256 vient
+# du même serveur). Refus strict plutôt que repli silencieux (constat d'audit « fail-open »).
+ensure_openssl(){
+  if ! command -v openssl >/dev/null 2>&1; then
+    if command -v apt-get >/dev/null 2>&1; then
+      apt-get install -y -qq openssl >/dev/null 2>&1 || true
+    fi
+  fi
+  command -v openssl >/dev/null 2>&1 || die "openssl introuvable : impossible de vérifier la signature Ed25519. Installez openssl puis relancez."
+  openssl version 2>/dev/null | grep -qE '^OpenSSL (3|[4-9])\.' \
+    || die "OpenSSL 3.x requis pour vérifier les signatures Ed25519 (trouvé : $(openssl version 2>/dev/null))."
+}
+ensure_openssl
 hex2bin(){ printf '%b' "$(printf '%s' "$1" | sed 's/\(..\)/\\x\1/g')"; }
 verify_artifact(){ # verify_artifact FILE SHA_HEX SIG_HEX LABEL
   local file="$1" sha="$2" sig="$3" label="$4" got
@@ -88,9 +101,11 @@ verify_artifact(){ # verify_artifact FILE SHA_HEX SIG_HEX LABEL
       fi
       printf '%s' "$out" | grep -qi "Signature Verification Failure" \
         && die "SIGNATURE INVALIDE — ${label} a été ALTÉRÉ. Installation refusée."
+      die "Vérification Ed25519 impossible pour ${label} : ${out:-erreur openssl}. Installation refusée."
     fi
+    die "Signature absente ou illisible pour ${label}. Installation refusée."
   fi
-  warn "Vérification Ed25519 indisponible (openssl) — repli SHA-256 + HTTPS pour ${label}."
+  die "openssl indisponible : signature de ${label} non vérifiable. Installation refusée."
 }
 
 # ── reprise : réutilise le jeton d'une tentative précédente ───────────────────

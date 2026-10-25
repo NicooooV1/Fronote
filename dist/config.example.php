@@ -16,6 +16,8 @@ return [
 
     // Répertoire de données isolé (base SQLite, clés de signature, payloads construits).
     // DOIT être hors docroot idéalement, ou protégé par .htaccess (fait par défaut).
+    // Clé privée Ed25519 HORS du tier web (root:root 0600). Défaut : data_dir/signing.key.
+    'signing_key' => '/etc/fronote-dist/signing.key',
     'data_dir'   => __DIR__ . '/data',
 
     // Poivre serveur ajouté avant hachage des clés de licence (défense si la base fuit).

@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [4.2.0] — Distribution durcie + instance tenant pure — 2026-10-25
+
+### Security
+- Installation et mise à jour **refusent** désormais toute archive dont la signature Ed25519 n'a
+  pas pu être vérifiée (openssl absent, signature vide ou erreur) — plus de repli silencieux
+  sur le seul SHA-256. openssl est installé automatiquement s'il manque ; OpenSSL 3.x requis.
+- Serveur de distribution : la clé privée de signature sort du tier web (`signing_key`, root 0600) ;
+  `/pubkey` ne lit plus que la clé publique.
+- Le socle livré aux établissements n'embarque plus le code du serveur de licence (`dist/`)
+  ni l'outillage de dev (`tests/`, `logs/`).
+
+### Changed
+- Plus de « platform » locale dans une instance : la gestion est centralisée sur le hub de
+  distribution (console native). Une instance = un établissement (tenant pur).
+- Bouton « Continuer avec … » (SSO OIDC) sur la mire quand `OAUTH_*` est configuré.
+- Code mort et doublons supprimés (AbstractTenantService, références fantômes, catch vides journalisés).
+
+### Added
+- Hub de distribution : vitrine publique, formulaire de proposition, console de gestion.
+
+---
+
 ## [4.1.0] — Refonte du système de rôles + purge du code mort — 2026-08-12
 
 Refonte du système d'autorisation vers **UN moteur unique et UN catalogue**, puis grande passe
