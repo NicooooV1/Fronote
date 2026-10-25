@@ -399,7 +399,6 @@ if [ -n "${ADMIN_PW:-}" ]; then
 else
   echo "  Mot de passe  : inchangé (admin déjà existant — réinstallation)"
 fi
-echo "  Super-admin plateforme : superadmin (mêmes identifiants) — portail /platform/"
 echo
 echo "  Le mot de passe de la base est stocké UNIQUEMENT dans ${APP_DIR}/.env (0640, ${RUN_USER})."
 [ "$SECURE_HINT" = http ] && warn "URL en http:// — pour la production, mettez un certificat TLS puis APP_URL=https://… (SESSION_SECURE passera à true)."

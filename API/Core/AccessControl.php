@@ -41,6 +41,7 @@ final class AccessControl
     /** Préfixes publics (le dossier login complet, les pages d'erreur, le service worker). */
     private const PUBLIC_PREFIX = [
         'login/',
+        'demo/',              // entrée de la démo publique — 404 hors DEMO_MODE (cf. demo/index.php)
         'templates/errors/',
         'templates/maintenance.php',
     ];

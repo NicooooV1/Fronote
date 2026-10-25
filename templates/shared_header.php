@@ -436,6 +436,7 @@ try {
     </script>
 </head>
 <body>
+<?= \API\Core\DemoMode::banner(function_exists('getUserRole') ? (string) getUserRole() : null) ?>
 
 <a href="#main-content" class="skip-link"><?php echo function_exists('__') ? __('nav.skip_to_content', ['default' => 'Aller au contenu principal']) : 'Aller au contenu principal'; ?></a>
 

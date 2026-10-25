@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [4.2.1] — Mode démonstration — 2026-10-25
+
+### Added
+- **Mode démonstration** (`DEMO_MODE=true`, inerte sinon) : entrée en un clic par rôle (`/demo/?role=prof`),
+  bandeau permanent avec changement de rôle, panneau d'accès sur la mire, comptes `demo.*` sans
+  enrôlement 2FA, actions sensibles bloquées (mots de passe, 2FA, système, marketplace, imports, purge,
+  usurpation, dépôt de fichiers).
+- `bin/demo-seed.php` : génère un collège fictif complet (8 classes, ~190 élèves, emploi du temps,
+  notes, absences, cahier de textes, messagerie, agenda, menus), dates relatives au jour même.
+
+### Fixed
+- Fin d'installation : plus de mention du portail « super-admin plateforme » (retiré en 4.2.0).
+
+---
+
 ## [4.2.0] — Distribution durcie + instance tenant pure — 2026-10-25
 
 ### Security

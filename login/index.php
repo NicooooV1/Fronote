@@ -159,7 +159,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
                     // (harnais de charge/tests). Jamais actif en production réelle.
                     $testBypass = getenv('TEST_2FA_BYPASS') === '1' && str_starts_with((string) $username, 'sim.');
 
-                    if (($twoFAEnabled || $isResponsibility) && !$trusted && !$testBypass) {
+                    // Démonstration publique (DEMO_MODE) : les comptes « demo.* » n'enrôlent pas de 2FA.
+                    $demoBypass = \API\Core\DemoMode::isDemoAccount((string) $username) && !$twoFAEnabled;
+
+                    if (($twoFAEnabled || $isResponsibility) && !$trusted && !$testBypass && !$demoBypass) {
                         // 2FA requis : vérification si déjà configuré, sinon ENRÔLEMENT forcé.
                         $_SESSION['pending_2fa'] = [
                             'user_id'     => $user['id'],
@@ -409,6 +412,17 @@ $_loginDir = $translator->isRtl() ? 'rtl' : 'ltr';
                 <a href="oauth_start.php" class="btn btn-secondary" id="ssoBtn" style="width:100%;text-align:center;text-decoration:none;">
                     <i class="fas fa-sign-in-alt" aria-hidden="true"></i> <?= htmlspecialchars($oauthSsoLabel) ?>
                 </a>
+            </div>
+            <?php endif; ?>
+            <?php if (\API\Core\DemoMode::active()): ?>
+            <div class="demo-access" style="margin-top:18px;padding:14px 16px;border:1px dashed currentColor;border-radius:10px;opacity:.95">
+                <strong>Démonstration</strong> — entrez en un clic :
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+                <?php foreach (\API\Core\DemoMode::ROLES as $__slug => [$__u, $__lib]): ?>
+                    <a class="btn btn-secondary" style="text-decoration:none" href="../demo/?role=<?= $__slug ?>"><?= htmlspecialchars($__lib) ?></a>
+                <?php endforeach; ?>
+                </div>
+                <div class="help-text" style="margin-top:8px">Ou identifiant <code>demo.prof</code>, <code>demo.eleve</code>… et mot de passe <code><?= htmlspecialchars(\API\Core\DemoMode::password()) ?></code>.</div>
             </div>
             <?php endif; ?>
         <?php endif; ?>

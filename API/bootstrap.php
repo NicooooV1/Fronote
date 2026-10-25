@@ -676,4 +676,7 @@ if (php_sapi_name() !== 'cli') {
 	}
 }
 
+// Mode démonstration : garde des actions sensibles (no-op hors DEMO_MODE).
+\API\Core\DemoMode::guard();
+
 return $app;
