@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [4.2.4] — Reverse proxy HTTPS — 2026-10-25
+
+### Fixed
+- Derrière un reverse proxy, les redirections partaient en `http://`. `X-Forwarded-Proto` est désormais
+  honoré, **uniquement** si la requête vient d'une IP listée dans `TRUSTED_PROXIES`.
+
+---
+
 ## [4.2.3] — Correctif mise à jour (temps réel) — 2026-10-25
 
 ### Fixed

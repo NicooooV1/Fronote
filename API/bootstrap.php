@@ -159,6 +159,16 @@ unset($_appEnv, $_isDebug, $_errorHandler);
 // devoirs rendus « à temps », audit) utilisent le fuseau de php.ini (souvent UTC).
 date_default_timezone_set(getenv('APP_TIMEZONE') ?: 'Europe/Paris');
 
+// Derrière un reverse proxy de CONFIANCE (TRUSTED_PROXIES, liste d'IP séparées par des virgules),
+// honorer X-Forwarded-Proto : sinon BASE_URL et les redirections partent en http:// alors que le
+// visiteur est en HTTPS. Jamais honoré pour un client direct (en-tête forgeable).
+$_tp = array_filter(array_map('trim', explode(',', (string) getenv('TRUSTED_PROXIES'))));
+if ($_tp && in_array($_SERVER['REMOTE_ADDR'] ?? '', $_tp, true)
+	&& strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https') {
+	$_SERVER['HTTPS'] = 'on';
+}
+unset($_tp);
+
 // Définir BASE_URL si pas défini
 if (!defined('BASE_URL')) {
 	$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
