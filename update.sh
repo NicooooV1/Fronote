@@ -119,7 +119,8 @@ runuser -u "$RUN_USER" -- php -r 'require "'"$APP_DIR"'/API/bootstrap.php"; $f=a
 # ── bascule des fichiers (préserve config + données) ──────────────────────────
 log "Bascule des fichiers"
 RSYNC_EXCL=(--exclude='.env' --exclude='install.conf' --exclude='install.lock' --exclude='.fronote-license'
-            --exclude='storage/***' --exclude='uploads/***' --exclude='temp/***' --exclude='API/logs/***' --exclude='vendor/***')
+            --exclude='storage/***' --exclude='uploads/***' --exclude='temp/***' --exclude='API/logs/***' --exclude='vendor/***'
+            --exclude='websocket/node_modules/***')   # dépendances Node : hors archive, réinstallées ci-dessous si besoin
 if command -v rsync >/dev/null; then
   rsync -a --delete "${RSYNC_EXCL[@]}" "$STAGING"/ "$APP_DIR"/
 else
@@ -137,6 +138,27 @@ if [ -x "$COMPOSER_BIN" ] || command -v composer >/dev/null; then
   COMPOSER_ALLOW_SUPERUSER=1 "$COMPOSER_BIN" install --no-dev --optimize-autoloader --no-interaction --no-progress --working-dir="$APP_DIR" >/dev/null 2>&1 \
     && ok "Dépendances à jour." || warn "composer install a échoué — l'app peut nécessiter une intervention."
   chown -R "$RUN_USER":"$RUN_USER" "$APP_DIR/vendor" 2>/dev/null || true
+fi
+
+# ── dépendances WebSocket (Node) ──────────────────────────────────────────────
+# node_modules n'est pas dans l'archive : avant 4.2.2 la bascule (rsync --delete) le
+# supprimait et le temps réel restait cassé après CHAQUE mise à jour. On le préserve
+# (exclusion ci-dessus) et on le réinstalle si absent ou si package-lock.json a changé.
+if [ -f "$APP_DIR/websocket/package.json" ] && command -v npm >/dev/null; then
+  WS_LOCK="$(sha256sum "$APP_DIR/websocket/package-lock.json" 2>/dev/null | cut -d' ' -f1)"
+  WS_STAMP="$APP_DIR/websocket/node_modules/.fronote-lock"
+  if [ ! -d "$APP_DIR/websocket/node_modules" ] || [ "$(cat "$WS_STAMP" 2>/dev/null)" != "$WS_LOCK" ]; then
+    log "npm install (WebSocket)"
+    NPM_CACHE="$(mktemp -d)"; chown "$RUN_USER" "$NPM_CACHE"
+    if ( cd "$APP_DIR/websocket" && runuser -u "$RUN_USER" -- env npm_config_cache="$NPM_CACHE" \
+          npm install --omit=dev --no-audit --no-fund ) >"$WORK/npm.log" 2>&1; then
+      printf '%s\n' "$WS_LOCK" > "$WS_STAMP"; chown "$RUN_USER":"$RUN_USER" "$WS_STAMP"
+      ok "Dépendances WebSocket à jour."
+    else
+      warn "npm install (WebSocket) a échoué — le temps réel est indisponible. Détail : $(tail -n 3 "$WORK/npm.log" | tr '\n' ' ')"
+    fi
+    rm -rf "$NPM_CACHE"
+  fi
 fi
 
 # ── réconciliation schéma / migrations / modules / cache ──────────────────────

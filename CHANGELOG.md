@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [4.2.3] — Correctif mise à jour (temps réel) — 2026-10-25
+
+### Fixed
+- `update.sh` supprimait `websocket/node_modules` à chaque bascule : le service temps réel
+  (fronote-ws) ne redémarrait plus après une mise à jour. Le dossier est désormais préservé et les
+  dépendances réinstallées automatiquement si elles manquent ou si `package-lock.json` change.
+
+---
+
 ## [4.2.2] — Vitrine et démo publique — 2026-10-25
 
 ### Added
