@@ -108,6 +108,21 @@ final class DistStore
                 last_seen      TEXT NOT NULL DEFAULT (datetime('now')),
                 last_ip        TEXT
             );
+            -- Propositions/demandes soumises via le formulaire du site vitrine (public).
+            -- Relues par le bot Discord (GET /admin/proposals) et postées dans un salon.
+            CREATE TABLE IF NOT EXISTS proposals (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                etablissement  TEXT,
+                type           TEXT,
+                effectif       TEXT,
+                contact        TEXT,
+                email          TEXT,
+                telephone      TEXT,
+                modules        TEXT,
+                message        TEXT,
+                ip             TEXT,
+                at             TEXT NOT NULL DEFAULT (datetime('now'))
+            );
         SQL);
     }
 
@@ -477,6 +492,58 @@ final class DistStore
              FROM instances i LEFT JOIN licenses l ON l.id = i.license_id
              ORDER BY i.last_seen DESC LIMIT " . $n
         )->fetchAll();
+    }
+
+    // ─── Propositions (formulaire du site vitrine) ───────────────────────────
+
+    /** Nombre de propositions reçues d'une IP depuis N secondes (anti-spam du formulaire). */
+    public function countProposalsSince(string $ip, int $seconds): int
+    {
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM proposals WHERE ip = :ip AND at >= datetime('now', :win)"
+        );
+        $stmt->execute([':ip' => $ip, ':win' => '-' . max(1, $seconds) . ' seconds']);
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Enregistre une proposition. `$f` = champs déjà validés/tronqués par server.php.
+     * @param array<string,?string> $f
+     */
+    public function recordProposal(array $f, string $ip): int
+    {
+        $this->db->prepare(
+            'INSERT INTO proposals (etablissement, type, effectif, contact, email, telephone, modules, message, ip)
+             VALUES (:etab, :type, :eff, :contact, :email, :tel, :mods, :msg, :ip)'
+        )->execute([
+            ':etab' => $f['etablissement'] ?? null, ':type' => $f['type'] ?? null,
+            ':eff' => $f['effectif'] ?? null, ':contact' => $f['contact'] ?? null,
+            ':email' => $f['email'] ?? null, ':tel' => $f['telephone'] ?? null,
+            ':mods' => $f['modules'] ?? null, ':msg' => $f['message'] ?? null, ':ip' => $ip,
+        ]);
+        // Borne la table (le formulaire est public : on ne laisse pas la base gonfler sans fin).
+        $this->db->exec('DELETE FROM proposals WHERE id <= (SELECT COALESCE(MAX(id),0) FROM proposals) - 5000');
+        return (int) $this->db->lastInsertId();
+    }
+
+    /**
+     * Propositions depuis un curseur (id > sinceId), ordre chronologique — le bot mémorise
+     * le dernier id vu (même logique que listRefused).
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function listProposals(int $sinceId = 0, int $limit = 100): array
+    {
+        $n = max(1, min(500, $limit));
+        if ($sinceId > 0) {
+            $stmt = $this->db->prepare(
+                'SELECT * FROM proposals WHERE id > :s ORDER BY id ASC LIMIT ' . $n
+            );
+            $stmt->execute([':s' => $sinceId]);
+            return $stmt->fetchAll();
+        }
+        $rows = $this->db->query('SELECT * FROM proposals ORDER BY id DESC LIMIT ' . $n)->fetchAll();
+        return array_reverse($rows);
     }
 
     public function pdo(): PDO

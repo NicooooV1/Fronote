@@ -155,6 +155,53 @@ switch ($action) {
         ]);
     }
 
+    case 'proposal': {
+        // Formulaire PUBLIC du site vitrine (« faire une proposition »). Enregistre une
+        // demande, relue ensuite par le bot Discord (admin_proposals) et postée dans un
+        // salon. Endpoint public → validé, plafonné, anti-spam. AUCUN secret, aucun fichier.
+        if ($method !== 'POST') { json_out(405, ['status' => 'method_not_allowed']); }
+
+        // Honeypot : un champ caché que seuls les robots remplissent → on répond OK sans rien stocker.
+        if (trim((string) ($_POST['website'] ?? '')) !== '') { json_out(200, ['status' => 'ok']); }
+
+        // Nettoyage : retire les caractères de contrôle, borne les longueurs.
+        $clean = static function (string $key, int $max): string {
+            $v = (string) ($_POST[$key] ?? '');
+            $v = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $v) ?? '';
+            $v = trim($v);
+            return function_exists('mb_substr') ? mb_substr($v, 0, $max) : substr($v, 0, $max);
+        };
+        $fields = [
+            'etablissement' => $clean('etablissement', 150),
+            'type'          => $clean('type', 40),
+            'effectif'      => $clean('effectif', 40),
+            'contact'       => $clean('contact', 120),
+            'email'         => $clean('email', 160),
+            'telephone'     => $clean('telephone', 40),
+            'modules'       => $clean('modules', 400),
+            'message'       => $clean('message', 4000),
+        ];
+
+        // Validation minimale : un moyen de recontact (email valide OU téléphone) + un contenu.
+        $emailOk = $fields['email'] !== '' && filter_var($fields['email'], FILTER_VALIDATE_EMAIL);
+        $telOk   = $fields['telephone'] !== '' && preg_match('/[0-9]{6,}/', preg_replace('/\D/', '', $fields['telephone']) ?? '');
+        if (!$emailOk && !$telOk) { json_out(422, ['status' => 'need_contact', 'message' => 'Un email valide ou un téléphone est requis pour vous recontacter.']); }
+        if ($fields['etablissement'] === '' && $fields['contact'] === '') { json_out(422, ['status' => 'need_who', 'message' => 'Indiquez au moins le nom de l\'établissement ou un contact.']); }
+        if (strlen($fields['message']) < 5 && $fields['modules'] === '') { json_out(422, ['status' => 'need_message', 'message' => 'Dites-nous en quelques mots votre besoin.']); }
+        if (!$emailOk) { $fields['email'] = ''; }   // ne stocke pas un email invalide
+
+        // Anti-spam : au plus 4 propositions par IP et par heure.
+        try {
+            if ($store->countProposalsSince($ip, 3600) >= 4) {
+                json_out(429, ['status' => 'rate_limited', 'message' => 'Trop de demandes récentes. Réessayez plus tard ou écrivez-nous directement.']);
+            }
+            $store->recordProposal($fields, $ip);
+        } catch (\Throwable $e) {
+            json_out(500, ['status' => 'server_error']);
+        }
+        json_out(200, ['status' => 'ok', 'message' => 'Merci ! Votre demande a bien été transmise. Nous revenons vers vous rapidement.']);
+    }
+
     case 'redeem': {
         if ($method !== 'POST') { json_out(405, ['status' => 'method_not_allowed']); }
         $key = trim((string) ($_POST['key'] ?? ''));
@@ -344,6 +391,13 @@ switch ($action) {
     case 'admin_park': {   // parc des instances installées (pour /dist parc + dashboard)
         require_admin($cfg);
         json_out(200, ['status' => 'ok', 'instances' => $store->listInstances((int) ($_GET['limit'] ?? 500))]);
+    }
+
+    case 'admin_proposals': {   // propositions du site vitrine (pour le bot Discord)
+        require_admin($cfg);
+        $since = (int) ($_GET['since_id'] ?? 0);
+        $limit = (int) ($_GET['limit'] ?? 100);
+        json_out(200, ['status' => 'ok', 'proposals' => $store->listProposals($since, $limit)]);
     }
 
     default:
