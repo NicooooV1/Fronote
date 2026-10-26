@@ -50,6 +50,62 @@ class NoteService extends \API\Services\AbstractTenantService
     }
 
     /**
+     * Notes d'un professeur, filtrées et paginées EN SQL (le prof ne charge qu'une page de SES notes).
+     * @return array{notes: array, total: int, moyenne: float, nb_matieres: int}
+     */
+    public function getNotesProfesseurPage(int $profId, int $trimestre, int $limit = 50, int $offset = 0, string $classe = '', int $matiereId = 0): array
+    {
+        $where = "n.id_professeur = ? AND n.trimestre = ? AND n.etablissement_id = ?";
+        $params = [$profId, $trimestre, \API\Core\EstablishmentContext::id()];
+        if ($classe !== '') { $where .= " AND e.classe = ?"; $params[] = $classe; }
+        if ($matiereId > 0) { $where .= " AND n.id_matiere = ?"; $params[] = $matiereId; }
+        $stats = $this->statsNotes($where, $params);
+        $stmt = $this->pdo->prepare("
+            SELECT n.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur,
+                   CONCAT(e.prenom, ' ', e.nom) AS eleve_nom, e.classe
+            FROM notes n
+            LEFT JOIN matieres m ON n.id_matiere = m.id
+            LEFT JOIN eleves e ON n.id_eleve = e.id
+            WHERE {$where}
+            ORDER BY n.date_note DESC, n.id DESC
+            LIMIT " . (int) $limit . " OFFSET " . (int) $offset);
+        $stmt->execute($params);
+        return ['notes' => $stmt->fetchAll(PDO::FETCH_ASSOC)] + $stats;
+    }
+
+    /**
+     * Classes et matières dans lesquelles le professeur a noté (pour ses filtres) ;
+     * vide s'il n'a encore rien noté (l'appelant retombe alors sur les listes complètes).
+     * @return array{classes: string[], matieres: array}
+     */
+    public function getFiltresProfesseur(int $profId): array
+    {
+        $eid = \API\Core\EstablishmentContext::id();
+        $c = $this->pdo->prepare("SELECT DISTINCT e.classe FROM notes n JOIN eleves e ON n.id_eleve = e.id WHERE n.id_professeur = ? AND n.etablissement_id = ? AND e.classe IS NOT NULL ORDER BY e.classe");
+        $c->execute([$profId, $eid]);
+        $m = $this->pdo->prepare("SELECT DISTINCT m.id, m.nom, m.couleur, m.code FROM notes n JOIN matieres m ON n.id_matiere = m.id WHERE n.id_professeur = ? AND n.etablissement_id = ? ORDER BY m.nom");
+        $m->execute([$profId, $eid]);
+        return ['classes' => $c->fetchAll(PDO::FETCH_COLUMN), 'matieres' => $m->fetchAll(PDO::FETCH_ASSOC)];
+    }
+
+    /**
+     * Total, moyenne /20 et nombre de matières sur TOUT l'ensemble filtré (pas seulement la page).
+     * $where doit référencer n (notes) et e (eleves).
+     */
+    private function statsNotes(string $where, array $params): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT COUNT(*) AS total,
+                   ROUND(AVG(n.note / NULLIF(n.note_sur, 0) * 20), 1) AS moyenne,
+                   COUNT(DISTINCT n.id_matiere) AS nb_matieres
+            FROM notes n LEFT JOIN eleves e ON n.id_eleve = e.id
+            WHERE {$where}");
+        $stmt->execute($params);
+        $r = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        return ['total' => (int) ($r['total'] ?? 0), 'moyenne' => (float) ($r['moyenne'] ?? 0), 'nb_matieres' => (int) ($r['nb_matieres'] ?? 0)];
+    }
+
+    /**
      * Récupère toutes les notes d'un trimestre (admin / vie scolaire) avec filtres SQL et pagination.
      *
      * @param int    $trimestre  Numéro du trimestre (1-3)
@@ -73,10 +129,9 @@ class NoteService extends \API\Services\AbstractTenantService
             $params[] = $matiereId;
         }
 
-        // Count total
-        $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM notes n LEFT JOIN eleves e ON n.id_eleve = e.id WHERE {$where}");
-        $countStmt->execute($params);
-        $total = (int) $countStmt->fetchColumn();
+        // Total + statistiques sur tout l'ensemble filtré (une seule requête d'agrégat)
+        $stats = $this->statsNotes($where, $params);
+        $total = $stats['total'];
 
         // Fetch page
         $stmt = $this->pdo->prepare("
@@ -93,10 +148,7 @@ class NoteService extends \API\Services\AbstractTenantService
         ");
         $stmt->execute($params);
 
-        return [
-            'notes' => $stmt->fetchAll(PDO::FETCH_ASSOC),
-            'total' => $total,
-        ];
+        return ['notes' => $stmt->fetchAll(PDO::FETCH_ASSOC)] + $stats;
     }
 
     // ─── Moyennes ────────────────────────────────────────────────────

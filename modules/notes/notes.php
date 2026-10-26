@@ -68,6 +68,7 @@ $moyenneGenerale = null;
 $classStats = null;
 $totalNotes = 0;
 $currentPage = max(1, (int) ($_GET['page'] ?? 1));
+$statsNotes = null; // total / moyenne / nb matières calculés en SQL sur tout l'ensemble filtré
 $perPage = 50;
 
 // Filtres prof/admin
@@ -86,8 +87,11 @@ try {
         $moyenneGenerale = $noteService->getMoyenneGenerale($selectedEnfantId, $selectedTrimestre);
         $totalNotes = count($notes);
     } elseif ($user_role === 'professeur') {
-        $notes = $noteService->getNotesProfesseur($user['id'], $selectedTrimestre);
-        $totalNotes = count($notes);
+        // Le professeur ne charge qu'UNE PAGE de SES notes, filtres appliqués en SQL.
+        $result = $noteService->getNotesProfesseurPage((int) $user['id'], $selectedTrimestre, $perPage, ($currentPage - 1) * $perPage, $filterClasse, $filterMatiere);
+        $notes = $result['notes'];
+        $totalNotes = $result['total'];
+        $statsNotes = $result;
         // Stats de classe si filtres renseignés
         if ($filterClasse && $filterMatiere) {
             $classStats = $noteService->getStatsClasse($filterClasse, $filterMatiere, $selectedTrimestre);
@@ -98,6 +102,7 @@ try {
         $result = $noteService->getAllNotes($selectedTrimestre, $perPage, $offset, $filterClasse, $filterMatiere);
         $notes = $result['notes'];
         $totalNotes = $result['total'];
+        $statsNotes = $result;
         if ($filterClasse && $filterMatiere) {
             $classStats = $noteService->getStatsClasse($filterClasse, $filterMatiere, $selectedTrimestre);
         }
@@ -113,29 +118,23 @@ $availableClasses  = [];
 $availableMatieres = [];
 if ($user_role !== 'eleve') {
     try {
-        $availableClasses  = $noteService->getClasses();
-        $availableMatieres = $noteService->getMatieres();
+        // Professeur : seulement SES classes et SES matières (repli : listes complètes s'il n'a rien noté).
+        $own = $user_role === 'professeur' ? $noteService->getFiltresProfesseur((int) $user['id']) : ['classes' => [], 'matieres' => []];
+        $availableClasses  = $own['classes'] ?: $noteService->getClasses();
+        $availableMatieres = $own['matieres'] ?: $noteService->getMatieres();
     } catch (PDOException $e) {
         error_log('[' . basename(__FILE__) . '] ' . $e->getMessage());
-    }
-
-    // Filtrer côté PHP pour le professeur (petit dataset)
-    if ($user_role === 'professeur' && !empty($notes)) {
-        if ($filterClasse) {
-            $notes = array_filter($notes, fn($n) => ($n['classe'] ?? '') === $filterClasse);
-        }
-        if ($filterMatiere) {
-            $notes = array_filter($notes, fn($n) => ($n['id_matiere'] ?? 0) == $filterMatiere);
-        }
-        $notes = array_values($notes);
-        $totalNotes = count($notes);
     }
 }
 
 // Statistiques admin
 $moyenneGlobale = 0;
 $nbMatieresEvaluees = 0;
-if ($user_role !== 'eleve' && !empty($notes)) {
+if ($statsNotes !== null) {
+    // Sur tout l'ensemble filtré (et non sur la seule page affichée).
+    $moyenneGlobale = $statsNotes['moyenne'];
+    $nbMatieresEvaluees = $statsNotes['nb_matieres'];
+} elseif ($user_role !== 'eleve' && !empty($notes)) {
     $moyenneGlobale = $noteService->calculerMoyenneGlobale($notes);
     $nbMatieresEvaluees = count(array_unique(array_column($notes, 'id_matiere')));
 }
@@ -571,7 +570,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
                 <!-- Stats rapides -->
                 <div class="notes-stats-grid">
                     <div class="notes-stat-card">
-                        <div class="notes-stat-value primary"><?= count($notes) ?></div>
+                        <div class="notes-stat-value primary"><?= (int) $totalNotes ?></div>
                         <div class="notes-stat-label">Notes enregistrées</div>
                     </div>
                     <div class="notes-stat-card">

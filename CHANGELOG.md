@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [4.4.3] — Notes : chacun ne charge que ses données — 2026-10-26
+
+### Fixed — Performance et pertinence
+- Professeur : la page chargeait TOUTES ses notes du trimestre puis filtrait en PHP (la pagination
+  affichait « page 1/8 » mais envoyait tout). Désormais une page de 50 de SES notes, filtres classe/matière
+  en SQL ; les filtres ne proposent que SES classes et SES matières. Page Notes : 662 Ko → 150 Ko.
+- Administration / vie scolaire : total, moyenne et nombre de matières calculés sur tout l'ensemble
+  filtré (avant : sur les 50 lignes de la page affichée).
+- Élèves et parents : inchangé (leurs seules notes du trimestre).
+
 ## [4.4.2] — Reporting lisible — 2026-10-26
 
 ### Changed — Reporting
