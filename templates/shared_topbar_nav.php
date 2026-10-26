@@ -1,14 +1,18 @@
 <?php
 declare(strict_types=1);
 /**
- * Template: Topbar horizontal navigation.
- * Replaces the old sidebar.
+ * Template : barre de navigation principale (refonte 4.4).
  *
- * Structure:
- * [F FRONOTE] | [Pedagogie v] [Vie scol. v] [Communication v] [...] | [Search] [Notifs] [Theme] [Etab] [Avatar v]
+ *   [F FRONOTE] [Accueil] [raccourci] [raccourci] … [▦ Modules ▾]   [Rechercher Ctrl K] [🔔] [Avatar ▾]
  *
- * Variables expected (from shared_header.php):
- *   $rootPrefix, $activePage, $user_initials, $user_fullname
+ * - Raccourcis = favoris de l'utilisateur, sinon sélection par rôle : un module courant = 1 clic.
+ * - « Modules » ouvre UN panneau qui montre tous les modules rangés en familles, avec un champ
+ *   de filtre ; il s'ouvre au survol (souris) ou au clic, et ★ épingle un module dans la barre.
+ * - Compte (avatar) : profil, paramètres, thème, administration, support, déconnexion.
+ * - Mobile : tiroir latéral (raccourcis en tuiles + familles dépliables + filtre).
+ * Modèle : \API\UI\TopbarNav ; comportement : assets/js/topbar.js ; styles : assets/css/topbar.css.
+ *
+ * Variables attendues (shared_header.php) : $rootPrefix, $activePage, $user_initials, $user_fullname
  */
 
 $rootPrefix = $rootPrefix ?? '../';
@@ -17,254 +21,305 @@ $user_initials = $user_initials ?? '';
 $user_fullname = $user_fullname ?? '';
 $isAdmin = $isAdmin ?? false;
 
-// Modèle de navigation (modules groupés, favoris, badge notifs, établissement, enfants)
-// — toute la logique/SQL est extraite dans \API\UI\TopbarNav ; le template n'itère et n'échappe plus.
 $__nav = \API\UI\TopbarNav::build();
-$_topbar_modules        = $__nav['modules'];
-$_topbar_favorites      = $__nav['favorites'];
-$_topbar_fav_keys       = $__nav['fav_keys'];
-$_topbar_notif_count    = $__nav['notif_count'];
-$_topbar_etab_name      = $__nav['etab_name'];
-$_topbar_is_parent      = $__nav['is_parent'];
-$_topbar_children       = $__nav['children'];
-$_topbar_selected_child = $__nav['selected_child'];
-$_topbar_role           = $__nav['role'];
+$_tb_groups    = $__nav['groups'];
+$_tb_modules   = $__nav['modules'];
+$_tb_favKeys   = $__nav['fav_keys'];
+$_tb_shortcuts = $__nav['shortcuts'];
+$_tb_children  = $__nav['children'];
+$_tb_child     = $__nav['selected_child'];
+$_tb_isAdmin   = $isAdmin || (function_exists('isAdmin') && isAdmin());
+// Compat : d'autres gabarits lisent encore ces variables.
+$_topbar_notif_count = $__nav['notif_count'];
+$_topbar_etab_name   = $__nav['etab_name'];
+$_topbar_role        = $__nav['role'];
 
+// Traduction avec repli : le traducteur renvoie la clé quand elle est absente d'une langue.
+$_t = static function (string $k, string $d): string { $v = __($k); return ($v === '' || $v === $k) ? $d : $v; };
+$_h = static fn($s): string => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
+$_href = static fn(array $l): string => ($l['type'] ?? 'module') === 'page' ? (string) $l['route'] : $rootPrefix . $l['route'];
+$_reqPath = (string) (parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '');
+$_isActive = static function (array $l) use ($activePage, $_reqPath): bool {
+    if (($l['type'] ?? 'module') === 'page') {
+        return $_reqPath !== '' && (string) parse_url((string) $l['route'], PHP_URL_PATH) === $_reqPath;
+    }
+    return $activePage !== '' && $activePage === $l['module_key'];
+};
+
+// La page courante est-elle déjà dans la barre ? Sinon on l'y affiche (contexte : « où suis-je »).
+$_tb_context = null;
+if ($activePage !== '' && isset($_tb_modules[$activePage])) {
+    $inBar = false;
+    foreach ($_tb_shortcuts as $s) {
+        if (($s['type'] ?? 'module') === 'module' && $s['module_key'] === $activePage) { $inBar = true; break; }
+    }
+    if (!$inBar) { $_tb_context = $_tb_modules[$activePage]; }
+}
+$_tb_activeGroup = ($activePage !== '' && isset($_tb_modules[$activePage])) ? $_tb_modules[$activePage]['group'] : null;
+
+// Lien de changement d'enfant (parent) qui conserve la page courante.
+$_childUrl = static function (int $id): string {
+    $q = $_GET;
+    unset($q['enfant']);
+    $q['switch_child'] = $id;
+    return '?' . http_build_query($q);
+};
+$_showChildSwitch = $__nav['is_parent'] && count($_tb_children) > 1 && $activePage !== 'accueil';
+$_initials = static function (array $c): string {
+    $f = function_exists('mb_substr') ? 'mb_substr' : 'substr';
+    return strtoupper($f((string) $c['prenom'], 0, 1) . $f((string) $c['nom'], 0, 1));
+};
+
+$_L = [
+    'home'      => $_t('nav.home', 'Accueil'),
+    'modules'   => $_t('nav.modules', 'Modules'),
+    'filter'    => $_t('nav.filter_modules', 'Filtrer les modules…'),
+    'search'    => $_t('nav.search', 'Rechercher'),
+    'pin'       => $_t('nav.pin', 'Épingler dans la barre'),
+    'unpin'     => $_t('nav.unpin', 'Retirer de la barre'),
+    'profile'   => $_t('nav.profile', 'Mon profil'),
+    'settings'  => $_t('nav.settings', 'Paramètres'),
+    'admin'     => $_t('nav.admin', 'Administration'),
+    'support'   => $_t('nav.support', 'Aide & support'),
+    'logout'    => $_t('nav.logout', 'Déconnexion'),
+    'theme'     => $_t('nav.theme', 'Thème'),
+    'notifs'    => $_t('nav.notifications', 'Notifications'),
+    'menu'      => $_t('nav.open_menu', 'Ouvrir le menu'),
+    'close'     => $_t('common.close', 'Fermer'),
+    'shortcuts' => $_t('nav.shortcuts', 'Raccourcis'),
+    'none'      => $_t('nav.no_match', 'Aucun module ne correspond.'),
+    'child'     => $_t('nav.select_child', 'Choisir un enfant'),
+];
+
+// Données pour la recherche (Ctrl+K) et la mise à jour des raccourcis sans rechargement.
+$_tb_data = [
+    'base'      => $rootPrefix,
+    'active'    => $activePage,
+    'modules'   => array_values(array_map(static fn($m) => [
+        'key' => $m['module_key'], 'label' => $m['label'], 'icon' => $m['icon'], 'route' => $m['route'],
+        'group' => $_tb_groups[$m['group']]['label'] ?? '',
+    ], $_tb_modules)),
+    'defaults'  => $__nav['defaults'],
+    'favorites' => $__nav['favorites'],
+    'extra'     => array_values(array_filter([
+        ['label' => $_L['home'], 'icon' => 'fas fa-house', 'url' => $rootPrefix . 'accueil/accueil.php'],
+        ['label' => $_L['notifs'], 'icon' => 'fas fa-bell', 'url' => $rootPrefix . 'modules/notifications/notifications.php'],
+        ['label' => $_L['profile'], 'icon' => 'fas fa-user', 'url' => $rootPrefix . 'modules/profil/index.php'],
+        ['label' => $_L['settings'], 'icon' => 'fas fa-gear', 'url' => $rootPrefix . 'parametres/parametres.php'],
+        $_tb_isAdmin ? ['label' => $_L['admin'], 'icon' => 'fas fa-screwdriver-wrench', 'url' => $rootPrefix . 'admin/dashboard.php'] : null,
+        $__nav['support_route'] ? ['label' => $_L['support'], 'icon' => 'fas fa-life-ring', 'url' => $rootPrefix . $__nav['support_route']] : null,
+        ['label' => $_L['logout'], 'icon' => 'fas fa-arrow-right-from-bracket', 'url' => $rootPrefix . 'login/logout.php'],
+    ])),
+];
+
+/** Un lien de la barre (raccourci). */
+$_renderLink = static function (array $l, string $extra = '') use ($_h, $_href, $_isActive): string {
+    $on = $_isActive($l);
+    return '<a href="' . $_h($_href($l)) . '" class="tb-link' . ($on ? ' is-active' : '') . $extra . '"'
+        . ($on ? ' aria-current="page"' : '') . ' data-key="' . $_h($l['module_key']) . '">'
+        . '<i class="' . $_h($l['icon']) . '" aria-hidden="true"></i><span>' . $_h($l['label']) . '</span></a>';
+};
 ?>
 
-<nav class="topbar-nav" role="navigation" aria-label="Navigation principale">
-    <!-- Brand -->
-    <a href="<?= $rootPrefix ?>accueil/accueil.php" class="topbar-brand">
-        <span class="topbar-brand__icon">F</span>
-        <span class="topbar-brand__text">FRONOTE</span>
+<nav class="topbar-nav tb" id="tb" role="navigation" aria-label="<?= $_h($_t('nav.main', 'Navigation principale')) ?>">
+    <a href="<?= $_h($rootPrefix) ?>accueil/accueil.php" class="tb-brand" aria-label="Fronote — <?= $_h($_L['home']) ?>">
+        <span class="tb-brand__icon" aria-hidden="true">F</span>
+        <span class="tb-brand__text">FRONOTE</span>
     </a>
 
-    <!-- Category dropdowns (desktop) -->
-    <div class="topbar-categories" id="topbar-categories">
-        <!-- Épingler la page courante (pas sur l'accueil : rien à épingler) -->
-        <?php if (($activePage ?? '') !== 'accueil'): ?>
-        <button class="topbar-dropdown__trigger" type="button" id="topbar-pin-page"
-                title="<?= __('nav.favorite_add', ['default' => 'Épingler cette page']) ?>"
-                data-fr-click="fronotePinCurrentPage">
-            <i class="far fa-star"></i>
-        </button>
-        <?php endif; ?>
-
-        <!-- Favoris (masqué s'il n'y en a aucun) -->
-        <?php if (!empty($_topbar_favorites)): ?>
-        <div class="topbar-dropdown topbar-dropdown--favorites" data-category="favorites">
-            <button class="topbar-dropdown__trigger" type="button" aria-expanded="false" aria-haspopup="true" aria-controls="topbar-favorites-menu" title="<?= __('nav.favorites') ?>">
-                <i class="fas fa-star" aria-hidden="true"></i>
-                <span><?= __('nav.favorites') ?></span>
-                <i class="fas fa-chevron-down topbar-dropdown__arrow" aria-hidden="true"></i>
-            </button>
-            <div class="topbar-dropdown__menu" id="topbar-favorites-menu">
-                <?php foreach ($_topbar_favorites as $fav): ?>
-                <?php $_isPage = ($fav['type'] ?? 'module') === 'page'; ?>
-                <div class="topbar-dropdown__item-wrap">
-                    <a href="<?= $_isPage ? htmlspecialchars($fav['route']) : ($rootPrefix . htmlspecialchars($fav['route'])) ?>"
-                       class="topbar-dropdown__item <?= ($activePage === $fav['module_key']) ? 'active' : '' ?>">
-                        <i class="<?= htmlspecialchars($fav['icon'] ?? 'fas fa-circle') ?>"></i>
-                        <span><?= htmlspecialchars($fav['label'] ?? $fav['module_key']) ?></span>
-                    </a>
-                    <?php if ($_isPage): ?>
-                    <button class="topbar-fav-toggle is-favorite" type="button"
-                            title="<?= __('nav.favorite_remove') ?>"
-                            data-fr-click="fronoteFavRemove" data-fr-args='["<?= htmlspecialchars($fav['module_key'], ENT_QUOTES) ?>"]'>
-                        <i class="fas fa-star"></i>
-                    </button>
-                    <?php else: ?>
-                    <button class="topbar-fav-toggle is-favorite" type="button"
-                            data-module-key="<?= htmlspecialchars($fav['module_key']) ?>"
-                            title="<?= __('nav.favorite_remove') ?>"
-                            aria-pressed="true">
-                        <i class="fas fa-star"></i>
-                    </button>
-                    <?php endif; ?>
-                </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <script nonce="<?= csp_nonce() ?>">
-        (function () {
-            var EP = '<?= $rootPrefix ?>API/endpoints/favorites.php';
-            function csrf() { var m = document.querySelector('meta[name="csrf-token"]'); return m ? m.getAttribute('content') : ''; }
-            function post(body) {
-                return fetch(EP, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
-                    body: JSON.stringify(Object.assign({ csrf_token: csrf() }, body))
-                }).then(function (r) {
-                    var next = r.headers.get('X-Csrf-Token-Next');
-                    if (next) { var m = document.querySelector('meta[name="csrf-token"]'); if (m) m.setAttribute('content', next); }
-                    return r.json();
-                });
-            }
-            window.fronotePinCurrentPage = function () {
-                post({ action: 'add_page', url: window.location.pathname + window.location.search, label: (document.title || '').slice(0, 150) })
-                    .then(function () { window.location.reload(); })
-                    .catch(function () {});
-            };
-            window.fronoteFavRemove = function (key) {
-                post({ action: 'remove', key: key }).then(function () { window.location.reload(); }).catch(function () {});
-            };
-        })();
-        </script>
-
-        <?php foreach ($_topbar_modules as $catKey => $category): ?>
-        <div class="topbar-dropdown" data-category="<?= htmlspecialchars($catKey) ?>">
-            <button class="topbar-dropdown__trigger" type="button" aria-expanded="false" aria-haspopup="true" aria-controls="topbar-menu-<?= htmlspecialchars($catKey) ?>">
-                <i class="<?= htmlspecialchars($category['icon']) ?>" aria-hidden="true"></i>
-                <span><?= htmlspecialchars($category['label']) ?></span>
-                <i class="fas fa-chevron-down topbar-dropdown__arrow" aria-hidden="true"></i>
-            </button>
-            <div class="topbar-dropdown__menu" id="topbar-menu-<?= htmlspecialchars($catKey) ?>">
-                <?php foreach ($category['modules'] as $mod):
-                    $_mk = $mod['module_key'] ?? '';
-                    $_isFav = isset($_topbar_fav_keys[$_mk]);
-                ?>
-                <div class="topbar-dropdown__item-wrap">
-                    <a href="<?= $rootPrefix . htmlspecialchars($mod['route']) ?>"
-                       class="topbar-dropdown__item <?= ($activePage === $_mk) ? 'active' : '' ?>">
-                        <i class="<?= htmlspecialchars($mod['icon'] ?? 'fas fa-circle') ?>" aria-hidden="true"></i>
-                        <span><?= htmlspecialchars($mod['label'] ?? $_mk) ?></span>
-                    </a>
-                    <button class="topbar-fav-toggle <?= $_isFav ? 'is-favorite' : '' ?>" type="button"
-                            data-module-key="<?= htmlspecialchars($_mk) ?>"
-                            title="<?= __('nav.favorite_toggle', ['default' => 'Épingler/retirer des favoris']) ?>"
-                            aria-pressed="<?= $_isFav ? 'true' : 'false' ?>">
-                        <i class="<?= $_isFav ? 'fas' : 'far' ?> fa-star" aria-hidden="true"></i>
-                    </button>
-                </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-        <?php endforeach; ?>
+    <div class="tb-links" id="tb-links">
+        <?= $_renderLink(['module_key' => 'accueil', 'label' => $_L['home'], 'icon' => 'fas fa-house', 'route' => 'accueil/accueil.php', 'type' => 'module']) ?>
+        <span class="tb-links__set" id="tb-shortcuts">
+            <?php foreach ($_tb_shortcuts as $s): ?><?= $_renderLink($s) ?><?php endforeach; ?>
+        </span>
+        <?php if ($_tb_context): ?><?= $_renderLink($_tb_context, ' tb-link--context') ?><?php endif; ?>
     </div>
 
-    <!-- Right actions -->
-    <div class="topbar-actions">
-        <!-- Search (Ctrl+K) -->
-        <button class="topbar-action-btn" id="topbar-search-btn" title="Recherche (Ctrl+K)" aria-label="Recherche (Ctrl+K)" type="button">
-            <i class="fas fa-search" aria-hidden="true"></i>
+    <?php if ($_tb_groups): ?>
+    <div class="tb-menu tb-modules" data-tb-menu data-tb-hover>
+        <button class="tb-trigger" type="button" aria-expanded="false" aria-controls="tb-mega">
+            <i class="fas fa-grip" aria-hidden="true"></i><span><?= $_h($_L['modules']) ?></span>
+            <i class="fas fa-chevron-down tb-trigger__chev" aria-hidden="true"></i>
+        </button>
+        <div class="tb-pop tb-mega" id="tb-mega">
+            <label class="tb-filter">
+                <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+                <input type="search" class="tb-filter__input" placeholder="<?= $_h($_L['filter']) ?>" aria-label="<?= $_h($_L['filter']) ?>" autocomplete="off" data-tb-filter="#tb-mega">
+            </label>
+            <div class="tb-mega__grid">
+                <?php foreach ($_tb_groups as $gk => $group): ?>
+                <section class="tb-group<?= $gk === $_tb_activeGroup ? ' is-current' : '' ?>" data-tb-group>
+                    <h3 class="tb-group__title"><i class="<?= $_h($group['icon']) ?>" aria-hidden="true"></i><?= $_h($group['label']) ?></h3>
+                    <ul class="tb-group__list">
+                        <?php foreach ($group['modules'] as $m): $fav = isset($_tb_favKeys[$m['module_key']]); $on = $_isActive($m); ?>
+                        <li class="tb-item" data-tb-item data-label="<?= $_h($m['label']) ?>">
+                            <a href="<?= $_h($_href($m)) ?>" class="tb-item__link<?= $on ? ' is-active' : '' ?>"<?= $on ? ' aria-current="page"' : '' ?>>
+                                <i class="<?= $_h($m['icon']) ?>" aria-hidden="true"></i><span><?= $_h($m['label']) ?></span>
+                            </a>
+                            <button type="button" class="tb-pin<?= $fav ? ' is-on' : '' ?>" data-tb-pin="<?= $_h($m['module_key']) ?>" aria-pressed="<?= $fav ? 'true' : 'false' ?>"
+                                    title="<?= $_h($fav ? $_L['unpin'] : $_L['pin']) ?>" aria-label="<?= $_h(($fav ? $_L['unpin'] : $_L['pin']) . ' : ' . $m['label']) ?>">
+                                <i class="<?= $fav ? 'fas' : 'far' ?> fa-star" aria-hidden="true"></i>
+                            </button>
+                        </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </section>
+                <?php endforeach; ?>
+            </div>
+            <p class="tb-empty" hidden><?= $_h($_L['none']) ?></p>
+            <p class="tb-mega__foot">
+                <span><i class="fas fa-star" aria-hidden="true"></i> <?= $_h($_t('nav.pin_hint', 'Épinglez vos modules pour les avoir directement dans la barre.')) ?></span>
+                <span class="tb-mega__kbd"><kbd>Ctrl</kbd> <kbd>K</kbd> <?= $_h($_t('nav.search_everywhere', 'pour tout rechercher')) ?></span>
+            </p>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <div class="tb-right">
+        <?php if ($_showChildSwitch): ?>
+        <div class="tb-menu tb-child" data-tb-menu>
+            <button class="tb-chip" type="button" aria-expanded="false" aria-controls="tb-child-pop" aria-label="<?= $_h($_L['child']) ?>">
+                <span class="tb-chip__av" aria-hidden="true"><?= $_h($_initials($_tb_child)) ?></span>
+                <span class="tb-chip__name"><?= $_h($_tb_child['prenom']) ?></span>
+                <i class="fas fa-chevron-down tb-trigger__chev" aria-hidden="true"></i>
+            </button>
+            <div class="tb-pop tb-pop--right tb-list" id="tb-child-pop">
+                <?php foreach ($_tb_children as $c): $sel = (int) $c['id'] === (int) $_tb_child['id']; ?>
+                <a href="<?= $_h($_childUrl((int) $c['id'])) ?>" class="tb-list__item<?= $sel ? ' is-active' : '' ?>"<?= $sel ? ' aria-current="true"' : '' ?>>
+                    <span class="tb-chip__av" aria-hidden="true"><?= $_h($_initials($c)) ?></span>
+                    <span class="tb-list__txt"><?= $_h($c['prenom'] . ' ' . $c['nom']) ?><small><?= $_h($c['classe_nom'] ?? '') ?></small></span>
+                    <?php if ($sel): ?><i class="fas fa-check" aria-hidden="true"></i><?php endif; ?>
+                </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <button class="tb-search" id="topbar-search-btn" type="button" aria-label="<?= $_h($_L['search']) ?> (Ctrl+K)" aria-haspopup="dialog">
+            <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+            <span class="tb-search__label"><?= $_h($_L['search']) ?></span>
+            <kbd class="tb-search__kbd" data-tb-kbd>Ctrl K</kbd>
         </button>
 
-        <!-- Notifications -->
         <!-- Centre de notifications : lien de repli sans JS ; notif-center.js en fait un panneau -->
-        <a href="<?= $rootPrefix ?>modules/notifications/notifications.php" class="topbar-action-btn topbar-notif-btn" id="nc-bell"
+        <a href="<?= $_h($rootPrefix) ?>modules/notifications/notifications.php" class="tb-icon topbar-notif-btn" id="nc-bell"
            data-count="<?= (int) $_topbar_notif_count ?>" aria-haspopup="dialog" aria-expanded="false"
-           title="<?= __('nav.notifications') ?>" aria-label="<?= __('nav.notifications') ?>">
+           title="<?= $_h($_L['notifs']) ?>" aria-label="<?= $_h($_L['notifs']) ?>">
             <i class="fas fa-bell" aria-hidden="true"></i>
             <span class="topbar-badge" id="nc-badge"<?= $_topbar_notif_count > 0 ? '' : ' hidden' ?>><?= $_topbar_notif_count > 99 ? '99+' : (int) $_topbar_notif_count ?></span>
         </a>
 
-        <!-- Theme toggle -->
-        <button class="topbar-action-btn" id="topbar-theme-toggle" title="Theme" aria-label="<?= __('nav.theme_toggle', ['default' => 'Changer de thème']) ?>" type="button">
-            <i class="fas fa-sun" id="theme-icon-light" aria-hidden="true"></i>
-            <i class="fas fa-moon" id="theme-icon-dark" style="display:none" aria-hidden="true"></i>
-            <i class="fas fa-droplet" id="theme-icon-liquid" style="display:none" aria-hidden="true"></i>
-        </button>
-
-        <!-- Parent child selector -->
-        <?php if ($_topbar_is_parent && count($_topbar_children) > 1): ?>
-        <div class="topbar-child-selector">
-            <select data-fr-change="switchChild" data-fr-pass="value" class="topbar-child-select" aria-label="<?= __('nav.select_child', ['default' => 'Choisir un enfant']) ?>">
-                <?php foreach ($_topbar_children as $_ch): ?>
-                <option value="<?= (int)$_ch['id'] ?>" <?= ($_topbar_selected_child && (int)$_ch['id'] === (int)$_topbar_selected_child['id']) ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($_ch['prenom'] . ' ' . $_ch['nom']) ?>
-                </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <?php endif; ?>
-
-        <!-- Establishment name -->
-        <?php if ($_topbar_etab_name): ?>
-        <span class="topbar-etab-name" title="<?= htmlspecialchars($_topbar_etab_name) ?>">
-            <?= htmlspecialchars(mb_strimwidth($_topbar_etab_name, 0, 20, '...')) ?>
-        </span>
-        <?php endif; ?>
-
-        <!-- Admin link -->
-        <?php if ($isAdmin || isAdmin()): ?>
-        <a href="<?= $rootPrefix ?>admin/dashboard.php" class="topbar-action-btn" title="Administration" aria-label="Administration">
-            <i class="fas fa-cogs" aria-hidden="true"></i>
-        </a>
-        <?php endif; ?>
-
-        <!-- User dropdown -->
-        <div class="topbar-dropdown topbar-user-dropdown">
-            <button class="topbar-user-avatar" type="button" aria-expanded="false" aria-haspopup="true" aria-controls="topbar-user-menu" aria-label="<?= __('nav.user_menu', ['default' => 'Menu utilisateur']) ?> — <?= htmlspecialchars($user_fullname) ?>" title="<?= htmlspecialchars($user_fullname) ?>">
-                <?= htmlspecialchars($user_initials) ?>
+        <div class="tb-menu tb-account" data-tb-menu>
+            <button class="tb-avatar" type="button" aria-expanded="false" aria-controls="tb-account-pop"
+                    aria-label="<?= $_h($_t('nav.user_menu', 'Menu du compte') . ' — ' . $user_fullname) ?>" title="<?= $_h($user_fullname) ?>">
+                <?= $_h($user_initials) ?>
             </button>
-            <div class="topbar-dropdown__menu topbar-dropdown__menu--right" id="topbar-user-menu">
-                <a href="<?= $rootPrefix ?>modules/profil/index.php" class="topbar-dropdown__item">
-                    <i class="fas fa-user" aria-hidden="true"></i> <span><?= __('nav.profile') ?></span>
-                </a>
-                <a href="<?= $rootPrefix ?>parametres/parametres.php" class="topbar-dropdown__item">
-                    <i class="fas fa-cog" aria-hidden="true"></i> <span><?= __('nav.settings') ?></span>
-                </a>
-                <hr class="topbar-dropdown__divider">
-                <a href="<?= $rootPrefix ?>login/logout.php" class="topbar-dropdown__item topbar-dropdown__item--danger">
-                    <i class="fas fa-sign-out-alt" aria-hidden="true"></i> <span><?= __('nav.logout') ?></span>
-                </a>
+            <div class="tb-pop tb-pop--right tb-account__pop" id="tb-account-pop">
+                <div class="tb-account__head">
+                    <span class="tb-avatar tb-avatar--lg" aria-hidden="true"><?= $_h($user_initials) ?></span>
+                    <span class="tb-account__who">
+                        <strong><?= $_h($user_fullname) ?></strong>
+                        <small><?= $_h($__nav['role_label']) ?><?= $_topbar_etab_name !== '' ? ' · ' . $_h($_topbar_etab_name) : '' ?></small>
+                    </span>
+                </div>
+                <div class="tb-list">
+                    <a href="<?= $_h($rootPrefix) ?>modules/profil/index.php" class="tb-list__item"><i class="fas fa-user" aria-hidden="true"></i><span><?= $_h($_L['profile']) ?></span></a>
+                    <a href="<?= $_h($rootPrefix) ?>parametres/parametres.php" class="tb-list__item"><i class="fas fa-gear" aria-hidden="true"></i><span><?= $_h($_L['settings']) ?></span></a>
+                    <?php if ($_tb_isAdmin): ?>
+                    <a href="<?= $_h($rootPrefix) ?>admin/dashboard.php" class="tb-list__item"><i class="fas fa-screwdriver-wrench" aria-hidden="true"></i><span><?= $_h($_L['admin']) ?></span></a>
+                    <?php endif; ?>
+                    <?php if ($__nav['support_route']): ?>
+                    <a href="<?= $_h($rootPrefix . $__nav['support_route']) ?>" class="tb-list__item"><i class="fas fa-life-ring" aria-hidden="true"></i><span><?= $_h($_L['support']) ?></span></a>
+                    <?php endif; ?>
+                </div>
+                <div class="tb-theme" role="radiogroup" aria-label="<?= $_h($_L['theme']) ?>">
+                    <span class="tb-theme__label"><?= $_h($_L['theme']) ?></span>
+                    <span class="tb-seg">
+                        <button type="button" role="radio" aria-checked="false" data-theme-set="light" title="<?= $_h($_t('nav.theme_light', 'Clair')) ?>"><i class="fas fa-sun" aria-hidden="true"></i><span><?= $_h($_t('nav.theme_light', 'Clair')) ?></span></button>
+                        <button type="button" role="radio" aria-checked="false" data-theme-set="dark" title="<?= $_h($_t('nav.theme_dark', 'Sombre')) ?>"><i class="fas fa-moon" aria-hidden="true"></i><span><?= $_h($_t('nav.theme_dark', 'Sombre')) ?></span></button>
+                        <button type="button" role="radio" aria-checked="false" data-theme-set="liquid" title="<?= $_h($_t('nav.theme_liquid', 'Liquide')) ?>"><i class="fas fa-droplet" aria-hidden="true"></i><span><?= $_h($_t('nav.theme_liquid', 'Liquide')) ?></span></button>
+                        <button type="button" role="radio" aria-checked="false" data-theme-set="auto" title="<?= $_h($_t('nav.theme_auto', 'Comme l\'appareil')) ?>"><i class="fas fa-circle-half-stroke" aria-hidden="true"></i><span><?= $_h($_t('nav.theme_auto_short', 'Auto')) ?></span></button>
+                    </span>
+                </div>
+                <div class="tb-list tb-list--sep">
+                    <a href="<?= $_h($rootPrefix) ?>login/logout.php" class="tb-list__item tb-list__item--danger"><i class="fas fa-arrow-right-from-bracket" aria-hidden="true"></i><span><?= $_h($_L['logout']) ?></span></a>
+                </div>
             </div>
         </div>
 
-        <!-- Mobile hamburger -->
-        <button class="topbar-hamburger" id="topbar-hamburger" type="button" aria-label="<?= __('nav.open_menu', ['default' => 'Ouvrir le menu']) ?>" aria-haspopup="true" aria-controls="topbar-mobile-panel" aria-expanded="false">
+        <button class="tb-icon tb-burger" id="topbar-hamburger" type="button" aria-label="<?= $_h($_L['menu']) ?>" aria-haspopup="dialog" aria-controls="tb-drawer" aria-expanded="false">
             <i class="fas fa-bars" aria-hidden="true"></i>
         </button>
     </div>
 </nav>
 
-<!-- Search modal -->
-<div class="search-modal" id="search-modal" role="dialog" aria-modal="true" aria-label="<?= __('nav.search', ['default' => 'Recherche']) ?>" aria-hidden="true">
-    <div class="search-modal__backdrop"></div>
-    <div class="search-modal__content">
-        <div class="search-modal__input-wrap">
-            <i class="fas fa-search" aria-hidden="true"></i>
-            <input type="text" id="search-modal-input" aria-label="<?= __('nav.search_placeholder', ['default' => 'Rechercher un module, un eleve, une page...']) ?>" placeholder="<?= __('nav.search_placeholder', ['default' => 'Rechercher un module, un eleve, une page...']) ?>" autocomplete="off">
-            <kbd>Esc</kbd>
+<!-- Recherche globale (Ctrl+K) -->
+<div class="tb-palette" id="search-modal" role="dialog" aria-modal="true" aria-label="<?= $_h($_L['search']) ?>" hidden>
+    <div class="tb-palette__backdrop" data-tb-close></div>
+    <div class="tb-palette__box">
+        <div class="tb-palette__field">
+            <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+            <input type="text" id="search-modal-input" role="combobox" aria-expanded="true" aria-controls="search-modal-results" aria-autocomplete="list"
+                   placeholder="<?= $_h($_t('nav.palette_placeholder', 'Aller à un module, une page…')) ?>" aria-label="<?= $_h($_L['search']) ?>" autocomplete="off">
+            <kbd>Échap</kbd>
         </div>
-        <div class="search-modal__results" id="search-modal-results"></div>
+        <div class="tb-palette__results" id="search-modal-results" role="listbox"></div>
+        <div class="tb-palette__foot"><span><kbd>↑</kbd><kbd>↓</kbd> naviguer</span><span><kbd>Entrée</kbd> ouvrir</span></div>
     </div>
 </div>
 
-<!-- Mobile slide-out panel -->
-<div class="topbar-mobile-panel" id="topbar-mobile-panel" role="dialog" aria-modal="true" aria-label="<?= __('nav.mobile_menu', ['default' => 'Menu de navigation']) ?>">
-    <div class="topbar-mobile-panel__header">
-        <span class="topbar-brand__icon" aria-hidden="true">F</span>
-        <span>FRONOTE</span>
-        <button class="topbar-mobile-panel__close" id="topbar-mobile-close" type="button" aria-label="<?= __('common.close', ['default' => 'Fermer']) ?>">&times;</button>
-    </div>
-    <div class="topbar-mobile-panel__body">
-        <a href="<?= $rootPrefix ?>accueil/accueil.php" class="topbar-mobile-link <?= $activePage === 'accueil' ? 'active' : '' ?>">
-            <i class="fas fa-home"></i> Accueil
-        </a>
-        <?php foreach ($_topbar_modules as $catKey => $category): ?>
-        <div class="topbar-mobile-category">
-            <div class="topbar-mobile-category__title"><?= htmlspecialchars($category['label']) ?></div>
-            <?php foreach ($category['modules'] as $mod): ?>
-            <a href="<?= $rootPrefix . htmlspecialchars($mod['route']) ?>"
-               class="topbar-mobile-link <?= ($activePage === ($mod['module_key'] ?? '')) ? 'active' : '' ?>">
-                <i class="<?= htmlspecialchars($mod['icon'] ?? 'fas fa-circle') ?>"></i>
-                <?= htmlspecialchars($mod['label'] ?? $mod['module_key']) ?>
-            </a>
+<!-- Tiroir mobile -->
+<div class="tb-drawer" id="tb-drawer" role="dialog" aria-modal="true" aria-label="<?= $_h($_t('nav.mobile_menu', 'Menu de navigation')) ?>" hidden>
+    <div class="tb-drawer__backdrop" data-tb-close></div>
+    <div class="tb-drawer__panel">
+        <div class="tb-drawer__head">
+            <span class="tb-avatar" aria-hidden="true"><?= $_h($user_initials) ?></span>
+            <span class="tb-account__who">
+                <strong><?= $_h($user_fullname) ?></strong>
+                <small><?= $_h($__nav['role_label']) ?></small>
+            </span>
+            <button type="button" class="tb-icon" data-tb-close aria-label="<?= $_h($_L['close']) ?>"><i class="fas fa-xmark" aria-hidden="true"></i></button>
+        </div>
+        <div class="tb-drawer__body">
+            <?php if ($__nav['is_parent'] && count($_tb_children) > 1): ?>
+            <div class="tb-kids">
+                <?php foreach ($_tb_children as $c): $sel = $_tb_child && (int) $c['id'] === (int) $_tb_child['id']; ?>
+                <a href="<?= $_h($_childUrl((int) $c['id'])) ?>" class="tb-kid<?= $sel ? ' is-active' : '' ?>"<?= $sel ? ' aria-current="true"' : '' ?>>
+                    <span class="tb-chip__av" aria-hidden="true"><?= $_h($_initials($c)) ?></span><?= $_h($c['prenom']) ?>
+                </a>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+            <label class="tb-filter">
+                <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+                <input type="search" class="tb-filter__input" placeholder="<?= $_h($_L['filter']) ?>" aria-label="<?= $_h($_L['filter']) ?>" autocomplete="off" data-tb-filter="#tb-drawer">
+            </label>
+            <div class="tb-tiles" data-tb-group>
+                <?= str_replace('tb-link', 'tb-tile', $_renderLink(['module_key' => 'accueil', 'label' => $_L['home'], 'icon' => 'fas fa-house', 'route' => 'accueil/accueil.php', 'type' => 'module'])) ?>
+                <span class="tb-tiles__set" id="tb-tiles">
+                    <?php foreach ($_tb_shortcuts as $s): ?><?= str_replace('tb-link', 'tb-tile', $_renderLink($s)) ?><?php endforeach; ?>
+                </span>
+            </div>
+            <?php foreach ($_tb_groups as $gk => $group): ?>
+            <details class="tb-acc" data-tb-group<?= $gk === $_tb_activeGroup ? ' open' : '' ?>>
+                <summary class="tb-acc__head">
+                    <i class="<?= $_h($group['icon']) ?>" aria-hidden="true"></i><span><?= $_h($group['label']) ?></span>
+                    <small><?= count($group['modules']) ?></small><i class="fas fa-chevron-down tb-trigger__chev" aria-hidden="true"></i>
+                </summary>
+                <ul class="tb-acc__list">
+                    <?php foreach ($group['modules'] as $m): $on = $_isActive($m); ?>
+                    <li data-tb-item data-label="<?= $_h($m['label']) ?>">
+                        <a href="<?= $_h($_href($m)) ?>" class="tb-list__item<?= $on ? ' is-active' : '' ?>"<?= $on ? ' aria-current="page"' : '' ?>>
+                            <i class="<?= $_h($m['icon']) ?>" aria-hidden="true"></i><span><?= $_h($m['label']) ?></span>
+                        </a>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
+            </details>
             <?php endforeach; ?>
+            <p class="tb-empty" hidden><?= $_h($_L['none']) ?></p>
         </div>
-        <?php endforeach; ?>
     </div>
 </div>
 
-<?php if ($_topbar_is_parent && !empty($_topbar_children)): ?>
-<script nonce="<?= $_hdr_nonce ?? '' ?>">
-function switchChild(childId) {
-    if (!childId) return;
-    var url = new URL(window.location.href);
-    url.searchParams.set('switch_child', childId);
-    window.location.href = url.toString();
-}
-</script>
-<?php endif; ?>
+<script type="application/json" id="tb-data"><?= json_encode($_tb_data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?></script>

@@ -460,7 +460,52 @@ class ModuleService extends \API\Services\AbstractTenantService
         } catch (\Throwable $e) {
             // authz indisponible au moment du build nav → ne pas masquer (comportement historique).
         }
+        // Sans restriction en base (roles_autorises NULL), on s'aligne sur les rôles que le module
+        // déclare lui-même (module.json → permissions.view.default_roles) : sinon un élève voit
+        // « Appel » ou « Vie scolaire » et atterrit, après un clic, sur une redirection silencieuse.
+        // Pages gardées par une permission historique (hasPermission) pour le personnel :
+        // élèves et parents y accèdent pour eux-mêmes, le personnel seulement s'il a la permission.
+        if (isset(self::LEGACY_STAFF_PERMISSION[$moduleKey]) && function_exists('hasPermission')) {
+            $type = (string) ($_SESSION['user_type'] ?? '');
+            if (!in_array($type, ['eleve', 'parent'], true) && !hasPermission(self::LEGACY_STAFF_PERMISSION[$moduleKey])) {
+                return false;
+            }
+        }
+        $declared = self::manifestViewRoles($moduleKey);
+        if ($declared !== null && !in_array('*', $declared, true)) {
+            $mine = $roles;
+            $type = (string) ($_SESSION['user_type'] ?? '');
+            if ($type !== '') { $mine[] = $type; }
+            if (in_array('administrateur', $mine, true)) { return true; }
+            return (bool) array_intersect($mine, $declared);
+        }
         return true;
+    }
+
+    /** Module → permission historique exigée du personnel par la page (cf. modules/absences/absences.php). */
+    private const LEGACY_STAFF_PERMISSION = ['absences' => 'absences'];
+
+    /** @var array<string, ?array> */
+    private static array $manifestRolesCache = [];
+
+    /** Rôles déclarés par le manifeste d'un module (vue/accès), ou null si non déclarés. */
+    private static function manifestViewRoles(string $moduleKey): ?array
+    {
+        if (array_key_exists($moduleKey, self::$manifestRolesCache)) {
+            return self::$manifestRolesCache[$moduleKey];
+        }
+        $roles = null;
+        if (preg_match('/^[a-z0-9_]+$/', $moduleKey)) {
+            $file = dirname(__DIR__, 2) . '/modules/' . $moduleKey . '/module.json';
+            if (is_file($file)) {
+                $json = json_decode((string) @file_get_contents($file), true);
+                $perm = $json['permissions']['view']['default_roles'] ?? $json['permissions']['access']['default_roles'] ?? null;
+                if (is_array($perm) && $perm) {
+                    $roles = array_values(array_map('strval', $perm));
+                }
+            }
+        }
+        return self::$manifestRolesCache[$moduleKey] = $roles;
     }
 
     /**

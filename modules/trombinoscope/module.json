@@ -15,7 +15,9 @@
     "permissions": {
         "view": {
             "default_roles": [
-                "*"
+                "administrateur",
+                "professeur",
+                "vie_scolaire"
             ]
         },
         "manage": {

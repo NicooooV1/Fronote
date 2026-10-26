@@ -201,4 +201,5 @@
 [data-theme="dark"] tbody tr:hover td { background-color: rgba(59, 130, 246, 0.06); }
 
 /* Liens neutres rendus illisibles : accent clair. */
-[data-theme="dark"] a:not(.btn):not([class*="badge"]):not([style*="color"]) { color: var(--dk-accent-hover); }
+/* (les liens de la barre de navigation « tb-… » gèrent leurs propres couleurs) */
+[data-theme="dark"] a:not(.btn):not([class*="badge"]):not([style*="color"]):not([class^="tb-"]):not([class*=" tb-"]) { color: var(--dk-accent-hover); }

@@ -230,7 +230,7 @@ body:has(#hm) .top-header { display: none; }
 /* ── responsive ── */
 /* tablette / mobile : une seule colonne, les cartes suivent l'ordre réel (journée, notes, devoirs…) */
 @media (max-width: 980px) {
-  .hm-grid { display: flex; flex-direction: column; }
+  .hm-grid { display: flex; flex-direction: column; align-items: stretch; } /* sinon les cartes prennent la largeur de leur contenu et débordent sur mobile */
   .hm-col { display: contents; }
 }
 @media (max-width: 720px) {

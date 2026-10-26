@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [4.4.0] — Barre de navigation refaite — 2026-10-26
+
+### Changed — Barre de navigation
+- **Moins de clics** : les modules du quotidien sont directement dans la barre (favoris de
+  l'utilisateur, sinon une sélection par rôle : emploi du temps, appel, cahier de textes, notes,
+  messagerie…). Avant : 7 menus déroulants à ouvrir un par un.
+- Un seul panneau **« Modules »** montre tout d'un coup d'œil, rangé en 5 familles claires
+  (Scolarité, Vie scolaire, Communication, Vie de l'établissement, Administration), avec un champ
+  de filtre ; il s'ouvre au survol. ★ épingle un module dans la barre, sans recharger la page
+  (aussi depuis l'étoile à côté du titre de chaque page).
+- **Recherche Ctrl+K / « / »** : correspondance sans accents et par initiales (« cdt »), navigation clavier.
+- Menu du compte regroupé : profil, paramètres, thème (clair / sombre / liquide / auto),
+  administration, aide & support, déconnexion. La barre ne porte plus que l'essentiel.
+- Animations douces (ouverture des menus, indicateur de page courante, épinglage, tiroir),
+  désactivées si l'appareil demande moins de mouvement. Couleurs lisibles dans les 3 thèmes.
+- Mobile : tiroir avec tuiles de raccourcis et familles dépliables.
+
+### Fixed
+- Plus aucun lien vers une page fermée au rôle : la barre suit les rôles déclarés par chaque
+  module (un élève ne voit plus « Appel », « Vie scolaire », « Internat »…, qui le renvoyaient
+  à l'accueil). Manifestes de Trombinoscope et Transports alignés sur leurs pages.
+- Mobile : l'accueil débordait en largeur et poussait les boutons de la barre hors de l'écran.
+- Parents : l'enfant choisi sur l'accueil et celui de la barre sont désormais le même.
+- Recherche : les libellés sont échappés (ils étaient réinjectés en HTML).
+
 ## [4.3.0] — Accueil, messagerie, notifications et cookies refaits — 2026-10-26
 
 ### Added — Accueil (refonte complète)

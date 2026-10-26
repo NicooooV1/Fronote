@@ -205,8 +205,8 @@ Le dark mode est **indépendant** du thème visuel. Il est porté par l'attribut
   `localStorage('fronote_dark_mode')` et `prefers-color-scheme` pour appliquer
   immédiatement `data-theme="dark"` avant le premier paint (`auto` → suit le
   système).
-- **Toggle topbar** : le bouton `#topbar-theme-toggle` (icônes soleil/lune) bascule
-  le mode ; la page **Paramètres** (`parametres/parametres.php`) propose aussi les
+- **Menu du compte** : le sélecteur Clair / Sombre / Liquide / Auto (`[data-theme-set]`)
+  applique le thème ; la page **Paramètres** (`parametres/parametres.php`) propose aussi les
   trois choix via `previewTheme()` qui met à jour `data-theme` et
   `data-theme-pref` à la volée.
 
@@ -337,59 +337,63 @@ Il n'y a **plus de sidebar**. La navigation est une barre horizontale fixe.
 
 - `shared_topbar.php` : inclut `shared_topbar_nav.php`, ouvre `.main-content` puis
   le `.top-header` (titre, sous-titre, bouton retour, actions).
-- `shared_topbar_nav.php` : la `<nav class="topbar-nav">` elle-même.
+- `shared_topbar_nav.php` : la `<nav class="topbar-nav tb">` elle-même ; le modèle
+  (modules, familles, raccourcis, favoris…) est construit par `API/UI/TopbarNav.php`.
 
-### Structure visuelle
+### Structure visuelle (4.4)
 
 ```
-[F FRONOTE] | [★ épingler] [★ Favoris ▾] [Pédagogie ▾] [Vie scolaire ▾] …
-            | [🔍 Ctrl+K] [🔔 notifs] [☀/🌙 thème] [enfant ▾ parent] [Étab] [⚙ admin] [Avatar ▾]
+[F FRONOTE] [Accueil] [raccourci] [raccourci] … [▦ Modules ▾]      [🔍 Rechercher Ctrl K] [🔔] [Avatar ▾]
 ```
 
-### Catégories de modules
+Principe : **un module courant = un clic**, tout le reste = deux clics au plus.
 
-Les dropdowns sont alimentés par `app('modules')->getForTopbar($role)`, regroupant
-les modules **activés et visibles pour le rôle** par catégorie. Les méta de
-catégorie viennent de `ModuleService::categoryMeta()` :
+- **Raccourcis** : les favoris de l'utilisateur ; tant qu'il n'a rien épinglé, une sélection
+  par rôle (`TopbarNav::DEFAULT_SHORTCUTS`). Ce qui ne tient pas en largeur est masqué
+  (et reste accessible dans « Modules »). Si la page courante n'est pas dans la barre, elle y
+  apparaît en lien « contexte » (repère « où suis-je »).
+- **Modules** : un seul panneau qui montre tous les modules ouvrables, rangés en 5 familles
+  (`TopbarNav::GROUPS` / `MODULE_GROUP` ; un module inconnu suit sa catégorie d'origine).
+  Ouverture au survol (souris) ou au clic, champ de filtre, ★ pour épingler.
+- **Compte** (avatar) : profil, paramètres, administration (si admin), aide & support,
+  choix du thème (clair / sombre / liquide / auto), déconnexion.
+- **Parents** : puce de l'enfant suivi (masquée sur l'accueil qui a ses propres puces) ;
+  la sélection est partagée avec l'accueil (`$_SESSION['selected_child_id']`).
+- **Mobile** (< 1024 px) : tiroir latéral avec tuiles de raccourcis, familles dépliables et filtre.
 
-| Clé | Libellé | Icône | Ordre |
-|---|---|---|---|
-| `navigation` | Accueil | `fas fa-home` | 0 |
-| `scolaire` | Pédagogie | `fas fa-graduation-cap` | 1 |
-| `vie_scolaire` | Vie scolaire | `fas fa-school` | 2 |
-| `communication` | Communication | `fas fa-comments` | 3 |
-| `sante` | Santé | `fas fa-heartbeat` | 4 |
-| `etablissement` | Établissement | `fas fa-building` | 5 |
-| `logistique` | Logistique | `fas fa-cogs` | 6 |
-| `systeme` | Outils | `fas fa-tools` | 7 |
+### Visibilité des modules
 
-La catégorie effective d'un module est : `topbar_category` (colonne DB) →
-`sidebarCategoryOverrides()` → `category` (DB). Quelques remaps fixes existent
-(ex. `messagerie`/`notifications` → `communication`, `infirmerie` → `sante`,
-`vie_associative` → `systeme`). Un **fallback DB direct** existe dans
-`shared_topbar_nav.php` si la couche service ne renvoie rien.
+`ModuleService::getForTopbar()` ne garde que les modules **réellement ouvrables** :
+`roles_autorises` (DB) → catégorie « administration » réservée aux gestionnaires →
+permission `module.<clé>.access` si elle existe → rôles déclarés par le manifeste
+(`permissions.view.default_roles`) → permissions historiques exigées par certaines pages
+(`LEGACY_STAFF_PERMISSION`). Un lien qui redirige en silence est un bug : aligner le
+manifeste du module sur la garde de sa page.
 
 ### Favoris (épingles)
 
-- `app('modules')->getFavorites($userId, $userType, $role)` renvoie les favoris ;
-  ils s'affichent dans le dropdown « Favoris » (masqué si vide).
-- Deux types : `module` (épingler un module) et `page` (épingler la page courante).
-- Le bouton `#topbar-pin-page` (étoile, masqué sur l'accueil) épingle l'URL
-  courante. Les boutons `.topbar-fav-toggle` ajoutent/retirent. Le tout passe par
-  `API/endpoints/favorites.php` (POST JSON + CSRF, rotation de token via l'en-tête
-  `X-Csrf-Token-Next`).
+- ★ dans le panneau Modules, ou ★ à côté du titre de la page : `API/endpoints/favorites.php`
+  (`toggle`, POST JSON + CSRF, rotation via `X-Csrf-Token-Next`). La barre est mise à jour
+  sans rechargement à partir de la liste renvoyée.
+- Les favoris de type `page` (anciens) restent affichés comme raccourcis.
 
-### Actions à droite
+### Recherche (Ctrl+K ou « / »)
 
-Recherche `#topbar-search-btn` (modale `#search-modal`, raccourci **Ctrl+K**),
-notifications (badge = `COUNT(*)` non lus dans `notifications_globales`), toggle
-thème, **sélecteur d'enfant** pour les parents (si > 1 enfant ; `switch_child`
-vérifié contre `parent_eleve`), nom de l'établissement, lien Administration
-(si admin), et le menu avatar (Profil / Paramètres / Déconnexion).
+Palette `#search-modal` alimentée par `<script type="application/json" id="tb-data">`
+(modules, favoris, entrées du compte). Correspondance sans accents, par début de mot ou
+par lettres dans l'ordre (« cdt » → Cahier de textes) ; ↑ ↓ Entrée.
 
-Un **panneau mobile** coulissant (`#topbar-mobile-panel`, hamburger
-`#topbar-hamburger`) reprend les mêmes catégories. Le comportement JS vit dans
-`assets/js/topbar.js`.
+### Thème
+
+`window.FronoteUI.setTheme(pref)` / `cycleTheme()` restent l'API unique (utilisée aussi par
+les Paramètres). Le sélecteur du menu compte reflète `data-theme-pref`.
+
+### Couleurs
+
+Les styles (`assets/css/topbar.css`, classes `tb-*`) utilisent les variables historiques
+(`--bg-card`, `--text-primary`, `--primary`…) qui suivent les 3 thèmes. `--tb-accent` sert
+aux textes et icônes mis en avant (clair en sombre), `--tb-primary` aux aplats.
+Animations désactivées si `prefers-reduced-motion`.
 
 ### `$pageBack` — bouton de retour
 

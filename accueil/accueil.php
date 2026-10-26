@@ -31,10 +31,10 @@ $enfants = []; $eleve = null;
 if ($role === 'eleve') { $eleve = $home->eleve($uid); }
 if ($role === 'parent') {
     $enfants = $home->enfants($uid);
-    $sel = (int) ($_GET['enfant'] ?? ($_SESSION['accueil_enfant'] ?? 0));
+    $sel = (int) ($_GET['enfant'] ?? ($_SESSION['selected_child_id'] ?? 0)); // même choix que la barre du haut
     $ids = array_map(fn($e) => (int) $e['id'], $enfants);
     if (!in_array($sel, $ids, true)) { $sel = $ids[0] ?? 0; }
-    $_SESSION['accueil_enfant'] = $sel;
+    $_SESSION['selected_child_id'] = $sel;
     $eleve = $sel ? $home->eleve($sel) : null;
 }
 

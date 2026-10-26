@@ -69,7 +69,13 @@ if (!empty($_SESSION['impersonation'])) {
                     <i class="fas fa-arrow-left"></i><span><?= htmlspecialchars($_pb['label']) ?></span>
                 </a>
                 <?php endif; ?>
-                <h1><?= htmlspecialchars($pageTitle) ?></h1>
+                <h1><?= htmlspecialchars($pageTitle) ?><?php
+                    // Épingler le module courant dans la barre (même action que ★ du menu Modules).
+                    if (!empty($_tb_modules) && $activePage !== '' && isset($_tb_modules[$activePage])):
+                        $_pinOn = isset($_tb_favKeys[$activePage]);
+                        $_pinTxt = $_pinOn ? (($v = __('nav.unpin')) !== 'nav.unpin' ? $v : 'Retirer de la barre') : (($v = __('nav.pin')) !== 'nav.pin' ? $v : 'Épingler dans la barre');
+                ?><button type="button" class="tb-pin tb-pin--page<?= $_pinOn ? ' is-on' : '' ?>" data-tb-pin="<?= htmlspecialchars($activePage, ENT_QUOTES) ?>"
+                        aria-pressed="<?= $_pinOn ? 'true' : 'false' ?>" title="<?= htmlspecialchars($_pinTxt, ENT_QUOTES) ?>" aria-label="<?= htmlspecialchars($_pinTxt, ENT_QUOTES) ?>"><i class="<?= $_pinOn ? 'fas' : 'far' ?> fa-star" aria-hidden="true"></i></button><?php endif; ?></h1>
                 <?php if (!empty($pageSubtitle)): ?>
                 <p class="subtitle"><?= htmlspecialchars($pageSubtitle) ?></p>
                 <?php endif; ?>
