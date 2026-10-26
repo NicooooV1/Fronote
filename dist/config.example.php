@@ -52,4 +52,8 @@ return [
     // URL publique de CE serveur de distribution (utilisée dans les liens et le bootstrapper).
     // DOIT être en https:// en production (la clé de licence transite ici).
     'dist_base_url' => 'https://dist.exemple.fr',
+
+    // Origines autorisées pour ÉMETTRE / RÉVOQUER une licence via l'API (/admin/issue, /admin/revoke),
+    // en plus du jeton admin. Par défaut : réseau interne seulement (la plateforme de gestion).
+    // 'admin_issue_ranges' => ['10.0.0.0/8', '127.0.0.1/32'],
 ];

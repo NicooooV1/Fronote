@@ -450,6 +450,15 @@ final class DistStore
         return $row ?: null;
     }
 
+    /** Dernier rapport connu d'une activation (nom d'hôte, URL, version) — ou null. */
+    public function instanceByActivation(int $activationId): ?array
+    {
+        $stmt = $this->db->prepare('SELECT hostname, app_url, app_version, last_seen FROM instances WHERE activation_id = :a');
+        $stmt->execute([':a' => $activationId]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
     /**
      * UPSERT d'un rapport d'instance (phone-home). `$fields` = colonnes de `instances`
      * (hors clés/horodatages). Retourne l'activation_id.

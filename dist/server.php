@@ -14,6 +14,9 @@ declare(strict_types=1);
  *   POST /admin/disallow    {ip}        (X-Admin-Token) → retire une IP de la whitelist
  *   GET  /admin/list        ?ip=        (X-Admin-Token) → whitelist complète, ou statut d'une IP
  *   GET  /admin/refused     ?since_id=&limit= (X-Admin-Token) → tentatives refusées (delta)
+ *   POST /admin/issue       {tier, modules[], max_activations, expires_at, note} (token + réseau interne) → {key, id, prefix}
+ *   POST /admin/revoke      {prefix}       (token + réseau interne) → {revoked}
+ *   POST /admin/verify-install {install_token} (token) → activation, licence, instance (plateforme : escalades)
  *
  * Sécurité : allowlist d'IP (une IP non listée est refusée ET journalisée pour le bot),
  * jeton d'admin en temps constant, jamais de secret en réponse, archives signées
@@ -91,6 +94,25 @@ function client_ip(array $cfg): string
         }
     }
     return filter_var($remote, FILTER_VALIDATE_IP) ? $remote : '0.0.0.0';
+}
+
+/**
+ * Actions d'admin SENSIBLES (émettre / révoquer une licence) : en plus du jeton, l'appel doit
+ * venir du réseau interne (la plateforme platform.nicov1.fr). Un jeton fuité ne suffit donc pas
+ * depuis Internet. Réglable : $cfg['admin_issue_ranges'] (CIDR).
+ */
+function require_internal(array $cfg, string $ip): void
+{
+    $ranges = $cfg['admin_issue_ranges'] ?? ['10.0.0.0/8', '127.0.0.1/32'];
+    foreach ($ranges as $cidr) {
+        [$net, $bits] = array_pad(explode('/', (string) $cidr, 2), 2, '32');
+        $n = ip2long($net); $i = ip2long($ip); $b = (int) $bits;
+        if ($n !== false && $i !== false && $b >= 0 && $b <= 32) {
+            $mask = $b === 0 ? 0 : (~0 << (32 - $b)) & 0xFFFFFFFF;
+            if (($i & $mask) === ($n & $mask)) { return; }
+        }
+    }
+    json_out(403, ['status' => 'forbidden_origin']);
 }
 
 function require_admin(array $cfg): void
@@ -398,6 +420,49 @@ switch ($action) {
         $since = (int) ($_GET['since_id'] ?? 0);
         $limit = (int) ($_GET['limit'] ?? 100);
         json_out(200, ['status' => 'ok', 'proposals' => $store->listProposals($since, $limit)]);
+    }
+
+    // ── Plateforme (platform.nicov1.fr) ─────────────────────────────────────
+    case 'admin_issue': {   // émettre une licence — la clé n'est renvoyée qu'UNE fois
+        if ($method !== 'POST') { json_out(405, ['status' => 'method_not_allowed']); }
+        require_admin($cfg);
+        require_internal($cfg, $ip);
+        $in = json_decode((string) file_get_contents('php://input'), true) ?: $_POST;
+        $mods = array_values(array_filter(array_map(static fn($m) => preg_replace('/[^a-z0-9_]/', '', strtolower((string) $m)), (array) ($in['modules'] ?? []))));
+        $exp = (string) ($in['expires_at'] ?? '');
+        if ($exp !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $exp)) { json_out(400, ['status' => 'bad_expires']); }
+        $res = $store->issueLicense([
+            'tier'            => preg_replace('/[^a-z0-9_-]/', '', (string) ($in['tier'] ?? 'base')) ?: 'base',
+            'modules'         => $mods,
+            'max_activations' => max(1, min(50, (int) ($in['max_activations'] ?? 1))),
+            'expires_at'      => $exp ?: null,
+            'note'            => substr(trim((string) ($in['note'] ?? '')), 0, 200) ?: null,
+        ]);
+        json_out(200, ['status' => 'ok'] + $res);
+    }
+
+    case 'admin_revoke': {   // révoquer une licence par son préfixe
+        if ($method !== 'POST') { json_out(405, ['status' => 'method_not_allowed']); }
+        require_admin($cfg);
+        require_internal($cfg, $ip);
+        $in = json_decode((string) file_get_contents('php://input'), true) ?: $_POST;
+        $prefix = (string) ($in['prefix'] ?? '');
+        if (!preg_match('/^[A-Za-z0-9]{6}$/', $prefix)) { json_out(400, ['status' => 'bad_prefix']); }
+        json_out(200, ['status' => 'ok', 'revoked' => $store->revokeLicenseByPrefix($prefix)]);
+    }
+
+    case 'admin_verify-install': {   // la plateforme authentifie une instance par son jeton d'installation
+        if ($method !== 'POST') { json_out(405, ['status' => 'method_not_allowed']); }
+        require_admin($cfg);
+        $in = json_decode((string) file_get_contents('php://input'), true) ?: $_POST;
+        $tok = (string) ($in['install_token'] ?? '');
+        if (strlen($tok) < 16 || strlen($tok) > 256) { json_out(400, ['status' => 'bad_token']); }
+        $act = $store->activationByToken($tok);
+        if (!$act) { json_out(404, ['status' => 'unknown']); }
+        $inst = $store->instanceByActivation((int) $act['activation_id']) ?? [];
+        json_out(200, ['status' => 'ok', 'activation_id' => (int) $act['activation_id'], 'license_id' => (int) $act['license_id'],
+            'revoked' => (bool) $act['revoked'], 'expires_at' => $act['expires_at'], 'note' => $act['note'],
+            'hostname' => $inst['hostname'] ?? null, 'app_url' => $inst['app_url'] ?? null, 'app_version' => $inst['app_version'] ?? null]);
     }
 
     default:
