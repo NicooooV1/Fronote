@@ -39,13 +39,13 @@ include __DIR__ . '/../../templates/shared_header.php';
 include __DIR__ . '/../../templates/shared_topbar.php';
 ?>
 
-<div style="width:100%;max-width:1100px;margin:24px auto;padding:0 16px">
+<div class="mk-page">
     <h1 style="font-size:1.5em;margin:0 0 4px"><i class="fas fa-hand-holding-usd"></i> <?= __('bourses.page_title') ?></h1>
     <p style="color:var(--text-muted,#64748b);margin:0 0 24px"><?= __('bourses.campagne') ?> <?= htmlspecialchars($annee) ?></p>
 
     <!-- Simulateur (tous rôles) -->
     <div style="background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:18px;margin-bottom:28px">
-        <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-calculator"></i> <?= __('bourses.simulateur_titre') ?></h2>
+        <h2 class="section-title"><i class="fas fa-calculator"></i> <?= __('bourses.simulateur_titre') ?></h2>
         <form method="post" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_hdr_csrf_token) ?>">
             <input type="hidden" name="action" value="simuler">
@@ -73,9 +73,9 @@ include __DIR__ . '/../../templates/shared_topbar.php';
 
     <?php if ($isAdmin): ?>
     <!-- Stats campagne -->
-    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-chart-pie"></i> <?= __('bourses.etat_campagne') ?></h2>
+    <h2 class="section-title"><i class="fas fa-chart-pie"></i> <?= __('bourses.etat_campagne') ?></h2>
     <?php if (empty($stats['par_statut'])): ?>
-    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('bourses.aucune_demande_campagne') ?></p>
+    <p class="empty-state mk-empty-sm"><?= __('bourses.aucune_demande_campagne') ?></p>
     <?php else: ?>
     <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:28px">
         <?php foreach ($stats['par_statut'] as $s): ?>
@@ -91,25 +91,25 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <?php endif; ?>
 
     <!-- Demandes à instruire -->
-    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-inbox"></i> <?= __('bourses.demandes_a_instruire') ?> (<?= count($aInstruire) ?>)</h2>
+    <h2 class="section-title"><i class="fas fa-inbox"></i> <?= __('bourses.demandes_a_instruire') ?> (<?= count($aInstruire) ?>)</h2>
     <?php if (empty($aInstruire)): ?>
-    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('bourses.aucune_demande_instruction') ?></p>
+    <p class="empty-state mk-empty-sm"><?= __('bourses.aucune_demande_instruction') ?></p>
     <?php else: ?>
-    <div style="overflow-x:auto">
-    <table style="width:100%;border-collapse:collapse;font-size:.9em">
-        <thead><tr style="text-align:left;color:#718096;border-bottom:1px solid #e2e8f0">
-            <th style="padding:8px 10px"><?= __('bourses.eleve') ?></th><th style="padding:8px 10px"><?= __('label.classe') ?></th>
-            <th style="padding:8px 10px"><?= __('label.type') ?></th><th style="padding:8px 10px"><?= __('bourses.echelon_simule') ?></th>
-            <th style="padding:8px 10px"><?= __('bourses.soumise_le') ?></th>
+    <div class="table-responsive">
+    <table class="data-table">
+        <thead><tr>
+            <th><?= __('bourses.eleve') ?></th><th><?= __('label.classe') ?></th>
+            <th><?= __('label.type') ?></th><th><?= __('bourses.echelon_simule') ?></th>
+            <th><?= __('bourses.soumise_le') ?></th>
         </tr></thead>
         <tbody>
         <?php foreach ($aInstruire as $d): ?>
-            <tr style="border-bottom:1px solid #f7fafc">
-                <td style="padding:8px 10px"><?= htmlspecialchars($d['eleve_nom']) ?></td>
-                <td style="padding:8px 10px"><?= htmlspecialchars($d['classe'] ?? '') ?></td>
-                <td style="padding:8px 10px"><?= htmlspecialchars($d['type_bourse'] ?? '') ?></td>
-                <td style="padding:8px 10px"><?= (int) $d['echelon_simule'] ?> (<?= (float) $d['montant_simule'] ?> €)</td>
-                <td style="padding:8px 10px"><?= htmlspecialchars($d['date_soumission'] ?? '') ?></td>
+            <tr>
+                <td><?= htmlspecialchars($d['eleve_nom']) ?></td>
+                <td><?= htmlspecialchars($d['classe'] ?? '') ?></td>
+                <td><?= htmlspecialchars($d['type_bourse'] ?? '') ?></td>
+                <td><?= (int) $d['echelon_simule'] ?> (<?= (float) $d['montant_simule'] ?> €)</td>
+                <td><?= htmlspecialchars($d['date_soumission'] ?? '') ?></td>
             </tr>
         <?php endforeach; ?>
         </tbody>

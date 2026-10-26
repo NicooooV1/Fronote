@@ -23,25 +23,25 @@ include __DIR__ . '/../../templates/shared_header.php';
 include __DIR__ . '/../../templates/shared_topbar.php';
 ?>
 
-<div style="width:100%;max-width:1100px;margin:24px auto;padding:0 16px">
+<div class="mk-page">
     <h1 style="font-size:1.5em;margin:0 0 20px"><i class="fas fa-chalkboard-teacher"></i> <?= __('formations.heading') ?></h1>
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:28px">
-        <div style="background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:16px">
-            <div style="font-size:2em;font-weight:700;color:var(--primary,#0f4c81)"><?= (int) $stats['nb_formations'] ?></div>
-            <div style="font-size:.85em;color:var(--text-muted,#64748b)"><?= __('formations.formations') ?> (<?= htmlspecialchars($annee) ?>)</div>
+    <div class="stats-grid">
+        <div class="stat-card mk-stack">
+            <div class="stat-value"><?= (int) $stats['nb_formations'] ?></div>
+            <div class="stat-label"><?= __('formations.formations') ?> (<?= htmlspecialchars($annee) ?>)</div>
         </div>
-        <div style="background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:16px">
-            <div style="font-size:2em;font-weight:700;color:var(--primary,#0f4c81)"><?= (int) $stats['nb_participants'] ?></div>
-            <div style="font-size:.85em;color:var(--text-muted,#64748b)"><?= __('formations.participants') ?></div>
+        <div class="stat-card mk-stack">
+            <div class="stat-value"><?= (int) $stats['nb_participants'] ?></div>
+            <div class="stat-label"><?= __('formations.participants') ?></div>
         </div>
-        <div style="background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:16px">
-            <div style="font-size:2em;font-weight:700;color:var(--primary,#0f4c81)"><?= number_format((float) $stats['budget_consomme'], 0, ',', ' ') ?> €</div>
-            <div style="font-size:.85em;color:var(--text-muted,#64748b)"><?= __('formations.budget_consomme') ?></div>
+        <div class="stat-card mk-stack">
+            <div class="stat-value"><?= number_format((float) $stats['budget_consomme'], 0, ',', ' ') ?> €</div>
+            <div class="stat-label"><?= __('formations.budget_consomme') ?></div>
         </div>
-        <div style="background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:16px">
-            <div style="font-size:2em;font-weight:700;color:var(--primary,#0f4c81)"><?= $stats['note_satisfaction_moyenne'] !== null ? htmlspecialchars((string) $stats['note_satisfaction_moyenne']) . '/5' : '—' ?></div>
-            <div style="font-size:.85em;color:var(--text-muted,#64748b)"><?= __('formations.satisfaction_moyenne') ?></div>
+        <div class="stat-card mk-stack">
+            <div class="stat-value"><?= $stats['note_satisfaction_moyenne'] !== null ? htmlspecialchars((string) $stats['note_satisfaction_moyenne']) . '/5' : '—' ?></div>
+            <div class="stat-label"><?= __('formations.satisfaction_moyenne') ?></div>
         </div>
     </div>
 
@@ -54,23 +54,23 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     </div>
     <?php endif; ?>
 
-    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-book-open"></i> <?= __('formations.catalogue') ?> (<?= count($catalogue) ?>)</h2>
+    <h2 class="section-title"><i class="fas fa-book-open"></i> <?= __('formations.catalogue') ?> (<?= count($catalogue) ?>)</h2>
     <?php if (empty($catalogue)): ?>
-    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('formations.aucune_formation') ?></p>
+    <p class="empty-state mk-empty-sm"><?= __('formations.aucune_formation') ?></p>
     <?php else: ?>
-    <div style="overflow-x:auto">
-    <table style="width:100%;border-collapse:collapse;font-size:.9em">
-        <thead><tr style="text-align:left;color:var(--text-muted,#718096);border-bottom:1px solid var(--border-color,#e2e8f0)">
-            <th style="padding:8px 10px"><?= __('label.titre') ?></th><th style="padding:8px 10px"><?= __('formations.organisme') ?></th>
-            <th style="padding:8px 10px"><?= __('label.periode') ?></th><th style="padding:8px 10px"><?= __('formations.places') ?></th>
+    <div class="table-responsive">
+    <table class="data-table">
+        <thead><tr>
+            <th><?= __('label.titre') ?></th><th><?= __('formations.organisme') ?></th>
+            <th><?= __('label.periode') ?></th><th><?= __('formations.places') ?></th>
         </tr></thead>
         <tbody>
         <?php foreach ($catalogue as $f): ?>
             <tr style="border-bottom:1px solid var(--border-color,#f7fafc)">
-                <td style="padding:8px 10px"><?= htmlspecialchars($f['titre']) ?></td>
-                <td style="padding:8px 10px"><?= htmlspecialchars($f['organisme'] ?? '') ?></td>
-                <td style="padding:8px 10px"><?= htmlspecialchars($f['date_debut'] ?? '') ?> → <?= htmlspecialchars($f['date_fin'] ?? '') ?></td>
-                <td style="padding:8px 10px"><?= (int) ($f['nb_inscrits'] ?? 0) ?> / <?= (int) $f['places_max'] ?></td>
+                <td><?= htmlspecialchars($f['titre']) ?></td>
+                <td><?= htmlspecialchars($f['organisme'] ?? '') ?></td>
+                <td><?= htmlspecialchars($f['date_debut'] ?? '') ?> → <?= htmlspecialchars($f['date_fin'] ?? '') ?></td>
+                <td><?= (int) ($f['nb_inscrits'] ?? 0) ?> / <?= (int) $f['places_max'] ?></td>
             </tr>
         <?php endforeach; ?>
         </tbody>

@@ -111,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Forcer changement de mot de passe si jamais changé.
                 // Le garde (API/module_boot.php) ré-imposera la redirection tant que ce
                 // drapeau est armé ; change_password.php agit sur le compte authentifié.
-                if (empty($user['password_changed_at'])) {
+                if (empty($user['password_changed_at']) && !\API\Core\DemoMode::isDemoAccount((string) ($user['identifiant'] ?? ''))) {
                     $_SESSION['force_password_change'] = true;
                     redirect('login/change_password.php');
                 }

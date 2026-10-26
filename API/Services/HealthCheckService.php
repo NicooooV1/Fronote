@@ -128,20 +128,9 @@ class HealthCheckService
             return ['status' => 'warning', 'message' => 'WebSocket disabled'];
         }
 
-        $wsUrl = getenv('WEBSOCKET_CLIENT_URL') ?: 'http://localhost:3000';
-        $healthUrl = rtrim($wsUrl, '/') . '/health';
-
-        $start = microtime(true);
-        $ctx = stream_context_create(['http' => [
-            'timeout' => $this->timeout / 1000,
-            'method'  => 'GET',
-        ]]);
-
-        $response = @file_get_contents($healthUrl, false, $ctx);
-        $latency = round((float) ((microtime(true) - $start) * 1000), 2);
-
-        if ($response !== false) {
-            return ['status' => 'ok', 'latency_ms' => $latency];
+        $ws = \API\Core\WebSocket::health(max(0.5, $this->timeout / 1000));
+        if ($ws['ok']) {
+            return ['status' => 'ok', 'latency_ms' => $ws['latency_ms']];
         }
 
         return ['status' => 'error', 'message' => 'WebSocket server unreachable'];

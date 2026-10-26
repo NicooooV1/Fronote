@@ -38,7 +38,7 @@ include __DIR__ . '/../../templates/shared_header.php';
 include __DIR__ . '/../../templates/shared_topbar.php';
 ?>
 
-<div style="width:100%;max-width:1100px;margin:24px auto;padding:0 16px">
+<div class="mk-page">
     <h1 style="font-size:1.5em;margin:0 0 16px"><i class="fas fa-photo-video"></i> <?= __('mediatheque.titre') ?></h1>
 
     <form method="get" style="display:flex;gap:8px;margin-bottom:24px">
@@ -59,23 +59,23 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <?php endif; ?>
 
     <?php if ($q !== ''): ?>
-    <h2 style="font-size:1.1em;margin:0 0 12px">Résultats pour « <?= htmlspecialchars($q) ?> » (<?= count($resultats) ?>)</h2>
+    <h2 class="section-title">Résultats pour « <?= htmlspecialchars($q) ?> » (<?= count($resultats) ?>)</h2>
     <?php if (empty($resultats)): ?>
-    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('mediatheque.aucun_contenu_trouve') ?></p>
+    <p class="empty-state mk-empty-sm"><?= __('mediatheque.aucun_contenu_trouve') ?></p>
     <?php else: ?>
     <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:28px"><?php foreach ($resultats as $c) echo med_card($c); ?></div>
     <?php endif; ?>
     <?php else: ?>
-    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-magic"></i> <?= __('mediatheque.recommande_pour_vous') ?></h2>
+    <h2 class="section-title"><i class="fas fa-magic"></i> <?= __('mediatheque.recommande_pour_vous') ?></h2>
     <?php if (empty($reco)): ?>
-    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('mediatheque.aucun_contenu_disponible') ?></p>
+    <p class="empty-state mk-empty-sm"><?= __('mediatheque.aucun_contenu_disponible') ?></p>
     <?php else: ?>
     <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:28px"><?php foreach ($reco as $c) echo med_card($c); ?></div>
     <?php endif; ?>
     <?php endif; ?>
 
     <?php if (!empty($favoris)): ?>
-    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-star"></i> <?= __('mediatheque.mes_favoris') ?> (<?= count($favoris) ?>)</h2>
+    <h2 class="section-title"><i class="fas fa-star"></i> <?= __('mediatheque.mes_favoris') ?> (<?= count($favoris) ?>)</h2>
     <div style="display:flex;flex-wrap:wrap;gap:12px"><?php foreach ($favoris as $c) echo med_card($c); ?></div>
     <?php endif; ?>
 </div>

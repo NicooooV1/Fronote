@@ -20,44 +20,21 @@ class ReunionWidgetProvider extends AbstractWidgetProvider
         }
 
         $limit = min(10, max(1, (int) ($config['limit'] ?? 5)));
-
-        if ($userType === 'parent') {
-            // Prochaines réunions avec des réservations pour ce parent
-            $stmt = $pdo->prepare(
-                "SELECT r.titre, r.date_debut, r.lieu,
-                        rc.heure_debut, rc.heure_fin
-                 FROM reunion_reservations rr
-                 JOIN reunion_creneaux rc ON rc.id = rr.creneau_id
-                 JOIN reunions r ON r.id = rc.reunion_id
-                 WHERE rr.parent_id = ? AND r.date_debut >= CURDATE()
-                 ORDER BY r.date_debut ASC, rc.heure_debut ASC
-                 LIMIT ?"
-            );
-            $stmt->execute([$userId, $limit]);
-        } elseif ($userType === 'professeur') {
-            $stmt = $pdo->prepare(
-                "SELECT r.titre, r.date_debut, r.lieu,
-                        COUNT(rc.id) AS nb_creneaux
-                 FROM reunions r
-                 LEFT JOIN reunion_creneaux rc ON rc.reunion_id = r.id
-                 WHERE r.organisateur_id = ? AND r.organisateur_type = 'professeur'
-                   AND r.date_debut >= CURDATE()
-                 GROUP BY r.id
-                 ORDER BY r.date_debut ASC
-                 LIMIT ?"
-            );
-            $stmt->execute([$userId, $limit]);
-        } else {
-            $stmt = $pdo->prepare(
-                "SELECT r.titre, r.date_debut, r.lieu
-                 FROM reunions r
-                 WHERE r.date_debut >= CURDATE()
-                 ORDER BY r.date_debut ASC
-                 LIMIT ?"
-            );
-            $stmt->execute([$limit]);
-        }
-
+        // Réunions où l'utilisateur est attendu (participant convoqué ou rendez-vous réservé), à venir
+        $stmt = $pdo->prepare(
+            "SELECT r.id, r.titre, r.type, r.date_debut, COALESCE(s.nom, r.lieu) AS lieu, MIN(rc.heure_debut) AS heure_debut
+             FROM reunions r
+             LEFT JOIN salles s ON s.id = r.salle_id
+             LEFT JOIN reunion_participants p ON p.reunion_id = r.id AND p.user_id = ? AND p.user_type = ?
+             LEFT JOIN reunion_creneaux rc ON rc.reunion_id = r.id
+             LEFT JOIN reunion_reservations rr ON rr.creneau_id = rc.id AND rr.statut <> 'annulee' AND rr.parent_id = ?
+             WHERE r.date_fin >= NOW() AND r.statut <> 'annulee'
+               AND (p.id IS NOT NULL OR rr.id IS NOT NULL OR (rc.professeur_id = ? AND ? = 'professeur'))
+             GROUP BY r.id
+             ORDER BY r.date_debut ASC
+             LIMIT ?"
+        );
+        $stmt->execute([$userId, $userType, $userType === 'parent' ? $userId : 0, $userId, $userType, $limit]);
         $reunions = $stmt->fetchAll(\PDO::FETCH_ASSOC);
         return ['reunions' => $reunions, 'count' => count($reunions)];
     }

@@ -17,13 +17,6 @@ $pdo = getPDO();
 $service = new VieScolaireService($pdo);
 $eleveId = (int)($_GET['id'] ?? 0);
 
-// Recherche AJAX (sortie JSON — avant tout HTML/header.php)
-if (isset($_GET['ajax']) && $_GET['ajax'] === 'search') {
-    header('Content-Type: application/json');
-    echo json_encode($service->rechercherEleves($_GET['q'] ?? ''));
-    exit;
-}
-
 require_once __DIR__ . '/includes/header.php';
 
 $fiche = null;
@@ -39,11 +32,7 @@ $activeTab = $_GET['tab'] ?? 'resume';
 
 <!-- Barre de recherche -->
 <div class="search-bar-vs">
-    <div class="search-input-wrap">
-        <i class="fas fa-search"></i>
-        <input type="text" id="searchEleve" class="form-control" placeholder="Rechercher un élève (nom, prénom, classe)..." autocomplete="off">
-        <div id="searchResults" class="search-dropdown"></div>
-    </div>
+    <input type="hidden" id="suiviEleve" data-eleve-search data-placeholder="Rechercher un élève : nom, prénom ou classe…">
 </div>
 
 <?php if ($fiche && $fiche['eleve']): ?>
@@ -184,29 +173,10 @@ $activeTab = $_GET['tab'] ?? 'resume';
 <?php endif; ?>
 
 <script nonce="<?= csp_nonce() ?>">
-(function() {
-    const input = document.getElementById('searchEleve');
-    const results = document.getElementById('searchResults');
-    let timeout;
-    // Échappement HTML : les noms d'élèves viennent de la BDD et peuvent contenir des
-    // métacaractères → sans escape, injection dans innerHTML = XSS stocké.
-    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    input.addEventListener('input', function() {
-        clearTimeout(timeout);
-        const q = this.value.trim();
-        if (q.length < 2) { results.innerHTML = ''; results.style.display = 'none'; return; }
-        timeout = setTimeout(() => {
-            fetch('suivi_eleve.php?ajax=search&q=' + encodeURIComponent(q))
-                .then(r => r.json())
-                .then(data => {
-                    if (!data.length) { results.innerHTML = '<div class="search-item text-muted">Aucun résultat</div>'; }
-                    else { results.innerHTML = data.map(e => `<a href="suivi_eleve.php?id=${encodeURIComponent(e.id)}" class="search-item"><strong>${esc(e.prenom)} ${esc(e.nom)}</strong> <span class="text-muted">${esc(e.classe)}</span></a>`).join(''); }
-                    results.style.display = 'block';
-                });
-        }, 300);
-    });
-    document.addEventListener('click', e => { if (!e.target.closest('.search-bar-vs')) results.style.display = 'none'; });
-})();
+// Choisir un élève ouvre directement son suivi
+document.getElementById('suiviEleve').addEventListener('eleve:change', function (e) {
+    if (e.detail && e.detail.value) { location.href = 'suivi_eleve.php?id=' + encodeURIComponent(e.detail.value); }
+});
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

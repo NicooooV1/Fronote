@@ -1,0 +1,10 @@
+# Démo Fronote : la plateforme dépose storage/demo-reset.request (via /demo/reset.php) → remise à zéro.
+[Unit]
+Description=Fronote démo — réinitialisation à la demande
+
+[Path]
+PathExists=/var/www/fronote/storage/demo-reset.request
+Unit=fronote-demo-reset.service
+
+[Install]
+WantedBy=multi-user.target

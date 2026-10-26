@@ -173,6 +173,9 @@ class AbsenceHelper
             'current_page' => $page,
             'total_pages'  => $totalPages,
             'total'        => $total,
+            // Les vues lisent la forme camelCase : sans ces clés, la pagination ne s'affichait jamais.
+            'currentPage'  => $page,
+            'totalPages'   => $totalPages,
         ];
     }
 

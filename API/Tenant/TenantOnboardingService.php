@@ -223,9 +223,15 @@ final class TenantOnboardingService extends \API\Services\AbstractTenantService
                 }
             }
 
-            // Invitations « directeur » = flux plateforme, absent des instances distribuées.
-            if (class_exists('\\API\\Platform\\DirectorInvitationService')) {
-                (new \API\Platform\DirectorInvitationService($this->pdo))->markAccepted((int) $invitation['id']);
+            // L'invitation est consommée (la couche plateforme locale qui le faisait a été retirée).
+            // Table absente sur certaines instances : ne jamais faire échouer l'acceptation pour ça.
+            if (!empty($invitation['id'])) {
+                try {
+                    $this->pdo->prepare("UPDATE director_invitations SET status = 'accepted' WHERE id = ? AND status = 'pending'")
+                        ->execute([(int) $invitation['id']]);
+                } catch (\PDOException $e) {
+                    error_log('[onboarding] invitation non marquée acceptée : ' . $e->getMessage());
+                }
             }
             $this->pdo->commit();
         } catch (\Throwable $e) {

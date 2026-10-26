@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 $activePage = 'projets';
+$pageTitle = $pageTitle ?? 'Projets pédagogiques';
 require_once __DIR__ . '/includes/header.php';
 
 // Source de vérité = helpers d'auth (et non $_SESSION['user'] brut, fragile/incohérent).

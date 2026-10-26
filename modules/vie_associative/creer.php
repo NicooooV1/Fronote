@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 $activePage = 'associations';
+$pageTitle = $pageTitle ?? 'Nouvelle association';
 require_once __DIR__ . '/includes/header.php';
 
 $user = $_SESSION['user'];

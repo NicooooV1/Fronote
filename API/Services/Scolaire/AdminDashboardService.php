@@ -89,11 +89,10 @@ class AdminDashboardService extends \API\Services\AbstractTenantService
             $kpi['taux_remplissage_notes'] = round((float) (($profsAvecNotes / max((int) $sp->fetchColumn(), 1)) * 100), 1);
         } catch (\Throwable $e) { error_log('[AdminDashboardService.php] ' . $e->getMessage()); }
         try {
-            $wsUrl = function_exists('env') ? env('WEBSOCKET_CLIENT_URL', '') : '';
-            if ($wsUrl) {
-                $wsHealth = @file_get_contents(rtrim($wsUrl, '/') . '/health', false, stream_context_create(['http' => ['timeout' => 2]]));
-                $kpi['ws_status'] = $wsHealth !== false ? 'ok' : 'down';
-                if ($wsHealth) { $wsData = json_decode($wsHealth, true); $kpi['ws_connections'] = $wsData['connections'] ?? 0; }
+            if (getenv('WEBSOCKET_ENABLED') && getenv('WEBSOCKET_ENABLED') !== 'false') {
+                $ws = \API\Core\WebSocket::health();
+                $kpi['ws_status'] = $ws['ok'] ? 'ok' : 'down';
+                $kpi['ws_connections'] = (int) ($ws['data']['connections'] ?? 0);
             }
         } catch (\Throwable $e) { $kpi['ws_status'] = 'error'; }
         try { $kpi['sessions_actives'] = (int) $this->pdo->query("SELECT COUNT(*) FROM session_security WHERE is_active = 1 AND expires_at > NOW()")->fetchColumn(); } catch (\Throwable $e) { error_log('[AdminDashboardService.php] ' . $e->getMessage()); }

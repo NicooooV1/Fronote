@@ -1,0 +1,227 @@
+/**
+ * FRONOTE — Kit commun des pages de module (refonte 4.6). Chargé EN DERNIER.
+ *
+ * Objectif : que toutes les pages de module se ressemblent, quel que soit leur âge :
+ *  - un seul en-tête (icône de famille, titre, sous-titre, actions) + des onglets soulignés ;
+ *  - une largeur de contenu unique ;
+ *  - les mêmes cartes de chiffres, cartes, barres de filtres, tableaux, pastilles et états vides.
+ * Les sélecteurs sont préfixés par .content-container pour l'emporter sur les feuilles propres
+ * aux modules (chargées avant), sans !important sauf pour neutraliser des largeurs figées.
+ * Couleurs : variables de thème (--bg-card, --text-primary…) → clair, sombre et liquide suivent.
+ */
+
+.main-content {
+  --mk-surface: var(--bg-card, #fff);
+  --mk-sunken: color-mix(in srgb, var(--text-primary, #1d1d1f) 3.5%, var(--bg-card, #fff));
+  --mk-text: var(--text-primary, #1d1d1f);
+  --mk-muted: var(--text-secondary, #6b7280);
+  --mk-border: var(--border-color, #e5e7eb);
+  --mk-accent: var(--primary, #0f4c81);
+  --mk-radius: 14px;
+  --mk-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 4px 16px rgba(15, 23, 42, .04);
+  --mk-max: 1440px;
+}
+[data-theme="dark"] .main-content { --mk-accent: var(--primary-light, #7cb2ff); --mk-shadow: none; }
+
+/* ── 1. En-tête de module ─────────────────────────────────────────── */
+.top-header.mh {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 16px;
+  max-width: var(--mk-max);
+  width: 100%;
+  margin: 0 auto;
+  padding: 26px 24px 16px;
+  box-sizing: border-box;
+  background: none;
+  border: 0;
+}
+.top-header.mh.mh--plain { grid-template-columns: minmax(0, 1fr) auto; }
+.mh .mh-icon {
+  --mh-c: var(--mk-accent);
+  width: 48px; height: 48px; border-radius: 14px;
+  display: inline-grid; place-items: center;
+  font-size: 1.25rem;
+  color: var(--mh-c);
+  background: color-mix(in srgb, var(--mh-c) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mh-c) 18%, transparent);
+}
+.mh[data-group="scolarite"] .mh-icon { --mh-c: #2563eb; }
+.mh[data-group="vie_scolaire"] .mh-icon { --mh-c: #0d9488; }
+.mh[data-group="communication"] .mh-icon { --mh-c: #7c3aed; }
+.mh[data-group="etablissement"] .mh-icon { --mh-c: #c2410c; }
+.mh[data-group="administration"] .mh-icon { --mh-c: #475569; }
+[data-theme="dark"] .mh .mh-icon, [data-theme="liquid"] .mh .mh-icon { --mh-c: var(--mk-accent); }
+.mh .page-title { min-width: 0; }
+.mh .mh-eyebrow { margin: 0 0 2px; font-size: .74rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--mk-muted); }
+.mh .page-title h1 { font-size: clamp(1.35rem, 1.1rem + .9vw, 1.75rem); font-weight: 700; color: var(--mk-text); line-height: 1.2; margin: 0; }
+.mh .page-title .subtitle, .mh .mh-sub { margin: 4px 0 0; font-size: .92rem; color: var(--mk-muted); max-width: 72ch; }
+.mh .page-back { margin: 0 0 4px; padding: 2px 8px 2px 0; }
+.mh .mh-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.mh .mh-actions:empty { display: none; }
+.mh .mh-actions > form { margin: 0; display: inline-flex; gap: 8px; }
+
+/* Onglets du module : soulignés (et non plus des pastilles), alignés sur le contenu */
+.module-subnav {
+  max-width: var(--mk-max);
+  width: 100%;
+  margin: 0 auto 8px;
+  padding: 0 24px;
+  box-sizing: border-box;
+  background: none;
+  border-bottom: 1px solid var(--mk-border);
+}
+.module-subnav .sidebar-nav { gap: 2px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.module-subnav .sidebar-nav::-webkit-scrollbar { display: none; }
+.module-subnav .sidebar-nav-item {
+  border-radius: 0; border: 0; padding: 10px 12px 11px; margin-bottom: -1px;
+  color: var(--mk-muted); background: none !important;
+  box-shadow: inset 0 -2px 0 transparent;
+}
+.module-subnav .sidebar-nav-item:hover { color: var(--mk-text); box-shadow: inset 0 -2px 0 var(--mk-border); }
+.module-subnav .sidebar-nav-item.active { color: var(--mk-accent); font-weight: 600; box-shadow: inset 0 -2px 0 var(--mk-accent); }
+[data-theme="liquid"] .module-subnav .sidebar-nav-item.active { color: var(--mk-accent); }
+
+/* ── 2. Largeur et rythme du contenu ──────────────────────────────── */
+/* Quel que soit l'enveloppe ouverte par le module (.content-container, .main-content imbriqué,
+   .content-wrapper…), le contenu a la même largeur et les mêmes marges que l'en-tête. */
+#main-content > :not(.top-header):not(.module-subnav):not(.footer):not(footer):not(script):not(style):not(.fronote-demo-banner) {
+  max-width: var(--mk-max);
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 24px;
+  padding-right: 24px;
+  box-sizing: border-box;
+}
+#main-content > .content-container { padding-top: 12px; padding-bottom: 32px; gap: 18px; }
+#main-content > .main-content { display: flex; flex-direction: column; gap: 18px; padding-top: 12px; padding-bottom: 32px; min-height: 0; }
+/* Neutralise les largeurs figées héritées (pages centrées en colonne étroite) */
+:is(.content-container, #main-content > .main-content) > :is(.content-wrapper, .container, .content-body),
+:is(.content-container, #main-content) > .form-container:not(.narrow) { max-width: none !important; width: 100%; margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }
+:is(.content-container, #main-content) .content-wrapper { display: flex; flex-direction: column; gap: 18px; }
+/* Bandeaux « héros » décoratifs : l'en-tête de module joue déjà ce rôle */
+:is(.content-container, #main-content) .welcome-banner { display: none; }
+
+/* ── 3. Chiffres clés ─────────────────────────────────────────────── */
+:is(.content-container, #main-content) :is(.stats-row, .stats-grid, .stats-container, .stat-cards, .kpi-grid, .notes-stats) {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+:is(.content-container, #main-content) :is(.stat-card, .vs-stat-card, .notes-stat-card, .kpi-card) {
+  position: relative;
+  display: flex; align-items: center; gap: 12px;
+  min-height: 0;
+  padding: 16px 18px;
+  background: var(--mk-surface);
+  border: 1px solid var(--mk-border);
+  border-radius: var(--mk-radius);
+  box-shadow: var(--mk-shadow);
+  color: var(--mk-text);
+  text-align: left;
+}
+:is(.content-container, #main-content) :is(.stat-card, .vs-stat-card) > i,
+:is(.content-container, #main-content) :is(.stat-icon, .vs-stat-icon) {
+  flex: none; width: 40px; height: 40px; border-radius: 12px; display: inline-grid; place-items: center;
+  font-size: 1rem; color: var(--mk-accent); background: color-mix(in srgb, var(--mk-accent) 11%, transparent);
+}
+:is(.content-container, #main-content) :is(.stat-value, .vs-stat-value, .notes-stat-value, .stat-number, .kpi-value) {
+  display: block; font-size: 1.5rem; font-weight: 700; line-height: 1.15; color: var(--mk-text); letter-spacing: -.02em;
+}
+:is(.content-container, #main-content) :is(.stat-label, .vs-stat-label, .notes-stat-label, .kpi-label) {
+  display: block; margin-top: 2px; font-size: .8rem; font-weight: 500; color: var(--mk-muted); text-transform: none; letter-spacing: 0;
+}
+:is(.content-container, #main-content) .stat-card:is(.stat-danger, .danger) :is(.stat-value, i) { color: #dc2626; }
+:is(.content-container, #main-content) .stat-card:is(.stat-warning, .warning) :is(.stat-value, i) { color: #d97706; }
+:is(.content-container, #main-content) .stat-card:is(.stat-success, .success) :is(.stat-value, i) { color: #059669; }
+
+/* ── 4. Cartes ────────────────────────────────────────────────────── */
+:is(.content-container, #main-content) .card:not(.ds-card) {
+  background: var(--mk-surface);
+  border: 1px solid var(--mk-border);
+  border-radius: var(--mk-radius);
+  box-shadow: var(--mk-shadow);
+  overflow: hidden;
+}
+:is(.content-container, #main-content) .card > .card-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  padding: 14px 18px; background: none; border-bottom: 1px solid var(--mk-border);
+}
+:is(.content-container, #main-content) .card > .card-header :is(h2, h3, h4, h5) { margin: 0; font-size: 1rem; font-weight: 650; color: var(--mk-text); }
+:is(.content-container, #main-content) .card > .card-body { padding: 16px 18px; }
+:is(.content-container, #main-content) :is(.section-title) { font-size: 1.05rem; font-weight: 650; color: var(--mk-text); margin: 6px 0 2px; }
+
+/* ── 5. Barres de filtres ─────────────────────────────────────────── */
+:is(.content-container, #main-content) :is(.filter-bar, .filters-bar, .filter-form, .filters) {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px;
+  padding: 12px 14px;
+  background: var(--mk-sunken);
+  border: 1px solid var(--mk-border);
+  border-radius: 12px;
+  margin: 0;
+}
+:is(.content-container, #main-content) :is(.filter-bar, .filter-form) :is(.form-group, .filter-group, .filter-item) { margin: 0; min-width: 150px; flex: 0 1 auto; }
+:is(.content-container, #main-content) :is(.filter-bar, .filter-form) label { font-size: .76rem; font-weight: 600; color: var(--mk-muted); margin-bottom: 4px; }
+
+/* Pastilles de filtre (catégories, statuts) */
+:is(.content-container, #main-content) :is(.cat-bar, .filter-tabs, .status-tabs, .chips) { display: flex; flex-wrap: wrap; gap: 6px; }
+:is(.content-container, #main-content) :is(.cat-chip, .filter-tab, .status-tab, .chip) {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px;
+  font-size: .84rem; font-weight: 500; color: var(--mk-muted); text-decoration: none;
+  background: var(--mk-surface); border: 1px solid var(--mk-border); transition: background .15s, color .15s, border-color .15s;
+}
+:is(.content-container, #main-content) :is(.cat-chip, .filter-tab, .status-tab, .chip):hover { color: var(--mk-text); border-color: color-mix(in srgb, var(--mk-text) 25%, transparent); }
+:is(.content-container, #main-content) :is(.cat-chip, .filter-tab, .status-tab, .chip):is(.active, [aria-current="true"]) { color: #fff; background: var(--mk-accent); border-color: var(--mk-accent); }
+[data-theme="liquid"] .content-container :is(.cat-chip, .filter-tab, .status-tab, .chip):is(.active, [aria-current="true"]) { color: var(--text-on-accent, #0b1020); }
+
+/* ── 6. Tableaux ──────────────────────────────────────────────────── */
+:is(.content-container, #main-content) :is(.data-table, table.table) { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .9rem; }
+:is(.content-container, #main-content) :is(.data-table, table.table) thead th {
+  position: sticky; top: 0; z-index: 1;
+  padding: 10px 12px; text-align: left; font-size: .74rem; font-weight: 650; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--mk-muted); background: var(--mk-sunken); border-bottom: 1px solid var(--mk-border);
+}
+:is(.content-container, #main-content) :is(.data-table, table.table) tbody td { padding: 10px 12px; border-bottom: 1px solid var(--mk-border); color: var(--mk-text); vertical-align: middle; }
+:is(.content-container, #main-content) :is(.data-table, table.table) tbody tr:last-child td { border-bottom: 0; }
+:is(.content-container, #main-content) :is(.data-table, table.table) tbody tr:hover td { background: color-mix(in srgb, var(--mk-accent) 4%, transparent); }
+:is(.content-container, #main-content) :is(.table-responsive, .data-table-container) {
+  overflow-x: auto; background: var(--mk-surface); border: 1px solid var(--mk-border); border-radius: var(--mk-radius);
+}
+:is(.content-container, #main-content) .card .table-responsive { border: 0; border-radius: 0; }
+
+/* ── 7. États vides ───────────────────────────────────────────────── */
+:is(.content-container, #main-content) :is(.empty-state, .no-data, .empty) {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  padding: 40px 20px; text-align: center; color: var(--mk-muted);
+  background: var(--mk-surface); border: 1px dashed var(--mk-border); border-radius: var(--mk-radius);
+}
+:is(.content-container, #main-content) :is(.empty-state, .no-data) > i:first-child { font-size: 1.8rem; opacity: .45; margin-bottom: 4px; }
+:is(.content-container, #main-content) :is(.empty-state, .no-data) p { margin: 0; max-width: 46ch; }
+
+/* ── 8. Badges ────────────────────────────────────────────────────── */
+:is(.content-container, #main-content) .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 999px; font-size: .74rem; font-weight: 600; line-height: 1.6; }
+
+/* ── 9. Mobile ────────────────────────────────────────────────────── */
+@media (max-width: 760px) {
+  .top-header.mh { grid-template-columns: auto minmax(0, 1fr); padding: 18px 16px 10px; }
+  .mh .mh-icon { width: 40px; height: 40px; border-radius: 12px; font-size: 1.05rem; }
+  .mh .mh-actions { grid-column: 1 / -1; justify-content: flex-start; }
+  .module-subnav { padding: 0 8px; }
+  #main-content > :not(.top-header):not(.module-subnav):not(.footer):not(footer):not(script):not(style) { padding-left: 16px; padding-right: 16px; }
+  .content-container :is(.stats-row, .stats-grid, .stats-container, .stat-cards, .kpi-grid, .notes-stats) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ── 10. Pages « récentes » (anciens styles en ligne convertis) ───── */
+.mk-page { display: flex; flex-direction: column; gap: 18px; padding-top: 12px; padding-bottom: 32px; }
+:is(.content-container, #main-content) .stat-card.mk-stack { flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; }
+:is(.content-container, #main-content) .mk-empty-sm { padding: 16px 18px; flex-direction: row; justify-content: flex-start; text-align: left; border-style: dashed; }
+:is(.content-container, #main-content) .mk-page > .section-title, :is(.content-container, #main-content) .mk-page h2 { margin: 8px 0 0; font-size: 1.05rem; font-weight: 650; }
+
+/* ── 11. « Afficher plus » des listes longues (assets/js/module-kit.js) ── */
+.mk-more { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 14px 0 4px; }
+.mk-more::before { content: attr(data-count); font-size: .82rem; color: var(--mk-muted); }
+.mk-more__all { border: 0; background: none; color: var(--mk-accent); font: inherit; font-size: .86rem; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+[data-mk-hidden] { display: none !important; }

@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Remise à zéro COMPLÈTE de la démo publique Fronote (CT127) :
+# base vierge (post-installation) → réconciliation avec la version installée →
+# données fictives régénérées (dates du jour) → sessions, cache et fichiers des visiteurs purgés.
+# Pendant l'opération (~10 s) le site affiche la page de maintenance de l'application.
+# En cas d'échec, la maintenance RESTE affichée (jamais de démo à moitié vide) et l'erreur est journalisée.
+# Déclencheurs : cron horaire, et bouton « Réinitialiser » de la plateforme (fronote-demo-reset.path).
+# Installé dans /usr/local/sbin/ sur l'hôte de démo (CT127) ; source : bin/demo-ops/ du dépôt.
+set -euo pipefail
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+APP=/var/www/fronote; STATE=/var/lib/fronote-demo; MAINT=$APP/storage/maintenance.json
+exec 9>/run/fronote-demo-reset.lock; flock -n 9 || { echo "$(date -Is) reset déjà en cours"; exit 0; }
+trap 'echo "$(date -Is) ÉCHEC du reset (ligne $LINENO) — maintenance laissée active" >&2' ERR
+
+printf '{"active":true,"message":"La démonstration se réinitialise — retour dans quelques secondes.","allowed_ips":[]}\n' > "$MAINT"
+chown www-data:www-data "$MAINT"
+
+DB=$(grep '^DB_NAME=' $APP/.env | cut -d= -f2-)
+mysql -e "DROP DATABASE IF EXISTS \`$DB\`; CREATE DATABASE \`$DB\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+mysql "$DB" < $STATE/pristine.sql
+runuser -u www-data -- php $APP/bin/upgrade.php >/dev/null
+runuser -u www-data -- php $APP/bin/demo-seed.php >/dev/null
+
+for d in uploads storage/cache storage/tmp storage/quarantine storage/backups; do
+  [ -d "$APP/$d" ] && find "$APP/$d" -mindepth 1 ! -name .gitkeep ! -name .htaccess ! -name maintenance.json -delete
+done
+find /var/lib/php/sessions -name 'sess_*' -delete 2>/dev/null || true
+
+rm -f "$MAINT" "$APP/storage/demo-reset.request"
+printf '{"last_reset":"%s","trigger":"%s"}\n' "$(date -Is)" "${1:-horaire}" > "$APP/storage/demo-reset.status.json"
+chown www-data:www-data "$APP/storage/demo-reset.status.json"
+echo "$(date -Is) démo réinitialisée (${1:-horaire})"

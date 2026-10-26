@@ -185,7 +185,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
                         // que ce drapeau est armé ; change_password.php agit sur le compte
                         // authentifié courant (plus de reset_user_id/reset_code self-service).
                         $fullUser = $userService->findById((int)$user['id'], $user['type']);
-                        if ($fullUser && empty($fullUser['password_changed_at'])) {
+                        // Démonstration : les comptes « demo.* » sont partagés et leur mot de passe
+                        // ne peut pas être changé (DemoMode::guard) → ne jamais l'exiger.
+                        if ($fullUser && empty($fullUser['password_changed_at']) && !\API\Core\DemoMode::isDemoAccount((string) $username)) {
                             $_SESSION['force_password_change'] = true;
                             redirect('login/change_password.php');
                         }

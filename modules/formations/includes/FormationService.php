@@ -20,7 +20,7 @@ class FormationService extends \API\Services\AbstractTenantService
 
     public function getCatalogue(int $etabId, ?string $type = null): array
     {
-        $sql = "SELECT f.*, (SELECT COUNT(*) FROM formation_inscriptions fi WHERE fi.formation_id = f.id AND fi.statut = 'validee') AS nb_inscrits FROM formations f WHERE f.etablissement_id = :eid AND f.statut = 'publiee'";
+        $sql = "SELECT f.*, (SELECT COUNT(*) FROM formation_inscriptions fi WHERE fi.formation_id = f.id AND fi.statut = 'validee') AS nb_inscrits FROM formations f WHERE f.etablissement_id = :eid AND f.statut IN ('ouverte', 'en_cours')";
         $params = [':eid' => $etabId];
         if ($type) { $sql .= " AND f.type = :t"; $params[':t'] = $type; }
         $sql .= " ORDER BY f.date_debut ASC";
@@ -31,34 +31,34 @@ class FormationService extends \API\Services\AbstractTenantService
 
     public function creerFormation(int $etabId, string $titre, string $type, string $description, string $dateDebut, string $dateFin, int $placesMax, float $cout = 0, string $organisme = '', string $lieu = ''): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO formations (etablissement_id, titre, type, description, date_debut, date_fin, places_max, cout, organisme, lieu, statut) VALUES (:eid, :t, :ty, :d, :dd, :df, :pm, :c, :o, :l, 'brouillon')");
+        $stmt = $this->pdo->prepare("INSERT INTO formations (etablissement_id, titre, type, description, date_debut, date_fin, places_max, cout, organisme, lieu, statut) VALUES (:eid, :t, :ty, :d, :dd, :df, :pm, :c, :o, :l, 'planifiee')"); // brouillon = « planifiée » (non publiée)
         $stmt->execute([':eid' => $etabId, ':t' => $titre, ':ty' => $type, ':d' => $description, ':dd' => $dateDebut, ':df' => $dateFin, ':pm' => $placesMax, ':c' => $cout, ':o' => $organisme, ':l' => $lieu]);
         return (int)$this->pdo->lastInsertId();
     }
 
     public function publierFormation(int $formationId): void
     {
-        $this->pdo->prepare("UPDATE formations SET statut = 'publiee' WHERE id = :id AND etablissement_id = :eid")->execute([':id' => $formationId, ':eid' => \API\Core\EstablishmentContext::id()]);
+        $this->pdo->prepare("UPDATE formations SET statut = 'ouverte' WHERE id = :id AND etablissement_id = :eid")->execute([':id' => $formationId, ':eid' => \API\Core\EstablishmentContext::id()]);
     }
 
     // ─── Inscriptions ─────────────────────────────────────────────
 
     public function inscrire(int $formationId, int $personnelId, string $motivation = ''): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO formation_inscriptions (formation_id, personnel_id, motivation, statut) VALUES (:fid, :pid, :m, 'en_attente')");
+        $stmt = $this->pdo->prepare("INSERT INTO formation_inscriptions (formation_id, personnel_id, motivation, statut) VALUES (:fid, :pid, :m, 'demandee')");
         $stmt->execute([':fid' => $formationId, ':pid' => $personnelId, ':m' => $motivation]);
         return (int)$this->pdo->lastInsertId();
     }
 
     public function validerInscription(int $inscriptionId, int $validePar): void
     {
-        $this->pdo->prepare("UPDATE formation_inscriptions SET statut = 'validee', valide_par = :vp, date_validation = NOW() WHERE id = :id AND statut = 'en_attente'")
+        $this->pdo->prepare("UPDATE formation_inscriptions SET statut = 'validee', valide_par = :vp, date_validation = NOW() WHERE id = :id AND statut = 'demandee'")
             ->execute([':vp' => $validePar, ':id' => $inscriptionId]);
     }
 
     public function refuserInscription(int $inscriptionId, int $refusePar, string $motif = ''): void
     {
-        $this->pdo->prepare("UPDATE formation_inscriptions SET statut = 'refusee', valide_par = :rp, motif_refus = :m, date_validation = NOW() WHERE id = :id AND statut = 'en_attente'")
+        $this->pdo->prepare("UPDATE formation_inscriptions SET statut = 'refusee', valide_par = :rp, motif_refus = :m, date_validation = NOW() WHERE id = :id AND statut = 'demandee'")
             ->execute([':rp' => $refusePar, ':m' => $motif, ':id' => $inscriptionId]);
     }
 

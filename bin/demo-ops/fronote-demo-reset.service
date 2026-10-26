@@ -1,0 +1,10 @@
+[Unit]
+Description=Fronote démo — réinitialisation (demandée depuis la plateforme)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/fronote-demo-reset plateforme
+# en cas d'échec, ne pas reboucler sur la même demande
+ExecStopPost=/bin/rm -f /var/www/fronote/storage/demo-reset.request
+StandardOutput=append:/var/log/fronote-demo-reset.log
+StandardError=append:/var/log/fronote-demo-reset.log

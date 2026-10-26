@@ -27,17 +27,17 @@ include __DIR__ . '/../../templates/shared_header.php';
 include __DIR__ . '/../../templates/shared_topbar.php';
 ?>
 
-<div style="width:100%;max-width:1100px;margin:24px auto;padding:0 16px">
+<div class="mk-page">
     <h1 style="font-size:1.5em;margin:0 0 16px"><i class="fas fa-user-shield"></i> <?= __('portail_parents.page_title') ?></h1>
 
     <?php if (empty($enfants)): ?>
-    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('portail_parents.no_child') ?></p>
+    <p class="empty-state mk-empty-sm"><?= __('portail_parents.no_child') ?></p>
     <?php else: ?>
 
     <?php if (count($enfants) > 1): ?>
     <form method="get" style="margin-bottom:20px">
         <label style="font-size:.9em;color:var(--text-muted,#64748b);margin-right:8px"><?= __('portail_parents.child') ?></label>
-        <select name="enfant" data-fr-change="submitOwn" style="padding:8px 12px;border:1px solid var(--border,#cbd5e0);border-radius:6px">
+        <select class="form-control" name="enfant" data-fr-change="submitOwn">
             <?php foreach ($enfants as $en): ?>
             <option value="<?= (int) $en['id'] ?>" <?= (int) $en['id'] === $enfantId ? 'selected' : '' ?>><?= htmlspecialchars(($en['prenom'] ?? '') . ' ' . ($en['nom'] ?? '')) ?> (<?= htmlspecialchars($en['classe'] ?? '') ?>)</option>
             <?php endforeach; ?>
@@ -52,7 +52,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
             <div style="color:var(--text-muted,#64748b)"><?= htmlspecialchars($el['classe'] ?? '') ?></div>
         </div>
         <div style="margin-left:auto;text-align:center">
-            <div style="font-size:2em;font-weight:700;color:var(--primary,#0f4c81)"><?= $resume['moyenne_generale'] !== null ? htmlspecialchars((string) $resume['moyenne_generale']) : '—' ?></div>
+            <div class="stat-value"><?= $resume['moyenne_generale'] !== null ? htmlspecialchars((string) $resume['moyenne_generale']) : '—' ?></div>
             <div style="font-size:.8em;color:var(--text-muted,#64748b)"><?= __('portail_parents.moyenne_generale') ?></div>
         </div>
     </div>
@@ -84,7 +84,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <?php endif; ?>
 
     <?php if (!empty($documents)): ?>
-    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-file-signature"></i> <?= __('portail_parents.documents_a_signer') ?> (<?= count($documents) ?>)</h2>
+    <h2 class="section-title"><i class="fas fa-file-signature"></i> <?= __('portail_parents.documents_a_signer') ?> (<?= count($documents) ?>)</h2>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px">
         <?php foreach ($documents as $d): ?>
         <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:8px;padding:12px 14px">
@@ -102,7 +102,7 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <?php endif; ?>
 
     <?php if (!empty($autorisations)): ?>
-    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-door-open"></i> <?= __('portail_parents.autorisations_sortie') ?></h2>
+    <h2 class="section-title"><i class="fas fa-door-open"></i> <?= __('portail_parents.autorisations_sortie') ?></h2>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px">
         <?php foreach ($autorisations as $a): ?>
         <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:8px;padding:12px 14px;font-size:.9em">
@@ -117,19 +117,19 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <?php endif; ?>
 
     <?php if (!empty($paiements)): ?>
-    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-receipt"></i> <?= __('portail_parents.historique_paiements') ?></h2>
-    <div style="overflow-x:auto">
-    <table style="width:100%;border-collapse:collapse;font-size:.9em">
-        <thead><tr style="text-align:left;color:#718096;border-bottom:1px solid #e2e8f0">
-            <th style="padding:8px 10px"><?= __('portail_parents.reference') ?></th><th style="padding:8px 10px"><?= __('label.montant') ?></th>
-            <th style="padding:8px 10px"><?= __('portail_parents.echeance') ?></th><th style="padding:8px 10px"><?= __('label.statut') ?></th>
+    <h2 class="section-title"><i class="fas fa-receipt"></i> <?= __('portail_parents.historique_paiements') ?></h2>
+    <div class="table-responsive">
+    <table class="data-table">
+        <thead><tr>
+            <th><?= __('portail_parents.reference') ?></th><th><?= __('label.montant') ?></th>
+            <th><?= __('portail_parents.echeance') ?></th><th><?= __('label.statut') ?></th>
         </tr></thead>
         <tbody>
         <?php foreach (array_slice($paiements, 0, 12) as $f): ?>
-            <tr style="border-bottom:1px solid #f7fafc">
-                <td style="padding:8px 10px"><?= htmlspecialchars($f['reference'] ?? ('#' . $f['id'])) ?></td>
-                <td style="padding:8px 10px"><?= number_format((float) ($f['montant'] ?? 0), 2, ',', ' ') ?> €</td>
-                <td style="padding:8px 10px"><?= htmlspecialchars($f['date_echeance'] ?? '') ?></td>
+            <tr>
+                <td><?= htmlspecialchars($f['reference'] ?? ('#' . $f['id'])) ?></td>
+                <td><?= number_format((float) ($f['montant'] ?? 0), 2, ',', ' ') ?> €</td>
+                <td><?= htmlspecialchars($f['date_echeance'] ?? '') ?></td>
                 <td style="padding:8px 10px;text-transform:capitalize"><?= htmlspecialchars($f['statut'] ?? '') ?></td>
             </tr>
         <?php endforeach; ?>

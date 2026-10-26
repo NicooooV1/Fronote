@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 $activePage = 'ajouter';
+$pageTitle = $pageTitle ?? 'Ajouter une activité';
 require_once __DIR__ . '/includes/header.php';
 
 $user = $_SESSION['user'];

@@ -19,7 +19,9 @@ final class AccessControlClassificationTest extends TestCase
     private const NON_WEB = [
         'vendor', 'node_modules', '.git', '.github', 'logs', 'storage', 'temp', 'uploads',
         'database', 'tests', 'cron', 'config', 'docker', 'docs', 'ltr', 'websocket', 'scripts',
-        'assets', 'lang',
+        'assets', 'lang', 'bin',
+        // dist/ = serveur de distribution (déployé sur le hub, jamais servi par une instance).
+        'dist',
         // API/ et templates/ contiennent surtout de la lib/des includes : pas de point d'entrée
         // PUBLIC, le deny-by-default les protège correctement (API/endpoints est classé enforced).
         'API', 'templates',

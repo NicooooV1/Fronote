@@ -61,13 +61,38 @@ if (!empty($_SESSION['impersonation'])) {
 ?>
 
     <!-- Main Content -->
+<?php
+// En-tête de module UNIQUE (refonte 4.6) : icône + famille du module, titre, sous-titre, actions,
+// puis les onglets du module. Les doublons d'en-tête dans le contenu des pages (h1, .content-header,
+// .page-header, .welcome-banner) sont retirés et leurs actions remontées ici par
+// \API\UI\PageHeaderFilter (filtre de sortie). Une page peut s'en exclure : $keepPageHeading = true.
+$_mh_key = $activePage;
+if (($_mh_key === '' || !isset($_tb_modules[$_mh_key])) && preg_match('#/modules/([a-z0-9_]+)/#', (string) ($_SERVER['SCRIPT_NAME'] ?? ''), $_mm)) { $_mh_key = $_mm[1]; }
+$_mh_mod = ($_mh_key !== '' && isset($_tb_modules[$_mh_key])) ? $_tb_modules[$_mh_key] : \API\UI\TopbarNav::moduleMeta($_mh_key);
+$_mh_group = $_mh_mod ? ($_tb_groups[$_mh_mod['group']] ?? ['label' => \API\UI\TopbarNav::groupLabel((string) $_mh_mod['group'])]) : null;
+$_mh_eyebrow = '';
+if ($_mh_mod) {
+    $_mh_eyebrow = (string) ($_mh_group['label'] ?? '');
+    if (mb_strtolower(trim((string) $_mh_mod['label'])) !== mb_strtolower(trim((string) $pageTitle))) {
+        $_mh_eyebrow .= ($_mh_eyebrow !== '' ? ' · ' : '') . $_mh_mod['label'];
+    }
+}
+if (empty($keepPageHeading)) {
+    ob_start(static fn(string $buf): string => \API\UI\PageHeaderFilter::apply($buf));
+}
+?>
     <div class="main-content" id="main-content" role="main" tabindex="-1">
-        <div class="top-header">
+        <div class="top-header mh<?= $_mh_mod ? '' : ' mh--plain' ?>"<?= $_mh_mod ? ' data-group="' . htmlspecialchars((string) $_mh_mod['group'], ENT_QUOTES) . '"' : '' ?>>
+            <?php if ($_mh_mod): ?>
+            <span class="mh-icon" aria-hidden="true"><i class="<?= htmlspecialchars((string) $_mh_mod['icon'], ENT_QUOTES) ?>"></i></span>
+            <?php endif; ?>
             <div class="page-title">
                 <?php if ($_pb): ?>
                 <a href="<?= htmlspecialchars($_pb['url']) ?>" class="page-back" title="<?= htmlspecialchars($_pb['label']) ?>">
                     <i class="fas fa-arrow-left"></i><span><?= htmlspecialchars($_pb['label']) ?></span>
                 </a>
+                <?php elseif ($_mh_eyebrow !== ''): ?>
+                <p class="mh-eyebrow"><?= htmlspecialchars($_mh_eyebrow) ?></p>
                 <?php endif; ?>
                 <h1><?= htmlspecialchars($pageTitle) ?><?php
                     // Épingler le module courant dans la barre (même action que ★ du menu Modules).
@@ -77,16 +102,16 @@ if (!empty($_SESSION['impersonation'])) {
                 ?><button type="button" class="tb-pin tb-pin--page<?= $_pinOn ? ' is-on' : '' ?>" data-tb-pin="<?= htmlspecialchars($activePage, ENT_QUOTES) ?>"
                         aria-pressed="<?= $_pinOn ? 'true' : 'false' ?>" title="<?= htmlspecialchars($_pinTxt, ENT_QUOTES) ?>" aria-label="<?= htmlspecialchars($_pinTxt, ENT_QUOTES) ?>"><i class="<?= $_pinOn ? 'fas' : 'far' ?> fa-star" aria-hidden="true"></i></button><?php endif; ?></h1>
                 <?php if (!empty($pageSubtitle)): ?>
-                <p class="subtitle"><?= htmlspecialchars($pageSubtitle) ?></p>
-                <?php endif; ?>
+                <p class="subtitle mh-sub"><?= htmlspecialchars($pageSubtitle) ?></p>
+                <?php else: ?><?= \API\UI\PageHeaderFilter::SUBTITLE_MARK ?><?php endif; ?>
             </div>
 
-            <div class="header-actions">
-                <?= $headerExtraActions ?>
+            <div class="header-actions mh-actions">
+                <?= $headerExtraActions ?><?= \API\UI\PageHeaderFilter::ACTIONS_MARK ?>
             </div>
         </div>
 <?php
-// Barre de navigation secondaire du module (sous-pages), rendue sous le top-header.
+// Onglets du module (sous-pages), rendus sous l'en-tête.
 // Les modules alimentent $sidebarExtraContent (liste .sidebar-nav, héritée de l'ancienne
 // sidebar) ; on la rend ici en bandeau horizontal. Vide => rien n'est affiché.
 $_moduleSubnav = (isset($sidebarExtraContent) && is_string($sidebarExtraContent)) ? trim($sidebarExtraContent) : '';
@@ -96,3 +121,4 @@ if ($_moduleSubnav !== ''):
             <?= $sidebarExtraContent ?>
         </nav>
 <?php endif; ?>
+<?= empty($keepPageHeading) ? \API\UI\PageHeaderFilter::CONTENT_MARK : '' ?>

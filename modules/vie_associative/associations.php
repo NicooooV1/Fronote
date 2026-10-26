@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 $activePage = 'associations';
+$pageTitle = $pageTitle ?? 'Vie associative';
 require_once __DIR__ . '/includes/header.php';
 
 $user = $_SESSION['user'];

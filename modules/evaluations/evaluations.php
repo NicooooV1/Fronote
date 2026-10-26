@@ -33,13 +33,13 @@ include __DIR__ . '/../../templates/shared_header.php';
 include __DIR__ . '/../../templates/shared_topbar.php';
 ?>
 
-<div style="width:100%;max-width:1000px;margin:24px auto;padding:0 16px">
+<div class="mk-page">
     <h1 style="font-size:1.5em;margin:0 0 20px"><i class="fas fa-laptop-code"></i> <?= __('evaluations.title') ?></h1>
 
     <?php if (in_array($role, ['professeur', 'administrateur'], true)): ?>
-    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-database"></i> <?= __('evaluations.my_question_banks') ?> (<?= count($banques) ?>)</h2>
+    <h2 class="section-title"><i class="fas fa-database"></i> <?= __('evaluations.my_question_banks') ?> (<?= count($banques) ?>)</h2>
     <?php if (empty($banques)): ?>
-    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('evaluations.no_question_bank') ?></p>
+    <p class="empty-state mk-empty-sm"><?= __('evaluations.no_question_bank') ?></p>
     <?php else: ?>
     <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:28px">
         <?php foreach ($banques as $b): ?>
@@ -52,28 +52,28 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <?php endif; ?>
     <?php endif; ?>
 
-    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-list-check"></i> <?= __('evaluations.heading') ?> (<?= count($evals) ?>)</h2>
+    <h2 class="section-title"><i class="fas fa-list-check"></i> <?= __('evaluations.heading') ?> (<?= count($evals) ?>)</h2>
     <?php if (empty($evals)): ?>
-    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('evaluations.none') ?></p>
+    <p class="empty-state mk-empty-sm"><?= __('evaluations.none') ?></p>
     <?php else: ?>
-    <div style="overflow-x:auto">
-    <table style="width:100%;border-collapse:collapse;font-size:.9em">
-        <thead><tr style="text-align:left;color:#718096;border-bottom:1px solid #e2e8f0">
-            <th style="padding:8px 10px"><?= __('label.titre') ?></th><th style="padding:8px 10px"><?= __('label.classe') ?></th>
-            <th style="padding:8px 10px"><?= __('evaluations.opening') ?></th>
+    <div class="table-responsive">
+    <table class="data-table">
+        <thead><tr>
+            <th><?= __('label.titre') ?></th><th><?= __('label.classe') ?></th>
+            <th><?= __('evaluations.opening') ?></th>
             <?php if (in_array($role, ['professeur', 'administrateur'], true)): ?>
-            <th style="padding:8px 10px"><?= __('evaluations.submitted') ?></th><th style="padding:8px 10px"><?= __('evaluations.corrected') ?></th>
+            <th><?= __('evaluations.submitted') ?></th><th><?= __('evaluations.corrected') ?></th>
             <?php endif; ?>
         </tr></thead>
         <tbody>
         <?php foreach ($evals as $ev): ?>
-            <tr style="border-bottom:1px solid #f7fafc">
-                <td style="padding:8px 10px"><?= htmlspecialchars($ev['titre']) ?></td>
-                <td style="padding:8px 10px"><?= htmlspecialchars($ev['classe'] ?? '') ?></td>
-                <td style="padding:8px 10px"><?= htmlspecialchars($ev['date_ouverture'] ?? '') ?></td>
+            <tr>
+                <td><?= htmlspecialchars($ev['titre']) ?></td>
+                <td><?= htmlspecialchars($ev['classe'] ?? '') ?></td>
+                <td><?= htmlspecialchars($ev['date_ouverture'] ?? '') ?></td>
                 <?php if (in_array($role, ['professeur', 'administrateur'], true)): ?>
-                <td style="padding:8px 10px"><?= (int) ($ev['nb_soumis'] ?? 0) ?></td>
-                <td style="padding:8px 10px"><?= (int) ($ev['nb_corriges'] ?? 0) ?></td>
+                <td><?= (int) ($ev['nb_soumis'] ?? 0) ?></td>
+                <td><?= (int) ($ev['nb_corriges'] ?? 0) ?></td>
                 <?php endif; ?>
             </tr>
         <?php endforeach; ?>

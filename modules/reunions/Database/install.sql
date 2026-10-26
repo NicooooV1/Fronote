@@ -7,15 +7,26 @@ CREATE TABLE IF NOT EXISTS `reunions` (
   `etablissement_id` int(11) NOT NULL DEFAULT 1,
   `titre` varchar(255) NOT NULL,
   `description` text DEFAULT NULL,
-  `type` enum('parents_profs','conseil_classe','reunion_equipe','individuel','autre') NOT NULL DEFAULT 'parents_profs',
+  `type` varchar(40) NOT NULL DEFAULT 'autre' COMMENT 'parents_profs, conseil_classe, conseil_discipline, commission_educative, equipe_educative, conseil_pedagogique, conseil_administration, reunion_equipe, entretien, autre',
   `date_debut` datetime NOT NULL,
   `date_fin` datetime NOT NULL,
   `lieu` varchar(255) DEFAULT NULL,
+  `salle_id` int(11) DEFAULT NULL,
   `classe_id` int(11) DEFAULT NULL,
+  `eleve_id` int(11) DEFAULT NULL,
   `organisateur_id` int(11) NOT NULL,
   `organisateur_type` varchar(20) NOT NULL,
   `statut` enum('planifiee','en_cours','terminee','annulee') NOT NULL DEFAULT 'planifiee',
   `pv_contenu` text DEFAULT NULL COMMENT 'Procès-verbal de la réunion',
+  `confidentiel` tinyint(1) NOT NULL DEFAULT 0,
+  `visio_url` varchar(255) DEFAULT NULL,
+  `started_at` datetime DEFAULT NULL,
+  `ended_at` datetime DEFAULT NULL,
+  `point_courant` int(11) DEFAULT NULL,
+  `cr_publie` tinyint(1) NOT NULL DEFAULT 0,
+  `conseil_session_id` int(11) DEFAULT NULL,
+  `periode_id` int(11) DEFAULT NULL,
+  `duree_creneau` int(11) DEFAULT NULL,
   `date_creation` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `date_modification` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -113,4 +124,37 @@ CREATE TABLE IF NOT EXISTS `reunion_comptes_rendus` (
   KEY `idx_redacteur` (`redacteur_id`),
   KEY `idx_etablissement` (`etablissement_id`),
   CONSTRAINT `fk_etab_reunion_comptes_rendus` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 4.6 : participants (convocation, présence) et ordre du jour
+CREATE TABLE IF NOT EXISTS `reunion_participants` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `reunion_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `user_type` varchar(20) NOT NULL,
+  `role` varchar(30) NOT NULL DEFAULT 'membre',
+  `convocation` enum('a_envoyer','envoyee','confirmee','excusee') NOT NULL DEFAULT 'a_envoyer',
+  `presence` enum('present','absent','excuse','retard') DEFAULT NULL,
+  `arrive_at` datetime DEFAULT NULL,
+  `date_creation` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_reunion_participant` (`reunion_id`, `user_type`, `user_id`),
+  KEY `idx_participant_user` (`user_type`, `user_id`),
+  CONSTRAINT `fk_participant_reunion` FOREIGN KEY (`reunion_id`) REFERENCES `reunions` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `reunion_points` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `reunion_id` int(11) NOT NULL,
+  `ordre` int(11) NOT NULL DEFAULT 1,
+  `titre` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `duree_minutes` int(11) NOT NULL DEFAULT 10,
+  `statut` enum('a_traiter','en_cours','traite','reporte') NOT NULL DEFAULT 'a_traiter',
+  `notes` text DEFAULT NULL,
+  `decision` text DEFAULT NULL,
+  `debut_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_point_reunion` (`reunion_id`, `ordre`),
+  CONSTRAINT `fk_point_reunion` FOREIGN KEY (`reunion_id`) REFERENCES `reunions` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

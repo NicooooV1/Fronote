@@ -3,8 +3,9 @@ declare(strict_types=1);
 /**
  * Front controller du HUB Fronote (CT122). Aiguille chaque requête :
  *   1. API de distribution  (?action=… ou chemins redeem/download/module/health/…) → server.php
- *   2. Console de gestion    (/console…)                                            → ../console/router.php
- *   3. Site vitrine public   (tout le reste)                                        → vitrine.html
+ *   2. Site vitrine public   (tout le reste)                                        → vitrine.html
+ * La gestion (licences, parc, démo, support) se fait sur la plateforme (platform.nicov1.fr, CT129) ;
+ * l'ancienne console /console a été retirée (2026-10-26) : /console répond désormais 404.
  * Caddy proxifie tout dist.nicov1.fr → ce contrôleur ; le tri se fait ici, en un seul endroit.
  */
 $action = (string) ($_GET['action'] ?? $_POST['action'] ?? '');
@@ -16,17 +17,15 @@ if ($action !== '' || preg_match('#^(redeem|download|module|health|pubkey|manife
     return;
 }
 
-// 2) Console de gestion (privée)
+// Ancienne console de gestion : retirée → 404 explicite (ne pas servir la vitrine sur ces URL)
 if ($path === 'console' || str_starts_with($path, 'console/')) {
-    $router = dirname(__DIR__) . '/console/router.php';
-    if (is_file($router)) { require $router; return; }
-    http_response_code(503);
+    http_response_code(404);
     header('Content-Type: text/plain; charset=utf-8');
-    echo "Console de gestion en cours de mise en place.";
+    echo "Page introuvable.";
     return;
 }
 
-// 3) Vitrine publique
+// 2) Vitrine publique
 $vitrine = __DIR__ . '/vitrine.html';
 if (is_file($vitrine)) {
     header('Content-Type: text/html; charset=utf-8');

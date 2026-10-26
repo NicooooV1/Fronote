@@ -132,6 +132,7 @@ $dateLong = hm_dayLabel(date('Y-m-d'));
 $dateLong = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'][(int) date('w')] . ' ' . (int) date('j') . ' ' . ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'][(int) date('n') - 1];
 
 $pageTitle = 'Accueil';
+$keepPageHeading = true; // l'accueil a son propre en-tête (salutation)
 $extraCss = ['assets/css/home.css'];
 $extraJs = ['assets/js/home.js'];
 include __DIR__ . '/../templates/shared_header.php';

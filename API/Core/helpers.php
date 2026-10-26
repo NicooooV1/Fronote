@@ -144,6 +144,12 @@ if (!function_exists('asset_bust')) {
         }
         $abs = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $m[0]);
         $mtime = @filemtime($abs);
+        if (!$mtime && $urlPath[0] !== '/' && !empty($_SERVER['SCRIPT_FILENAME'])) {
+            // Chemin relatif à la page (feuilles/scripts propres à un module : « assets/css/x.css »)
+            $root = realpath(dirname(__DIR__, 2));
+            $rel = realpath(dirname((string) $_SERVER['SCRIPT_FILENAME']) . DIRECTORY_SEPARATOR . $urlPath);
+            if ($root && $rel && str_starts_with($rel, $root . DIRECTORY_SEPARATOR)) { $mtime = @filemtime($rel); }
+        }
         if (!$mtime) {
             return $href;
         }

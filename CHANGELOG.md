@@ -6,6 +6,56 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [4.6.0] — Réunions refondues, pages de module harmonisées, démo complète — 2026-10-26
+
+### Added — Réunions (tout ce qui n'est pas un cours)
+- Dix types : rencontres parents-professeurs, conseils de classe, conseils de discipline, commissions
+  éducatives, équipes éducatives (ESS), conseil pédagogique, conseil d'administration, réunions
+  d'équipe, entretiens avec une famille, autre. Les réunions sensibles sont confidentielles
+  (participants, direction et vie scolaire seulement).
+- Fil des réunions : prochaine réunion avec compte à rebours, filtres par type, à venir / passées,
+  « seulement les miennes », vue mensuelle.
+- Salle de réunion : convocations (confirmer / s'excuser), ordre du jour minuté, participants,
+  liens utiles (conseil de classe, dossier de l'élève). Mode séance : point en cours, minuteurs,
+  présences, notes enregistrées automatiquement ; clôture avec compte rendu prérempli et publié.
+- Planifier : participants et ordre du jour proposés selon le type et la classe / l'élève.
+- Soirée parents-professeurs : créneaux générés par professeur, « mon parcours de la soirée » pour
+  les familles (un créneau par professeur et par enfant, sans chevauchement), planning du
+  professeur, taux de remplissage pour la direction.
+- Migration 2026_10_26_000002 (type ouvert, participants, ordre du jour).
+
+### Changed — Pages de module
+- Un seul en-tête par page (icône et famille du module, titre, sous-titre, actions, onglets) : les
+  titres répétés dans les pages sont retirés et leurs boutons remontés (filtre de sortie
+  API/UI/PageHeaderFilter). Largeur, cartes de chiffres, filtres, tableaux et états vides communs
+  (assets/css/module-kit.css). Listes très longues paginées (« Afficher plus »).
+- Recherche d'élève unique (API/endpoints/eleves.php + assets/js/eleve-picker.js) : tous les
+  sélecteurs d'élève deviennent des champs « tapez pour chercher » (accents et casse ignorés,
+  plusieurs mots, classe), périmètre selon le rôle.
+
+### Changed — Démonstration
+- Jeu de données : 16 classes, ~410 élèves, toute l'activité depuis la rentrée (appel de chaque cours,
+  notes, cahier de textes, absences, discipline, infirmerie, cantine, CDI, clubs, orientation, stages,
+  compétences, examens, réunions, messagerie, enquêtes…), bulletins des trimestres écoulés.
+- Barre « démonstration » d'une ligne qui décale le contenu au lieu de le recouvrir (navigation
+  mobile, bandeau cookies, menu) ; choix du rôle dans un menu sur mobile.
+- Connexion manuelle d'un compte démo : plus de changement de mot de passe imposé (impossible en démo).
+- Réinitialisation à la demande depuis la plateforme (demo/reset.php + bin/demo-ops/).
+
+### Fixed
+- Tableau de bord direction : la santé du serveur temps réel était lue par l'URL publique (20 s de
+  blocage sans accès réseau) → adresse interne.
+- Service worker : CSS/JS servis « cache d'abord » sans fin (anciennes versions après mise à jour) ;
+  navigations avec préchargement. Préchargement des pages au survol des liens.
+- Feuilles et scripts propres aux modules désormais versionnés (?v=) : plus de styles périmés.
+- Discipline : la recherche d'élève renvoyait la page HTML au lieu des résultats.
+- Formations : statuts incompatibles avec la base (création et publication impossibles).
+- Absences : pagination jamais affichée (clés totalPages/currentPage).
+- Tests : retrait des tests de l'ancienne plateforme locale, classement de bin/ et dist/.
+
+### Removed
+- Ancienne console de gestion du hub (/console) : remplacée par la plateforme (platform.nicov1.fr).
+
 ## [4.5.0] — Support : demandes internes et plateforme Fronote — 2026-10-26
 
 ### Changed — Support

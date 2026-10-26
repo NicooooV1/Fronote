@@ -139,6 +139,30 @@ final class TopbarNav
         ];
     }
 
+    /**
+     * Métadonnées d'un module pour l'en-tête de page (icône, libellé, famille), même s'il n'est pas
+     * dans la barre de l'utilisateur : lues dans modules/<clé>/module.json.
+     */
+    public static function moduleMeta(string $key): ?array
+    {
+        static $cache = [];
+        if ($key === '' || !preg_match('/^[a-z0-9_]+$/', $key)) { return null; }
+        if (array_key_exists($key, $cache)) { return $cache[$key]; }
+        $file = dirname(__DIR__, 2) . '/modules/' . $key . '/module.json';
+        $j = is_file($file) ? json_decode((string) file_get_contents($file), true) : null;
+        if (!is_array($j)) { return $cache[$key] = null; }
+        $name = $j['name'] ?? $key;
+        $label = is_array($name) ? (string) ($name['fr'] ?? reset($name)) : (string) $name;
+        $group = self::MODULE_GROUP[$key] ?? self::CATEGORY_GROUP[(string) ($j['category'] ?? '')] ?? 'administration';
+        return $cache[$key] = ['module_key' => $key, 'label' => $label, 'icon' => (string) ($j['icon'] ?? 'fas fa-circle'), 'group' => $group, 'route' => '', 'type' => 'module'];
+    }
+
+    /** Libellés des familles (pour l'en-tête de page). */
+    public static function groupLabel(string $group): string
+    {
+        return self::GROUPS[$group]['label'] ?? '';
+    }
+
     /** Lien normalisé (ce que le template et le JS consomment). */
     private static function link(array $m): array
     {

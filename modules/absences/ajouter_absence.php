@@ -117,7 +117,7 @@ include 'includes/header.php';
             <div class="form-grid">
                 <div class="form-group form-full">
                     <label for="id_eleve" class="form-label"><?= __('absences.eleve') ?> <span class="required">*</span></label>
-                    <select name="id_eleve" id="id_eleve" class="form-control searchable-select" required>
+                    <select name="id_eleve" id="id_eleve" class="form-control" required>
                         <option value="">Sélectionner un élève</option>
                         <?php foreach ($eleves as $eleve): ?>
                             <option value="<?= $eleve['id'] ?>" <?= $id_eleve_suggere == $eleve['id'] ? 'selected' : '' ?>>
@@ -212,31 +212,6 @@ include 'includes/header.php';
         }
     });
 
-    // Recherche dans le select élève
-    (function() {
-        const select = document.getElementById('id_eleve');
-        if (!select) return;
-        const wrapper = document.createElement('div');
-        wrapper.className = 'searchable-select-wrapper';
-        select.parentNode.insertBefore(wrapper, select);
-        
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'form-control';
-        input.placeholder = 'Rechercher un élève...';
-        input.style.marginBottom = '5px';
-        wrapper.appendChild(input);
-        wrapper.appendChild(select);
-        
-        const options = Array.from(select.options);
-        input.addEventListener('input', function() {
-            const search = this.value.toLowerCase();
-            options.forEach(opt => {
-                if (opt.value === '') { opt.style.display = ''; return; }
-                opt.style.display = opt.textContent.toLowerCase().includes(search) ? '' : 'none';
-            });
-        });
-    })();
 </script>
 
 <?php

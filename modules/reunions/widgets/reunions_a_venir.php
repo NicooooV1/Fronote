@@ -8,11 +8,11 @@ $reunions = $data['reunions'] ?? [];
     <ul class="widget-list">
         <?php foreach ($reunions as $r): ?>
         <li class="widget-list-item">
-            <span class="widget-list-icon"><i class="fas fa-handshake" style="color:var(--accent-color,#4f46e5)"></i></span>
+            <span class="widget-list-icon"><i class="fas fa-people-arrows" style="color:var(--accent-color,#4f46e5)"></i></span>
             <div class="widget-list-content">
-                <div class="widget-list-title"><?= htmlspecialchars($r['titre']) ?></div>
+                <div class="widget-list-title"><a href="<?= isset($r['id']) ? '../modules/reunions/' . (($r['type'] ?? '') === 'parents_profs' ? 'soiree.php' : 'detail.php') . '?id=' . (int) $r['id'] : '../modules/reunions/reunions.php' ?>"><?= htmlspecialchars($r['titre']) ?></a></div>
                 <div class="widget-list-meta">
-                    <?= htmlspecialchars(date('d/m/Y', strtotime($r['date_debut']))) ?>
+                    <?= htmlspecialchars(date('d/m/Y à H\\hi', strtotime($r['date_debut']))) ?>
                     <?php if (!empty($r['heure_debut'])): ?>
                         à <?= htmlspecialchars(substr($r['heure_debut'], 0, 5)) ?>
                     <?php endif; ?>

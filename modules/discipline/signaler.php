@@ -23,14 +23,6 @@ $user = getCurrentUser();
 $success = '';
 $error = '';
 
-// ─── Recherche AJAX d'élèves ──────────────────────────────────
-if (isset($_GET['ajax']) && $_GET['ajax'] === 'search_eleve') {
-    header('Content-Type: application/json');
-    $q = trim($_GET['q'] ?? '');
-    echo json_encode($q ? $service->rechercherEleves($q) : []);
-    exit;
-}
-
 // ─── Traitement du formulaire ─────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
@@ -100,11 +92,8 @@ $gravites = DisciplineService::getGravites();
         <div class="form-section">
             <h3><i class="fas fa-user-graduate"></i> Élève concerné</h3>
             <div class="form-group">
-                <label for="search_eleve">Rechercher un élève *</label>
-                <input type="text" id="search_eleve" class="form-control" placeholder="Tapez le nom ou prénom..." autocomplete="off">
-                <div id="search_results" class="search-dropdown"></div>
-                <input type="hidden" name="eleve_id" id="eleve_id" required>
-                <div id="selected_eleve" class="selected-tag" style="display:none;"></div>
+                <label>Élève *</label>
+                <input type="hidden" name="eleve_id" data-eleve-search data-required>
             </div>
         </div>
 
@@ -160,60 +149,6 @@ $gravites = DisciplineService::getGravites();
     </form>
 </div>
 
-<script nonce="<?= csp_nonce() ?>">
-// Recherche élève avec auto-complétion
-(function() {
-    const input = document.getElementById('search_eleve');
-    const results = document.getElementById('search_results');
-    const hiddenId = document.getElementById('eleve_id');
-    const selectedTag = document.getElementById('selected_eleve');
-    let debounce = null;
-    // Échappement HTML des noms d'élèves (BDD) avant injection dans innerHTML → anti-XSS stocké.
-    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-    input.addEventListener('input', function() {
-        clearTimeout(debounce);
-        const q = this.value.trim();
-        if (q.length < 2) { results.innerHTML = ''; results.style.display = 'none'; return; }
-        debounce = setTimeout(() => {
-            fetch('signaler.php?ajax=search_eleve&q=' + encodeURIComponent(q))
-                .then(r => r.json())
-                .then(data => {
-                    if (!data.length) {
-                        results.innerHTML = '<div class="search-item search-empty">Aucun élève trouvé</div>';
-                    } else {
-                        results.innerHTML = data.map(e =>
-                            `<div class="search-item" data-id="${esc(e.id)}" data-name="${esc(e.prenom + ' ' + e.nom + ' (' + (e.classe || '?') + ')')}">`
-                            + `<strong>${esc(e.prenom)} ${esc(e.nom)}</strong> <span class="search-classe">${esc(e.classe || '')}</span></div>`
-                        ).join('');
-                    }
-                    results.style.display = 'block';
-                });
-        }, 250);
-    });
-
-    results.addEventListener('click', function(e) {
-        const item = e.target.closest('.search-item');
-        if (!item || item.classList.contains('search-empty')) return;
-        hiddenId.value = item.dataset.id;
-        selectedTag.textContent = item.dataset.name;
-        selectedTag.style.display = 'inline-block';
-        input.value = '';
-        results.style.display = 'none';
-    });
-
-    // Supprimer la sélection
-    selectedTag.addEventListener('click', function() {
-        hiddenId.value = '';
-        this.style.display = 'none';
-    });
-
-    document.addEventListener('click', function(e) {
-        if (!results.contains(e.target) && e.target !== input) {
-            results.style.display = 'none';
-        }
-    });
-})();
-</script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

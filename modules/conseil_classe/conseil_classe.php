@@ -38,25 +38,25 @@ include __DIR__ . '/../../templates/shared_header.php';
 include __DIR__ . '/../../templates/shared_topbar.php';
 ?>
 
-<div style="width:100%;max-width:1000px;margin:24px auto;padding:0 16px">
+<div class="mk-page">
     <h1 style="font-size:1.5em;margin:0 0 4px"><i class="fas fa-users-rectangle"></i> <?= __('conseil_classe.page_title') ?></h1>
     <p style="color:var(--text-muted,#64748b);margin:0 0 20px"><?= __('conseil_classe.annee') ?> <?= htmlspecialchars($annee) ?></p>
 
     <?php if (empty($classes)): ?>
-    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('conseil_classe.aucune_classe') ?></p>
+    <p class="empty-state mk-empty-sm"><?= __('conseil_classe.aucune_classe') ?></p>
     <?php else: ?>
     <form method="get" style="margin-bottom:24px">
         <label style="font-size:.9em;color:var(--text-muted,#64748b);margin-right:8px"><?= __('conseil_classe.filtre_classe') ?></label>
-        <select name="classe" data-fr-change="submitOwn" style="padding:8px 12px;border:1px solid var(--border,#cbd5e0);border-radius:6px">
+        <select class="form-control" name="classe" data-fr-change="submitOwn">
             <?php foreach ($classes as $c): ?>
             <option value="<?= htmlspecialchars($c) ?>" <?= $c === $classe ? 'selected' : '' ?>><?= htmlspecialchars($c) ?></option>
             <?php endforeach; ?>
         </select>
     </form>
 
-    <h2 style="font-size:1.1em;margin:0 0 12px"><?= __('conseil_classe.conseils') ?> — <?= htmlspecialchars($classe) ?> (<?= count($sessions) ?>)</h2>
+    <h2 class="section-title"><?= __('conseil_classe.conseils') ?> — <?= htmlspecialchars($classe) ?> (<?= count($sessions) ?>)</h2>
     <?php if (empty($sessions)): ?>
-    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('conseil_classe.aucun_conseil') ?></p>
+    <p class="empty-state mk-empty-sm"><?= __('conseil_classe.aucun_conseil') ?></p>
     <?php else: ?>
     <div style="display:flex;flex-direction:column;gap:10px">
         <?php foreach ($sessions as $s): $stt = $s['statut'] ?? 'planifie'; ?>

@@ -25,6 +25,11 @@ if (!headers_sent()) {
 // (cf. login/index.php & login/verify_2fa.php). La réinitialisation self-service par
 // code à usage unique n'est pas émise (parcours admin-validé) : on ne s'appuie donc
 // plus sur reset_user_id/reset_code côté self-service, qui était un chemin mort.
+// Démonstration publique : mots de passe en lecture seule → jamais de changement imposé
+// (sinon le visiteur reste bloqué ici, l'enregistrement étant refusé par DemoMode::guard).
+if (\API\Core\DemoMode::active()) {
+    unset($_SESSION['force_password_change']);
+}
 $forcedChange = isLoggedIn() && !empty($_SESSION['force_password_change']);
 
 if (!$forcedChange) {

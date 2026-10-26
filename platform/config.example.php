@@ -11,6 +11,8 @@ return [
     'dist_admin_token' => 'CHANGEZ-MOI',
     // Démo publique (supervision).
     'demo_url' => 'https://demo.nicov1.fr',
+    // Jeton du bouton « Réinitialiser la démo » = DEMO_RESET_TOKEN du .env de la démo (openssl rand -hex 32).
+    'demo_reset_token' => '',
     // URL publique de la plateforme (affichée aux établissements).
     'public_url' => 'https://platform.nicov1.fr',
 ];

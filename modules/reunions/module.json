@@ -1,15 +1,15 @@
 {
     "key": "reunions",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "name": {
         "fr": "Réunions",
         "en": "Meetings"
     },
     "description": {
-        "fr": "Gestion des réunions et rendez-vous",
-        "en": "Meetings and appointments management"
+        "fr": "Rencontres parents-professeurs, conseils de classe et de discipline, commissions, équipes éducatives, entretiens : tout ce qui n'est pas un cours.",
+        "en": "Parent-teacher evenings, class and disciplinary councils, committees, interviews: everything that is not a lesson."
     },
-    "icon": "fas fa-handshake",
+    "icon": "fas fa-people-arrows",
     "category": "communication",
     "core": false,
     "permissions": {
@@ -37,8 +37,8 @@
                 "en": "Upcoming meetings"
             },
             "description": {
-                "fr": "Prochaines réunions parents-profs",
-                "en": "Upcoming parent-teacher meetings"
+                "fr": "Vos prochaines réunions et rendez-vous",
+                "en": "Your upcoming meetings"
             },
             "type": "list",
             "icon": "fas fa-handshake",

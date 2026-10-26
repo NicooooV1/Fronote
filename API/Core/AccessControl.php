@@ -76,7 +76,6 @@ final class AccessControl
         'platform/',
         'tenant/',
         'impersonation/',
-        'director/',
     ];
 
     /** Réservé au super_admin (opérations infrastructure / cross-établissement). */

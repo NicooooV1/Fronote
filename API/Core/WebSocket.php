@@ -22,6 +22,29 @@ class WebSocket {
     }
     
     /**
+     * Santé du serveur temps réel, interrogé par son adresse INTERNE (WEBSOCKET_URL, ex.
+     * http://127.0.0.1:3000) — jamais par l'URL publique : celle-ci impose une résolution DNS
+     * et un aller-retour par le proxy (20 s de blocage sur une instance sans accès réseau).
+     * Retourne ['ok'=>bool, 'latency_ms'=>float, 'data'=>array|null].
+     */
+    public static function health(float $timeout = 1.5): array
+    {
+        $url = rtrim((string) (getenv('WEBSOCKET_URL') ?: 'http://127.0.0.1:3000'), '/') . '/health';
+        $t0 = microtime(true);
+        $body = false;
+        if (function_exists('curl_init')) {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT_MS => 500,
+                CURLOPT_TIMEOUT_MS => (int) ($timeout * 1000), CURLOPT_NOSIGNAL => true]);
+            $body = curl_exec($ch);
+            if ((int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE) >= 400) { $body = false; }
+            curl_close($ch);
+        }
+        return ['ok' => $body !== false, 'latency_ms' => round((microtime(true) - $t0) * 1000, 2),
+            'data' => is_string($body) ? (json_decode($body, true) ?: null) : null];
+    }
+
+    /**
      * Envoyer une notification HTTP au serveur WS
      */
     private static function sendNotification($endpoint, $data) {

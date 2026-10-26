@@ -267,6 +267,7 @@ try {
     <!-- CSS : base + tokens + classic (always) + glass overlay (if selected) -->
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/cookie-consent.css') ?>">
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/notif-center.css') ?>">
+    <link rel="stylesheet" href="<?= $_assetVersion('assets/css/eleve-picker.css') ?>">
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/topbar.css') ?>">
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/base.css') ?>">
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/tokens.css') ?>">
@@ -364,6 +365,10 @@ try {
             $_cssRel = ltrim(preg_replace('#^(?:\.\./)+#', '', $css), '/');
             $_cssAbs = $_assetRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $_cssRel);
             $_cssMtime = @filemtime($_cssAbs);
+            if (!$_cssMtime && !str_starts_with($css, '/')) {
+                // Feuille propre au module, relative à la page (« assets/css/module.css »)
+                $_cssMtime = @filemtime(dirname((string) ($_SERVER['SCRIPT_FILENAME'] ?? '')) . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $css));
+            }
             if ($_cssMtime) {
                 $_cssHref .= (strpos($css, '?') === false ? '?v=' : '&v=') . $_cssMtime;
             }
@@ -394,6 +399,7 @@ try {
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/modernize.css') ?>">
     <!-- Couche RESPONSIVE centrale : adaptation ordinateur/tablette/téléphone — EN TOUT DERNIER. -->
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/responsive.css') ?>">
+    <link rel="stylesheet" href="<?= $_assetVersion('assets/css/module-kit.css') ?>">
     <?= $extraHeadHtml ?>
     <!-- WebSocket global -->
     <script nonce="<?= $_hdr_nonce ?>">window.FRONOTE_WS = <?= $_hdr_ws_config ?>;</script>
@@ -407,6 +413,8 @@ try {
     <script src="<?= $_assetVersion('assets/js/ws-global.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>
     <script src="<?= $_assetVersion('assets/js/notif-center.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>
     <script src="<?= $_assetVersion('assets/js/push-manager.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>
+    <script src="<?= $_assetVersion('assets/js/eleve-picker.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>
+    <script src="<?= $_assetVersion('assets/js/module-kit.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>
     <?php
     // ─── Pont i18n côté client ───────────────────────────────────────────────
     // Expose quelques clés d'UI communes traduites côté PHP à la couche JS via
@@ -437,6 +445,18 @@ try {
             .catch(function(e) { console.warn('SW registration failed:', e); });
     }
     </script>
+    <?php
+    // Navigation quasi instantanée (Chrome/Edge) : la page visée est préchargée au SURVOL d'un lien
+    // (~200 ms) et pré-rendue dès l'appui (souris/doigt). Jamais pour les liens à effet de bord.
+    $_hdr_spec_bad = ['action=', 'delete', 'supprim', 'export', 'download', 'telecharg', 'logout', 'toggle', 'mark', 'csrf', 'token',
+        '/login/', '/demo/', '/impersonation/', '/API/', '.pdf', '.csv', '.xlsx', '.zip', '.ics', '#'];
+    $_hdr_spec_sel = implode(', ', array_merge(array_map(fn($s) => 'a[href*="' . $s . '"]', $_hdr_spec_bad),
+        ['[data-no-prefetch]', '[data-no-prefetch] a', 'a[download]', 'a[target]', 'a[data-confirm]', 'a[onclick]']));
+    $_hdr_spec_where = ['and' => [['href_matches' => '/*'], ['not' => ['selector_matches' => $_hdr_spec_sel]]]];
+    $_hdr_spec = ['prefetch' => [['where' => $_hdr_spec_where, 'eagerness' => 'moderate']],
+                  'prerender' => [['where' => $_hdr_spec_where, 'eagerness' => 'conservative']]];
+    ?>
+    <script type="speculationrules" nonce="<?= $_hdr_nonce ?>"><?= json_encode($_hdr_spec, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) ?></script>
     <script nonce="<?= $_hdr_nonce ?>">
     // Application instantanée du thème + accessibilité (anti-flash) — gère clair/sombre/LIQUIDE/auto.
     (function() {

@@ -33,12 +33,12 @@ include __DIR__ . '/../../templates/shared_header.php';
 include __DIR__ . '/../../templates/shared_topbar.php';
 ?>
 
-<div style="width:100%;max-width:1000px;margin:24px auto;padding:0 16px">
+<div class="mk-page">
     <h1 style="font-size:1.5em;margin:0 0 20px"><i class="fas fa-poll-h"></i> <?= __('enquetes.titre_page') ?></h1>
 
-    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-inbox"></i> <?= __('enquetes.a_repondre') ?> (<?= count($ouvertes) ?>)</h2>
+    <h2 class="section-title"><i class="fas fa-inbox"></i> <?= __('enquetes.a_repondre') ?> (<?= count($ouvertes) ?>)</h2>
     <?php if (empty($ouvertes)): ?>
-    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('enquetes.aucune_ouverte') ?></p>
+    <p class="empty-state mk-empty-sm"><?= __('enquetes.aucune_ouverte') ?></p>
     <?php else: ?>
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px">
         <?php foreach ($ouvertes as $e): ?>
@@ -53,23 +53,23 @@ include __DIR__ . '/../../templates/shared_topbar.php';
     <?php endif; ?>
 
     <?php if ($isAdmin): ?>
-    <h2 style="font-size:1.1em;margin:0 0 12px"><i class="fas fa-sliders-h"></i> <?= __('enquetes.pilotage') ?> (<?= count($pilotage) ?>)</h2>
+    <h2 class="section-title"><i class="fas fa-sliders-h"></i> <?= __('enquetes.pilotage') ?> (<?= count($pilotage) ?>)</h2>
     <?php if (empty($pilotage)): ?>
-    <p style="color:var(--text-muted,#64748b);background:var(--bg-secondary);padding:16px;border-radius:8px"><?= __('enquetes.aucune_creee') ?></p>
+    <p class="empty-state mk-empty-sm"><?= __('enquetes.aucune_creee') ?></p>
     <?php else: ?>
-    <div style="overflow-x:auto">
-    <table style="width:100%;border-collapse:collapse;font-size:.9em">
-        <thead><tr style="text-align:left;color:#718096;border-bottom:1px solid #e2e8f0">
-            <th style="padding:8px 10px"><?= __('label.titre') ?></th><th style="padding:8px 10px"><?= __('label.type') ?></th>
-            <th style="padding:8px 10px"><?= __('enquetes.reponses') ?></th><th style="padding:8px 10px"><?= __('label.statut') ?></th>
+    <div class="table-responsive">
+    <table class="data-table">
+        <thead><tr>
+            <th><?= __('label.titre') ?></th><th><?= __('label.type') ?></th>
+            <th><?= __('enquetes.reponses') ?></th><th><?= __('label.statut') ?></th>
         </tr></thead>
         <tbody>
         <?php foreach ($pilotage as $e): $stt = $e['statut']; ?>
-            <tr style="border-bottom:1px solid #f7fafc">
-                <td style="padding:8px 10px"><?= htmlspecialchars($e['titre']) ?></td>
-                <td style="padding:8px 10px"><?= htmlspecialchars($e['type']) ?></td>
-                <td style="padding:8px 10px"><?= (int) $e['nb_reponses'] ?></td>
-                <td style="padding:8px 10px"><span style="padding:3px 12px;border-radius:12px;font-size:.8em;font-weight:600;background:<?= ($statutColors[$stt] ?? '#999') ?>22;color:<?= $statutColors[$stt] ?? '#999' ?>"><?= htmlspecialchars($statutLabels[$stt] ?? $stt) ?></span></td>
+            <tr>
+                <td><?= htmlspecialchars($e['titre']) ?></td>
+                <td><?= htmlspecialchars($e['type']) ?></td>
+                <td><?= (int) $e['nb_reponses'] ?></td>
+                <td><span style="padding:3px 12px;border-radius:12px;font-size:.8em;font-weight:600;background:<?= ($statutColors[$stt] ?? '#999') ?>22;color:<?= $statutColors[$stt] ?? '#999' ?>"><?= htmlspecialchars($statutLabels[$stt] ?? $stt) ?></span></td>
             </tr>
         <?php endforeach; ?>
         </tbody>
