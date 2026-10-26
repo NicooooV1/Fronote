@@ -1,0 +1,4229 @@
+/* FRONOTE — design system assemblé par bin/build-css.php — NE PAS MODIFIER : éditer les sources. */
+
+/* ── design-system/tokens/colors.css ── */
+/* ============================================================================
+ * Fronote Design System — TOKENS / COULEURS
+ * Noms sémantiques de la refonte. ADDITIFS : ils ALIASENT la palette existante
+ * (assets/css/tokens.css) pour ne casser aucune page. Valeurs « clair » par défaut ;
+ * les thèmes (themes/dark.css, themes/liquid.css) surchargent par [data-theme].
+ * RÈGLE : aucun composant ne code une couleur en dur → uniquement ces tokens.
+ * ========================================================================== */
+:root {
+  /* ── Surfaces ── */
+  --surface-app:        var(--ds-bg, #f5f5f7);     /* fond d'application */
+  --surface-card:       var(--ds-surface, #ffffff);/* carte / panneau */
+  --surface-panel:      var(--ds-surface, #ffffff);/* topbar, bottom-bar, dropdown */
+  --surface-raised:     #ffffff;                    /* éléments en surépaisseur */
+  --surface-sunken:     var(--bg-secondary, #f0f0f2);
+  --surface-hover:      var(--bg-hover, #f0f0f2);
+  --surface-overlay:    rgba(0, 0, 0, 0.28);     /* fond des modales */
+
+  /* ── Texte ── (--text-primary / --text-muted existent déjà : on les réutilise) */
+  --text-primary:       var(--ds-text, #1d1d1f);
+  --text-secondary:     var(--ds-text-muted, #6e6e73);
+  --text-muted:         var(--ds-text-muted, #6e6e73);
+  --text-faint:         var(--ds-text-light, #86868b);
+  --text-on-accent:     #ffffff;
+
+  /* ── Bordures ── */
+  --border-light:       var(--ds-border, #e5e5ea);
+  --border-medium:      #d2d2d7;
+  --border-strong:      #86868b;
+  --border-focus:       var(--primary, #0071e3);
+
+  /* ── Accent / marque ── */
+  --primary:            var(--ds-primary, #0071e3);
+  --primary-hover:      var(--ds-primary-hover, #0062c4);
+  --primary-soft:       var(--ds-primary-light, #e8f2fd);
+  --on-primary:         #ffffff;
+
+  /* ── Feedback sémantique ── */
+  --success:            var(--ds-success, #1a9e4b);
+  --success-soft:       var(--ds-success-light, #e3f7e9);
+  --warning:            var(--ds-warning, #c8730a);
+  --warning-soft:       var(--ds-warning-light, #fdefd6);
+  --danger:             var(--ds-danger, #e0362b);
+  --danger-soft:        var(--ds-danger-light, #fde4e2);
+  --info:               var(--ds-info, #007aff);
+  --info-soft:          var(--ds-info-light, #e3f0ff);
+
+  /* ── Switch On/Off ── */
+  --switch-bg-off:      #e5e7eb;
+  --switch-thumb:       #ffffff;
+
+  /* ── Verre (utilisé surtout par le thème liquide ; fallback opaque ailleurs) ── */
+  --glass-bg:           var(--surface-card);
+  --glass-border:       var(--border-light);
+  --glass-blur:         0px;
+}
+
+/* Thème clair explicite (= défaut ; présent pour la clarté et la bascule data-theme). */
+html[data-theme="light"] { color-scheme: light; }
+
+/* ── design-system/tokens/spacing.css ── */
+/* Fronote Design System — TOKENS / ESPACEMENT (grille 4px). */
+:root {
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --layout-topbar-h: 60px;
+  --layout-bottombar-h: 64px;
+  --layout-sidebar-w: 260px;
+  --layout-sidebar-collapsed-w: 72px;
+  --layout-content-max: 1200px;
+}
+
+/* ── design-system/tokens/radius.css ── */
+/* Fronote Design System — TOKENS / RAYONS. */
+:root {
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+  --radius-circle: 50%;
+}
+
+/* ── design-system/tokens/shadows.css ── */
+/* Fronote Design System — TOKENS / OMBRES (aliasent la palette --ds-shadow* existante). */
+:root {
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: var(--ds-shadow, 0 1px 3px rgba(0,0,0,.1));
+  --shadow-md: var(--ds-shadow-md, 0 4px 6px -1px rgba(0,0,0,.1));
+  --shadow-lg: var(--ds-shadow-lg, 0 10px 15px -3px rgba(0,0,0,.1));
+  --shadow-xl: 0 20px 35px -10px rgba(0, 0, 0, 0.22);
+  --shadow-focus: 0 0 0 3px rgba(37, 99, 235, 0.35);
+}
+
+/* ── design-system/tokens/typography.css ── */
+/* Fronote Design System — TOKENS / TYPOGRAPHIE (réutilise l'échelle fluide --font-* existante). */
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', 'Inter', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', 'Cascadia Code', Consolas, monospace;
+
+  /* Échelle (alias vers tokens.css si présents, sinon repli). */
+  --fs-xs:  var(--font-xs, 0.75rem);
+  --fs-sm:  var(--font-sm, 0.875rem);
+  --fs-base: var(--font-base, 1rem);
+  --fs-md:  var(--font-md, 1.125rem);
+  --fs-lg:  var(--font-lg, 1.375rem);
+  --fs-xl:  var(--font-xl, 1.75rem);
+  --fs-2xl: var(--font-2xl, 2.25rem);
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  --lh-tight: 1.2;
+  --lh-normal: 1.5;
+  --lh-relaxed: 1.7;
+}
+
+/* ── design-system/tokens/motion.css ── */
+/* ============================================================================
+ * Fronote Design System — TOKENS / MOUVEMENT
+ * Durées + courbes + valeurs d'interaction. Cf. cahier des charges §6.1.
+ * Toutes les animations passent par ces tokens (désactivables, cf. utilities/animations.css).
+ * ========================================================================== */
+:root {
+  --motion-fast:   120ms;
+  --motion-normal: 180ms;
+  --motion-slow:   280ms;
+  --motion-slower: 480ms;
+
+  --ease-standard:    cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized:  cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-bounce-soft: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --scale-press:     0.97;
+  --translate-hover: -2px;
+}
+
+/* ── design-system/tokens/z-index.css ── */
+/* Fronote Design System — TOKENS / Z-INDEX (échelle unique pour éviter les guerres de z-index). */
+:root {
+  --z-base: 1;
+  --z-raised: 10;
+  --z-sticky: 100;       /* topbar, bottom-bar */
+  --z-dropdown: 1000;
+  --z-overlay: 1100;     /* fond modale */
+  --z-modal: 1200;
+  --z-toast: 1300;
+  --z-tooltip: 1400;
+  --z-max: 2147483000;
+}
+
+/* ── design-system/themes/light.css ── */
+/* ============================================================================
+ * Fronote Design System — THÈME CLAIR
+ * Le clair est le défaut (valeurs sur :root dans tokens/). Ce fichier ne fait
+ * que réaffirmer color-scheme et garantir des surfaces 100% opaques.
+ * Ambiance : calme, lumineuse, scolaire/professionnelle.
+ * ========================================================================== */
+html[data-theme="light"] {
+  color-scheme: light;
+  --glass-blur: 0px;
+  --glass-bg: var(--surface-card);
+  --glass-border: var(--border-light);
+}
+
+/* ── design-system/themes/dark.css ── */
+/* ============================================================================
+ * Fronote Design System — THÈME SOMBRE
+ * Sur le socle, les surfaces sombres viennent de assets/css/tokens.css
+ * ([data-theme=dark]). Mais les portails (plateforme, tenant) chargent
+ * design-system.css SANS tokens.css : on redéfinit donc ici les valeurs brutes
+ * sombres pour qu'ils soient cohérents. Sur le socle, ces définitions sont
+ * IDENTIQUES à tokens.css → idempotentes.
+ * NB : on ne redéfinit PAS --ds-primary ici, pour ne pas écraser le branding
+ * établissement (injecté en ligne avant design-system.css).
+ * Ambiance : gris neutres profonds (pas de noir pur massif).
+ * ========================================================================== */
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Valeurs brutes sombres — échelle SLATE unique (cohérence topbar/cartes/fond ;
+     idempotent sur le socle car identique à tokens.css [data-theme=dark]). */
+  --ds-bg: #0f172a;
+  --ds-surface: #1e293b;
+  --ds-border: #334155;
+  --ds-text: #f1f5f9;
+  --ds-text-muted: #cbd5e1;
+  --ds-text-light: #94a3b8;
+
+  --bg-card: #1e293b;
+  --bg-secondary: #334155;
+  --bg-tertiary: #475569;
+  --bg-hover: #334155;
+
+  --surface-raised:  #334155;
+  --surface-overlay: rgba(2, 6, 23, 0.6);
+  --surface-hover:   #334155;
+
+  --border-medium:   #475569;
+  --border-strong:   #64748b;
+
+  --switch-bg-off:   #475569;
+  --switch-thumb:    #f1f5f9;
+
+  --shadow-xs:       0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-focus:    0 0 0 3px rgba(10, 132, 255, 0.4);
+
+  --glass-blur:      0px;
+  --glass-bg:        var(--surface-card);
+  --glass-border:    var(--border-light);
+}
+
+/* ── design-system/themes/liquid.css ── */
+/* ============================================================================
+ * Fronote Design System — THÈME LIQUIDE (liquid glass)
+ * Transparence + flou + profondeur, MAIS lisibilité d'abord (cahier §3.3, §25).
+ * Base sombre translucide + accents lumineux. Surfaces en verre.
+ * Respecte [data-reduce-transparency="true"] → repli opaque + sans flou.
+ * ========================================================================== */
+html[data-theme="liquid"] {
+  color-scheme: dark;
+
+  /* Surfaces en verre */
+  --surface-app:     #0b1020;
+  --surface-card:    rgba(255, 255, 255, 0.08);
+  --surface-panel:   rgba(17, 24, 42, 0.62);
+  --surface-raised:  rgba(255, 255, 255, 0.12);
+  --surface-sunken:  rgba(255, 255, 255, 0.04);
+  --surface-hover:   rgba(255, 255, 255, 0.14);
+  --surface-overlay: rgba(6, 10, 22, 0.55);
+
+  /* Texte clair, contrasté */
+  --text-primary:    #f4f7ff;
+  --text-secondary:  rgba(244, 247, 255, 0.78);
+  --text-muted:      rgba(244, 247, 255, 0.62);
+  --text-faint:      rgba(244, 247, 255, 0.45);
+
+  /* Bordures lumineuses */
+  --border-light:    rgba(255, 255, 255, 0.14);
+  --border-medium:   rgba(255, 255, 255, 0.24);
+  --border-strong:   rgba(255, 255, 255, 0.4);
+
+  /* Accents plus lumineux */
+  --primary:         #6ea8ff;
+  --primary-hover:   #8fbcff;
+  --primary-soft:    rgba(110, 168, 255, 0.18);
+  --success:         #4ade80;
+  --warning:         #fbbf24;
+  --danger:          #fb7185;
+  --info:            #38bdf8;
+  --text-on-accent:  #0b1020;          /* texte sombre sur accents clairs du thème liquide */
+
+  /* Fonds « soft » SOMBRES (sinon repli pastel clair illisible sur le verre). */
+  --primary-soft:    rgba(110, 168, 255, 0.18);
+  --success-soft:    rgba(74, 222, 128, 0.16);
+  --warning-soft:    rgba(251, 191, 36, 0.16);
+  --danger-soft:     rgba(251, 113, 133, 0.16);
+  --info-soft:       rgba(56, 189, 248, 0.16);
+
+  --text-faint:      rgba(244, 247, 255, 0.55);  /* relevé pour la lisibilité sur verre */
+  --shadow-xs:       0 1px 2px rgba(0, 0, 0, 0.25);
+
+  --switch-bg-off:   rgba(255, 255, 255, 0.18);
+  --switch-thumb:    rgba(255, 255, 255, 0.92);
+
+  --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 8px 28px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.45);
+  --shadow-focus: 0 0 0 3px rgba(110, 168, 255, 0.5);
+
+  /* ── Pont LEGACY : les composants historiques (theme-classic) lisent ces tokens
+   *    (assets/css/tokens.css). On les bascule en sombre pour que les pages NON migrées
+   *    restent lisibles & cohérentes en thème liquide. Opaque (pas verre) car le legacy
+   *    n'a pas de backdrop-filter. ── */
+  --primary-color:    #6ea8ff;
+  --primary-light:    #8fbcff;
+  --background-color: #0b1020;
+  --text-color:       #f4f7ff;
+  --text-light:       rgba(244, 247, 255, 0.78);
+  --white:            #141c2e;   /* fond des .card legacy */
+  --border-color:     rgba(255, 255, 255, 0.14);
+  --bg-card:          #141c2e;
+  --bg-secondary:     #1c2640;
+  --bg-tertiary:      #243049;
+  --bg-hover:         #1c2640;
+  --shadow-light:     0 2px 10px rgba(0, 0, 0, 0.25);
+  --shadow-medium:    0 8px 28px rgba(0, 0, 0, 0.35);
+  --shadow-hover:     0 18px 48px rgba(0, 0, 0, 0.45);
+  --success-color:    #4ade80;
+  --warning-color:    #fbbf24;
+  --error-color:      #fb7185;
+  --info-color:       #38bdf8;
+
+  --glass-blur:   16px;
+  --glass-bg:     var(--surface-card);
+  --glass-border: var(--border-light);
+}
+
+/* Fond animé très lent (désactivé si reduce-motion / reduce-transparency). */
+html[data-theme="liquid"] body {
+  background:
+    radial-gradient(1200px 800px at 12% -10%, rgba(110, 168, 255, 0.22), transparent 60%),
+    radial-gradient(1000px 700px at 110% 10%, rgba(139, 92, 246, 0.20), transparent 55%),
+    radial-gradient(900px 900px at 50% 120%, rgba(56, 189, 248, 0.16), transparent 60%),
+    var(--surface-app);
+  background-attachment: fixed;
+}
+
+/* Réduction de transparence : repli opaque + flou supprimé pour la lisibilité. */
+html[data-theme="liquid"][data-reduce-transparency="true"] {
+  --surface-card:  #141c2e;
+  --surface-panel: #111827;
+  --surface-raised:#1c2640;
+  --surface-hover: #1c2640;
+  --border-light:  #2b3650;
+  --border-medium: #3a4866;
+  --glass-blur:    0px;
+}
+html[data-theme="liquid"][data-reduce-transparency="true"] body { background: var(--surface-app); }
+
+/* ── design-system/components/buttons.css ── */
+/* Fronote Design System — Buttons */
+
+/* ── Base ─────────────────────────────────────────────────────────────────
+ * Bouton sémantique unique. Toutes les variantes/tailles/états sont des
+ * modificateurs. Aucune valeur en dur : uniquement des design tokens.
+ * ========================================================================== */
+.ds-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+}
+
+.ds-btn:hover {
+  transform: translateY(var(--translate-hover));
+  box-shadow: var(--shadow-sm);
+}
+
+.ds-btn:active {
+  transform: scale(var(--scale-press));
+  box-shadow: none;
+}
+
+.ds-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* ── Variantes ───────────────────────────────────────────────────────────── */
+
+/* Primary : plein, accent marque. */
+.ds-btn--primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+.ds-btn--primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+/* Secondary : contour neutre sur surface. */
+.ds-btn--secondary {
+  background: var(--surface-card);
+  border-color: var(--border-medium);
+  color: var(--text-primary);
+}
+.ds-btn--secondary:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
+/* Ghost : transparent, se révèle au survol. */
+.ds-btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-primary);
+}
+.ds-btn--ghost:hover {
+  background: var(--surface-hover);
+  box-shadow: none;
+}
+
+/* Soft : teinte douce de l'accent. */
+.ds-btn--soft {
+  background: var(--primary-soft);
+  border-color: transparent;
+  color: var(--primary);
+}
+.ds-btn--soft:hover {
+  background: var(--primary-soft);
+  filter: brightness(0.96);
+}
+
+/* Danger / Success / Warning : pleins sémantiques. */
+/* Fonds assombris (--btn-*-bg) : texte blanc ≥4.5:1 dans tous les thèmes.
+   Les accents --danger/--success/--warning restent sur la bordure pour l'identité couleur. */
+.ds-btn--danger {
+  background: var(--btn-danger-bg, var(--danger));
+  border-color: var(--btn-danger-bg, var(--danger));
+  color: #fff;
+}
+.ds-btn--danger:hover { filter: brightness(0.93); }
+
+.ds-btn--success {
+  background: var(--btn-success-bg, var(--success));
+  border-color: var(--btn-success-bg, var(--success));
+  color: #fff;
+}
+.ds-btn--success:hover { filter: brightness(0.93); }
+
+.ds-btn--warning {
+  background: var(--btn-warning-bg, var(--warning));
+  border-color: var(--btn-warning-bg, var(--warning));
+  color: #fff;
+}
+.ds-btn--warning:hover { filter: brightness(0.93); }
+
+/* Link : se comporte comme un lien textuel. */
+.ds-btn--link {
+  min-height: auto;
+  padding: var(--space-1) var(--space-2);
+  background: transparent;
+  border-color: transparent;
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.ds-btn--link:hover {
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+  color: var(--primary-hover);
+}
+.ds-btn--link:active { transform: none; }
+
+/* Icon : carré ~40px, contenu centré (une icône). */
+.ds-btn--icon {
+  min-height: 44px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-secondary);
+}
+.ds-btn--icon:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+/* Floating : FAB rond, élevé. */
+.ds-btn--floating {
+  width: 56px;
+  height: 56px;
+  min-height: 56px;
+  padding: 0;
+  border-radius: var(--radius-circle);
+  background: var(--primary);
+  border-color: transparent;
+  color: var(--on-primary);
+  box-shadow: var(--shadow-lg);
+}
+.ds-btn--floating:hover {
+  background: var(--primary-hover);
+  transform: translateY(var(--translate-hover));
+  box-shadow: var(--shadow-xl);
+}
+.ds-btn--floating:active {
+  transform: scale(var(--scale-press));
+  box-shadow: var(--shadow-md);
+}
+
+/* ── Tailles ─────────────────────────────────────────────────────────────── */
+.ds-btn--sm {
+  min-height: 32px;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--fs-xs);
+  border-radius: var(--radius-sm);
+}
+
+.ds-btn--lg {
+  min-height: 52px;
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--fs-md);
+  border-radius: var(--radius-lg);
+}
+
+/* ── États ───────────────────────────────────────────────────────────────── */
+
+/* Disabled. */
+.ds-btn.is-disabled,
+.ds-btn[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+  box-shadow: none;
+  transform: none;
+}
+
+/* Loading : on masque le contenu et on affiche un spinner centré. */
+.ds-btn.is-loading {
+  color: transparent !important;
+  pointer-events: none;
+  cursor: progress;
+}
+.ds-btn.is-loading > * { visibility: hidden; }
+.ds-btn.is-loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1.1em;
+  height: 1.1em;
+  margin: -0.55em 0 0 -0.55em;
+  border-radius: var(--radius-circle);
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  color: var(--text-on-accent);
+  opacity: 0.9;
+  animation: ds-spin var(--motion-slower) linear infinite;
+}
+/* Variantes claires : le spinner reprend la couleur de texte locale. */
+.ds-btn--secondary.is-loading::after,
+.ds-btn--ghost.is-loading::after,
+.ds-btn--soft.is-loading::after,
+.ds-btn--link.is-loading::after,
+.ds-btn--icon.is-loading::after {
+  color: var(--primary);
+}
+
+/* Success : pastille de validation à la place du contenu. */
+.ds-btn.has-success {
+  background: var(--success);
+  border-color: var(--success);
+  color: transparent !important;
+  pointer-events: none;
+}
+.ds-btn.has-success > * { visibility: hidden; }
+.ds-btn.has-success::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.55em;
+  height: 1em;
+  margin: -0.6em 0 0 -0.28em;
+  border: solid var(--text-on-accent);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  transform-origin: center;
+}
+
+/* Error : secousse brève. */
+.ds-btn.has-error {
+  border-color: var(--danger);
+  animation: ds-btn-shake var(--motion-slow) var(--ease-standard);
+}
+
+/* ── Keyframes ───────────────────────────────────────────────────────────── */
+@keyframes ds-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ds-btn-shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-4px); }
+  40%      { transform: translateX(4px); }
+  60%      { transform: translateX(-3px); }
+  80%      { transform: translateX(3px); }
+}
+
+/* Respect des préférences de réduction d'animation. */
+@media (prefers-reduced-motion: reduce) {
+  .ds-btn,
+  .ds-btn:hover,
+  .ds-btn:active { transition: none; transform: none; }
+  .ds-btn.is-loading::after { animation-duration: 1.2s; }
+  .ds-btn.has-error { animation: none; }
+}
+
+/* ── design-system/components/switches.css ── */
+/* Fronote Design System — Switches */
+
+/* ── Switch (interrupteur) ─────────────────────────────────────────────────
+ * Piste 52x30 en pilule, pouce 22px. Fonctionne de deux façons :
+ *   1) <button class="ds-switch" role="switch" aria-checked="…"> (état = .is-on)
+ *   2) <label class="ds-switch"><input type="checkbox"> …</label>
+ * Le pouce glisse de translateX(22px) avec une courbe douce et s'élargit au clic.
+ * Aucune valeur en dur : uniquement des design tokens.
+ * ========================================================================== */
+.ds-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  width: 52px;
+  height: 30px;
+  /* Zone tactile confortable (>=44px) sans agrandir la piste visible. */
+  padding: 7px 0;
+  margin: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--switch-bg-off);
+  cursor: pointer;
+  vertical-align: middle;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  background-clip: padding-box;
+  transition:
+    background-color var(--motion-normal) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard);
+}
+
+/* La piste est dessinée par le fond de l'élément ; on étend la zone tactile
+   via un pseudo invisible pour atteindre 44px de hauteur cliquable. */
+.ds-switch::before {
+  content: "";
+  position: absolute;
+  inset: -7px 0;
+}
+
+/* Pouce (variante <button> : pseudo-élément). */
+.ds-switch::after {
+  content: "";
+  position: relative;
+  z-index: var(--z-raised);
+  display: block;
+  width: 22px;
+  height: 22px;
+  margin-left: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--switch-thumb);
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform var(--motion-normal) var(--ease-bounce-soft),
+    width var(--motion-fast) var(--ease-standard),
+    margin var(--motion-fast) var(--ease-standard);
+}
+
+/* État activé (button[role=switch]). */
+.ds-switch.is-on,
+.ds-switch[aria-checked="true"] {
+  background: var(--success);
+}
+.ds-switch.is-on::after,
+.ds-switch[aria-checked="true"]::after {
+  transform: translateX(22px);
+}
+
+/* Pression : le pouce s'allonge à 26px (effet « élastique »). */
+.ds-switch:active::after {
+  width: 26px;
+}
+.ds-switch.is-on:active::after,
+.ds-switch[aria-checked="true"]:active::after {
+  /* Reste collé au bord droit en s'élargissant vers la gauche. */
+  transform: translateX(18px);
+}
+
+/* Survol / focus. */
+.ds-switch:hover { box-shadow: var(--shadow-xs); }
+.ds-switch:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* Désactivé. */
+.ds-switch.is-disabled,
+.ds-switch[disabled],
+.ds-switch[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Chargement : le pouce devient un mini-spinner. */
+.ds-switch.is-loading {
+  pointer-events: none;
+  cursor: progress;
+}
+.ds-switch.is-loading::after {
+  background: var(--switch-thumb);
+  border: 2px solid var(--text-faint);
+  border-top-color: transparent;
+  box-shadow: none;
+  animation: ds-spin var(--motion-slower) linear infinite;
+}
+.ds-switch.is-on.is-loading::after,
+.ds-switch[aria-checked="true"].is-loading::after {
+  /* Conserve la translation à droite pendant que le pouce tourne (sinon il revient à gauche). */
+  animation: ds-spin-on var(--motion-slower) linear infinite;
+}
+@keyframes ds-spin-on {
+  from { transform: translateX(22px) rotate(0deg); }
+  to   { transform: translateX(22px) rotate(360deg); }
+}
+
+/* ── Variante <label> enveloppant une checkbox ─────────────────────────────
+ * On masque la checkbox native et on rend la piste + le pouce via le pseudo
+ * de la checkbox elle-même, afin que :checked pilote l'état nativement.
+ * ========================================================================== */
+.ds-switch > input[type="checkbox"] {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: inherit;
+  /* Au-dessus pour capter le clic ; le rendu visuel reste sur ::after. */
+  z-index: var(--z-overlay);
+}
+
+/* Quand la checkbox est cochée → on active la piste et on déplace le pouce. */
+.ds-switch:has(> input[type="checkbox"]:checked) {
+  background: var(--success);
+}
+.ds-switch:has(> input[type="checkbox"]:checked)::after {
+  transform: translateX(22px);
+}
+.ds-switch:has(> input[type="checkbox"]:checked):active::after {
+  transform: translateX(18px);
+}
+
+/* Focus clavier de la checkbox interne. */
+.ds-switch:has(> input[type="checkbox"]:focus-visible) {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* Checkbox désactivée. */
+.ds-switch:has(> input[type="checkbox"]:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ds-switch:has(> input[type="checkbox"]:disabled) > input { cursor: not-allowed; }
+
+/* Respect des préférences de réduction d'animation. */
+@media (prefers-reduced-motion: reduce) {
+  .ds-switch,
+  .ds-switch::after { transition: none; }
+  .ds-switch.is-loading::after { animation-duration: 1.2s; }
+}
+
+/* ── design-system/components/badges.css ── */
+/* Fronote Design System — Badges */
+
+/* ── Badge ─────────────────────────────────────────────────────────────────
+ * Étiquette compacte à fond doux. Variantes sémantiques via les tokens *-soft,
+ * plus un point d'état (--dot) et une pastille de comptage (--count).
+ * Aucune valeur en dur : uniquement des design tokens.
+ * ========================================================================== */
+.ds-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  white-space: nowrap;
+  vertical-align: middle;
+  animation: ds-badge-pop var(--motion-normal) var(--ease-bounce-soft);
+}
+
+/* ── Variantes sémantiques (fond doux + texte plein) ───────────────────────── */
+.ds-badge--primary {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.ds-badge--success {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.ds-badge--warning {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.ds-badge--danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.ds-badge--info {
+  background: var(--info-soft);
+  color: var(--info);
+}
+.ds-badge--neutral {
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+}
+
+/* ── Point d'état ──────────────────────────────────────────────────────────
+ * Petit disque coloré. Utilisé seul (.ds-badge--dot) ou en préfixe d'un badge
+ * via un enfant ::before. Hérite de la couleur de texte de la variante.
+ * ========================================================================== */
+.ds-badge--dot {
+  padding: 0;
+  width: 10px;
+  height: 10px;
+  min-width: 10px;
+  border-radius: var(--radius-circle);
+  background: currentColor;
+}
+/* Point d'état placé en tête d'un badge texte. */
+.ds-badge--dot.ds-badge--primary { color: var(--primary); }
+.ds-badge--dot.ds-badge--success { color: var(--success); }
+.ds-badge--dot.ds-badge--warning { color: var(--warning); }
+.ds-badge--dot.ds-badge--danger  { color: var(--danger); }
+.ds-badge--dot.ds-badge--info    { color: var(--info); }
+.ds-badge--dot.ds-badge--neutral { color: var(--text-faint); }
+
+/* ── Pastille de comptage (notifications) ──────────────────────────────────
+ * Pastille ronde min. 18px, fond plein danger par défaut.
+ * ========================================================================== */
+.ds-badge--count {
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--danger);
+  color: var(--text-on-accent);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+}
+/* Recoloration de la pastille via les variantes sémantiques. */
+.ds-badge--count.ds-badge--primary { background: var(--primary); color: var(--on-primary); }
+.ds-badge--count.ds-badge--success { background: var(--success); color: var(--text-on-accent); }
+.ds-badge--count.ds-badge--warning { background: var(--warning); color: var(--text-on-accent); }
+.ds-badge--count.ds-badge--info    { background: var(--info);    color: var(--text-on-accent); }
+.ds-badge--count.ds-badge--neutral { background: var(--border-strong); color: var(--text-on-accent); }
+
+/* ── Keyframe d'apparition ─────────────────────────────────────────────────── */
+@keyframes ds-badge-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Respect des préférences de réduction d'animation. */
+@media (prefers-reduced-motion: reduce) {
+  .ds-badge { animation: none; }
+}
+
+/* ── design-system/components/forms.css ── */
+/* Fronote Design System — Forms */
+
+/* ---------------------------------------------------------------------------
+   Field wrapper
+   --------------------------------------------------------------------------- */
+.ds-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+/* ---------------------------------------------------------------------------
+   Label
+   --------------------------------------------------------------------------- */
+.ds-label {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-normal);
+  color: var(--text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+   Text inputs / textarea / select
+   --------------------------------------------------------------------------- */
+.ds-input,
+.ds-textarea,
+.ds-select {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-normal);
+  color: var(--text-primary);
+  background: var(--surface-card);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.ds-textarea {
+  min-height: 96px;
+  resize: vertical;
+  line-height: var(--lh-relaxed);
+}
+
+/* Native select chevron */
+.ds-select {
+  padding-right: var(--space-8);
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+                    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position:
+    right calc(var(--space-4) + var(--space-1)) center,
+    right var(--space-4) center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------------------------
+   Placeholder
+   --------------------------------------------------------------------------- */
+.ds-input::placeholder,
+.ds-textarea::placeholder {
+  color: var(--text-faint);
+  opacity: 1;
+}
+
+/* ---------------------------------------------------------------------------
+   Hover
+   --------------------------------------------------------------------------- */
+.ds-input:hover:not(:disabled),
+.ds-textarea:hover:not(:disabled),
+.ds-select:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+/* ---------------------------------------------------------------------------
+   Focus — animate border to focus + focus ring
+   --------------------------------------------------------------------------- */
+.ds-input:focus,
+.ds-input:focus-visible,
+.ds-textarea:focus,
+.ds-textarea:focus-visible,
+.ds-select:focus,
+.ds-select:focus-visible {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-focus);
+}
+
+/* ---------------------------------------------------------------------------
+   States — error / success
+   --------------------------------------------------------------------------- */
+.ds-input.has-error,
+.ds-textarea.has-error,
+.ds-select.has-error,
+.ds-field.has-error .ds-input,
+.ds-field.has-error .ds-textarea,
+.ds-field.has-error .ds-select {
+  border-color: var(--danger);
+  animation: ds-field-shake var(--motion-normal) var(--ease-standard);
+}
+
+.ds-input.has-error:focus,
+.ds-textarea.has-error:focus,
+.ds-select.has-error:focus,
+.ds-field.has-error .ds-input:focus,
+.ds-field.has-error .ds-textarea:focus,
+.ds-field.has-error .ds-select:focus {
+  box-shadow: var(--shadow-focus);
+}
+
+.ds-input.has-success,
+.ds-textarea.has-success,
+.ds-select.has-success,
+.ds-field.has-success .ds-input,
+.ds-field.has-success .ds-textarea,
+.ds-field.has-success .ds-select {
+  border-color: var(--success);
+}
+
+/* ---------------------------------------------------------------------------
+   Disabled — elegant muted
+   --------------------------------------------------------------------------- */
+.ds-input:disabled,
+.ds-textarea:disabled,
+.ds-select:disabled {
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  border-color: var(--border-light);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.ds-input:disabled::placeholder,
+.ds-textarea:disabled::placeholder {
+  color: var(--text-faint);
+}
+
+/* ---------------------------------------------------------------------------
+   Help text & error text
+   --------------------------------------------------------------------------- */
+.ds-help {
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-normal);
+  color: var(--text-muted);
+}
+
+.ds-error-text {
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-normal);
+  color: var(--danger);
+}
+
+/* ---------------------------------------------------------------------------
+   Optional leading icon
+   --------------------------------------------------------------------------- */
+.ds-field--icon {
+  position: relative;
+}
+
+.ds-field--icon .ds-input,
+.ds-field--icon .ds-select {
+  padding-left: var(--space-10);
+}
+
+.ds-field--icon .ds-field-icon {
+  position: absolute;
+  left: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-5);
+  height: var(--space-5);
+  color: var(--text-muted);
+  pointer-events: none;
+  transition: color var(--motion-fast) var(--ease-standard);
+}
+
+/* When the icon sits beside a label, anchor it to the input row only. */
+.ds-field--icon:has(.ds-label) .ds-field-icon {
+  top: auto;
+  bottom: 0;
+  transform: translateY(-50%);
+  margin-bottom: 22px;
+}
+
+.ds-field--icon .ds-input:focus ~ .ds-field-icon,
+.ds-field--icon .ds-select:focus ~ .ds-field-icon {
+  color: var(--primary);
+}
+
+/* ---------------------------------------------------------------------------
+   Keyframes
+   --------------------------------------------------------------------------- */
+@keyframes ds-field-shake {
+  0%   { transform: translateX(0); }
+  25%  { transform: translateX(-3px); }
+  50%  { transform: translateX(3px); }
+  75%  { transform: translateX(-3px); }
+  100% { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-input,
+  .ds-textarea,
+  .ds-select {
+    transition: none;
+  }
+  .ds-input.has-error,
+  .ds-textarea.has-error,
+  .ds-select.has-error,
+  .ds-field.has-error .ds-input,
+  .ds-field.has-error .ds-textarea,
+  .ds-field.has-error .ds-select {
+    animation: none;
+  }
+}
+
+/* ── design-system/components/dropdowns.css ── */
+/* Fronote Design System — Dropdowns */
+
+/* ---------------------------------------------------------------------------
+   Wrapper
+   --------------------------------------------------------------------------- */
+.ds-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+/* ---------------------------------------------------------------------------
+   Menu — absolute glass panel, hidden by default
+   --------------------------------------------------------------------------- */
+.ds-dropdown-menu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  z-index: var(--z-dropdown);
+  min-width: 200px;
+  max-width: min(320px, 90vw);
+  padding: var(--space-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0);
+
+  background: var(--surface-panel);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+
+  /* hidden state */
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
+  pointer-events: none;
+  transform-origin: top left;
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    transform var(--motion-normal) var(--ease-emphasized);
+}
+
+.ds-dropdown.is-open .ds-dropdown-menu {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+/* Right-aligned variant */
+.ds-dropdown-menu--end {
+  left: auto;
+  right: 0;
+  transform-origin: top right;
+}
+
+/* ---------------------------------------------------------------------------
+   Search field inside the menu
+   --------------------------------------------------------------------------- */
+.ds-dropdown-search {
+  padding: var(--space-2);
+}
+
+.ds-dropdown-search input {
+  width: 100%;
+  min-height: 36px;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard);
+}
+
+.ds-dropdown-search input::placeholder {
+  color: var(--text-faint);
+  opacity: 1;
+}
+
+.ds-dropdown-search input:focus,
+.ds-dropdown-search input:focus-visible {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-focus);
+}
+
+/* ---------------------------------------------------------------------------
+   Item
+   --------------------------------------------------------------------------- */
+.ds-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 40px;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-normal);
+  color: var(--text-primary);
+  text-align: left;
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+
+.ds-dropdown-item:hover,
+.ds-dropdown-item:focus-visible {
+  outline: none;
+  background: var(--surface-hover);
+}
+
+.ds-dropdown-item:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+.ds-dropdown-item:active {
+  transform: scale(var(--scale-press));
+}
+
+.ds-dropdown-item.is-active {
+  color: var(--primary);
+  background: var(--primary-soft);
+  font-weight: var(--fw-medium);
+}
+
+.ds-dropdown-item.is-disabled,
+.ds-dropdown-item:disabled {
+  color: var(--text-muted);
+  background: transparent;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Divider
+   --------------------------------------------------------------------------- */
+.ds-dropdown-divider {
+  height: 1px;
+  margin: var(--space-1) var(--space-2);
+  background: var(--border-light);
+  border: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-dropdown-menu {
+    transition: opacity var(--motion-fast) var(--ease-standard);
+    transform: none;
+  }
+  .ds-dropdown.is-open .ds-dropdown-menu {
+    transform: none;
+  }
+  .ds-dropdown-item:active {
+    transform: none;
+  }
+}
+
+/* ── design-system/components/tabs.css ── */
+/* Fronote Design System — Tabs */
+
+/* ---------------------------------------------------------------------------
+   Tablist
+   --------------------------------------------------------------------------- */
+.ds-tabs {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--border-light);
+  /* Track for the sliding indicator; set via JS or inline style:
+     --ds-tab-indicator-x and --ds-tab-indicator-w */
+}
+
+/* ---------------------------------------------------------------------------
+   Tab button
+   --------------------------------------------------------------------------- */
+.ds-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-normal);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  cursor: pointer;
+  transition:
+    color var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard);
+}
+
+.ds-tab:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.ds-tab:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+  border-radius: var(--radius-sm);
+}
+
+.ds-tab:active {
+  transform: scale(var(--scale-press));
+}
+
+.ds-tab.is-active {
+  color: var(--primary);
+}
+
+.ds-tab.is-disabled,
+.ds-tab:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Per-tab underline (fallback when no shared sliding indicator is used).
+   The shared .ds-tab-indicator below takes precedence visually when present.
+   --------------------------------------------------------------------------- */
+.ds-tab::after {
+  content: "";
+  position: absolute;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: -1px;
+  height: 2px;
+  background: var(--primary);
+  border-radius: var(--radius-pill);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform var(--motion-normal) var(--ease-emphasized);
+}
+
+.ds-tab.is-active::after {
+  transform: scaleX(1);
+}
+
+/* ---------------------------------------------------------------------------
+   Shared sliding indicator (optional).
+   Place a single .ds-tab-indicator as the last child of .ds-tabs and drive
+   its position with --ds-tab-indicator-x / --ds-tab-indicator-w.
+   When present, hide the per-tab ::after underline to avoid duplicates.
+   --------------------------------------------------------------------------- */
+.ds-tabs:has(.ds-tab-indicator) .ds-tab::after {
+  display: none;
+}
+
+.ds-tab-indicator {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  width: var(--ds-tab-indicator-w, 0px);
+  background: var(--primary);
+  border-radius: var(--radius-pill);
+  transform: translateX(var(--ds-tab-indicator-x, 0px));
+  transition:
+    transform var(--motion-normal) var(--ease-emphasized),
+    width var(--motion-normal) var(--ease-emphasized);
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Tab panel — fade-in on show
+   --------------------------------------------------------------------------- */
+.ds-tabpanel {
+  display: none;
+  padding-top: var(--space-4);
+}
+
+.ds-tabpanel.is-active,
+.ds-tabpanel.is-visible {
+  display: block;
+  animation: ds-tabpanel-fade var(--motion-normal) var(--ease-standard);
+}
+
+@keyframes ds-tabpanel-fade {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-1));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-tab,
+  .ds-tab::after,
+  .ds-tab-indicator {
+    transition: none;
+  }
+  .ds-tab:active {
+    transform: none;
+  }
+  .ds-tabpanel.is-active,
+  .ds-tabpanel.is-visible {
+    animation: none;
+  }
+}
+
+/* ── design-system/components/cards.css ── */
+/* Fronote Design System — Cards */
+
+/* ── Base ─────────────────────────────────────────────────────────────────
+ * Carte sémantique unique. Surface « panneau » → verre gratuit en thème
+ * liquide (backdrop-filter no-op ailleurs car --glass-blur = 0px).
+ * Aucune valeur en dur : uniquement des design tokens.
+ * ========================================================================== */
+.ds-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--surface-card);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+}
+
+/* ── Sous-éléments ─────────────────────────────────────────────────────────
+ * Les zones structurantes se collent aux bords via marges négatives pour
+ * créer un séparateur pleine largeur sans casser le padding de la carte.
+ * ========================================================================== */
+.ds-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: calc(-1 * var(--space-5)) calc(-1 * var(--space-5)) 0;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.ds-card__title {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  color: var(--text-primary);
+}
+
+.ds-card__body {
+  flex: 1 1 auto;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  color: var(--text-secondary);
+}
+
+.ds-card__footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0 calc(-1 * var(--space-5)) calc(-1 * var(--space-5));
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--border-light);
+}
+
+/* ── Variante interactive (cahier §12.3) ──────────────────────────────────── */
+.ds-card--interactive {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.ds-card--interactive:hover {
+  transform: translateY(var(--translate-hover));
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-medium);
+}
+.ds-card--interactive:active {
+  transform: scale(0.99);
+  box-shadow: var(--shadow-sm);
+}
+.ds-card--interactive:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* ── Variante statistique ─────────────────────────────────────────────────── */
+.ds-card--stat {
+  gap: var(--space-2);
+}
+.ds-card__stat-label {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+}
+.ds-card__stat-value {
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  color: var(--text-primary);
+}
+.ds-card__stat-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+.ds-card__stat-trend.is-up {
+  color: var(--success);
+}
+.ds-card__stat-trend.is-down {
+  color: var(--danger);
+}
+
+/* ── Variantes alerte ─────────────────────────────────────────────────────── */
+.ds-card--alert {
+  border-left-width: 3px;
+  border-left-style: solid;
+}
+.ds-card--alert.ds-card--info {
+  background: var(--info-soft);
+  border-color: var(--border-light);
+  border-left-color: var(--info);
+}
+.ds-card--alert.ds-card--success {
+  background: var(--success-soft);
+  border-color: var(--border-light);
+  border-left-color: var(--success);
+}
+.ds-card--alert.ds-card--warning {
+  background: var(--warning-soft);
+  border-color: var(--border-light);
+  border-left-color: var(--warning);
+}
+.ds-card--alert.ds-card--danger {
+  background: var(--danger-soft);
+  border-color: var(--border-light);
+  border-left-color: var(--danger);
+}
+
+/* ── États ───────────────────────────────────────────────────────────────── */
+.ds-card.is-disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+.ds-card.is-selected {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-focus);
+}
+.ds-card.is-loading {
+  pointer-events: none;
+}
+
+/* Respect des préférences de réduction d'animation. */
+@media (prefers-reduced-motion: reduce) {
+  .ds-card,
+  .ds-card--interactive:hover,
+  .ds-card--interactive:active { transition: none; transform: none; }
+}
+
+/* ── design-system/components/tables.css ── */
+/* Fronote Design System — Tables */
+
+/* ── Base ─────────────────────────────────────────────────────────────────
+ * Tableau de données pleine largeur, lisible dans tous les thèmes.
+ * En-tête en creux, lignes séparées par filets fins, survol doux.
+ * Aucune valeur en dur : uniquement des design tokens.
+ * ========================================================================== */
+.ds-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  color: var(--text-primary);
+}
+
+.ds-table th,
+.ds-table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.ds-table thead th {
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border-medium);
+  white-space: nowrap;
+}
+
+.ds-table tbody td {
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-primary);
+}
+
+.ds-table tbody tr {
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+.ds-table tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+.ds-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ds-table tfoot td {
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  font-weight: var(--fw-semibold);
+  border-top: 1px solid var(--border-medium);
+}
+
+/* Cellule numérique alignée à droite. */
+.ds-table .ds-table__num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}
+
+/* ── Variante zébrée (optionnelle) ────────────────────────────────────────── */
+.ds-table--striped tbody tr:nth-child(even) {
+  background: var(--surface-sunken);
+}
+.ds-table--striped tbody tr:nth-child(even):hover {
+  background: var(--surface-hover);
+}
+
+/* ── Variante compacte ────────────────────────────────────────────────────── */
+.ds-table--compact th,
+.ds-table--compact td {
+  padding: var(--space-1) var(--space-3);
+}
+.ds-table--compact {
+  font-size: var(--fs-xs);
+}
+
+/* ── En-tête collant (optionnel) ──────────────────────────────────────────── */
+.ds-table--sticky thead th {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+}
+
+/* ── Cellules de statut ───────────────────────────────────────────────────── */
+.ds-table__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  white-space: nowrap;
+}
+.ds-table__status--success {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.ds-table__status--warning {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.ds-table__status--danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.ds-table__status--info {
+  background: var(--info-soft);
+  color: var(--info);
+}
+.ds-table__status--neutral {
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+}
+
+/* ── États de ligne ───────────────────────────────────────────────────────── */
+.ds-table tbody tr.is-selected {
+  background: var(--primary-soft);
+}
+.ds-table tbody tr.is-selected:hover {
+  background: var(--primary-soft);
+}
+.ds-table tbody tr.is-disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* ── Mode « cartes » sur petits écrans ─────────────────────────────────────
+ * Sur mobile, .ds-table--cards empile chaque ligne en bloc. Chaque <td> doit
+ * porter un attribut data-label="…" (recopie de l'en-tête de colonne) qui sera
+ * affiché en regard de la valeur. Les <th> de tête sont masqués.
+ * ========================================================================== */
+@media (max-width: 640px) {
+  .ds-table--cards thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .ds-table--cards,
+  .ds-table--cards tbody,
+  .ds-table--cards tr,
+  .ds-table--cards td {
+    display: block;
+    width: 100%;
+  }
+  .ds-table--cards tbody tr {
+    margin-bottom: var(--space-3);
+    background: var(--surface-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-xs);
+    overflow: hidden;
+  }
+  .ds-table--cards tbody td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+    text-align: right;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .ds-table--cards tbody tr td:last-child {
+    border-bottom: none;
+  }
+  .ds-table--cards tbody td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    margin-right: var(--space-3);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    color: var(--text-muted);
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+}
+
+/* Respect des préférences de réduction d'animation. */
+@media (prefers-reduced-motion: reduce) {
+  .ds-table tbody tr { transition: none; }
+}
+
+/* ── design-system/components/skeletons.css ── */
+/* Fronote Design System — Skeletons */
+
+/* ── Base ─────────────────────────────────────────────────────────────────
+ * Bloc de chargement scintillant. Le dégradé balaye horizontalement entre
+ * surface-sunken et surface-hover. Aucune valeur en dur : design tokens only.
+ * (La désactivation reduced-motion globale vit dans le fichier utilitaires ;
+ *  on en fournit néanmoins un filet local.)
+ * ========================================================================== */
+.ds-skeleton {
+  display: block;
+  width: 100%;
+  height: var(--space-4);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface-sunken);
+  background-image: linear-gradient(
+    90deg,
+    var(--surface-sunken) 0%,
+    var(--surface-hover) 50%,
+    var(--surface-sunken) 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  background-position: 200% 0;
+  animation: ds-shimmer var(--motion-slower) var(--ease-standard) infinite;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+}
+
+/* ── Variantes ───────────────────────────────────────────────────────────── */
+
+/* Ligne de texte. */
+.ds-skeleton--text {
+  height: var(--fs-sm);
+  border-radius: var(--radius-xs);
+}
+/* Dernière ligne d'un paragraphe : plus courte. */
+.ds-skeleton--text:last-child {
+  width: 70%;
+}
+
+/* Titre : plus haut et plus large. */
+.ds-skeleton--title {
+  height: var(--fs-lg);
+  width: 45%;
+  border-radius: var(--radius-sm);
+}
+
+/* Avatar : pastille ronde. */
+.ds-skeleton--avatar {
+  width: var(--space-10);
+  height: var(--space-10);
+  border-radius: var(--radius-circle);
+}
+
+/* Bloc carte : grande zone élevée. */
+.ds-skeleton--card {
+  height: var(--space-16);
+  border-radius: var(--radius-lg);
+}
+
+/* Ligne de tableau / liste : rangée pleine largeur. */
+.ds-skeleton--row {
+  height: var(--space-8);
+  border-radius: var(--radius-sm);
+}
+
+/* ── Keyframes ───────────────────────────────────────────────────────────── */
+@keyframes ds-shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+/* Respect des préférences de réduction d'animation (filet local ; les
+ * utilitaires globaux peuvent renforcer). On fige le dégradé sans scintillement. */
+@media (prefers-reduced-motion: reduce) {
+  .ds-skeleton {
+    animation: none;
+    background-position: 0 0;
+  }
+}
+
+/* ── design-system/components/modals.css ── */
+/* Fronote Design System — Modals */
+
+/* ---------------------------------------------------------------------------
+   Overlay — fixed full-viewport scrim, blurred, fades in
+   --------------------------------------------------------------------------- */
+.ds-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+
+  background: var(--surface-overlay);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+
+  /* hidden state */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--motion-normal) var(--ease-standard),
+    visibility var(--motion-normal) var(--ease-standard);
+}
+
+.ds-modal-overlay.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.ds-modal-overlay.is-closing {
+  opacity: 0;
+  visibility: visible;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Modal — centered glass-ready card, appears with fade + scale
+   --------------------------------------------------------------------------- */
+.ds-modal {
+  position: relative;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 520px;
+  max-height: calc(100vh - var(--space-12));
+
+  background: var(--surface-card);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+
+  /* hidden state */
+  opacity: 0;
+  transform: translateY(var(--space-4)) scale(0.96);
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    transform var(--motion-normal) var(--ease-emphasized);
+}
+
+.ds-modal-overlay.is-open .ds-modal {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.ds-modal-overlay.is-closing .ds-modal {
+  opacity: 0;
+  transform: translateY(var(--space-4)) scale(0.96);
+}
+
+/* Size modifiers */
+.ds-modal--sm { max-width: 400px; }
+.ds-modal--lg { max-width: 720px; }
+.ds-modal--full { max-width: var(--layout-content-max); }
+
+/* ---------------------------------------------------------------------------
+   Header
+   --------------------------------------------------------------------------- */
+.ds-modal__header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.ds-modal__title {
+  flex: 1 1 auto;
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  color: var(--text-primary);
+}
+
+.ds-modal__icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.ds-modal__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ---------------------------------------------------------------------------
+   Body — scrollable region
+   --------------------------------------------------------------------------- */
+.ds-modal__body {
+  flex: 1 1 auto;
+  padding: var(--space-6);
+  overflow-y: auto;
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  line-height: var(--lh-relaxed);
+  color: var(--text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+   Footer — action row
+   --------------------------------------------------------------------------- */
+.ds-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--border-light);
+}
+
+/* ---------------------------------------------------------------------------
+   Close button
+   --------------------------------------------------------------------------- */
+.ds-modal__close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+
+.ds-modal__close svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ds-modal__close:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.ds-modal__close:active {
+  transform: scale(var(--scale-press));
+}
+
+.ds-modal__close:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* ---------------------------------------------------------------------------
+   Danger variant — danger accent on header + icon
+   --------------------------------------------------------------------------- */
+.ds-modal--danger .ds-modal__header {
+  border-bottom-color: var(--danger-soft);
+}
+
+.ds-modal--danger .ds-modal__title {
+  color: var(--danger);
+}
+
+.ds-modal--danger .ds-modal__icon {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+/* ---------------------------------------------------------------------------
+   Mobile bottom-sheet — slides up from bottom with a drag handle
+   Applies via the --sheet modifier OR automatically under 640px.
+   --------------------------------------------------------------------------- */
+.ds-modal--sheet {
+  margin-top: auto;
+  margin-bottom: 0;
+  max-width: 100%;
+  max-height: 90vh;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  transform: translateY(100%);
+}
+
+.ds-modal--sheet::before {
+  content: "";
+  position: absolute;
+  top: var(--space-2);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--border-strong);
+}
+
+.ds-modal-overlay.is-open .ds-modal--sheet { transform: translateY(0); }
+.ds-modal-overlay.is-closing .ds-modal--sheet { transform: translateY(100%); }
+
+@media (max-width: 639.98px) {
+  .ds-modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .ds-modal {
+    margin-top: auto;
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    border-bottom: none;
+    transform: translateY(100%);
+  }
+
+  .ds-modal::before {
+    content: "";
+    position: absolute;
+    top: var(--space-2);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: var(--border-strong);
+  }
+
+  .ds-modal__header { padding-top: var(--space-6); }
+
+  .ds-modal-overlay.is-open .ds-modal { transform: translateY(0); }
+  .ds-modal-overlay.is-closing .ds-modal { transform: translateY(100%); }
+
+  .ds-modal__footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-modal-overlay,
+  .ds-modal {
+    transition: opacity var(--motion-fast) var(--ease-standard);
+    transform: none;
+  }
+  .ds-modal-overlay.is-open .ds-modal,
+  .ds-modal-overlay.is-closing .ds-modal,
+  .ds-modal--sheet,
+  .ds-modal-overlay.is-open .ds-modal--sheet,
+  .ds-modal-overlay.is-closing .ds-modal--sheet {
+    transform: none;
+  }
+  .ds-modal__close:active {
+    transform: none;
+  }
+}
+
+/* ── design-system/components/toasts.css ── */
+/* Fronote Design System — Toasts */
+
+/* ---------------------------------------------------------------------------
+   Container — fixed, top-right on desktop, stacks downward
+   --------------------------------------------------------------------------- */
+.ds-toast-container {
+  position: fixed;
+  top: var(--space-4);
+  right: var(--space-4);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(380px, calc(100vw - var(--space-8)));
+  pointer-events: none;
+}
+
+.ds-toast-container > * {
+  pointer-events: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Toast — glass card, slides + fades in from the right
+   --------------------------------------------------------------------------- */
+.ds-toast {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  overflow: hidden;
+
+  background: var(--surface-panel);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border-light);
+  border-left: 3px solid var(--border-medium);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+
+  /* hidden state */
+  opacity: 0;
+  transform: translateX(calc(100% + var(--space-4)));
+  transition:
+    opacity var(--motion-normal) var(--ease-standard),
+    transform var(--motion-normal) var(--ease-emphasized);
+}
+
+.ds-toast.is-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.ds-toast.is-closing {
+  opacity: 0;
+  transform: translateX(calc(100% + var(--space-4)));
+}
+
+/* ---------------------------------------------------------------------------
+   Icon area
+   --------------------------------------------------------------------------- */
+.ds-toast__icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+  color: var(--text-secondary);
+}
+
+.ds-toast__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ---------------------------------------------------------------------------
+   Content
+   --------------------------------------------------------------------------- */
+.ds-toast__content {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--font-sans);
+}
+
+.ds-toast__title {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  color: var(--text-primary);
+}
+
+.ds-toast__message {
+  margin: var(--space-1) 0 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-normal);
+  color: var(--text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+   Close
+   --------------------------------------------------------------------------- */
+.ds-toast__close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: calc(var(--space-1) * -1) calc(var(--space-1) * -1) 0 0;
+  padding: 0;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+
+.ds-toast__close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ds-toast__close:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.ds-toast__close:active {
+  transform: scale(var(--scale-press));
+}
+
+.ds-toast__close:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* ---------------------------------------------------------------------------
+   Progress bar — shrinks left-to-right to signal auto-dismiss
+   --------------------------------------------------------------------------- */
+.ds-toast__progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  transform-origin: left center;
+  background: var(--border-medium);
+  animation: ds-toast-progress var(--motion-slower) linear forwards;
+}
+
+@keyframes ds-toast-progress {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+/* ---------------------------------------------------------------------------
+   Variants — accent bar, icon color, progress color
+   --------------------------------------------------------------------------- */
+.ds-toast--success { border-left-color: var(--success); }
+.ds-toast--success .ds-toast__icon { color: var(--success); }
+.ds-toast--success .ds-toast__progress { background: var(--success); }
+
+.ds-toast--error { border-left-color: var(--danger); }
+.ds-toast--error .ds-toast__icon { color: var(--danger); }
+.ds-toast--error .ds-toast__progress { background: var(--danger); }
+
+.ds-toast--warning { border-left-color: var(--warning); }
+.ds-toast--warning .ds-toast__icon { color: var(--warning); }
+.ds-toast--warning .ds-toast__progress { background: var(--warning); }
+
+.ds-toast--info { border-left-color: var(--info); }
+.ds-toast--info .ds-toast__icon { color: var(--info); }
+.ds-toast--info .ds-toast__progress { background: var(--info); }
+
+/* Loading — spinner icon, indeterminate accent */
+.ds-toast--loading { border-left-color: var(--primary); }
+.ds-toast--loading .ds-toast__icon { color: var(--primary); }
+
+.ds-toast--loading .ds-toast__icon svg {
+  animation: ds-toast-spin var(--motion-slow) linear infinite;
+}
+
+@keyframes ds-toast-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------------------------------------------------------------------------
+   Mobile — bottom of screen, slides up from bottom
+   --------------------------------------------------------------------------- */
+@media (max-width: 639.98px) {
+  .ds-toast-container {
+    top: auto;
+    bottom: calc(var(--layout-bottombar-h) + var(--space-4));
+    left: var(--space-4);
+    right: var(--space-4);
+    width: auto;
+  }
+
+  .ds-toast {
+    transform: translateY(calc(100% + var(--space-4)));
+  }
+
+  .ds-toast.is-visible {
+    transform: translateY(0);
+  }
+
+  .ds-toast.is-closing {
+    transform: translateY(calc(100% + var(--space-4)));
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-toast {
+    transition: opacity var(--motion-fast) var(--ease-standard);
+    transform: none;
+  }
+  .ds-toast.is-visible,
+  .ds-toast.is-closing {
+    transform: none;
+  }
+  .ds-toast__progress { animation: none; }
+  .ds-toast--loading .ds-toast__icon svg { animation: none; }
+  .ds-toast__close:active { transform: none; }
+}
+
+/* ── design-system/components/alerts.css ── */
+/* Fronote Design System — Alerts */
+
+/* ---------------------------------------------------------------------------
+   Alert — inline soft-background banner with colored left border + icon slot
+   --------------------------------------------------------------------------- */
+.ds-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+
+  font-family: var(--font-sans);
+  background: var(--surface-panel);
+  border: 1px solid var(--border-light);
+  border-left: 3px solid var(--border-medium);
+  border-radius: var(--radius-lg);
+}
+
+/* ---------------------------------------------------------------------------
+   Icon slot
+   --------------------------------------------------------------------------- */
+.ds-alert__icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+  color: var(--text-secondary);
+}
+
+.ds-alert__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ---------------------------------------------------------------------------
+   Content
+   --------------------------------------------------------------------------- */
+.ds-alert__content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ds-alert__title {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  color: var(--text-primary);
+}
+
+.ds-alert__body {
+  margin: var(--space-1) 0 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-normal);
+  color: var(--text-secondary);
+}
+
+/* When there is no title, the body should not have a top margin */
+.ds-alert__body:first-child {
+  margin-top: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Optional close action
+   --------------------------------------------------------------------------- */
+.ds-alert__close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: calc(var(--space-1) * -1) calc(var(--space-1) * -1) 0 0;
+  padding: 0;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+
+.ds-alert__close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ds-alert__close:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.ds-alert__close:active {
+  transform: scale(var(--scale-press));
+}
+
+.ds-alert__close:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* ---------------------------------------------------------------------------
+   Variants — soft tinted bg + colored left border + colored icon/title
+   --------------------------------------------------------------------------- */
+.ds-alert--success {
+  background: var(--success-soft);
+  border-color: var(--success-soft);
+  border-left-color: var(--success);
+}
+.ds-alert--success .ds-alert__icon,
+.ds-alert--success .ds-alert__title {
+  color: var(--success);
+}
+
+.ds-alert--warning {
+  background: var(--warning-soft);
+  border-color: var(--warning-soft);
+  border-left-color: var(--warning);
+}
+.ds-alert--warning .ds-alert__icon,
+.ds-alert--warning .ds-alert__title {
+  color: var(--warning);
+}
+
+.ds-alert--danger {
+  background: var(--danger-soft);
+  border-color: var(--danger-soft);
+  border-left-color: var(--danger);
+}
+.ds-alert--danger .ds-alert__icon,
+.ds-alert--danger .ds-alert__title {
+  color: var(--danger);
+}
+
+.ds-alert--info {
+  background: var(--info-soft);
+  border-color: var(--info-soft);
+  border-left-color: var(--info);
+}
+.ds-alert--info .ds-alert__icon,
+.ds-alert--info .ds-alert__title {
+  color: var(--info);
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-alert__close:active {
+    transform: none;
+  }
+}
+
+/* ── design-system/components/tooltips.css ── */
+/* Fronote Design System — Tooltips */
+
+/* ---------------------------------------------------------------------------
+   Attribute-based tooltip
+   Usage: any element with [data-ds-tooltip="text"] and class .ds-tooltip-host.
+   The bubble is rendered from the attribute via a ::after pseudo-element.
+   --------------------------------------------------------------------------- */
+.ds-tooltip-host {
+  position: relative;
+}
+
+.ds-tooltip-host[data-ds-tooltip]::after {
+  content: attr(data-ds-tooltip);
+  position: absolute;
+  bottom: calc(100% + var(--space-2));
+  left: 50%;
+
+  z-index: var(--z-tooltip);
+  max-width: 240px;
+  width: max-content;
+  padding: var(--space-1) var(--space-2);
+
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-normal);
+  color: var(--text-primary);
+  text-align: center;
+  white-space: normal;
+
+  background: var(--surface-panel);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+
+  /* hidden state */
+  opacity: 0;
+  transform: translate(-50%, var(--space-1));
+  pointer-events: none;
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-emphasized);
+}
+
+/* Optional arrow */
+.ds-tooltip-host[data-ds-tooltip]::before {
+  content: "";
+  position: absolute;
+  bottom: calc(100% + var(--space-2) - 4px);
+  left: 50%;
+
+  z-index: var(--z-tooltip);
+  width: 8px;
+  height: 8px;
+  background: var(--surface-panel);
+  border-right: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+
+  opacity: 0;
+  transform: translate(-50%, var(--space-1)) rotate(45deg);
+  pointer-events: none;
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-emphasized);
+}
+
+.ds-tooltip-host[data-ds-tooltip]:hover::after,
+.ds-tooltip-host[data-ds-tooltip]:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.ds-tooltip-host[data-ds-tooltip]:hover::before,
+.ds-tooltip-host[data-ds-tooltip]:focus-visible::before {
+  opacity: 1;
+  transform: translate(-50%, 0) rotate(45deg);
+}
+
+/* Placement modifiers on the host -------------------------------------------- */
+.ds-tooltip-host.ds-tooltip--bottom[data-ds-tooltip]::after {
+  bottom: auto;
+  top: calc(100% + var(--space-2));
+  transform: translate(-50%, calc(var(--space-1) * -1));
+}
+.ds-tooltip-host.ds-tooltip--bottom[data-ds-tooltip]::before {
+  bottom: auto;
+  top: calc(100% + var(--space-2) - 4px);
+  border-right: none;
+  border-bottom: none;
+  border-left: 1px solid var(--border-light);
+  border-top: 1px solid var(--border-light);
+  transform: translate(-50%, calc(var(--space-1) * -1)) rotate(45deg);
+}
+.ds-tooltip-host.ds-tooltip--bottom[data-ds-tooltip]:hover::after,
+.ds-tooltip-host.ds-tooltip--bottom[data-ds-tooltip]:focus-visible::after {
+  transform: translate(-50%, 0);
+}
+.ds-tooltip-host.ds-tooltip--bottom[data-ds-tooltip]:hover::before,
+.ds-tooltip-host.ds-tooltip--bottom[data-ds-tooltip]:focus-visible::before {
+  transform: translate(-50%, 0) rotate(45deg);
+}
+
+/* ---------------------------------------------------------------------------
+   Element-based tooltip
+   Usage: a .ds-tooltip element nested inside a .ds-tooltip-host, shown on
+   host hover/focus. Allows rich content beyond a plain attribute string.
+   --------------------------------------------------------------------------- */
+.ds-tooltip {
+  position: absolute;
+  bottom: calc(100% + var(--space-2));
+  left: 50%;
+
+  z-index: var(--z-tooltip);
+  max-width: 260px;
+  width: max-content;
+  padding: var(--space-2) var(--space-3);
+
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-normal);
+  color: var(--text-primary);
+  text-align: center;
+
+  background: var(--surface-panel);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+
+  /* hidden state */
+  opacity: 0;
+  transform: translate(-50%, var(--space-1));
+  pointer-events: none;
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-emphasized);
+}
+
+.ds-tooltip-host:hover > .ds-tooltip,
+.ds-tooltip-host:focus-visible > .ds-tooltip,
+.ds-tooltip.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-tooltip-host[data-ds-tooltip]::after,
+  .ds-tooltip-host[data-ds-tooltip]::before,
+  .ds-tooltip {
+    transition: opacity var(--motion-fast) var(--ease-standard);
+    transform: translate(-50%, 0);
+  }
+  .ds-tooltip-host[data-ds-tooltip]::before {
+    transform: translate(-50%, 0) rotate(45deg);
+  }
+}
+
+/* ── design-system/components/navigation.css ── */
+/* Fronote Design System — Navigation (sidebar) */
+
+/* ---------------------------------------------------------------------------
+   Sidebar — fixed left rail, panel surface, glass-ready
+   --------------------------------------------------------------------------- */
+.ds-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: var(--z-sticky);
+  width: var(--layout-sidebar-w);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-3);
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  background: var(--surface-panel);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border-right: 1px solid var(--border-light);
+
+  transition:
+    width var(--motion-normal) var(--ease-emphasized),
+    transform var(--motion-normal) var(--ease-emphasized);
+}
+
+/* ---------------------------------------------------------------------------
+   Sidebar header / brand
+   --------------------------------------------------------------------------- */
+.ds-sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--layout-topbar-h);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.ds-sidebar-brand {
+  font-family: var(--font-sans);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity var(--motion-fast) var(--ease-standard);
+}
+
+/* ---------------------------------------------------------------------------
+   Nav section — collapsible group
+   --------------------------------------------------------------------------- */
+.ds-nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.ds-nav-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  margin-top: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color var(--motion-fast) var(--ease-standard);
+}
+
+.ds-nav-section-title:hover {
+  color: var(--text-secondary);
+}
+
+.ds-nav-section-title:focus-visible {
+  outline: none;
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-focus);
+  border-radius: var(--radius-sm);
+}
+
+/* Chevron rotates when section open */
+.ds-nav-section-title .ds-nav-chevron {
+  flex: 0 0 auto;
+  transition: transform var(--motion-normal) var(--ease-emphasized);
+}
+
+.ds-nav-section.is-open .ds-nav-section-title .ds-nav-chevron {
+  transform: rotate(90deg);
+}
+
+/* Body collapses by default, expands when open */
+.ds-nav-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition:
+    max-height var(--motion-slow) var(--ease-emphasized),
+    opacity var(--motion-fast) var(--ease-standard);
+}
+
+.ds-nav-section.is-open .ds-nav-section-body {
+  max-height: 1000px;
+  opacity: 1;
+}
+
+/* ---------------------------------------------------------------------------
+   Nav item — icon + label, hover slide, active soft bg + left accent
+   --------------------------------------------------------------------------- */
+.ds-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-normal);
+  color: var(--text-secondary);
+  text-align: left;
+  text-decoration: none;
+  white-space: nowrap;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+}
+
+.ds-nav-item-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.ds-nav-item-label {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity var(--motion-fast) var(--ease-standard);
+}
+
+.ds-nav-item:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+  transform: translateX(2px);
+}
+
+.ds-nav-item:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.ds-nav-item:active {
+  transform: scale(var(--scale-press));
+}
+
+/* Active — soft tint + left accent bar */
+.ds-nav-item.is-active {
+  color: var(--primary);
+  background: var(--primary-soft);
+  font-weight: var(--fw-semibold);
+}
+
+.ds-nav-item.is-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+}
+
+.ds-nav-item.is-disabled,
+.ds-nav-item:disabled {
+  color: var(--text-faint);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Badge pushed to the trailing edge */
+.ds-nav-item .ds-badge,
+.ds-nav-item .ds-badge--count {
+  margin-left: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Tooltip — surfaced only when collapsed, on hover
+   --------------------------------------------------------------------------- */
+.ds-nav-item .ds-nav-tooltip {
+  position: absolute;
+  left: calc(100% + var(--space-2));
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  z-index: var(--z-tooltip);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  color: var(--text-primary);
+  background: var(--surface-panel);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    transform var(--motion-normal) var(--ease-emphasized);
+}
+
+/* ---------------------------------------------------------------------------
+   Collapsed state — narrow rail, labels hidden, tooltips on hover
+   --------------------------------------------------------------------------- */
+.ds-sidebar.is-collapsed {
+  width: var(--layout-sidebar-collapsed-w);
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
+  align-items: stretch;
+}
+
+.ds-sidebar.is-collapsed .ds-nav-item-label,
+.ds-sidebar.is-collapsed .ds-sidebar-brand,
+.ds-sidebar.is-collapsed .ds-nav-section-title,
+.ds-sidebar.is-collapsed .ds-nav-item .ds-badge:not(.ds-badge--count),
+.ds-sidebar.is-collapsed .ds-nav-chevron {
+  opacity: 0;
+  width: 0;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ds-sidebar.is-collapsed .ds-nav-item {
+  justify-content: center;
+  gap: 0;
+}
+
+/* Keep count badge as a corner pip when collapsed */
+.ds-sidebar.is-collapsed .ds-nav-item .ds-badge--count {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  margin: 0;
+}
+
+/* Tooltips become available only on the collapsed rail */
+.ds-sidebar.is-collapsed .ds-nav-item:hover .ds-nav-tooltip,
+.ds-sidebar.is-collapsed .ds-nav-item:focus-visible .ds-nav-tooltip {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+/* ---------------------------------------------------------------------------
+   Mobile off-canvas — overlay + slide-in
+   --------------------------------------------------------------------------- */
+.ds-sidebar.is-mobile {
+  transform: translateX(-100%);
+  box-shadow: var(--shadow-xl);
+}
+
+.ds-sidebar.is-mobile.is-mobile-open {
+  transform: translateX(0);
+}
+
+.ds-sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  background: var(--surface-overlay);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-normal) var(--ease-standard);
+}
+
+.ds-sidebar-overlay.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-sidebar,
+  .ds-nav-item,
+  .ds-nav-section-body,
+  .ds-nav-tooltip,
+  .ds-sidebar.is-mobile {
+    transition: none;
+  }
+  .ds-nav-item:hover,
+  .ds-nav-item:active {
+    transform: none;
+  }
+}
+
+/* ── design-system/components/bottom-bar.css ── */
+/* Fronote Design System — Bottom bar (mobile floating nav, cahier §10.5) */
+
+/* ---------------------------------------------------------------------------
+   Bottom bar — floating glass dock, hidden (slid down) by default
+   --------------------------------------------------------------------------- */
+.ds-bottom-bar {
+  position: fixed;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: calc(var(--space-3) + env(safe-area-inset-bottom)); /* au-dessus du home indicator iOS */
+  z-index: var(--z-sticky);
+  height: var(--layout-bottombar-h);
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+
+  background: var(--surface-panel);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+
+  /* hidden by default: slid below + faded */
+  opacity: 0;
+  transform: translateY(120%);
+  pointer-events: none;
+  transition:
+    transform var(--motion-slow) var(--ease-emphasized),
+    opacity var(--motion-normal) var(--ease-standard);
+}
+
+.ds-bottom-bar.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.ds-bottom-bar.is-hidden {
+  opacity: 0;
+  transform: translateY(120%);
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Item — icon over small label
+   --------------------------------------------------------------------------- */
+.ds-bottom-bar-item {
+  position: relative;
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-tight);
+  text-decoration: none;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition:
+    color var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+}
+
+.ds-bottom-bar-item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.ds-bottom-bar-item-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.ds-bottom-bar-item:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.ds-bottom-bar-item:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.ds-bottom-bar-item:active {
+  transform: scale(0.92);
+}
+
+.ds-bottom-bar-item.is-active {
+  color: var(--primary);
+}
+
+/* ---------------------------------------------------------------------------
+   Count badge anchored to the item's icon
+   --------------------------------------------------------------------------- */
+.ds-bottom-bar-item .ds-badge--count {
+  position: absolute;
+  top: var(--space-1);
+  left: 50%;
+  margin-left: var(--space-2);
+}
+
+/* ---------------------------------------------------------------------------
+   Hidden on desktop
+   --------------------------------------------------------------------------- */
+@media (min-width: 1024px) {
+  .ds-bottom-bar {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-bottom-bar {
+    transition: opacity var(--motion-normal) var(--ease-standard);
+    transform: none;
+  }
+  .ds-bottom-bar.is-visible,
+  .ds-bottom-bar.is-hidden {
+    transform: none;
+  }
+  .ds-bottom-bar-item:active {
+    transform: none;
+  }
+}
+
+/* ── design-system/layouts/app-shell.css ── */
+/* Fronote Design System — App shell (sidebar + main layout) */
+
+/* ---------------------------------------------------------------------------
+   Shell grid — sidebar rail + flexible main column
+   --------------------------------------------------------------------------- */
+.ds-app-shell {
+  display: grid;
+  grid-template-columns: var(--layout-sidebar-w) 1fr;
+  min-height: 100vh;
+  background: var(--surface-app);
+  transition: grid-template-columns var(--motion-normal) var(--ease-emphasized);
+}
+
+/* When the rail is collapsed, the first track narrows to match. */
+.ds-app-shell.is-sidebar-collapsed {
+  grid-template-columns: var(--layout-sidebar-collapsed-w) 1fr;
+}
+
+/* ---------------------------------------------------------------------------
+   Main content column
+   --------------------------------------------------------------------------- */
+.ds-main {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ds-main-inner {
+  width: 100%;
+  max-width: var(--layout-content-max);
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-6) var(--space-12);
+}
+
+/* ---------------------------------------------------------------------------
+   Topbar — generic DS topbar for new pages (sticky, glass-ready)
+   --------------------------------------------------------------------------- */
+.ds-topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: var(--layout-topbar-h);
+  padding: 0 var(--space-6);
+
+  background: var(--surface-panel);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border-bottom: 1px solid var(--border-light);
+
+  transition:
+    transform var(--motion-normal) var(--ease-emphasized),
+    box-shadow var(--motion-fast) var(--ease-standard),
+    opacity var(--motion-normal) var(--ease-standard);
+}
+
+.ds-topbar.is-hidden {
+  transform: translateY(-100%);
+  opacity: 0;
+}
+
+.ds-topbar.is-scrolled {
+  box-shadow: var(--shadow-sm);
+}
+
+/* L'auto-masquage de la topbar est OPT-IN via .ds-topbar (ci-dessus), pour ne PAS
+   entrer en conflit avec l'ancienne .topbar (gérée par assets/js/topbar.js).
+   interactions.js ne pilote que .ds-topbar. */
+
+/* ---------------------------------------------------------------------------
+   Back-to-top FAB — fixed bottom-right, hidden until scrolled
+   --------------------------------------------------------------------------- */
+.ds-back-to-top {
+  position: fixed;
+  right: var(--space-6);
+  bottom: var(--space-6);
+  z-index: var(--z-raised);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: var(--on-primary);
+  background: var(--primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-circle);
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+
+  opacity: 0;
+  transform: translateY(var(--space-3));
+  pointer-events: none;
+  transition:
+    opacity var(--motion-normal) var(--ease-standard),
+    transform var(--motion-normal) var(--ease-emphasized),
+    background-color var(--motion-fast) var(--ease-standard);
+}
+
+.ds-back-to-top:hover {
+  background: var(--primary-hover);
+}
+
+.ds-back-to-top:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.ds-back-to-top:active {
+  transform: scale(var(--scale-press));
+}
+
+.ds-back-to-top.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-app-shell,
+  .ds-topbar,
+  .topbar,
+  .ds-back-to-top {
+    transition: none;
+  }
+  .ds-back-to-top {
+    transform: none;
+  }
+  .ds-back-to-top:active {
+    transform: none;
+  }
+}
+
+/* ── design-system/layouts/platform.css ── */
+/* Fronote Design System — Platform layout (techy SaaS console) */
+
+/* ---------------------------------------------------------------------------
+   Platform scope — violet-accented, compact, dark-leaning console feel.
+   Accent is declared as a token here so it can be themed/overridden.
+   --------------------------------------------------------------------------- */
+.ds-platform {
+  --platform-accent: #7c5cff;
+  background: var(--surface-app);
+  color: var(--text-primary);
+}
+
+/* Compact rail inside the platform scope */
+.ds-platform .ds-sidebar {
+  padding: var(--space-3) var(--space-2);
+  gap: var(--space-0);
+}
+
+.ds-platform .ds-sidebar-brand {
+  color: var(--platform-accent);
+  letter-spacing: -0.01em;
+}
+
+.ds-platform .ds-nav-item {
+  min-height: 40px;
+  font-size: var(--fs-sm);
+}
+
+/* Active items lean on the platform accent rather than the brand primary */
+.ds-platform .ds-nav-item.is-active {
+  color: var(--platform-accent);
+  background: var(--surface-raised);
+}
+
+.ds-platform .ds-nav-item.is-active::before {
+  background: var(--platform-accent);
+}
+
+/* ---------------------------------------------------------------------------
+   Headings — accented, tight, console-style
+   --------------------------------------------------------------------------- */
+.ds-platform .ds-platform-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.ds-platform .ds-platform-heading::before {
+  content: "";
+  width: var(--space-1);
+  height: var(--fs-xl);
+  border-radius: var(--radius-pill);
+  background: var(--platform-accent);
+}
+
+.ds-platform .ds-platform-eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--platform-accent);
+}
+
+/* ---------------------------------------------------------------------------
+   Monitoring grid — auto-fill responsive tiles
+   --------------------------------------------------------------------------- */
+.ds-monitor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+/* ---------------------------------------------------------------------------
+   Stat card — compact metric tile
+   --------------------------------------------------------------------------- */
+.ds-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--surface-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  transition:
+    box-shadow var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
+}
+
+.ds-stat-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-medium);
+  transform: translateY(var(--translate-hover));
+}
+
+.ds-stat-card-label {
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ds-stat-card-value {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  color: var(--text-primary);
+}
+
+.ds-stat-card-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+
+.ds-stat-card-delta.is-positive { color: var(--success); }
+.ds-stat-card-delta.is-negative { color: var(--danger); }
+
+/* Accent variant pins the card to the platform colour */
+.ds-stat-card.is-accent {
+  border-color: var(--platform-accent);
+}
+
+.ds-stat-card.is-accent .ds-stat-card-value {
+  color: var(--platform-accent);
+}
+
+/* État/santé d'une métrique : vert = normal, orange = attention, rouge = critique. */
+.ds-stat-card.is-ok    { border-left: 3px solid var(--success); }
+.ds-stat-card.is-warn  { border-left: 3px solid var(--warning); }
+.ds-stat-card.is-crit  { border-left: 3px solid var(--danger); }
+.ds-stat-card.is-warn .ds-stat-card-value { color: var(--warning); }
+.ds-stat-card.is-crit .ds-stat-card-value { color: var(--danger); }
+.ds-stat-card-status { display:inline-flex; align-items:center; gap: var(--space-1); font-size: var(--fs-xs); font-weight: var(--fw-semibold); color: var(--text-muted); }
+.ds-stat-card.is-ok   .ds-stat-card-status { color: var(--success); }
+.ds-stat-card.is-warn .ds-stat-card-status { color: var(--warning); }
+.ds-stat-card.is-crit .ds-stat-card-status { color: var(--danger); }
+
+/* Barre de progression fine (jauge CPU/RAM/disque). */
+.ds-gauge { height: 6px; border-radius: var(--radius-pill); background: var(--surface-sunken); overflow: hidden; }
+.ds-gauge > span { display:block; height:100%; border-radius: var(--radius-pill); background: var(--success); transition: width var(--motion-slow) var(--ease-standard); }
+.ds-stat-card.is-warn .ds-gauge > span { background: var(--warning); }
+.ds-stat-card.is-crit .ds-gauge > span { background: var(--danger); }
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-stat-card {
+    transition: none;
+  }
+  .ds-stat-card:hover {
+    transform: none;
+  }
+}
+
+/* ── design-system/layouts/tenant-admin.css ── */
+/* Fronote Design System — Tenant admin layout (friendly establishment console) */
+
+/* ---------------------------------------------------------------------------
+   Tenant scope — comfortable spacing, welcoming establishment feel.
+   --------------------------------------------------------------------------- */
+.ds-tenant {
+  background: var(--surface-app);
+  color: var(--text-primary);
+}
+
+.ds-tenant .ds-main-inner {
+  padding: var(--space-8) var(--space-8) var(--space-16);
+}
+
+/* Roomier rail for the establishment side */
+.ds-tenant .ds-sidebar {
+  padding: var(--space-5) var(--space-4);
+  gap: var(--space-2);
+}
+
+.ds-tenant .ds-nav-item {
+  min-height: 48px;
+}
+
+/* ---------------------------------------------------------------------------
+   Page header
+   --------------------------------------------------------------------------- */
+.ds-tenant .ds-tenant-heading {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  color: var(--text-primary);
+}
+
+.ds-tenant .ds-tenant-subtitle {
+  margin: 0 0 var(--space-8);
+  font-size: var(--fs-md);
+  color: var(--text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+   Quick actions — grid of large tappable action cards
+   --------------------------------------------------------------------------- */
+.ds-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-8);
+}
+
+.ds-quick-action {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 120px;
+  padding: var(--space-5);
+  text-align: left;
+  text-decoration: none;
+  color: var(--text-primary);
+  background: var(--surface-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  cursor: pointer;
+  transition:
+    box-shadow var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
+}
+
+.ds-quick-action:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-medium);
+  transform: translateY(var(--translate-hover));
+}
+
+.ds-quick-action:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.ds-quick-action:active {
+  transform: scale(var(--scale-press));
+}
+
+.ds-quick-action-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border-radius: var(--radius-md);
+}
+
+.ds-quick-action-title {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+}
+
+.ds-quick-action-desc {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  line-height: var(--lh-normal);
+}
+
+/* ---------------------------------------------------------------------------
+   Dashboard grid — comfortable cards layout
+   --------------------------------------------------------------------------- */
+.ds-dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-6);
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-quick-action {
+    transition: none;
+  }
+  .ds-quick-action:hover,
+  .ds-quick-action:active {
+    transform: none;
+  }
+}
+
+/* ── design-system/layouts/mobile.css ── */
+/* Fronote Design System — Mobile / responsive layout rules */
+
+/* ---------------------------------------------------------------------------
+   Below the desktop breakpoint: sidebar goes off-canvas, bottom bar takes over.
+   --------------------------------------------------------------------------- */
+@media (max-width: 1023.98px) {
+
+  /* Shell collapses to a single column; rail no longer reserves space. */
+  .ds-app-shell,
+  .ds-app-shell.is-sidebar-collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  /* Sidebar becomes an off-canvas drawer (hidden until .is-mobile-open). */
+  .ds-sidebar {
+    transform: translateX(-100%);
+    box-shadow: var(--shadow-xl);
+    z-index: var(--z-modal);
+  }
+
+  .ds-sidebar.is-mobile-open {
+    transform: translateX(0);
+  }
+
+  /* Collapsed rail has no meaning on mobile: always full drawer width. */
+  .ds-sidebar.is-collapsed {
+    width: var(--layout-sidebar-w);
+    padding: var(--space-4) var(--space-3);
+  }
+
+  .ds-sidebar.is-collapsed .ds-nav-item-label,
+  .ds-sidebar.is-collapsed .ds-sidebar-brand,
+  .ds-sidebar.is-collapsed .ds-nav-section-title,
+  .ds-sidebar.is-collapsed .ds-nav-chevron {
+    opacity: 1;
+    width: auto;
+    overflow: visible;
+    pointer-events: auto;
+  }
+
+  .ds-sidebar.is-collapsed .ds-nav-item {
+    justify-content: flex-start;
+    gap: var(--space-3);
+  }
+
+  /* Main spans full width and leaves room for the floating bottom bar. */
+  .ds-main {
+    grid-column: 1;
+  }
+
+  .ds-main-inner {
+    padding: var(--space-4) var(--space-4)
+             calc(var(--layout-bottombar-h) + var(--space-8));
+  }
+
+  /* Pages connectées « legacy » (.main-content) : dégager le contenu de la bottom-bar flottante. */
+  body.has-bottom-bar .main-content {
+    padding-bottom: calc(var(--layout-bottombar-h) + var(--space-6) + env(safe-area-inset-bottom));
+  }
+
+  /* The floating bottom bar is the primary nav on mobile. */
+  .ds-bottom-bar {
+    display: flex;
+  }
+
+  /* Keep the back-to-top FAB clear of the bottom bar. */
+  .ds-back-to-top {
+    bottom: calc(var(--layout-bottombar-h) + var(--space-6));
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Table → card mode helper.
+   Add .ds-table--cards to a DS table; on mobile each row becomes a card and
+   each cell shows its column label from the data-label attribute.
+   --------------------------------------------------------------------------- */
+@media (max-width: 767.98px) {
+  .ds-table--cards thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .ds-table--cards tbody tr {
+    display: block;
+    margin-bottom: var(--space-3);
+    padding: var(--space-3);
+    background: var(--surface-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xs);
+  }
+
+  .ds-table--cards tbody td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-2) 0;
+    border: none;
+    text-align: right;
+  }
+
+  .ds-table--cards tbody td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    color: var(--text-muted);
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+}
+
+/* ── design-system/utilities/helpers.css ── */
+/* Fronote Design System — Utilities / Helpers */
+
+/* ============================================================================
+ * Petits utilitaires de mise en page et d'apparence. Tout via les tokens.
+ * Classes à faible spécificité (une seule classe) pour rester combinables.
+ * ========================================================================== */
+
+/* --- Affichage / flux ----------------------------------------------------- */
+.ds-flex   { display: flex; }
+.ds-grid   { display: grid; }
+.ds-inline-flex { display: inline-flex; }
+
+/* --- Espacement entre enfants (flex/grid gap) ----------------------------- */
+.ds-gap-1 { gap: var(--space-1); }
+.ds-gap-2 { gap: var(--space-2); }
+.ds-gap-3 { gap: var(--space-3); }
+.ds-gap-4 { gap: var(--space-4); }
+.ds-gap-5 { gap: var(--space-5); }
+.ds-gap-6 { gap: var(--space-6); }
+
+/* --- Compositions courantes ----------------------------------------------- */
+.ds-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.ds-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ds-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ds-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* --- Texte ---------------------------------------------------------------- */
+.ds-muted { color: var(--text-muted); }
+
+.ds-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Lisible par lecteurs d'écran uniquement (masqué visuellement). */
+.ds-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* --- Apparence ------------------------------------------------------------ */
+.ds-elevated { box-shadow: var(--shadow-md); }
+.ds-rounded  { border-radius: var(--radius-md); }
+.ds-pill     { border-radius: var(--radius-pill); }
+
+/* Surface en verre — flou no-op hors thème liquide (--glass-blur = 0px). */
+.ds-glass {
+  background: var(--surface-card);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border-light);
+}
+
+/* ── design-system/utilities/responsive.css ── */
+/* Fronote Design System — Utilities / Responsive */
+
+/* ============================================================================
+ * Helpers de visibilité par point de rupture + motif tableau → cartes.
+ * Mobile-first : 640px (mobile), 1024px (desktop).
+ * ========================================================================== */
+
+/* --- Visibilité ----------------------------------------------------------- */
+@media (max-width: 640px) {
+  .ds-hide-mobile { display: none !important; }
+}
+
+@media (min-width: 1024px) {
+  .ds-hide-desktop { display: none !important; }
+}
+
+/* Visible uniquement sur mobile (masqué dès le seuil tablette). */
+.ds-only-mobile { display: none; }
+@media (max-width: 640px) {
+  .ds-only-mobile { display: revert; }
+}
+
+/* Visible uniquement sur desktop (masqué sous le seuil desktop). */
+.ds-only-desktop { display: none; }
+@media (min-width: 1024px) {
+  .ds-only-desktop { display: revert; }
+}
+
+/* --- Conteneurs adaptatifs (container-query-ish) -------------------------- */
+.ds-container {
+  width: 100%;
+  max-width: var(--layout-content-max);
+  margin-inline: auto;
+  padding-inline: var(--space-4);
+}
+
+@media (min-width: 1024px) {
+  .ds-container { padding-inline: var(--space-6); }
+}
+
+/* Grille fluide : autant de colonnes que la largeur le permet. */
+.ds-grid-auto {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+/* ============================================================================
+ * Motif tableau → cartes.
+ * En desktop : tableau classique. En mobile : chaque <tr> devient une carte,
+ * l'entête est masqué et chaque <td> affiche son libellé via data-label.
+ *
+ * Balisage attendu :
+ *   <table class="ds-table--cards">
+ *     <thead>…</thead>
+ *     <tbody><tr><td data-label="Nom">…</td>…</tr></tbody>
+ *   </table>
+ * ========================================================================== */
+@media (max-width: 640px) {
+  .ds-table--cards thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .ds-table--cards,
+  .ds-table--cards tbody,
+  .ds-table--cards tr,
+  .ds-table--cards td {
+    display: block;
+    width: 100%;
+  }
+
+  .ds-table--cards tr {
+    margin-bottom: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--surface-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .ds-table--cards td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-2) 0;
+    border: 0;
+    text-align: right;
+  }
+
+  .ds-table--cards td + td {
+    border-top: 1px solid var(--border-light);
+  }
+
+  .ds-table--cards td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    margin-right: var(--space-3);
+    color: var(--text-muted);
+    font-weight: var(--fw-medium);
+    text-align: left;
+  }
+}
+
+/* ── design-system/utilities/animations.css ── */
+/* Fronote Design System — Utilities / Animations */
+
+/* ============================================================================
+ * Keyframes réutilisables. Toutes les durées/courbes passent par les tokens
+ * de mouvement (cf. tokens/motion.css). Subtilité avant tout (cahier §6).
+ * ========================================================================== */
+
+@keyframes ds-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes ds-fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ds-scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ds-slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes ds-slide-in-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ds-shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-5px); }
+  40%      { transform: translateX(4px); }
+  60%      { transform: translateX(-3px); }
+  80%      { transform: translateX(2px); }
+}
+
+@keyframes ds-pop {
+  0%   { transform: scale(0.92); }
+  55%  { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+@keyframes ds-pulse-soft {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+/* ============================================================================
+ * Classes helpers — appliquent les keyframes via les tokens de mouvement.
+ * ========================================================================== */
+
+.ds-animate-fade {
+  animation: ds-fade-in var(--motion-normal) var(--ease-standard) both;
+}
+
+.ds-animate-up {
+  animation: ds-fade-in-up var(--motion-slow) var(--ease-emphasized) both;
+}
+
+.ds-animate-scale {
+  animation: ds-scale-in var(--motion-normal) var(--ease-emphasized) both;
+}
+
+.ds-animate-slide-right {
+  animation: ds-slide-in-right var(--motion-slow) var(--ease-emphasized) both;
+}
+
+.ds-animate-slide-up {
+  animation: ds-slide-in-up var(--motion-slow) var(--ease-emphasized) both;
+}
+
+.ds-animate-shake {
+  animation: ds-shake var(--motion-slow) var(--ease-standard) both;
+}
+
+.ds-animate-pop {
+  animation: ds-pop var(--motion-normal) var(--ease-bounce-soft) both;
+}
+
+.ds-animate-pulse {
+  animation: ds-pulse-soft var(--motion-slower) var(--ease-standard) infinite;
+}
+
+/* ============================================================================
+ * Accessibilité — réduction du mouvement (système OU préférence utilisateur).
+ * On garde un retour quasi instantané plutôt qu'une suppression totale.
+ * ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  html[data-theme="liquid"] body { background-attachment: scroll; }
+}
+
+html[data-reduce-motion="true"] *,
+html[data-reduce-motion="true"] *::before,
+html[data-reduce-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+html[data-reduce-motion="true"][data-theme="liquid"] body { background-attachment: scroll; }
+
+/* ── design-system/utilities/transitions.css ── */
+/* ============================================================================
+ * Fronote Design System — TRANSITIONS DE PAGE & CHARGEMENT (cahier §30)
+ * - View Transitions API : fondu fluide entre pages (navigations same-origin),
+ *   progressive enhancement (ignoré par les navigateurs non compatibles).
+ * - Barre de progression de navigation (.ds-nav-progress) : feedback perçu.
+ * Tout est désactivé en réduction de mouvement.
+ * ========================================================================== */
+
+/* Active le fondu inter-pages (Chrome/Edge ; sans effet ailleurs). */
+@view-transition { navigation: auto; }
+
+/* Respect strict de la réduction de mouvement (préférence système OU réglage Fronote). */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
+}
+html[data-reduce-motion="true"] ::view-transition-group(*),
+html[data-reduce-motion="true"] ::view-transition-old(*),
+html[data-reduce-motion="true"] ::view-transition-new(*) { animation: none !important; }
+
+/* ── Barre de progression de navigation ──────────────────────────────────── */
+.ds-nav-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 3px;
+  z-index: var(--z-toast);
+  background: transparent;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--motion-normal) var(--ease-standard);
+}
+.ds-nav-progress.is-active { opacity: 1; }
+.ds-nav-progress > span {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
+  background: linear-gradient(90deg, var(--primary), var(--primary-hover));
+  box-shadow: 0 0 8px var(--primary);
+  transition: width var(--motion-slow) var(--ease-standard);
+}
+
+@media (prefers-reduced-motion: reduce) { .ds-nav-progress { display: none; } }
+html[data-reduce-motion="true"] .ds-nav-progress { display: none; }
+
+/* ── design-system/legacy-bridge.css ── */
+/* ============================================================================
+ * Fronote Design System — PONT LEGACY → DS
+ * Aligne VISUELLEMENT les primitives historiques (.btn, .ui-btn, .card,
+ * .form-control…) sur le langage du design system, SANS renommer le markup
+ * des 300+ pages et SANS casser les mises en page.
+ *
+ * Principe de sûreté : on ne touche QUE le « polish » via tokens
+ * (rayons, ombres douces, transitions, anneau de focus, retour au clic).
+ * On NE change PAS les couleurs de fond/texte ni le box-model (padding,
+ * largeurs) → les thèmes (tokens + dark-overrides.css) continuent de fonctionner
+ * et aucune page ne se décale. Chargé EN DERNIER (via design-system.css) pour
+ * primer à spécificité égale.
+ * ========================================================================== */
+
+/* ── Boutons (.btn historique + .ui-btn) ─────────────────────────────────── */
+.btn,
+.ui-btn {
+  border-radius: var(--radius-md);
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+}
+.btn:active,
+.ui-btn:active { transform: scale(var(--scale-press)); }
+
+.btn:focus-visible,
+.ui-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* Petits boutons : rayon plus serré (un radius-md sur un bouton minuscule fait « bulle »). */
+.btn-sm, .btn-xs, .btn-mini,
+.ui-btn--sm { border-radius: var(--radius-sm); }
+
+/* ── Cartes (.card historique) ───────────────────────────────────────────── */
+/* On ne fixe PAS le fond/texte (gérés par les thèmes) NI la bordure (les cartes
+ * legacy sont sans bordure → en ajouter une rognerait le contenu en border-box).
+ * Uniquement la forme + l'ombre douce + une transition fluide. */
+.card {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition:
+    box-shadow var(--motion-normal) var(--ease-standard),
+    transform var(--motion-normal) var(--ease-standard),
+    border-color var(--motion-normal) var(--ease-standard);
+}
+
+/* ── Contrôles de formulaire (classes explicites uniquement — pas les inputs nus) ── */
+.form-control,
+.form-select,
+.form-input,
+.form-textarea {
+  border-radius: var(--radius-md);
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard);
+}
+.form-control:focus,
+.form-select:focus,
+.form-input:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-focus);
+}
+
+/* ── Modale historique (.modal-box) : forme + profondeur DS (fond géré par les thèmes) ── */
+.modal-box {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+}
+
+/* ── Respect de la réduction de mouvement ────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .btn, .ui-btn, .card,
+  .form-control, .form-select, .form-input, .form-textarea { transition: none; }
+  .btn:active, .ui-btn:active { transform: none; }
+}

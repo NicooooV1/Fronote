@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [4.4.1] — Pages plus rapides — 2026-10-26
+
+### Fixed — Performance
+- La politique CSP « de mesure » (Report-Only) était envoyée sur chaque page : chaque style inline
+  déclenchait une requête PHP de rapport (≈ 200 sur la page Notes), saturant le pool PHP.
+  Elle n'est plus envoyée que sur 1 page sur 100 (réglable : CSP_REPORT_ONLY_SAMPLE).
+- Design system servi en un seul fichier (bin/build-css.php) au lieu de 34 @import en série ;
+  repli automatique si l'assemblage est plus ancien que ses sources.
+- Cache navigateur : 1 an « immuable » pour les fichiers versionnés (?v=), 1 jour pour les autres
+  (avant : 1 an pour tout, y compris les CSS/JS non versionnés des modules → mises à jour invisibles) ;
+  fonctionne aussi sans mod_expires. L'installeur active mod_expires.
+
 ## [4.4.0] — Barre de navigation refaite — 2026-10-26
 
 ### Changed — Barre de navigation

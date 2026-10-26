@@ -260,7 +260,7 @@ if [ "$DO_WEBSERVER" = 1 ]; then
   log "Serveur web (Apache + PHP-FPM ${PHP_VER})"
   systemctl enable --now "php${PHP_VER}-fpm" >/dev/null 2>&1 || true
   a2dismod "php${PHP_VER}" mpm_prefork >/dev/null 2>&1 || true
-  a2enmod mpm_event proxy_fcgi setenvif rewrite headers >/dev/null 2>&1 || true
+  a2enmod mpm_event proxy_fcgi setenvif rewrite headers expires >/dev/null 2>&1 || true
   [ "$WITH_WEBSOCKET" = 1 ] && a2enmod proxy proxy_http proxy_wstunnel >/dev/null 2>&1 || true
   a2enconf "php${PHP_VER}-fpm" >/dev/null 2>&1 || true
   grep -q "^Listen ${HTTP_PORT}\b" /etc/apache2/ports.conf 2>/dev/null || echo "Listen ${HTTP_PORT}" >> /etc/apache2/ports.conf

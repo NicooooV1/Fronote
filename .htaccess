@@ -71,17 +71,30 @@ RedirectMatch 404 (?i)^/templates/[^?]*\.php$
     AddOutputFilterByType DEFLATE text/html text/plain text/css text/javascript application/javascript application/json application/xml image/svg+xml
 </IfModule>
 
-# --- Cache navigateur (les assets sont versionnés par ?v=mtime) ---
+# --- Cache navigateur ---
+# Les assets liés par les gabarits portent ?v=<mtime> : l'URL change à chaque modification du
+# fichier → cache « immuable » d'un an sans risque. Les autres (CSS/JS de modules liés sans ?v=,
+# sous-fichiers @import, polices…) : 1 jour, pour qu'une mise à jour arrive vite.
 <IfModule mod_expires.c>
     ExpiresActive On
-    ExpiresByType text/css "access plus 1 year"
-    ExpiresByType application/javascript "access plus 1 year"
-    ExpiresByType image/png "access plus 6 months"
-    ExpiresByType image/jpeg "access plus 6 months"
-    ExpiresByType image/svg+xml "access plus 6 months"
-    ExpiresByType image/webp "access plus 6 months"
-    ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresByType text/css "access plus 1 day"
+    ExpiresByType application/javascript "access plus 1 day"
+    ExpiresByType text/javascript "access plus 1 day"
+    ExpiresByType image/png "access plus 30 days"
+    ExpiresByType image/jpeg "access plus 30 days"
+    ExpiresByType image/svg+xml "access plus 30 days"
+    ExpiresByType image/webp "access plus 30 days"
+    ExpiresByType font/woff2 "access plus 30 days"
     ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
+<IfModule mod_headers.c>
+    <FilesMatch "(?i)\.(css|js|mjs|woff2?|ttf|otf|eot|svg|png|jpe?g|gif|webp|avif|ico)$">
+        Header set Cache-Control "public, max-age=86400"
+        <If "%{QUERY_STRING} =~ /(^|&)v=/">
+            Header set Cache-Control "public, max-age=31536000, immutable"
+            Header unset Expires
+        </If>
+    </FilesMatch>
 </IfModule>
 
 # --- Portail établissement (refonte 3-mondes) : URLs propres /e/{slug}/... ---

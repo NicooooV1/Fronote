@@ -215,7 +215,14 @@ if (!headers_sent()) {
         . "connect-src 'self' ws: wss:; "
         . "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; "
         . "report-uri /API/endpoints/csp_report.php;";
-    header("Content-Security-Policy-Report-Only: {$_hdr_cspRO}");
+    // ÉCHANTILLONNÉ : chaque style inline restant produit UN rapport, donc une requête PHP
+    // (≈ 200 sur la page Notes). Envoyé sur chaque page, ce « mètre » saturait le pool PHP et
+    // ralentissait toute la navigation. 1 page sur 100 suffit à mesurer la dette.
+    // CSP_REPORT_ONLY_SAMPLE = pourcentage de pages instrumentées (0 = jamais, 100 = toutes).
+    $_hdr_roPct = (int) (getenv('CSP_REPORT_ONLY_SAMPLE') !== false ? getenv('CSP_REPORT_ONLY_SAMPLE') : ($_ENV['CSP_REPORT_ONLY_SAMPLE'] ?? 1));
+    if ($_hdr_roPct > 0 && random_int(1, 100) <= $_hdr_roPct) {
+        header("Content-Security-Policy-Report-Only: {$_hdr_cspRO}");
+    }
     header("X-Frame-Options: DENY");
     header("X-Content-Type-Options: nosniff");
     header("Referrer-Policy: strict-origin-when-cross-origin");
@@ -367,7 +374,22 @@ try {
     <!-- Couche de cohérence du thème sombre : EN DERNIER pour primer sur le CSS des modules + les styles inline. -->
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/dark-overrides.css') ?>">
     <!-- Design System (refonte UX) : tokens + thèmes (clair/sombre/liquide) + composants .ds-* (additif). -->
-    <link rel="stylesheet" href="<?= $_assetVersion('assets/css/design-system.css') ?>">
+    <?php
+    // Design system : un seul fichier assemblé (bin/build-css.php) au lieu de 34 @import découverts
+    // en série. Repli automatique sur l'entrée @import si l'assemblage manque ou est plus ancien
+    // qu'une de ses sources (jamais de style périmé).
+    $_dsCss = 'assets/css/design-system.css';
+    $_dsBundle = $_assetRoot . '/assets/css/design-system.bundle.css';
+    if (is_file($_dsBundle)) {
+        $_dsFresh = true;
+        $_dsT = filemtime($_dsBundle);
+        foreach (glob($_assetRoot . '/assets/css/design-system/*/*.css') ?: [] as $_dsSrc) {
+            if (filemtime($_dsSrc) > $_dsT) { $_dsFresh = false; break; }
+        }
+        if ($_dsFresh && filemtime($_assetRoot . '/' . $_dsCss) <= $_dsT) { $_dsCss = 'assets/css/design-system.bundle.css'; }
+    }
+    ?>
+    <link rel="stylesheet" href="<?= $_assetVersion($_dsCss) ?>">
     <!-- Couche de modernisation (refonte 2026) : polish transverse façon Apple. -->
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/modernize.css') ?>">
     <!-- Couche RESPONSIVE centrale : adaptation ordinateur/tablette/téléphone — EN TOUT DERNIER. -->
