@@ -45,3 +45,10 @@ textarea.pf-input { width: 100%; resize: vertical; min-height: 90px; }
 .pf-list { margin: 0; padding-left: 18px; line-height: 1.8; }
 tr.is-unread td:first-child { box-shadow: inset 3px 0 0 var(--pf-accent); }
 .pf-toggle-set { margin-bottom: 14px; }
+/* « .pf-body a { color: inherit } » (platform.css) l'emporte sur .pf-nav-item : on rétablit les couleurs de la barre latérale. */
+.pf-sidebar .pf-nav-item { color: var(--pf-ink-text); }
+.pf-sidebar .pf-nav-item:hover { color: var(--pf-ink-title); }
+.pf-sidebar .pf-nav-item.is-active { color: #fff; }
+.pf-table td.pf-muted { white-space: nowrap; }
+.pf-table a { text-decoration: none; }
+.pf-table a:hover { text-decoration: underline; }
