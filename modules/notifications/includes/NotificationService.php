@@ -13,43 +13,28 @@ class NotificationService extends \API\Services\AbstractTenantService
 {
 
     // ── Créer une notification ──
+    // Depuis 4.3 : relais vers le centre de notifications (préférences, regroupement,
+    // temps réel, normalisation de l'importance et des liens). Signature inchangée.
     public function creer(int $userId, string $userType, string $type, string $titre, ?string $contenu = null, ?string $lien = null, string $importance = 'normale', ?string $sourceType = null, ?int $sourceId = null): int
     {
-        $stmt = $this->pdo->prepare("
-            INSERT INTO notifications_globales (etablissement_id, user_id, user_type, type, titre, contenu, lien, icone, importance, source_type, source_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-        $icone = self::iconeParType($type);
-        $stmt->execute([\API\Core\EstablishmentContext::id(), $userId, $userType, $type, $titre, $contenu, $lien, $icone, $importance, $sourceType, $sourceId]);
-        return (int)$this->pdo->lastInsertId();
+        return \API\Services\Notifications\NotificationCenter::make()->send(
+            [['id' => $userId, 'type' => $userType]], $type, $titre, $contenu, $lien,
+            ['importance' => $importance, 'source_type' => $sourceType, 'source_id' => $sourceId]
+        );
     }
 
-    /**
-     * Insertion en masse : prépare l'INSERT UNE seule fois puis l'exécute pour
-     * chaque destinataire (évite un prepare() par destinataire — N+1 sur les
-     * envois de groupe/classe). $recipients = [['id'=>int,'type'=>string], ...].
-     */
-    private function insertBatch(array $recipients, string $type, string $titre, ?string $contenu, ?string $lien, string $importance, ?string $sourceType = null, ?int $sourceId = null): int
-    {
-        if (!$recipients) return 0;
-        $icone = self::iconeParType($type);
-        $etabId = \API\Core\EstablishmentContext::id();
-        $stmt = $this->pdo->prepare("
-            INSERT INTO notifications_globales (etablissement_id, user_id, user_type, type, titre, contenu, lien, icone, importance, source_type, source_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-        $count = 0;
-        foreach ($recipients as $r) {
-            $stmt->execute([$etabId, (int)$r['id'], $r['type'], $type, $titre, $contenu, $lien, $icone, $importance, $sourceType, $sourceId]);
-            $count++;
-        }
-        return $count;
-    }
-
-    // ── Créer pour plusieurs destinataires ──
+    // ── Créer pour plusieurs destinataires ── ($destinataires = [['id'=>int,'type'=>string], ...])
     public function creerPourGroupe(array $destinataires, string $type, string $titre, ?string $contenu = null, ?string $lien = null, string $importance = 'normale', ?string $sourceType = null, ?int $sourceId = null): int
     {
-        return $this->insertBatch($destinataires, $type, $titre, $contenu, $lien, $importance, $sourceType, $sourceId);
+        return \API\Services\Notifications\NotificationCenter::make()->send(
+            $destinataires, $type, $titre, $contenu, $lien,
+            ['importance' => $importance, 'source_type' => $sourceType, 'source_id' => $sourceId]
+        );
+    }
+
+    private function insertBatch(array $recipients, string $type, string $titre, ?string $contenu, ?string $lien, string $importance, ?string $sourceType = null, ?int $sourceId = null): int
+    {
+        return $this->creerPourGroupe($recipients, $type, $titre, $contenu, $lien, $importance, $sourceType, $sourceId);
     }
 
     // ── Notifications d'un utilisateur ──
@@ -235,62 +220,12 @@ class NotificationService extends \API\Services\AbstractTenantService
      * Send digest emails for all pending users.
      * @return int number of emails sent
      */
+    /** Récapitulatif e-mail : délégué au centre de notifications (4.3). */
     public function sendDigests(): int
     {
-        $groups = $this->getDigestPending();
-        $count = 0;
-
-        foreach ($groups as $key => $notifications) {
-            [$userType, $userId] = explode(':', $key);
-
-            // Get user email
-            $tableMap = ['eleve' => 'eleves', 'parent' => 'parents', 'professeur' => 'professeurs',
-                         'administrateur' => 'administrateurs', 'vie_scolaire' => 'vie_scolaire'];
-            $table = $tableMap[$userType] ?? null;
-            if (!$table) continue;
-
-            $stmt = $this->pdo->prepare("SELECT mail, prenom FROM `$table` WHERE id = ? AND etablissement_id = ?");
-            $stmt->execute([$userId, \API\Core\EstablishmentContext::id()]);
-            $user = $stmt->fetch(\PDO::FETCH_ASSOC);
-            if (!$user || empty($user['mail'])) continue;
-
-            // Build digest content
-            $lines = [];
-            $ids = [];
-            foreach ($notifications as $n) {
-                $lines[] = '- ' . $n['titre'] . ($n['contenu'] ? ' : ' . $n['contenu'] : '');
-                $ids[] = $n['id'];
-            }
-
-            try {
-                $emailPath = __DIR__ . '/../../../API/Services/EmailService.php';
-                if (file_exists($emailPath)) {
-                    require_once $emailPath;
-                    $emailService = new \API\Services\EmailService($this->pdo);
-                    $emailService->send(
-                        $user['mail'],
-                        'Résumé de vos notifications — FRONOTE',
-                        "Bonjour " . ($user['prenom'] ?? '') . ",\n\n" .
-                        "Voici le résumé de vos " . count($notifications) . " notifications :\n\n" .
-                        implode("\n", $lines) . "\n\n" .
-                        "Connectez-vous à FRONOTE pour plus de détails."
-                    );
-                }
-            } catch (\Exception $e) {
-                // Email failure should not block
-            }
-
-            $this->markDigestSent($ids);
-            $count++;
-        }
-        return $count;
+        return \API\Services\Notifications\NotificationCenter::make()->sendDigests();
     }
 
-    // ── Bulk delete ──
-
-    /**
-     * Delete all notifications for a user (clear center).
-     */
     public function supprimerToutes(int $userId, string $userType): int
     {
         $stmt = $this->pdo->prepare("DELETE FROM notifications_globales WHERE user_id = ? AND user_type = ? AND etablissement_id = ?");

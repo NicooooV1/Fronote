@@ -1,54 +1,26 @@
 <?php
 declare(strict_types=1);
 /**
- * Téléchargement sécurisé des pièces jointes
- * Vérifie que l'utilisateur est participant à la conversation avant de servir le fichier.
- * Usage : download.php?id=<attachment_id>
+ * Messagerie — téléchargement d'une pièce jointe (participants de la conversation uniquement).
+ * ?id=<id pièce jointe>[&inline=1] — inline n'est honoré que pour les images et les PDF.
  */
+require_once __DIR__ . '/../../API/bootstrap.php';
+requireAuth();
+enforceModuleAccess('messagerie');
 
-require_once __DIR__ . '/config/config.php';
-require_once __DIR__ . '/core/auth.php';
-require_once __DIR__ . '/core/validator.php';
+use API\Services\Messaging\MessagingService;
 
-// Authentification obligatoire
-$user = checkAuth();
-if (!$user) {
-    http_response_code(401);
-    die('Non authentifié');
-}
+$a = null;
+try { $a = MessagingService::forCurrentUser()->attachment((int) ($_GET['id'] ?? 0)); } catch (\Throwable $e) {}
+if (!$a) { http_response_code(404); exit('Pièce jointe introuvable.'); }
 
-// Valider l'ID de la pièce jointe
-$attachmentId = Validator::id($_GET['id'] ?? null);
-if (!$attachmentId) {
-    http_response_code(400);
-    die('ID de pièce jointe invalide');
-}
-
-try {
-    // Récupérer les infos de la pièce jointe + vérifier que l'utilisateur est participant
-    $stmt = $pdo->prepare("
-        SELECT ma.file_name, ma.file_path, ma.message_id, m.conversation_id
-        FROM message_attachments ma
-        JOIN messages m ON ma.message_id = m.id
-        JOIN conversation_participants cp ON m.conversation_id = cp.conversation_id
-        WHERE ma.id = ?
-          AND cp.user_id = ? AND cp.user_type = ?
-          AND cp.is_deleted = 0
-        LIMIT 1
-    ");
-    $stmt->execute([$attachmentId, $user['id'], $user['type']]);
-    $attachment = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$attachment) {
-        deny_access(false, 'Accès refusé : vous n\'êtes pas participant à cette conversation ou la pièce jointe n\'existe pas.');
-    }
-
-    // Servir le fichier via le service centralisé
-    $uploader = new \API\Services\FileUploadService('messagerie');
-    $uploader->serve($attachment['file_path'], $attachment['file_name']);
-
-} catch (Exception $e) {
-    error_log("Download error: " . $e->getMessage());
-    http_response_code(500);
-    die('Erreur serveur');
-}
+$safeInline = in_array($a['mime'], ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf'], true);
+$inline = !empty($_GET['inline']) && $safeInline;
+$name = str_replace(['"', "\r", "\n"], '', $a['name']);
+header('Content-Type: ' . ($safeInline ? $a['mime'] : 'application/octet-stream'));
+header('Content-Length: ' . (string) filesize($a['path']));
+header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . $name . '"; filename*=UTF-8\'\'' . rawurlencode($a['name']));
+header('X-Content-Type-Options: nosniff');
+header("Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox");
+header('Cache-Control: private, max-age=300');
+readfile($a['path']);

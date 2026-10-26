@@ -151,12 +151,12 @@ $_topbar_role           = $__nav['role'];
         </button>
 
         <!-- Notifications -->
-        <a href="<?= $rootPrefix ?>modules/notifications/notifications.php" class="topbar-action-btn topbar-notif-btn"
+        <!-- Centre de notifications : lien de repli sans JS ; notif-center.js en fait un panneau -->
+        <a href="<?= $rootPrefix ?>modules/notifications/notifications.php" class="topbar-action-btn topbar-notif-btn" id="nc-bell"
+           data-count="<?= (int) $_topbar_notif_count ?>" aria-haspopup="dialog" aria-expanded="false"
            title="<?= __('nav.notifications') ?>" aria-label="<?= __('nav.notifications') ?>">
             <i class="fas fa-bell" aria-hidden="true"></i>
-            <?php if ($_topbar_notif_count > 0): ?>
-            <span class="topbar-badge"><?= $_topbar_notif_count > 99 ? '99+' : $_topbar_notif_count ?></span>
-            <?php endif; ?>
+            <span class="topbar-badge" id="nc-badge"<?= $_topbar_notif_count > 0 ? '' : ' hidden' ?>><?= $_topbar_notif_count > 99 ? '99+' : (int) $_topbar_notif_count ?></span>
         </a>
 
         <!-- Theme toggle -->

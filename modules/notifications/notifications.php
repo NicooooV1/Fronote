@@ -1,125 +1,33 @@
 <?php
 declare(strict_types=1);
 /**
- * M12 – Notifications — Liste des notifications
+ * Notifications — historique complet (filtres par catégorie, non lues, actions groupées).
+ * Interface pilotée par assets/js/notifications-page.js (API/endpoints/notifications.php).
  */
-$pageTitle = 'Mes notifications';
+$pageTitle = 'Notifications';
 require_once __DIR__ . '/includes/header.php';
 
-$userId = getUserId();
-$userType = getUserRole();
+use API\Services\Notifications\NotificationCenter;
 
-// Actions POST
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
-    $action = $_POST['action'] ?? '';
-    if ($action === 'marquer_lue') {
-        $notifService->marquerLue((int)$_POST['id'], $userId, $userType);
-    } elseif ($action === 'marquer_toutes_lues') {
-        $notifService->marquerToutesLues($userId, $userType);
-    } elseif ($action === 'supprimer') {
-        $notifService->supprimer((int)$_POST['id'], $userId, $userType);
-    }
-    header('Location: notifications.php' . (!empty($_GET['filtre']) ? '?filtre=' . $_GET['filtre'] : ''));
-    exit;
-}
-
-// Filtre
-$filtre = $_GET['filtre'] ?? 'toutes';
-$lu = null;
-if ($filtre === 'non_lues') $lu = false;
-elseif ($filtre === 'lues') $lu = true;
-
-$notifications = $notifService->getNotifications($userId, $userType, 100, 0, $lu);
-$stats = $notifService->getStats($userId, $userType);
+$cats = NotificationCenter::CATEGORIES;
 ?>
-
-<div class="content-wrapper">
-    <div class="content-header">
-        <h1><i class="fas fa-bell"></i> Mes notifications</h1>
-        <div class="header-actions">
-            <?php if ((int)$stats['non_lues'] > 0): ?>
-            <form method="post" style="display:inline">
-                <?= csrfField() ?>
-                <input type="hidden" name="action" value="marquer_toutes_lues">
-                <button type="submit" class="btn btn-outline"><i class="fas fa-check-double"></i> <?= __('notifications.mark_all_read') ?></button>
-            </form>
-            <?php endif; ?>
-            <a href="preferences.php" class="btn btn-outline"><i class="fas fa-sliders-h"></i> <?= __('notifications.preferences') ?></a>
-        </div>
+<div class="ncp" id="ncp" data-api="<?= htmlspecialchars($rootPrefix) ?>API/endpoints/notifications.php" data-base="<?= htmlspecialchars($rootPrefix) ?>">
+  <div class="ncp-toolbar">
+    <div class="ncp-filters" role="group" aria-label="Catégories">
+      <button type="button" class="ncp-chip" data-cat="" aria-pressed="true">Tout</button>
+      <?php foreach ($cats as $k => [$label, , $icon]): ?>
+      <button type="button" class="ncp-chip" data-cat="<?= htmlspecialchars($k) ?>" aria-pressed="false"><i class="fas <?= htmlspecialchars($icon) ?>" aria-hidden="true"></i> <?= htmlspecialchars($label) ?></button>
+      <?php endforeach; ?>
     </div>
-
-    <!-- Stats rapides -->
-    <div class="notif-stats">
-        <div class="stat-card">
-            <div class="stat-value"><?= (int)$stats['total'] ?></div>
-            <div class="stat-label"><?= __('label.total') ?></div>
-        </div>
-        <div class="stat-card stat-warning">
-            <div class="stat-value"><?= (int)$stats['non_lues'] ?></div>
-            <div class="stat-label"><?= __('notifications.unread') ?></div>
-        </div>
-        <div class="stat-card stat-danger">
-            <div class="stat-value"><?= (int)$stats['urgentes'] ?></div>
-            <div class="stat-label">Urgentes</div>
-        </div>
+    <div class="ncp-actions">
+      <label class="ncp-switch"><input type="checkbox" id="ncp-unread"> <span>Non lues seulement</span></label>
+      <button type="button" class="ncp-btn" data-act="readall"><i class="fas fa-check-double" aria-hidden="true"></i> Tout marquer comme lu</button>
+      <button type="button" class="ncp-btn ncp-btn--muted" data-act="clean"><i class="far fa-trash-alt" aria-hidden="true"></i> Effacer les lues</button>
     </div>
-
-    <!-- Filtres -->
-    <div class="notif-filters">
-        <a href="?filtre=toutes" class="filter-btn <?= $filtre === 'toutes' ? 'active' : '' ?>"><?= __('label.toutes') ?></a>
-        <a href="?filtre=non_lues" class="filter-btn <?= $filtre === 'non_lues' ? 'active' : '' ?>"><?= __('notifications.unread') ?></a>
-        <a href="?filtre=lues" class="filter-btn <?= $filtre === 'lues' ? 'active' : '' ?>">Lues</a>
-    </div>
-
-    <!-- Liste -->
-    <div class="notif-list">
-        <?php if (empty($notifications)): ?>
-            <div class="empty-state">
-                <i class="fas fa-bell-slash"></i>
-                <p>Aucune notification<?= $filtre !== 'toutes' ? ' dans cette catégorie' : '' ?>.</p>
-            </div>
-        <?php else: ?>
-            <?php foreach ($notifications as $notif): ?>
-            <div class="notif-item <?= !$notif['lu'] ? 'notif-unread' : '' ?> notif-importance-<?= $notif['importance'] ?>">
-                <div class="notif-icon">
-                    <i class="fas <?= htmlspecialchars($notif['icone']) ?>"></i>
-                </div>
-                <div class="notif-content">
-                    <div class="notif-header">
-                        <span class="notif-titre"><?= htmlspecialchars($notif['titre']) ?></span>
-                        <?= NotificationService::importanceBadge($notif['importance']) ?>
-                    </div>
-                    <?php if ($notif['contenu']): ?>
-                        <p class="notif-text"><?= htmlspecialchars($notif['contenu']) ?></p>
-                    <?php endif; ?>
-                    <div class="notif-meta">
-                        <span class="notif-date"><i class="fas fa-clock"></i> <?= formatDateTime($notif['date_creation']) ?></span>
-                        <span class="notif-type"><?= htmlspecialchars(NotificationService::typesNotification()[$notif['type']] ?? $notif['type']) ?></span>
-                    </div>
-                </div>
-                <div class="notif-actions">
-                    <?php if ($notif['lien']): ?>
-                        <a href="<?= htmlspecialchars($notif['lien']) ?>" class="btn btn-sm btn-primary" title="Voir"><i class="fas fa-external-link-alt"></i></a>
-                    <?php endif; ?>
-                    <?php if (!$notif['lu']): ?>
-                    <form method="post" style="display:inline">
-                        <?= csrfField() ?>
-                        <input type="hidden" name="action" value="marquer_lue">
-                        <input type="hidden" name="id" value="<?= $notif['id'] ?>">
-                        <button type="submit" class="btn btn-sm btn-outline" title="Marquer comme lu"><i class="fas fa-check"></i></button>
-                    </form>
-                    <?php endif; ?>
-                    <form method="post" style="display:inline" data-fr-confirm="Supprimer cette notification ?">
-                        <?= csrfField() ?>
-                        <input type="hidden" name="action" value="supprimer">
-                        <input type="hidden" name="id" value="<?= $notif['id'] ?>">
-                        <button type="submit" class="btn btn-sm btn-outline-danger" title="<?= __('notifications.delete') ?>"><i class="fas fa-trash"></i></button>
-                    </form>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
-    </div>
+  </div>
+  <ul class="ncp-list" id="ncp-list" aria-live="polite"></ul>
+  <div class="ncp-foot"><button type="button" class="ncp-btn" id="ncp-more" hidden>Afficher plus</button></div>
 </div>
-
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+<?php
+$extraJs = ['assets/js/notifications-page.js'];
+require_once __DIR__ . '/includes/footer.php';

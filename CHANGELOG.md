@@ -6,6 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [4.3.0] — Accueil, messagerie, notifications et cookies refaits — 2026-10-26
+
+### Added — Accueil (refonte complète)
+- Tableau de bord par rôle avec des cartes dimensionnées pour leur contenu (deux colonnes, aucun trou ;
+  une colonne ordonnée sur mobile) : journée de cours (en cours / prochain / terminé), dernières notes
+  avec moyenne de la classe sur la même évaluation, moyennes par matière comparées à la classe,
+  travail à faire groupé par échéance avec case « fait », absences et retards du trimestre, messages,
+  agenda et menu ; professeur : appel en un clic par cours et suivi des appels non faits, évaluations
+  (moyenne, min–max), classes ; vie scolaire / direction : indicateurs du jour, absents, absences à justifier.
+- Personnalisation : masquer et réordonner les cartes (user_settings.accueil_config). Parents : choix de l'enfant.
+
+### Added — Messagerie (réécrite)
+- Interface d'une seule page, temps réel, accusé « Vu », indicateur de saisie, archives, épingles, sourdine.
+- **Politique de destinataires** : un élève écrit à ses professeurs, à la vie scolaire et à la direction ;
+  un parent aux professeurs de ses enfants… (avant : n'importe qui pouvait écrire à n'importe quel élève).
+- Envois à une classe entière : les destinataires ne se voient pas et répondent en privé.
+- Pièces jointes hors du dossier web, servies après contrôle de participation.
+
+### Added — Centre de notifications
+- Cloche avec panneau, alertes en direct, regroupement des rafales, préférences par catégorie et canal,
+  récapitulatif e-mail quotidien (l'ancien ne fonctionnait pas), purge automatique.
+
+### Added — Consentement cookies et mesure d'audience interne
+- Bandeau conforme CNIL (refuser aussi simple qu'accepter, preuve en base), mesure d'audience anonyme
+  hébergée par l'établissement, tableau de bord direction, politique cookies publique.
+
+### Fixed
+- Notifications d'absence et de discipline qui échouaient silencieusement (importance invalide).
+- ws-global : événements rediffusés aux interfaces, plus de toasts en double.
+
+---
+
 ## [4.2.4] — Reverse proxy HTTPS — 2026-10-25
 
 ### Fixed

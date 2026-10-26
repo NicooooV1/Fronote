@@ -84,6 +84,7 @@ $action = function (string $icon, string $title, string $href) use ($rp, $h) {
       $action('fa-bullhorn',       'Publier une annonce',       'admin/messagerie/annonces.php');
       $action('fa-chalkboard',     'Gérer les classes',         'admin/classes/index.php');
       $action('fa-puzzle-piece',   'Modules',                   'admin/modules/index.php');
+      $action('fa-chart-line',     "Mesure d'audience",         'admin/systeme/audience.php');
     ?>
   </div>
 

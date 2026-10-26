@@ -1,45 +1,45 @@
-.cookie-consent {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 10000;
-    background: var(--bg-card, #fff);
-    border-top: 1px solid var(--border-color, #e0e0e0);
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-    padding: 1rem;
-    font-size: 0.875rem;
+/* Fronote — bandeau de consentement cookies (4.3). Jetons --ds-* : suit les thèmes. */
+.cc { position: fixed; left: 18px; bottom: 18px; z-index: 1400; width: min(460px, calc(100vw - 36px)); font-family: inherit; }
+.cc[hidden] { display: none; }
+.cc-card { background: var(--ds-surface, #fff); color: var(--ds-text, #1d1d1f); border: 1px solid var(--ds-border, #e5e7eb); border-radius: 18px; box-shadow: 0 22px 60px rgba(15, 23, 42, .22); padding: 18px 18px 16px; animation: cc-in .22s ease-out; max-height: calc(100dvh - 36px); overflow-y: auto; }
+@keyframes cc-in { from { opacity: 0; transform: translateY(14px); } }
+.cc h2 { margin: 0 0 8px; font-size: 1.02rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.cc h2 i { color: var(--ds-warning, #d97706); }
+.cc p { margin: 0; font-size: .86rem; line-height: 1.5; color: var(--ds-text-muted, #4b5563); }
+.cc p strong { color: var(--ds-text, #1d1d1f); }
+.cc-details { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.cc-details[hidden] { display: none; }
+.cc-cat { background: var(--ds-bg, #f5f5f7); border-radius: 12px; padding: 11px 13px; }
+.cc-cat-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 4px; font-size: .9rem; }
+.cc-cat p { font-size: .8rem; }
+.cc-always { font-size: .72rem; font-weight: 700; color: #047857; background: #d1fae5; padding: 2px 8px; border-radius: 999px; }
+.cc-switch { position: relative; display: inline-flex; cursor: pointer; }
+.cc-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.cc-switch span { width: 42px; height: 24px; border-radius: 999px; background: var(--ds-border, #cbd5e1); position: relative; transition: background .15s; }
+.cc-switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .15s; }
+.cc-switch input:checked + span { background: var(--ds-primary, #0f4c81); }
+.cc-switch input:checked + span::after { transform: translateX(18px); }
+.cc-switch input:focus-visible + span { outline: 2px solid var(--ds-primary, #0f4c81); outline-offset: 2px; }
+.cc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.cc-more { font-size: .78rem !important; }
+.cc-more a { color: var(--ds-primary, #0f4c81); }
+.cc-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+.cc-btn { border: 1.5px solid var(--ds-text, #1d1d1f); background: var(--ds-surface, #fff); color: var(--ds-text, #1d1d1f); font: inherit; font-size: .84rem; font-weight: 600; padding: 9px 8px; border-radius: 10px; cursor: pointer; }
+.cc-btn:hover { background: var(--ds-bg, #f5f5f7); }
+.cc-btn[hidden] { display: none; }
+/* « Tout accepter » et « Tout refuser » ont le même poids visuel (exigence CNIL) : même taille, même contraste. */
+.cc-btn--accent { background: var(--ds-text, #1d1d1f); color: var(--ds-surface, #fff); }
+.cc-btn--accent:hover { background: var(--ds-text, #1d1d1f); opacity: .9; }
+.cc-btn[data-cc="reject_all"] { background: var(--ds-text, #1d1d1f); color: var(--ds-surface, #fff); }
+.cc-btn[data-cc="reject_all"]:hover { opacity: .9; background: var(--ds-text, #1d1d1f); }
+.cc-btn:focus-visible { outline: 2px solid var(--ds-primary, #0f4c81); outline-offset: 2px; }
+@media (max-width: 520px) {
+  .cc { left: 8px; right: 8px; bottom: 8px; width: auto; }
+  .cc-actions { grid-template-columns: 1fr 1fr; }
+  .cc-actions .cc-btn--accent { grid-column: 1 / -1; order: -1; }
+  .cc-actions [data-cc="reject_all"] { order: -1; grid-column: 1 / -1; }
 }
-
-.cookie-consent__inner {
-    max-width: 1200px;
-    margin: 0 auto;
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    flex-wrap: wrap;
-}
-
-.cookie-consent__text {
-    flex: 1;
-    min-width: 200px;
-    margin: 0;
-    color: var(--text-primary, #333);
-}
-
-.cookie-consent__actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-shrink: 0;
-}
-
-@media (max-width: 600px) {
-    .cookie-consent__inner {
-        flex-direction: column;
-        text-align: center;
-    }
-    .cookie-consent__actions {
-        width: 100%;
-        justify-content: center;
-    }
-}
+@media (prefers-reduced-motion: reduce) { .cc-card { animation: none; } }
+.login-cookies { position: fixed; left: 0; right: 0; bottom: 10px; margin: 0; text-align: center; font-size: .8rem; z-index: 5; pointer-events: none; }
+.login-cookies a { color: inherit; opacity: .7; pointer-events: auto; }
+.login-cookies a:hover { opacity: 1; }

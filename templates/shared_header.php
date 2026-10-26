@@ -259,6 +259,7 @@ try {
     ?>
     <!-- CSS : base + tokens + classic (always) + glass overlay (if selected) -->
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/cookie-consent.css') ?>">
+    <link rel="stylesheet" href="<?= $_assetVersion('assets/css/notif-center.css') ?>">
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/topbar.css') ?>">
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/base.css') ?>">
     <link rel="stylesheet" href="<?= $_assetVersion('assets/css/tokens.css') ?>">
@@ -382,6 +383,7 @@ try {
     <script src="<?= $_assetVersion('assets/js/ui/interactions.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>
     <script src="<?= $_assetVersion('assets/js/fronote-ajax.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>
     <script src="<?= $_assetVersion('assets/js/ws-global.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>
+    <script src="<?= $_assetVersion('assets/js/notif-center.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>
     <script src="<?= $_assetVersion('assets/js/push-manager.js') ?>" nonce="<?= $_hdr_nonce ?>" defer></script>
     <?php
     // ─── Pont i18n côté client ───────────────────────────────────────────────

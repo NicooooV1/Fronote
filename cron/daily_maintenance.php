@@ -106,6 +106,20 @@ try {
 	$log('Email queue cleanup error: ' . $e->getMessage());
 }
 
+// 4c. Notifications : récapitulatif e-mail quotidien (préférences) + purge des anciennes
+try {
+	$nc = \API\Services\Notifications\NotificationCenter::make();
+	$demoNoMail = class_exists('\API\Core\DemoMode') && \API\Core\DemoMode::active();
+	$digests = $demoNoMail ? 0 : $nc->sendDigests();
+	$purgedN = $nc->purge();
+	$log("Notifications: {$digests} récapitulatif(s) envoyé(s), {$purgedN} ancienne(s) supprimée(s)");
+	$pa = (new \API\Services\Privacy\AudienceService(getPDO()))->purge();
+	$pc = (new \API\Services\Privacy\ConsentService(getPDO()))->purge();
+	$log("Vie privée: {$pa} mesure(s) d'audience > 13 mois et {$pc} preuve(s) de consentement > 25 mois supprimées");
+} catch (\Throwable $e) {
+	$log('Notifications maintenance error: ' . $e->getMessage());
+}
+
 // 5. Cache GC
 try {
 	$cache = app('cache');

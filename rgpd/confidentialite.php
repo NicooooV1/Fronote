@@ -142,10 +142,10 @@ require_once __DIR__ . '/includes/header.php';
         <div class="card-header"><h2>Cookies</h2></div>
         <div class="card-body">
             <p>
-                Ce service utilise uniquement des cookies strictement nécessaires à son fonctionnement,
-                notamment le cookie de session permettant de maintenir votre authentification. Ces cookies
-                ne nécessitent pas de consentement préalable. Aucun cookie publicitaire ou de suivi tiers
-                n'est déposé.
+                Ce service utilise des cookies strictement nécessaires à son fonctionnement (session, sécurité),
+                exemptés de consentement, et — uniquement si vous l'acceptez — une mesure d'audience interne,
+                anonyme et hébergée par l'établissement. Aucun cookie publicitaire ou de suivi tiers n'est déposé.
+                Détails et gestion de vos choix : <a href="/rgpd/cookies.php">politique cookies</a>.
             </p>
         </div>
     </div>

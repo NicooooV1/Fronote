@@ -231,6 +231,7 @@ $_loginDir = $translator->isRtl() ? 'rtl' : 'ltr';
     <link rel="icon" type="image/png" href="../assets/icons/icon-192.png">
     <link rel="stylesheet" href="assets/css/login.css">
     <link rel="stylesheet" href="../assets/lib/fontawesome/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/cookie-consent.css">
     <script nonce="<?= $cspNonce ?>">
     // Appliquer le thème système immédiatement
     (function() {
@@ -473,5 +474,7 @@ $_loginDir = $translator->isRtl() ? 'rtl' : 'ltr';
         }
     });
     </script>
+    <p class="login-cookies"><a href="#" data-cc-open>Gérer mes cookies</a> · <a href="../rgpd/cookies.php">Politique cookies</a></p>
+    <?php include __DIR__ . '/../templates/cookie_consent.php'; ?>
 </body>
 </html>

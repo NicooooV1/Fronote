@@ -17,6 +17,7 @@ $extraScriptHtml = $extraScriptHtml ?? '';
             <div class="footer-content">
                 <div class="footer-links">
                     <button type="button" id="openLegalModal" class="footer-legal-btn">Mentions Légales</button>
+                    <button type="button" class="footer-legal-btn" data-cc-open>Gérer mes cookies</button>
                 </div>
                 <div class="footer-copyright">
                     &copy; <?= date('Y') ?> FRONOTE - Tous droits réservés

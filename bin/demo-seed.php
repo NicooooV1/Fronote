@@ -431,17 +431,18 @@ $conv = function (string $subject, string $type, array $participants, array $mes
     $start = $today->modify('-' . (count($messages) + mt_rand(0, 6)) . ' days')->setTime(mt_rand(8, 18), mt_rand(0, 59));
     $cid = $ins('conversations', ['etablissement_id' => $ETAB, 'subject' => $subject, 'type' => $type, 'allow_replies' => 1,
         'created_at' => $start->format('Y-m-d H:i:s'), 'updated_at' => $start->format('Y-m-d H:i:s')]);
-    $last = null; $t = $start;
+    $last = null; $t = $start; $lastSender = null;
     foreach ($messages as $i => [$sid, $stype, $body]) {
         $t = $t->modify('+' . mt_rand(2, 30) . ' hours');
         $h = (int) $t->format('G');
         if ($h < 8 || $h > 19) { $t = $t->setTime(mt_rand(8, 19), mt_rand(0, 59)); } // messages aux heures ouvrables
         if ($t > new DateTimeImmutable()) { $t = (new DateTimeImmutable())->modify('-' . (count($messages) - $i) * 7 . ' minutes'); }
         $last = $ins('messages', ['conversation_id' => $cid, 'sender_id' => $sid, 'sender_type' => $stype, 'body' => $body, 'created_at' => $t->format('Y-m-d H:i:s'), 'status' => 'normal']);
+        $lastSender = $stype . ':' . $sid;
     }
     foreach ($participants as $k => [$uid, $utype]) {
         $ins('conversation_participants', ['conversation_id' => $cid, 'user_id' => $uid, 'user_type' => $utype, 'joined_at' => $start->format('Y-m-d H:i:s'),
-            'unread_count' => $k === 0 ? 0 : 1, 'last_read_message_id' => $k === 0 ? $last : null, 'is_admin' => $k === 0 ? 1 : 0]);
+            'unread_count' => ($utype . ':' . $uid) === $lastSender ? 0 : 1, 'last_read_message_id' => ($utype . ':' . $uid) === $lastSender ? $last : null, 'is_admin' => $k === 0 ? 1 : 0]);
     }
     $pdo->prepare('UPDATE conversations SET last_message_id=?, updated_at=? WHERE id=?')->execute([$last, $t->format('Y-m-d H:i:s'), $cid]);
 };
@@ -527,7 +528,7 @@ foreach ([[1, 'Bavardages répétés', 'mineur', 'Salle 201'], [2, 'Bousculade d
 
 // ── notifications des comptes démo ───────────────────────────────────────────
 foreach ([
-    [$lea, 'eleve', 'note', 'Nouvelle note en Mathématiques', 'Ta note du contrôle est disponible.', '/modules/notes/'],
+    [$lea, 'eleve', 'note', '3 nouvelles notes', 'Mathématiques : 16/20 — Contrôle', '/modules/notes/notes.php'],
     [$lea, 'eleve', 'devoir', 'Nouveau devoir en Français', 'Rédaction à rendre la semaine prochaine.', '/modules/cahierdetextes/'],
     [$parentDemo, 'parent', 'absence', 'Absence régularisée', "L'absence de Léa a été justifiée par la vie scolaire.", '/modules/absences/'],
     [$parentDemo, 'parent', 'message', 'Nouveau message de M. Lefort', 'Sortie au musée — autorisation', '/modules/messagerie/'],
@@ -535,8 +536,56 @@ foreach ([
     [$cpeId, 'vie_scolaire', 'absence', '3 absences à traiter', 'Des absences non justifiées attendent un suivi.', '/modules/absences/'],
 ] as [$uid, $ut, $type, $titre, $contenu, $lien]) {
     $ins('notifications_globales', ['etablissement_id' => $ETAB, 'user_id' => $uid, 'user_type' => $ut, 'type' => $type, 'titre' => $titre, 'contenu' => $contenu,
-        'lien' => $lien, 'importance' => 'normale', 'lu' => 0, 'date_creation' => (new DateTimeImmutable())->modify('-' . mt_rand(1, 40) . ' hours')->format('Y-m-d H:i:s')]);
+        'lien' => $lien, 'importance' => 'normale', 'lu' => 0, 'group_count' => str_starts_with($titre, '3 ') ? 3 : 1, 'date_creation' => (new DateTimeImmutable())->modify('-' . mt_rand(1, 40) . ' hours')->format('Y-m-d H:i:s')]);
 }
+
+// ── mesure d'audience (30 jours, anonyme) + consentements — pour le tableau de bord direction ──
+try {
+    $pdo->exec('DELETE FROM audience_events'); $pdo->exec('DELETE FROM cookie_consents');
+    $roleMods = [
+        'eleve' => ['notes' => 30, 'cahierdetextes' => 22, 'emploi_du_temps' => 20, 'accueil' => 18, 'messagerie' => 6, 'agenda' => 4],
+        'parent' => ['notes' => 30, 'absences' => 18, 'accueil' => 20, 'messagerie' => 14, 'cahierdetextes' => 10, 'bulletins' => 8],
+        'professeur' => ['notes' => 28, 'appel' => 24, 'cahierdetextes' => 16, 'emploi_du_temps' => 12, 'messagerie' => 12, 'accueil' => 8],
+        'vie_scolaire' => ['absences' => 40, 'discipline' => 20, 'messagerie' => 15, 'accueil' => 15, 'agenda' => 10],
+        'administrateur' => ['admin' => 35, 'accueil' => 20, 'reporting' => 15, 'messagerie' => 15, 'annonces' => 15],
+    ];
+    $paths = ['notes' => '/modules/notes/notes.php', 'cahierdetextes' => '/modules/cahierdetextes/cahierdetextes.php', 'emploi_du_temps' => '/modules/emploi_du_temps/emploi_du_temps.php',
+        'accueil' => '/accueil/accueil.php', 'messagerie' => '/modules/messagerie/', 'agenda' => '/modules/agenda/agenda.php', 'absences' => '/modules/absences/absences.php',
+        'bulletins' => '/modules/bulletins/bulletins.php', 'appel' => '/modules/appel/appel.php', 'discipline' => '/modules/discipline/discipline.php',
+        'admin' => '/admin/dashboard.php', 'reporting' => '/modules/reporting/reporting.php', 'annonces' => '/modules/annonces/annonces.php'];
+    $hoursBy = ['eleve' => [7, 7, 12, 12, 13, 17, 17, 18, 18, 19, 20, 21], 'parent' => [7, 8, 12, 18, 19, 19, 20, 20, 21, 21, 22],
+        'professeur' => [7, 8, 8, 10, 12, 13, 16, 17, 18, 20, 21], 'vie_scolaire' => [8, 8, 9, 9, 10, 11, 13, 14, 15, 16], 'administrateur' => [8, 9, 10, 11, 14, 15, 16, 17]];
+    $dailyBy = ['eleve' => [55, 95], 'parent' => [35, 70], 'professeur' => [12, 17], 'vie_scolaire' => [2, 3], 'administrateur' => [1, 2]];
+    $pick = static function (array $w) { $r = mt_rand(1, array_sum($w)); foreach ($w as $k => $v) { if (($r -= $v) <= 0) { return $k; } } return array_key_first($w); };
+    $ins = $pdo->prepare('INSERT INTO audience_events (etablissement_id, day, hour, weekday, path, module, role, device, visitor, duration, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
+    $pdo->beginTransaction();
+    for ($dd = 29; $dd >= 0; $dd--) {
+        $day = $today->modify("-{$dd} days"); $wd = (int) $day->format('N');
+        $factor = $wd >= 6 ? 0.35 : ($wd === 3 ? 0.8 : 1.0);
+        foreach ($dailyBy as $role => [$lo, $hi]) {
+            $nv = (int) round(mt_rand($lo, $hi) * $factor);
+            for ($v = 0; $v < $nv; $v++) {
+                $visitor = substr(sha1($role . $v . $day->format('Ymd') . mt_rand()), 0, 16);
+                $device = $role === 'professeur' || $role === 'vie_scolaire' || $role === 'administrateur' ? (mt_rand(1, 10) <= 8 ? 'ordinateur' : 'mobile') : (mt_rand(1, 10) <= 7 ? 'mobile' : (mt_rand(0, 1) ? 'ordinateur' : 'tablette'));
+                $h0 = $hoursBy[$role][mt_rand(0, count($hoursBy[$role]) - 1)];
+                $pv = mt_rand(2, $role === 'professeur' ? 9 : 6);
+                for ($k = 0; $k < $pv; $k++) {
+                    $m = $pick($roleMods[$role]);
+                    $ins->execute([$ETAB, $day->format('Y-m-d'), $h0, $wd, $paths[$m], $m === 'admin' || $m === 'accueil' ? $m : $m, $role, $device, $visitor,
+                        mt_rand(8, $m === 'notes' || $m === 'appel' ? 240 : 150), $day->format('Y-m-d') . sprintf(' %02d:%02d:00', $h0, mt_rand(0, 59))]);
+                }
+            }
+        }
+    }
+    $insC = $pdo->prepare("INSERT INTO cookie_consents (etablissement_id, consent_id, preferences, analytics, policy_version, action, created_at) VALUES (?,?,0,?,?,?,?)");
+    for ($k = 0; $k < 240; $k++) {
+        $acc = mt_rand(1, 100) <= 71;
+        $insC->execute([$ETAB, bin2hex(random_bytes(16)), $acc ? 1 : 0, \API\Services\Privacy\ConsentService::POLICY_VERSION, $acc ? 'accept_all' : 'reject_all',
+            $today->modify('-' . mt_rand(0, 29) . ' days')->format('Y-m-d') . sprintf(' %02d:%02d:00', mt_rand(7, 21), mt_rand(0, 59))]);
+    }
+    $pdo->commit();
+    $log('mesure d\'audience : ' . (int) $pdo->query('SELECT COUNT(*) FROM audience_events')->fetchColumn() . ' pages vues sur 30 jours');
+} catch (\Throwable $e) { if ($pdo->inTransaction()) { $pdo->rollBack(); } $log('mesure d\'audience non générée : ' . $e->getMessage()); }
 
 // Comptes démo : jamais de changement de mot de passe forcé, jamais de verrouillage.
 $pdo->exec("UPDATE accounts SET must_change_password=0, failed_login_attempts=0, locked_until=NULL WHERE username LIKE 'demo.%'");

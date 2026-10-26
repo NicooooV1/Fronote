@@ -28,6 +28,8 @@ final class AccessControl
         'install_guard.php',
         'API/endpoints/health.php',
         'API/endpoints/cookie_consent.php',
+        // Mesure d'audience interne : beacon anonyme, ignoré sans consentement (page de connexion incluse).
+        'API/endpoints/audience.php',
         // Rapports CSP : POST navigateur (report-uri), sans session, autonome.
         'API/endpoints/csp_report.php',
         // Autorisation de rooms WebSocket : appel SERVEUR→SERVEUR (Node → PHP), authentifié
@@ -36,6 +38,7 @@ final class AccessControl
         'API/endpoints/ws_authorize.php',
         'rgpd/mentions_legales.php',
         'rgpd/confidentialite.php',
+        'rgpd/cookies.php',
     ];
 
     /** Préfixes publics (le dossier login complet, les pages d'erreur, le service worker). */
