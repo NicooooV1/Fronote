@@ -377,6 +377,10 @@ if [ -d /etc/cron.d ]; then
     # (installation manuelle hors distribution) → aucun effet indésirable.
     [ -f "$APP_DIR/cron/phone_home.php" ] && \
       echo "$(( RANDOM % 60 )) 4 * * * ${RUN_USER} php ${APP_DIR}/cron/phone_home.php >> ${APP_DIR}/API/logs/cron.log 2>&1"
+    # Support : demandes escaladées à la plateforme Fronote (file d'attente + relève des réponses).
+    # No-op tant qu'aucune demande n'a été escaladée.
+    [ -f "$APP_DIR/cron/platform_sync.php" ] && \
+      echo "*/5 * * * * ${RUN_USER} php ${APP_DIR}/cron/platform_sync.php >> ${APP_DIR}/API/logs/cron.log 2>&1"
   } > "$CRON_FILE"
   chown root:root "$CRON_FILE"; chmod 644 "$CRON_FILE"
   systemctl reload cron >/dev/null 2>&1 || systemctl reload crond >/dev/null 2>&1 || service cron reload >/dev/null 2>&1 || true

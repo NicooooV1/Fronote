@@ -238,13 +238,40 @@ class SupportService extends \API\Services\AbstractTenantService
 
     public static function categoriesTicket(): array
     {
+        return array_map(static fn($c) => $c[0], self::categoriesDetail());
+    }
+
+    /**
+     * Catégories des demandes INTERNES (traitées par l'équipe de l'établissement) :
+     * clé => [libellé, explication pour le demandeur, icône].
+     */
+    public static function categoriesDetail(): array
+    {
         return [
-            'technique'     => 'Problème technique',
-            'pedagogique'   => 'Question pédagogique',
-            'administratif' => 'Question administrative',
-            'compte'        => 'Mon compte',
-            'autre'         => 'Autre',
+            'communication' => ['Écrire à l\'établissement', 'Une question, une information à transmettre, un rendez-vous…', 'fas fa-comments'],
+            'pedagogique'   => ['Une note, une évaluation, un devoir', 'Une note qui semble erronée, un devoir à rendre, une appréciation…', 'fas fa-graduation-cap'],
+            'administratif' => ['Une démarche administrative', 'Certificat de scolarité, inscription, changement d\'adresse…', 'fas fa-file-signature'],
+            'compte'        => ['Mon compte et mes accès', 'Mot de passe, identifiant, enfant non rattaché…', 'fas fa-user-lock'],
+            'technique'     => ['Un problème avec Fronote', 'Une page qui ne marche pas, un message d\'erreur…', 'fas fa-bug'],
+            'autre'         => ['Autre chose', '', 'fas fa-ellipsis'],
         ];
+    }
+
+    /** Équipe qui traite les demandes internes : administration + vie scolaire. */
+    public static function estEquipe(): bool
+    {
+        return (function_exists('isAdmin') && isAdmin()) || (function_exists('isVieScolaire') && isVieScolaire());
+    }
+
+    /** Peut transmettre une demande à la plateforme Fronote : direction / administration seulement. */
+    public static function peutEscalader(): bool
+    {
+        if (function_exists('isAdmin') && isAdmin()) { return true; }
+        try {
+            return function_exists('getEffectiveRoles') && (bool) array_intersect(getEffectiveRoles(), ['direction', 'chef_etablissement', 'direction_adjointe']);
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     public static function categoriesFaq(): array

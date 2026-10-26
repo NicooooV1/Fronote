@@ -10,9 +10,9 @@ $id = (int)($_GET['id'] ?? 0);
 $ticket = $supportService->getTicket($id);
 if (!$ticket) { header('Location: tickets.php'); exit; }
 
-// Vérifier accès (admin ou propriétaire)
+// Accès : équipe de l'établissement (administration + vie scolaire) ou auteur de la demande
 $isOwner = ((int)$ticket['user_id'] === (int)getUserId() && $ticket['user_type'] === getUserRole());
-if (!isAdmin() && !$isOwner) {
+if (!$estEquipe && !$isOwner) {
     header('Location: tickets.php');
     exit;
 }
@@ -20,15 +20,15 @@ if (!isAdmin() && !$isOwner) {
 // ─── Traitement POST ───────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
     $action = $_POST['action'] ?? '';
-    if ($action === 'repondre' && isAdmin()) {
+    if ($action === 'repondre' && $estEquipe) {
         $txt = trim($_POST['reponse'] ?? '');
         if ($txt !== '') { $supportService->repondre($id, $txt, getUserId(), getUserRole()); $_SESSION['success_message'] = 'Réponse envoyée.'; }
     } elseif ($action === 'message' && $isOwner) {
         $txt = trim($_POST['contenu'] ?? '');
         if ($txt !== '') { $supportService->repondreUtilisateur($id, getUserId(), getUserRole(), $txt); $_SESSION['success_message'] = 'Message envoyé.'; }
-    } elseif ($action === 'statut' && isAdmin()) {
+    } elseif ($action === 'statut' && $estEquipe) {
         $supportService->changerStatut($id, $_POST['statut'] ?? 'ouvert'); $_SESSION['success_message'] = 'Statut mis à jour.';
-    } elseif ($action === 'note_interne' && isAdmin()) {
+    } elseif ($action === 'note_interne' && $estEquipe) {
         $txt = trim($_POST['note'] ?? '');
         if ($txt !== '') { $supportService->ajouterNoteInterne($id, $txt, getUserId()); $_SESSION['success_message'] = 'Note interne ajoutée.'; }
     } elseif ($action === 'satisfaction' && $isOwner) {
@@ -40,15 +40,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
 }
 
 $messages      = $supportService->getMessages($id);
-$notesInternes = isAdmin() ? $supportService->getNotesInternes($id) : [];
-$sla           = isAdmin() ? $supportService->getSlaStatus($ticket) : null;
+$notesInternes = $estEquipe ? $supportService->getNotesInternes($id) : [];
+$sla           = $estEquipe ? $supportService->getSlaStatus($ticket) : null;
 $cats          = SupportService::categoriesTicket();
 $canReply      = $ticket['statut'] !== 'ferme';
 ?>
 
 <div class="content-wrapper">
     <div class="content-header">
-        <h1><i class="fas fa-ticket-alt"></i> Ticket #<?= $id ?></h1>
+        <h1><i class="fas fa-inbox"></i> Demande #<?= $id ?></h1>
         <a href="tickets.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
     </div>
 
@@ -68,14 +68,14 @@ $canReply      = $ticket['statut'] !== 'ferme';
                             <?= SupportService::prioriteBadge($ticket['priorite']) ?>
                             <span><?= htmlspecialchars($cats[$ticket['categorie']] ?? $ticket['categorie']) ?></span>
                             <span>Créé le <?= formatDateTime($ticket['date_creation']) ?></span>
-                            <?php if (isAdmin() && $sla): ?>
+                            <?php if ($estEquipe && $sla): ?>
                                 <span class="badge <?= $sla['resolution_overdue'] ? 'badge-danger' : ($sla['response_overdue'] ? 'badge-warning' : 'badge-success') ?>">
                                     SLA <?= $sla['resolution_overdue'] ? 'dépassé' : ($sla['response_overdue'] ? 'réponse en retard' : 'OK') ?>
                                 </span>
                             <?php endif; ?>
                         </div>
                     </div>
-                    <?php if (isAdmin()): ?>
+                    <?php if ($estEquipe): ?>
                     <form method="post" class="statut-form">
                         <?= csrfField() ?>
                         <input type="hidden" name="action" value="statut">
@@ -108,7 +108,7 @@ $canReply      = $ticket['statut'] !== 'ferme';
                     <div class="ticket-message ticket-response">
                         <div class="message-avatar admin-avatar"><i class="fas fa-user-shield"></i></div>
                         <div class="message-body">
-                            <div class="message-header"><strong>Support</strong><span><?= formatDateTime($ticket['date_reponse']) ?></span></div>
+                            <div class="message-header"><strong>Établissement</strong><span><?= formatDateTime($ticket['date_reponse']) ?></span></div>
                             <p><?= nl2br(htmlspecialchars($ticket['reponse'])) ?></p>
                         </div>
                     </div>
@@ -118,7 +118,7 @@ $canReply      = $ticket['statut'] !== 'ferme';
                         <div class="message-avatar <?= $staff ? 'admin-avatar' : '' ?>"><i class="fas <?= $staff ? 'fa-user-shield' : 'fa-user' ?>"></i></div>
                         <div class="message-body">
                             <div class="message-header">
-                                <strong><?= $staff ? 'Support' : 'Demandeur' ?></strong>
+                                <strong><?= $staff ? 'Établissement' : 'Demandeur' ?></strong>
                                 <span><?= formatDateTime($m['date_creation']) ?></span>
                             </div>
                             <p><?= nl2br(htmlspecialchars($m['contenu'])) ?></p>
@@ -127,7 +127,7 @@ $canReply      = $ticket['statut'] !== 'ferme';
                 <?php endforeach; ?>
 
                 <!-- Répondre -->
-                <?php if (isAdmin() && $canReply): ?>
+                <?php if ($estEquipe && $canReply): ?>
                 <div class="ticket-reply">
                     <form method="post">
                         <?= csrfField() ?>
@@ -175,8 +175,31 @@ $canReply      = $ticket['statut'] !== 'ferme';
             </div>
         </div>
 
+        <!-- Transmission à la plateforme Fronote (direction) -->
+        <?php if ($peutEscalader):
+            $link = new PlatformLink(getPDO());
+            $transmissions = $link->pourTicket($id);
+        ?>
+        <div class="card sp-escalade">
+            <div class="card-header"><h3><i class="fas fa-headset"></i> Plateforme Fronote</h3></div>
+            <div class="card-body">
+                <?php foreach ($transmissions as $tr): [$tl, $tt] = PlatformLink::STATUTS[$tr['statut']] ?? [$tr['statut'], 'secondary']; ?>
+                    <p><a href="plateforme_demande.php?id=<?= (int) $tr['id'] ?>">Transmise (réf. <?= htmlspecialchars($tr['ref']) ?>)</a> <span class="badge badge-<?= $tt ?>"><?= htmlspecialchars($tl) ?></span></p>
+                <?php endforeach; ?>
+                <?php if (!$transmissions): ?>
+                    <p class="sp-sub">Si l'établissement ne peut pas régler ce problème lui-même (anomalie de Fronote, panne…), transmettez-le à la plateforme. Le demandeur n'est pas mis en relation : c'est vous qui échangez avec le support Fronote.</p>
+                    <?php if ($link->disponible()): ?>
+                        <a class="btn btn-outline" href="plateforme_demande.php?ticket=<?= $id ?>"><i class="fas fa-share"></i> Transmettre à la plateforme</a>
+                    <?php else: ?>
+                        <p class="sp-sub"><i class="fas fa-plug-circle-xmark"></i> Cette installation n'est pas reliée à la plateforme (ni jeton d'installation ni clé PLATFORM_API_KEY).</p>
+                    <?php endif; ?>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Notes internes (staff uniquement) -->
-        <?php if (isAdmin()): ?>
+        <?php if ($estEquipe): ?>
         <div class="card" style="margin-top:16px">
             <div class="card-header"><h3><i class="fas fa-lock"></i> Notes internes (non visibles par le demandeur)</h3></div>
             <div class="card-body">

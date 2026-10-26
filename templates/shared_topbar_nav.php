@@ -19,6 +19,9 @@ $rootPrefix = $rootPrefix ?? '../';
 $activePage = $activePage ?? '';
 $user_initials = $user_initials ?? '';
 $user_fullname = $user_fullname ?? '';
+// Certaines pages de module n'alimentent pas ces variables : repli sur la session.
+if ($user_initials === '' && function_exists('getUserInitials')) { $user_initials = (string) getUserInitials(); }
+if ($user_fullname === '' && function_exists('getUserFullName')) { $user_fullname = (string) getUserFullName(); }
 $isAdmin = $isAdmin ?? false;
 
 $__nav = \API\UI\TopbarNav::build();

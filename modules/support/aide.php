@@ -6,15 +6,15 @@ declare(strict_types=1);
 $pageTitle = 'Centre d\'aide';
 require_once __DIR__ . '/includes/header.php';
 
-$categorie = $_GET['cat'] ?? '';
-$recherche = trim($_GET['q'] ?? '');
+$categorie = is_string($_GET['cat'] ?? null) ? $_GET['cat'] : '';
+$recherche = trim(is_string($_GET['q'] ?? null) ? $_GET['q'] : '');
 $articles = $supportService->getFaqArticles($categorie ?: null, $recherche ?: null);
 $categories = SupportService::categoriesFaq();
 
 // Vote utile
 if (isset($_GET['utile'])) {
     $supportService->voterUtile((int)$_GET['faq'], $_GET['utile'] === '1');
-    header('Location: aide.php' . ($categorie ? "?cat=$categorie" : ''));
+    header('Location: aide.php' . ($categorie ? '?cat=' . rawurlencode($categorie) : ''));
     exit;
 }
 ?>
@@ -22,7 +22,7 @@ if (isset($_GET['utile'])) {
 <div class="content-wrapper">
     <div class="content-header">
         <h1><i class="fas fa-question-circle"></i> Centre d'aide</h1>
-        <a href="nouveau_ticket.php" class="btn btn-primary"><i class="fas fa-ticket-alt"></i> Ouvrir un ticket</a>
+        <a href="nouveau_ticket.php" class="btn btn-primary"><i class="fas fa-ticket-alt"></i> Faire une demande</a>
     </div>
 
     <!-- Recherche -->
@@ -37,7 +37,7 @@ if (isset($_GET['utile'])) {
     <div class="faq-categories">
         <a href="aide.php" class="cat-chip <?= !$categorie ? 'active' : '' ?>"><?= __('label.toutes') ?></a>
         <?php foreach ($categories as $key => $label): ?>
-        <a href="aide.php?cat=<?= $key ?>" class="cat-chip <?= $categorie === $key ? 'active' : '' ?>"><?= $label ?></a>
+        <a href="aide.php?cat=<?= htmlspecialchars(rawurlencode((string) $key)) ?>" class="cat-chip <?= $categorie === $key ? 'active' : '' ?>"><?= $label ?></a>
         <?php endforeach; ?>
     </div>
 
@@ -54,14 +54,14 @@ if (isset($_GET['utile'])) {
                 <summary class="faq-question">
                     <i class="fas fa-chevron-right faq-chevron"></i>
                     <?= htmlspecialchars($art['question']) ?>
-                    <span class="faq-cat-badge"><?= $categories[$art['categorie']] ?? $art['categorie'] ?></span>
+                    <span class="faq-cat-badge"><?= htmlspecialchars($categories[$art['categorie']] ?? $art['categorie']) ?></span>
                 </summary>
                 <div class="faq-answer">
                     <p><?= nl2br(htmlspecialchars($art['reponse'])) ?></p>
                     <div class="faq-feedback">
                         <span>Cet article vous a-t-il aidé ?</span>
-                        <a href="?utile=1&faq=<?= $art['id'] ?><?= $categorie ? "&cat=$categorie" : '' ?>" class="feedback-btn"><i class="fas fa-thumbs-up"></i> Oui (<?= $art['utile_oui'] ?>)</a>
-                        <a href="?utile=0&faq=<?= $art['id'] ?><?= $categorie ? "&cat=$categorie" : '' ?>" class="feedback-btn"><i class="fas fa-thumbs-down"></i> Non (<?= $art['utile_non'] ?>)</a>
+                        <a href="?utile=1&faq=<?= $art['id'] ?><?= $categorie ? '&amp;cat=' . htmlspecialchars(rawurlencode($categorie)) : '' ?>" class="feedback-btn"><i class="fas fa-thumbs-up"></i> Oui (<?= $art['utile_oui'] ?>)</a>
+                        <a href="?utile=0&faq=<?= $art['id'] ?><?= $categorie ? '&amp;cat=' . htmlspecialchars(rawurlencode($categorie)) : '' ?>" class="feedback-btn"><i class="fas fa-thumbs-down"></i> Non (<?= $art['utile_non'] ?>)</a>
                     </div>
                 </div>
             </details>
@@ -74,8 +74,8 @@ if (isset($_GET['utile'])) {
         <div class="help-card">
             <i class="fas fa-envelope"></i>
             <h3>Toujours besoin d'aide ?</h3>
-            <p>Si vous ne trouvez pas la réponse, ouvrez un ticket de support.</p>
-            <a href="nouveau_ticket.php" class="btn btn-primary">Ouvrir un ticket</a>
+            <p>Si vous ne trouvez pas la réponse, écrivez à votre établissement : votre demande arrive à l&#039;équipe qui peut y répondre.</p>
+            <a href="nouveau_ticket.php" class="btn btn-primary">Faire une demande</a>
         </div>
     </div>
 </div>

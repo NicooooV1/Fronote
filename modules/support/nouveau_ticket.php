@@ -1,76 +1,82 @@
 <?php
 declare(strict_types=1);
 /**
- * M34 – Support — Nouveau ticket
+ * M34 – Support — Nouvelle demande (INTERNE : adressée à l'équipe de l'établissement).
  */
-$pageTitle = 'Nouveau ticket';
+$pageTitle = 'Nouvelle demande';
+$pageSubtitle = 'Votre demande est adressée à l\'équipe de votre établissement.';
 require_once __DIR__ . '/includes/header.php';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
-    $sujet = trim($_POST['sujet'] ?? '');
-    $description = trim($_POST['description'] ?? '');
-    $categorie = $_POST['categorie'] ?? 'technique';
-    $priorite = $_POST['priorite'] ?? 'normale';
+$cats = SupportService::categoriesDetail();
+$messagerieActive = true;
+try { $messagerieActive = app('modules')->isEnabled('messagerie'); } catch (\Throwable $e) {}
+$error = null;
+$val = static fn(string $k, string $d = '') => is_string($_POST[$k] ?? null) ? $_POST[$k] : $d;
 
-    if (empty($sujet) || empty($description)) {
-        $error = 'Veuillez remplir tous les champs obligatoires.';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && validateCSRFToken()) {
+    $sujet = trim($val('sujet'));
+    $description = trim($val('description'));
+    $categorie = isset($cats[$val('categorie')]) ? $val('categorie') : 'communication';
+    // Seule l'équipe fixe une priorité ; les autres demandes arrivent en « normale » et sont triées.
+    $priorite = $estEquipe && in_array($val('priorite'), ['basse', 'normale', 'haute', 'urgente'], true) ? $val('priorite') : 'normale';
+    if ($sujet === '' || $description === '') {
+        $error = 'Indiquez un objet et décrivez votre demande.';
     } else {
-        $supportService->creerTicket(getUserId(), getUserRole(), $sujet, $description, $categorie, $priorite);
-        $_SESSION['success_message'] = 'Ticket créé avec succès. Nous vous répondrons dès que possible.';
-        header('Location: tickets.php');
+        $id = $supportService->creerTicket(getUserId(), getUserRole(), mb_substr($sujet, 0, 255), $description, $categorie, $priorite);
+        $_SESSION['success_message'] = 'Demande envoyée à votre établissement. Vous serez notifié de la réponse.';
+        header('Location: voir_ticket.php?id=' . $id);
         exit;
     }
 }
+$choisie = $val('categorie', $messagerieActive ? 'pedagogique' : 'communication');
 ?>
-
-<div class="content-wrapper">
-    <div class="content-header">
-        <h1><i class="fas fa-plus-circle"></i> Nouveau ticket</h1>
-        <a href="tickets.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Mes tickets</a>
-    </div>
-
-    <?php if (!empty($error)): ?>
-        <div class="alert alert-danger"><?= $error ?></div>
+<div class="sp">
+    <?php if (!$messagerieActive): ?>
+    <div class="sp-hint"><i class="fas fa-circle-info"></i> La messagerie n'est pas activée dans votre établissement : utilisez ce formulaire pour lui écrire, l'équipe vous répondra ici.</div>
     <?php endif; ?>
+    <?php if ($error): ?><div class="alert alert-danger"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 
-    <div class="card">
-        <div class="card-body">
-            <form method="post">
-                <?= csrfField() ?>
-                <div class="form-group">
-                    <label for="sujet">Sujet *</label>
-                    <input type="text" name="sujet" id="sujet" class="form-control" required value="<?= htmlspecialchars($_POST['sujet'] ?? '') ?>" placeholder="Décrivez brièvement votre problème">
-                </div>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="categorie"><?= __('label.categorie') ?></label>
-                        <select name="categorie" id="categorie" class="form-control">
-                            <?php foreach (SupportService::categoriesTicket() as $val => $label): ?>
-                            <option value="<?= $val ?>"><?= $label ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="priorite"><?= __('support.priority') ?></label>
-                        <select name="priorite" id="priorite" class="form-control">
-                            <option value="basse"><?= __('support.low') ?></option>
-                            <option value="normale" selected>Normale</option>
-                            <option value="haute"><?= __('support.high') ?></option>
-                            <option value="urgente">Urgente</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="description">Description détaillée *</label>
-                    <textarea name="description" id="description" class="form-control" rows="6" required placeholder="Décrivez votre problème en détail : que faisiez-vous, quel message d'erreur avez-vous vu, etc."><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> <?= __('btn.send') ?></button>
-                    <a href="tickets.php" class="btn btn-outline"><?= __('btn.cancel') ?></a>
-                </div>
-            </form>
+    <form method="post" class="sp-card sp-form">
+        <?= csrfField() ?>
+        <fieldset class="sp-cats">
+            <legend>Votre demande concerne…</legend>
+            <?php foreach ($cats as $k => [$label, $aide, $icone]): ?>
+            <label class="sp-cat">
+                <input type="radio" name="categorie" value="<?= htmlspecialchars($k) ?>" <?= $choisie === $k ? 'checked' : '' ?>>
+                <span class="sp-cat__box">
+                    <i class="<?= htmlspecialchars($icone) ?>" aria-hidden="true"></i>
+                    <strong><?= htmlspecialchars($label) ?></strong>
+                    <?php if ($aide !== ''): ?><small><?= htmlspecialchars($aide) ?></small><?php endif; ?>
+                </span>
+            </label>
+            <?php endforeach; ?>
+        </fieldset>
+
+        <div class="form-group">
+            <label for="sujet">Objet</label>
+            <input type="text" name="sujet" id="sujet" class="form-control" required maxlength="255" value="<?= htmlspecialchars($val('sujet')) ?>" placeholder="En quelques mots">
         </div>
-    </div>
+        <div class="form-group">
+            <label for="description">Votre message</label>
+            <textarea name="description" id="description" class="form-control" rows="6" required placeholder="Donnez les détails utiles : la matière, la date, la page concernée…"><?= htmlspecialchars($val('description')) ?></textarea>
+        </div>
+        <?php if ($estEquipe): ?>
+        <div class="form-group sp-narrow">
+            <label for="priorite">Priorité</label>
+            <select name="priorite" id="priorite" class="form-control">
+                <?php foreach (['basse' => 'Basse', 'normale' => 'Normale', 'haute' => 'Haute', 'urgente' => 'Urgente'] as $k => $l): ?>
+                <option value="<?= $k ?>" <?= $val('priorite', 'normale') === $k ? 'selected' : '' ?>><?= $l ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <?php endif; ?>
+        <div class="sp-actions">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Envoyer à l'établissement</button>
+            <a href="tickets.php" class="btn btn-outline"><?= __('btn.cancel') ?></a>
+            <?php if ($peutEscalader): ?>
+            <span class="sp-aside">Un problème que l'établissement ne peut pas régler ? <a href="plateforme_demande.php?nouvelle=1">Écrire à la plateforme Fronote</a></span>
+            <?php endif; ?>
+        </div>
+    </form>
 </div>
-
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

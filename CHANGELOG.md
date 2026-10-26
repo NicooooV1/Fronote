@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [4.5.0] — Support : demandes internes et plateforme Fronote — 2026-10-26
+
+### Changed — Support
+- Deux circuits : les demandes INTERNES (élèves, familles, personnel vers l'équipe de
+  l'établissement, administration et vie scolaire) restent dans l'instance ; seule la direction
+  transmet à la PLATEFORME Fronote un problème que l'établissement ne peut pas régler.
+- Catégories claires ; sans messagerie activée, la demande sert de canal vers l'établissement.
+- Escalade : file d'attente, nouvel essai progressif, relève des réponses toutes les 5 min
+  (cron/platform_sync.php) et à l'ouverture des pages ; notification de la réponse.
+- Barre : initiales de l'avatar aussi sur les modules sans module_boot.
+
+### Fixed
+- Aide : paramètre cat réinjecté sans échappement (XSS réfléchi).
+
 ## [4.4.3] — Notes : chacun ne charge que ses données — 2026-10-26
 
 ### Fixed — Performance et pertinence

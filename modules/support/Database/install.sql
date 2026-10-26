@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS `tickets_support` (
   `user_type` varchar(20) NOT NULL,
   `sujet` varchar(255) NOT NULL,
   `description` text NOT NULL,
-  `categorie` enum('technique','pedagogique','administratif','compte','autre') NOT NULL DEFAULT 'technique',
+  `categorie` enum('technique','pedagogique','communication','administratif','compte','autre') NOT NULL DEFAULT 'communication',
   `priorite` enum('basse','normale','haute','urgente') NOT NULL DEFAULT 'normale',
   `statut` enum('ouvert','en_cours','resolu','ferme') NOT NULL DEFAULT 'ouvert',
   `reponse` text DEFAULT NULL,
@@ -99,4 +99,53 @@ CREATE TABLE IF NOT EXISTS `support_sla` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_support_sla` (`etablissement_id`, `categorie`, `priorite`),
   CONSTRAINT `fk_etab_support_sla` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Demandes ESCALADÉES à la plateforme Fronote par l'équipe de direction (4.5).
+-- File d'attente : envoyées dès que la plateforme répond (nouvel essai progressif).
+CREATE TABLE IF NOT EXISTS `support_escalations` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `etablissement_id` int(11) NOT NULL DEFAULT 1,
+  `ticket_id` int(11) DEFAULT NULL,
+  `ref` varchar(64) NOT NULL,
+  `sujet` varchar(255) NOT NULL,
+  `categorie` varchar(40) NOT NULL DEFAULT 'technique',
+  `priorite` enum('basse','normale','haute','urgente') NOT NULL DEFAULT 'normale',
+  `envoi` enum('a_envoyer','envoye','refuse') NOT NULL DEFAULT 'a_envoyer',
+  `statut` varchar(30) NOT NULL DEFAULT 'en_attente',
+  `tentatives` int(11) NOT NULL DEFAULT 0,
+  `prochain_essai` datetime DEFAULT NULL,
+  `derniere_erreur` varchar(255) DEFAULT NULL,
+  `cree_par_id` int(11) NOT NULL,
+  `cree_par_type` varchar(20) NOT NULL,
+  `cree_par_nom` varchar(160) NOT NULL,
+  `date_creation` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `date_modification` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_escalade_ref` (`ref`),
+  KEY `idx_escalade_etab` (`etablissement_id`),
+  KEY `idx_escalade_envoi` (`envoi`, `prochain_essai`),
+  KEY `idx_escalade_ticket` (`ticket_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `support_escalation_messages` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `escalation_id` int(11) NOT NULL,
+  `sens` enum('sortant','entrant') NOT NULL,
+  `auteur` varchar(160) NOT NULL,
+  `contenu` text NOT NULL,
+  `a_envoyer` tinyint(1) NOT NULL DEFAULT 0,
+  `plateforme_id` int(11) DEFAULT NULL,
+  `date_creation` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_escmsg_escalade` (`escalation_id`),
+  UNIQUE KEY `uk_escmsg_plateforme` (`escalation_id`, `plateforme_id`),
+  CONSTRAINT `fk_escmsg_escalade` FOREIGN KEY (`escalation_id`) REFERENCES `support_escalations` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `support_platform_state` (
+  `k` varchar(64) NOT NULL,
+  `v` varchar(255) NOT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`k`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
