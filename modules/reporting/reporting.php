@@ -3,7 +3,8 @@ declare(strict_types=1);
 /**
  * M22 – Reporting — Tableau de bord par classe
  */
-$pageTitle = 'Reporting & Statistiques';
+$pageTitle = 'Reporting';
+$pageSubtitle = 'Tableau de bord par classe';
 require_once __DIR__ . '/includes/header.php';
 
 $classes = $reportService->getClasses();
@@ -12,184 +13,119 @@ $classeId = isset($_GET['classe_id']) ? (int)$_GET['classe_id'] : ($classes[0]['
 $periodeId = isset($_GET['periode_id']) ? (int)$_GET['periode_id'] : 0;
 
 $rapport = $classeId ? $reportService->getRapportClasse($classeId, $periodeId ?: null) : null;
+
+$J = JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE;
+$fr = static fn($v, int $d = 2): string => $v === null || $v === '' ? '–' : number_format((float) $v, $d, ',', ' ');
+$kpi = static fn(string $icon, string $value, string $label, string $tone = '') =>
+    '<div class="rp-kpi' . ($tone ? ' rp-kpi--' . $tone : '') . '"><span class="rp-kpi__ic"><i class="' . $icon . '" aria-hidden="true"></i></span>'
+    . '<span><strong>' . htmlspecialchars($value) . '</strong><small>' . htmlspecialchars($label) . '</small></span></div>';
 ?>
+<div class="rp">
+    <form method="get" class="rp-filter">
+        <label class="rp-field">
+            <span><?= __('label.classe') ?></span>
+            <select name="classe_id" data-fr-change="submitOwn" class="form-select">
+                <?php foreach ($classes as $c): ?>
+                    <option value="<?= (int) $c['id'] ?>" <?= $c['id'] == $classeId ? 'selected' : '' ?>><?= htmlspecialchars($c['niveau'].' – '.$c['nom']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </label>
+        <label class="rp-field">
+            <span><?= __('label.periode') ?></span>
+            <select name="periode_id" data-fr-change="submitOwn" class="form-select">
+                <option value="0">Toute l'année</option>
+                <?php foreach ($periodes as $p): ?>
+                    <option value="<?= (int) $p['id'] ?>" <?= ($p['id'] ?? 0) == $periodeId ? 'selected' : '' ?>><?= htmlspecialchars($p['nom'] ?? $p['libelle'] ?? 'Période '.$p['id']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </label>
+        <noscript><button type="submit" class="btn btn-primary">Afficher</button></noscript>
+    </form>
 
-<div class="main-content">
-    <div class="page-header">
-        <h1><i class="fas fa-chart-line"></i> Reporting & Statistiques</h1>
-        <div>
-            <a href="global.php" class="btn btn-secondary"><i class="fas fa-globe"></i> Vue globale</a>
-            <a href="exporter.php" class="btn btn-primary"><i class="fas fa-file-csv"></i> Exporter</a>
-        </div>
+    <?php if ($rapport):
+        $mat = $rapport['moyennes_matieres'] ?? [];
+        usort($mat, fn($a, $b) => (float) ($b['moyenne'] ?? 0) <=> (float) ($a['moyenne'] ?? 0));
+        $rpData = [
+            'matieres' => [
+                'labels' => array_map(fn($m) => (string) ($m['matiere'] ?? $m['nom'] ?? '?'), $mat),
+                'values' => array_map(fn($m) => round((float) ($m['moyenne'] ?? 0), 2), $mat),
+                'min'    => array_map(fn($m) => round((float) ($m['min_note'] ?? 0), 1), $mat),
+                'max'    => array_map(fn($m) => round((float) ($m['max_note'] ?? 0), 1), $mat),
+                'nb'     => array_map(fn($m) => (int) ($m['nb_notes'] ?? 0), $mat),
+            ],
+            'vie' => [(int) $rapport['total_absences'], (int) $rapport['total_retards'], (int) $rapport['nb_incidents']],
+        ];
+        $classement = $rapport['classement'] ?? [];
+    ?>
+    <div class="rp-kpis">
+        <?= $kpi('fas fa-users', (string) $rapport['effectif'], __('label.eleves')) ?>
+        <?= $kpi('fas fa-chart-bar', $fr($rapport['moyenne_classe']) . '/20', 'Moyenne de la classe', 'primary') ?>
+        <?= $kpi('fas fa-calendar-times', (string) $rapport['total_absences'], 'Absences', 'warning') ?>
+        <?= $kpi('fas fa-clock', (string) $rapport['total_retards'], 'Retards', 'info') ?>
+        <?= $kpi('fas fa-exclamation-triangle', (string) $rapport['nb_incidents'], 'Incidents', 'danger') ?>
     </div>
 
-    <div class="report-filter">
-        <form method="get" style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
-            <div>
-                <label><?= __('label.classe') ?> :</label>
-                <select name="classe_id" data-fr-change="submitOwn" class="form-select">
-                    <?php foreach ($classes as $c): ?>
-                        <option value="<?= $c['id'] ?>" <?= $c['id'] == $classeId ? 'selected' : '' ?>><?= htmlspecialchars($c['niveau'].' – '.$c['nom']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div>
-                <label><?= __('label.periode') ?> :</label>
-                <select name="periode_id" data-fr-change="submitOwn" class="form-select">
-                    <option value="0">Toutes les périodes</option>
-                    <?php foreach ($periodes as $p): ?>
-                        <option value="<?= $p['id'] ?>" <?= ($p['id'] ?? 0) == $periodeId ? 'selected' : '' ?>><?= htmlspecialchars($p['nom'] ?? $p['libelle'] ?? 'Période '.$p['id']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-        </form>
-    </div>
+    <div class="rp-grid">
+        <section class="rp-card">
+            <header class="rp-card__head">
+                <h2><i class="fas fa-chart-bar" aria-hidden="true"></i>Moyennes par matière</h2>
+                <span class="rp-legend"><i class="rp-dot rp-dot--good"></i>≥ 12 <i class="rp-dot rp-dot--mid"></i>10–12 <i class="rp-dot rp-dot--low"></i>&lt; 10</span>
+            </header>
+            <div class="rp-chart"><canvas id="chartMoyennes" role="img" aria-label="Moyenne de la classe dans chaque matière"></canvas></div>
+        </section>
 
-    <?php if ($rapport): ?>
-        <h2 class="report-class-title">
-            Rapport : <?= htmlspecialchars(($rapport['classe']['niveau'] ?? '').' – '.($rapport['classe']['nom'] ?? '')) ?>
-        </h2>
-
-        <div class="report-stats-grid">
-            <div class="report-stat-card">
-                <i class="fas fa-users"></i>
-                <div class="report-stat-value"><?= $rapport['effectif'] ?></div>
-                <div class="report-stat-label"><?= __('label.eleves') ?></div>
-            </div>
-            <div class="report-stat-card report-stat-primary">
-                <i class="fas fa-chart-bar"></i>
-                <div class="report-stat-value"><?= $rapport['moyenne_classe'] ?>/20</div>
-                <div class="report-stat-label">Moyenne classe</div>
-            </div>
-            <div class="report-stat-card report-stat-warning">
-                <i class="fas fa-calendar-times"></i>
-                <div class="report-stat-value"><?= $rapport['total_absences'] ?></div>
-                <div class="report-stat-label">Absences</div>
-            </div>
-            <div class="report-stat-card report-stat-info">
-                <i class="fas fa-clock"></i>
-                <div class="report-stat-value"><?= $rapport['total_retards'] ?></div>
-                <div class="report-stat-label">Retards</div>
-            </div>
-            <div class="report-stat-card report-stat-danger">
-                <i class="fas fa-exclamation-triangle"></i>
-                <div class="report-stat-value"><?= $rapport['nb_incidents'] ?></div>
-                <div class="report-stat-label">Incidents</div>
-            </div>
+        <div class="rp-stack">
+            <section class="rp-card">
+                <header class="rp-card__head"><h2><i class="fas fa-user-clock" aria-hidden="true"></i>Vie scolaire</h2></header>
+                <div class="rp-chart rp-chart--sm"><canvas id="chartVie" role="img" aria-label="Absences, retards et incidents de la classe"></canvas></div>
+            </section>
+            <section class="rp-card">
+                <header class="rp-card__head"><h2><i class="fas fa-file-csv" aria-hidden="true"></i>Exports</h2></header>
+                <div class="rp-exports">
+                    <a href="exporter.php?type=absences&amp;classe_id=<?= $classeId ?>&amp;go=1"><i class="fas fa-calendar-times" aria-hidden="true"></i>Absences</a>
+                    <a href="exporter.php?type=notes&amp;classe_id=<?= $classeId ?>&amp;periode_id=<?= $periodeId ?>&amp;go=1"><i class="fas fa-chart-bar" aria-hidden="true"></i>Notes</a>
+                    <a href="exporter.php?type=moyennes&amp;classe_id=<?= $classeId ?>&amp;periode_id=<?= $periodeId ?>&amp;go=1"><i class="fas fa-calculator" aria-hidden="true"></i>Moyennes</a>
+                    <a href="exporter.php?type=incidents&amp;classe_id=<?= $classeId ?>&amp;go=1"><i class="fas fa-gavel" aria-hidden="true"></i>Incidents</a>
+                </div>
+            </section>
         </div>
 
-        <!-- ===== Graphiques Chart.js ===== -->
-        <div class="row g-4 mb-4">
-            <div class="col-lg-6">
-                <div class="card">
-                    <div class="card-header"><h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Moyennes par matière</h5></div>
-                    <div class="card-body"><canvas id="chartMoyennes" height="260"></canvas></div>
-                </div>
-            </div>
-            <div class="col-lg-6">
-                <div class="card">
-                    <div class="card-header"><h5 class="mb-0"><i class="fas fa-chart-doughnut me-2"></i>Répartition absences / retards / incidents</h5></div>
-                    <div class="card-body"><canvas id="chartRepartition" height="260"></canvas></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ===== Classement élèves ===== -->
-        <?php if (!empty($rapport['classement'])): ?>
-        <div class="card mb-4">
-            <div class="card-header"><h5 class="mb-0"><i class="fas fa-trophy me-2"></i>Classement des élèves</h5></div>
-            <div class="card-body">
+        <section class="rp-card rp-card--wide">
+            <header class="rp-card__head">
+                <h2><i class="fas fa-trophy" aria-hidden="true"></i>Classement des élèves</h2>
+                <span class="rp-hint"><?= count($classement) ?> élèves notés</span>
+            </header>
+            <?php if ($classement): ?>
+            <div class="rp-table rp-table--tall">
                 <table class="ds-table">
-                    <thead>
-                        <tr><th>#</th><th><?= __('label.nom') ?></th><th><?= __('label.prenom') ?></th><th><?= __('label.moyenne') ?></th></tr>
-                    </thead>
+                    <thead><tr><th class="num">#</th><th><?= __('label.nom') ?></th><th><?= __('label.prenom') ?></th><th class="rp-bar-col"><?= __('label.moyenne') ?></th></tr></thead>
                     <tbody>
-                    <?php foreach ($rapport['classement'] as $i => $el): ?>
+                    <?php foreach ($classement as $i => $el): $moy = $el['moyenne']; $tone = $moy === null ? '' : ((float) $moy >= 12 ? 'good' : ((float) $moy >= 10 ? 'mid' : 'low')); ?>
                         <tr>
-                            <td><strong><?= $i + 1 ?></strong></td>
+                            <td class="num"><strong><?= $i + 1 ?></strong></td>
                             <td><?= htmlspecialchars($el['nom']) ?></td>
                             <td><?= htmlspecialchars($el['prenom']) ?></td>
-                            <td>
-                                <strong class="<?= ($el['moyenne'] ?? 0) >= 10 ? 'text-success' : 'text-danger' ?>">
-                                    <?= $el['moyenne'] ?? '-' ?>/20
-                                </strong>
+                            <td class="rp-bar-col">
+                                <span class="rp-meter rp-meter--<?= $tone ?>"><span data-w="<?= $moy === null ? 0 : max(0, min(100, (int) round((float) $moy * 5))) ?>"></span></span>
+                                <strong class="rp-val rp-val--<?= $tone ?>"><?= $fr($moy) ?></strong>
                             </td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
-        </div>
-        <?php endif; ?>
+            <?php else: ?>
+            <p class="rp-empty">Aucune note sur cette période.</p>
+            <?php endif; ?>
+        </section>
+    </div>
 
-        <script src="<?= asset_url('assets/lib/chartjs/chart.umd.min.js') ?>" nonce="<?= csp_nonce() ?>"></script>
-        <script src="<?= asset_url('assets/js/chart-empty-state.js') ?>" nonce="<?= csp_nonce() ?>"></script>
-        <script nonce="<?= csp_nonce() ?>">
-        <?php
-            $moyMat = $rapport['moyennes_matieres'] ?? [];
-            $matLabels = []; $matValues = [];
-            foreach ($moyMat as $m) {
-                $matLabels[] = $m['matiere'] ?? $m['nom'] ?? '?';
-                $matValues[] = round((float)($m['moyenne'] ?? 0), 2);
-            }
-        ?>
-        // Bar chart — Moyennes par matière
-        new Chart(document.getElementById('chartMoyennes'), {
-            type: 'bar',
-            data: {
-                labels: <?= json_encode($matLabels, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
-                datasets: [{
-                    label: 'Moyenne /20',
-                    data: <?= json_encode($matValues, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
-                    backgroundColor: 'rgba(99,102,241,.6)',
-                    borderColor: 'rgba(99,102,241,1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: { y: { beginAtZero: true, max: 20 } },
-                plugins: { legend: { display: false } }
-            }
-        });
-
-        // Doughnut — Absences / Retards / Incidents
-        new Chart(document.getElementById('chartRepartition'), {
-            type: 'doughnut',
-            data: {
-                labels: ['Absences', 'Retards', 'Incidents'],
-                datasets: [{
-                    data: [<?= (int)$rapport['total_absences'] ?>, <?= (int)$rapport['total_retards'] ?>, <?= (int)$rapport['nb_incidents'] ?>],
-                    backgroundColor: ['#f59e0b', '#3b82f6', '#ef4444']
-                }]
-            },
-            options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
-        });
-        </script>
-
-        <div class="report-export-links">
-            <h3>Exports rapides</h3>
-            <div class="export-cards">
-                <a href="exporter.php?type=absences&classe_id=<?= $classeId ?>&go=1" class="export-card">
-                    <i class="fas fa-calendar-times"></i>
-                    <span>Absences CSV</span>
-                </a>
-                <a href="exporter.php?type=notes&classe_id=<?= $classeId ?>&periode_id=<?= $periodeId ?>&go=1" class="export-card">
-                    <i class="fas fa-chart-bar"></i>
-                    <span>Notes CSV</span>
-                </a>
-                <a href="exporter.php?type=moyennes&classe_id=<?= $classeId ?>&periode_id=<?= $periodeId ?>&go=1" class="export-card">
-                    <i class="fas fa-calculator"></i>
-                    <span>Moyennes CSV</span>
-                </a>
-                <a href="exporter.php?type=incidents&classe_id=<?= $classeId ?>&go=1" class="export-card">
-                    <i class="fas fa-gavel"></i>
-                    <span>Incidents CSV</span>
-                </a>
-            </div>
-        </div>
+    <script type="application/json" id="rp-data"><?= json_encode($rpData, $J) ?></script>
+    <script src="<?= asset_url('assets/lib/chartjs/chart.umd.min.js') ?>" nonce="<?= csp_nonce() ?>"></script>
+    <script src="<?= asset_url('assets/js/chart-empty-state.js') ?>" nonce="<?= csp_nonce() ?>"></script>
+    <script src="<?= asset_url('modules/reporting/assets/js/reporting-charts.js') ?>" nonce="<?= csp_nonce() ?>"></script>
     <?php else: ?>
-        <div class="empty-state"><p>Sélectionnez une classe pour voir le rapport.</p></div>
+        <p class="rp-empty">Sélectionnez une classe pour voir le rapport.</p>
     <?php endif; ?>
 </div>
 

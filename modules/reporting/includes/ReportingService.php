@@ -111,11 +111,14 @@ class ReportingService extends \API\Services\AbstractTenantService {
         $pdo = $this->pdo;
         $result = [];
 
-        for ($i = 11; $i >= 0; $i--) {
-            $month = date('Y-m', strtotime("-{$i} months"));
-            $label = strftime('%b %Y', strtotime($month . '-01'));
-            // Fallback for systems without strftime locale
-            $label = date('M Y', strtotime($month . '-01'));
+        // Année scolaire en cours : de septembre au mois courant (au moins 3 mois affichés).
+        $mois = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+        $y = (int) date('Y'); $m = (int) date('n');
+        $startTs = mktime(0, 0, 0, 9, 1, $m >= 9 ? $y : $y - 1);
+        $span = max(2, (int) round((strtotime(date('Y-m-01')) - $startTs) / (86400 * 30.44))); // mois écoulés depuis septembre
+        for ($i = $span; $i >= 0; $i--) {
+            $month = date('Y-m', strtotime(date('Y-m-01') . " -{$i} months"));
+            $label = $mois[(int) substr($month, 5, 2) - 1] . ' ' . substr($month, 2, 2);
 
             $absences = 0;
             $retards = 0;
@@ -427,7 +430,7 @@ class ReportingService extends \API\Services\AbstractTenantService {
         // Classement élèves
         $sqlEleves = "
             SELECT e.id, e.nom, e.prenom,
-                   ROUND(SUM(n.note * n.coefficient) / NULLIF(SUM(n.coefficient), 0), 2) AS moyenne
+                   ROUND(SUM(n.note / NULLIF(n.note_sur, 0) * 20 * n.coefficient) / NULLIF(SUM(n.coefficient), 0), 2) AS moyenne
             FROM notes n JOIN eleves e ON n.id_eleve = e.id
             WHERE e.classe = ? AND e.actif = 1 AND e.etablissement_id = ?
         ";

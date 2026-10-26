@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [4.4.2] — Reporting lisible — 2026-10-26
+
+### Changed — Reporting
+- Graphiques à hauteur fixe dans une grille 2 colonnes (avant : chaque graphique prenait toute la
+  largeur avec un ratio automatique — pages de 4 600 à 6 500 px, donut géant). Barres horizontales
+  dimensionnées selon le nombre de lignes, valeurs écrites au bout des barres, ligne de repère 10/20,
+  infobulles (écart min–max, nombre de notes), couleurs par niveau et selon le thème (clair/sombre/liquide).
+- Indicateurs compacts façon accueil ; filtres classe/période alignés ; exports rapides regroupés ;
+  classement avec jauges. Titre en double et conteneur imbriqué retirés (rapport, vue globale, export).
+- Absences et retards : depuis septembre, mois en français.
+
+### Fixed
+- Classement des élèves : la moyenne ne ramenait pas les notes sur 20 (une note 8/10 comptait 8/20).
+- strftime (déprécié en PHP 8.1) retiré.
+
 ## [4.4.1] — Pages plus rapides — 2026-10-26
 
 ### Fixed — Performance

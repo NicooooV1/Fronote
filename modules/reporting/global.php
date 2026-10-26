@@ -4,7 +4,8 @@ declare(strict_types=1);
  * M22 – Reporting — Vue globale établissement
  * Dashboard avec KPI, comparaisons inter-classes, tendances mensuelles
  */
-$pageTitle = 'Vue globale';
+$pageTitle = 'Reporting';
+$pageSubtitle = "Vue d'ensemble de l'établissement";
 require_once __DIR__ . '/includes/header.php';
 
 $statsGlobales   = $reportService->getStatsGlobales();
@@ -15,242 +16,102 @@ $absParClasse    = $reportService->getAbsencesParClasse();
 $tauxReussite    = $reportService->getTauxReussiteParClasse();
 $topIncidents    = $reportService->getTopIncidents();
 ?>
-
-<div class="main-content">
-    <div class="page-header">
-        <h1><i class="fas fa-globe"></i> Vue globale de l'établissement</h1>
-        <a href="reporting.php" class="btn btn-secondary"><i class="fas fa-chart-line"></i> Par classe</a>
+<?php
+$J = JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE;
+$rpData = [
+    'moyClasse'  => ['labels' => array_column($moyParClasse, 'classe'), 'values' => array_map(fn($r) => round((float) $r['moyenne'], 2), $moyParClasse)],
+    'reussite'   => ['labels' => array_column($tauxReussite, 'classe'), 'values' => array_map(fn($r) => round((float) $r['taux'], 1), $tauxReussite)],
+    'evolution'  => ['labels' => array_column($evolution, 'mois'), 'absences' => array_map('intval', array_column($evolution, 'absences')), 'retards' => array_map('intval', array_column($evolution, 'retards'))],
+    'repartition'=> ['labels' => array_column($repartitionNotes, 'tranche'), 'values' => array_map('intval', array_column($repartitionNotes, 'count'))],
+];
+$kpi = static fn(string $icon, $value, string $label, string $tone = '') =>
+    '<div class="rp-kpi' . ($tone ? ' rp-kpi--' . $tone : '') . '"><span class="rp-kpi__ic"><i class="' . $icon . '" aria-hidden="true"></i></span>'
+    . '<span><strong>' . htmlspecialchars((string) $value) . '</strong><small>' . htmlspecialchars($label) . '</small></span></div>';
+?>
+<div class="rp">
+    <div class="rp-kpis">
+        <?= $kpi('fas fa-user-graduate', $statsGlobales['total_eleves'], 'Élèves actifs') ?>
+        <?= $kpi('fas fa-chalkboard-teacher', $statsGlobales['total_profs'], 'Professeurs') ?>
+        <?= $kpi('fas fa-chart-bar', str_replace('.', ',', (string) $statsGlobales['moyenne_globale']) . '/20', 'Moyenne établissement', 'primary') ?>
+        <?= $kpi('fas fa-calendar-times', $statsGlobales['absences_mois'], 'Absences ce mois', 'warning') ?>
+        <?= $kpi('fas fa-exclamation-triangle', $statsGlobales['incidents_ouverts'], 'Incidents ouverts', 'danger') ?>
+        <?= $kpi('fas fa-file-invoice-dollar', $statsGlobales['taux_recouvrement'] . ' %', 'Recouvrement', 'info') ?>
     </div>
 
-    <!-- KPI globaux -->
-    <div class="report-stats-grid">
-        <div class="report-stat-card">
-            <i class="fas fa-user-graduate"></i>
-            <div class="report-stat-value"><?= $statsGlobales['total_eleves'] ?></div>
-            <div class="report-stat-label">Élèves actifs</div>
-        </div>
-        <div class="report-stat-card">
-            <i class="fas fa-chalkboard-teacher"></i>
-            <div class="report-stat-value"><?= $statsGlobales['total_profs'] ?></div>
-            <div class="report-stat-label">Professeurs</div>
-        </div>
-        <div class="report-stat-card report-stat-primary">
-            <i class="fas fa-chart-bar"></i>
-            <div class="report-stat-value"><?= $statsGlobales['moyenne_globale'] ?>/20</div>
-            <div class="report-stat-label">Moyenne établissement</div>
-        </div>
-        <div class="report-stat-card report-stat-warning">
-            <i class="fas fa-calendar-times"></i>
-            <div class="report-stat-value"><?= $statsGlobales['absences_mois'] ?></div>
-            <div class="report-stat-label">Absences ce mois</div>
-        </div>
-        <div class="report-stat-card report-stat-danger">
-            <i class="fas fa-exclamation-triangle"></i>
-            <div class="report-stat-value"><?= $statsGlobales['incidents_ouverts'] ?></div>
-            <div class="report-stat-label">Incidents ouverts</div>
-        </div>
-        <div class="report-stat-card report-stat-info">
-            <i class="fas fa-file-invoice-dollar"></i>
-            <div class="report-stat-value"><?= $statsGlobales['taux_recouvrement'] ?>%</div>
-            <div class="report-stat-label">Recouvrement</div>
-        </div>
-    </div>
-
-    <!-- Row 1 : Moyennes par classe + Évolution mensuelle -->
-    <div class="row g-4 mb-4">
-        <div class="col-lg-6">
-            <div class="card">
-                <div class="card-header"><h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Moyennes par classe</h5></div>
-                <div class="card-body"><canvas id="chartMoyClasse" height="300"></canvas></div>
+    <div class="rp-grid">
+        <section class="rp-card">
+            <header class="rp-card__head">
+                <h2><i class="fas fa-chart-bar" aria-hidden="true"></i>Moyennes par classe</h2>
+                <span class="rp-legend"><i class="rp-dot rp-dot--good"></i>≥ 12 <i class="rp-dot rp-dot--mid"></i>10–12 <i class="rp-dot rp-dot--low"></i>&lt; 10</span>
+            </header>
+            <div class="rp-chart"><canvas id="chartMoyClasse" role="img" aria-label="Moyenne de chaque classe sur 20"></canvas></div>
+        </section>
+        <section class="rp-card">
+            <header class="rp-card__head">
+                <h2><i class="fas fa-trophy" aria-hidden="true"></i>Taux de réussite par classe</h2>
+                <span class="rp-hint">part des élèves ≥ 10/20</span>
+            </header>
+            <div class="rp-chart"><canvas id="chartReussite" role="img" aria-label="Pourcentage d'élèves ayant au moins 10 sur 20, par classe"></canvas></div>
+        </section>
+        <section class="rp-card">
+            <header class="rp-card__head">
+                <h2><i class="fas fa-chart-line" aria-hidden="true"></i>Absences et retards</h2>
+                <span class="rp-hint">depuis septembre, par mois</span>
+            </header>
+            <div class="rp-chart"><canvas id="chartEvolution" role="img" aria-label="Nombre d'absences et de retards par mois"></canvas></div>
+        </section>
+        <section class="rp-card">
+            <header class="rp-card__head">
+                <h2><i class="fas fa-chart-area" aria-hidden="true"></i>Répartition des notes</h2>
+                <span class="rp-hint">toutes classes, sur 20</span>
+            </header>
+            <div class="rp-chart"><canvas id="chartRepartition" role="img" aria-label="Nombre de notes par tranche"></canvas></div>
+        </section>
+        <section class="rp-card">
+            <header class="rp-card__head"><h2><i class="fas fa-calendar-times" aria-hidden="true"></i>Absences par classe</h2></header>
+            <div class="rp-table">
+                <table class="ds-table">
+                    <thead><tr><th><?= __('label.classe') ?></th><th class="num"><?= __('label.total') ?></th><th class="num">Justifiées</th><th class="num"><?= __('label.eleves') ?></th></tr></thead>
+                    <tbody>
+                    <?php foreach ($absParClasse as $ac): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($ac['classe']) ?></td>
+                            <td class="num"><strong><?= (int) $ac['total_absences'] ?></strong></td>
+                            <td class="num"><?= (int) $ac['justifiees'] ?></td>
+                            <td class="num"><?= (int) $ac['eleves_concernes'] ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <?php if (!$absParClasse): ?><tr><td colspan="4" class="rp-empty">Aucune absence.</td></tr><?php endif; ?>
+                    </tbody>
+                </table>
             </div>
-        </div>
-        <div class="col-lg-6">
-            <div class="card">
-                <div class="card-header"><h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Évolution mensuelle</h5></div>
-                <div class="card-body"><canvas id="chartEvolution" height="300"></canvas></div>
+        </section>
+        <section class="rp-card">
+            <header class="rp-card__head"><h2><i class="fas fa-gavel" aria-hidden="true"></i>Types d'incidents</h2></header>
+            <div class="rp-table">
+                <?php if (empty($topIncidents)): ?>
+                    <p class="rp-empty">Aucun incident enregistré.</p>
+                <?php else: ?>
+                <table class="ds-table">
+                    <thead><tr><th><?= __('label.type') ?></th><th class="num"><?= __('label.total') ?></th><th class="num">Résolus</th><th class="num"><?= __('status.en_cours') ?></th></tr></thead>
+                    <tbody>
+                    <?php foreach ($topIncidents as $inc): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($inc['type']) ?></td>
+                            <td class="num"><strong><?= (int) $inc['total'] ?></strong></td>
+                            <td class="num text-success"><?= (int) $inc['resolus'] ?></td>
+                            <td class="num text-warning"><?= (int) $inc['total'] - (int) $inc['resolus'] ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <?php endif; ?>
             </div>
-        </div>
-    </div>
-
-    <!-- Row 2 : Répartition des notes + Taux de réussite -->
-    <div class="row g-4 mb-4">
-        <div class="col-lg-6">
-            <div class="card">
-                <div class="card-header"><h5 class="mb-0"><i class="fas fa-chart-area me-2"></i>Répartition des notes</h5></div>
-                <div class="card-body"><canvas id="chartRepartition" height="280"></canvas></div>
-            </div>
-        </div>
-        <div class="col-lg-6">
-            <div class="card">
-                <div class="card-header"><h5 class="mb-0"><i class="fas fa-trophy me-2"></i>Taux de réussite par classe</h5></div>
-                <div class="card-body"><canvas id="chartReussite" height="280"></canvas></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Row 3 : Absences par classe (table) + Top incidents -->
-    <div class="row g-4 mb-4">
-        <div class="col-lg-6">
-            <div class="card">
-                <div class="card-header"><h5 class="mb-0"><i class="fas fa-calendar-times me-2"></i>Absences par classe</h5></div>
-                <div class="card-body" style="max-height:400px;overflow-y:auto">
-                    <table class="ds-table">
-                        <thead><tr><th><?= __('label.classe') ?></th><th><?= __('label.total') ?></th><th>Justifiées</th><th><?= __('label.eleves') ?></th></tr></thead>
-                        <tbody>
-                        <?php foreach ($absParClasse as $ac): ?>
-                            <tr>
-                                <td><?= htmlspecialchars($ac['classe']) ?></td>
-                                <td><strong><?= $ac['total_absences'] ?></strong></td>
-                                <td><?= $ac['justifiees'] ?></td>
-                                <td><?= $ac['eleves_concernes'] ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-6">
-            <div class="card">
-                <div class="card-header"><h5 class="mb-0"><i class="fas fa-gavel me-2"></i>Types d'incidents</h5></div>
-                <div class="card-body" style="max-height:400px;overflow-y:auto">
-                    <?php if (empty($topIncidents)): ?>
-                        <p class="text-muted">Aucun incident enregistré.</p>
-                    <?php else: ?>
-                    <table class="ds-table">
-                        <thead><tr><th><?= __('label.type') ?></th><th><?= __('label.total') ?></th><th>Résolus</th><th><?= __('status.en_cours') ?></th></tr></thead>
-                        <tbody>
-                        <?php foreach ($topIncidents as $inc): ?>
-                            <tr>
-                                <td><?= htmlspecialchars($inc['type']) ?></td>
-                                <td><strong><?= $inc['total'] ?></strong></td>
-                                <td class="text-success"><?= $inc['resolus'] ?></td>
-                                <td class="text-warning"><?= $inc['total'] - $inc['resolus'] ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
+        </section>
     </div>
 </div>
-
+<script type="application/json" id="rp-data"><?= json_encode($rpData, $J) ?></script>
 <script src="<?= asset_url('assets/lib/chartjs/chart.umd.min.js') ?>" nonce="<?= csp_nonce() ?>"></script>
 <script src="<?= asset_url('assets/js/chart-empty-state.js') ?>" nonce="<?= csp_nonce() ?>"></script>
-<script nonce="<?= csp_nonce() ?>">
-// ------ Data prep ------
-<?php
-    // Moyennes par classe
-    $clLabels = array_column($moyParClasse, 'classe');
-    $clValues = array_map(fn($r) => (float)$r['moyenne'], $moyParClasse);
-    $clColors = array_map(fn($v) => $v >= 12 ? 'rgba(34,197,94,.7)' : ($v >= 10 ? 'rgba(234,179,8,.7)' : 'rgba(239,68,68,.7)'), $clValues);
-
-    // Évolution mensuelle
-    $evoLabels = array_column($evolution, 'mois');
-    $evoAbs = array_column($evolution, 'absences');
-    $evoRet = array_column($evolution, 'retards');
-
-    // Répartition notes
-    $repLabels = array_column($repartitionNotes, 'tranche');
-    $repValues = array_column($repartitionNotes, 'count');
-
-    // Taux réussite
-    $trLabels = array_column($tauxReussite, 'classe');
-    $trValues = array_map(fn($r) => (float)$r['taux'], $tauxReussite);
-?>
-
-// 1. Moyennes par classe (horizontal bar)
-new Chart(document.getElementById('chartMoyClasse'), {
-    type: 'bar',
-    data: {
-        labels: <?= json_encode($clLabels, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
-        datasets: [{
-            label: 'Moyenne /20',
-            data: <?= json_encode($clValues, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
-            backgroundColor: <?= json_encode($clColors, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
-            borderWidth: 1
-        }]
-    },
-    options: {
-        indexAxis: 'y',
-        responsive: true,
-        scales: { x: { beginAtZero: true, max: 20 } },
-        plugins: { legend: { display: false } }
-    }
-});
-
-// 2. Évolution mensuelle (line)
-new Chart(document.getElementById('chartEvolution'), {
-    type: 'line',
-    data: {
-        labels: <?= json_encode($evoLabels, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
-        datasets: [
-            {
-                label: 'Absences',
-                data: <?= json_encode($evoAbs, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
-                borderColor: '#f59e0b',
-                backgroundColor: 'rgba(245,158,11,.1)',
-                fill: true, tension: .3
-            },
-            {
-                label: 'Retards',
-                data: <?= json_encode($evoRet, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
-                borderColor: '#3b82f6',
-                backgroundColor: 'rgba(59,130,246,.1)',
-                fill: true, tension: .3
-            }
-        ]
-    },
-    options: {
-        responsive: true,
-        scales: { y: { beginAtZero: true } },
-        plugins: { legend: { position: 'bottom' } }
-    }
-});
-
-// 3. Répartition des notes (histogram-style bar)
-new Chart(document.getElementById('chartRepartition'), {
-    type: 'bar',
-    data: {
-        labels: <?= json_encode($repLabels, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
-        datasets: [{
-            label: 'Nombre de notes',
-            data: <?= json_encode($repValues, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
-            backgroundColor: [
-                '#ef4444','#f97316','#f59e0b','#eab308',
-                '#84cc16','#22c55e','#10b981','#059669'
-            ],
-            borderWidth: 1
-        }]
-    },
-    options: {
-        responsive: true,
-        scales: { y: { beginAtZero: true } },
-        plugins: { legend: { display: false } }
-    }
-});
-
-// 4. Taux de réussite (horizontal bar)
-new Chart(document.getElementById('chartReussite'), {
-    type: 'bar',
-    data: {
-        labels: <?= json_encode($trLabels, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
-        datasets: [{
-            label: '% réussite (≥10/20)',
-            data: <?= json_encode($trValues, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
-            backgroundColor: <?= json_encode(array_map(fn($v) => $v >= 75 ? 'rgba(34,197,94,.7)' : ($v >= 50 ? 'rgba(234,179,8,.7)' : 'rgba(239,68,68,.7)'), $trValues), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
-            borderWidth: 1
-        }]
-    },
-    options: {
-        indexAxis: 'y',
-        responsive: true,
-        scales: { x: { beginAtZero: true, max: 100 } },
-        plugins: { legend: { display: false } }
-    }
-});
-</script>
-
+<script src="<?= asset_url('modules/reporting/assets/js/reporting-charts.js') ?>" nonce="<?= csp_nonce() ?>"></script>
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

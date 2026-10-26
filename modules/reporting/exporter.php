@@ -3,7 +3,8 @@ declare(strict_types=1);
 /**
  * M22 – Reporting — Export CSV
  */
-$pageTitle = 'Exporter des données';
+$pageTitle = 'Reporting';
+$pageSubtitle = 'Exporter des données (CSV)';
 
 $type = $_GET['type'] ?? '';
 $classeId = isset($_GET['classe_id']) ? (int)$_GET['classe_id'] : 0;
@@ -79,11 +80,7 @@ $classes = $reportService->getClasses();
 $periodes = $reportService->getPeriodes();
 ?>
 
-<div class="main-content">
-    <div class="page-header">
-        <h1><i class="fas fa-file-csv"></i> Exporter des données</h1>
-        <a href="reporting.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> <?= __('btn.back') ?></a>
-    </div>
+<div class="rp">
 
     <div class="export-form-wrap">
         <div class="card">
